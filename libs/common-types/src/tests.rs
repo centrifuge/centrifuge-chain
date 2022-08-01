@@ -208,23 +208,16 @@ fn permission_roles_work() {
 fn currency_id_encode_sanity() {
 	use CurrencyId::*;
 
-	/// Verify that every variant encodes to what we would expect it to.
-	/// If this breaks, we must have changed the order of a variant, added
-	/// a new variant in between existing variants, or deleted one.
-	vec![
-		Native,
-		Tranche(42, [42; 16]),
-		KSM,
-		KUSD,
-		AUSD,
-		ForeignAsset(89),
-	]
-	.into_iter()
-	.for_each(|variant| {
-		let encoded_u64: Vec<u64> = variant.encode().iter().map(|x| *x as u64).collect();
+	// Verify that every variant encodes to what we would expect it to.
+	// If this breaks, we must have changed the order of a variant, added
+	// a new variant in between existing variants, or deleted one.
+	vec![Native, Tranche(42, [42; 16]), KSM, AUSD, ForeignAsset(89)]
+		.into_iter()
+		.for_each(|variant| {
+			let encoded_u64: Vec<u64> = variant.encode().iter().map(|x| *x as u64).collect();
 
-		assert_eq!(encoded_u64, expected_encoding_value(variant))
-	});
+			assert_eq!(encoded_u64, expected_encoding_value(variant))
+		});
 
 	/// Return the expected encoding.
 	/// This is useful to force at compile time that we handle all existing variants.
@@ -237,9 +230,8 @@ fn currency_id_encode_sanity() {
 				r
 			}
 			KSM => vec![2],
-			KUSD => vec![3],
-			AUSD => vec![4],
-			ForeignAsset(id) => vec![5, id as u64, 0, 0, 0],
+			AUSD => vec![3],
+			ForeignAsset(id) => vec![4, id as u64, 0, 0, 0],
 		}
 	}
 }

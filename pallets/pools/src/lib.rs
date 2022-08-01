@@ -38,6 +38,7 @@ use sp_runtime::{
 use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
 
+pub use impls::*;
 pub use pallet::*;
 pub use solution::*;
 pub use tranche::*;
@@ -45,6 +46,7 @@ pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod impls;
 #[cfg(test)]
 mod mock;
 mod solution;
@@ -235,7 +237,6 @@ pub mod pallet {
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
 	use sp_runtime::ArithmeticError;
-	use sp_std::convert::TryInto;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -336,27 +337,40 @@ pub mod pallet {
 		type Time: UnixTime;
 
 		/// Challenge time
+		#[pallet::constant]
 		type ChallengeTime: Get<<Self as frame_system::Config>::BlockNumber>;
 
 		/// Pool parameter defaults
+		#[pallet::constant]
 		type DefaultMinEpochTime: Get<u64>;
+
+		#[pallet::constant]
 		type DefaultMaxNAVAge: Get<u64>;
 
 		/// Pool parameter bounds
+		#[pallet::constant]
 		type MinEpochTimeLowerBound: Get<u64>;
+
+		#[pallet::constant]
 		type MinEpochTimeUpperBound: Get<u64>;
+
+		#[pallet::constant]
 		type MaxNAVAgeUpperBound: Get<u64>;
 
 		/// Pool update settings
+		#[pallet::constant]
 		type MinUpdateDelay: Get<u64>;
 
 		/// Max size of Metadata
+		#[pallet::constant]
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
 		/// Max number of Tranches
+		#[pallet::constant]
 		type MaxTranches: Get<u32>;
 
 		/// The amount that must be reserved to create a pool
+		#[pallet::constant]
 		type PoolDeposit: Get<Self::Balance>;
 
 		/// The origin permitted to create pools
@@ -433,7 +447,7 @@ pub mod pallet {
 		/// Pool metadata was set.
 		MetadataSet {
 			pool_id: T::PoolId,
-			metadata: Vec<u8>,
+			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
 		},
 		/// An epoch was closed.
 		EpochClosed {
@@ -575,6 +589,7 @@ pub mod pallet {
 			tranches: Vec<TrancheInput<T::InterestRate>>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
+			metadata: Option<Vec<u8>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -600,6 +615,18 @@ pub mod pallet {
 
 			let now = Self::now();
 			let tranches = Tranches::from_input::<T::TrancheToken>(pool_id, tranches, now)?;
+
+			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
+				Some(metadata_value) => {
+					let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
+						.clone()
+						.try_into()
+						.map_err(|_| Error::<T>::BadMetadata)?;
+
+					Some(checked)
+				}
+				None => None,
+			};
 
 			Pool::<T>::insert(
 				pool_id,
@@ -630,14 +657,16 @@ pub mod pallet {
 						available: Zero::zero(),
 						total: Zero::zero(),
 					},
-					metadata: None,
+					metadata: checked_metadata,
 				},
 			);
+
 			T::Permission::add(
 				PermissionScope::Pool(pool_id),
 				admin.clone(),
 				Role::PoolRole(PoolRole::PoolAdmin),
 			)?;
+
 			Self::deposit_event(Event::Created { pool_id, admin });
 			Ok(())
 		}
@@ -784,15 +813,18 @@ pub mod pallet {
 				BadOrigin
 			);
 
-			let checked_meta: BoundedVec<u8, T::MaxSizeMetadata> = metadata
+			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata
 				.clone()
 				.try_into()
 				.map_err(|_| Error::<T>::BadMetadata)?;
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.metadata = Some(checked_meta);
-				Self::deposit_event(Event::MetadataSet { pool_id, metadata });
+				pool.metadata = Some(checked_metadata.clone());
+				Self::deposit_event(Event::MetadataSet {
+					pool_id,
+					metadata: checked_metadata,
+				});
 				Ok(())
 			})
 		}
@@ -1103,6 +1135,11 @@ pub mod pallet {
 					Error::<T>::WipedOut
 				);
 
+				Self::deposit_event(Event::EpochClosed {
+					pool_id,
+					epoch_id: submission_period_epoch,
+				});
+
 				if pool.tranches.acc_outstanding_investments()?.is_zero()
 					&& pool.tranches.acc_outstanding_redemptions()?.is_zero()
 				{
@@ -1176,11 +1213,6 @@ pub mod pallet {
 					best_submission: None,
 					challenge_period_end: None,
 				};
-
-				Self::deposit_event(Event::EpochClosed {
-					pool_id,
-					epoch_id: submission_period_epoch,
-				});
 
 				let full_execution_solution = pool.tranches.combine_residual_top(|_| {
 					Ok(TrancheSolution {
@@ -1447,7 +1479,7 @@ pub mod pallet {
 		/// Validates if the maximal reserve of a pool is exceeded or it
 		/// any of the risk buffers falls below its minium.
 		///
-		/// **IMPORTANT NOTE:**  
+		/// **IMPORTANT NOTE:**
 		/// * min_risk_buffers => MUST be sorted from junior-to-senior tranche
 		/// * risk_buffers => MUST be sorted from junior-to-senior tranche
 		fn validate_pool_constraints(
@@ -2103,25 +2135,5 @@ pub mod pallet {
 			PoolDeposit::<T>::insert(pool, PoolDepositOf::<T> { deposit, depositor });
 			Ok(())
 		}
-	}
-}
-
-impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
-	type PoolId = T::PoolId;
-
-	fn pool_exists(pool_id: Self::PoolId) -> bool {
-		Pool::<T>::contains_key(pool_id)
-	}
-}
-
-impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
-	type Balance = T::Balance;
-
-	fn withdraw(pool_id: Self::PoolId, to: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_withdraw(to, pool_id, amount)
-	}
-
-	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_deposit(from, pool_id, amount)
 	}
 }

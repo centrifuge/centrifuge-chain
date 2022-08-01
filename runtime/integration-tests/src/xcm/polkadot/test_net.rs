@@ -20,81 +20,68 @@ use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
-use altair_runtime::CurrencyId;
+use centrifuge_runtime::CurrencyId;
 use runtime_common::{parachains, AccountId};
 
-use crate::xcm::setup::{air, ksm, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING};
+use super::setup::{cfg, dot, ExtBuilder, ALICE, BOB, DOT_ASSET_ID, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
-	pub struct KusamaNet {
-		Runtime = kusama_runtime::Runtime,
-		XcmConfig = kusama_runtime::xcm_config::XcmConfig,
+	pub struct PolkadotNet {
+		Runtime = polkadot_runtime::Runtime,
+		XcmConfig = polkadot_runtime::xcm_config::XcmConfig,
 		new_ext = relay_ext(),
 	}
 }
 
 decl_test_parachain! {
-	pub struct Altair {
-		Runtime = altair_runtime::Runtime,
-		Origin = altair_runtime::Origin,
-		XcmpMessageHandler = altair_runtime::XcmpQueue,
-		DmpMessageHandler = altair_runtime::DmpQueue,
-		new_ext = para_ext(parachains::altair::ID),
+	pub struct Centrifuge {
+		Runtime = centrifuge_runtime::Runtime,
+		Origin = centrifuge_runtime::Origin,
+		XcmpMessageHandler = centrifuge_runtime::XcmpQueue,
+		DmpMessageHandler = centrifuge_runtime::DmpQueue,
+		new_ext = para_ext(parachains::polkadot::centrifuge::ID),
 	}
 }
 
 decl_test_parachain! {
 	pub struct Sibling {
-		Runtime = altair_runtime::Runtime,
-		Origin = altair_runtime::Origin,
-		XcmpMessageHandler = altair_runtime::XcmpQueue,
-		DmpMessageHandler = altair_runtime::DmpQueue,
+		Runtime = centrifuge_runtime::Runtime,
+		Origin = centrifuge_runtime::Origin,
+		XcmpMessageHandler = centrifuge_runtime::XcmpQueue,
+		DmpMessageHandler = centrifuge_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_SIBLING),
 	}
 }
 
 decl_test_parachain! {
-	pub struct Karura {
-		Runtime = altair_runtime::Runtime,
-		Origin = altair_runtime::Origin,
-		XcmpMessageHandler = altair_runtime::XcmpQueue,
-		DmpMessageHandler = altair_runtime::DmpQueue,
-		new_ext = para_ext(parachains::karura::ID),
-	}
-}
-
-decl_test_parachain! {
-	pub struct Development {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_DEVELOPMENT),
+	pub struct Acala {
+		Runtime = centrifuge_runtime::Runtime,
+		Origin = centrifuge_runtime::Origin,
+		XcmpMessageHandler = centrifuge_runtime::XcmpQueue,
+		DmpMessageHandler = centrifuge_runtime::DmpQueue,
+		new_ext = para_ext(parachains::polkadot::acala::ID),
 	}
 }
 
 decl_test_network! {
 	pub struct TestNet {
-		relay_chain = KusamaNet,
+		relay_chain = PolkadotNet,
 		parachains = vec![
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `parachains::altair::ID`
-			(2088, Altair),
+			// Be sure to use `parachains::polkadot::centrifuge::ID`
+			(2031, Centrifuge),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
-			// Be sure to use `parachains::karura::ID`
-			(2000, Karura),
-
-			// Be sure to use `PARA_ID_DEVELOPMENT`
-			(3001, Development),
+			// Be sure to use `parachains::polkadot::acala::ID`
+			(2000, Acala),
 		],
 	}
 }
 
 pub fn relay_ext() -> sp_io::TestExternalities {
-	use kusama_runtime::{Runtime, System};
+	use polkadot_runtime::{Runtime, System};
 
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
@@ -102,14 +89,14 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
-			(AccountId::from(ALICE), air(2002)),
+			(AccountId::from(ALICE), cfg(2002)),
 			(
-				ParaId::from(parachains::altair::ID).into_account_truncating(),
-				air(7),
+				ParaId::from(parachains::polkadot::centrifuge::ID).into_account_truncating(),
+				cfg(7),
 			),
 			(
 				ParaId::from(PARA_ID_SIBLING).into_account_truncating(),
-				air(7),
+				cfg(7),
 			),
 		],
 	}
@@ -138,13 +125,13 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), CurrencyId::Native, air(10)),
-			(AccountId::from(BOB), CurrencyId::Native, air(10)),
-			(AccountId::from(ALICE), CurrencyId::KSM, ksm(10)),
+			(AccountId::from(ALICE), CurrencyId::Native, cfg(10)),
+			(AccountId::from(BOB), CurrencyId::Native, cfg(10)),
+			(AccountId::from(ALICE), DOT_ASSET_ID, dot(10)),
 			(
-				altair_runtime::TreasuryAccount::get(),
-				CurrencyId::KSM,
-				ksm(1),
+				centrifuge_runtime::TreasuryAccount::get(),
+				DOT_ASSET_ID,
+				dot(1),
 			),
 		])
 		.parachain_id(parachain_id)

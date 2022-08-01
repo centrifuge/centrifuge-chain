@@ -2,7 +2,7 @@
 //!
 //! This pallet provides functionality for migrating a previous chain-state (possibly from a
 //! stand-alone chain) to a new chain state (possbily a parachain now). This pallet is necessary due
-//! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.  
+//! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
@@ -37,7 +37,6 @@ pub enum MigrationStatus {
 pub mod pallet {
 	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
-	use frame_support::sp_std::convert::TryInto;
 	use frame_support::transactional;
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;

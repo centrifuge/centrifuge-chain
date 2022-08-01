@@ -24,7 +24,7 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{traits::Hash, ArithmeticError};
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::vec::Vec;
 
 pub use pallet::*;
 pub use weights::*;
@@ -85,7 +85,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::Hash;
-	use sp_std::{convert::TryInto, vec::Vec};
+	use sp_std::vec::Vec;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
 	// method.

@@ -112,7 +112,7 @@ mod filter {
 			}
 		}
 
-		/// Dummmy filter for InspectHold, that does not allow any holding periods on KUSD or AUSD and
+		/// Dummmy filter for InspectHold, that does not allow any holding periods on AUSD and
 		/// forwards the result of the actual holding period otherwise.
 		pub struct InspectHoldFilter;
 		impl PreConditions<FungiblesInspectHoldEffects<CurrencyId, AccountId, Balance>>
@@ -130,7 +130,7 @@ mod filter {
 						_amount,
 						can_actually_hold,
 					) => match asset {
-						CurrencyId::KUSD | CurrencyId::AUSD => false,
+						CurrencyId::AUSD => false,
 						_ => can_actually_hold,
 					},
 				}
@@ -312,7 +312,6 @@ mod filter {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	Cfg,
-	KUSD,
 	AUSD,
 	RestrictedCoin,
 }
@@ -444,7 +443,7 @@ impl PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restrict
 
 	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		match t.id {
-			CurrencyId::KUSD | CurrencyId::AUSD => true,
+			CurrencyId::AUSD => true,
 			CurrencyId::RestrictedCoin => t.recv >= 100 && t.send >= 100,
 			CurrencyId::Cfg => true,
 		}
@@ -465,12 +464,7 @@ impl TestExternalitiesBuilder {
 		let mut storage = frame_system::GenesisConfig::default()
 			.build_storage::<MockRuntime>()
 			.unwrap();
-
-		let kusd = (0..10)
-			.into_iter()
-			.map(|idx| (idx, CurrencyId::KUSD, DISTR_PER_ACCOUNT))
-			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
-		let usdt = (0..10)
+		let ausd = (0..10)
 			.into_iter()
 			.map(|idx| (idx, CurrencyId::AUSD, DISTR_PER_ACCOUNT))
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
@@ -484,8 +478,7 @@ impl TestExternalitiesBuilder {
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 
 		let mut balances = vec![];
-		balances.extend(kusd);
-		balances.extend(usdt);
+		balances.extend(ausd);
 		balances.extend(restric_1);
 		balances.extend(restric_2);
 

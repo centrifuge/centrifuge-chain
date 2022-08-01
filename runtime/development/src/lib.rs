@@ -41,7 +41,6 @@ pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill, Permill,
 };
-use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -50,7 +49,7 @@ use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
-use common_traits::{PoolUpdateGuard, PreConditions};
+use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
 pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
@@ -89,7 +88,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1002,
+	spec_version: 1003,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -361,6 +360,7 @@ pub enum ProxyType {
 	NFTMint,
 	NFTTransfer,
 	NFTManagement,
+	AnchorManagement,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -429,6 +429,7 @@ impl InstanceFilter<Call> for ProxyType {
 				matches!(c, Call::Uniques(pallet_uniques::Call::transfer { .. }))
 			}
 			ProxyType::NFTManagement => matches!(c, Call::Uniques(..)),
+			ProxyType::AnchorManagement => matches!(c, Call::Anchor(..)),
 		}
 	}
 
@@ -884,7 +885,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
 			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
-			CurrencyId::AUSD | CurrencyId::KUSD => true,
+			CurrencyId::AUSD => true,
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
 				.map(|m| m.additional.pool_currency)
 				.unwrap_or(false),
@@ -934,6 +935,32 @@ impl PoolUpdateGuard for UpdateGuard {
 		}
 
 		return true;
+	}
+}
+
+pub struct CurrencyPriceSource;
+impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
+	type Rate = Rate;
+	type Moment = Moment;
+
+	fn get_latest(
+		base: CurrencyId,
+		quote: Option<CurrencyId>,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
+		match base {
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				match <pallet_pools::Pallet<Runtime> as PoolInspect<
+				AccountId,
+				CurrencyId,
+			>>::get_tranche_token_price(pool_id, tranche_id) {
+					// If a specific quote is requested, this needs to match the actual quote.
+					Some(price) if Some(price.pair.quote) != quote => None,
+					Some(price) => Some(price),
+					None => None,
+				}
+			}
+			_ => None,
+		}
 	}
 }
 
@@ -1106,8 +1133,13 @@ impl
 		let (_editor, maybe_role, _scope, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::PoolAdmin) => match *role {
+					// PoolAdmins can manage all other admins, but not tranche investors
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => false,
+					_ => true,
+				},
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+					// MemberlistAdmins can manage tranche investors
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
 					_ => false,
 				},
@@ -1373,7 +1405,7 @@ construct_runtime!(
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
-		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Event<T>, Config<T>} = 152,
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,

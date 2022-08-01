@@ -62,7 +62,7 @@ impl xcm_executor::Config for XcmConfig {
 pub type Trader = (
 	FixedRateOfFungible<CanonicalNativePerSecond, ToTreasury>,
 	FixedRateOfFungible<NativePerSecond, ToTreasury>,
-	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<AUSDPerSecond, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	AssetRegistryTrader<
 		FixedRateAssetRegistryTrader<FixedConversionRateProvider<OrmlAssetRegistry>>,
@@ -75,7 +75,7 @@ parameter_types! {
 	pub CanonicalNativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
@@ -83,19 +83,19 @@ parameter_types! {
 	pub NativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
 
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 
-	pub KUsdPerSecond: (AssetId, u128) = (
+	pub AUSDPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::karura::ID),
-				GeneralKey(parachains::karura::KUSD_KEY.to_vec())
+				Parachain(parachains::kusama::karura::ID),
+				GeneralKey(parachains::kusama::karura::AUSD_KEY.to_vec())
 			)
 		).into(),
 		default_per_second(decimals::AUSD)
@@ -181,18 +181,18 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		match id {
 			CurrencyId::KSM => Some(MultiLocation::parent()),
-			CurrencyId::KUSD => Some(MultiLocation::new(
+			CurrencyId::AUSD => Some(MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::karura::ID),
-					GeneralKey(parachains::karura::KUSD_KEY.into()),
+					Parachain(parachains::kusama::karura::ID),
+					GeneralKey(parachains::kusama::karura::AUSD_KEY.into()),
 				),
 			)),
 			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(ParachainInfo::parachain_id().into()),
-					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
 				),
 			)),
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
@@ -215,20 +215,20 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => match &key[..] {
-				parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+				parachains::kusama::altair::AIR_KEY => Ok(CurrencyId::Native),
 				_ => Err(location.clone()),
 			},
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
-				parachains::karura::ID => match &key[..] {
-					parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
+				parachains::kusama::karura::ID => match &key[..] {
+					parachains::kusama::karura::AUSD_KEY => Ok(CurrencyId::AUSD),
 					_ => Err(location.clone()),
 				},
 
 				id if id == u32::from(ParachainInfo::get()) => match &key[..] {
-					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+					parachains::kusama::altair::AIR_KEY => Ok(CurrencyId::Native),
 					_ => Err(location.clone()),
 				},
 

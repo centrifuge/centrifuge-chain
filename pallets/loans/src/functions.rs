@@ -14,7 +14,6 @@
 //! Module provides loan related functions
 use super::*;
 use common_types::{Adjustment, PoolLocator};
-use core::convert::TryInto;
 use sp_runtime::ArithmeticError;
 
 impl<T: Config> Pallet<T> {
@@ -426,11 +425,11 @@ impl<T: Config> Pallet<T> {
 			}?;
 			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
-			Self::deposit_event(Event::<T>::NAVUpdated(
+			Self::deposit_event(Event::<T>::NAVUpdated {
 				pool_id,
-				new_nav,
-				NAVUpdateType::Inexact,
-			));
+				nav: new_nav,
+				update_type: NAVUpdateType::Inexact,
+			});
 			Ok(())
 		})
 	}

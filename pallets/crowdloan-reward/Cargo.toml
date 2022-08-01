@@ -2,7 +2,7 @@
 name = 'pallet-crowdloan-reward'
 description = 'Module for processing crowdloan claim rewards.'
 authors = ['The Centrifugians Tribe']
-edition = '2018'
+edition = '2021'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
 repository = 'https://github.com/centrifuge/centrifuge-chain'

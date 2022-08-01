@@ -41,8 +41,8 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Provides 100_000 * DECIMAL_BASE_12 CurrencyId::KUSD tokens to the `accounts::default_accounts()`
-pub fn default_usd_balances<Runtime>(storage: &mut Storage)
+/// Provides 100_000 * DECIMAL_BASE_12 CurrencyId::AUSD tokens to the `accounts::default_accounts()`
+pub fn default_ausd_balances<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_tokens::Config,
 	Runtime::Balance: From<u128>,
@@ -55,7 +55,7 @@ where
 			.map(|acc| {
 				(
 					AccountId32::from(acc).into(),
-					CurrencyId::KUSD.into(),
+					CurrencyId::AUSD.into(),
 					(100_000 * DECIMAL_BASE_12).into(),
 				)
 			})
@@ -65,7 +65,7 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Provides 100_000 * DECIMAL_BASE_18 and Provides 100_000 * DECIMAL_BASE_12 CurrencyId::KUSD
+/// Provides 100_000 * DECIMAL_BASE_18 and Provides 100_000 * DECIMAL_BASE_12 CurrencyId::AUSD
 /// tokens to the `accounts::default_accounts()`
 pub fn default_balances<Runtime>(storage: &mut Storage)
 where
@@ -76,5 +76,5 @@ where
 	Runtime::CurrencyId: From<CurrencyId>,
 {
 	default_native_balances::<Runtime>(storage);
-	default_usd_balances::<Runtime>(storage);
+	default_ausd_balances::<Runtime>(storage);
 }

@@ -210,8 +210,10 @@ pub(crate) type InstanceIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
 
-pub(crate) type PoolIdOf<T> =
-	<<T as Config>::Pool as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
+pub(crate) type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::CurrencyId,
+>>::PoolId;
 
 pub(crate) type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 

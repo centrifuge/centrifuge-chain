@@ -9,7 +9,6 @@ use frame_support::{storage, BoundedVec};
 use pallet_proxy::ProxyDefinition;
 use pallet_vesting::VestingInfo;
 use sp_runtime::{traits::Zero, AccountId32};
-use sp_std::convert::TryInto;
 
 benchmarks! {
 	finalize{

@@ -103,7 +103,6 @@ use frame_support::{
 	weights::Weight,
 	PalletId,
 };
-use sp_std::convert::TryInto;
 
 use frame_system::ensure_root;
 
@@ -216,10 +215,15 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event triggered after a reward claim is successfully processed
-		Claimed(T::AccountId, <T as pallet_balances::Config>::Balance),
+		Claimed {
+			account_id: T::AccountId,
+			amount: <T as pallet_balances::Config>::Balance,
+		},
 
 		/// Event triggered when the root hash is stored
-		RootHashStored(<T as frame_system::Config>::Hash),
+		RootHashStored {
+			root_hash: <T as frame_system::Config>::Hash,
+		},
 	}
 
 	// ------------------------------------------------------------------------
@@ -367,7 +371,7 @@ pub mod pallet {
 			// Set account balance to amount
 			ClaimedAmounts::<T>::insert(account_id.clone(), amount);
 
-			Self::deposit_event(Event::Claimed(account_id, amount));
+			Self::deposit_event(Event::Claimed { account_id, amount });
 
 			Ok(().into())
 		}
@@ -409,7 +413,7 @@ pub mod pallet {
 
 			<RootHash<T>>::put(root_hash);
 
-			Self::deposit_event(Event::RootHashStored(root_hash));
+			Self::deposit_event(Event::RootHashStored { root_hash });
 
 			Ok(().into())
 		}

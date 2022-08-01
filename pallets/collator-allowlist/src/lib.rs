@@ -26,7 +26,6 @@ use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
 
 use frame_system::ensure_root;
 pub use pallet::*;
-use sp_std::convert::TryInto;
 
 pub mod weights;
 pub use weights::*;
@@ -95,10 +94,10 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A collator has been added to the allowlist
-		CollatorAdded(T::ValidatorId),
+		CollatorAdded { collator_id: T::ValidatorId },
 
 		/// A collator has been removed from the allowlist
-		CollatorRemoved(T::ValidatorId),
+		CollatorRemoved { collator_id: T::ValidatorId },
 	}
 
 	#[pallet::error]
@@ -135,7 +134,7 @@ pub mod pallet {
 			);
 
 			<Allowlist<T>>::insert(collator_id.clone(), ());
-			Self::deposit_event(Event::CollatorAdded(collator_id));
+			Self::deposit_event(Event::CollatorAdded { collator_id });
 
 			Ok(())
 		}
@@ -153,7 +152,7 @@ pub mod pallet {
 				Error::<T>::CollatorNotPresent
 			);
 			<Allowlist<T>>::remove(collator_id.clone());
-			Self::deposit_event(Event::CollatorRemoved(collator_id));
+			Self::deposit_event(Event::CollatorRemoved { collator_id });
 			Ok(())
 		}
 	}

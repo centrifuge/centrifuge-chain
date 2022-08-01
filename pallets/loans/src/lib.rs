@@ -70,7 +70,6 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::traits::BadOrigin;
-	use sp_std::convert::TryInto;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -126,7 +125,7 @@ pub mod pallet {
 		type LoansPalletId: Get<PalletId>;
 
 		/// Pool reserve type
-		type Pool: PoolReserve<Self::AccountId, Balance = Self::Balance>;
+		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
 
 		type CurrencyId: Parameter + Copy;
 
@@ -144,9 +143,11 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		/// Max number of active loans per pool.
+		#[pallet::constant]
 		type MaxActiveLoansPerPool: Get<u32>;
 
 		/// Max number of write-off groups per pool.
+		#[pallet::constant]
 		type MaxWriteOffGroups: Get<u32>;
 
 		/// Source of the current block number
@@ -225,29 +226,58 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A pool was initialised. [pool]
-		PoolInitialised(PoolIdOf<T>),
-		/// A loan was created. [pool, loan, collateral]
-		Created(PoolIdOf<T>, T::LoanId, AssetOf<T>),
-		/// A loan was closed. [pool, loan, collateral]
-		Closed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
-		/// A loan was priced. [pool, loan, interest_rate_per_sec, loan_type]
-		Priced(
-			PoolIdOf<T>,
-			T::LoanId,
-			T::Rate,
-			LoanType<T::Rate, T::Balance>,
-		),
-		/// An amount was borrowed for a loan. [pool, loan, amount]
-		Borrowed(PoolIdOf<T>, T::LoanId, T::Balance),
-		/// An amount was repaid for a loan. [pool, loan, amount]
-		Repaid(PoolIdOf<T>, T::LoanId, T::Balance),
-		/// The NAV for a pool was updated. [pool, nav, update_type]
-		NAVUpdated(PoolIdOf<T>, T::Balance, NAVUpdateType),
-		/// A write-off group was added to a pool. [pool, write_off_group]
-		WriteOffGroupAdded(PoolIdOf<T>, u32),
+		/// A pool was initialised.
+		PoolInitialised { pool_id: PoolIdOf<T> },
+		/// A loan was created.
+		Created {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			collateral: AssetOf<T>,
+		},
+		/// A loan was closed.
+		Closed {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			collateral: AssetOf<T>,
+		},
+		/// A loan was priced.
+		Priced {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			interest_rate_per_sec: T::Rate,
+			loan_type: LoanType<T::Rate, T::Balance>,
+		},
+		/// An amount was borrowed for a loan.
+		Borrowed {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			amount: T::Balance,
+		},
+		/// An amount was repaid for a loan.
+		Repaid {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			amount: T::Balance,
+		},
+		/// The NAV for a pool was updated.
+		NAVUpdated {
+			pool_id: PoolIdOf<T>,
+			nav: T::Balance,
+			update_type: NAVUpdateType,
+		},
+		/// A write-off group was added to a pool.
+		WriteOffGroupAdded {
+			pool_id: PoolIdOf<T>,
+			write_off_group_index: u32,
+		},
 		/// A loan was written off. [pool, loan, percentage, penalty_interest_rate_per_sec, write_off_group_index]
-		WrittenOff(PoolIdOf<T>, T::LoanId, T::Rate, T::Rate, Option<u32>),
+		WrittenOff {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			percentage: T::Rate,
+			penalty_interest_rate_per_sec: T::Rate,
+			write_off_group_index: Option<u32>,
+		},
 	}
 
 	#[pallet::error]
@@ -344,7 +374,7 @@ pub mod pallet {
 					last_updated: now,
 				},
 			);
-			Self::deposit_event(Event::<T>::PoolInitialised(pool_id));
+			Self::deposit_event(Event::<T>::PoolInitialised { pool_id });
 			Ok(())
 		}
 
@@ -365,7 +395,11 @@ pub mod pallet {
 			// ensure borrower is whitelisted.
 			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
 			let loan_id = Self::create_loan(pool_id, owner, collateral)?;
-			Self::deposit_event(Event::<T>::Created(pool_id, loan_id, collateral));
+			Self::deposit_event(Event::<T>::Created {
+				pool_id,
+				loan_id,
+				collateral,
+			});
 			Ok(())
 		}
 
@@ -396,7 +430,11 @@ pub mod pallet {
 					written_off,
 				},
 			) = Self::close_loan(pool_id, loan_id, owner)?;
-			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, collateral));
+			Self::deposit_event(Event::<T>::Closed {
+				pool_id,
+				loan_id,
+				collateral,
+			});
 
 			let weight = if written_off {
 				T::WeightInfo::write_off_and_close(active_count)
@@ -431,7 +469,11 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			let (active_count, first_borrow) =
 				Self::borrow_amount(pool_id, loan_id, owner, amount)?;
-			Self::deposit_event(Event::<T>::Borrowed(pool_id, loan_id, amount));
+			Self::deposit_event(Event::<T>::Borrowed {
+				pool_id,
+				loan_id,
+				amount,
+			});
 
 			let weight = if first_borrow {
 				T::WeightInfo::initial_borrow(active_count)
@@ -457,7 +499,11 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let (active_count, total_repaid) = Self::repay_amount(pool_id, loan_id, owner, amount)?;
-			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, total_repaid));
+			Self::deposit_event(Event::<T>::Repaid {
+				pool_id,
+				loan_id,
+				amount: total_repaid,
+			});
 			Ok(Some(T::WeightInfo::repay(active_count)).into())
 		}
 
@@ -477,12 +523,12 @@ pub mod pallet {
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			let active_count =
 				Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
-			Self::deposit_event(Event::<T>::Priced(
+			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
 				loan_id,
 				interest_rate_per_sec,
 				loan_type,
-			));
+			});
 			Ok(Some(T::WeightInfo::price(active_count)).into())
 		}
 
@@ -502,12 +548,12 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			// ensure signed so that caller pays for the update fees
 			ensure_signed(origin)?;
-			let (active_count, updated_nav) = Self::update_nav_of_pool(pool_id)?;
-			Self::deposit_event(Event::<T>::NAVUpdated(
+			let (active_count, nav) = Self::update_nav_of_pool(pool_id)?;
+			Self::deposit_event(Event::<T>::NAVUpdated {
 				pool_id,
-				updated_nav,
-				NAVUpdateType::Exact,
-			));
+				nav,
+				update_type: NAVUpdateType::Exact,
+			});
 
 			Ok(Some(T::WeightInfo::update_nav(active_count)).into())
 		}
@@ -525,8 +571,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::LoanAdmin);
-			let index = Self::add_write_off_group_to_pool(pool_id, group)?;
-			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
+			let write_off_group_index = Self::add_write_off_group_to_pool(pool_id, group)?;
+			Self::deposit_event(Event::<T>::WriteOffGroupAdded {
+				pool_id,
+				write_off_group_index,
+			});
 			Ok(())
 		}
 
@@ -550,20 +599,22 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			// try to write off
-			let (active_count, (index, percentage, penalty_interest_rate_per_sec)) =
+			let (active_count, (write_off_group_index, percentage, penalty_interest_rate_per_sec)) =
 				Self::write_off_loan(pool_id, loan_id, WriteOffAction::WriteOffToCurrentGroup)?;
-			Self::deposit_event(Event::<T>::WrittenOff(
+			Self::deposit_event(Event::<T>::WrittenOff {
 				pool_id,
 				loan_id,
 				percentage,
 				penalty_interest_rate_per_sec,
-				index,
-			));
+				write_off_group_index,
+			});
 
 			// since the write off group index is picked in loop sequentially,
 			// total loops = index+1. This cannot overflow since it is
 			// capped by `MaxWriteOffGroups`
-			let count = index.expect("non-admin write off always returns an index. qed") + 1;
+			let count = write_off_group_index
+				.expect("non-admin write off always returns an index. qed")
+				+ 1;
 			Ok(Some(T::WeightInfo::write_off(active_count, count)).into())
 		}
 
@@ -595,13 +646,13 @@ pub mod pallet {
 						penalty_interest_rate_per_sec,
 					},
 				)?;
-			Self::deposit_event(Event::<T>::WrittenOff(
+			Self::deposit_event(Event::<T>::WrittenOff {
 				pool_id,
 				loan_id,
 				percentage,
 				penalty_interest_rate_per_sec,
-				None,
-			));
+				write_off_group_index: None,
+			});
 			Ok(Some(T::WeightInfo::admin_write_off(active_count)).into())
 		}
 	}

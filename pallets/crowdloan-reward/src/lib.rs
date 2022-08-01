@@ -97,7 +97,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, Convert, Zero},
 	Perbill,
 };
-use sp_std::convert::TryInto;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;

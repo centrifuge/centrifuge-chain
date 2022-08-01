@@ -33,7 +33,7 @@ fn add_nft_not_found() {
 				unknown_nft.0,
 				unknown_nft.1,
 				Price {
-					currency: CurrencyId::KUSD,
+					currency: CurrencyId::AUSD,
 					amount: 3
 				}
 			),
@@ -56,7 +56,7 @@ fn add_nft_not_owner() {
 				collection_id,
 				item_id,
 				Price {
-					currency: CurrencyId::KUSD,
+					currency: CurrencyId::AUSD,
 					amount: 3
 				}
 			),
@@ -78,7 +78,7 @@ fn add_nft_works() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 
@@ -120,7 +120,7 @@ fn remove_nft_bad_actor() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 
@@ -156,7 +156,7 @@ fn remove_nft_works() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 
@@ -194,7 +194,7 @@ fn buy_nft_seller() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 		// Set it for sale in the NftSales
@@ -215,7 +215,7 @@ fn buy_nft_not_for_sale() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let offer = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 
@@ -234,8 +234,8 @@ fn buy_nft_insufficient_balance() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
-			amount: OrmlTokens::balance(CurrencyId::KUSD, &1) + 1,
+			currency: CurrencyId::AUSD,
+			amount: OrmlTokens::balance(CurrencyId::AUSD, &1) + 1,
 		};
 
 		// Set it for sale in the NftSales
@@ -260,10 +260,10 @@ fn buy_nft_insufficient_balance() {
 fn buy_nft_works() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let seller_initial_balance = OrmlTokens::balance(CurrencyId::KUSD, &1);
+		let seller_initial_balance = OrmlTokens::balance(CurrencyId::AUSD, &1);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 
@@ -284,7 +284,7 @@ fn buy_nft_works() {
 
 		// Verify that the buyer can buy the nft
 		let buyer: Origin = Origin::signed(BUYER);
-		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::KUSD, &BUYER);
+		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::AUSD, &BUYER);
 		assert_ok!(NftSales::buy(
 			buyer.clone(),
 			collection_id,
@@ -330,7 +330,7 @@ fn buy_nft_respects_max_offer_amount() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 
@@ -362,7 +362,7 @@ fn buy_nft_respects_max_offer_currency() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
-			currency: CurrencyId::KUSD,
+			currency: CurrencyId::AUSD,
 			amount: 10_000,
 		};
 

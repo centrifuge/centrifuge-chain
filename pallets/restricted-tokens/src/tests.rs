@@ -28,12 +28,6 @@ fn transfer_works() {
 			assert_ok!(pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
 				Origin::signed(1),
 				2,
-				CurrencyId::KUSD,
-				DISTR_PER_ACCOUNT
-			));
-			assert_ok!(pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
-				Origin::signed(1),
-				2,
 				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			));
@@ -55,7 +49,7 @@ fn transfer_fails() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
 					Origin::signed(10),
 					2,
-					CurrencyId::KUSD,
+					CurrencyId::AUSD,
 					100
 				),
 				orml_tokens::Error::<MockRuntime>::BalanceTooLow
@@ -99,7 +93,7 @@ fn transfer_keep_alive_fails() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
 					Origin::signed(1),
 					2,
-					CurrencyId::KUSD,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				),
 				orml_tokens::Error::<MockRuntime>::KeepAlive
@@ -134,14 +128,6 @@ fn transfer_keep_alive_works() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
 					Origin::signed(1),
 					2,
-					CurrencyId::KUSD,
-					DISTR_PER_ACCOUNT - 1
-				)
-			);
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
-					Origin::signed(1),
-					2,
 					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT - 1
 				)
@@ -166,11 +152,11 @@ fn transfer_all_works() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_all(
 					Origin::signed(1),
 					2,
-					CurrencyId::KUSD,
+					CurrencyId::AUSD,
 					false
 				)
 			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(2, CurrencyId::KUSD).free == 2000);
+			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_all(
 					Origin::signed(1),
@@ -205,15 +191,6 @@ fn force_transfer_works() {
 					Origin::root(),
 					1,
 					2,
-					CurrencyId::KUSD,
-					DISTR_PER_ACCOUNT
-				)
-			);
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::force_transfer(
-					Origin::root(),
-					1,
-					2,
 					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				)
@@ -240,7 +217,7 @@ fn force_transfer_fails() {
 					Origin::signed(1),
 					1,
 					2,
-					CurrencyId::KUSD,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				)
 				.is_err()
@@ -277,14 +254,14 @@ fn set_balance_works() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::set_balance(
 					Origin::root(),
 					1,
-					CurrencyId::KUSD,
+					CurrencyId::AUSD,
 					200,
 					100
 				)
 			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::KUSD).free == 200);
+			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).free == 200);
 			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::KUSD).reserved == 100
+				orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).reserved == 100
 			);
 
 			assert_ok!(
@@ -540,7 +517,7 @@ fn fungibles_total_issuance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::total_issuance(CurrencyId::KUSD),
+				>>::total_issuance(CurrencyId::AUSD),
 				10 * DISTR_PER_ACCOUNT
 			);
 		})
@@ -560,8 +537,8 @@ fn fungibles_minimum_balance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::minimum_balance(CurrencyId::KUSD),
-				ExistentialDeposits::get(&CurrencyId::KUSD)
+				>>::minimum_balance(CurrencyId::AUSD),
+				ExistentialDeposits::get(&CurrencyId::AUSD)
 			)
 		})
 }
@@ -580,7 +557,7 @@ fn fungibles_balance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::balance(CurrencyId::KUSD, &1),
+				>>::balance(CurrencyId::AUSD, &1),
 				DISTR_PER_ACCOUNT
 			)
 		})
@@ -600,7 +577,7 @@ fn fungibles_reducible_balance() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::reducible_balance(CurrencyId::KUSD, &1, false),
+				>>::reducible_balance(CurrencyId::AUSD, &1, false),
 				DISTR_PER_ACCOUNT / 2
 			);
 		})
@@ -620,7 +597,7 @@ fn fungibles_can_deposit() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::can_deposit(CurrencyId::KUSD, &1, 10, false)
+				>>::can_deposit(CurrencyId::AUSD, &1, 10, false)
 					== DepositConsequence::Success
 			);
 		})
@@ -633,13 +610,13 @@ fn fungibles_can_withdraw() {
 		.execute_with(|| {
 			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungibles::Inspect<
 				AccountId,
-			>>::can_withdraw(CurrencyId::KUSD, &1, DISTR_PER_ACCOUNT)
+			>>::can_withdraw(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT)
 				== WithdrawConsequence::ReducedToZero(0);
 			assert!(res);
 			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungibles::Inspect<
 				AccountId,
 			>>::can_withdraw(
-				CurrencyId::KUSD,
+				CurrencyId::AUSD,
 				&1,
 				DISTR_PER_ACCOUNT - ExistentialDeposit::get(),
 			) == WithdrawConsequence::Success;
@@ -674,7 +651,7 @@ fn fungibles_can_hold() {
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(CurrencyId::KUSD, &1, 0)
+				>>::can_hold(CurrencyId::AUSD, &1, 0)
 			);
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
@@ -727,7 +704,7 @@ fn fungibles_hold() {
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::KUSD, &1, 1),
+				>>::hold(CurrencyId::AUSD, &1, 1),
 				Error::<MockRuntime>::PreConditionsNotMet,
 			);
 
@@ -760,7 +737,7 @@ fn fungibles_release() {
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::KUSD, &1, DISTR_PER_ACCOUNT),
+				>>::hold(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT),
 				Error::<MockRuntime>::PreConditionsNotMet
 			);
 			assert_noop!(

@@ -10,8 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use altair_runtime::CustomMetadata;
-pub use altair_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
+use centrifuge_runtime::CustomMetadata;
+pub use centrifuge_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
 use frame_support::traits::GenesisBuild;
 use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::{decimals, parachains, Balance};
@@ -23,7 +23,9 @@ pub const BOB: [u8; 32] = [5u8; 32];
 /// A PARA ID used for a sibling parachain.
 /// It must be one that doesn't collide with any other in use.
 pub const PARA_ID_SIBLING: u32 = 3000;
-pub const PARA_ID_DEVELOPMENT: u32 = 3001;
+
+/// The asset id attributed to DOT
+pub const DOT_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(91);
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
@@ -34,7 +36,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: parachains::altair::ID,
+			parachain_id: parachains::polkadot::centrifuge::ID,
 		}
 	}
 }
@@ -54,7 +56,7 @@ impl ExtBuilder {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
-		let native_currency_id = altair_runtime::NativeToken::get();
+		let native_currency_id = centrifuge_runtime::NativeToken::get();
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
 				.balances
@@ -99,7 +101,7 @@ impl ExtBuilder {
 	}
 }
 
-pub fn air(amount: Balance) -> Balance {
+pub fn cfg(amount: Balance) -> Balance {
 	amount * dollar(decimals::NATIVE)
 }
 
@@ -107,7 +109,7 @@ pub fn ausd(amount: Balance) -> Balance {
 	amount * dollar(decimals::AUSD)
 }
 
-pub fn ksm(amount: Balance) -> Balance {
+pub fn dot(amount: Balance) -> Balance {
 	amount * dollar(decimals::KSM)
 }
 
@@ -123,12 +125,12 @@ pub fn sibling_account() -> AccountId {
 	parachain_account(PARA_ID_SIBLING.into())
 }
 
-pub fn karura_account() -> AccountId {
-	parachain_account(parachains::karura::ID.into())
+pub fn acala_account() -> AccountId {
+	parachain_account(parachains::polkadot::acala::ID.into())
 }
 
-pub fn altair_account() -> AccountId {
-	parachain_account(parachains::altair::ID.into())
+pub fn centrifuge_account() -> AccountId {
+	parachain_account(parachains::polkadot::centrifuge::ID.into())
 }
 
 fn parachain_account(id: u32) -> AccountId {

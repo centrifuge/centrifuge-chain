@@ -42,7 +42,6 @@ pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill, Permill,
 };
-use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -90,7 +89,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1016,
+	spec_version: 1018,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -846,8 +845,13 @@ impl
 		let (_editor, maybe_role, _pool, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::PoolAdmin) => match *role {
+					// PoolAdmins can manage all other admins, but not tranche investors
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => false,
+					_ => true,
+				},
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+					// MemberlistAdmins can manage tranche investors
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
 					_ => false,
 				},
@@ -917,6 +921,16 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
+}
+
+impl orml_asset_registry::Config for Runtime {
+	type Event = Event;
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin, EnsureRootOr<HalfOfCouncil>>;
+	type AssetProcessor = asset_registry::CustomAssetProcessor;
+	type Balance = Balance;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1073,7 +1087,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::Native
 			| CurrencyId::KSM
 			| CurrencyId::ForeignAsset(_) => false,
-			CurrencyId::AUSD | CurrencyId::KUSD => true,
+			CurrencyId::AUSD => true,
 		}
 	}
 }
@@ -1194,6 +1208,7 @@ construct_runtime!(
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 151,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
