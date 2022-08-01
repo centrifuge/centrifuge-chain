@@ -167,23 +167,23 @@ pub mod pallet {
 		}
 
 		fn on_initialize(_: T::BlockNumber) -> Weight {
-			let mut weight = T::DbWeight::get().reads_writes(1, 1);
+			let mut count = 0;
 			let then = LastUpdated::<T>::get();
 			LastUpdated::<T>::set(Self::now());
 			let delta = Self::now() - then;
 			let _bits = Moment::BITS - delta.leading_zeros();
 			Rate::<T>::translate(|per_sec, mut rate: RateDetailsOf<T>| {
-				let new_rate =
-					match Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then) {
-						Ok(rate) => rate,
-						Err(e) => panic!("Failure of interest accrual for rate {:?}", per_sec),
-					};
-				rate.accumulated_rate = new_rate;
-				weight += T::DbWeight::get().reads_writes(1, 1);
-				// weight += T::Weight::calculate_accumulated_rate(_bits);
-				Some(rate)
+				count += 1;
+				Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then)
+					.ok()
+					.map(|new_rate| {
+						rate.accumulated_rate = new_rate;
+						rate
+					})
 			});
-			weight
+			T::DbWeight::get().reads_writes(1, 1)
+				+ count
+					* (T::DbWeight::get().reads_writes(1, 1) + 0/* T::Weight::calculate_accumulated_rate(_bits) */)
 		}
 	}
 
@@ -291,14 +291,8 @@ pub mod pallet {
 
 			Ok(
 				checked_pow(interest_rate_per_sec, time_difference_secs as usize)
-					.unwrap_or_else(|| {
-						panic!(
-							"Pow overflowed: {:?} {:?}",
-							interest_rate_per_sec, time_difference_secs,
-						)
-					})
-					.checked_mul(&accumulated_rate)
-					.expect("mul overflows"),
+					.and_then(|new_rate| new_rate.checked_mul(&accumulated_rate))
+					.ok_or(ArithmeticError::Overflow)?,
 			)
 		}
 
