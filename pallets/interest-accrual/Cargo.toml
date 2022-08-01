@@ -41,4 +41,6 @@ std = [
     'sp-runtime/std',
     'sp-arithmetic/std',
     'sp-std/std',
+    'common-traits/std',
+    'common-types/std',
 ]

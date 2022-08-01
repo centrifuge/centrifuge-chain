@@ -61,11 +61,15 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_runtime::ArithmeticError;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
 pub mod migration;
+pub mod weights;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 
 pub use pallet::*;
 
@@ -91,6 +95,7 @@ pub struct RateDetails<InterestRate> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 
 	#[pallet::pallet]
@@ -124,6 +129,8 @@ pub mod pallet {
 			+ FixedPointNumber<Inner = Self::Balance>;
 
 		type Time: UnixTime;
+
+		type Weights: WeightInfo;
 	}
 
 	#[pallet::storage]
@@ -169,21 +176,23 @@ pub mod pallet {
 		fn on_initialize(_: T::BlockNumber) -> Weight {
 			let mut count = 0;
 			let then = LastUpdated::<T>::get();
+			let now = Self::now();
 			LastUpdated::<T>::set(Self::now());
 			let delta = Self::now() - then;
-			let _bits = Moment::BITS - delta.leading_zeros();
+			let bits = Moment::BITS - delta.leading_zeros();
 			Rate::<T>::translate(|per_sec, mut rate: RateDetailsOf<T>| {
 				count += 1;
-				Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then)
+				Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then, now)
 					.ok()
 					.map(|new_rate| {
 						rate.accumulated_rate = new_rate;
 						rate
 					})
 			});
-			T::DbWeight::get().reads_writes(1, 1)
+			T::DbWeight::get().reads_writes(2, 1)
 				+ count
-					* (T::DbWeight::get().reads_writes(1, 1) + 0/* T::Weight::calculate_accumulated_rate(_bits) */)
+					* (T::DbWeight::get().reads_writes(1, 1)
+						+ T::Weights::calculate_accumulated_rate(bits))
 		}
 	}
 
@@ -283,9 +292,10 @@ pub mod pallet {
 			interest_rate_per_sec: Rate,
 			accumulated_rate: Rate,
 			last_updated: Moment,
+			now: Moment,
 		) -> Result<Rate, DispatchError> {
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
-			let time_difference_secs = Self::now()
+			let time_difference_secs = now
 				.checked_sub(last_updated)
 				.ok_or(ArithmeticError::Underflow)?;
 
