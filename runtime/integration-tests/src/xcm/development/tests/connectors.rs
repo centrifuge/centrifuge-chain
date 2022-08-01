@@ -75,7 +75,7 @@ fn add_pool_works() {
 		assert_ok!(XcmTransactor::set_fee_per_second(
 			Origin::root(),
 			Box::new(VersionedMultiLocation::V1(moonbeam_native_token.clone())),
-			default_per_second(18),
+			default_per_second(18), // default fee_per_second for this token which has 18 decimals
 		));
 		//TODO(nuno): Failing with `UnableToWithdrawAsset` because we don't handle
 		// "Moonbeam's native token" locally.
