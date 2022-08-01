@@ -623,11 +623,6 @@ pub mod pallet {
 						.try_into()
 						.map_err(|_| Error::<T>::BadMetadata)?;
 
-					Self::deposit_event(Event::MetadataSet {
-						pool_id,
-						metadata: checked.clone(),
-					});
-
 					Some(checked)
 				}
 				None => None,
