@@ -1258,8 +1258,9 @@ mod upgrade {
 	impl OnRuntimeUpgrade for Upgrade {
 		fn on_runtime_upgrade() -> Weight {
 			let mut weight = 0;
-			weight += InterestAccrual::upgrade();
+			weight += InterestAccrual::upgrade_to_v1();
 			weight += Loans::reference_active_rates();
+			weight += InterestAccrual::remove_unused_rates();
 			weight
 		}
 	}

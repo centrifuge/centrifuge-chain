@@ -330,13 +330,26 @@ pub mod pallet {
 			})
 		}
 
-		pub fn upgrade() -> Weight {
+		pub fn upgrade_to_v1() -> Weight {
 			let mut weight = T::DbWeight::get().reads_writes(1, 1);
 			let version = Pallet::<T>::storage_version();
 			if version < 1 {
 				weight += migration::v1::migrate::<T>();
 			}
 			StorageVersion::<T>::set(1);
+			weight
+		}
+
+		pub fn remove_unused_rates() -> Weight {
+			let mut weight = 0;
+			Rate::<T>::translate(|_, rate: RateDetailsOf<T>| {
+				weight += T::DbWeight::get().reads_writes(1, 1);
+				if rate.reference_count == 0 {
+					None
+				} else {
+					Some(rate)
+				}
+			});
 			weight
 		}
 	}
