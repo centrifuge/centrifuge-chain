@@ -17,7 +17,7 @@
     };
   };
 
-  outputs = inputs:
+  outputs = inputs :
     inputs.flake-utils.lib.eachDefaultSystem (system:
         let
           name = "centrifuge-chain";
@@ -78,12 +78,10 @@
               isGitIgnored path type
               && builtins.all (name: builtins.baseNameOf path != name) ignoreList;
         in
-        {
+        rec {
           defaultPackage = nightlyRustPlatform.buildRustPackage {
             pname = name;
             inherit version;
-
-            #buildFeatures = [ "fast-runtime" ];
 
             # This applies the srcFilter function to the current directory, so
             # we don't include unnecessary files in the package.
@@ -112,9 +110,14 @@
             doCheck = false;
           };
 
+          packages.fastRuntime = defaultPackage.overrideAttrs (base: {
+            buildFeatures = [ "fast-runtime" ];
+          });
+
+          # Docker image package doesn't work on Darwin Archs
           packages.dockerImage = pkgs.dockerTools.buildLayeredImage {
             name = "centrifugeio/${name}";
-            tag = "${version}-nix-do-not-use"; # todo remove once verified
+            tag = "${version}-nix-do-not-use"; # todo remove suffix once verified
             # This uses the date of the last commit as the image creation date.
             created = builtins.substring 0 8 inputs.self.lastModifiedDate;
 
@@ -135,5 +138,13 @@
               Entrypoint = [ "centrifuge-chain" ];
             };
           };
-        });
+
+          packages.dockerImageFastRuntime = packages.dockerImage.overrideAttrs (base: {
+            tag = "test-${version}-nix-do-not-use"; # todo remove suffix once verified
+            contents = [
+                pkgs.busybox
+                packages.fastRuntime
+            ];
+          });
+    });
 }
