@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use super::*;
-use frame_benchmarking::benchmarks;
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 
 /// returns the seconds in a given normal day
 fn seconds_per_day() -> Moment {
@@ -43,3 +43,9 @@ benchmarks! {
 	verify {
 	}
 }
+
+impl_benchmark_test_suite!(
+	Pallet,
+	crate::mock::TestExternalitiesBuilder::default().build(),
+	crate::mock::Test,
+);
