@@ -2,7 +2,7 @@ name: nix-build
 on:
   pull_request:
   push:
-    branches: [parachain]
+    branches: [parachain, nix-build]
 jobs:
   build:
     runs-on: ubuntu-latest

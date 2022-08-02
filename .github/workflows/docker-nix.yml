@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [parachain, nix-build]
+    branches: [parachain]
 jobs:
   docker:
     strategy:
