@@ -166,16 +166,6 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_runtime_upgrade() -> Weight {
-			let mut weight = T::DbWeight::get().reads_writes(1, 1);
-			let version = Pallet::<T>::storage_version();
-			if version < 1 {
-				weight += migration::v1::migrate::<T>();
-			}
-			StorageVersion::<T>::set(1);
-			weight
-		}
-
 		fn on_initialize(_: T::BlockNumber) -> Weight {
 			let mut count = 0;
 			let then = LastUpdated::<T>::get();
@@ -338,6 +328,16 @@ pub mod pallet {
 					Err(Error::<T>::NoSuchRate.into())
 				}
 			})
+		}
+
+		pub fn upgrade() -> Weight {
+			let mut weight = T::DbWeight::get().reads_writes(1, 1);
+			let version = Pallet::<T>::storage_version();
+			if version < 1 {
+				weight += migration::v1::migrate::<T>();
+			}
+			StorageVersion::<T>::set(1);
+			weight
 		}
 	}
 }

@@ -656,6 +656,32 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::admin_write_off(active_count)).into())
 		}
 	}
+	impl<T: Config> Pallet<T> {
+		pub fn reference_active_rates() -> Weight {
+			let mut weight = 0;
+			for (pool, active_loans) in ActiveLoans::<T>::iter() {
+				let write_off_groups = PoolWriteOffGroups::<T>::get(pool);
+				weight += T::DbWeight::get().reads(2);
+				for loan in active_loans.iter() {
+					weight += T::DbWeight::get().reads_writes(1, 1);
+					let rate = match loan.write_off_status {
+						WriteOffStatus::None => loan.interest_rate_per_sec,
+						WriteOffStatus::WrittenOff { write_off_index } => {
+							loan.interest_rate_per_sec
+								+ write_off_groups[write_off_index as usize]
+									.penalty_interest_rate_per_sec
+						}
+						WriteOffStatus::WrittenOffByAdmin {
+							penalty_interest_rate_per_sec,
+							..
+						} => loan.interest_rate_per_sec + penalty_interest_rate_per_sec,
+					};
+					T::InterestAccrual::reference_rate(rate);
+				}
+			}
+			weight
+		}
+	}
 }
 
 impl<T: Config> TPoolNav<PoolIdOf<T>, T::Balance> for Pallet<T> {

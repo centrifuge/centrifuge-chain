@@ -1246,7 +1246,24 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
+	upgrade::Upgrade,
 >;
+
+/// Runtime upgrade logic
+mod upgrade {
+	use super::*;
+	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+
+	pub struct Upgrade;
+	impl OnRuntimeUpgrade for Upgrade {
+		fn on_runtime_upgrade() -> Weight {
+			let mut weight = 0;
+			weight += InterestAccrual::upgrade();
+			weight += Loans::reference_active_rates();
+			weight
+		}
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
