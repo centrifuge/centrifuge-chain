@@ -7,6 +7,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
+        target: [".#dockerImage" ".#dockerImageFastRuntime"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -15,10 +16,8 @@ jobs:
       - uses: cachix/install-nix-action@v16
         with:
           install_url: https://releases.nixos.org/nix/nix-2.10.3/install
-      - name: Build Standard Docker image
-        run: nix build --no-allow-dirty -L .#dockerImage
-      - name: Build FastRuntime Docker image
-        run: nix build --no-allow-dirty -L .#dockerImageFastRuntime
+      - name: Build Docker image
+        run: nix build --no-allow-dirty -L ${{ matrix.target }}
       - name: Login to Docker Hub
         uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
         with:
