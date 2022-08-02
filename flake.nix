@@ -18,15 +18,14 @@
     let
       name = "centrifuge-chain";
       # This is the program version.
-      version = "0.10.9";
+      version = "0.10.18";
       # This selects a nightly Rust version, based on the date.
-      nightly-date = "2021-11-07";
+      nightly-date = "2022-05-09";
       # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
-      nightly-sha256 = "sha256-eENaPaU6wpk8qAUg5PJPpvAmSVQNCbOI3ipUMhHmwXk=";
+      nightly-sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
 
-      # This could be made into a list, to support multiple platforms
-#      system = "x86_64-linux";
-      system = "aarch64-darwin";
+      # For Darwing envs, change to "aarch64-darwin"
+      system = "x86_64-linux";
 
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
@@ -92,10 +91,15 @@
         };
 
         # This is a hash of all the Cargo dependencies, for reproducibility.
-        cargoSha256 = "sha256-3FKSOTFqKdJBCtoiXP84FMLfE/WVTRgaGEXk5QZ/EOQ=";
+        cargoSha256 = "sha256-hmXhJBjc4HuyKQbxtpiIIvaL/Kl/e70sMFgdNlw4E0o=";
 
         nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
-        buildInputs = [ pkgs.openssl ];
+        buildInputs = with pkgs; [ openssl ] ++ (
+             lib.optionals stdenv.isDarwin [
+               darwin.apple_sdk.frameworks.Security
+               darwin.apple_sdk.frameworks.SystemConfiguration
+             ]
+        );
 
         LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         PROTOC = "${pkgs.protobuf}/bin/protoc";
@@ -107,7 +111,7 @@
 
       packages.${system}.dockerImage = pkgs.dockerTools.buildLayeredImage {
         name = "centrifugeio/${name}";
-        tag = version;
+        tag = "${version}-nix"; # todo remove once verified
         # This uses the date of the last commit as the image creation date.
         created = builtins.substring 0 8 inputs.self.lastModifiedDate;
 
