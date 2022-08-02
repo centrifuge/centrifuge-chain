@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        target: [".#dockerImage" ".#dockerImageFastRuntime"]
+        target: [".#dockerImage", ".#dockerImageFastRuntime"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
