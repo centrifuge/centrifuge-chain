@@ -1527,7 +1527,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
-			add_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
+			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
