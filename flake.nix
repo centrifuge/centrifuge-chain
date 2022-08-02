@@ -24,7 +24,7 @@
       # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
       nightly-sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
 
-      # For Darwing envs, change to "aarch64-darwin"
+      # For Darwin envs, change to "aarch64-darwin"
       system = "x86_64-linux";
 
       pkgs = inputs.nixpkgs.legacyPackages.${system};
@@ -111,7 +111,7 @@
 
       packages.${system}.dockerImage = pkgs.dockerTools.buildLayeredImage {
         name = "centrifugeio/${name}";
-        tag = "${version}-nix"; # todo remove once verified
+        tag = "${version}-nix-do-not-use"; # todo remove once verified
         # This uses the date of the last commit as the image creation date.
         created = builtins.substring 0 8 inputs.self.lastModifiedDate;
 
