@@ -20,15 +20,19 @@
   outputs = inputs :
     inputs.flake-utils.lib.eachDefaultSystem (system:
         let
-          name = "centrifuge-chain";
+          pkgs = inputs.nixpkgs.legacyPackages.${system};
+
+          cargoTOML = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+          rustToolChainTOML = builtins.fromTOML (builtins.readFile ./rust-toolchain.toml);
+
+          name = cargoTOML.package.name;
           # This is the program version.
-          version = "0.10.18";
+          version = cargoTOML.package.version;
           # This selects a nightly Rust version, based on the date.
-          nightly-date = "2022-05-09";
+          nightly-date = pkgs.lib.strings.removePrefix "nightly-" rustToolChainTOML.toolchain.channel;
           # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
           nightly-sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
 
-          pkgs = inputs.nixpkgs.legacyPackages.${system};
 
           # This instantiates a new Rust version based on nightly-date.
           nightlyRustPlatform = pkgs.makeRustPlatform {
