@@ -55,7 +55,38 @@ pub(super) type TrancheOf<T> = Tranche<
 
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
-pub type TrancheInput<Rate> = (TrancheType<Rate>, Option<Seniority>);
+
+pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength> {
+	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
+	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
+}
+
+pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength> {
+	pub tranche_type: TrancheType<Rate>,
+	pub seniority: Option<Seniority>,
+	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
+}
+
+pub struct TrancheUpdate<Rate> {
+	pub tranche_type: TrancheType<Rate>,
+	pub seniority: Option<Seniority>,
+}
+
+pub struct AssetMetaData<Balance, MultiLocation, CustomMetadata> {
+	decimals: i32,
+	name: String,
+	symbol: String,
+	existential_deposit: Balance,
+	location: Option<MultiLocation>,
+	additional: CustomMetadata,
+}
+
+pub struct PoolChange<Rate, MaxTokenNameLength, MaxTokenSymbolLength> {
+	pub tranches: Change<Vec<TrancheUpdate<Rate>>>,
+	pub tranche_metadata: Change<Vec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>>>,
+	pub min_epoch_time: Change<Moment>,
+	pub max_nav_age: Change<Moment>,
+}
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -225,6 +256,12 @@ where
 		self.accrue(now)?;
 		Ok(self.debt)
 	}
+
+	pub fn create_asset_metadata <MultiLocation, CustomMetaData> (pool_currency: String, token_name: String, token_symbol: String) -> AssetMetaData<Balance, MultiLocation, CustomMetaData> {
+		
+	}
+
+
 }
 
 /// The index type for tranches
@@ -282,9 +319,9 @@ where
 	TrancheId: Clone + From<[u8; 16]> + sp_std::cmp::PartialEq,
 	PoolId: Copy + Encode,
 {
-	pub fn from_input<TrancheToken>(
+	pub fn from_input<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
 		pool: PoolId,
-		tranche_inputs: Vec<TrancheInput<Rate>>,
+		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 		now: Moment,
 	) -> Result<Self, DispatchError>
 	where
@@ -494,10 +531,10 @@ where
 		Ok(tranche)
 	}
 
-	pub fn replace<TrancheToken>(
+	pub fn replace<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
 		&mut self,
 		at: TrancheIndex,
-		tranche: TrancheInput<Rate>,
+		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
 		now: Moment,
 	) -> DispatchResult
 	where
@@ -507,10 +544,10 @@ where
 		self.add::<TrancheToken>(at, tranche, now)
 	}
 
-	pub fn add<TrancheToken>(
+	pub fn add<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
 		&mut self,
 		at: TrancheIndex,
-		tranche: TrancheInput<Rate>,
+		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
 		now: Moment,
 	) -> DispatchResult
 	where

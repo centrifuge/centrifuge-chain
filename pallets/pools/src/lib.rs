@@ -112,15 +112,15 @@ pub struct PoolParameters {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolChanges<Rate> {
-	pub tranches: Change<Vec<TrancheInput<Rate>>>,
+pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength> {
+	pub tranches: Change<Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>>,
 	pub min_epoch_time: Change<Moment>,
 	pub max_nav_age: Change<Moment>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct ScheduledUpdateDetails<Rate> {
-	pub changes: PoolChanges<Rate>,
+pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength> {
+	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
 	pub scheduled_time: Moment,
 }
 
@@ -312,7 +312,7 @@ pub mod pallet {
 
 		type UpdateGuard: PoolUpdateGuard<
 			PoolDetails = PoolDetailsOf<Self>,
-			ScheduledUpdateDetails = ScheduledUpdateDetails<Self::InterestRate>,
+			ScheduledUpdateDetails = ScheduledUpdateDetails<Self::InterestRate, MaxTokenNameLength, MaxTokenSymbolLength>,
 			Moment = Moment,
 		>;
 
