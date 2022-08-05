@@ -124,7 +124,7 @@ where
 					interest_rate_per_sec: ref interest_next,
 					..
 				},
-			) => interest_prev >= interest_next,
+			) => interest_next <= interest_prev,
 		}
 	}
 }
@@ -1360,6 +1360,50 @@ where
 
 #[cfg(test)]
 pub mod test {
+	use super::*;
+	// NOTE: We currently expose types in runtime-common. As we do not want
+	//       this dependecy in our pallets, we generate the types manually here.
+	//       Not sure, if we should rather allow dev-dependency to runtime-common.
+	pub type Balance = u128;
+	pub type Rate = sp_arithmetic::FixedU128;
+	pub type Weight = u128;
+
+	pub type TTrancheType = TrancheType<Rate>;
+	pub type TTranche = Tranche<Balance, Rate, Weight, CurrencyId>;
+
+	#[test]
+	fn tranche_type_valid_next_tranche_works() {
+		let residual = TTrancheType::Residual;
+		let non_residual_a = TTrancheType::NonResidual {
+			interest_rate_per_sec: Rate::from_inner(1),
+			min_risk_buffer: Perquintill::zero(),
+		};
+		let non_residual_b = TTrancheType::NonResidual {
+			interest_rate_per_sec: Rate::from_inner(2),
+			min_risk_buffer: Perquintill::zero(),
+		};
+
+		// Residual can not follow residual
+		assert!(!residual.valid_next_tranche(&residual));
+
+		// Residual can not follow non-residual
+		assert!(!non_residual_a.valid_next_tranche(&residual));
+
+		// Non-residual next must have greater-equal interest
+		assert!(!non_residual_b.valid_next_tranche(&non_residual_a));
+
+		// Non-residual next must have greater-equal interest
+		assert!(non_residual_b.valid_next_tranche(&non_residual_b));
+
+		// Non-residual can follow residual
+		assert!(residual.valid_next_tranche(&non_residual_b));
+	}
+
+	#[test]
+	fn tranche_order_as_currency_works() {
+		let default_tranche = TTranche::default();
+	}
+
 	#[test]
 	fn reverse_slice_panics_on_out_of_bounds() {}
 
