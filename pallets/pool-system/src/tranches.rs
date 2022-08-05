@@ -1461,6 +1461,43 @@ pub mod test {
 	}
 
 	#[test]
+	fn tranche_accures_correctly() {
+		let mut tranche = non_residual(Some(10), None);
+		tranche.debt = 100;
+		tranche.accrue(SECS_PER_YEAR).unwrap();
+
+		// After one year, we have 10% of interest
+		assert_eq!(110, tranche.debt)
+	}
+
+	#[test]
+	fn tranche_returns_min_risk_correctly() {
+		let tranche = non_residual(None, Some(20));
+		assert_eq!(
+			Perquintill::from_rational(20u64, 100u64),
+			tranche.min_risk_buffer()
+		)
+	}
+
+	#[test]
+	fn tranche_returns_interest_rate_correctly() {
+		let tranche = non_residual(Some(10), None);
+		let interest_rate_per_sec = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+		assert_eq!(interest_rate_per_sec, tranche.interest_rate_per_sec())
+	}
+
+	#[test]
+	fn tranche_accrues_debt_on_debt_call() {
+		let mut tranche = non_residual(Some(10), None);
+		tranche.debt = 100;
+
+		// After one year, we have 10% of interest
+		assert_eq!(110, tranche.debt(SECS_PER_YEAR).unwrap())
+	}
+
+	#[test]
 	fn reverse_slice_panics_on_out_of_bounds() {}
 
 	#[test]
@@ -1469,48 +1506,3 @@ pub mod test {
 	#[test]
 	fn accrue_overflows_safely() {}
 }
-
-// 	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
-// 		let delta = now - self.last_updated_interest;
-// 		let interest = self.interest_rate_per_sec();
-// 		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
-// 		//       for us, as we simply have the same debt if this happens
-// 		let total_interest = checked_pow(
-// 			interest,
-// 			delta
-// 				.try_into()
-// 				.map_err(|_| DispatchError::Other("Usize should be at least 64 bits."))?,
-// 		)
-// 		.ok_or(ArithmeticError::Overflow)?;
-// 		self.debt = total_interest
-// 			.checked_mul_int(self.debt)
-// 			.ok_or(ArithmeticError::Overflow)?;
-// 		self.last_updated_interest = now;
-//
-// 		Ok(())
-// 	}
-//
-// 	pub fn min_risk_buffer(&self) -> Perquintill {
-// 		match &self.tranche_type {
-// 			TrancheType::Residual => Perquintill::zero(),
-// 			TrancheType::NonResidual {
-// 				interest_rate_per_sec: ref _interest_rate_per_sec,
-// 				ref min_risk_buffer,
-// 			} => min_risk_buffer.clone(),
-// 		}
-// 	}
-//
-// 	pub fn interest_rate_per_sec(&self) -> Rate {
-// 		match &self.tranche_type {
-// 			TrancheType::Residual => One::one(),
-// 			TrancheType::NonResidual {
-// 				ref interest_rate_per_sec,
-// 				min_risk_buffer: ref _min_risk_buffer,
-// 			} => interest_rate_per_sec.clone(),
-// 		}
-// 	}
-//
-// 	pub fn debt(&mut self, now: Moment) -> Result<Balance, DispatchError> {
-// 		self.accrue(now)?;
-// 		Ok(self.debt)
-// 	}
