@@ -1367,9 +1367,9 @@ pub mod test {
 	pub type Balance = u128;
 	pub type Rate = sp_arithmetic::FixedU128;
 	pub type Weight = u128;
-
 	pub type TTrancheType = TrancheType<Rate>;
 	pub type TTranche = Tranche<Balance, Rate, Weight, CurrencyId>;
+	pub const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
 
 	#[test]
 	fn tranche_type_valid_next_tranche_works() {
@@ -1401,7 +1401,17 @@ pub mod test {
 
 	#[test]
 	fn tranche_order_as_currency_works() {
-		let default_tranche = TTranche::default();
+		let mut tranche = TTranche::default();
+		tranche.outstanding_redeem_orders = 100 * ONE_IN_CURRENCY;
+		tranche.outstanding_invest_orders = 50 * ONE_IN_CURRENCY;
+
+		// Tranche token cost a tenth 1.1 per pool currency each.
+		let price_per_tranche_token = Rate::saturating_from_rational(110, 100);
+
+		let (invest, redeem) = tranche.order_as_currency(&price_per_tranche_token).unwrap();
+
+		assert_eq!(invest, 50 * ONE_IN_CURRENCY);
+		assert_eq!(redeem, 110 * ONE_IN_CURRENCY)
 	}
 
 	#[test]
