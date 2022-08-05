@@ -1370,18 +1370,45 @@ pub mod test {
 	pub type TTrancheType = TrancheType<Rate>;
 	pub type TTranche = Tranche<Balance, Rate, Weight, CurrencyId>;
 	pub const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
+	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+
+	fn non_residual(interest_rate_in_perc: Option<u32>, buffer_in_perc: Option<u64>) -> TTranche {
+		let interest_rate_per_sec = if let Some(rate) = interest_rate_in_perc {
+			Rate::saturating_from_rational(rate, 100) / Rate::saturating_from_integer(SECS_PER_YEAR)
+				+ One::one()
+		} else {
+			Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR) + One::one()
+		};
+
+		let min_risk_buffer = if let Some(buffer) = buffer_in_perc {
+			Perquintill::from_rational(buffer, 100)
+		} else {
+			Perquintill::zero()
+		};
+
+		TTranche {
+			tranche_type: TrancheType::NonResidual {
+				interest_rate_per_sec,
+				min_risk_buffer,
+			},
+			seniority: 0,
+			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			outstanding_invest_orders: 0,
+			outstanding_redeem_orders: 0,
+			debt: 0,
+			reserve: 0,
+			loss: 0,
+			ratio: Perquintill::zero(),
+			last_updated_interest: 0,
+			_phantom: PhantomData,
+		}
+	}
 
 	#[test]
 	fn tranche_type_valid_next_tranche_works() {
 		let residual = TTrancheType::Residual;
-		let non_residual_a = TTrancheType::NonResidual {
-			interest_rate_per_sec: Rate::from_inner(1),
-			min_risk_buffer: Perquintill::zero(),
-		};
-		let non_residual_b = TTrancheType::NonResidual {
-			interest_rate_per_sec: Rate::from_inner(2),
-			min_risk_buffer: Perquintill::zero(),
-		};
+		let non_residual_a = non_residual(Some(2), None).tranche_type;
+		let non_residual_b = non_residual(Some(1), None).tranche_type;
 
 		// Residual can not follow residual
 		assert!(!residual.valid_next_tranche(&residual));
@@ -1389,8 +1416,9 @@ pub mod test {
 		// Residual can not follow non-residual
 		assert!(!non_residual_a.valid_next_tranche(&residual));
 
-		// Non-residual next must have greater-equal interest
+		// Non-residual next must have smaller-equal interest rate
 		assert!(!non_residual_b.valid_next_tranche(&non_residual_a));
+		assert!(non_residual_a.valid_next_tranche(&non_residual_b));
 
 		// Non-residual next must have greater-equal interest
 		assert!(non_residual_b.valid_next_tranche(&non_residual_b));
@@ -1415,6 +1443,24 @@ pub mod test {
 	}
 
 	#[test]
+	fn tranche_balance_is_debt_and_reserve() {
+		let mut tranche = TTranche::default();
+		tranche.debt = 100;
+		tranche.reserve = 50;
+
+		assert_eq!(150, tranche.balance().unwrap());
+	}
+
+	#[test]
+	fn tranche_free_balance_is_reserve() {
+		let mut tranche = TTranche::default();
+		tranche.debt = 100;
+		tranche.reserve = 50;
+
+		assert_eq!(50, tranche.free_balance().unwrap());
+	}
+
+	#[test]
 	fn reverse_slice_panics_on_out_of_bounds() {}
 
 	#[test]
@@ -1423,3 +1469,48 @@ pub mod test {
 	#[test]
 	fn accrue_overflows_safely() {}
 }
+
+// 	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
+// 		let delta = now - self.last_updated_interest;
+// 		let interest = self.interest_rate_per_sec();
+// 		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
+// 		//       for us, as we simply have the same debt if this happens
+// 		let total_interest = checked_pow(
+// 			interest,
+// 			delta
+// 				.try_into()
+// 				.map_err(|_| DispatchError::Other("Usize should be at least 64 bits."))?,
+// 		)
+// 		.ok_or(ArithmeticError::Overflow)?;
+// 		self.debt = total_interest
+// 			.checked_mul_int(self.debt)
+// 			.ok_or(ArithmeticError::Overflow)?;
+// 		self.last_updated_interest = now;
+//
+// 		Ok(())
+// 	}
+//
+// 	pub fn min_risk_buffer(&self) -> Perquintill {
+// 		match &self.tranche_type {
+// 			TrancheType::Residual => Perquintill::zero(),
+// 			TrancheType::NonResidual {
+// 				interest_rate_per_sec: ref _interest_rate_per_sec,
+// 				ref min_risk_buffer,
+// 			} => min_risk_buffer.clone(),
+// 		}
+// 	}
+//
+// 	pub fn interest_rate_per_sec(&self) -> Rate {
+// 		match &self.tranche_type {
+// 			TrancheType::Residual => One::one(),
+// 			TrancheType::NonResidual {
+// 				ref interest_rate_per_sec,
+// 				min_risk_buffer: ref _min_risk_buffer,
+// 			} => interest_rate_per_sec.clone(),
+// 		}
+// 	}
+//
+// 	pub fn debt(&mut self, now: Moment) -> Result<Balance, DispatchError> {
+// 		self.accrue(now)?;
+// 		Ok(self.debt)
+// 	}
