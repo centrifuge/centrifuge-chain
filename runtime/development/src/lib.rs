@@ -50,7 +50,7 @@ use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
 use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
-pub use common_types::CurrencyId;
+pub use common_types::{CurrencyId, CustomMetadata};
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
@@ -66,6 +66,7 @@ use pallet_restricted_tokens::{
 pub use runtime_common::{Index, *};
 
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+use orml_asset_registry::Metadata;
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -843,6 +844,12 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 100 * CFG;
 }
@@ -850,34 +857,38 @@ parameter_types! {
 impl pallet_pools::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
+	type TrancheWeight = TrancheWeight;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
+	type PalletId = PoolPalletId;
 	type PoolId = PoolId;
 	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
+	type PoolCurrency = PoolCurrency;
+	type UpdateGuard = UpdateGuard;
+	type AssetRegistry = OrmlAssetRegistry;
+	type ParachainId = ParachainInfo;
 	type Currency = Balances;
 	type Tokens = Tokens;
+	type Permission = Permissions;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
-	type Permission = Permissions;
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
-	type MinUpdateDelay = MinUpdateDelay;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type PalletId = PoolPalletId;
+	type MinUpdateDelay = MinUpdateDelay;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
-	type TrancheWeight = TrancheWeight;
-	type PoolCurrency = PoolCurrency;
-	type UpdateGuard = UpdateGuard;
 }
 
 pub struct PoolCurrency;
@@ -905,7 +916,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(

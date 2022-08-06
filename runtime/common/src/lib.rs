@@ -131,6 +131,10 @@ pub mod types {
 	/// Rate with 27 precision fixed point decimal
 	pub type Rate = crate::fixed_point::Rate;
 
+	pub type MaxTokenNameLength = u32;
+
+	pub type MaxTokenSymbolLength = u32;
+
 	/// Amount with 18 precision fixed point decimal
 	pub type Amount = crate::fixed_point::Amount;
 
@@ -162,60 +166,6 @@ pub mod types {
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct ItemId(pub u128);
-
-	/// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
-	#[derive(
-		Clone,
-		Copy,
-		Default,
-		PartialOrd,
-		Ord,
-		PartialEq,
-		Eq,
-		Debug,
-		Encode,
-		Decode,
-		TypeInfo,
-		MaxEncodedLen,
-	)]
-	pub struct CustomMetadata {
-		/// XCM-related metadata.
-		pub xcm: XcmMetadata,
-
-		/// Whether an asset can be minted.
-		/// When `true`, the right permissions will checked in the permissions
-		/// pallet to authorize asset minting by an origin.
-		pub mintable: bool,
-
-		/// Whether an asset is _permissioned_, i.e., whether the asset can only
-		/// be transferred from and to whitelisted accounts. When `true`, the
-		/// right permissions will checked in the permissions pallet to authorize
-		/// transfer between mutually allowed from and to accounts.
-		pub permissioned: bool,
-
-		/// Whether an asset can be used as a currency to fund Centrifuge Pools.
-		pub pool_currency: bool,
-	}
-
-	#[derive(
-		Clone,
-		Copy,
-		Default,
-		PartialOrd,
-		Ord,
-		PartialEq,
-		Eq,
-		Debug,
-		Encode,
-		Decode,
-		TypeInfo,
-		MaxEncodedLen,
-	)]
-	pub struct XcmMetadata {
-		/// The fee charged for every second that an XCM message takes to execute.
-		/// When `None`, the `default_per_second` will be used instead.
-		pub fee_per_second: Option<Balance>,
-	}
 }
 
 /// Common constants for all runtimes

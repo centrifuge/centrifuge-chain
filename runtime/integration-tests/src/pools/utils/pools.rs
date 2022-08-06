@@ -65,7 +65,7 @@ pub fn custom_pool(
 	pool_id: PoolId,
 	currency: CurrencyId,
 	max_reserve: Balance,
-	tranche_input: Vec<TrancheInput<Rate>>,
+	tranche_input: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 ) -> Result<(), ()> {
 	let calls: Vec<Vec<u8>> = pool_setup_calls(
 		admin.to_account_id(),

@@ -21,11 +21,17 @@
 /// uniqueness will almost certainly cause some wild bugs.
 use super::*;
 use common_traits::TrancheToken as TrancheTokenT;
+use common_types::{CustomMetadata, XcmMetadata};
+
 #[cfg(test)]
 use common_types::CurrencyId;
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
 use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
+use xcm::latest::prelude::*;
+use xcm::prelude::X2;
+use orml_asset_registry::AssetMetadata;
+use xcm::VersionedMultiLocation;
 
 /// Types alias for EpochExecutionTranche
 #[allow(dead_code)]
@@ -56,32 +62,87 @@ pub(super) type TrancheOf<T> = Tranche<
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
 
-pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength> {
+#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
+pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
 	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
 	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
 }
 
-pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength> {
+#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
+pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
 	pub tranche_type: TrancheType<Rate>,
 	pub seniority: Option<Seniority>,
 	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
 
+impl<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+	TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	pub fn create_asset_metadata<Balance, CurrencyId>(
+		&self,
+		decimals: u32,
+		currency: CurrencyId,
+		parachain_id: ParaId,
+		token_name: Vec<u8>,
+		token_symbol: Vec<u8>,
+	) -> Result<
+		AssetMetadata<
+			Balance,
+			CustomMetadata,
+		>,
+		DispatchError,
+	>
+	where
+		Balance: Zero,
+		CurrencyId: Encode,
+	{
+		let tranche_id = currency.encode();
+
+		Ok(AssetMetadata {
+			decimals,
+			name: token_name,
+			symbol: token_symbol,
+			existential_deposit: Zero::zero(),
+			location: Some(VersionedMultiLocation::V1(MultiLocation{
+				parents: 1,
+				interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
+			}
+			)),
+			additional: CustomMetadata {
+				mintable: false,
+				permissioned: false,
+				pool_currency: false,
+				xcm: XcmMetadata {
+					fee_per_second: None,
+				},
+			},
+		})
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct TrancheUpdate<Rate> {
 	pub tranche_type: TrancheType<Rate>,
 	pub seniority: Option<Seniority>,
 }
 
-pub struct AssetMetaData<Balance, MultiLocation, CustomMetadata> {
-	decimals: i32,
-	name: String,
-	symbol: String,
-	existential_deposit: Balance,
-	location: Option<MultiLocation>,
-	additional: CustomMetadata,
-}
-
-pub struct PoolChange<Rate, MaxTokenNameLength, MaxTokenSymbolLength> {
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolChange<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
 	pub tranches: Change<Vec<TrancheUpdate<Rate>>>,
 	pub tranche_metadata: Change<Vec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>>>,
 	pub min_epoch_time: Change<Moment>,
@@ -256,12 +317,6 @@ where
 		self.accrue(now)?;
 		Ok(self.debt)
 	}
-
-	pub fn create_asset_metadata <MultiLocation, CustomMetaData> (pool_currency: String, token_name: String, token_symbol: String) -> AssetMetaData<Balance, MultiLocation, CustomMetaData> {
-		
-	}
-
-
 }
 
 /// The index type for tranches
@@ -304,7 +359,7 @@ pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Tranches<Balance, Rate, Weight, Currency, TrancheId, PoolId> {
-	tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
+	pub tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
 	ids: Vec<TrancheId>,
 	salt: TrancheSalt<PoolId>,
 }
@@ -326,6 +381,8 @@ where
 	) -> Result<Self, DispatchError>
 	where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
+		MaxTokenNameLength: Get<u32>,
+		MaxTokenSymbolLength: Get<u32>,
 	{
 		let tranches = Vec::with_capacity(tranche_inputs.len());
 		let ids = Vec::with_capacity(tranche_inputs.len());
@@ -337,7 +394,7 @@ where
 		};
 
 		for (index, tranche_input) in tranche_inputs.into_iter().enumerate() {
-			tranches.add::<TrancheToken>(
+			tranches.add::<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
 				index.try_into().map_err(|_| ArithmeticError::Overflow)?,
 				tranche_input,
 				now,
@@ -539,9 +596,11 @@ where
 	) -> DispatchResult
 	where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
+		MaxTokenNameLength: Get<u32>,
+		MaxTokenSymbolLength: Get<u32>,
 	{
 		self.remove(at)?;
-		self.add::<TrancheToken>(at, tranche, now)
+		self.add::<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(at, tranche, now)
 	}
 
 	pub fn add<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
@@ -552,6 +611,8 @@ where
 	) -> DispatchResult
 	where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
+		MaxTokenNameLength: Get<u32>,
+		MaxTokenSymbolLength: Get<u32>,
 	{
 		let at_usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
@@ -561,18 +622,17 @@ where
 			)
 		);
 
-		let (tranche_type, maybe_seniority) = tranche;
 		let id = self.next_id()?;
 		let new_tranche = self.create_tranche::<TrancheToken>(
 			at,
 			id.clone(),
-			tranche_type,
-			maybe_seniority,
+			tranche.tranche_type,
+			tranche.seniority,
 			now,
 		)?;
 		if at == 0 {
 			ensure!(
-				tranche_type == TrancheType::Residual,
+				tranche.tranche_type == TrancheType::Residual,
 				DispatchError::Other(
 					"Top tranche must be a residual one. This should be catched somewhere else"
 				)

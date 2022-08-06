@@ -6436,6 +6436,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -6443,6 +6444,7 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
+ "polkadot-parachain",
  "rand 0.8.5",
  "rev_slice",
  "runtime-common",
@@ -6453,6 +6455,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]

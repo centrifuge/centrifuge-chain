@@ -289,10 +289,18 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
 impl Config for Test {
+	type AssetRegistry = orml_asset_registry::OrmlAssetRegistry;
+	type ParachainId = ParachainInfo;
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
@@ -317,6 +325,8 @@ impl Config for Test {
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
 	type WeightInfo = ();
@@ -339,7 +349,8 @@ pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
 	type PoolDetails =
 		PoolDetails<CurrencyId, u32, Balance, Rate, MaxSizeMetadata, TrancheWeight, TrancheId, u64>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(

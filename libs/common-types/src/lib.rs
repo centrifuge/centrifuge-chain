@@ -14,7 +14,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 ///! Common-types of the Centrifuge chain.
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
+
 use common_traits::Properties;
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
@@ -42,6 +43,9 @@ pub type PoolId = u64;
 
 /// A representation of a tranche identifier
 pub type TrancheId = [u8; 16];
+
+/// Balance of an account.
+pub type Balance = u128;
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 // NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
@@ -497,4 +501,58 @@ pub use common_traits::Moment;
 pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),
+}
+
+/// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
+#[derive(
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+pub struct CustomMetadata {
+	/// XCM-related metadata.
+	pub xcm: XcmMetadata,
+
+	/// Whether an asset can be minted.
+	/// When `true`, the right permissions will checked in the permissions
+	/// pallet to authorize asset minting by an origin.
+	pub mintable: bool,
+
+	/// Whether an asset is _permissioned_, i.e., whether the asset can only
+	/// be transferred from and to whitelisted accounts. When `true`, the
+	/// right permissions will checked in the permissions pallet to authorize
+	/// transfer between mutually allowed from and to accounts.
+	pub permissioned: bool,
+
+	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
+	pub pool_currency: bool,
+}
+
+#[derive(
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+pub struct XcmMetadata {
+	/// The fee charged for every second that an XCM message takes to execute.
+	/// When `None`, the `default_per_second` will be used instead.
+	pub fee_per_second: Option<Balance>,
 }
