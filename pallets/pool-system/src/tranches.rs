@@ -1361,18 +1361,52 @@ where
 #[cfg(test)]
 pub mod test {
 	use super::*;
+	use common_types::{PoolId, TrancheId};
+
 	// NOTE: We currently expose types in runtime-common. As we do not want
 	//       this dependecy in our pallets, we generate the types manually here.
 	//       Not sure, if we should rather allow dev-dependency to runtime-common.
-	pub type Balance = u128;
-	pub type Rate = sp_arithmetic::FixedU128;
-	pub type Weight = u128;
-	pub type TTrancheType = TrancheType<Rate>;
-	pub type TTranche = Tranche<Balance, Rate, Weight, CurrencyId>;
-	pub const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
-	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+	type Balance = u128;
+	type Rate = sp_arithmetic::FixedU128;
+	type Weight = u128;
+	type TTrancheType = TrancheType<Rate>;
+	type TTranche = Tranche<Balance, Rate, Weight, CurrencyId>;
+	type TTranches = Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>;
 
-	fn non_residual(interest_rate_in_perc: Option<u32>, buffer_in_perc: Option<u64>) -> TTranche {
+	const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
+	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+	const DEFAULT_POOL_ID: PoolId = 0;
+	const DEFAULT_TIME_NOW: Moment = 0;
+
+	struct TrancheTokenImpl;
+
+	impl TrancheTokenT<PoolId, TrancheId, CurrencyId> for TrancheTokenImpl {
+		fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
+			CurrencyId::Tranche(pool, tranche)
+		}
+	}
+
+	fn residual(id: u8) -> TTranche {
+		TTranche {
+			tranche_type: TrancheType::Residual,
+			seniority: 0,
+			currency: CurrencyId::Tranche(0, [id; 16]),
+			outstanding_invest_orders: 0,
+			outstanding_redeem_orders: 0,
+			debt: 0,
+			reserve: 0,
+			loss: 0,
+			ratio: Perquintill::zero(),
+			last_updated_interest: 0,
+			_phantom: PhantomData,
+		}
+	}
+
+	fn non_residual(
+		id: u8,
+		interest_rate_in_perc: Option<u32>,
+		buffer_in_perc: Option<u64>,
+	) -> TTranche {
 		let interest_rate_per_sec = if let Some(rate) = interest_rate_in_perc {
 			Rate::saturating_from_rational(rate, 100) / Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one()
@@ -1392,7 +1426,7 @@ pub mod test {
 				min_risk_buffer,
 			},
 			seniority: 0,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			currency: CurrencyId::Tranche(0, [id; 16]),
 			outstanding_invest_orders: 0,
 			outstanding_redeem_orders: 0,
 			debt: 0,
@@ -1404,105 +1438,166 @@ pub mod test {
 		}
 	}
 
-	#[test]
-	fn tranche_type_valid_next_tranche_works() {
-		let residual = TTrancheType::Residual;
-		let non_residual_a = non_residual(Some(2), None).tranche_type;
-		let non_residual_b = non_residual(Some(1), None).tranche_type;
-
-		// Residual can not follow residual
-		assert!(!residual.valid_next_tranche(&residual));
-
-		// Residual can not follow non-residual
-		assert!(!non_residual_a.valid_next_tranche(&residual));
-
-		// Non-residual next must have smaller-equal interest rate
-		assert!(!non_residual_b.valid_next_tranche(&non_residual_a));
-		assert!(non_residual_a.valid_next_tranche(&non_residual_b));
-
-		// Non-residual next must have greater-equal interest
-		assert!(non_residual_b.valid_next_tranche(&non_residual_b));
-
-		// Non-residual can follow residual
-		assert!(residual.valid_next_tranche(&non_residual_b));
+	fn default_tranches() -> TTranches {
+		let input = vec![
+			(TTrancheType::Residual, None),
+			(non_residual(1, Some(10), Some(10)).tranche_type, None),
+			(non_residual(2, Some(5), Some(25)).tranche_type, None),
+		];
+		TTranches::from_input::<TrancheTokenImpl>(DEFAULT_POOL_ID, input, DEFAULT_TIME_NOW).unwrap()
 	}
 
-	#[test]
-	fn tranche_order_as_currency_works() {
-		let mut tranche = TTranche::default();
-		tranche.outstanding_redeem_orders = 100 * ONE_IN_CURRENCY;
-		tranche.outstanding_invest_orders = 50 * ONE_IN_CURRENCY;
+	mod tranche_type {
+		use super::*;
 
-		// Tranche token cost a tenth 1.1 per pool currency each.
-		let price_per_tranche_token = Rate::saturating_from_rational(110, 100);
+		#[test]
+		fn tranche_type_valid_next_tranche_works() {
+			let residual = TTrancheType::Residual;
+			let non_residual_a = non_residual(1, Some(2), None).tranche_type;
+			let non_residual_b = non_residual(2, Some(1), None).tranche_type;
 
-		let (invest, redeem) = tranche.order_as_currency(&price_per_tranche_token).unwrap();
+			// Residual can not follow residual
+			assert!(!residual.valid_next_tranche(&residual));
 
-		assert_eq!(invest, 50 * ONE_IN_CURRENCY);
-		assert_eq!(redeem, 110 * ONE_IN_CURRENCY)
+			// Residual can not follow non-residual
+			assert!(!non_residual_a.valid_next_tranche(&residual));
+
+			// Non-residual next must have smaller-equal interest rate
+			assert!(!non_residual_b.valid_next_tranche(&non_residual_a));
+			assert!(non_residual_a.valid_next_tranche(&non_residual_b));
+
+			// Non-residual next must have greater-equal interest
+			assert!(non_residual_b.valid_next_tranche(&non_residual_b));
+
+			// Non-residual can follow residual
+			assert!(residual.valid_next_tranche(&non_residual_b));
+		}
 	}
 
-	#[test]
-	fn tranche_balance_is_debt_and_reserve() {
-		let mut tranche = TTranche::default();
-		tranche.debt = 100;
-		tranche.reserve = 50;
+	mod tranches {
+		use super::*;
 
-		assert_eq!(150, tranche.balance().unwrap());
+		#[test]
+		fn tranche_order_as_currency_works() {
+			let mut tranche = TTranche::default();
+			tranche.outstanding_redeem_orders = 100 * ONE_IN_CURRENCY;
+			tranche.outstanding_invest_orders = 50 * ONE_IN_CURRENCY;
+
+			// Tranche token cost a tenth 1.1 per pool currency each.
+			let price_per_tranche_token = Rate::saturating_from_rational(110, 100);
+
+			let (invest, redeem) = tranche.order_as_currency(&price_per_tranche_token).unwrap();
+
+			assert_eq!(invest, 50 * ONE_IN_CURRENCY);
+			assert_eq!(redeem, 110 * ONE_IN_CURRENCY)
+		}
+
+		#[test]
+		fn tranche_balance_is_debt_and_reserve() {
+			let mut tranche = TTranche::default();
+			tranche.debt = 100;
+			tranche.reserve = 50;
+
+			assert_eq!(150, tranche.balance().unwrap());
+		}
+
+		#[test]
+		fn tranche_free_balance_is_reserve() {
+			let mut tranche = TTranche::default();
+			tranche.debt = 100;
+			tranche.reserve = 50;
+
+			assert_eq!(50, tranche.free_balance().unwrap());
+		}
+
+		#[test]
+		fn tranche_accures_correctly() {
+			let mut tranche = non_residual(1, Some(10), None);
+			tranche.debt = 100;
+			tranche.accrue(SECS_PER_YEAR).unwrap();
+
+			// After one year, we have 10% of interest
+			assert_eq!(110, tranche.debt)
+		}
+
+		#[test]
+		fn tranche_returns_min_risk_correctly() {
+			let tranche = non_residual(1, None, Some(20));
+			assert_eq!(
+				Perquintill::from_rational(20u64, 100u64),
+				tranche.min_risk_buffer()
+			)
+		}
+
+		#[test]
+		fn tranche_returns_interest_rate_correctly() {
+			let tranche = non_residual(1, Some(10), None);
+			let interest_rate_per_sec = Rate::saturating_from_rational(10, 100)
+				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				+ One::one();
+			assert_eq!(interest_rate_per_sec, tranche.interest_rate_per_sec())
+		}
+
+		#[test]
+		fn tranche_accrues_debt_on_debt_call() {
+			let mut tranche = non_residual(1, Some(10), None);
+			tranche.debt = 100;
+
+			// After one year, we have 10% of interest
+			assert_eq!(110, tranche.debt(SECS_PER_YEAR).unwrap())
+		}
+
+		#[test]
+		#[should_panic]
+		fn tranches_reverse_slice_panics_on_out_of_bounds() {
+			let tranches = default_tranches();
+			let slice_rev = tranches.non_residual_top_slice();
+			let _panic = &slice_rev[3];
+		}
+
+		#[test]
+		fn tranches_reverse_works() {
+			let tranches = default_tranches();
+			let slice_rev = tranches.non_residual_top_slice();
+			assert_eq!(
+				slice_rev[0].tranche_type,
+				non_residual(2, Some(5), Some(25)).tranche_type
+			);
+			assert_eq!(
+				slice_rev[1].tranche_type,
+				non_residual(1, Some(10), Some(10)).tranche_type
+			);
+			assert_eq!(slice_rev[2].tranche_type, residual(0).tranche_type);
+		}
+
+		#[test]
+		fn tranches_accrue_overflows_safely() {}
 	}
 
-	#[test]
-	fn tranche_free_balance_is_reserve() {
-		let mut tranche = TTranche::default();
-		tranche.debt = 100;
-		tranche.reserve = 50;
+	mod epoch_execution_tranches {
+		use super::*;
 
-		assert_eq!(50, tranche.free_balance().unwrap());
+		#[test]
+		fn epoch_execution_tranches_reverse_works() {
+			let tranches = default_tranches();
+			let slice_rev = tranches.non_residual_top_slice();
+			assert_eq!(
+				slice_rev[0].tranche_type,
+				non_residual(2, Some(5), Some(25)).tranche_type
+			);
+			assert_eq!(
+				slice_rev[1].tranche_type,
+				non_residual(1, Some(10), Some(10)).tranche_type
+			);
+			assert_eq!(slice_rev[2].tranche_type, residual(0).tranche_type);
+		}
+
+		#[test]
+		#[should_panic]
+		fn epoch_execution_tranches_reverse_slice_panics_on_out_of_bounds() {
+			let tranches = default_tranches();
+			let slice_rev = tranches.non_residual_top_slice();
+			let _panic = &slice_rev[3];
+		}
 	}
-
-	#[test]
-	fn tranche_accures_correctly() {
-		let mut tranche = non_residual(Some(10), None);
-		tranche.debt = 100;
-		tranche.accrue(SECS_PER_YEAR).unwrap();
-
-		// After one year, we have 10% of interest
-		assert_eq!(110, tranche.debt)
-	}
-
-	#[test]
-	fn tranche_returns_min_risk_correctly() {
-		let tranche = non_residual(None, Some(20));
-		assert_eq!(
-			Perquintill::from_rational(20u64, 100u64),
-			tranche.min_risk_buffer()
-		)
-	}
-
-	#[test]
-	fn tranche_returns_interest_rate_correctly() {
-		let tranche = non_residual(Some(10), None);
-		let interest_rate_per_sec = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
-			+ One::one();
-		assert_eq!(interest_rate_per_sec, tranche.interest_rate_per_sec())
-	}
-
-	#[test]
-	fn tranche_accrues_debt_on_debt_call() {
-		let mut tranche = non_residual(Some(10), None);
-		tranche.debt = 100;
-
-		// After one year, we have 10% of interest
-		assert_eq!(110, tranche.debt(SECS_PER_YEAR).unwrap())
-	}
-
-	#[test]
-	fn reverse_slice_panics_on_out_of_bounds() {}
-
-	#[test]
-	fn reverse_works_for_both_tranches() {}
-
-	#[test]
-	fn accrue_overflows_safely() {}
 }
