@@ -448,6 +448,7 @@ fn pre_commit_commit_fail_from_another_acc() {
 	});
 }
 
+/*
 // #### Pre Commit Eviction Tests
 #[test]
 fn pre_commit_commit_bucket_gets_determined_correctly() {
@@ -842,6 +843,8 @@ fn pre_commit_and_then_evict_larger_than_max_evict() {
 	});
 }
 // #### End Pre Commit Eviction Tests
+
+*/
 
 #[test]
 fn anchor_evict_single_anchor_per_day_1000_days() {
