@@ -21,7 +21,7 @@ use common_traits::fees::{Fee, Fees};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
-	traits::Currency,
+	traits::{Currency, ReservableCurrency},
 	RuntimeDebug, StateVersion,
 };
 
@@ -54,10 +54,6 @@ type BalanceOf<T> =
 /// Since our current block time as per chain_spec.rs is 6s, we set this to 80 * 60 secs / 6 secs/block = 800 blocks.
 const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u32 = 800;
 
-/// MUST be higher than 1 to assure that pre-commits are around during their validity time frame
-/// The higher the number, the more pre-commits will be collected in a single eviction bucket
-const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u32 = 5;
-
 /// Determines how many loop iterations are allowed to run at a time inside the runtime.
 const MAX_LOOP_IN_TX: u64 = 500;
 
@@ -66,6 +62,9 @@ const STORAGE_MAX_DAYS: u32 = 376200;
 
 /// Child trie prefix
 const ANCHOR_PREFIX: &[u8; 6] = b"anchor";
+
+/// Determines the max size of the input list used in the precommit eviction.
+const EVICT_PRE_COMMIT_LIST_SIZE: u32 = 100;
 
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
@@ -132,18 +131,6 @@ pub mod pallet {
 		T::Hash,
 		PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>,
 	>;
-
-	/// Pre-commit eviction buckets maps block number and bucketID to PreCommit Hash
-	#[pallet::storage]
-	#[pallet::getter(fn get_pre_commit_in_evict_bucket_by_index)]
-	pub(super) type PreCommitEvictionBuckets<T: Config> =
-		StorageMap<_, Blake2_256, (T::BlockNumber, u64), T::Hash>;
-
-	/// Pre-commit eviction bucket index maps block number to bucket.
-	#[pallet::storage]
-	#[pallet::getter(fn get_pre_commits_count_in_evict_bucket)]
-	pub(super) type PreCommitEvictionBucketIndex<T: Config> =
-		StorageMap<_, Blake2_256, T::BlockNumber, u64>;
 
 	/// Map to find the eviction date given an anchor id
 	#[pallet::storage]
@@ -218,7 +205,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Obtains an exclusive lock to make the next update to a certain document version
 		/// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given
-		/// by `pre_commit_expiration_duration_blocks` function. `signing_root` is a child node of
+		/// by [`PRE_COMMIT_EXPIRATION_DURATION_BLOCKS`] value. `signing_root` is a child node of
 		/// the off-chain merkle tree of that document. In Centrifuge protocol, A document is
 		/// committed only after reaching consensus with the other collaborators on the document.
 		/// Consensus is reached by getting a cryptographic signature from other parties by
@@ -241,7 +228,7 @@ pub mod pallet {
 				Error::<T>::AnchorAlreadyExists
 			);
 			ensure!(
-				!Self::has_valid_pre_commit(anchor_id),
+				Self::get_valid_pre_commit(anchor_id).is_none(),
 				Error::<T>::PreCommitAlreadyExists
 			);
 
@@ -262,7 +249,6 @@ pub mod pallet {
 				},
 			);
 
-			Self::put_pre_commit_into_eviction_bucket(anchor_id, expiration_block)?;
 			Ok(())
 		}
 
@@ -309,10 +295,11 @@ pub mod pallet {
 				Error::<T>::AnchorAlreadyExists
 			);
 
-			if Self::has_valid_pre_commit(anchor_id) {
-				<PreCommits<T>>::get(anchor_id)
-					.filter(|pre_commit| pre_commit.identity == who.clone())
-					.ok_or(Error::<T>::NotOwnerOfPreCommit)?;
+			if let Some(pre_commit) = Self::get_valid_pre_commit(anchor_id) {
+				ensure!(
+					pre_commit.identity == who.clone(),
+					Error::<T>::NotOwnerOfPreCommit
+				);
 				ensure!(
 					Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof),
 					Error::<T>::InvalidPreCommitProof
@@ -352,6 +339,9 @@ pub mod pallet {
 				stored_until_date_from_epoch,
 				&anchor_data.encode(),
 			)?;
+
+			Self::evict_pre_commit(anchor_id, false);
+
 			Ok(())
 		}
 
@@ -362,40 +352,14 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_pre_commits())]
 		pub fn evict_pre_commits(
 			origin: OriginFor<T>,
-			evict_bucket: T::BlockNumber,
+			anchor_ids: BoundedVec<T::Hash, ConstU32<EVICT_PRE_COMMIT_LIST_SIZE>>,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
-			ensure!(
-				<frame_system::Pallet<T>>::block_number() >= evict_bucket,
-				Error::<T>::EvictionNotPossible
-			);
 
-			let pre_commits_count =
-				Self::get_pre_commits_count_in_evict_bucket(evict_bucket).unwrap_or_default();
-			for idx in (0..pre_commits_count).rev() {
-				if pre_commits_count - idx > MAX_LOOP_IN_TX {
-					break;
-				}
-
-				Self::get_pre_commit_in_evict_bucket_by_index((evict_bucket, idx))
-					.map(|pre_commit_id| <PreCommits<T>>::take(pre_commit_id))
-					.flatten()
-					.map(|pre_commit_data| {
-						<T as pallet::Config>::Currency::unreserve(
-							&pre_commit_data.identity,
-							pre_commit_data.deposit,
-						);
-					});
-
-				<PreCommitEvictionBuckets<T>>::remove((evict_bucket, idx));
-
-				// decreases the evict bucket item count or remove index completely if empty
-				if idx == 0 {
-					<PreCommitEvictionBucketIndex<T>>::remove(evict_bucket);
-				} else {
-					<PreCommitEvictionBucketIndex<T>>::insert(evict_bucket, idx);
-				}
+			for anchor_id in anchor_ids {
+				Self::evict_pre_commit(anchor_id, true);
 			}
+
 			Ok(())
 		}
 
@@ -434,15 +398,32 @@ pub mod pallet {
 	}
 }
 
+impl<T: Config> Pallet<T> {}
+
 impl<T: Config> Pallet<T> {
 	/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
 	/// `expiration_block` < `current_block_number`.
-	fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
-		match <PreCommits<T>>::get(anchor_id) {
-			Some(pre_commit) => {
-				pre_commit.expiration_block > <frame_system::Pallet<T>>::block_number()
+	fn get_valid_pre_commit(
+		anchor_id: T::Hash,
+	) -> Option<PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>> {
+		<PreCommits<T>>::get(anchor_id).filter(|pre_commit| {
+			pre_commit.expiration_block > <frame_system::Pallet<T>>::block_number()
+		})
+	}
+
+	/// Evict a pre-commit returning the reserved tokens at `pre_commit()`.
+	/// You can choose if evict it only if it's expired or evict either way.
+	fn evict_pre_commit(anchor_id: T::Hash, only_if_expired: bool) {
+		if let Some(pre_commit) = PreCommits::<T>::get(anchor_id) {
+			if !only_if_expired
+				|| pre_commit.expiration_block <= <frame_system::Pallet<T>>::block_number()
+			{
+				PreCommits::<T>::remove(anchor_id);
+				<T as pallet::Config>::Currency::unreserve(
+					&pre_commit.identity,
+					pre_commit.deposit,
+				);
 			}
-			None => false,
 		}
 	}
 
@@ -461,54 +442,6 @@ impl<T: Config> Pallet<T> {
 		concatenated_bytes.extend(proof_bytes);
 		let calculated_root = <T as frame_system::Config>::Hashing::hash(&concatenated_bytes);
 		return doc_root == calculated_root;
-	}
-
-	/// Puts the pre-commit (based on anchor_id) into the correct eviction bucket
-	fn put_pre_commit_into_eviction_bucket(
-		anchor_id: T::Hash,
-		expiration_block: T::BlockNumber,
-	) -> DispatchResult {
-		// determine which eviction bucket to put into
-		let evict_after_block = Self::determine_pre_commit_eviction_bucket(expiration_block)?;
-
-		// get current index in eviction bucket and increment
-		let eviction_bucket_size =
-			Self::get_pre_commits_count_in_evict_bucket(evict_after_block).unwrap_or_default();
-
-		let idx = eviction_bucket_size
-			.checked_add(1)
-			.ok_or(ArithmeticError::Overflow)?;
-
-		// add to eviction bucket and update bucket counter
-		<PreCommitEvictionBuckets<T>>::insert(
-			(evict_after_block.clone(), eviction_bucket_size.clone()),
-			anchor_id,
-		);
-		<PreCommitEvictionBucketIndex<T>>::insert(evict_after_block, idx);
-		Ok(())
-	}
-
-	/// Determines the next eviction bucket number based on the given BlockNumber
-	/// This can be used to determine which eviction bucket a pre-commit
-	/// should be put into for later eviction.
-	fn determine_pre_commit_eviction_bucket(
-		pre_commit_expiration_block: T::BlockNumber,
-	) -> Result<T::BlockNumber, DispatchError> {
-		let expiration_horizon = PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
-			.checked_mul(PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER)
-			.ok_or(ArithmeticError::Overflow)?;
-		let expiration_block = TryInto::<u32>::try_into(pre_commit_expiration_block)
-			.or(Err(Error::<T>::PreCommitExpirationTooBig))?;
-		expiration_block
-			.checked_sub(expiration_block % expiration_horizon)
-			.ok_or(ArithmeticError::Underflow)
-			.and_then(|expiration_block| {
-				expiration_block
-					.checked_add(expiration_horizon)
-					.ok_or(ArithmeticError::Overflow)
-			})
-			.and_then(|put_into_bucket| Ok(T::BlockNumber::from(put_into_bucket)))
-			.or_else(|res| Err(DispatchError::Arithmetic(res)))
 	}
 
 	/// Remove child tries starting with `from` day to `until` day returning the
