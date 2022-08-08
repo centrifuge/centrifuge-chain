@@ -177,7 +177,7 @@ impl nft_sales::Config for Test {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
+	pub const NftSalesPalletId: PalletId = common_types::ids::NftSalesPalletId;
 }
 
 pub(crate) const SELLER: u64 = 0x1;

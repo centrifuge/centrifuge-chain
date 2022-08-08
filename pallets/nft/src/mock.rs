@@ -188,7 +188,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: ChainId = 5;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainBridgePalletId: PalletId = common_types::ids::ChainBridgePalletId;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }

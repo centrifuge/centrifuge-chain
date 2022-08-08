@@ -718,7 +718,7 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
+	pub const NftSalesPalletId: PalletId = common_types::ids::NftSalesPalletId;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -752,7 +752,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(1);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+	pub const TreasuryPalletId: PalletId = common_types::ids::TreasuryPalletId;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -804,7 +804,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
+	pub const ClaimsPalletId: PalletId = common_types::ids::ClaimsPalletId;
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -820,7 +820,7 @@ impl pallet_claims::Config for Runtime {
 
 // Pool config parameters
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	pub const PoolPalletId: frame_support::PalletId = common_types::ids::PoolsPalletId;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
@@ -1037,7 +1037,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 // Parameterize collator selection pallet
 parameter_types! {
-	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const PotId: PalletId = common_types::ids::StakePotPalletId;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const SessionLength: BlockNumber = 6 * HOURS;

@@ -133,7 +133,7 @@ impl pallet_vesting::Config for MockRuntime {
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
 	pub const One: u64 = 1;
-	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CrowdloanRewardPalletId;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
@@ -146,7 +146,7 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
+	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CrowdloanClaimPalletId;
 	pub const MaxProofLength: u32 = 30;
 }
 

@@ -730,7 +730,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+	pub const TreasuryPalletId: PalletId = common_types::ids::TreasuryPalletId;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -785,7 +785,7 @@ impl pallet_nft::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub const BridgePalletId: PalletId = common_types::ids::BridgePalletId;
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xCFG"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
@@ -808,7 +808,7 @@ impl pallet_bridge::Config for Runtime {
 parameter_types! {
 	pub const ChainId: chainbridge::ChainId = 1;
 	pub const ProposalLifetime: u32 = 500;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainBridgePalletId: PalletId = common_types::ids::ChainBridgePalletId;
 	pub const RelayerVoteThreshold: u32 = chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
@@ -827,7 +827,7 @@ impl chainbridge::Config for Runtime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
+	pub const ClaimsPalletId: PalletId = common_types::ids::ClaimsPalletId;
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -843,7 +843,7 @@ impl pallet_claims::Config for Runtime {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CrowdloanRewardPalletId;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
@@ -856,7 +856,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
+	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CrowdloanClaimPalletId;
 	pub const MaxProofLength: u32 = 30;
 }
 
