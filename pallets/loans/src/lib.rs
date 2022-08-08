@@ -664,18 +664,7 @@ pub mod pallet {
 				weight += T::DbWeight::get().reads(2);
 				for loan in active_loans.iter() {
 					weight += T::DbWeight::get().reads_writes(1, 1);
-					let rate = match loan.write_off_status {
-						WriteOffStatus::None => loan.interest_rate_per_sec,
-						WriteOffStatus::WrittenOff { write_off_index } => {
-							loan.interest_rate_per_sec
-								+ write_off_groups[write_off_index as usize]
-									.penalty_interest_rate_per_sec
-						}
-						WriteOffStatus::WrittenOffByAdmin {
-							penalty_interest_rate_per_sec,
-							..
-						} => loan.interest_rate_per_sec + penalty_interest_rate_per_sec,
-					};
+					let rate = Self::rate_with_penalty(&loan, &write_off_groups);
 					T::InterestAccrual::reference_rate(rate);
 				}
 			}
