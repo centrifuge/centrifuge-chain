@@ -4,6 +4,7 @@ use sp_std::vec;
 use sp_std::vec::Vec;
 
 use crate::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
