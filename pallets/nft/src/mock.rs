@@ -188,7 +188,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: ChainId = 5;
-	pub const CHAIN_BRIDGE_PALLET_ID: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
@@ -199,7 +199,7 @@ impl chainbridge::Config for MockRuntime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Proposal = Call;
 	type ChainId = MockChainId;
-	type PalletId = CHAIN_BRIDGE_PALLET_ID;
+	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();

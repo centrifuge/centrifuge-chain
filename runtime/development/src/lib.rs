@@ -1067,7 +1067,7 @@ impl pallet_collator_selection::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LOANS_PALLET_ID: PalletId = PalletId(*b"roc/loan");
+	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 50;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
@@ -1080,7 +1080,7 @@ impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
-	type LOANS_PALLET_ID = LOANS_PALLET_ID;
+	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
@@ -1224,7 +1224,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID::get().into_account_truncating();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -1262,7 +1262,7 @@ impl pallet_interest_accrual::Config for Runtime {
 
 parameter_types! {
 	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(common_types::ids::CHAIN_BRIDGE_HASH_ID));
 	//TODO rename xRAD to xCFG and create new mapping
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
@@ -1285,7 +1285,7 @@ impl pallet_bridge::Config for Runtime {
 parameter_types! {
 	pub const ChainId: chainbridge::ChainId = 1;
 	pub const ProposalLifetime: u32 = 500;
-	pub const CHAIN_BRIDGE_PALLET_ID: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
@@ -1296,7 +1296,7 @@ impl chainbridge::Config for Runtime {
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 	type Proposal = Call;
 	type ChainId = ChainId;
-	type PalletId = CHAIN_BRIDGE_PALLET_ID;
+	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();

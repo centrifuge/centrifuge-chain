@@ -122,7 +122,7 @@ pub mod pallet {
 
 		/// PalletID of this loan module
 		#[pallet::constant]
-		type LOANS_PALLET_ID: Get<PalletId>;
+		type LoansPalletId: Get<PalletId>;
 
 		/// Pool reserve type
 		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;

@@ -240,7 +240,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID::get().into_account_truncating();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 parameter_type_with_key! {
@@ -730,7 +730,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
-	pub const TREASURY_PALLET_ID: PalletId = common_types::ids::TREASURY_PALLET_ID;
+	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -750,7 +750,7 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
-	type PalletId = TREASURY_PALLET_ID;
+	type PalletId = TreasuryPalletId;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
 	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
@@ -785,15 +785,15 @@ impl pallet_nft::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BRIDGE_PALLET_ID: PalletId = common_types::ids::BRIDGE_PALLET_ID;
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
-	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xCFG"));
+	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(common_types::ids::CHAIN_BRIDGE_HASH_ID));
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(common_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID);
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 impl pallet_bridge::Config for Runtime {
-	type BRIDGE_PALLET_ID = BRIDGE_PALLET_ID;
+	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
 	type AdminOrigin =
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
@@ -808,7 +808,7 @@ impl pallet_bridge::Config for Runtime {
 parameter_types! {
 	pub const ChainId: chainbridge::ChainId = 1;
 	pub const ProposalLifetime: u32 = 500;
-	pub const CHAIN_BRIDGE_PALLET_ID: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const RelayerVoteThreshold: u32 = chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
@@ -819,7 +819,7 @@ impl chainbridge::Config for Runtime {
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 	type Proposal = Call;
 	type ChainId = ChainId;
-	type PalletId = CHAIN_BRIDGE_PALLET_ID;
+	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();

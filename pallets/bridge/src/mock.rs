@@ -237,7 +237,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = TEST_CHAIN_ID;
-	pub const CHAIN_BRIDGE_PALLET_ID: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
@@ -245,7 +245,7 @@ parameter_types! {
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
 impl chainbridge::Config for MockRuntime {
 	type Event = Event;
-	type PalletId = CHAIN_BRIDGE_PALLET_ID;
+	type PalletId = ChainBridgePalletId;
 	type Proposal = Call;
 	type ChainId = MockChainId;
 	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
@@ -292,7 +292,7 @@ impl pallet_anchors::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
-	pub const BRIDGE_PALLET_ID: PalletId = common_types::ids::BRIDGE_PALLET_ID;
+	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
@@ -301,7 +301,7 @@ parameter_types! {
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
 impl BridgePalletConfig for MockRuntime {
 	type Event = Event;
-	type BRIDGE_PALLET_ID = BRIDGE_PALLET_ID;
+	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = EnsureBridge<MockRuntime>;
 	type Currency = Balances;
 	type NativeTokenId = NativeTokenId;
