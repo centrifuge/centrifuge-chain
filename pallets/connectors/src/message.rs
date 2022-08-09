@@ -185,14 +185,14 @@ mod tests {
 		use crate::Domain;
 
 		use super::*;
-
 		use serde::{Deserialize, Serialize};
 
+		// fuzz test for pool_id corpus
 		#[test_fuzz::test_fuzz]
-		fn target(msg: Message::<PoolId, TrancheId>) {
+		fn target(pool_id: u64) {
+			let msg = Message::<PoolId, TrancheId>::AddPool { pool_id };
 			let encoded = msg.encode();
-			let expected = <[u8; 9]>::from_hex(msg.encode()).expect("Decoding failed");
-			println!("{:?}: {:?}",encoded, expected);
+			let expected = <[u8; 9]>::from_hex(hex::encode(msg.encode())).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 
