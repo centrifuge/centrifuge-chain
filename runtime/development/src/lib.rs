@@ -718,7 +718,7 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NFT_SALES_PALLET_ID: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
+	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -728,7 +728,7 @@ impl pallet_nft_sales::Config for Runtime {
 	type NonFungibles = Uniques;
 	type CollectionId = CollectionId;
 	type ItemId = ItemId;
-	type PalletId = NFT_SALES_PALLET_ID;
+	type PalletId = NftSalesPalletId;
 }
 
 parameter_types! {
@@ -752,7 +752,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(1);
 
 	// treasury pallet account id
-	pub const TREASURY_PALLET_ID: PalletId = common_types::ids::TREASURY_PALLET_ID;
+	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -774,7 +774,7 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
-	type PalletId = TREASURY_PALLET_ID;
+	type PalletId = TreasuryPalletId;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
@@ -804,7 +804,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const CLAIMS_PALLET_ID: PalletId = common_types::ids::CLAIMS_PALLET_ID;
+	pub const ClaimsPalletId: PalletId = common_types::ids::CLAIMS_PALLET_ID;
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -814,7 +814,7 @@ impl pallet_claims::Config for Runtime {
 	type Currency = Tokens;
 	type Event = Event;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = CLAIMS_PALLET_ID;
+	type PalletId = ClaimsPalletId;
 	type WeightInfo = ();
 }
 
@@ -1007,27 +1007,27 @@ impl Contains<Call> for BaseFilter {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = PalletId(*b"cc/rewrd");
+	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
-	type PalletId = CROWDLOAN_REWARD_PALLET_ID;
+	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = PalletId(*b"cc/claim");
+	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
 	pub const MaxProofLength: u32 = 30;
 }
 
 // Implement crowdloan claim pallet configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
-	type PalletId = CROWDLOAN_CLAIM_PALLET_ID;
+	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
@@ -1261,7 +1261,7 @@ impl pallet_interest_accrual::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BRIDGE_PALLET_ID: PalletId = PalletId(*b"c/bridge");
+	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
 	//TODO rename xRAD to xCFG and create new mapping
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
@@ -1270,7 +1270,7 @@ parameter_types! {
 }
 
 impl pallet_bridge::Config for Runtime {
-	type BRIDGE_PALLET_ID = BRIDGE_PALLET_ID;
+	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
 	type AdminOrigin =
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;

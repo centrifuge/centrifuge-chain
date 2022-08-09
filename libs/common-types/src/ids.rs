@@ -18,7 +18,7 @@ use sp_runtime::TypeId;
 
 // The TypeId impl we derive pool-accounts from
 impl<PoolId> TypeId for PoolLocator<PoolId> {
-	const const_ID: [u8; 4] = *b"pool";
+	const TYPE_ID: [u8; 4] = *b"pool";
 }
 
 // Pallet-Ids that define pallets accounts

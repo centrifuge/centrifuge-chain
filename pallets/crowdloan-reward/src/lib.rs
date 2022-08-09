@@ -164,14 +164,14 @@ pub mod pallet {
 		///
 		/// // Parameterize crowdloan reward pallet configuration
 		/// parameter_types! {
-		///   pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = PalletId(*b"cc/rwrd");
+		///   pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rwrd");
 		/// }
 		///
 		/// // Implement crowdloan reward pallet's configuration trait for the runtime
 		/// impl pallet_crowdloarn_reward::Config for Runtime {
 		///   type Event = Event;
 		///   type WeightInfo = ();
-		///   type PalletId = CROWDLOAN_REWARD_PALLET_ID;
+		///   type PalletId = CrowdloanRewardPalletId;
 		/// }
 		///
 		/// ```

@@ -183,7 +183,7 @@ pub mod pallet {
 		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]
-		type BRIDGE_PALLET_ID: Get<PalletId>;
+		type BridgePaleltId: Get<PalletId>;
 
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.

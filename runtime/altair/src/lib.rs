@@ -646,7 +646,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
-	pub const TREASURY_PALLET_ID: PalletId = common_types::ids::TREASURY_PALLET_ID;
+	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -666,7 +666,7 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
-	type PalletId = TREASURY_PALLET_ID;
+	type PalletId = TreasuryPalletId;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
 	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
@@ -749,27 +749,27 @@ impl pallet_migration_manager::Config for Runtime {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
+	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
-	type PalletId = CROWDLOAN_REWARD_PALLET_ID;
+	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
+	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
 	pub const MaxProofLength: u32 = 30;
 }
 
 // Implement crowdloan claim pallet configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
-	type PalletId = CROWDLOAN_CLAIM_PALLET_ID;
+	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
@@ -904,7 +904,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID::get().into_account_truncating();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -934,7 +934,7 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NFT_SALES_PALLET_ID: PalletId = common_types::ids::LOANS_PALLET_ID;
+	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -944,7 +944,7 @@ impl pallet_nft_sales::Config for Runtime {
 	type NonFungibles = Uniques;
 	type CollectionId = CollectionId;
 	type ItemId = ItemId;
-	type PalletId = NFT_SALES_PALLET_ID;
+	type PalletId = NftSalesPalletId;
 }
 
 // XCM
@@ -972,7 +972,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 // Pools & Loans
 
 parameter_types! {
-	pub const LOANS_PALLET_ID: PalletId = common_types::ids::LOANS_PALLET_ID;
+	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
 	pub const MaxWriteOffGroups: u32 = 100;
 }
@@ -985,7 +985,7 @@ impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
-	type LOANS_PALLET_ID = LOANS_PALLET_ID;
+	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;

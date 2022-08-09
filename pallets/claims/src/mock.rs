@@ -155,7 +155,7 @@ impl pallet_balances::Config for MockRuntime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const CLAIMS_PALLET_ID: PalletId = common_types::ids::CLAIMS_PALLET_ID;
+	pub const ClaimsPalletId: PalletId = common_types::ids::CLAIMS_PALLET_ID;
 	pub const One: u64 = 1;
 	pub const Longevity: u32 = 64;
 	pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -174,7 +174,7 @@ impl Config for MockRuntime {
 	type Currency = Balances;
 	type Event = Event;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = CLAIMS_PALLET_ID;
+	type PalletId = ClaimsPalletId;
 	type WeightInfo = ();
 }
 

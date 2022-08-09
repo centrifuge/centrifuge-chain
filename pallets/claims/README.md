@@ -59,7 +59,7 @@ pub(crate) const CFG: Balance = 100 * CENTI_CFG;
 
 // Parameterize claims pallet
 parameter_types! {
-    pub const CLAIMS_PALLET_ID: PalletId = PalletId(*b"claims");
+    pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const MinimalPayoutAmount: node_primitives::Balance = 5 * CFG;
@@ -68,7 +68,7 @@ parameter_types! {
 // Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for MyRuntime {
     type Event = ();
-    type PalletId = CLAIMS_PALLET_ID;
+    type PalletId = ClaimsPalletId;
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type Currency = Balances;
     type WeightInfo = ();

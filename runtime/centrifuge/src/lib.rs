@@ -827,7 +827,7 @@ impl chainbridge::Config for Runtime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const CLAIMS_PALLET_ID: PalletId = common_types::ids::CLAIMS_PALLET_ID;
+	pub const ClaimsPalletId: PalletId = common_types::ids::CLAIMS_PALLET_ID;
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -837,33 +837,33 @@ impl pallet_claims::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = CLAIMS_PALLET_ID;
+	type PalletId = ClaimsPalletId;
 	type WeightInfo = ();
 }
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
+	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
-	type PalletId = CROWDLOAN_REWARD_PALLET_ID;
+	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
+	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
 	pub const MaxProofLength: u32 = 30;
 }
 
 // Implement crowdloan claim pallet configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
-	type PalletId = CROWDLOAN_CLAIM_PALLET_ID;
+	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
