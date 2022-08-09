@@ -34,5 +34,5 @@ pub const NFT_SALES_PALLET_ID: PalletId = PalletId(*b"pal/nfts");
 pub const STAKE_POT_PALLET_ID: PalletId = PalletId(*b"PotStake");
 
 // Other ids
-pub const CHAIN_BRIDGE_HASH_ID: [u8; 13] = b"cent_nft_hash";
-pub const CHAIN_BRIDGE_NATIVE_TOKEN_ID: [u8; 4] = b"xCFG";
+pub const CHAIN_BRIDGE_HASH_ID: [u8; 13] = *b"cent_nft_hash";
+pub const CHAIN_BRIDGE_NATIVE_TOKEN_ID: [u8; 4] = *b"xCFG";
