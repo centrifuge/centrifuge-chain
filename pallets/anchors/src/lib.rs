@@ -117,7 +117,8 @@ pub mod pallet {
 		type Currency: ReservableCurrency<Self::AccountId>;
 
 		/// Amount of funds reserved in a [`Pallet::pre_commit()`] call.
-		/// These funds will be refunded once the user call [`Pallet::evict_pre_commits()`]
+		/// These funds will be unreserved once the user make the [`commit()`] succesfully
+		/// or call [`Pallet::evict_pre_commits()`]
 		#[pallet::constant]
 		type PreCommitDeposit: Get<BalanceOf<Self>>;
 	}
@@ -206,13 +207,16 @@ pub mod pallet {
 		/// Obtains an exclusive lock to make the next update to a certain document version
 		/// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given
 		/// by [`PRE_COMMIT_EXPIRATION_DURATION_BLOCKS`] value. `signing_root` is a child node of
-		/// the off-chain merkle tree of that document. In Centrifuge protocol, A document is
+		/// the off-chain merkle tree of that document. In Centrifuge protocol, a document is
 		/// committed only after reaching consensus with the other collaborators on the document.
 		/// Consensus is reached by getting a cryptographic signature from other parties by
 		/// sending them the `signing_root`. To deny the counter-party the free option of publishing
 		/// its own state commitment upon receiving a request for signature, the node can first
 		/// publish a pre-commit. Only the pre-committer account in the Centrifuge chain is
 		/// allowed to `commit` a corresponding anchor before the pre-commit has expired.
+		/// Some funds are reserved on a succesful pre-commit call.
+		/// These funds are returned to the same account after a succesful [`commit()`] call
+		/// or explicitely if evicting the pre-commits by calling [`evict_pre_commits()`].
 		/// For a more detailed explanation refer section 3.4 of
 		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::pre_commit())]
@@ -253,11 +257,14 @@ pub mod pallet {
 		}
 
 		/// Commits a `document_root` of a merklized off chain document in Centrifuge p2p network as
-		/// the latest version id(`anchor_id`) obtained by hashing `anchor_id_preimage`. If a
-		/// pre-commit exists for the obtained `anchor_id`, hash of pre-committed
-		/// `signing_root + proof` must match the given `doc_root`. To avoid state bloat on chain,
-		/// the committed anchor would be evicted after the given `stored_until_date`. The calling
-		/// account would be charged accordingly for the storage period.
+		/// the latest version id(`anchor_id`) obtained by hashing `anchor_id_preimage`.
+		/// If a pre-commit exists for the obtained `anchor_id`, hash of pre-committed
+		/// `signing_root + proof` must match the given `doc_root`.
+		/// Any pre-committed data is automatically removed on a succesful commit and the reserved
+		/// funds from [`pre_commit()`] are returned to the same account.
+		/// To avoid state bloat on chain,
+		/// the committed anchor would be evicted after the given `stored_until_date`.
+		/// The calling account would be charged accordingly for the storage period.
 		/// For a more detailed explanation refer section 3.4 of
 		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::commit())]
@@ -345,10 +352,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Initiates eviction of pre-commits that has expired given that the current block number
-		/// has progressed past the block number provided in `evict_bucket`. `evict_bucket` is also
-		/// the index to find the pre-commits stored in storage to be evicted when the
-		/// `evict_bucket` number of blocks has expired.
+		/// Initiates eviction of pre-commits that has expired given a list on anchor ids.
+		/// For each evicted pre-commits, the deposit holded by [`pre_commit()`] call
+		/// will be returned to the same account that made it originally.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_pre_commits())]
 		pub fn evict_pre_commits(
 			origin: OriginFor<T>,
@@ -397,8 +403,6 @@ pub mod pallet {
 		}
 	}
 }
-
-impl<T: Config> Pallet<T> {}
 
 impl<T: Config> Pallet<T> {
 	/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
