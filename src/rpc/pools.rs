@@ -12,16 +12,16 @@ use std::sync::Arc;
 use crate::rpc::{invalid_params_error, runtime_error};
 
 #[rpc(client, server)]
-pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, Hash> {
+pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, BlockHash> {
 	#[method(name = "pools_currency")]
-	fn currency(&self, poold_id: PoolId, at: Option<BlockId<Hash>>) -> RpcResult<Currency>;
+	fn currency(&self, poold_id: PoolId, at: Option<BlockHash>) -> RpcResult<Currency>;
 
 	#[method(name = "pools_inspectEpochSolution")]
 	fn inspect_epoch_solution(
 		&self,
 		pool_id: PoolId,
 		solution: Vec<TrancheSolution>,
-		at: Option<BlockId<Hash>>,
+		at: Option<BlockHash>,
 	) -> RpcResult<EpochSolution<Balance>>;
 
 	#[method(name = "pools_trancheTokenPrice")]
@@ -29,25 +29,25 @@ pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, Hash> {
 		&self,
 		pool_id: PoolId,
 		tranche: TrancheId,
-		at: Option<BlockId<Hash>>,
+		at: Option<BlockHash>,
 	) -> RpcResult<BalanceRatio>;
 
 	#[method(name = "pools_trancheTokenPrices")]
 	fn tranche_token_prices(
 		&self,
 		pool_id: PoolId,
-		at: Option<BlockId<Hash>>,
+		at: Option<BlockHash>,
 	) -> RpcResult<Vec<BalanceRatio>>;
 
 	#[method(name = "pools_trancheIds")]
-	fn tranche_ids(&self, pool_id: PoolId, at: Option<BlockId<Hash>>) -> RpcResult<Vec<TrancheId>>;
+	fn tranche_ids(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Vec<TrancheId>>;
 
 	#[method(name = "pools_trancheId")]
 	fn tranche_id(
 		&self,
 		pool_id: PoolId,
 		tranche_index: TrancheIndex,
-		at: Option<BlockId<Hash>>,
+		at: Option<BlockHash>,
 	) -> RpcResult<TrancheId>;
 
 	#[method(name = "pools_trancheCurrency")]
@@ -55,7 +55,7 @@ pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, Hash> {
 		&self,
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		at: Option<BlockId<Hash>>,
+		at: Option<BlockHash>,
 	) -> RpcResult<Currency>;
 }
 
@@ -74,7 +74,7 @@ impl<C, P> Pools<C, P> {
 }
 
 impl<C, Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>
-	PoolsApiServer<PoolId, TrancheId, Balance, Currency, BalanceRatio> for Pools<C, Block>
+	PoolsApiServer<PoolId, TrancheId, Balance, Currency, BalanceRatio, Block::Hash> for Pools<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
@@ -85,13 +85,12 @@ where
 	Currency: Codec,
 	BalanceRatio: Codec,
 {
-	fn currency(&self, pool_id: PoolId, at: Option<BlockId<Block::Hash>>) -> RpcResult<Currency> {
+	fn currency(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Currency> {
 		let api = self.client.runtime_api();
-		let at = if let Some(block) = at {
-			block
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
 		} else {
-			let best = self.client.info().best_hash;
-			BlockId::hash(best);
+			BlockId::hash(self.client.info().best_hash)
 		};
 
 		api.currency(&at, pool_id)
@@ -103,14 +102,13 @@ where
 		&self,
 		pool_id: PoolId,
 		solution: Vec<TrancheSolution>,
-		at: Option<BlockId<Block::Hash>>,
+		at: Option<Block::Hash>,
 	) -> RpcResult<EpochSolution<Balance>> {
 		let api = self.client.runtime_api();
-		let at = if let Some(block) = at {
-			block
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
 		} else {
-			let best = self.client.info().best_hash;
-			BlockId::hash(best);
+			BlockId::hash(self.client.info().best_hash)
 		};
 
 		api.inspect_epoch_solution(&at, pool_id, solution.clone())
@@ -122,14 +120,13 @@ where
 		&self,
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		at: Option<BlockId<Block::Hash>>,
+		at: Option<Block::Hash>,
 	) -> RpcResult<BalanceRatio> {
 		let api = self.client.runtime_api();
-		let at = if let Some(block) = at {
-			block
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
 		} else {
-			let best = self.client.info().best_hash;
-			BlockId::hash(best);
+			BlockId::hash(self.client.info().best_hash)
 		};
 
 		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
@@ -140,14 +137,13 @@ where
 	fn tranche_token_prices(
 		&self,
 		pool_id: PoolId,
-		at: Option<BlockId<Block::Hash>>,
+		at: Option<Block::Hash>,
 	) -> RpcResult<Vec<BalanceRatio>> {
 		let api = self.client.runtime_api();
-		let at = if let Some(block) = at {
-			block
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
 		} else {
-			let best = self.client.info().best_hash;
-			BlockId::hash(best);
+			BlockId::hash(self.client.info().best_hash)
 		};
 
 		api.tranche_token_prices(&at, pool_id)
@@ -155,17 +151,12 @@ where
 			.ok_or(invalid_params_error("Pool not found."))
 	}
 
-	fn tranche_ids(
-		&self,
-		pool_id: PoolId,
-		at: Option<BlockId<Block::Hash>>,
-	) -> RpcResult<Vec<TrancheId>> {
+	fn tranche_ids(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Vec<TrancheId>> {
 		let api = self.client.runtime_api();
-		let at = if let Some(block) = at {
-			block
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
 		} else {
-			let best = self.client.info().best_hash;
-			BlockId::hash(best);
+			BlockId::hash(self.client.info().best_hash)
 		};
 
 		api.tranche_ids(&at, pool_id)
@@ -177,14 +168,13 @@ where
 		&self,
 		pool_id: PoolId,
 		tranche_index: TrancheIndex,
-		at: Option<BlockId<Block::Hash>>,
+		at: Option<Block::Hash>,
 	) -> RpcResult<TrancheId> {
 		let api = self.client.runtime_api();
-		let at = if let Some(block) = at {
-			block
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
 		} else {
-			let best = self.client.info().best_hash;
-			BlockId::hash(best);
+			BlockId::hash(self.client.info().best_hash)
 		};
 
 		api.tranche_id(&at, pool_id, tranche_index)
@@ -196,14 +186,13 @@ where
 		&self,
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		at: Option<BlockId<Block::Hash>>,
+		at: Option<Block::Hash>,
 	) -> RpcResult<Currency> {
 		let api = self.client.runtime_api();
-		let at = if let Some(block) = at {
-			block
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
 		} else {
-			let best = self.client.info().best_hash;
-			BlockId::hash(best);
+			BlockId::hash(self.client.info().best_hash)
 		};
 
 		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
