@@ -189,17 +189,11 @@ pub mod pallet {
 		/// Invalid pre commit proof
 		InvalidPreCommitProof,
 
-		/// Pre Commit expiration block too big
-		PreCommitExpirationTooBig,
-
 		/// Eviction date too big for conversion
 		EvictionDateTooBig,
 
 		/// Failed to convert epoch in MS to days
 		FailedToConvertEpochToDays,
-
-		/// Bucket eviction not possible
-		EvictionNotPossible,
 	}
 
 	#[pallet::call]
