@@ -133,27 +133,27 @@ impl pallet_vesting::Config for MockRuntime {
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
 	pub const One: u64 = 1;
-	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CrowdloanRewardPalletId;
+	pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for MockRuntime {
 	type Event = Event;
-	type PalletId = CrowdloanRewardPalletId;
+	type PalletId = CROWDLOAN_REWARD_PALLET_ID;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
 }
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CrowdloanClaimPalletId;
+	pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
 	pub const MaxProofLength: u32 = 30;
 }
 
 // Implement crowdloan claim pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
 	type Event = Event;
-	type PalletId = CrowdloanClaimPalletId;
+	type PalletId = CROWDLOAN_CLAIM_PALLET_ID;
 	type WeightInfo = ();
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type RelayChainAccountId = AccountId32;

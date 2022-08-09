@@ -718,7 +718,7 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = common_types::ids::NftSalesPalletId;
+	pub const NFT_SALES_PALLET_ID: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -728,7 +728,7 @@ impl pallet_nft_sales::Config for Runtime {
 	type NonFungibles = Uniques;
 	type CollectionId = CollectionId;
 	type ItemId = ItemId;
-	type PalletId = NftSalesPalletId;
+	type PalletId = NFT_SALES_PALLET_ID;
 }
 
 parameter_types! {
@@ -752,7 +752,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(1);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = common_types::ids::TreasuryPalletId;
+	pub const TREASURY_PALLET_ID: PalletId = common_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -774,7 +774,7 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ProposalBondMaximum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
-	type PalletId = TreasuryPalletId;
+	type PalletId = TREASURY_PALLET_ID;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
@@ -804,7 +804,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const ClaimsPalletId: PalletId = common_types::ids::ClaimsPalletId;
+	pub const CLAIMS_PALLET_ID: PalletId = common_types::ids::CLAIMS_PALLET_ID;
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -814,13 +814,13 @@ impl pallet_claims::Config for Runtime {
 	type Currency = Tokens;
 	type Event = Event;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = ClaimsPalletId;
+	type PalletId = CLAIMS_PALLET_ID;
 	type WeightInfo = ();
 }
 
 // Pool config parameters
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = common_types::ids::PoolsPalletId;
+	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
@@ -1007,27 +1007,27 @@ impl Contains<Call> for BaseFilter {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+	pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = PalletId(*b"cc/rewrd");
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
-	type PalletId = CrowdloanRewardPalletId;
+	type PalletId = CROWDLOAN_REWARD_PALLET_ID;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
+	pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = PalletId(*b"cc/claim");
 	pub const MaxProofLength: u32 = 30;
 }
 
 // Implement crowdloan claim pallet configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
-	type PalletId = CrowdloanClaimPalletId;
+	type PalletId = CROWDLOAN_CLAIM_PALLET_ID;
 	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
@@ -1037,7 +1037,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 // Parameterize collator selection pallet
 parameter_types! {
-	pub const PotId: PalletId = common_types::ids::StakePotPalletId;
+	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
@@ -1067,7 +1067,7 @@ impl pallet_collator_selection::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
+	pub const LOANS_PALLET_ID: PalletId = PalletId(*b"roc/loan");
 	pub const MaxActiveLoansPerPool: u32 = 50;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
@@ -1080,7 +1080,7 @@ impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
-	type LoansPalletId = LoansPalletId;
+	type LOANS_PALLET_ID = LOANS_PALLET_ID;
 	type Pool = Pools;
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
@@ -1224,7 +1224,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -1261,7 +1261,7 @@ impl pallet_interest_accrual::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub const BRIDGE_PALLET_ID: PalletId = PalletId(*b"c/bridge");
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
 	//TODO rename xRAD to xCFG and create new mapping
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
@@ -1270,7 +1270,7 @@ parameter_types! {
 }
 
 impl pallet_bridge::Config for Runtime {
-	type BridgePalletId = BridgePalletId;
+	type BRIDGE_PALLET_ID = BRIDGE_PALLET_ID;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
 	type AdminOrigin =
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
@@ -1285,7 +1285,7 @@ impl pallet_bridge::Config for Runtime {
 parameter_types! {
 	pub const ChainId: chainbridge::ChainId = 1;
 	pub const ProposalLifetime: u32 = 500;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const CHAIN_BRIDGE_PALLET_ID: PalletId = PalletId(*b"chnbrdge");
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
@@ -1296,7 +1296,7 @@ impl chainbridge::Config for Runtime {
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 	type Proposal = Call;
 	type ChainId = ChainId;
-	type PalletId = ChainBridgePalletId;
+	type PalletId = CHAIN_BRIDGE_PALLET_ID;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();

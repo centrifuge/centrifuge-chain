@@ -19,7 +19,7 @@ use sp_runtime::ArithmeticError;
 impl<T: Config> Pallet<T> {
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
-		T::LoansPalletId::get().into_account_truncating()
+		T::LOANS_PALLET_ID::get().into_account_truncating()
 	}
 
 	/// check if the given loan belongs to the owner provided

@@ -183,7 +183,7 @@ pub mod pallet {
 		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]
-		type BridgePalletId: Get<PalletId>;
+		type BRIDGE_PALLET_ID: Get<PalletId>;
 
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.
@@ -446,7 +446,7 @@ impl<T: Config> Pallet<T> {
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
 	pub fn account_id() -> T::AccountId {
-		<T as pallet::Config>::BridgePalletId::get().into_account_truncating()
+		<T as pallet::Config>::BRIDGE_PALLET_ID::get().into_account_truncating()
 	}
 
 	/// Initialize pallet's genesis configuration.

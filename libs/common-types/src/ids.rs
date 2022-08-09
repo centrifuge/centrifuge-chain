@@ -10,25 +10,25 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-///! A module that contains all ids where we should be REALLY careful
-///! when changing them.
+//! A module that contains all ids where we should be REALLY careful
+//! when changing them.
 use crate::PoolLocator;
-use sp_runtime::TypeId;
 use frame_support::PalletId;
+use sp_runtime::TypeId;
 
 // The TypeId impl we derive pool-accounts from
 impl<PoolId> TypeId for PoolLocator<PoolId> {
-    const TYPE_ID: [u8; 4] = *b"pool";
+	const const_ID: [u8; 4] = *b"pool";
 }
 
 // Pallet-Ids that define pallets accounts
-pub type PoolsPalletId = PalletId(*b"roc/pool");
-pub type LoansPalletId = PalletId(*b"roc/loan");
-pub type ChainBridgePalletId = PalletId(*b"cb/bridg");
-pub type BridgePalletId = PalletId(*b"c/bridge");
-pub type ClaimsPalletId = PalletId(*b"p/claims");
-pub type CrowdloanRewardPalletId = PalletId(*b"cc/rewrd");
-pub type CrowdloanClaimPalletId = PalletId(*b"cc/claim");
-pub type TreasuryPalletId = PalletId(*b"py/trsry");
-pub type NftSalesPalletId = PalletId(*b"pal/nfts");
-pub type StakePotPalletId = PalletId(*b"PotStake");
+pub const POOLS_PALLET_ID: PalletId = PalletId(*b"roc/pool");
+pub const LOANS_PALLET_ID: PalletId = PalletId(*b"roc/loan");
+pub const CHAIN_BRIDGE_PALLET_ID: PalletId = PalletId(*b"cb/bridg");
+pub const BRIDGE_PALLET_ID: PalletId = PalletId(*b"c/bridge");
+pub const CLAIMS_PALLET_ID: PalletId = PalletId(*b"p/claims");
+pub const CROWDLOAN_REWARD_PALLET_ID: PalletId = PalletId(*b"cc/rewrd");
+pub const CROWDLOAN_CLAIM_PALLET_ID: PalletId = PalletId(*b"cc/claim");
+pub const TREASURY_PALLET_ID: PalletId = PalletId(*b"py/trsry");
+pub const NFT_SALES_PALLET_ID: PalletId = PalletId(*b"pal/nfts");
+pub const STAKE_POT_PALLET_ID: PalletId = PalletId(*b"PotStake");

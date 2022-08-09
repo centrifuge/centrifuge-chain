@@ -173,11 +173,11 @@ impl nft_sales::Config for Test {
 	type NonFungibles = Uniques;
 	type CollectionId = CollectionId;
 	type ItemId = ItemId;
-	type PalletId = NftSalesPalletId;
+	type PalletId = NFT_SALES_PALLET_ID;
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = common_types::ids::NftSalesPalletId;
+	pub const NFT_SALES_PALLET_ID: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
 }
 
 pub(crate) const SELLER: u64 = 0x1;
