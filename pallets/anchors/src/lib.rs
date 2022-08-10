@@ -100,6 +100,7 @@ pub mod pallet {
 	{
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
+		type MaxBound: Get<u32>;
 	}
 
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
@@ -154,7 +155,7 @@ pub mod pallet {
 	/// evicted anchor.
 	#[pallet::storage]
 	#[pallet::getter(fn get_evicted_anchor_root_by_day)]
-	pub(super) type EvictedAnchorRoots<T: Config> = StorageMap<_, Blake2_256, u32, Vec<u8>>;
+	pub(super) type EvictedAnchorRoots<T: Config> = StorageMap<_, Blake2_256, u32, BoundedVec<u8, T::MaxBound>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
