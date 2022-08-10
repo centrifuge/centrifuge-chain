@@ -23,18 +23,31 @@ mod benchmarking;
 mod tests;
 
 pub mod weights;
+use frame_support::pallet_prelude::{Decode, Encode};
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 pub use weights::*;
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+/// Different stored fees keys
+#[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum FeeKey {
+	CommitAnchor,
+	// Others keys for pallet_fees go here
+}
 
 /// A way to identify a fee value.
 pub enum Fee<T: Config> {
 	/// The fee value itself.
 	Balance(BalanceOf<T>),
 	/// The fee value is already stored in the pallet fee by a key.
-	Key(T::Hash),
+	Key(FeeKey),
 }
 
 #[frame_support::pallet]
@@ -55,21 +68,21 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
 		/// The currency mechanism.
 		type Currency: frame_support::traits::Currency<Self::AccountId>;
+
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
 		/// Required origin for changing fees
 		type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
+
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
 	// The genesis config type.
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_fees: Vec<(T::Hash, BalanceOf<T>)>,
+		pub initial_fees: Vec<(FeeKey, BalanceOf<T>)>,
 	}
 
 	// The default value for the genesis config type.
@@ -95,12 +108,12 @@ pub mod pallet {
 	/// Stores the Fees associated with a Hash identifier
 	#[pallet::storage]
 	#[pallet::getter(fn fee)]
-	pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, T::Hash, BalanceOf<T>>;
+	pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, FeeKey, BalanceOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		FeeChanged(T::Hash, BalanceOf<T>),
+		FeeChanged(FeeKey, BalanceOf<T>),
 	}
 
 	#[pallet::error]
@@ -115,7 +128,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_fee())]
-		pub fn set_fee(origin: OriginFor<T>, key: T::Hash, fee: BalanceOf<T>) -> DispatchResult {
+		pub fn set_fee(origin: OriginFor<T>, key: FeeKey, fee: BalanceOf<T>) -> DispatchResult {
 			T::FeeChangeOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
