@@ -15,7 +15,9 @@
 //!
 //! This pallet provides functionality of Storing anchors on Chain
 #![cfg_attr(not(feature = "std"), no_std)]
+
 use codec::{Decode, Encode};
+use common_types::FeeKey;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
@@ -300,8 +302,8 @@ pub mod pallet {
 
 			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
 			// we use the fee config setup on genesis for anchoring to calculate the state rent
-			let base_fee = <pallet_fees::Pallet<T>>::fee(pallet_fees::FeeKey::CommitAnchor)
-				.ok_or(Error::<T>::FeeNotSet)?;
+			let base_fee =
+				<pallet_fees::Pallet<T>>::fee(FeeKey::CommitAnchor).ok_or(Error::<T>::FeeNotSet)?;
 
 			let multiplier = stored_until_date_from_epoch
 				.checked_sub(today_in_days_from_epoch)

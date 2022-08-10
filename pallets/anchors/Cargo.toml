@@ -22,6 +22,7 @@ sp-std = { git = "https://github.com/paritytech/substrate",  default-features = 
 sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 pallet-fees = { path = "../fees", default-features = false }
+common-types = { path = "../../libs/common-types", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
