@@ -6,6 +6,8 @@
 //! Also, for its internal usage from the runtime or other pallets,
 //! it offers some utilities to transfer the fees to the author, the treasury or burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
+
+use common_types::FeeKey;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
@@ -23,24 +25,10 @@ mod benchmarking;
 mod tests;
 
 pub mod weights;
-use frame_support::pallet_prelude::{Decode, Encode};
-use frame_support::RuntimeDebug;
-use scale_info::TypeInfo;
 pub use weights::*;
-
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-/// Different stored fees keys
-#[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum FeeKey {
-	CommitAnchor,
-	// Others keys for pallet_fees go here
-}
 
 /// A way to identify a fee value.
 pub enum Fee<T: Config> {
