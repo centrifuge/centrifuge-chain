@@ -173,7 +173,7 @@ impl nft_sales::Config for Test {
 	type NonFungibles = Uniques;
 	type CollectionId = CollectionId;
 	type ItemId = ItemId;
-	type PalletId = NFT_SALES_PALLET_ID;
+	type PalletId = NftSalesPalletId;
 }
 
 parameter_types! {

@@ -166,7 +166,7 @@ impl pallet_anchors::Config for Test {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = 5;
-	pub const ChainBridgePalletId: PalletId = common_types::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
