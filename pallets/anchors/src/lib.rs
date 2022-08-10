@@ -18,9 +18,8 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	BoundedVec,
 	storage::child,
-	RuntimeDebug, StateVersion,
+	BoundedVec, RuntimeDebug, StateVersion,
 };
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
@@ -156,7 +155,8 @@ pub mod pallet {
 	/// evicted anchor.
 	#[pallet::storage]
 	#[pallet::getter(fn get_evicted_anchor_root_by_day)]
-	pub(super) type EvictedAnchorRoots<T: Config> = StorageMap<_, Blake2_256, u32, BoundedVec<u8, T::MaxBound>>;
+	pub(super) type EvictedAnchorRoots<T: Config> =
+		StorageMap<_, Blake2_256, u32, BoundedVec<u8, T::MaxBound>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
