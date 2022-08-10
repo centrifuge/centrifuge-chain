@@ -124,6 +124,7 @@ node-inspect = { git = "https://github.com/paritytech/substrate", branch = "polk
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
 pallet-pools = { path = "./pallets/pools" }
+pallet-fees = { path = "./pallets/fees" }
 
 # frame dependencies
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
