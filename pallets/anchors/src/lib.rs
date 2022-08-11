@@ -18,7 +18,6 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	parameter_types,
 	storage::child,
 	BoundedVec, RuntimeDebug, StateVersion,
 };
