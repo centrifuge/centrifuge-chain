@@ -1,4 +1,5 @@
 use common_traits::Moment;
+use codec::Input;
 use frame_support::BoundedVec;
 use sp_std::vec;
 use sp_std::vec::Vec;
@@ -164,6 +165,11 @@ impl<
 				message
 			}
 		}
+	}
+}
+impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Decode for Message<PoolId, TrancheId> {
+	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		todo!()
 	}
 }
 
