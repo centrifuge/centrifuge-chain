@@ -100,7 +100,7 @@ pub mod pallet {
 	{
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
-		type MaxBound: Get<u32>;
+		type MaxBound: MaxBound;
 	}
 
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
@@ -400,6 +400,10 @@ pub mod pallet {
 			Ok(())
 		}
 	}
+}
+
+parameter_types! {
+	pub const MaxBound: u32 = 100;
 }
 
 impl<T: Config> Pallet<T> {
