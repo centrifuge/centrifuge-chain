@@ -33,6 +33,10 @@ common-types = { path = "../../libs/common-types", default-features = false }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 runtime-common = { path = "../../runtime/common", default-features = false }
 
+# Fuzz tests
+serde = "1.0"
+test-fuzz = "3.0.2"
+
 # Polkadot
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.24" }
 

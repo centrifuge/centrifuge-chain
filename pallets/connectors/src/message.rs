@@ -185,6 +185,16 @@ mod tests {
 
 		use super::*;
 
+		use serde::{Deserialize, Serialize};
+
+		#[test_fuzz::test_fuzz]
+		fn target(msg: Message::<PoolId, TrancheId>) {
+			let encoded = msg.encode();
+			let expected = <[u8; 9]>::from_hex(msg.encode()).expect("Decoding failed");
+			println!("{:?}: {:?}",encoded, expected);
+			assert_eq!(encoded, expected);
+		}
+
 		#[test]
 		fn invalid() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Invalid;
