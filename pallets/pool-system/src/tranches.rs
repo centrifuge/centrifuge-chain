@@ -1533,7 +1533,7 @@ pub mod test {
 		TTranche {
 			tranche_type: TrancheType::Residual,
 			seniority: 0,
-			currency: CurrencyId::Tranche(0, [id; 16]),
+			currency: CurrencyId::Tranche(DEFAULT_POOL_ID, [id; 16]),
 			outstanding_invest_orders: 0,
 			outstanding_redeem_orders: 0,
 			debt: 0,
@@ -1569,7 +1569,7 @@ pub mod test {
 				min_risk_buffer,
 			},
 			seniority: 0,
-			currency: CurrencyId::Tranche(0, [id; 16]),
+			currency: CurrencyId::Tranche(DEFAULT_POOL_ID, [id; 16]),
 			outstanding_invest_orders: 0,
 			outstanding_redeem_orders: 0,
 			debt: 0,
@@ -1582,12 +1582,15 @@ pub mod test {
 	}
 
 	fn default_tranches() -> TTranches {
-		let input = vec![
-			(TTrancheType::Residual, None),
-			(non_residual(1, Some(10), Some(10)).tranche_type, None),
-			(non_residual(2, Some(5), Some(25)).tranche_type, None),
-		];
-		TTranches::from_input::<TrancheTokenImpl>(DEFAULT_POOL_ID, input, DEFAULT_TIME_NOW).unwrap()
+		TTranches::new::<TrancheTokenImpl>(
+			DEFAULT_POOL_ID,
+			vec![
+				residual(0),
+				non_residual(1, Some(10), Some(10)),
+				non_residual(2, Some(5), Some(25)),
+			],
+		)
+		.unwrap()
 	}
 
 	mod tranche_type {
@@ -1617,7 +1620,7 @@ pub mod test {
 		}
 	}
 
-	mod tranches {
+	mod tranche {
 		use super::*;
 
 		#[test]
@@ -1717,30 +1720,35 @@ pub mod test {
 		fn tranches_accrue_overflows_safely() {}
 	}
 
-	mod epoch_execution_tranches {
+	mod tranches {
 		use super::*;
 
 		#[test]
-		fn epoch_execution_tranches_reverse_works() {
+		fn tranche_currency_works() {
 			let tranches = default_tranches();
-			let slice_rev = tranches.non_residual_top_slice();
 			assert_eq!(
-				slice_rev[0].tranche_type,
-				non_residual(2, Some(5), Some(25)).tranche_type
+				tranches.tranche_currency(TrancheLoc::Index(0)),
+				Some(CurrencyId::Tranche(DEFAULT_POOL_ID, [0u8; 16]))
 			);
 			assert_eq!(
-				slice_rev[1].tranche_type,
-				non_residual(1, Some(10), Some(10)).tranche_type
+				tranches.tranche_currency(TrancheLoc::Index(1)),
+				Some(CurrencyId::Tranche(DEFAULT_POOL_ID, [1u8; 16]))
 			);
-			assert_eq!(slice_rev[2].tranche_type, residual(0).tranche_type);
-		}
-
-		#[test]
-		#[should_panic]
-		fn epoch_execution_tranches_reverse_slice_panics_on_out_of_bounds() {
-			let tranches = default_tranches();
-			let slice_rev = tranches.non_residual_top_slice();
-			let _panic = &slice_rev[3];
+			assert_eq!(
+				tranches.tranche_currency(TrancheLoc::Index(2)),
+				Some(CurrencyId::Tranche(DEFAULT_POOL_ID, [2u8; 16]))
+			);
+			assert_eq!(tranches.tranche_currency(TrancheLoc::Index(3)), None);
 		}
 	}
+
+	mod epoch_execution_tranche {
+		use super::*;
+
+		fn epoch_execution_tranche_reverse_works() {}
+
+		fn epoch_execution_tranche_reverse_slice_panics_on_out_of_bounds() {}
+	}
+
+	mod epoch_execution_tranches {}
 }
