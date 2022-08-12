@@ -89,7 +89,7 @@ mod test {
 				let rate_per_sec =
 					interest_rate_per_sec(mock::Rate::saturating_from_rational(10, 100)).unwrap();
 				v0::Rate::<Test>::insert(rate_per_sec, rate_info);
-				StorageVersion::<Test>::set(0);
+				StorageVersion::<Test>::set(Release::V0);
 				next_block_after(seconds_per_day());
 				let now = mock::InterestAccrual::now();
 				let weight = v1::migrate::<Test>();

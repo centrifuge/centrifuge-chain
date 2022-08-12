@@ -95,6 +95,14 @@ pub struct RateDetails<InterestRate> {
 	pub reference_count: u32,
 }
 
+#[derive(Encode, Decode, Default, TypeInfo, PartialEq)]
+#[repr(u32)]
+pub enum Release {
+	#[default]
+	V0,
+	V1,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -147,7 +155,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn storage_version)]
-	pub(super) type StorageVersion<T: Config> = StorageValue<_, u32, ValueQuery>;
+	pub(super) type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
 
 	#[pallet::event]
 	pub enum Event<T: Config> {}
@@ -162,6 +170,23 @@ pub mod pallet {
 		NoSuchRate,
 		/// Emits when a historic rate was asked for from the future
 		NotInPast,
+	}
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config>(core::marker::PhantomData<T>);
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self(core::marker::PhantomData)
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			StorageVersion::<T>::put(Release::V1);
+		}
 	}
 
 	#[pallet::hooks]
@@ -194,12 +219,12 @@ pub mod pallet {
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
-			if let Some(rate) = Rate::<T>::get(interest_rate_per_sec) {
-				Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-					.ok_or(Error::<T>::DebtCalculationFailed.into())
-			} else {
-				Err(Error::<T>::NoSuchRate.into())
-			}
+			Rate::<T>::get(interest_rate_per_sec)
+				.ok_or(Error::<T>::NoSuchRate.into())
+				.and_then(|rate| {
+					Self::calculate_debt(normalized_debt, rate.accumulated_rate)
+						.ok_or(Error::<T>::DebtCalculationFailed.into())
+				})
 		}
 
 		pub fn get_previous_debt(
@@ -333,24 +358,24 @@ pub mod pallet {
 		pub fn upgrade_to_v1() -> Weight {
 			let mut weight = T::DbWeight::get().reads_writes(1, 1);
 			let version = Pallet::<T>::storage_version();
-			if version < 1 {
+			if version == Release::V0 {
 				weight += migration::v1::migrate::<T>();
 			}
-			StorageVersion::<T>::set(1);
+			StorageVersion::<T>::set(Release::V1);
 			weight
 		}
 
 		pub fn remove_unused_rates() -> Weight {
-			let mut weight = 0;
+			let mut count = 0;
 			Rate::<T>::translate(|_, rate: RateDetailsOf<T>| {
-				weight += T::DbWeight::get().reads_writes(1, 1);
+				count += 1;
 				if rate.reference_count == 0 {
 					None
 				} else {
 					Some(rate)
 				}
 			});
-			weight
+			T::DbWeight::get().reads_writes(count, count)
 		}
 	}
 }

@@ -35,6 +35,11 @@ fn interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option
 }
 
 benchmarks! {
+	// Our logarithmic-time pow implementation is effectively
+	// linear in the number of bits, or log2(n).
+	// This creates a benchmark which takes that number of bits
+	// (written in code as `type::NUM_BITS - val.leading_zeroes()`)
+	// and returns a reasonably-precise weight for the pow.
 	calculate_accumulated_rate {
 		let n in 1..25;
 		let now: Moment = (1 << n) - 1;
