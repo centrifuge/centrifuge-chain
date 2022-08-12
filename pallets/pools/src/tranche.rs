@@ -88,6 +88,11 @@ where
 	///
 	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
 		match (self, next) {
+			// NOTE: If we change this: I.e. allowing multiple residual
+			//       tranches. One MUST be cautious to check ALL places
+			//       were we assume a single residual tranche.
+			//
+			//       E.g. Tranches.non_residual_tranches()
 			(TrancheType::Residual, TrancheType::Residual) => false,
 			(TrancheType::Residual, TrancheType::NonResidual { .. }) => true,
 			(TrancheType::NonResidual { .. }, TrancheType::Residual) => false,
@@ -627,7 +632,7 @@ where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter().rev() {
+		for tranche in self.non_residual_top_slice() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -639,7 +644,7 @@ where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter_mut().rev() {
+		for tranche in self.non_residual_top_slice_mut() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -656,7 +661,7 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().rev().zip(with.into_iter());
+		let iter = self.non_residual_top_slice().iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -676,7 +681,10 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
+		let iter = self
+			.non_residual_top_slice_mut()
+			.iter_mut()
+			.zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -695,7 +703,7 @@ where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter() {
+		for tranche in self.residual_top_slice() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -707,7 +715,7 @@ where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter_mut() {
+		for tranche in self.residual_top_slice_mut() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -724,7 +732,7 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().zip(with.into_iter());
+		let iter = self.residual_top_slice().iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -744,8 +752,10 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
-		let iter = self.tranches.iter_mut().zip(with.into_iter());
+		let iter = self
+			.residual_top_slice_mut()
+			.iter_mut()
+			.zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -826,7 +836,7 @@ where
 	}
 
 	pub fn non_residual_tranches(&self) -> Option<&[Tranche<Balance, Rate, Weight, CurrencyId>]> {
-		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
+		if let Some((_head, tail)) = self.residual_top_slice().split_first() {
 			Some(tail)
 		} else {
 			None
@@ -836,7 +846,7 @@ where
 	pub fn non_residual_tranches_mut(
 		&mut self,
 	) -> Option<&mut [Tranche<Balance, Rate, Weight, CurrencyId>]> {
-		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
+		if let Some((_head, tail)) = self.residual_top_slice_mut().split_first_mut() {
 			Some(tail)
 		} else {
 			None
@@ -844,7 +854,7 @@ where
 	}
 
 	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, CurrencyId>> {
-		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
+		if let Some((head, _tail)) = self.residual_top_slice().split_first() {
 			Some(head)
 		} else {
 			None
@@ -854,7 +864,7 @@ where
 	pub fn residual_tranche_mut(
 		&mut self,
 	) -> Option<&mut Tranche<Balance, Rate, Weight, CurrencyId>> {
-		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
+		if let Some((head, _tail)) = self.residual_top_slice_mut().split_first_mut() {
 			Some(head)
 		} else {
 			None
@@ -880,7 +890,7 @@ where
 	}
 
 	pub fn supplies(&self) -> Result<Vec<Balance>, DispatchError> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
 			.collect::<Option<Vec<_>>>()
@@ -888,7 +898,7 @@ where
 	}
 
 	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| {
@@ -900,14 +910,14 @@ where
 	}
 
 	pub fn outstanding_investments(&self) -> Vec<Balance> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| tranche.outstanding_invest_orders)
 			.collect()
 	}
 
 	pub fn acc_outstanding_investments(&self) -> Result<Balance, DispatchError> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_invest_orders))
@@ -916,14 +926,14 @@ where
 	}
 
 	pub fn outstanding_redemptions(&self) -> Vec<Balance> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| tranche.outstanding_redeem_orders)
 			.collect()
 	}
 
 	pub fn acc_outstanding_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_redeem_orders))
@@ -943,7 +953,7 @@ where
 		// We ensure this by having a higher base weight for redemptions,
 		// increasing the redemption weights by seniority,
 		// and decreasing the investment weight by seniority.
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| {
 				(
@@ -965,14 +975,14 @@ where
 	}
 
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| tranche.min_risk_buffer())
 			.collect()
 	}
 
 	pub fn seniorities(&self) -> Vec<Seniority> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| tranche.seniority)
 			.collect::<Vec<_>>()
@@ -1161,7 +1171,7 @@ where
 		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter().rev() {
+		for tranche in self.non_residual_top_slice() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1175,7 +1185,7 @@ where
 		) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in &mut self.tranches.iter_mut().rev() {
+		for tranche in self.non_residual_top_slice_mut() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1195,7 +1205,7 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().rev().zip(with.into_iter());
+		let iter = self.non_residual_top_slice().iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -1218,7 +1228,10 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
+		let iter = self
+			.non_residual_top_slice_mut()
+			.iter_mut()
+			.zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -1233,7 +1246,7 @@ where
 		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter() {
+		for tranche in self.residual_top_slice() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1247,7 +1260,7 @@ where
 		) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter_mut() {
+		for tranche in self.residual_top_slice_mut() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1267,7 +1280,7 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().zip(with.into_iter());
+		let iter = self.residual_top_slice().iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -1290,7 +1303,10 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter_mut().zip(with.into_iter());
+		let iter = self
+			.residual_top_slice_mut()
+			.iter_mut()
+			.zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -1301,7 +1317,10 @@ where
 	}
 
 	pub fn prices(&self) -> Vec<BalanceRatio> {
-		self.tranches.iter().map(|tranche| tranche.price).collect()
+		self.residual_top_slice()
+			.iter()
+			.map(|tranche| tranche.price)
+			.collect()
 	}
 
 	pub fn supplies_with_fulfillment(
@@ -1331,11 +1350,14 @@ where
 	}
 
 	pub fn supplies(&self) -> Vec<Balance> {
-		self.tranches.iter().map(|tranche| tranche.supply).collect()
+		self.residual_top_slice()
+			.iter()
+			.map(|tranche| tranche.supply)
+			.collect()
 	}
 
 	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.supply))
@@ -1344,11 +1366,14 @@ where
 	}
 
 	pub fn investments(&self) -> Vec<Balance> {
-		self.tranches.iter().map(|tranche| tranche.invest).collect()
+		self.residual_top_slice()
+			.iter()
+			.map(|tranche| tranche.invest)
+			.collect()
 	}
 
 	pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.invest))
@@ -1357,11 +1382,14 @@ where
 	}
 
 	pub fn redemptions(&self) -> Vec<Balance> {
-		self.tranches.iter().map(|tranche| tranche.redeem).collect()
+		self.residual_top_slice()
+			.iter()
+			.map(|tranche| tranche.redeem)
+			.collect()
 	}
 
 	pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.redeem))
@@ -1381,7 +1409,7 @@ where
 		// We ensure this by having a higher base weight for redemptions,
 		// increasing the redemption weights by seniority,
 		// and decreasing the investment weight by seniority.
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| {
 				(
@@ -1403,7 +1431,7 @@ where
 	}
 
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
-		self.tranches
+		self.residual_top_slice()
 			.iter()
 			.map(|tranche| tranche.min_risk_buffer)
 			.collect()
