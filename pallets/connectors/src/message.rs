@@ -169,7 +169,17 @@ impl<
 }
 impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Decode for Message<PoolId, TrancheId> {
 	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-		todo!()
+		let res = Message::Invalid {};
+		let call_type = input.read_byte()?;
+		let mut msg: Message<PoolId, TrancheId> = call_type.into();
+		if msg.call_type() != 1 {
+			return Err("FAIL!".into());
+		}
+		Ok(res)
+	}
+
+	fn skip<I: Input>(input: &mut I) -> Result<(), codec::Error> {
+		todo!("later")
 	}
 }
 
@@ -191,6 +201,7 @@ mod tests {
 		use crate::Domain;
 
 		use super::*;
+		use codec::Decode;
 		use serde::{Deserialize, Serialize};
 
 		// fuzz test for pool_id corpus
