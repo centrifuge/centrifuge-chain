@@ -5756,6 +5756,7 @@ version = "2.0.0"
 dependencies = [
  "chainbridge",
  "common-traits",
+ "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
@@ -5820,6 +5821,7 @@ name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
@@ -5879,6 +5881,7 @@ dependencies = [
 name = "pallet-claims"
 version = "2.0.0"
 dependencies = [
+ "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5950,6 +5953,7 @@ name = "pallet-crowdloan-claim"
 version = "0.1.0"
 dependencies = [
  "common-traits",
+ "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5979,6 +5983,7 @@ name = "pallet-crowdloan-reward"
 version = "0.1.0"
 dependencies = [
  "common-traits",
+ "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6314,6 +6319,7 @@ version = "2.0.0"
 dependencies = [
  "chainbridge",
  "common-traits",
+ "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

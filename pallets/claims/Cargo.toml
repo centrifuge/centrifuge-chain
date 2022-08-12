@@ -29,6 +29,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default
 node-primitives = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false  , branch = "polkadot-v0.9.24" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
+common-types = { path= '../../libs/common-types', default_features = true }
 
 [features]
 default = ['std']

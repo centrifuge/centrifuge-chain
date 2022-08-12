@@ -44,6 +44,7 @@ sp-keyring = { git = "https://github.com/paritytech/substrate", default-features
 pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.24" }
 pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = false }
 hex = { version="0.4.3", default_features = false }
+common-types = { path= '../../libs/common-types', default_features = true }
 
 
 [features]

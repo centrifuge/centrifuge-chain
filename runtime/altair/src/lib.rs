@@ -646,7 +646,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -749,7 +749,7 @@ impl pallet_migration_manager::Config for Runtime {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
@@ -762,7 +762,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
+	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
 	pub const MaxProofLength: u32 = 30;
 }
 
@@ -779,7 +779,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 // Parameterize collator selection pallet
 parameter_types! {
-	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
@@ -934,7 +934,7 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
+	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -972,7 +972,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 // Pools & Loans
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
+	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
 	pub const MaxWriteOffGroups: u32 = 100;
 }
@@ -997,7 +997,7 @@ impl pallet_loans::Config for Runtime {
 }
 
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
 
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
 		0

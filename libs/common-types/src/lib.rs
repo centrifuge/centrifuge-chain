@@ -13,6 +13,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+///! Common-types of the Centrifuge chain.
 use codec::{Decode, Encode};
 use common_traits::Properties;
 use frame_support::scale_info::build::Fields;
@@ -24,8 +25,6 @@ use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::TypeId;
-///! Common-types of the Centrifuge chain.
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -33,6 +32,7 @@ use sp_std::vec::Vec;
 // Pub exports
 pub use tokens::*;
 
+pub mod ids;
 #[cfg(test)]
 mod tests;
 mod tokens;
@@ -489,10 +489,6 @@ impl<T> TypeInfo for TimeProvider<T> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolLocator<PoolId> {
 	pub pool_id: PoolId,
-}
-
-impl<PoolId> TypeId for PoolLocator<PoolId> {
-	const TYPE_ID: [u8; 4] = *b"pool";
 }
 
 // Type that indicates a point in time

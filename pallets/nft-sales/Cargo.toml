@@ -40,7 +40,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 # Local crates
 runtime-common = { path = "../../runtime/common", default-features = true }
-common-types = { path = "../../libs/common-types", default-features = false }
+common-types = { path = "../../libs/common-types", default-features = true}
 
 [features]
 default = ['std']

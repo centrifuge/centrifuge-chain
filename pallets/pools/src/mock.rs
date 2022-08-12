@@ -270,7 +270,7 @@ where
 }
 
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
 	pub const MaxTranches: u32 = 5;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
