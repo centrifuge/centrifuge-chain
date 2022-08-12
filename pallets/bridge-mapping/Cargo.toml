@@ -30,6 +30,7 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", default-f
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { default-features = false, path = "../fees" }
 runtime-common = { path = "../../runtime/common", default-features = false }
+common-types = { path = "../../libs/common-types", default-features = true}
 
 [features]
 default = ['std']

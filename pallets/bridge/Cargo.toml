@@ -41,6 +41,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
 runtime-common = { path = "../../runtime/common", default_features = false }
+common-types = { path = "../../libs/common-types", default-features = true}
 
 [features]
 default = ['std']

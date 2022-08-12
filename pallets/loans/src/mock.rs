@@ -150,7 +150,7 @@ impl orml_tokens::Config for MockRuntime {
 }
 
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
 
 	pub const ChallengeTime: u64 = 0; // disable challenge period
 	pub const MinUpdateDelay: u64 = 0; // no delay
@@ -305,7 +305,7 @@ impl pallet_permissions::Config for MockRuntime {
 }
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
+	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 200;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
