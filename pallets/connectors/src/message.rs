@@ -1,5 +1,5 @@
-use common_traits::Moment;
 use codec::Input;
+use common_traits::Moment;
 use frame_support::BoundedVec;
 use sp_std::vec;
 use sp_std::vec::Vec;
@@ -167,21 +167,23 @@ impl<
 		}
 	}
 }
+
 impl<
-	Domain: Encode + Decode,
-	PoolId: Encode + Decode,
-	TrancheId: Encode + Decode,
-	Balance: Encode + Decode,
-	Rate: Encode + Decode,
-> Decode for Message<Domain, PoolId, TrancheId, Balance, Rate>
-{	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-		let res = Message::Invalid {};
-		let call_type = input.read_byte()?;
-		let mut msg: Message<Domain, PoolId, TrancheId, Balance, Rate> = call_type.into();
-		if msg.call_type() != 1 {
-			return Err("FAIL!".into());
+		Domain: Encode + Decode,
+		PoolId: Encode + Decode,
+		TrancheId: Encode + Decode,
+		Balance: Encode + Decode,
+		Rate: Encode + Decode,
+	> Decode for Message<Domain, PoolId, TrancheId, Balance, Rate>
+{
+	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		match input
+			.read_byte()
+			.map_err(|e| e.chain("Could not decode variant byte for `Message`"))?
+		{
+			0 => Ok(Message::Invalid),
+			_ => Err("unexpected first byte decoding Message".into()),
 		}
-		Ok(res)
 	}
 
 	fn skip<I: Input>(input: &mut I) -> Result<(), codec::Error> {
@@ -192,7 +194,6 @@ impl<
 #[cfg(test)]
 mod tests {
 	use crate::Message;
-	use codec::{Decode, Encode};
 	use hex::FromHex;
 	use sp_runtime::traits::One;
 
@@ -207,16 +208,25 @@ mod tests {
 		use crate::Domain;
 
 		use super::*;
-		use codec::Decode;
-		use serde::{Deserialize, Serialize};
+		use codec::{Decode, Encode};
+		use frame_support::assert_ok;
 
 		// fuzz test for pool_id corpus
 		#[test_fuzz::test_fuzz]
 		fn target(pool_id: u64) {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: pool_id };
+			let msg =
+				Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: pool_id };
 			let encoded = msg.encode();
 			let expected = <[u8; 9]>::from_hex(hex::encode(msg.encode())).expect("Decoding failed");
 			assert_eq!(encoded, expected);
+		}
+
+		#[test]
+		fn test_decode() {
+			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Invalid;
+			let mut enc: &[u8] = &msg.encode();
+			let res = Message::<Domain, PoolId, TrancheId, Balance, Rate>::decode(&mut enc);
+			assert_eq!(Ok(Message::Invalid), res)
 		}
 
 		#[test]
