@@ -46,45 +46,85 @@ to it to verify how it behaves in the entire environment (end-to-end).
     - [*jd*](https://stedolan.github.io/jq/)
 
 1. Start a local [relay chain](https://wiki.polkadot.network/docs/learn-architecture#relay-chain).
-It contains two [validator](https://wiki.polkadot.network/docs/learn-validator) nodes
-    (Alice and Bob):
+   It contains two [validator](https://wiki.polkadot.network/docs/learn-validator) nodes
+   (Alice and Bob):
     ```bash
     ./scripts/init.sh start-relay-chain
     ```
-    After a few seconds you can see the block production of the relay chain using the [polkadot.js (on localhost:9944)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9944#/explorer) client.
+   After a few seconds you can see the block production of the relay chain using the [polkadot.js (on localhost:9944)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9944#/explorer) client.
 
-    *Note: You can stop the relay chain using `./scripts/init.sh stop-relay-chain`*
+   *Note: You can stop the relay chain using `./scripts/init.sh stop-relay-chain`*
 
 2. Start a *Centrifuge Chain* as [parachain](https://wiki.polkadot.network/docs/learn-parachains).
-It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
+   It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     ```bash
     ./scripts/init.sh start-parachain
     ```
-    *Note: the command above will show logs and block until the parachain is stopped.
-    If you had a previous state, you can reset the node using `purge` after the command.*
+   *Note: the command above will show logs and block until the parachain is stopped.
+   If you had a previous state, you can reset the node using `purge` after the command.*
 
-    Similar to the relay chain, you can explore the parachain using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
-    You will see the block production frozen until you connect it to the relay chain.
+   Similar to the relay chain, you can explore the parachain using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
+   You will see the block production frozen until you connect it to the relay chain.
 
-    By default, the initialized parachain will have the id `2000`.
-    If you need more than one parachain or choose other chain specifications,
-    you can set `PARA_ID` or `PARA_CHAIN_SPEC`, example:
+   By default, the initialized parachain will have the id `2000`.
+   If you need more than one parachain or choose other chain specifications,
+   you can set `PARA_ID` or `PARA_CHAIN_SPEC`, example:
     ```bash
     PARA_ID=2001 ./scripts/init.sh start-parachain
     ```
-    The different `PARA_CHAIN_SPEC` values can be found at [`src/command.rs`](src/command.rs) under the `load_spec()` function.
+   The different `PARA_CHAIN_SPEC` values can be found at [`src/command.rs`](src/command.rs) under the `load_spec()` function.
 
 3. Onboard the parachain
-    This step will have the targeted parachain onboarded in the relay chain. The parachain will NOT produce blocks until this step is completed successfully.
+   This step will have the targeted parachain onboarded in the relay chain. The parachain will NOT produce blocks until this step is completed successfully.
     ```bash
     ./scripts/init.sh onboard-parachain
     ```
-    When you have run the command, you should see in the relay-chain dashboard that there is a parachain
-    that will be onboarded in one/two minutes.
-    Once onboarded, block production should start soon after in the parachain.
+   When you have run the command, you should see in the relay-chain dashboard that there is a parachain
+   that will be onboarded in one/two minutes.
+   Once onboarded, block production should start soon after in the parachain.
 
 That's all! The environment is set.
 You can play with it from the parachain client, make transfers, inspect events, etc.
+
+## Cargo tests
+
+To generate a corpus run:
+```shell
+cargo test
+```
+
+## Fuzz tests
+Fuzz testing is a method of software testing that involves feeding the program with pseudo-random data to detect stability and security flaws. Popular, efficient, and up-to-date fuzz testing software based on AFL is called AFLplusplus. AFLplusplus can be used to run code created in the Rust programming language thanks to the [afl.rs](https://rust-fuzz.github.io/book/afl.html) package.
+
+Prerequisites:
+```shell
+cargo install afl
+```
+
+Start fuzzing with running:
+```shell
+cargo test-fuzz
+```
+
+Fuzz a specific target first list the target with:
+```shell
+cargo test-fuzz --list
+```
+
+Fuzz your target by running: `cargo test-fuzz target_name`
+```shell
+cargo test-fuzz message::tests::encode::target
+```
+
+To avoid having crashes misinterpreted as timeouts, please log in as ***root***
+and temporarily modify /proc/sys/kernel/core_pattern, like so and run the following commands
+```shell
+echo core >/proc/sys/kernel/core_pattern
+cd /sys/devices/system/cpu
+echo performance | tee cpu*/cpufreq/scaling_governor
+```
+
+To learn more about fuzzing refer https://github.com/trailofbits/test-fuzz#usage
 
 ## Linting
 
