@@ -7,7 +7,7 @@ use sp_std::vec::Vec;
 use crate::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where
@@ -167,11 +167,17 @@ impl<
 		}
 	}
 }
-impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Decode for Message<PoolId, TrancheId> {
-	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+impl<
+	Domain: Encode + Decode,
+	PoolId: Encode + Decode,
+	TrancheId: Encode + Decode,
+	Balance: Encode + Decode,
+	Rate: Encode + Decode,
+> Decode for Message<Domain, PoolId, TrancheId, Balance, Rate>
+{	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
 		let res = Message::Invalid {};
 		let call_type = input.read_byte()?;
-		let mut msg: Message<PoolId, TrancheId> = call_type.into();
+		let mut msg: Message<Domain, PoolId, TrancheId, Balance, Rate> = call_type.into();
 		if msg.call_type() != 1 {
 			return Err("FAIL!".into());
 		}
@@ -207,7 +213,7 @@ mod tests {
 		// fuzz test for pool_id corpus
 		#[test_fuzz::test_fuzz]
 		fn target(pool_id: u64) {
-			let msg = Message::<PoolId, TrancheId>::AddPool { pool_id };
+			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: pool_id };
 			let encoded = msg.encode();
 			let expected = <[u8; 9]>::from_hex(hex::encode(msg.encode())).expect("Decoding failed");
 			assert_eq!(encoded, expected);
