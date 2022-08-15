@@ -209,7 +209,6 @@ mod tests {
 
 		use super::*;
 		use codec::{Decode, Encode};
-		use frame_support::assert_ok;
 
 		// fuzz test for pool_id corpus
 		#[test_fuzz::test_fuzz]
@@ -217,6 +216,7 @@ mod tests {
 			let msg =
 				Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: pool_id };
 			let encoded = msg.encode();
+			// Todo: Will be replaced by decode
 			let expected = <[u8; 9]>::from_hex(hex::encode(msg.encode())).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
