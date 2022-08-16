@@ -14,7 +14,6 @@
 //! Module provides functionality for different loan types
 use super::*;
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::Zero;
 
 /// different types of loans
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
@@ -45,23 +44,6 @@ where
 			LoanType::CreditLine(cl) => cl.is_valid(),
 			LoanType::CreditLineWithMaturity(clm) => clm.is_valid(now),
 		}
-	}
-}
-
-impl<Rate, Balance> Default for LoanType<Rate, Balance>
-where
-	Rate: Zero,
-	Balance: Zero,
-{
-	fn default() -> Self {
-		Self::BulletLoan(BulletLoan {
-			advance_rate: Zero::zero(),
-			probability_of_default: Zero::zero(),
-			loss_given_default: Zero::zero(),
-			value: Zero::zero(),
-			discount_rate: Zero::zero(),
-			maturity_date: 0,
-		})
 	}
 }
 
