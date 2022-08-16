@@ -15,7 +15,7 @@
 
 ///! Common-types of the Centrifuge chain.
 use codec::{Decode, Encode};
-use common_traits::Properties;
+use common_traits::{AssetProperties, Properties};
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
@@ -25,6 +25,7 @@ use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::Perquintill;
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
