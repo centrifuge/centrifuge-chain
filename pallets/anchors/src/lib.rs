@@ -17,15 +17,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
 use frame_support::{
-	BoundedVec,
 	dispatch::{DispatchError, DispatchResult},
-	RuntimeDebug, StateVersion, storage::child,
+	storage::child,
+	BoundedVec, RuntimeDebug, StateVersion,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
-use sp_runtime::{ArithmeticError, traits::Hash};
+use sp_runtime::{traits::Hash, ArithmeticError};
 use sp_std::vec::Vec;
 
 pub use pallet::*;
@@ -86,7 +86,7 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 
 	// Import various types used to declare pallet in scope.
-		use super::*;
+	use super::*;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
 	// method.
@@ -495,7 +495,8 @@ impl<T: Config> Pallet<T> {
 			// store the root of child trie for the day on chain before eviction. Checks if it
 			// exists before hand to ensure that it doesn't overwrite a root.
 			.map(|(day, key)| {
-				let val: BoundedVec<u8, T::MaxBound> =(child::root(&key, StateVersion::V0)).try_into().unwrap();
+				let val: BoundedVec<u8, T::MaxBound> =
+					(child::root(&key, StateVersion::V0)).try_into().unwrap();
 				if !<EvictedAnchorRoots<T>>::contains_key(day) {
 					<EvictedAnchorRoots<T>>::insert(day, val);
 				}
