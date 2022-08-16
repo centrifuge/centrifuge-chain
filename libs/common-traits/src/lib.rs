@@ -278,3 +278,61 @@ impl<T> PreConditions<T> for Never {
 pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
+
+pub trait InvestmentManager {
+	type Error;
+	type AssetId;
+	type Orders;
+	type OrderId: Copy;
+	type Fulfillment;
+
+	fn orders(asset_id: Self::AssetId) -> Result<(Self::OrderId, Self::Orders), Self::Error>;
+	fn fulfillment(
+		order_id: Self::OrderId,
+		asset_id: Self::AssetId,
+		fulfillment: Self::Fulfillment,
+	) -> Result<(), Self::Error>;
+}
+
+pub trait AssetAccountant<AccountId> {
+	type Error;
+	type AssetId;
+	type AssetInfo;
+	type Amount;
+
+	/// Information about an asset. Must allow to derive
+	/// owner, payment and denomination currency
+	fn info(id: Self::AssetId) -> Result<Self::AssetInfo, Self::Error>;
+
+	/// Increases the existance of
+	fn deposit(
+		buyer: AccountId,
+		id: Self::AssetId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Reduce the existance of an asset
+	fn withdraw(
+		seller: AccountId,
+		id: Self::AssetId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+}
+
+pub trait AssetProperties<AccountId> {
+	type Currency;
+
+	fn owner(&self) -> AccountId;
+	fn denomination_currency(&self) -> Self::Currency;
+	fn payment_currency(&self) -> Self::Currency;
+}
+
+pub trait AssetPricer {
+	type Error;
+	type AssetId;
+	type Price;
+	type Moment;
+
+	fn price(asset: Self::AssetId) -> Result<Self::Price, Self::Error>;
+	fn forecast(asset: Self::AssetId, at: Self::Moment) -> Option<Self::Price>;
+}

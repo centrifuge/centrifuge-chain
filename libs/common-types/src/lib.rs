@@ -498,3 +498,55 @@ pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),
 }
+
+/// A representation of a pool identifier that can be converted to an account address
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct AssetAccount<AssetId> {
+	pub asset_id: AssetId,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct AssetInfo<AccountId, Currency> {
+	pub owner: AccountId,
+	pub denominating_currency: Currency,
+	pub payment_currency: Currency,
+}
+
+impl<AccountId, Currency> AssetProperties<AccountId> for AssetInfo<AccountId, Currency>
+where
+	AccountId: Clone,
+	Currency: Clone,
+{
+	type Currency = Currency;
+
+	fn owner(&self) -> AccountId {
+		self.owner.clone()
+	}
+
+	fn denomination_currency(&self) -> Self::Currency {
+		self.denominating_currency.clone()
+	}
+
+	fn payment_currency(&self) -> Self::Currency {
+		self.payment_currency.clone()
+	}
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct TotalOrder<Balance> {
+	pub invest: Balance,
+	pub redeem: Balance,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Fulfillment {
+	pub invest: Perquintill,
+	pub redeem: Perquintill,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct FulfillmentWithPrice<BalanceRatio> {
+	pub invest: Perquintill,
+	pub redeem: Perquintill,
+	pub price: BalanceRatio,
+}
