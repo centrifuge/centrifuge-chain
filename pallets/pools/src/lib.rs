@@ -589,7 +589,7 @@ pub mod pallet {
 			tranches: Vec<TrancheInput<T::InterestRate>>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
-			metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>>,
+			metadata: Option<Vec<u8>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -801,7 +801,7 @@ pub mod pallet {
 		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
+			metadata: Vec<u8>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(

@@ -83,7 +83,6 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::Hash;
-	use sp_std::vec::Vec;
 
 	// Import various types used to declare pallet in scope.
 	use super::*;
