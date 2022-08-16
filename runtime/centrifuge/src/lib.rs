@@ -767,8 +767,14 @@ impl pallet_fees::Config for Runtime {
 	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
+// Parameterize anchors pallet
+parameter_types! {
+	pub const MaxBound: u32 = 100;
+}
+
 impl pallet_anchors::Config for Runtime {
 	type WeightInfo = ();
+	type MaxBound = MaxBound;
 }
 
 parameter_types! {
