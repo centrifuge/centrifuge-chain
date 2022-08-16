@@ -25,7 +25,7 @@ use crate::test_utils::{
 	initialise_test_pool, mint_nft,
 };
 use common_types::{CurrencyId, PoolId, PoolLocator};
-use frame_support::traits::fungibles::Inspect;
+use frame_support::traits::{fungibles::Inspect, Hooks};
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
@@ -372,6 +372,7 @@ fn test_price_bullet_loan() {
 			));
 			let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100 * 1000);
+			InterestAccrual::on_initialize(0);
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
@@ -432,6 +433,7 @@ fn test_price_credit_line_with_maturity_loan() {
 			));
 			let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100 * 1000);
+			InterestAccrual::on_initialize(0);
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
@@ -550,6 +552,7 @@ macro_rules! test_borrow_loan {
 
 				// borrow 50 first
 				Timestamp::set_timestamp(1 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -573,7 +576,6 @@ macro_rules! test_borrow_loan {
 
 				// accumulated rate is now rate per sec
 				assert_eq!(active_loan.interest_rate_per_sec, rate);
-				assert_eq!(rate_info.last_updated, 1);
 				assert_eq!(active_loan.total_borrowed, 50 * USD);
 				let inverse_rate = rate_info.accumulated_rate.reciprocal().unwrap();
 				let n_debt = inverse_rate.checked_mul_int(borrow_amount).unwrap();
@@ -594,6 +596,7 @@ macro_rules! test_borrow_loan {
 
 				// borrow another 20 after 1000 seconds
 				Timestamp::set_timestamp(1001 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrow_amount = 20 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -628,6 +631,7 @@ macro_rules! test_borrow_loan {
 				// try to borrow more than max_borrow_amount
 				// borrow another 40 after 1000 seconds
 				Timestamp::set_timestamp(2001 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrow_amount = 40 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
@@ -636,6 +640,7 @@ macro_rules! test_borrow_loan {
 				if $maturity_check {
 					let now = loan_type.maturity_date().unwrap() + 1;
 					Timestamp::set_timestamp(now * 1000);
+					InterestAccrual::on_initialize(0);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_err!(res, Error::<MockRuntime>::LoanMaturityDatePassed);
@@ -664,9 +669,10 @@ macro_rules! test_borrow_loan {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational::<u64, u64>(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -744,6 +750,7 @@ macro_rules! test_repay_loan {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -787,6 +794,7 @@ macro_rules! test_repay_loan {
 					.unwrap();
 
 				Timestamp::set_timestamp(1001 * 1000);
+				InterestAccrual::on_initialize(0);
 				assert_eq!(active_loan.total_repaid, 0);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
@@ -796,8 +804,6 @@ macro_rules! test_repay_loan {
 					.expect("PricedLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
-				assert_eq!(rate_info.last_updated, 1001);
-				assert_eq!(active_loan.total_borrowed, 50 * USD);
 				assert_eq!(active_loan.total_repaid, 20 * USD);
 				// pool should have 30 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
@@ -841,6 +847,7 @@ macro_rules! test_repay_loan {
 					.unwrap();
 
 				Timestamp::set_timestamp(2001 * 1000);
+				InterestAccrual::on_initialize(0);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
 
@@ -849,7 +856,6 @@ macro_rules! test_repay_loan {
 					.expect("PricedLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
-				assert_eq!(rate_info.last_updated, 2001);
 				assert_eq!(active_loan.total_borrowed, 50 * USD);
 				assert_eq!(active_loan.total_repaid, 50 * USD);
 				// pool should have 30 less token
@@ -893,6 +899,7 @@ macro_rules! test_repay_loan {
 				let goal_interest = checked_pow(active_loan.interest_rate_per_sec, 3000).unwrap();
 				let goal_debt = goal_interest.checked_mul_int(p_debt).unwrap();
 				Timestamp::set_timestamp(3001 * 1000);
+				InterestAccrual::on_initialize(0);
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
 					.expect("PricedLoanDetails should be present");
 				// Since we don't do a loan operation, we need to invoke
@@ -962,13 +969,10 @@ macro_rules! test_repay_loan {
 				// check loan data
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
-				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
-					.expect("Rate information should be present");
 				match loan.status {
 					LoanStatus::Closed { closed_at: _ } => (),
 					_ => assert!(false, "Loan status should be Closed"),
 				}
-				assert_eq!(rate_info.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero
 				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
 					.unwrap()
@@ -1067,6 +1071,7 @@ macro_rules! test_pool_nav {
 				// pass some time. maybe 200 days
 				let after_200_days = 3600 * 24 * 200;
 				Timestamp::set_timestamp(after_200_days * 1000);
+				InterestAccrual::on_initialize(0);
 				let res = Loans::update_nav_of_pool(pool_id);
 				assert_ok!(res);
 				let (_, nav) = res.unwrap();
@@ -1104,6 +1109,7 @@ macro_rules! test_pool_nav {
 					// pass some time. maybe 500 days
 					let after_500_days = 3600 * 24 * 300;
 					Timestamp::set_timestamp(after_500_days * 1000);
+					InterestAccrual::on_initialize(0);
 
 					// you cannot borrow more than 50 since the debt is more than 50 by now
 					let borrow_amount = 50 * USD;
@@ -1129,12 +1135,12 @@ macro_rules! test_pool_nav {
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 				}
-
 				// let the maturity has passed 2 years + 10 day
 				let after_2_years = (math::seconds_per_year() * 2) + math::seconds_per_day() * 10;
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
 					.expect("PricedLoanDetails should be present");
 				Timestamp::set_timestamp(after_2_years * 1000);
+				InterestAccrual::on_initialize(0);
 				let debt = InterestAccrual::current_debt(
 					active_loan.interest_rate_per_sec,
 					active_loan.normalized_debt,
@@ -1176,9 +1182,10 @@ macro_rules! test_pool_nav {
 					let group = WriteOffGroup {
 						percentage: Rate::saturating_from_rational::<u128, u128>(group.1, 100),
 						overdue_days: group.0,
-						penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-							group.2, 100,
-						),
+						penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+							Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+						)
+						.unwrap(),
 					};
 					let res =
 						Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
@@ -1203,7 +1210,10 @@ macro_rules! test_pool_nav {
 					assert_ok!(res);
 					(
 						Rate::saturating_from_rational(20u64, 100),
-						Rate::saturating_from_rational(3u64, 100),
+						math::penalty_interest_rate_per_sec(Rate::saturating_from_rational(
+							3u64, 100,
+						))
+						.unwrap(),
 					)
 				};
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
@@ -1238,12 +1248,15 @@ macro_rules! test_pool_nav {
 				}
 				.expect("must be a Nav updated event");
 
+				// We need to re-fetch the active loan details to get the newly renormalized debt.
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("Active loan must still exist after a write-off");
 				// updated nav should be (1-20%) outstanding debt
 				let debt = InterestAccrual::current_debt(
 					active_loan.interest_rate_per_sec + penalty,
 					active_loan.normalized_debt,
 				)
-				.unwrap();
+				.expect("Current debt should be valid");
 				let expected_nav = debt - percentage.checked_mul_int(debt).unwrap();
 				assert_eq!(expected_nav, updated_nav);
 				assert_eq!(exact, NAVUpdateType::Exact);
@@ -1330,9 +1343,10 @@ fn test_add_write_off_groups() {
 				let group = WriteOffGroup {
 					percentage: Rate::saturating_from_rational(percentage, 100),
 					overdue_days: 3,
-					penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-						5, 100,
-					),
+					penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+						Rate::saturating_from_rational::<u64, u64>(5, 100),
+					)
+					.unwrap(),
 				};
 				let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 				assert_ok!(res);
@@ -1357,7 +1371,10 @@ fn test_add_write_off_groups() {
 			let group = WriteOffGroup {
 				percentage: Rate::saturating_from_rational(110, 100),
 				overdue_days: 3,
-				penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(5, 100),
+				penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+					Rate::saturating_from_rational::<u64, u64>(5, 100),
+				)
+				.unwrap(),
 			};
 			let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroup);
@@ -1386,6 +1403,7 @@ macro_rules! test_write_off_maturity_loan {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -1394,12 +1412,14 @@ macro_rules! test_write_off_maturity_loan {
 				// anyone can trigger the call
 				let caller = 100;
 				Timestamp::set_timestamp(math::seconds_per_year() * 1000);
+				InterestAccrual::on_initialize(0);
 				let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
 				assert_err!(res, Error::<MockRuntime>::LoanHealthy);
 
 				// let the maturity date passes + 1 day
 				let t = math::seconds_per_year() * 2 + math::seconds_per_day();
 				Timestamp::set_timestamp(t * 1000);
+				InterestAccrual::on_initialize(0);
 				let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
 				assert_err!(res, Error::<MockRuntime>::NoValidWriteOffGroup);
 
@@ -1419,9 +1439,10 @@ macro_rules! test_write_off_maturity_loan {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -1430,6 +1451,7 @@ macro_rules! test_write_off_maturity_loan {
 				// same since write off group is missing
 				let t = math::seconds_per_year() * 2 + math::seconds_per_day();
 				Timestamp::set_timestamp(t * 1000);
+				InterestAccrual::on_initialize(0);
 				let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
 				assert_err!(res, Error::<MockRuntime>::NoValidWriteOffGroup);
 
@@ -1438,6 +1460,7 @@ macro_rules! test_write_off_maturity_loan {
 					// move to more than 3 days
 					let t = math::seconds_per_year() * 2 + math::seconds_per_day() * days_index.0;
 					Timestamp::set_timestamp(t * 1000);
+					InterestAccrual::on_initialize(0);
 					let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
 					assert_ok!(res);
 
@@ -1500,6 +1523,7 @@ macro_rules! test_admin_write_off_loan_type {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -1524,10 +1548,10 @@ macro_rules! test_admin_write_off_loan_type {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1 as u64, 100u64),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2 as u64,
-								100u64,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -1539,11 +1563,15 @@ macro_rules! test_admin_write_off_loan_type {
 					math::seconds_per_year() * 2 + math::seconds_per_day() * 3,
 				] {
 					Timestamp::set_timestamp(time * 1000);
+					InterestAccrual::on_initialize(0);
 					for index in vec![0, 3, 2, 1, 0] {
 						let percentage =
 							Rate::saturating_from_rational(groups.clone()[index].0, 100u64);
-						let penalty_interest_rate_per_sec =
-							Rate::saturating_from_rational(groups.clone()[index].2, 100u64);
+						let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(
+							Rate::saturating_from_rational(groups.clone()[index].2, 100u64),
+						)
+						.unwrap();
+
 						let res = Loans::admin_write_off(
 							Origin::signed(risk_admin),
 							pool_id,
@@ -1623,6 +1651,7 @@ macro_rules! test_close_written_off_loan_type {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -1631,6 +1660,7 @@ macro_rules! test_close_written_off_loan_type {
 				Timestamp::set_timestamp(
 					(math::seconds_per_year() * 2 + 5 * math::seconds_per_day()) * 1000,
 				);
+				InterestAccrual::on_initialize(0);
 				let res = Loans::close(Origin::signed(borrower), pool_id, loan_id);
 				assert_err!(res, Error::<MockRuntime>::LoanNotRepaid);
 
@@ -1656,9 +1686,10 @@ macro_rules! test_close_written_off_loan_type {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -1688,6 +1719,7 @@ macro_rules! test_close_written_off_loan_type {
 					Timestamp::set_timestamp(
 						(math::seconds_per_year() * 2 + 120 * math::seconds_per_day()) * 1000,
 					);
+					InterestAccrual::on_initialize(0);
 					let res = Loans::write_off(Origin::signed(200), pool_id, loan_id);
 					assert_ok!(res);
 				} else {
@@ -1763,6 +1795,7 @@ macro_rules! repay_too_early {
 			.build()
 			.execute_with(|| {
 				Timestamp::set_timestamp(1 * 1000);
+				InterestAccrual::on_initialize(0);
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
@@ -1796,6 +1829,7 @@ macro_rules! repay_too_early {
 
 				// after origination date
 				Timestamp::set_timestamp(2 * 1000);
+				InterestAccrual::on_initialize(0);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 
@@ -1864,9 +1898,10 @@ macro_rules! write_off_overflow {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -1875,7 +1910,7 @@ macro_rules! write_off_overflow {
 				// same since write off group is missing
 				let t = math::seconds_per_year() * 2 + math::seconds_per_day() * 1337;
 				Timestamp::set_timestamp(t * 1000);
-
+				InterestAccrual::on_initialize(0);
 				let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
 				assert_err!(res, ArithmeticError::Overflow)
 			})

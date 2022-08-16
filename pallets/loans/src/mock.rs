@@ -283,6 +283,7 @@ impl pallet_interest_accrual::Config for MockRuntime {
 	type Balance = Balance;
 	type InterestRate = Rate;
 	type Time = Timestamp;
+	type Weights = ();
 }
 
 parameter_types! {

@@ -65,22 +65,48 @@ use sp_runtime::{
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
+pub mod migration;
+pub mod weights;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+
+#[cfg(test)]
+mod mock;
+
 pub use pallet::*;
 
 // Type aliases
-type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate, Moment>;
+type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate>;
+type RateDetailsV0Of<T> = RateDetailsV0<<T as Config>::InterestRate, Moment>;
 
 // Storage types
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct RateDetails<InterestRate, Moment> {
+pub struct RateDetailsV0<InterestRate, Moment> {
 	pub accumulated_rate: InterestRate,
 	pub last_updated: Moment,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct RateDetails<InterestRate> {
+	pub accumulated_rate: InterestRate,
+	pub reference_count: u32,
+}
+
+#[derive(Encode, Decode, Default, TypeInfo, PartialEq)]
+#[repr(u32)]
+pub enum Release {
+	#[default]
+	V0,
+	V1,
 }
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 
 	#[pallet::pallet]
@@ -114,12 +140,22 @@ pub mod pallet {
 			+ FixedPointNumber<Inner = Self::Balance>;
 
 		type Time: UnixTime;
+
+		type Weights: WeightInfo;
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_rate)]
 	pub(super) type Rate<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InterestRate, RateDetailsOf<T>, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn last_updated)]
+	pub(super) type LastUpdated<T: Config> = StorageValue<_, Moment, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn storage_version)]
+	pub(super) type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
 
 	#[pallet::event]
 	pub enum Event<T: Config> {}
@@ -132,43 +168,63 @@ pub mod pallet {
 		DebtAdjustmentFailed,
 		/// Emits when the interest rate was not used
 		NoSuchRate,
+		/// Emits when a historic rate was asked for from the future
+		NotInPast,
 	}
 
-	// TODO: add permissionless extrinsic to update any rate
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config>(core::marker::PhantomData<T>);
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self(core::marker::PhantomData)
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			StorageVersion::<T>::put(Release::V1);
+		}
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(_: T::BlockNumber) -> Weight {
+			let mut count = 0;
+			let then = LastUpdated::<T>::get();
+			let now = Self::now();
+			LastUpdated::<T>::set(Self::now());
+			let delta = Self::now() - then;
+			let bits = Moment::BITS - delta.leading_zeros();
+			Rate::<T>::translate(|per_sec, mut rate: RateDetailsOf<T>| {
+				count += 1;
+				Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then, now)
+					.ok()
+					.map(|new_rate| {
+						rate.accumulated_rate = new_rate;
+						rate
+					})
+			});
+			T::DbWeight::get().reads_writes(2, 1)
+				+ count
+					* (T::DbWeight::get().reads_writes(1, 1)
+						+ T::Weights::calculate_accumulated_rate(bits))
+		}
+	}
 
 	impl<T: Config> Pallet<T> {
 		pub fn get_current_debt(
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
-			Rate::<T>::try_mutate(
-				interest_rate_per_sec,
-				|rate_details| -> Result<T::Balance, DispatchError> {
-					let rate = if let Some(rate) = rate_details {
-						let new_accumulated_rate = Self::calculate_accumulated_rate(
-							interest_rate_per_sec,
-							rate.accumulated_rate,
-							rate.last_updated,
-						)
-						.map_err(|_| Error::<T>::DebtCalculationFailed)?;
-
-						rate.accumulated_rate = new_accumulated_rate;
-						rate.last_updated = Self::now();
-
-						rate
-					} else {
-						*rate_details = Some(RateDetails {
-							accumulated_rate: One::one(),
-							last_updated: Self::now(),
-						});
-						rate_details.as_mut().expect("RateDetails now Some. qed.")
-					};
-
-					let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-						.ok_or(Error::<T>::DebtCalculationFailed)?;
-					Ok(debt)
-				},
-			)
+			Rate::<T>::get(interest_rate_per_sec)
+				.ok_or(Error::<T>::NoSuchRate.into())
+				.and_then(|rate| {
+					Self::calculate_debt(normalized_debt, rate.accumulated_rate)
+						.ok_or(Error::<T>::DebtCalculationFailed.into())
+				})
 		}
 
 		pub fn get_previous_debt(
@@ -176,38 +232,23 @@ pub mod pallet {
 			normalized_debt: T::Balance,
 			when: Moment,
 		) -> Result<T::Balance, DispatchError> {
-			Rate::<T>::try_mutate(
-				interest_rate_per_sec,
-				|rate_details| -> Result<T::Balance, DispatchError> {
-					let rate = if let Some(rate) = rate_details {
-						let new_accumulated_rate = Self::calculate_accumulated_rate(
-							interest_rate_per_sec,
-							rate.accumulated_rate,
-							rate.last_updated,
-						)
-						.map_err(|_| Error::<T>::DebtCalculationFailed)?;
-
-						rate.accumulated_rate = new_accumulated_rate;
-						rate.last_updated = Self::now();
-
-						rate
-					} else {
-						*rate_details = Some(RateDetails {
-							accumulated_rate: One::one(),
-							last_updated: Self::now(),
-						});
-						rate_details.as_mut().expect("RateDetails now Some. qed.")
-					};
-
-					let age = Self::now().checked_sub(when).unwrap();
-					let discount = checked_pow(interest_rate_per_sec, age as usize).unwrap();
-					let previous_rate = rate.accumulated_rate.checked_div(&discount).unwrap();
-
-					let debt = Self::calculate_debt(normalized_debt, previous_rate)
-						.ok_or(Error::<T>::DebtCalculationFailed)?;
-					Ok(debt)
-				},
-			)
+			if let Some(rate) = Rate::<T>::get(interest_rate_per_sec) {
+				let now = LastUpdated::<T>::get();
+				if when > now {
+					return Err(Error::<T>::NotInPast.into());
+				}
+				let delta = now - when;
+				let rate_adjustment = checked_pow(interest_rate_per_sec, delta as usize)
+					.ok_or(ArithmeticError::Overflow)?;
+				let past_rate = rate
+					.accumulated_rate
+					.checked_div(&rate_adjustment)
+					.ok_or(ArithmeticError::Underflow)?;
+				Self::calculate_debt(normalized_debt, past_rate)
+					.ok_or(Error::<T>::DebtCalculationFailed.into())
+			} else {
+				Err(Error::<T>::NoSuchRate.into())
+			}
 		}
 
 		pub fn do_adjust_normalized_debt(
@@ -236,6 +277,27 @@ pub mod pallet {
 			Ok(new_normalized_debt)
 		}
 
+		pub fn do_renormalize_debt(
+			old_interest_rate: T::InterestRate,
+			new_interest_rate: T::InterestRate,
+			normalized_debt: T::Balance,
+		) -> Result<T::Balance, DispatchError> {
+			let old_rate =
+				Rate::<T>::try_get(old_interest_rate).map_err(|_| Error::<T>::NoSuchRate)?;
+			let new_rate =
+				Rate::<T>::try_get(new_interest_rate).map_err(|_| Error::<T>::NoSuchRate)?;
+
+			let debt = Self::calculate_debt(normalized_debt, old_rate.accumulated_rate)
+				.ok_or(Error::<T>::DebtCalculationFailed)?;
+			let new_normalized_debt = new_rate
+				.accumulated_rate
+				.reciprocal()
+				.and_then(|inv_rate| inv_rate.checked_mul_int(debt))
+				.ok_or(Error::<T>::DebtAdjustmentFailed)?;
+
+			Ok(new_normalized_debt)
+		}
+
 		/// Calculates the debt using debt = normalized_debt * accumulated_rate
 		fn calculate_debt(
 			normalized_debt: T::Balance,
@@ -244,24 +306,76 @@ pub mod pallet {
 			accumulated_rate.checked_mul_int(normalized_debt)
 		}
 
-		fn calculate_accumulated_rate<Rate: FixedPointNumber>(
+		pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 			interest_rate_per_sec: Rate,
 			accumulated_rate: Rate,
 			last_updated: Moment,
+			now: Moment,
 		) -> Result<Rate, DispatchError> {
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
-			let time_difference_secs = Self::now()
+			let time_difference_secs = now
 				.checked_sub(last_updated)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
-				.ok_or(ArithmeticError::Overflow)?
-				.checked_mul(&accumulated_rate)
-				.ok_or(ArithmeticError::Overflow.into())
+			Ok(
+				checked_pow(interest_rate_per_sec, time_difference_secs as usize)
+					.and_then(|new_rate| new_rate.checked_mul(&accumulated_rate))
+					.ok_or(ArithmeticError::Overflow)?,
+			)
 		}
 
-		fn now() -> Moment {
+		pub fn now() -> Moment {
 			T::Time::now().as_secs()
+		}
+
+		pub fn reference_interest_rate(interest_rate_per_sec: T::InterestRate) {
+			Rate::<T>::mutate(interest_rate_per_sec, |rate| {
+				if let Some(rate) = rate {
+					rate.reference_count += 1;
+				} else {
+					*rate = Some(RateDetailsOf::<T> {
+						accumulated_rate: One::one(),
+						reference_count: 1,
+					});
+				}
+			})
+		}
+
+		pub fn unreference_interest_rate(interest_rate_per_sec: T::InterestRate) -> DispatchResult {
+			Rate::<T>::try_mutate(interest_rate_per_sec, |maybe_rate| {
+				if let Some(rate) = maybe_rate {
+					rate.reference_count -= 1;
+					if rate.reference_count == 0 {
+						*maybe_rate = None;
+					}
+					Ok(())
+				} else {
+					Err(Error::<T>::NoSuchRate.into())
+				}
+			})
+		}
+
+		pub fn upgrade_to_v1() -> Weight {
+			let mut weight = T::DbWeight::get().reads_writes(1, 1);
+			let version = Pallet::<T>::storage_version();
+			if version == Release::V0 {
+				weight += migration::v1::migrate::<T>();
+			}
+			StorageVersion::<T>::set(Release::V1);
+			weight
+		}
+
+		pub fn remove_unused_rates() -> Weight {
+			let mut count = 0;
+			Rate::<T>::translate(|_, rate: RateDetailsOf<T>| {
+				count += 1;
+				if rate.reference_count == 0 {
+					None
+				} else {
+					Some(rate)
+				}
+			});
+			T::DbWeight::get().reads_writes(count, count)
 		}
 	}
 }
@@ -290,5 +404,21 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 		adjustment: Adjustment<T::Balance>,
 	) -> Result<Self::NormalizedDebt, DispatchError> {
 		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_sec, normalized_debt, adjustment)
+	}
+
+	fn renormalize_debt(
+		old_interest_rate: T::InterestRate,
+		new_interest_rate: T::InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+	) -> Result<Self::NormalizedDebt, DispatchError> {
+		Pallet::<T>::do_renormalize_debt(old_interest_rate, new_interest_rate, normalized_debt)
+	}
+
+	fn reference_rate(interest_rate_per_sec: T::InterestRate) {
+		Pallet::<T>::reference_interest_rate(interest_rate_per_sec)
+	}
+
+	fn unreference_rate(interest_rate_per_sec: T::InterestRate) -> Result<(), DispatchError> {
+		Pallet::<T>::unreference_interest_rate(interest_rate_per_sec)
 	}
 }
