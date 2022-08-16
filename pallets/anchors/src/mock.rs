@@ -134,8 +134,13 @@ impl pallet_fees::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxBound: u32 = 100;
+}
+
 impl Config for Test {
 	type WeightInfo = ();
+	type MaxBound = MaxBound;
 }
 
 impl Test {
