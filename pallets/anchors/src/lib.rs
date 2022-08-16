@@ -18,6 +18,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
+	parameter_types,
 	storage::child,
 	BoundedVec, RuntimeDebug, StateVersion,
 };
@@ -100,7 +101,9 @@ pub mod pallet {
 	{
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
-		type MaxBound: MaxBound;
+
+		#[pallet::constant]
+		type MaxBound: Get<u32>;
 	}
 
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
@@ -308,7 +311,7 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Underflow)?;
 
 			let fee = base_fee
-				.checked_mul(&pallet_fees::BalanceOf::<T>::from(multiplier))
+				.checked_mul(&pallet_fees::BalanceOf::<T>::from(multiplier as u8))
 				.ok_or(ArithmeticError::Overflow)?;
 
 			// pay state rent to block author
@@ -402,10 +405,6 @@ pub mod pallet {
 	}
 }
 
-parameter_types! {
-	pub const MaxBound: u32 = 100;
-}
-
 impl<T: Config> Pallet<T> {
 	/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
 	/// `expiration_block` < `current_block_number`.
@@ -479,7 +478,7 @@ impl<T: Config> Pallet<T> {
 					.checked_add(expiration_horizon)
 					.ok_or(ArithmeticError::Overflow)
 			})
-			.and_then(|put_into_bucket| Ok(T::BlockNumber::from(put_into_bucket)))
+			.and_then(|put_into_bucket| Ok(T::BlockNumber::from(put_into_bucket as u8)))
 			.or_else(|res| Err(DispatchError::Arithmetic(res)))
 	}
 
