@@ -95,12 +95,17 @@ pub struct RateDetails<InterestRate> {
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, Default, TypeInfo, PartialEq)]
+#[derive(Encode, Decode, TypeInfo, PartialEq)]
 #[repr(u32)]
 pub enum Release {
-	#[default]
 	V0,
 	V1,
+}
+
+impl Default for Release {
+	fn default() -> Self {
+		Self::V0
+	}
 }
 
 #[frame_support::pallet]
