@@ -129,7 +129,7 @@ pub mod pallet {
 
 impl<T: Config> fees::Fees for Pallet<T> {
 	type AccountId = T::AccountId;
-	type Currency = T::Currency;
+	type Balance = BalanceOf<T>;
 
 	fn fee_value(key: FeeKey) -> BalanceOf<T> {
 		<Fees<T>>::get(key).unwrap_or(BalanceOf::<T>::default())
