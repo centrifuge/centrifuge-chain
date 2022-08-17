@@ -785,6 +785,7 @@ impl pallet_treasury::Config for Runtime {
 // our pallets
 impl pallet_fees::Config for Runtime {
 	type Currency = Tokens;
+	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;

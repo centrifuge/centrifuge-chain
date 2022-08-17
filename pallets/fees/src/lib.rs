@@ -10,7 +10,7 @@
 use common_traits::fees::{self, Fee, FeeKey};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
+	traits::{Currency, EnsureOrigin, ExistenceRequirement, OnUnbalanced, WithdrawReasons},
 };
 use frame_system::ensure_root;
 
@@ -30,6 +30,10 @@ pub use weights::*;
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+pub type ImbalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::NegativeImbalance;
+
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
@@ -48,6 +52,9 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
 		/// The currency mechanism.
 		type Currency: frame_support::traits::Currency<Self::AccountId>;
+
+		/// The treasury destination
+		type Treasury: OnUnbalanced<ImbalanceOf<Self>>;
 
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -140,7 +147,9 @@ impl<T: Config> fees::Fees for Pallet<T> {
 	}
 
 	fn fee_to_treasury(from: &Self::AccountId, fee: Fee<BalanceOf<T>>) -> DispatchResult {
-		todo!()
+		let amount = Self::withdraw_fee(from, fee)?;
+		T::Treasury::on_unbalanced(amount);
+		Ok(())
 	}
 }
 
@@ -148,7 +157,7 @@ impl<T: Config> Pallet<T> {
 	fn withdraw_fee(
 		from: &T::AccountId,
 		fee: Fee<BalanceOf<T>>,
-	) -> Result<<T::Currency as Currency<T::AccountId>>::NegativeImbalance, DispatchError> {
+	) -> Result<ImbalanceOf<T>, DispatchError> {
 		let balance = match fee {
 			Fee::Balance(balance) => balance,
 			Fee::Key(key) => <Self as fees::Fees>::fee_value(key),

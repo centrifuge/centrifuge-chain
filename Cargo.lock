@@ -6068,6 +6068,7 @@ dependencies = [
  "frame-system",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-treasury",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
