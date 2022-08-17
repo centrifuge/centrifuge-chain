@@ -540,12 +540,6 @@ pub struct TotalOrder<Balance> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Fulfillment {
-	pub invest: Perquintill,
-	pub redeem: Perquintill,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct FulfillmentWithPrice<BalanceRatio> {
 	pub invest: Perquintill,
 	pub redeem: Perquintill,

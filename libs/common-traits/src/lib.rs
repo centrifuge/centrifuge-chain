@@ -297,7 +297,7 @@ pub trait InvestmentManager {
 pub trait AssetAccountant<AccountId> {
 	type Error;
 	type AssetId;
-	type AssetInfo;
+	type AssetInfo: AssetProperties<AccountId>;
 	type Amount;
 
 	/// Information about an asset. Must allow to derive
@@ -325,14 +325,4 @@ pub trait AssetProperties<AccountId> {
 	fn owner(&self) -> AccountId;
 	fn denomination_currency(&self) -> Self::Currency;
 	fn payment_currency(&self) -> Self::Currency;
-}
-
-pub trait AssetPricer {
-	type Error;
-	type AssetId;
-	type Price;
-	type Moment;
-
-	fn price(asset: Self::AssetId) -> Result<Self::Price, Self::Error>;
-	fn forecast(asset: Self::AssetId, at: Self::Moment) -> Option<Self::Price>;
 }
