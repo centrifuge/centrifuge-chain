@@ -116,8 +116,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Fee associated to given key not found
-		FeeNotFoundForKey,
 		/// Invalid author of blocked fetched
 		InvalidAuthor,
 	}
