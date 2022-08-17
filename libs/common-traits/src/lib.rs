@@ -326,3 +326,19 @@ pub trait AssetProperties<AccountId> {
 	fn denomination_currency(&self) -> Self::Currency;
 	fn payment_currency(&self) -> Self::Currency;
 }
+
+impl<AccountId, T: AssetProperties<AccountId>> AssetProperties<AccountId> for &T {
+	type Currency = T::Currency;
+
+	fn owner(&self) -> AccountId {
+		(*self).owner()
+	}
+
+	fn denomination_currency(&self) -> Self::Currency {
+		(*self).denomination_currency()
+	}
+
+	fn payment_currency(&self) -> Self::Currency {
+		(*self).payment_currency()
+	}
+}
