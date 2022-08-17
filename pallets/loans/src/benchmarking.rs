@@ -466,7 +466,6 @@ benchmarks! {
 			let loan_id = (idx + 1).into();
 			let (loan_owner, asset) = create_asset::<T>(loan_id);
 			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			// (Remove this comment) Maybe an issue here.
 			activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner);
 		}
 		let loan_owner = borrower::<T>();

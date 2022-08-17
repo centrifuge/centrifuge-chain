@@ -219,10 +219,10 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// calculate new normalized debt without amount
-				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+				let normalized_debt = T::InterestAccrual::renormalize_debt(
+					active_loan.interest_rate_per_sec,
 					interest_rate_per_sec,
 					active_loan.normalized_debt,
-					Adjustment::Increase(Zero::zero()),
 				)?;
 
 				active_loan.loan_type = loan_type;
