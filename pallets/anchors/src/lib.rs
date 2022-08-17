@@ -17,7 +17,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::fees::{Fee, FeeKey, Fees};
+use common_traits::fees::{Fee, Fees};
+use common_types::FeeKey;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
@@ -99,7 +100,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_timestamp::Config {
 		/// Entity used to pay fees
-		type Fees: Fees<AccountId = Self::AccountId>;
+		type Fees: Fees<AccountId = Self::AccountId, FeeKey>;
 
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;

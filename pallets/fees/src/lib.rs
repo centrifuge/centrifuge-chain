@@ -7,12 +7,14 @@
 //! it offers some utilities to transfer the fees to the author, the treasury or burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common_traits::fees::{self, Fee, FeeKey};
+use codec::{EncodeLike, FullCodec};
+use common_traits::fees::{self, Fee};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, OnUnbalanced, WithdrawReasons},
 };
 use frame_system::ensure_root;
+use scale_info::TypeInfo;
 
 pub use pallet::*;
 #[cfg(test)]
@@ -50,8 +52,17 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
+		/// Key type used for storing and identifying fees.
+		type FeeKey: FullCodec
+			+ TypeInfo
+			+ MaybeSerializeDeserialize
+			+ sp_std::fmt::Debug
+			+ Clone
+			+ Copy
+			+ PartialEq;
+
 		/// The currency mechanism.
-		type Currency: frame_support::traits::Currency<Self::AccountId>;
+		type Currency: Currency<Self::AccountId>;
 
 		/// The treasury destination
 		type Treasury: OnUnbalanced<ImbalanceOf<Self>>;
@@ -69,7 +80,7 @@ pub mod pallet {
 	// The genesis config type.
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_fees: Vec<(FeeKey, BalanceOf<T>)>,
+		pub initial_fees: Vec<(T::FeeKey, BalanceOf<T>)>,
 	}
 
 	// The default value for the genesis config type.
@@ -95,12 +106,12 @@ pub mod pallet {
 	/// Stores the Fees associated with a Hash identifier
 	#[pallet::storage]
 	#[pallet::getter(fn fee)]
-	pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, FeeKey, BalanceOf<T>>;
+	pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, T::FeeKey, BalanceOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		FeeChanged(FeeKey, BalanceOf<T>),
+		FeeChanged(T::FeeKey, BalanceOf<T>),
 	}
 
 	#[pallet::error]
@@ -115,7 +126,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_fee())]
-		pub fn set_fee(origin: OriginFor<T>, key: FeeKey, fee: BalanceOf<T>) -> DispatchResult {
+		pub fn set_fee(origin: OriginFor<T>, key: T::FeeKey, fee: BalanceOf<T>) -> DispatchResult {
 			T::FeeChangeOrigin::try_origin(origin)
 				.map(|_| ())
 				.or_else(ensure_root)?;
@@ -127,26 +138,26 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> fees::Fees for Pallet<T> {
+impl<T: Config, K: EncodeLike<T::FeeKey>> fees::Fees<K> for Pallet<T> {
 	type AccountId = T::AccountId;
 	type Balance = BalanceOf<T>;
 
-	fn fee_value(key: FeeKey) -> BalanceOf<T> {
+	fn fee_value(key: K) -> BalanceOf<T> {
 		<Fees<T>>::get(key).unwrap_or(BalanceOf::<T>::default())
 	}
 
-	fn fee_to_author(from: &Self::AccountId, fee: Fee<BalanceOf<T>>) -> DispatchResult {
+	fn fee_to_author(from: &Self::AccountId, fee: Fee<BalanceOf<T>, K>) -> DispatchResult {
 		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
 		let balance = Self::withdraw_fee(from, fee)?;
 		T::Currency::resolve_creating(&author, balance);
 		Ok(())
 	}
 
-	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>>) -> DispatchResult {
+	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>, K>) -> DispatchResult {
 		Self::withdraw_fee(from, fee).map(|_| ())
 	}
 
-	fn fee_to_treasury(from: &Self::AccountId, fee: Fee<BalanceOf<T>>) -> DispatchResult {
+	fn fee_to_treasury(from: &Self::AccountId, fee: Fee<BalanceOf<T>, K>) -> DispatchResult {
 		let amount = Self::withdraw_fee(from, fee)?;
 		T::Treasury::on_unbalanced(amount);
 		Ok(())
@@ -154,13 +165,13 @@ impl<T: Config> fees::Fees for Pallet<T> {
 }
 
 impl<T: Config> Pallet<T> {
-	fn withdraw_fee(
+	fn withdraw_fee<K: EncodeLike<T::FeeKey>>(
 		from: &T::AccountId,
-		fee: Fee<BalanceOf<T>>,
+		fee: Fee<BalanceOf<T>, K>,
 	) -> Result<ImbalanceOf<T>, DispatchError> {
 		let balance = match fee {
 			Fee::Balance(balance) => balance,
-			Fee::Key(key) => <Self as fees::Fees>::fee_value(key),
+			Fee::Key(key) => <Self as fees::Fees<K>>::fee_value(key),
 		};
 
 		T::Currency::withdraw(

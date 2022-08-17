@@ -52,7 +52,7 @@ use common_traits::Permissions as PermissionsT;
 use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
 pub use common_types::CurrencyId;
 use common_types::{
-	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
 };
 use pallet_anchors::AnchorData;
@@ -784,6 +784,7 @@ impl pallet_treasury::Config for Runtime {
 
 // our pallets
 impl pallet_fees::Config for Runtime {
+	type FeeKey = FeeKey;
 	type Currency = Tokens;
 	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;

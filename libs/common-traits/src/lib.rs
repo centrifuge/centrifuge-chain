@@ -298,25 +298,11 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 }
 
 pub mod fees {
-	use codec::{Decode, Encode};
 	use frame_support::dispatch::DispatchResult;
 	use frame_support::traits::tokens::Balance;
-	use frame_support::RuntimeDebug;
-	use scale_info::TypeInfo;
-
-	#[cfg(feature = "std")]
-	use serde::{Deserialize, Serialize};
-
-	/// Different stored fees keys
-	#[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub enum FeeKey {
-		CommitAnchor,
-		// Others keys used go here
-	}
 
 	/// A way to identify a fee value.
-	pub enum Fee<Balance> {
+	pub enum Fee<Balance, FeeKey> {
 		/// The fee value itself.
 		Balance(Balance),
 
@@ -325,24 +311,24 @@ pub mod fees {
 	}
 
 	/// A trait that used to deal with fees
-	pub trait Fees {
+	pub trait Fees<K> {
 		type AccountId;
 		type Balance: Balance;
 
 		/// Get the fee balance for a fee key
-		fn fee_value(fee: FeeKey) -> Self::Balance;
+		fn fee_value(key: K) -> Self::Balance;
 
 		/// Pay an amount of fee to the block author
 		/// If the `from` account has not enough balance or the author is invalid the fees are not
 		/// paid.
-		fn fee_to_author(from: &Self::AccountId, fee: Fee<Self::Balance>) -> DispatchResult;
+		fn fee_to_author(from: &Self::AccountId, fee: Fee<Self::Balance, K>) -> DispatchResult;
 
 		/// Burn an amount of fee
 		/// If the `from` account has not enough balance the fees are not paid.
-		fn fee_to_burn(from: &Self::AccountId, fee: Fee<Self::Balance>) -> DispatchResult;
+		fn fee_to_burn(from: &Self::AccountId, fee: Fee<Self::Balance, K>) -> DispatchResult;
 
 		/// Send an amount of fee to the treasury
 		/// If the `from` account has not enough balance the fees are not paid.
-		fn fee_to_treasury(from: &Self::AccountId, fee: Fee<Self::Balance>) -> DispatchResult;
+		fn fee_to_treasury(from: &Self::AccountId, fee: Fee<Self::Balance, K>) -> DispatchResult;
 	}
 }

@@ -55,7 +55,7 @@ use xcm_executor::XcmExecutor;
 use common_traits::PoolUpdateGuard;
 pub use common_types::CurrencyId;
 use common_types::{
-	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider,
 };
 
@@ -713,6 +713,7 @@ impl pallet_uniques::Config for Runtime {
 
 // our pallets
 impl pallet_fees::Config for Runtime {
+	type FeeKey = FeeKey;
 	type Currency = Balances;
 	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
