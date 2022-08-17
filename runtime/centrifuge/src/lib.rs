@@ -768,6 +768,7 @@ impl pallet_fees::Config for Runtime {
 }
 
 impl pallet_anchors::Config for Runtime {
+	type Fees = pallet_fees::Pallet<Runtime>;
 	type WeightInfo = ();
 }
 

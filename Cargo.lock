@@ -1017,7 +1017,7 @@ dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
  "clap",
- "common-types",
+ "common-traits",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
  "cumulus-client-consensus-common",
@@ -5561,12 +5561,11 @@ dependencies = [
 name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
- "common-types",
+ "common-traits",
  "frame-support",
  "frame-system",
  "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
  "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6063,7 +6062,7 @@ dependencies = [
 name = "pallet-fees"
 version = "2.0.0"
 dependencies = [
- "common-types",
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6332,7 +6331,6 @@ dependencies = [
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",

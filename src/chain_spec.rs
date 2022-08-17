@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use common_types::FeeKey;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
 use node_primitives::{AccountId, Signature};
@@ -24,6 +23,7 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use altair_runtime::constants::currency::AIR;
+use common_traits::fees::FeeKey;
 use runtime_common::{decimals, CFG};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use serde::{Deserialize, Serialize};

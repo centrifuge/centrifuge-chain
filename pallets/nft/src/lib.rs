@@ -118,6 +118,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, ensure};
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 
+use common_traits::fees::{Fee, Fees};
 use runtime_common::types::FixedArray;
 
 use sp_core::H256;
@@ -280,9 +281,9 @@ pub mod pallet {
 			let metadata = bundled_hash.as_ref().to_vec();
 
 			// Burn additional fees from the calling account
-			<pallet_fees::Pallet<T>>::fee_to_burn(
+			T::Fees::fee_to_burn(
 				&who,
-				pallet_fees::Fee::Balance(T::NftProofValidationFee::get().saturated_into()),
+				Fee::Balance(T::NftProofValidationFee::get().saturated_into()),
 			)?;
 
 			let resource_id: ResourceId = T::HashId::get().into();

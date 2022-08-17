@@ -17,7 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_types::FeeKey;
+use common_traits::fees::{Fee, FeeKey, Fees};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
@@ -97,9 +97,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + pallet_timestamp::Config + pallet_fees::Config
-	{
+	pub trait Config: frame_system::Config + pallet_timestamp::Config {
+		/// Entity used to pay fees
+		type Fees: Fees<AccountId = Self::AccountId>;
+
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 	}
@@ -168,9 +169,6 @@ pub mod pallet {
 
 		/// Anchor store date must not be more than max store date
 		AnchorStoreDateAboveMaxLimit,
-
-		/// State rent fee not set in the Fee Pallet
-		FeeNotSet,
 
 		/// Pre-commit already exists
 		PreCommitAlreadyExists,
@@ -300,21 +298,18 @@ pub mod pallet {
 			let today_in_days_from_epoch = common::get_days_since_epoch(now_u64)
 				.ok_or(Error::<T>::FailedToConvertEpochToDays)?;
 
-			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
-			// we use the fee config setup on genesis for anchoring to calculate the state rent
-			let base_fee =
-				<pallet_fees::Pallet<T>>::fee(FeeKey::CommitAnchor).ok_or(Error::<T>::FeeNotSet)?;
-
 			let multiplier = stored_until_date_from_epoch
 				.checked_sub(today_in_days_from_epoch)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			let fee = base_fee
-				.checked_mul(&pallet_fees::BalanceOf::<T>::from(multiplier))
+			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
+			// we use the fee config setup on genesis for anchoring to calculate the state rent
+			let fee = T::Fees::fee_value(FeeKey::CommitAnchor)
+				.checked_mul(&multiplier.into())
 				.ok_or(ArithmeticError::Overflow)?;
 
 			// pay state rent to block author
-			<pallet_fees::Pallet<T>>::fee_to_author(&who, pallet_fees::Fee::Balance(fee))?;
+			T::Fees::fee_to_author(&who, Fee::Balance(fee))?;
 
 			let anchored_block = <frame_system::Pallet<T>>::block_number();
 			let anchor_data = AnchorData {

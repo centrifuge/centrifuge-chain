@@ -74,7 +74,6 @@
 //! This pallet is tightly coupled to the following pallets:
 //! - Substrate FRAME's [`balances` pallet](https://github.com/paritytech/substrate/tree/master/frame/balances).
 //! - Centrifuge Chain [`chainbrige` pallet](https://github.com/centrifuge/chainbridge-substrate).
-//! - Centrifuge Chain [`fees` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/fees).
 //! - Centrifuge Chain [`nft` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/nft).
 //! - Centrifuge Chain [`registry` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/registry).
 //!
@@ -111,6 +110,8 @@ use crate::traits::WeightInfo;
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
 
+use common_traits::fees::{Fee, Fees};
+
 use chainbridge::types::ChainId;
 
 // Runtime, system and frame primitives
@@ -126,7 +127,6 @@ use sp_core::U256;
 use sp_std::vec::Vec;
 
 use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
-
 // ----------------------------------------------------------------------------
 // Type aliases
 // ----------------------------------------------------------------------------
@@ -171,11 +171,7 @@ pub mod pallet {
 	/// Note that [`frame_system::Config`] must always be included.
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config
-		+ chainbridge::Config
-		+ pallet_balances::Config
-		+ pallet_fees::Config
-		+ pallet_nft::Config
+		frame_system::Config + chainbridge::Config + pallet_balances::Config + pallet_nft::Config
 	{
 		/// Pallet identifier.
 		///
@@ -348,9 +344,9 @@ pub mod pallet {
 			);
 
 			// Burn additional fees
-			<pallet_fees::Pallet<T>>::fee_to_burn(
+			T::Fees::fee_to_burn(
 				&source,
-				pallet_fees::Fee::Balance(NativeTokenTransferFee::<T>::get().saturated_into()),
+				Fee::Balance(NativeTokenTransferFee::<T>::get().saturated_into()),
 			)?;
 
 			let bridge_id = <chainbridge::Pallet<T>>::account_id();

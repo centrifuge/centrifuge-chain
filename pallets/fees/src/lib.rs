@@ -7,7 +7,7 @@
 //! it offers some utilities to transfer the fees to the author, the treasury or burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common_types::FeeKey;
+use common_traits::fees::{self, Fee, FeeKey};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
@@ -29,14 +29,6 @@ pub use weights::*;
 
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-/// A way to identify a fee value.
-pub enum Fee<T: Config> {
-	/// The fee value itself.
-	Balance(BalanceOf<T>),
-	/// The fee value is already stored in the pallet fee by a key.
-	Key(FeeKey),
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -128,36 +120,38 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> Pallet<T> {
-	/// Pay the fees to the block author.
-	/// If the `from` account has not enough balance or the author is invalid the fees are not
-	/// paid.
-	pub fn fee_to_author(from: &T::AccountId, fee: Fee<T>) -> DispatchResult {
+impl<T: Config> fees::Fees for Pallet<T> {
+	type AccountId = T::AccountId;
+	type Currency = T::Currency;
+
+	fn fee_value(key: FeeKey) -> BalanceOf<T> {
+		<Fees<T>>::get(key).unwrap_or(BalanceOf::<T>::default())
+	}
+
+	fn fee_to_author(from: &Self::AccountId, fee: Fee<BalanceOf<T>>) -> DispatchResult {
 		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
 		let balance = Self::withdraw_fee(from, fee)?;
 		T::Currency::resolve_creating(&author, balance);
 		Ok(())
 	}
 
-	/// Burn the fees.
-	/// If the `from` account has not enough balance the fees are not paid.
-	pub fn fee_to_burn(from: &T::AccountId, fee: Fee<T>) -> DispatchResult {
+	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>>) -> DispatchResult {
 		Self::withdraw_fee(from, fee).map(|_| ())
 	}
 
-	/// Transfer the fees to the treasury.
-	/// If the `from` account has not enough balance the fees are not paid.
-	pub fn fee_to_treasury(from: &T::AccountId, fee: Fee<T>) -> DispatchResult {
+	fn fee_to_treasury(from: &Self::AccountId, fee: Fee<BalanceOf<T>>) -> DispatchResult {
 		todo!()
 	}
+}
 
+impl<T: Config> Pallet<T> {
 	fn withdraw_fee(
 		from: &T::AccountId,
-		fee: Fee<T>,
+		fee: Fee<BalanceOf<T>>,
 	) -> Result<<T::Currency as Currency<T::AccountId>>::NegativeImbalance, DispatchError> {
 		let balance = match fee {
 			Fee::Balance(balance) => balance,
-			Fee::Key(key) => <Fees<T>>::get(key).ok_or(Error::<T>::FeeNotFoundForKey)?,
+			Fee::Key(key) => <Self as fees::Fees>::fee_value(key),
 		};
 
 		T::Currency::withdraw(
