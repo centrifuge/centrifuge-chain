@@ -1,9 +1,9 @@
-name: rustdoc
+name: Rustdoc
 on:
   push:
     branches: [parachain, rustdoc]
 jobs:
-  rustdoc:
+  push:
     strategy:
       matrix:
         os: [ubuntu-latest]
