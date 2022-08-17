@@ -1017,7 +1017,7 @@ dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
  "clap",
- "common-traits",
+ "common-types",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
  "cumulus-client-consensus-common",
@@ -5562,6 +5562,7 @@ name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
  "common-traits",
+ "common-types",
  "frame-support",
  "frame-system",
  "pallet-authorship",

@@ -6,6 +6,7 @@
 
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 use codec::{Decode, Encode, MaxEncodedLen};
+use common_types::FeeKey;
 use frame_support::traits::Everything;
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -760,6 +761,7 @@ impl pallet_treasury::Config for Runtime {
 
 // our pallets
 impl pallet_fees::Config for Runtime {
+	type FeeKey = FeeKey;
 	type Currency = Balances;
 	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
