@@ -21,8 +21,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
-pallet-fees = { path = "../fees", default-features = false }
-common-types = { path = "../../libs/common-types", default-features = false }
+common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
@@ -41,5 +40,4 @@ std = [
     'sp-std/std',
     "sp-arithmetic/std",
     'pallet-timestamp/std',
-    'pallet-fees/std',
 ]
