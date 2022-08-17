@@ -16,7 +16,7 @@ use codec::HasCompact;
 use common_traits::{
 	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
 };
-use common_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
+use common_types::{CustomMetadata, Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	ReservableCurrency,
@@ -26,7 +26,10 @@ use frame_support::{
 	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{Change, asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate}};
+use orml_traits::{
+	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
+	Change,
+};
 use polkadot_parachain::primitives::Id as ParaId;
 use scale_info::TypeInfo;
 
@@ -331,9 +334,11 @@ pub mod pallet {
 			Moment = Moment,
 		>;
 
-		type AssetRegistry: OrmlMutate<AssetId = Self::CurrencyId, Balance = Self::Balance>;
-
-		type CustomMetadata: OrmlInspect<AssetId = Self::CurrencyId, Balance = Self::Balance>;
+		type AssetRegistry: OrmlMutate<
+			AssetId = Self::CurrencyId,
+			Balance = Self::Balance,
+			CustomMetadata = CustomMetadata,
+		>;
 
 		#[pallet::constant]
 		type ParachainId: Get<ParaId>;
@@ -651,6 +656,8 @@ pub mod pallet {
 			let parachain_id = T::ParachainId::get();
 
 			for tranche in &tranches {
+				// check token_name and symbol if too long, if not, .to_vec()
+				// bounded vec -> vec
 				let metadata = tranche.create_asset_metadata(
 					decimals,
 					currency,

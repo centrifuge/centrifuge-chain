@@ -66,7 +66,6 @@ use pallet_restricted_tokens::{
 pub use runtime_common::{Index, *};
 
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
-use orml_asset_registry::Metadata;
 
 pub mod xcm;
 pub use crate::xcm::*;

@@ -26,11 +26,11 @@ use common_types::{CustomMetadata, XcmMetadata};
 #[cfg(test)]
 use common_types::CurrencyId;
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
+use orml_asset_registry::AssetMetadata;
 use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 use xcm::latest::prelude::*;
 use xcm::prelude::X2;
-use orml_asset_registry::AssetMetadata;
 use xcm::VersionedMultiLocation;
 
 /// Types alias for EpochExecutionTranche
@@ -96,16 +96,11 @@ where
 		parachain_id: ParaId,
 		token_name: Vec<u8>,
 		token_symbol: Vec<u8>,
-	) -> Result<
-		AssetMetadata<
-			Balance,
-			CustomMetadata,
-		>,
-		DispatchError,
-	>
+	) -> Result<AssetMetadata<Balance, CustomMetadata>, DispatchError>
 	where
 		Balance: Zero,
 		CurrencyId: Encode,
+		CustomMetadata: Parameter + Member + TypeInfo,
 	{
 		let tranche_id = currency.encode();
 
@@ -114,11 +109,10 @@ where
 			name: token_name,
 			symbol: token_symbol,
 			existential_deposit: Zero::zero(),
-			location: Some(VersionedMultiLocation::V1(MultiLocation{
+			location: Some(VersionedMultiLocation::V1(MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
-			}
-			)),
+			})),
 			additional: CustomMetadata {
 				mintable: false,
 				permissioned: false,
