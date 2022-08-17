@@ -714,6 +714,7 @@ impl pallet_uniques::Config for Runtime {
 // our pallets
 impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
+	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
