@@ -36,7 +36,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn polkadot-v0.9.24lize() -> Weight {
+	fn on_finalize() -> Weight {
 		(5_769_000 as Weight)
 	}
 }
