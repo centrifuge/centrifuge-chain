@@ -28,7 +28,7 @@ impl<T: Config> Pallet<T> {
 		role: PoolRole,
 	) -> Result<(), BadOrigin> {
 		T::Permission::has(PermissionScope::Pool(pool_id), sender, Role::PoolRole(role))
-			.then_some(())
+			.then(|| ())
 			.ok_or(BadOrigin)
 	}
 
