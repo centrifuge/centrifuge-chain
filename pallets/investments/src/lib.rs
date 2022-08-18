@@ -113,7 +113,10 @@ pub struct Order<Balance, OrderId> {
 /// are moved into the next active order for this asset.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum CollectType {
+	/// Unfulfilled orders are returned to the user
 	Closing,
+	/// Unfulfilled orders are appened to current active
+	/// order
 	Overflowing,
 }
 
@@ -262,24 +265,38 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Fulfilled orders were collected. [asset, who, collected_orders, Collection]
-		OrdersCollected(
-			T::AssetId,
-			T::AccountId,
-			Vec<T::OrderId>,
-			Collection<T::Amount>,
-		),
+		OrdersCollected {
+			asset_id: T::AssetId,
+			who: T::AccountId,
+			processed_orders: Vec<T::OrderId>,
+			collection: Collection<T::Amount>,
+		},
 		/// An invest order was updated. [asset_id, order_id, who, amount]
-		InvestOrderUpdated(T::AssetId, T::OrderId, T::AccountId, T::Amount),
+		InvestOrderUpdated {
+			asset_id: T::AssetId,
+			order_id: T::OrderId,
+			who: T::AccountId,
+			amount: T::Amount,
+		},
 		/// An invest order was updated. [asset_id, order_id, who, amount]
-		RedeemOrderUpdated(T::AssetId, T::OrderId, T::AccountId, T::Amount),
+		RedeemOrderUpdated {
+			asset_id: T::AssetId,
+			order_id: T::OrderId,
+			who: T::AccountId,
+			amount: T::Amount,
+		},
 		/// Order was fulfilled [asset_id, order_id, FulfillmentWithPrice]
-		OrderCleared(
-			T::AssetId,
-			T::OrderId,
-			FulfillmentWithPrice<T::BalanceRatio>,
-		),
+		OrderCleared {
+			asset_id: T::AssetId,
+			order_id: T::OrderId,
+			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
+		},
 		/// Order is in processing state [asset_id, order_id, TotalOrder]
-		OrderInProcessing(T::AssetId, T::OrderId, TotalOrder<T::Amount>),
+		OrderInProcessing {
+			asset_id: T::AssetId,
+			order_id: T::OrderId,
+			total_order: TotalOrder<T::Amount>,
+		},
 	}
 
 	// Errors inform users that something went wrong.
@@ -358,7 +375,12 @@ pub mod pallet {
 				},
 			)?;
 
-			Self::deposit_event(Event::InvestOrderUpdated(asset, cur_order_id, who, amount));
+			Self::deposit_event(Event::InvestOrderUpdated {
+				asset_id: asset,
+				order_id: cur_order_id,
+				who,
+				amount,
+			});
 			Ok(())
 		}
 
@@ -410,7 +432,12 @@ pub mod pallet {
 					)
 				},
 			)?;
-			Self::deposit_event(Event::RedeemOrderUpdated(asset, cur_order_id, who, amount));
+			Self::deposit_event(Event::RedeemOrderUpdated {
+				asset_id: asset,
+				order_id: cur_order_id,
+				who,
+				amount,
+			});
 			Ok(())
 		}
 
@@ -604,17 +631,16 @@ where
 					}
 				}
 
-				// TODO: is the as call safe here? we should alwas run at least usize == u32 but maybe error out
 				Ok((collected, collection))
 			},
 		)?;
 
-		Self::deposit_event(Event::OrdersCollected(
+		Self::deposit_event(Event::OrdersCollected {
 			asset_id,
-			who.clone(),
-			collected_ids,
+			who: who.clone(),
+			processed_orders: collected_ids,
 			collection,
-		));
+		});
 
 		// TODO: Actually weight this with collected_ids
 		Ok(().into())
@@ -789,7 +815,11 @@ where
 				.ok_or(ArithmeticError::Overflow)?,
 		);
 
-		Self::deposit_event(Event::OrderInProcessing(asset_id, order_id, order.clone()));
+		Self::deposit_event(Event::OrderInProcessing {
+			asset_id,
+			order_id,
+			total_order: order.clone(),
+		});
 
 		Ok((order_id, order))
 	}
@@ -829,7 +859,11 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::OrderCleared(asset_id, order_id, fulfillment));
+		Self::deposit_event(Event::OrderCleared {
+			asset_id,
+			order_id,
+			fulfillment,
+		});
 
 		Ok(())
 	}
