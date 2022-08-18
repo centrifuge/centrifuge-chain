@@ -52,7 +52,7 @@ pub struct Collection<Balance> {
 
 	/// This is the payout in the payment currency
 	/// of an asset
-	/// -> redeemption in denomination currency
+	/// -> redemption in denomination currency
 	/// -> payout in payment currency
 	pub payout_asset_redeem: Balance,
 
@@ -64,7 +64,7 @@ pub struct Collection<Balance> {
 
 	/// This is the remaining redemption in the denomination currency
 	/// of an asset
-	/// -> redeemption in denomination currency
+	/// -> redemption in denomination currency
 	/// -> payout in payment currency
 	pub remaining_asset_redeem: Balance,
 }
@@ -88,7 +88,7 @@ pub enum OrderType<AccountId, AssetId, Amount> {
 		asset: AssetId,
 		amount: Amount,
 	},
-	Redeemption {
+	Redemption {
 		who: AccountId,
 		asset: AssetId,
 		amount: Amount,
@@ -424,7 +424,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::PreConditions::check(OrderType::Redeemption {
+				T::PreConditions::check(OrderType::Redemption {
 					who: who.clone(),
 					asset: asset.clone(),
 					amount
