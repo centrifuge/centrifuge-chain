@@ -441,12 +441,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Collect the results of an executed invest or redeem order.
-		///
-		/// Iterates through up to `collect_n_epochs` epochs from
-		/// when the caller's order was initiated, and transfers
-		/// the total results of the order execution to the
-		/// caller's account.
+		/// Collect the results of a users orders for the given asset.
+		/// The `CollectType` allows users to refund their funds if any
+		/// are not fulfilled or directly append them to the next acitve
+		/// order for this asset.
 		#[pallet::weight(0)]
 		pub fn collect(
 			origin: OriginFor<T>,
@@ -458,13 +456,9 @@ pub mod pallet {
 			Self::do_collect(who, asset_id, collect_type)
 		}
 
-		/// Collect the results of an executed invest or
-		/// redeem order for another account.
+		/// Collect the results of another users orders for the given asset.
 		///
-		/// Iterates through up to `collect_n_epochs` epochs from
-		/// when the caller's order was initiated, and transfers
-		/// the total results of the order execution to the
-		/// caller's account.
+		/// The type of collection will always be `CollectType::Closing`.
 		#[pallet::weight(0)]
 		pub fn collect_for(
 			origin: OriginFor<T>,
