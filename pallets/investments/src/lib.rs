@@ -147,7 +147,7 @@ pub mod pallet {
 		type Accountant: AssetAccountant<
 			Self::AccountId,
 			Error = DispatchError,
-			AssetId = Self::AssetId,
+			AssetId = CurrencyOf<Self>,
 			Amount = Self::Amount,
 		>;
 
@@ -860,11 +860,28 @@ where
 					asset_id: asset_id.clone(),
 				}
 				.into_account_truncating();
+				let info = T::Accountant::info(asset_id.clone());
 
 				if invest >= redeem {
-					T::Accountant::deposit(asset_account, asset_id.clone(), invest - redeem)?;
+					let amount = invest - redeem;
+					T::Tokens::transfer(
+						info.payment_currency(),
+						asset_account,
+						info.payment_account(),
+						amount,
+						false,
+					)?;
+					T::Accountant::deposit(asset_account, info.denomination_currency(), amount)?;
 				} else {
-					T::Accountant::withdraw(asset_account, asset_id.clone(), redeem - invest)?;
+					let amount = redeem - invest;
+					T::Tokens::transfer(
+						info.payment_currency(),
+						info.payment_account(),
+						asset_account,
+						amount,
+						false,
+					)?;
+					T::Accountant::withdraw(asset_account, info.denomination_currency(), amount)?;
 				}
 
 				ClearedOrders::<T>::insert(asset_id.clone(), order_id, fulfillment.clone());

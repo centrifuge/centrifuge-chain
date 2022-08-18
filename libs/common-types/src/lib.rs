@@ -531,6 +531,10 @@ where
 	fn payment_currency(&self) -> Self::Currency {
 		self.payment_currency.clone()
 	}
+
+	fn payment_account(&self) -> AccountId {
+		self.owner()
+	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
