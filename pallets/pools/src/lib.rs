@@ -620,13 +620,13 @@ pub mod pallet {
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
-		#[pallet::weight(T::WeightInfo::create(tranches.len().try_into().unwrap_or(u32::MAX)))]
+		#[pallet::weight(T::WeightInfo::create(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: T::AccountId,
 			pool_id: T::PoolId,
-			tranches: Vec<
+			tranche_inputs: Vec<
 				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 			>,
 			currency: T::CurrencyId,
@@ -656,7 +656,27 @@ pub mod pallet {
 			let decimals = T::AssetRegistry::metadata(&currency).unwrap().decimals;
 			let parachain_id = T::ParachainId::get();
 
-			for tranche in &tranches {
+			let now = Self::now();
+
+			let tranches = Tranches::from_input::<
+				T::TrancheToken,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>(pool_id, tranche_inputs.clone(), now)?;
+
+			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
+				Some(metadata_value) => {
+					let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
+						.clone()
+						.try_into()
+						.map_err(|_| Error::<T>::BadMetadata)?;
+
+					Some(checked)
+				}
+				None => None,
+			};
+
+			for tranche in &tranche_inputs {
 				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche
 					.clone()
 					.metadata
@@ -671,7 +691,7 @@ pub mod pallet {
 					.try_into()
 					.map_err(|_| Error::<T>::BadMetadata)?;
 
-				let metadata = tranche.create_asset_metadata(
+				let metadata = create_asset_metadata(
 					decimals,
 					currency,
 					parachain_id,
@@ -681,26 +701,6 @@ pub mod pallet {
 
 				assert_ok!(T::AssetRegistry::register_asset(Some(currency), metadata));
 			}
-
-			let now = Self::now();
-
-			let tranches = Tranches::from_input::<
-				T::TrancheToken,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>(pool_id, tranches, now)?;
-
-			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
-				Some(metadata_value) => {
-					let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
-						.clone()
-						.try_into()
-						.map_err(|_| Error::<T>::BadMetadata)?;
-
-					Some(checked)
-				}
-				None => None,
-			};
 
 			Pool::<T>::insert(
 				pool_id,
@@ -783,7 +783,8 @@ pub mod pallet {
 			// have to be NoChange or Change, we don't allow to change either or
 			// ^ = XOR, !^ = negated XOR
 			ensure!(
-				!((changes.tranches == Change::NoChange) ^ (changes.tranche_metadata == Change::NoChange)),
+				!((changes.tranches == Change::NoChange)
+					^ (changes.tranche_metadata == Change::NoChange)),
 				Error::<T>::UpdatePrerequesitesNotFulfilled
 			);
 
@@ -1606,18 +1607,55 @@ pub mod pallet {
 
 					pool.tranches.combine_with_mut_residual_top(
 						tranches.into_iter(),
-						|tranche, tranche_input| {
+						|tranche, tranche_update| {
 							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
 							tranche.accrue(now)?;
 
-							tranche.tranche_type = tranche_input.tranche_type.clone();
+							tranche.tranche_type = tranche_update.tranche_type.clone();
 
-							if let Some(new_seniority) = tranche_input.seniority {
+							if let Some(new_seniority) = tranche_update.seniority {
 								tranche.seniority = new_seniority.clone();
 							}
+
 							Ok(())
 						},
 					)?;
+				}
+
+				// Checking if we have a new tranche?
+
+				//
+				// The case when Metadata AND the tranche changed, we don't allow for an or. Both have to be changed (for now)
+				//
+				if let Change::NewValue(metadata) = &changes.tranche_metadata {
+					// I just assume Vec<TrancheMetadata> and Vec<TrancheUpdate> have the same order?
+					if let Change::NewValue(tranches) = &changes.tranches {
+						// It seems like we need to associate metadata with a tranche? I can't seem to find the relation.
+						// The tranche_id in the location? But where does tranche_id come from?
+						for (_, updated_metadata) in tranches.iter().zip(metadata.iter()) {
+							let decimals =
+								T::AssetRegistry::metadata(&pool.currency).unwrap().decimals;
+							let parachain_id = T::ParachainId::get();
+
+							let m = create_asset_metadata(
+								decimals,
+								pool.currency,
+								parachain_id,
+								updated_metadata.clone().token_name.to_vec(),
+								updated_metadata.clone().token_symbol.to_vec(),
+							)?;
+
+							assert_ok!(T::AssetRegistry::update_asset(
+								pool.currency,
+								Some(m.decimals),
+								Some(m.name),
+								Some(m.symbol),
+								Some(m.existential_deposit),
+								Some(m.location),
+								Some(m.additional),
+							));
+						}
+					}
 				}
 
 				ScheduledUpdate::<T>::remove(pool_id);
@@ -1898,9 +1936,7 @@ pub mod pallet {
 
 		pub fn is_valid_tranche_change(
 			old_tranches: Option<&TranchesOf<T>>,
-			new_tranches: &Vec<
-				TrancheUpdate<T::InterestRate>,
-			>,
+			new_tranches: &Vec<TrancheUpdate<T::InterestRate>>,
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
 			ensure!(
@@ -1911,7 +1947,6 @@ pub mod pallet {
 			// At least one tranche must exist, and the first (most junior) tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
 			ensure!(
-
 				match new_tranches.first() {
 					None => false,
 					Some(tranche_input) => {

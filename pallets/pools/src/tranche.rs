@@ -83,48 +83,6 @@ where
 	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
 
-impl<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
-	TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	pub fn create_asset_metadata<Balance, CurrencyId>(
-		&self,
-		decimals: u32,
-		currency: CurrencyId,
-		parachain_id: ParaId,
-		token_name: Vec<u8>,
-		token_symbol: Vec<u8>,
-	) -> Result<AssetMetadata<Balance, CustomMetadata>, DispatchError>
-	where
-		Balance: Zero,
-		CurrencyId: Encode,
-		CustomMetadata: Parameter + Member + TypeInfo,
-	{
-		let tranche_id = currency.encode();
-
-		Ok(AssetMetadata {
-			decimals,
-			name: token_name,
-			symbol: token_symbol,
-			existential_deposit: Zero::zero(),
-			location: Some(VersionedMultiLocation::V1(MultiLocation {
-				parents: 1,
-				interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
-			})),
-			additional: CustomMetadata {
-				mintable: false,
-				permissioned: false,
-				pool_currency: false,
-				xcm: XcmMetadata {
-					fee_per_second: None,
-				},
-			},
-		})
-	}
-}
-
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct TrancheUpdate<Rate> {
 	pub tranche_type: TrancheType<Rate>,
@@ -1530,6 +1488,41 @@ where
 	risk_buffers.reverse();
 
 	Ok(risk_buffers)
+}
+
+pub(crate) fn create_asset_metadata<Balance, CurrencyId>(
+	decimals: u32,
+	currency: CurrencyId,
+	parachain_id: ParaId,
+	token_name: Vec<u8>,
+	token_symbol: Vec<u8>,
+) -> Result<AssetMetadata<Balance, CustomMetadata>, DispatchError>
+where
+	Balance: Zero,
+	CurrencyId: Encode,
+	CustomMetadata: Parameter + Member + TypeInfo,
+{
+	// Is this the right ID?
+	let tranche_id = currency.encode();
+
+	Ok(AssetMetadata {
+		decimals,
+		name: token_name,
+		symbol: token_symbol,
+		existential_deposit: Zero::zero(),
+		location: Some(VersionedMultiLocation::V1(MultiLocation {
+			parents: 1,
+			interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
+		})),
+		additional: CustomMetadata {
+			mintable: false,
+			permissioned: false,
+			pool_currency: false,
+			xcm: XcmMetadata {
+				fee_per_second: None,
+			},
+		},
+	})
 }
 
 #[cfg(test)]
