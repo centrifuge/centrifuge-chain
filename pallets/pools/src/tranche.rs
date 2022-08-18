@@ -132,18 +132,6 @@ pub struct TrancheUpdate<Rate> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolChange<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	pub tranches: Change<Vec<TrancheUpdate<Rate>>>,
-	pub tranche_metadata: Change<Vec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>>>,
-	pub min_epoch_time: Change<Moment>,
-	pub max_nav_age: Change<Moment>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TrancheLoc<TrancheId> {
 	Index(TrancheIndex),

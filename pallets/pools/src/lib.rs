@@ -124,7 +124,8 @@ where
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
 {
-	pub tranches: Change<Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>>,
+	pub tranches: Change<Vec<TrancheUpdate<Rate>>>,
+	pub tranche_metadata: Change<Vec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>>>,
 	pub min_epoch_time: Change<Moment>,
 	pub max_nav_age: Change<Moment>,
 }
@@ -656,14 +657,26 @@ pub mod pallet {
 			let parachain_id = T::ParachainId::get();
 
 			for tranche in &tranches {
-				// check token_name and symbol if too long, if not, .to_vec()
-				// bounded vec -> vec
+				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche
+					.clone()
+					.metadata
+					.token_name
+					.try_into()
+					.map_err(|_| Error::<T>::BadMetadata)?;
+
+				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche
+					.clone()
+					.metadata
+					.token_symbol
+					.try_into()
+					.map_err(|_| Error::<T>::BadMetadata)?;
+
 				let metadata = tranche.create_asset_metadata(
 					decimals,
 					currency,
 					parachain_id,
-					tranche.clone().metadata.token_name.to_vec(),
-					tranche.clone().metadata.token_symbol.to_vec(),
+					token_name.to_vec(),
+					token_symbol.to_vec(),
 				)?;
 
 				assert_ok!(T::AssetRegistry::register_asset(Some(currency), metadata));
@@ -766,6 +779,14 @@ pub mod pallet {
 				Error::<T>::InSubmissionPeriod
 			);
 
+			// Both changes.tranches and changes.tranche_metadata
+			// have to be NoChange or Change, we don't allow to change either or
+			// ^ = XOR, !^ = negated XOR
+			ensure!(
+				!((changes.tranches == Change::NoChange) ^ (changes.tranche_metadata == Change::NoChange)),
+				Error::<T>::UpdatePrerequesitesNotFulfilled
+			);
+
 			if changes.min_epoch_time == Change::NoChange
 				&& changes.max_nav_age == Change::NoChange
 				&& changes.tranches == Change::NoChange
@@ -797,7 +818,7 @@ pub mod pallet {
 			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 			if let Change::NewValue(tranches) = &changes.tranches {
-				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
+				Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
 			}
 
 			let now = Self::now();
@@ -1878,7 +1899,7 @@ pub mod pallet {
 		pub fn is_valid_tranche_change(
 			old_tranches: Option<&TranchesOf<T>>,
 			new_tranches: &Vec<
-				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+				TrancheUpdate<T::InterestRate>,
 			>,
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
@@ -1890,6 +1911,7 @@ pub mod pallet {
 			// At least one tranche must exist, and the first (most junior) tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
 			ensure!(
+
 				match new_tranches.first() {
 					None => false,
 					Some(tranche_input) => {
