@@ -14,12 +14,22 @@
 //! Module provides loan related functions
 use super::*;
 use common_types::{Adjustment, PoolLocator};
-use sp_runtime::ArithmeticError;
+use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 impl<T: Config> Pallet<T> {
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
 		T::LoansPalletId::get().into_account_truncating()
+	}
+
+	pub fn ensure_role(
+		pool_id: PoolIdOf<T>,
+		sender: T::AccountId,
+		role: PoolRole,
+	) -> Result<(), BadOrigin> {
+		T::Permission::has(PermissionScope::Pool(pool_id), sender, Role::PoolRole(role))
+			.then_some(())
+			.ok_or(BadOrigin)
 	}
 
 	/// check if the given loan belongs to the owner provided
@@ -141,69 +151,100 @@ impl<T: Config> Pallet<T> {
 		Ok(loan_id)
 	}
 
-	pub(crate) fn price_loan(
+	pub(crate) fn price_created_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		interest_rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Balance>,
 	) -> Result<u32, DispatchError> {
-		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
-			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+		let now = Self::now();
+		ensure!(loan_type.is_valid(now), Error::<T>::LoanValueInvalid);
 
-			// ensure loan is created or priced but not yet borrowed against
-			ensure!(
-				loan.status == LoanStatus::Created || loan.status == LoanStatus::Active,
-				Error::<T>::LoanIsActive
-			);
-			let mut active_loans = ActiveLoans::<T>::get(pool_id);
-			if loan.status == LoanStatus::Active {
-				if let Some((idx, active_loan)) = active_loans
-					.iter()
-					.enumerate()
-					.find(|(_, active_loan)| active_loan.loan_id == loan_id)
-				{
-					ensure!(
-						active_loan.total_borrowed == Zero::zero(),
-						Error::<T>::LoanIsActive
-					);
-					active_loans.remove(idx);
-				}
-			}
+		ensure!(
+			interest_rate_per_sec >= One::one(),
+			Error::<T>::LoanValueInvalid
+		);
 
-			// ensure loan_type is valid
-			let now = Self::now();
-			ensure!(loan_type.is_valid(now), Error::<T>::LoanValueInvalid);
+		let active_loan = PricedLoanDetails {
+			loan_id,
+			loan_type,
+			interest_rate_per_sec,
+			origination_date: None,
+			normalized_debt: Zero::zero(),
+			total_borrowed: Zero::zero(),
+			total_repaid: Zero::zero(),
+			write_off_status: WriteOffStatus::None,
+			last_updated: now,
+		};
+		T::InterestAccrual::reference_rate(interest_rate_per_sec);
 
-			// ensure interest_rate_per_sec >= one
-			ensure!(
-				interest_rate_per_sec >= One::one(),
-				Error::<T>::LoanValueInvalid
-			);
+		let mut active_loans = ActiveLoans::<T>::get(pool_id);
+		active_loans
+			.try_push(active_loan)
+			.map_err(|_| Error::<T>::TooManyActiveLoans)?;
+		let count = active_loans.len();
+		ActiveLoans::<T>::insert(pool_id, active_loans);
 
-			let active_loan = PricedLoanDetails {
-				loan_id,
-				loan_type,
-				interest_rate_per_sec,
-				origination_date: None,
-				normalized_debt: Zero::zero(),
-				total_borrowed: Zero::zero(),
-				total_repaid: Zero::zero(),
-				write_off_status: WriteOffStatus::None,
-				last_updated: Self::now(),
-			};
-			T::InterestAccrual::reference_rate(interest_rate_per_sec);
+		Ok(count.try_into().unwrap())
+	}
 
-			active_loans
-				.try_push(active_loan)
-				.map_err(|_| Error::<T>::TooManyActiveLoans)?;
-			let count = active_loans.len();
-			ActiveLoans::<T>::insert(pool_id, active_loans);
+	pub(crate) fn price_active_loan(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+		interest_rate_per_sec: T::Rate,
+		loan_type: LoanType<T::Rate, T::Balance>,
+	) -> Result<u32, DispatchError> {
+		let now = Self::now();
+		ensure!(loan_type.is_valid(now), Error::<T>::LoanValueInvalid);
 
-			// update the loan status
-			loan.status = LoanStatus::Active;
+		ensure!(
+			interest_rate_per_sec >= One::one(),
+			Error::<T>::LoanValueInvalid
+		);
 
-			Ok(count.try_into().unwrap())
-		})
+		Self::try_mutate_active_loan(
+			pool_id,
+			loan_id,
+			|active_loan| -> Result<(), DispatchError> {
+				let old_debt = T::InterestAccrual::previous_debt(
+					active_loan.interest_rate_per_sec,
+					active_loan.normalized_debt,
+					active_loan.last_updated,
+				)?;
+
+				// calculate old present_value
+				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+				let old_pv = active_loan
+					.present_value(old_debt, &write_off_groups, active_loan.last_updated)
+					.ok_or(Error::<T>::LoanPresentValueFailed)?;
+
+				// calculate new normalized debt without amount
+				let normalized_debt = T::InterestAccrual::renormalize_debt(
+					active_loan.interest_rate_per_sec,
+					interest_rate_per_sec,
+					active_loan.normalized_debt,
+				)?;
+
+				active_loan.loan_type = loan_type;
+				active_loan.interest_rate_per_sec = interest_rate_per_sec;
+				active_loan.normalized_debt = normalized_debt;
+				active_loan.last_updated = now;
+
+				let new_debt = T::InterestAccrual::current_debt(
+					active_loan.interest_rate_per_sec,
+					active_loan.normalized_debt,
+				)?;
+
+				// calculate new present_value
+				let new_pv = active_loan
+					.present_value(new_debt, &write_off_groups, now)
+					.ok_or(Error::<T>::LoanPresentValueFailed)?;
+
+				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)
+			},
+		)?;
+
+		Ok(ActiveLoans::<T>::get(pool_id).len().try_into().unwrap())
 	}
 
 	// try to close a given loan.

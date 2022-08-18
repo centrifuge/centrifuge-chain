@@ -32,7 +32,7 @@ use pallet_loans::Event as LoanEvent;
 use runtime_common::{Balance, CollectionId, ItemId, Rate, CFG as USD};
 use sp_arithmetic::traits::checked_pow;
 use sp_arithmetic::FixedPointNumber;
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::traits::{BadOrigin, StaticLookup};
 use sp_runtime::ArithmeticError;
 
 // Return last triggered event
@@ -344,12 +344,44 @@ fn test_create() {
 }
 
 #[test]
+fn test_price_and_reprice_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let borrower = Borrower::get();
+
+			// successful issue
+			let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
+
+			// successful pricing
+			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan.1);
+
+			// princing an active loan must be done only with LoanAdmin permission.
+			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
+			assert_err!(res, BadOrigin);
+
+			// add LoanAdmin permission to borrower
+			let pool_admin = PoolAdmin::get();
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+				Origin::signed(pool_admin),
+				Role::PoolRole(PoolRole::PoolAdmin),
+				borrower,
+				PermissionScope::Pool(pool_id),
+				Role::PoolRole(PoolRole::LoanAdmin),
+			));
+
+			// pricing an active loan with correct LoanAdmin permission
+			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
+			assert_ok!(res);
+		});
+}
+
+#[test]
 fn test_price_bullet_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let borrower: u64 = Borrower::get();
-
 			// successful issue
 			let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
@@ -394,13 +426,6 @@ fn test_price_bullet_loan() {
 			let rp = Zero::zero();
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
-
-			// successful pricing
-			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
-
-			// pricing an active but non borrowed against loan should be possible
-			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_ok!(res);
 		})
 }
 
@@ -455,13 +480,6 @@ fn test_price_credit_line_with_maturity_loan() {
 			let rp = Zero::zero();
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
-
-			// successful pricing
-			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
-
-			// pricing an active but non borrowed against loan should be possible
-			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_ok!(res);
 		})
 }
 
@@ -487,13 +505,6 @@ fn test_price_credit_line_loan() {
 			let rp = Zero::zero();
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
-
-			// successful pricing
-			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
-
-			// pricing an active but non borrowed against loan should be possible
-			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_ok!(res);
 		})
 }
 
@@ -556,17 +567,6 @@ macro_rules! test_borrow_loan {
 				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
-
-				// pricing an active loan with non zero borrowed amount should not be possible
-				let res = Loans::price(
-					Origin::signed(borrower),
-					pool_id,
-					loan_id,
-					math::interest_rate_per_sec(Rate::saturating_from_rational::<u64, u64>(5, 100))
-						.unwrap(),
-					default_credit_line_params(),
-				);
-				assert_err!(res, Error::<MockRuntime>::LoanIsActive);
 
 				// check loan data
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
