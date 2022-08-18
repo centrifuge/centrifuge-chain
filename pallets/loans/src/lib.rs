@@ -295,8 +295,8 @@ pub mod pallet {
 		ValueOverflow,
 		/// Emits when principal debt calculation failed due to overflow
 		NormalizedDebtOverflow,
-		/// Emits when tries to update an active loan
-		LoanIsActive,
+		/// Emits when tries to price a closed loan
+		LoanIsClosed,
 		/// Emits when loan type given is not valid
 		LoanTypeInvalid,
 		/// Emits when operation is done on an inactive loan
@@ -547,7 +547,7 @@ pub mod pallet {
 								loan_type,
 							)
 						}
-						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsActive)?,
+						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsClosed)?,
 					}
 				})?;
 
