@@ -170,6 +170,11 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	) -> Result<Balance, DispatchError>;
 
 	/// Calculate a previous debt using normalized debt * previous cumulative rate
+	///
+	/// If `when` is further in the past than the last time the
+	/// normalized debt was adjusted, this will return nonsense
+	/// (effectively "rewinding the clock" to before the value was
+	/// valid)
 	fn previous_debt(
 		interest_rate_per_sec: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
@@ -182,6 +187,19 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
+
+	/// Re-normalize a debt for a new interest rate
+	fn renormalize_debt(
+		old_interest_rate: InterestRate,
+		new_interest_rate: InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+	) -> Result<Self::NormalizedDebt, DispatchError>;
+
+	/// Indicate that a rate is in use
+	fn reference_rate(interest_rate_per_sec: InterestRate);
+
+	/// Indicate that a rate is no longer in use
+	fn unreference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
 }
 
 pub trait Permissions<AccountId> {

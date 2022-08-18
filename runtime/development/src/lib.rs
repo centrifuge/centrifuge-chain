@@ -1264,6 +1264,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	type InterestRate = Rate;
 	type Time = Timestamp;
+	type Weights = ();
 }
 
 parameter_types! {
@@ -1398,7 +1399,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 
 		// XCM
@@ -1709,6 +1710,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
@@ -1738,6 +1740,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 
 			let storage_info = AllPalletsWithSystem::storage_info();

@@ -84,6 +84,12 @@ pub fn interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Op
 		.and_then(|res| res.checked_add(&Rate::one()))
 }
 
+/// calculates fractional part of the rate per second from the given nominal interest rate
+/// https://docs.centrifuge.io/learn/interest-rate-methodology/
+pub fn penalty_interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
+	rate_per_annum.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
+}
+
 /// calculates the risk adjusted expected cash flow for bullet loan type
 /// assumes maturity date has not passed
 /// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
