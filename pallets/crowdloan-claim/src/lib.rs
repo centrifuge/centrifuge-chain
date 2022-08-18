@@ -350,7 +350,7 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_finalize(n: <T as frame_system::Config>::BlockNumber) {
+		fn polkadot-v0.9.24lize(n: <T as frame_system::Config>::BlockNumber) {
 			// On the first block after the lease is over, we allow a new initialization of the
 			// pallet and forbid further claims for this lease.
 			if n > Self::lease_start().saturating_add(Self::lease_period()) {

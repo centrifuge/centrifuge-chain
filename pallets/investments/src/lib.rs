@@ -128,7 +128,11 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config
+	where
+		<Self::Accountant as AssetAccountant<Self::AccountId>>::AssetInfo:
+			AssetProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
+	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -198,8 +202,19 @@ pub mod pallet {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> where
+		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
+			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>
+	{
+	}
+
 	#[pallet::type_value]
-	pub fn OnOrderIdEmpty<T: Config>() -> T::OrderId {
+	pub fn OnOrderIdEmpty<T: Config>() -> T::OrderId
+	where
+		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
+			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	{
 		One::one()
 	}
 
@@ -221,7 +236,11 @@ pub mod pallet {
 	>;
 
 	#[pallet::type_value]
-	pub fn OnTotalOrderEmpty<T: Config>() -> TotalOrder<T::Amount> {
+	pub fn OnTotalOrderEmpty<T: Config>() -> TotalOrder<T::Amount>
+	where
+		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
+			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	{
 		TotalOrder {
 			invest: Zero::zero(),
 			redeem: Zero::zero(),
@@ -263,7 +282,11 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	pub enum Event<T: Config> {
+	pub enum Event<T: Config>
+	where
+		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
+			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	{
 		/// Fulfilled orders were collected. [asset, who, collected_orders, Collection]
 		OrdersCollected {
 			asset_id: T::AssetId,
