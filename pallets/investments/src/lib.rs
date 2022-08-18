@@ -18,10 +18,7 @@ use common_types::{AssetAccount, FulfillmentWithPrice, TotalOrder};
 use frame_support::pallet_prelude::*;
 use frame_support::{
 	error::BadOrigin,
-	traits::{
-		tokens::fungibles::{Inspect, Mutate, Transfer},
-		UnixTime,
-	},
+	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 };
 use frame_system::pallet_prelude::*;
 use sp_runtime::traits::CheckedSub;
@@ -83,8 +80,25 @@ impl<Balance: Zero> Default for Collection<Balance> {
 	}
 }
 
+/// The enum we parse to `PreConditions` so the runtime
+/// can make an educated decision about this investment
+pub enum OrderType<AccountId, AssetId, Amount> {
+	Investment {
+		who: AccountId,
+		asset: AssetId,
+		amount: Amount,
+	},
+	Redeemption {
+		who: AccountId,
+		asset: AssetId,
+		amount: Amount,
+	},
+}
+
+/// A newtype for Order
 pub type OrderOf<T> = Order<<T as Config>::Amount, <T as Config>::OrderId>;
 
+/// The order type of the pallet.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Order<Balance, OrderId> {
 	pub invest: Balance,
@@ -92,6 +106,11 @@ pub struct Order<Balance, OrderId> {
 	pub id: OrderId,
 }
 
+/// Defining how the collect logic runs.
+/// CollectType::Closing will ensure, that all unfulfilled assets
+/// are returned to the user account.
+/// CollectType::Overflowing will ensure, that all unfilfilled assets
+/// are moved into the next active order for this asset.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum CollectType {
 	Closing,
@@ -110,17 +129,23 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+		/// The underlying assets one can invest into
 		type AssetId: Clone + MaxEncodedLen + Parameter;
 
+		/// An incrementing per AssetId counter
 		type OrderId: AtLeast32BitUnsigned + Copy + Parameter + MaxEncodedLen;
 
-		type Manager: AssetAccountant<
+		/// Something that knows how to handle accounting for the given assets
+		/// and provides metadata about them
+		type Accountant: AssetAccountant<
 			Self::AccountId,
 			Error = DispatchError,
 			AssetId = Self::AssetId,
 			Amount = Self::Amount,
 		>;
 
+		/// A representation for an investment or redemption. Usually this
+		/// is equal to the known `Balance` type of a system.
 		type Amount: Member
 			+ Parameter
 			+ AtLeast32BitUnsigned
@@ -141,18 +166,27 @@ pub mod pallet {
 			+ FixedPointNumber<Inner = Self::Amount>;
 
 		#[pallet::constant]
+		/// The address if this pallet
 		type PalletId: Get<PalletId>;
 
+		/// The bound on how many fulfilled orders we cache until
+		/// the user needs to collect them.
 		type MaxOutstandingCollects: Get<u32>;
 
+		/// Something that can handle payments and transfers of
+		/// currencies
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, Balance = Self::Amount>
 			+ Transfer<Self::AccountId>;
 
-		type PreConditions: PreConditions<(Self::AssetId, Self::AccountId), Result = bool>;
+		/// A possible check if investors fulfill every condition to invest into a
+		/// given asset
+		type PreConditions: PreConditions<
+			OrderType<Self::AccountId, Self::AssetId, Self::Amount>,
+			Result = bool,
+		>;
 
-		type Time: UnixTime;
-
+		/// The weight information for this pallet extrinsics.
 		type WeightInfo: weights::WeightInfo;
 	}
 
@@ -227,8 +261,13 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Fulfilled orders were collected. [asset, who, Collection]
-		OrdersCollected(T::AssetId, T::AccountId, Collection<T::Amount>),
+		/// Fulfilled orders were collected. [asset, who, collected_orders, Collection]
+		OrdersCollected(
+			T::AssetId,
+			T::AccountId,
+			Vec<T::OrderId>,
+			Collection<T::Amount>,
+		),
 		/// An invest order was updated. [asset_id, order_id, who, amount]
 		InvestOrderUpdated(T::AssetId, T::OrderId, T::AccountId, T::Amount),
 		/// An invest order was updated. [asset_id, order_id, who, amount]
@@ -246,34 +285,36 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
+		// The order has been marked as cleared. It's either active or
+		// in processing
 		OrderNotCleared,
+		// AssetManager does not now given asset
 		UnknownAsset,
+		// The user has to many uncollected orders. Before
+		// submitting new orders, a collect of those is required.
 		CollectRequired,
+		// A fulfillment happened with an asset price of zero.
+		// The order will be discarded
 		ZeroPriceAsset,
+		// Order is still active and can not be processed further
 		OrderNotInProcessing,
+		// Update of order was not a new order
 		NoNewOrder,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
 	where
-		<T::Manager as AssetAccountant<T::AccountId>>::AssetInfo:
+		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
 			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
-		/// Update an order to invest tokens in a given tranche.
-		///
-		/// The caller must have the TrancheInvestor role for this
-		/// tranche, and that role must not have expired.
-		///
-		/// If the caller has an investment order for the
-		/// specified tranche in a prior epoch, it must first be
-		/// collected.
+		/// Update an order to invest into a given asset.
 		///
 		/// If the requested amount is greater than the current
 		/// investment order, the balance will be transferred from
 		/// the calling account to the pool. If the requested
 		/// amount is less than the current order, the balance
-		/// willbe transferred from the pool to the calling
+		/// will be transferred from the pool to the calling
 		/// account.
 		#[pallet::weight(0)]
 		pub fn update_invest_order(
@@ -284,11 +325,15 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::PreConditions::check((asset.clone(), who.clone())),
+				T::PreConditions::check(OrderType::Investment {
+					who: who.clone(),
+					asset: asset.clone(),
+					amount
+				}),
 				BadOrigin
 			);
 
-			let info = T::Manager::info(asset.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
+			let info = T::Accountant::info(asset.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
 			let cur_order_id = ActiveOrder::<T>::try_mutate(
 				&asset,
 				|total_order| -> Result<T::OrderId, DispatchError> {
@@ -317,20 +362,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Update an order to redeem tokens in a given tranche.
-		///
-		/// The caller must have the TrancheInvestor role for this
-		/// tranche, and that role must not have expired.
-		///
-		/// If the caller has a redemption order for the
-		/// specified tranche in a prior epoch, it must first
-		/// be collected.
+		/// Update an order to redeem from a given asset.
 		///
 		/// If the requested amount is greater than the current
 		/// investment order, the balance will be transferred from
 		/// the calling account to the pool. If the requested
 		/// amount is less than the current order, the balance
-		/// willbe transferred from the pool to the calling
+		/// will be transferred from the pool to the calling
 		/// account.
 		#[pallet::weight(0)]
 		pub fn update_redeem_order(
@@ -341,11 +379,15 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::PreConditions::check((asset.clone(), who.clone())),
+				T::PreConditions::check(OrderType::Redeemption {
+					who: who.clone(),
+					asset: asset.clone(),
+					amount
+				}),
 				BadOrigin
 			);
 
-			let info = T::Manager::info(asset.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
+			let info = T::Accountant::info(asset.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
 			let cur_order_id = ActiveOrder::<T>::try_mutate(
 				&asset,
 				|total_order| -> Result<T::OrderId, DispatchError> {
@@ -411,7 +453,7 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T>
 where
-	<T::Manager as AssetAccountant<T::AccountId>>::AssetInfo:
+	<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
 		AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	fn get_order(
@@ -438,7 +480,7 @@ where
 
 		Ok(orders
 			.get_mut(orders.len())
-			.expect("Latest element is current order. qed."))
+			.expect("Latest element is current order and is Some. qed."))
 	}
 
 	pub(crate) fn do_collect(
@@ -446,24 +488,27 @@ where
 		asset_id: T::AssetId,
 		collect_type: CollectType,
 	) -> DispatchResultWithPostInfo {
-		let info = T::Manager::info(asset_id.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
-		let (_collects, collection) = Orders::<T>::try_mutate(
+		let info = T::Accountant::info(asset_id.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
+		let (collected_ids, collection) = Orders::<T>::try_mutate(
 			&who,
 			&asset_id,
-			|orders| -> Result<(u32, Collection<T::Amount>), DispatchError> {
+			|orders| -> Result<(Vec<T::OrderId>, Collection<T::Amount>), DispatchError> {
 				let mut collection = Collection::<T::Amount>::default();
 				let mut collected = Vec::with_capacity(orders.len());
 
 				for order in orders.iter() {
-					// TODO: It might be usefull to only skip the order and not error out early??
-					let fulfillment = ClearedOrders::<T>::try_get(asset_id.clone(), order.id)
-						.map_err(|_| Error::<T>::OrderNotCleared)?;
-
-					Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, &order)?;
-					Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, &order)?;
-					Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
-					Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
-					collected.push(order.id);
+					// We subjectively decide here, that it is better not to error out if in the sequence of orders
+					// one has not yet been cleared.
+					//
+					// Instead we signal the collected orders via the vector if OrderId's in the event.
+					if let Ok(fulfillment) = ClearedOrders::<T>::try_get(asset_id.clone(), order.id)
+					{
+						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, &order)?;
+						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, &order)?;
+						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
+						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
+						collected.push(order.id);
+					};
 				}
 
 				// Transfer collected amounts from investment and redemption
@@ -506,7 +551,10 @@ where
 											asset_id.clone(),
 											&info,
 											order,
-											collection.remaining_asset_invest,
+											order
+												.invest
+												.checked_add(&collection.remaining_asset_invest)
+												.ok_or(ArithmeticError::Overflow)?,
 										)
 									},
 								)?;
@@ -526,7 +574,10 @@ where
 											asset_id.clone(),
 											&info,
 											order,
-											collection.remaining_asset_redeem,
+											order
+												.redeem
+												.checked_add(&collection.remaining_asset_redeem)
+												.ok_or(ArithmeticError::Overflow)?,
 										)
 									},
 								)?;
@@ -554,13 +605,18 @@ where
 				}
 
 				// TODO: is the as call safe here? we should alwas run at least usize == u32 but maybe error out
-				Ok((collected.len() as u32, collection))
+				Ok((collected, collection))
 			},
 		)?;
 
-		Self::deposit_event(Event::OrdersCollected(asset_id, who.clone(), collection));
+		Self::deposit_event(Event::OrdersCollected(
+			asset_id,
+			who.clone(),
+			collected_ids,
+			collection,
+		));
 
-		// TODO: Actually weight this
+		// TODO: Actually weight this with collected_ids
 		Ok(().into())
 	}
 
@@ -712,7 +768,7 @@ where
 
 impl<T: Config> InvestmentManager for Pallet<T>
 where
-	<T::Manager as AssetAccountant<T::AccountId>>::AssetInfo:
+	<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
 		AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	type Error = DispatchError;
@@ -759,9 +815,9 @@ where
 				.into_account_truncating();
 
 				if invest >= redeem {
-					T::Manager::deposit(asset_account, asset_id.clone(), invest - redeem)?;
+					T::Accountant::deposit(asset_account, asset_id.clone(), invest - redeem)?;
 				} else {
-					T::Manager::withdraw(asset_account, asset_id.clone(), redeem - invest)?;
+					T::Accountant::withdraw(asset_account, asset_id.clone(), redeem - invest)?;
 				}
 
 				ClearedOrders::<T>::insert(asset_id.clone(), order_id, fulfillment.clone());
