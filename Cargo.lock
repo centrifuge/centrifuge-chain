@@ -5765,7 +5765,6 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-bridge-mapping",
- "pallet-fees",
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -5823,13 +5822,13 @@ name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
