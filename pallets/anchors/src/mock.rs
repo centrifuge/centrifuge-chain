@@ -12,7 +12,9 @@
 // GNU General Public License for more details.
 
 use crate::{self as pallet_anchors, *};
+
 use common_traits::fees::NoFees;
+
 use frame_support::{
 	parameter_types,
 	traits::{Everything, FindAuthor},
