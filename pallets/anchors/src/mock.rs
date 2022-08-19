@@ -11,11 +11,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as anchors, *};
-use frame_support::parameter_types;
-use frame_support::traits::{Everything, SortedMembers};
-use frame_support::{traits::FindAuthor, ConsensusEngineId};
-use frame_system::EnsureSignedBy;
+use crate::{self as pallet_anchors, *};
+use common_traits::fees::NoFees;
+use frame_support::{
+	parameter_types,
+	traits::{Everything, FindAuthor},
+	ConsensusEngineId,
+};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -37,9 +39,8 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Anchors: anchors::{Pallet, Call, Storage},
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage},
+		Anchors: pallet_anchors::{Pallet, Call, Storage} = 5,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 6,
 	}
 );
 
@@ -117,25 +118,9 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const One: u64 = 1;
-}
-
-impl SortedMembers<u64> for One {
-	fn sorted_members() -> Vec<u64> {
-		vec![1]
-	}
-}
-
-impl pallet_fees::Config for Test {
-	type Currency = Balances;
-	type Event = ();
-	type FeeChangeOrigin = EnsureSignedBy<One, u64>;
-	type WeightInfo = ();
-}
-
 impl Config for Test {
 	type WeightInfo = ();
+	type Fees = NoFees<Self::AccountId, Balance>;
 }
 
 impl Test {
@@ -182,20 +167,5 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
-	// fees genesis
-	use frame_support::traits::GenesisBuild;
-	pallet_fees::GenesisConfig::<Test> {
-		initial_fees: vec![(
-			// anchoring state rent fee per day
-			H256::from(&[
-				17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31, 97,
-				133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-			]),
-			// state rent 0 for tests
-			0,
-		)],
-	}
-	.assimilate_storage(&mut t)
-	.unwrap();
 	t.into()
 }

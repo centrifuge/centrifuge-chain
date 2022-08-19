@@ -17,6 +17,7 @@ use frame_system::ensure_root;
 use scale_info::TypeInfo;
 
 pub use pallet::*;
+
 #[cfg(test)]
 mod mock;
 
