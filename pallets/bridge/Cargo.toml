@@ -56,5 +56,7 @@ std = [
     'chainbridge/std',
     'pallet-nft/std',
     'unique-assets/std',
-    "common-traits/std"
+    'common-traits/std',
+    'runtime-common/std',
+    'pallet-bridge-mapping/std'
 ]
