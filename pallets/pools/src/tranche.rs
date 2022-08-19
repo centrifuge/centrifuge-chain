@@ -1502,7 +1502,6 @@ where
 	CurrencyId: Encode,
 	CustomMetadata: Parameter + Member + TypeInfo,
 {
-	// Is this the right ID?
 	let tranche_id = currency.encode();
 
 	Ok(AssetMetadata {

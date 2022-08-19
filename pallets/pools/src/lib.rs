@@ -1622,8 +1622,6 @@ pub mod pallet {
 					)?;
 				}
 
-				// Checking if we have a new tranche?
-
 				//
 				// The case when Metadata AND the tranche changed, we don't allow for an or. Both have to be changed (for now)
 				//
@@ -1632,21 +1630,21 @@ pub mod pallet {
 					if let Change::NewValue(tranches) = &changes.tranches {
 						// It seems like we need to associate metadata with a tranche? I can't seem to find the relation.
 						// The tranche_id in the location? But where does tranche_id come from?
-						for (_, updated_metadata) in tranches.iter().zip(metadata.iter()) {
+						for (tranche, updated_metadata) in tranches.iter().zip(metadata.iter()) {
 							let decimals =
 								T::AssetRegistry::metadata(&pool.currency).unwrap().decimals;
 							let parachain_id = T::ParachainId::get();
 
 							let m = create_asset_metadata(
 								decimals,
-								pool.currency,
+								tranche.currency,
 								parachain_id,
 								updated_metadata.clone().token_name.to_vec(),
 								updated_metadata.clone().token_symbol.to_vec(),
 							)?;
 
 							assert_ok!(T::AssetRegistry::update_asset(
-								pool.currency,
+								tranche.currency,
 								Some(m.decimals),
 								Some(m.name),
 								Some(m.symbol),
