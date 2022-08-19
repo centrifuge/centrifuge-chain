@@ -41,4 +41,5 @@ std = [
     'sp-std/std',
     "sp-arithmetic/std",
     'pallet-timestamp/std',
+    'pallet-balances/std',
 ]

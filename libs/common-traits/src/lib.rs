@@ -331,4 +331,27 @@ pub mod fees {
 		/// If the `from` account has not enough balance the fees are not paid.
 		fn fee_to_treasury(from: &Self::AccountId, fee: Fee<Self::Balance, K>) -> DispatchResult;
 	}
+
+	pub struct NoFees<AccountId, Balance>(sp_std::marker::PhantomData<(AccountId, Balance)>);
+
+	impl<K, A, B: Balance> Fees<K> for NoFees<A, B> {
+		type AccountId = A;
+		type Balance = B;
+
+		fn fee_value(_: K) -> Self::Balance {
+			Self::Balance::default()
+		}
+
+		fn fee_to_author(_: &Self::AccountId, _: Fee<Self::Balance, K>) -> DispatchResult {
+			Ok(())
+		}
+
+		fn fee_to_burn(_: &Self::AccountId, _: Fee<Self::Balance, K>) -> DispatchResult {
+			Ok(())
+		}
+
+		fn fee_to_treasury(_: &Self::AccountId, _: Fee<Self::Balance, K>) -> DispatchResult {
+			Ok(())
+		}
+	}
 }

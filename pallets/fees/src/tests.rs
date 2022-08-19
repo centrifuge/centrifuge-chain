@@ -2,13 +2,13 @@ use crate::mock::*;
 use common_traits::fees::{Fee, Fees as FeesTrait};
 use frame_support::{assert_noop, assert_ok};
 
-const FEE_KEY: TestFeeKey = TestFeeKey::Key1;
+const FEE_KEY: u8 = 1;
 const FEE_VALUE: u64 = 42;
 
 fn set_default_fee() {
 	assert_ok!(Fees::set_fee(
 		Origin::signed(Admin::get()),
-		TestFeeKey::Key1,
+		FEE_KEY,
 		FEE_VALUE
 	));
 }

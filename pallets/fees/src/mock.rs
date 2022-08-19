@@ -2,18 +2,14 @@ use crate::{self as pallet_fees, *};
 use frame_support::{
 	parameter_types,
 	traits::{Everything, FindAuthor, SortedMembers},
-	ConsensusEngineId, PalletId, RuntimeDebug,
+	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{
-	serde::{Deserialize, Serialize},
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-
-use codec::{Decode, Encode};
-use scale_info::TypeInfo;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -131,16 +127,8 @@ impl SortedMembers<u64> for Admin {
 	}
 }
 
-#[derive(
-	Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo, Serialize, Deserialize,
-)]
-pub enum TestFeeKey {
-	Key1,
-	Key2,
-}
-
 impl Config for Test {
-	type FeeKey = TestFeeKey;
+	type FeeKey = u8;
 	type Currency = Balances;
 	type Treasury = Treasury;
 	type Event = ();
