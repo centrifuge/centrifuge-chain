@@ -22,7 +22,7 @@ use crate::{
 	},
 };
 use codec::Encode;
-use cumulus_client_service::genesis::generate_genesis_block;
+use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -328,7 +328,7 @@ pub fn run() -> Result<()> {
 			)?;
 
 			let state_version = Cli::native_runtime_version(&chain_spec).state_version();
-			let block: Block = generate_genesis_block(&chain_spec, state_version)?;
+			let block: Block = generate_genesis_block(&**chain_spec, state_version)?;
 
 			let raw_header = block.header().encode();
 			let output_buf = if params.raw {
@@ -440,7 +440,7 @@ pub fn run() -> Result<()> {
 					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(&id);
 
 				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
-				let block: Block = generate_genesis_block(&config.chain_spec, state_version)
+				let block: Block = generate_genesis_block(&*config.chain_spec, state_version)
 					.map_err(|e| format!("{:?}", e))?;
 				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
