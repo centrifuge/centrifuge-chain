@@ -25,6 +25,7 @@ use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::traits::Zero;
 use sp_runtime::Perquintill;
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
@@ -540,6 +541,15 @@ where
 pub struct TotalOrder<Balance> {
 	pub invest: Balance,
 	pub redeem: Balance,
+}
+
+impl<Balance: Zero> Default for TotalOrder<Balance> {
+	fn default() -> Self {
+		TotalOrder {
+			invest: Zero::zero(),
+			redeem: Zero::zero(),
+		}
+	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]

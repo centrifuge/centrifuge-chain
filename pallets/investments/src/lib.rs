@@ -235,28 +235,10 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
-	#[pallet::type_value]
-	pub fn OnTotalOrderEmpty<T: Config>() -> TotalOrder<T::Amount>
-	where
-		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
-			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	{
-		TotalOrder {
-			invest: Zero::zero(),
-			redeem: Zero::zero(),
-		}
-	}
-
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_order)]
-	pub type ActiveOrder<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::InvestmentId,
-		TotalOrder<T::Amount>,
-		ValueQuery,
-		OnTotalOrderEmpty<T>,
-	>;
+	pub type ActiveOrder<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_in_processing_order)]
