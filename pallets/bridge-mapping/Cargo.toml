@@ -28,9 +28,10 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", default-fea
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 pallet-anchors = { path = "../anchors", default-features = false }
-pallet-fees = { default-features = false, path = "../fees" }
 runtime-common = { path = "../../runtime/common", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = true}
+
+common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [features]
 default = ['std']
@@ -39,6 +40,7 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'sp-runtime/std',
-    'pallet-nft/std'
+    'pallet-nft/std',
+    'runtime-common/std',
 ]
 
