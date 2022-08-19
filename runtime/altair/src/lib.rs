@@ -221,12 +221,12 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+	type Event = Event;
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees<Runtime>>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type Event = Event;
 }
 
 parameter_types! {
@@ -1178,7 +1178,7 @@ construct_runtime!(
 
 		// money stuff
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
+		TransactionPayment: pallet_transaction_payment::{Event<T>, Pallet, Storage} = 21,
 
 		// authoring stuff
 		// collator_selection must go here in order for the storage to be available to pallet_session
