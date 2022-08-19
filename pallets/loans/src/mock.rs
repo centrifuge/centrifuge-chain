@@ -18,8 +18,10 @@
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use common_traits::PoolUpdateGuard;
+use common_types::impls::AuthorityOrigin;
 use common_types::{
-	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
+	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role,
+	TimeProvider,
 };
 use frame_support::traits::Everything;
 use frame_support::{
@@ -27,12 +29,12 @@ use frame_support::{
 	traits::{AsEnsureOriginWithArg, GenesisBuild, SortedMembers},
 	PalletId,
 };
-use frame_system::{EnsureSigned, EnsureSignedBy};
+use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
-	Balance, CollectionId, ItemId, Moment, Rate, TrancheId, TrancheToken,
-	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
+	asset_registry::CustomAssetProcessor, Balance, CollectionId, ItemId, Moment, Rate, TrancheId,
+	TrancheToken, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -60,7 +62,8 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>}
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>},
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>}
 	}
 );
 
@@ -133,6 +136,16 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
+impl orml_asset_registry::Config for MockRuntime {
+	type Event = Event;
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
+	type AuthorityOrigin = AuthorityOrigin<Origin, EnsureRoot<u64>>;
+	type AssetProcessor = CustomAssetProcessor;
+	type Balance = Balance;
+	type WeightInfo = ();
+}
+
 impl orml_tokens::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
@@ -176,11 +189,15 @@ parameter_types! {
 	pub const MaxTokenSymbolLength: u32 = 128;
 
 	pub const ZeroDeposit: Balance = 0;
+
+	pub const ParachainId: u32 = 2008;
 }
 
 impl pallet_pools::Config for MockRuntime {
+	type AssetRegistry = OrmlAssetRegistry;
 	type PoolCurrency = Everything;
 	type Event = Event;
+	type ParachainId = ParachainId;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;

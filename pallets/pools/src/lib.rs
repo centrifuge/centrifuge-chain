@@ -653,7 +653,6 @@ pub mod pallet {
 				Error::<T>::InvalidCurrency
 			);
 
-			let decimals = T::AssetRegistry::metadata(&currency).unwrap().decimals;
 			let parachain_id = T::ParachainId::get();
 
 			let now = Self::now();
@@ -676,31 +675,36 @@ pub mod pallet {
 				None => None,
 			};
 
-			for tranche in &tranche_inputs {
-				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche
-					.clone()
-					.metadata
-					.token_name
-					.try_into()
-					.map_err(|_| Error::<T>::BadMetadata)?;
-
-				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche
-					.clone()
-					.metadata
-					.token_symbol
-					.try_into()
-					.map_err(|_| Error::<T>::BadMetadata)?;
-
-				let metadata = create_asset_metadata(
-					decimals,
-					currency,
-					parachain_id,
-					token_name.to_vec(),
-					token_symbol.to_vec(),
-				)?;
-
-				assert_ok!(T::AssetRegistry::register_asset(Some(currency), metadata));
-			}
+			// for tranche in &tranche_inputs {
+			// 	let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche
+			// 		.clone()
+			// 		.metadata
+			// 		.token_name
+			// 		.try_into()
+			// 		.map_err(|_| Error::<T>::BadMetadata)?;
+			//
+			// 	let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche
+			// 		.clone()
+			// 		.metadata
+			// 		.token_symbol
+			// 		.try_into()
+			// 		.map_err(|_| Error::<T>::BadMetadata)?;
+			//
+			// 	// let decimals = match T::AssetRegistry::metadata(&currency) {
+			// 	// 	Some(metadata) => metadata.decimals,
+			// 	// 	None => return Err(Error::<T>::BadMetadata.into()),
+			// 	// };
+			//
+			// 	let metadata = create_asset_metadata(
+			// 		decimals,
+			// 		currency,
+			// 		parachain_id,
+			// 		token_name.to_vec(),
+			// 		token_symbol.to_vec(),
+			// 	)?;
+			//
+			// 	assert_ok!(T::AssetRegistry::register_asset(Some(currency), metadata));
+			// }
 
 			Pool::<T>::insert(
 				pool_id,
@@ -1626,33 +1630,32 @@ pub mod pallet {
 				// The case when Metadata AND the tranche changed, we don't allow for an or. Both have to be changed (for now)
 				//
 				if let Change::NewValue(metadata) = &changes.tranche_metadata {
-					// I just assume Vec<TrancheMetadata> and Vec<TrancheUpdate> have the same order?
-					if let Change::NewValue(tranches) = &changes.tranches {
-						// It seems like we need to associate metadata with a tranche? I can't seem to find the relation.
-						// The tranche_id in the location? But where does tranche_id come from?
-						for (tranche, updated_metadata) in tranches.iter().zip(metadata.iter()) {
-							let decimals =
-								T::AssetRegistry::metadata(&pool.currency).unwrap().decimals;
-							let parachain_id = T::ParachainId::get();
+					for (tranche, updated_metadata) in
+						pool.tranches.tranches.iter().zip(metadata.iter())
+					{
+						let decimals = match T::AssetRegistry::metadata(&tranche.currency) {
+							Some(metadata) => metadata.decimals,
+							None => return Err(Error::<T>::BadMetadata.into()),
+						};
 
-							let m = create_asset_metadata(
-								decimals,
-								tranche.currency,
-								parachain_id,
-								updated_metadata.clone().token_name.to_vec(),
-								updated_metadata.clone().token_symbol.to_vec(),
-							)?;
+						let parachain_id = T::ParachainId::get();
+						let m = create_asset_metadata(
+							decimals,
+							tranche.currency,
+							parachain_id,
+							updated_metadata.clone().token_name.to_vec(),
+							updated_metadata.clone().token_symbol.to_vec(),
+						)?;
 
-							assert_ok!(T::AssetRegistry::update_asset(
-								tranche.currency,
-								Some(m.decimals),
-								Some(m.name),
-								Some(m.symbol),
-								Some(m.existential_deposit),
-								Some(m.location),
-								Some(m.additional),
-							));
-						}
+						assert_ok!(T::AssetRegistry::update_asset(
+							tranche.currency,
+							Some(m.decimals),
+							Some(m.name),
+							Some(m.symbol),
+							Some(m.existential_deposit),
+							Some(m.location),
+							Some(m.additional),
+						));
 					}
 				}
 

@@ -30,11 +30,12 @@ use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 use altair_runtime::{
 	Balances, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
 };
+use common_types::XcmMetadata;
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use runtime_common::{decimals, parachains, Balance};
 use sp_runtime::traits::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 use xcm::prelude::{Parachain, X2};

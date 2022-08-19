@@ -37,8 +37,9 @@ use crate::xcm::kusama::setup::{
 use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use common_types::XcmMetadata;
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use runtime_common::{decimals, parachains, Balance};
 
 #[test]
 fn transfer_air_to_sibling() {

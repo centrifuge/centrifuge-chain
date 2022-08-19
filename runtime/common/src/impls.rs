@@ -4,7 +4,6 @@ use super::constants::{CENTI_CFG, TREASURY_FEE_RATIO};
 use super::*;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::{CurrencyId, CustomMetadata};
-use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
 use frame_support::traits::{Currency, Imbalance, OnUnbalanced};
 use frame_support::weights::{

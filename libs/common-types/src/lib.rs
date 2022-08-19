@@ -15,7 +15,6 @@
 
 ///! Common-types of the Centrifuge chain.
 use codec::{Decode, Encode, MaxEncodedLen};
-
 use common_traits::Properties;
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
@@ -34,6 +33,8 @@ use sp_std::vec::Vec;
 pub use tokens::*;
 
 pub mod ids;
+#[cfg(feature = "runtime-benchmarks")]
+pub mod impls;
 #[cfg(test)]
 mod tests;
 mod tokens;
@@ -504,20 +505,7 @@ pub enum Adjustment<Amount> {
 }
 
 /// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
-#[derive(
-	Clone,
-	Copy,
-	Default,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
-)]
+#[derive(Clone, Copy, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo)]
 pub struct CustomMetadata {
 	/// XCM-related metadata.
 	pub xcm: XcmMetadata,
@@ -537,20 +525,7 @@ pub struct CustomMetadata {
 	pub pool_currency: bool,
 }
 
-#[derive(
-	Clone,
-	Copy,
-	Default,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
-)]
+#[derive(Clone, Copy, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo)]
 pub struct XcmMetadata {
 	/// The fee charged for every second that an XCM message takes to execute.
 	/// When `None`, the `default_per_second` will be used instead.

@@ -442,14 +442,25 @@ fn epoch() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				}
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -482,6 +493,7 @@ fn epoch() {
 				tranches: Change::NoChange,
 				min_epoch_time: Change::NewValue(30 * 60),
 				max_nav_age: Change::NewValue(0),
+				tranche_metadata: Change::NoChange,
 			}
 		));
 
@@ -705,14 +717,25 @@ fn submission_period() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -912,14 +935,25 @@ fn execute_info_removed_after_epoch_execute() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -1016,14 +1050,25 @@ fn collect_tranche_tokens() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -1134,7 +1179,14 @@ fn invalid_tranche_id_is_err() {
 			senior_investor.clone(),
 			1_u64,
 			0,
-			vec![(TrancheType::Residual, None)],
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			},],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
 			None
@@ -1179,7 +1231,14 @@ fn updating_with_same_amount_is_err() {
 			senior_investor.clone(),
 			1_u64,
 			0,
-			vec![(TrancheType::Residual, None)],
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			},],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
 			None
@@ -1217,7 +1276,14 @@ fn pool_updates_should_be_constrained() {
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			pool_id,
-			vec![(TrancheType::Residual, None)],
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			}],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
 			None
@@ -1263,6 +1329,7 @@ fn pool_updates_should_be_constrained() {
 					tranches: Change::NoChange,
 					min_epoch_time: Change::NewValue(0),
 					max_nav_age: Change::NewValue(realistic_max_nav_age),
+					tranche_metadata: Change::NoChange,
 				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
@@ -1275,6 +1342,7 @@ fn pool_updates_should_be_constrained() {
 					tranches: Change::NoChange,
 					min_epoch_time: Change::NewValue(realistic_min_epoch_time),
 					max_nav_age: Change::NewValue(7 * 24 * 60 * 60),
+					tranche_metadata: Change::NoChange,
 				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
@@ -1294,6 +1362,7 @@ fn pool_updates_should_be_constrained() {
 				tranches: Change::NoChange,
 				min_epoch_time: Change::NewValue(realistic_min_epoch_time),
 				max_nav_age: Change::NewValue(realistic_max_nav_age),
+				tranche_metadata: Change::NoChange,
 			}
 		));
 
@@ -1351,7 +1420,14 @@ fn updating_orders_updates_epoch() {
 			pool_admin.clone(),
 			pool_owner,
 			pool_id,
-			vec![(TrancheType::Residual, None)],
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			}],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
 			None
@@ -1402,7 +1478,14 @@ fn no_order_is_err() {
 			pool_admin.clone(),
 			pool_owner,
 			pool_id,
-			vec![(TrancheType::Residual, None)],
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			}],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
 			None
@@ -1445,7 +1528,14 @@ fn collecting_over_last_exec_epoch_is_err() {
 			pool_admin.clone(),
 			pool_owner,
 			pool_id,
-			vec![(TrancheType::Residual, None)],
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			}],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
 			None
@@ -1507,28 +1597,47 @@ fn tranche_ids_are_unique() {
 			0,
 			pool_id_0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				),
-				(
-					TrancheType::NonResidual {
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				),
-				(
-					TrancheType::NonResidual {
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -1540,28 +1649,47 @@ fn tranche_ids_are_unique() {
 			0,
 			pool_id_1,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				),
-				(
-					TrancheType::NonResidual {
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				),
-				(
-					TrancheType::NonResidual {
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -1588,7 +1716,14 @@ fn same_pool_id_not_possible() {
 			Origin::signed(0),
 			0,
 			pool_id_1,
-			vec![(TrancheType::Residual, None),],
+			vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			},],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
 			None
@@ -1599,7 +1734,14 @@ fn same_pool_id_not_possible() {
 				Origin::signed(0),
 				0,
 				pool_id_1,
-				vec![(TrancheType::Residual, None),],
+				vec![TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
 				None
@@ -1624,28 +1766,47 @@ fn valid_tranche_structure_is_enforced() {
 				0,
 				pool_id_0,
 				vec![
-					(TrancheType::Residual, None),
-					(
-						TrancheType::NonResidual {
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					),
-					(
-						TrancheType::NonResidual {
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					),
-					(
-						TrancheType::NonResidual {
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate + One::one(), // More residual MUST have smaller interest than above tranche
 							min_risk_buffer: Perquintill::from_percent(20),
 						},
-						None
-					)
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
@@ -1660,29 +1821,55 @@ fn valid_tranche_structure_is_enforced() {
 				0,
 				pool_id_0,
 				vec![
-					(TrancheType::Residual, None),
-					(TrancheType::Residual, None),
-					(
-						TrancheType::NonResidual {
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					),
-					(
-						TrancheType::NonResidual {
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					),
-					(
-						TrancheType::NonResidual {
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					)
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
@@ -1697,28 +1884,47 @@ fn valid_tranche_structure_is_enforced() {
 				0,
 				pool_id_0,
 				vec![
-					(
-						TrancheType::NonResidual {
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					),
-					(TrancheType::Residual, None), // Must start with residual
-					(
-						TrancheType::NonResidual {
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					}, // Must start with residual
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					),
-					(
-						TrancheType::NonResidual {
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					)
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
@@ -1733,22 +1939,44 @@ fn valid_tranche_structure_is_enforced() {
 				0,
 				pool_id_0,
 				vec![
-					(TrancheType::Residual, None),
-					(
-						TrancheType::NonResidual {
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					),
-					(TrancheType::Residual, None), // Intermediate Residual not ok
-					(
-						TrancheType::NonResidual {
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					}, // Intermediate Residual not ok
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(0),
 						},
-						None
-					),
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
@@ -1792,14 +2020,25 @@ fn triger_challange_period_with_zero_solution() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -1902,14 +2141,25 @@ fn min_challenge_time_is_respected() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
@@ -2015,14 +2265,25 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
@@ -2233,14 +2494,25 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
@@ -2427,14 +2699,25 @@ fn only_usd_as_pool_currency_allowed() {
 				pool_owner.clone(),
 				0,
 				vec![
-					(TrancheType::Residual, None),
-					(
-						TrancheType::NonResidual {
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					)
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
 				],
 				CurrencyId::Native,
 				200 * CURRENCY,
@@ -2449,14 +2732,25 @@ fn only_usd_as_pool_currency_allowed() {
 				pool_owner.clone(),
 				0,
 				vec![
-					(TrancheType::Residual, None),
-					(
-						TrancheType::NonResidual {
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
 							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
-						None
-					)
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						}
+					},
 				],
 				CurrencyId::Tranche(0, [0u8; 16]),
 				200 * CURRENCY,
@@ -2470,14 +2764,25 @@ fn only_usd_as_pool_currency_allowed() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
@@ -2504,14 +2809,25 @@ fn creation_takes_deposit() {
 			pool_owner.clone(),
 			0,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
@@ -2531,14 +2847,25 @@ fn creation_takes_deposit() {
 			pool_owner.clone(),
 			1,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
@@ -2560,14 +2887,25 @@ fn creation_takes_deposit() {
 			pool_owner.clone(),
 			2,
 			vec![
-				(TrancheType::Residual, None),
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
-					None
-				)
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,

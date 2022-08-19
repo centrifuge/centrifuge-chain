@@ -171,6 +171,7 @@ tempfile = "3.1.0"
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
+common-types = { path = "./libs/common-types" }
 
 [features]
 default = [ "std", "cli" ]
@@ -186,17 +187,19 @@ runtime-benchmarks = [
 	"centrifuge-runtime/runtime-benchmarks",
 	"development-runtime/runtime-benchmarks",
 	"runtime-common/runtime-benchmarks",
+
 ]
 test-benchmarks = [
 	"runtime-benchmarks",
 	"runtime-integration-tests/runtime-benchmarks",
+	"pallet-pools/runtime-benchmarks",
 ]
 cli = [
 	'try-runtime-cli',
 ]
 try-runtime = [
 	"centrifuge-runtime/try-runtime",
-	"try-runtime-cli"
+	"try-runtime-cli",
 ]
 
 fast-runtime = [

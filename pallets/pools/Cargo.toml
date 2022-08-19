@@ -33,19 +33,20 @@ polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-f
 orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.24" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.24" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.24" }
 runtime-common = { path = "../../runtime/common", default-features = true }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true}
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.24" }
 rand = "0.8.5"
-runtime-common = { path = "../../runtime/common", default-features = false }
-
+parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = true, branch = "polkadot-v0.9.24" }
 
 [features]
 default = ['std']
-runtime-benchmarks = ['frame-benchmarking']
+runtime-benchmarks = [
+    'frame-benchmarking',
+]
 std = [
     'codec/std',
     'frame-support/std',
@@ -60,5 +61,8 @@ std = [
     'polkadot-parachain/std',
     'xcm/std'
 ]
-try-runtime = ['frame-support/try-runtime']
+test-benchmarks = [
+    'frame-support/try-runtime',
+    'common-types/runtime-benchmarks'
+]
 

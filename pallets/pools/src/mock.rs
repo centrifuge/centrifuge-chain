@@ -11,7 +11,8 @@ use frame_support::{
 	Blake2_128, StorageHasher,
 };
 use frame_system as system;
-use frame_system::{EnsureSigned, EnsureSignedBy};
+use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
+use orml_traits::asset_registry::AssetMetadata;
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
@@ -22,7 +23,13 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-pub use runtime_common::{Rate, TrancheWeight};
+use common_types::impls::AuthorityOrigin;
+use common_types::CustomMetadata;
+pub use runtime_common::{
+	asset_registry::CustomAssetProcessor,
+	types::{EnsureRootOr, HalfOfCouncil},
+	Rate, TrancheWeight,
+};
 
 common_types::impl_tranche_token!();
 
@@ -96,7 +103,9 @@ frame_support::construct_runtime!(
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
 		FakeNav: fake_nav::{Pallet, Storage},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Storage, Event<T>}
+		Balances: pallet_balances::{Pallet, Storage, Event<T>},
+		ParachainInfo: parachain_info::{Pallet, Storage},
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>}
 	}
 );
 
@@ -210,6 +219,18 @@ impl orml_tokens::Config for Test {
 	type OnKilledTokenAccount = ();
 }
 
+impl orml_asset_registry::Config for Test {
+	type Event = Event;
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
+	type AuthorityOrigin = AuthorityOrigin<Origin, EnsureRoot<u64>>;
+	type AssetProcessor = CustomAssetProcessor;
+	type Balance = Balance;
+	type WeightInfo = ();
+}
+
+impl parachain_info::Config for Test {}
+
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
@@ -299,7 +320,7 @@ parameter_types! {
 }
 
 impl Config for Test {
-	type AssetRegistry = orml_asset_registry::OrmlAssetRegistry;
+	type AssetRegistry = OrmlAssetRegistry;
 	type ParachainId = ParachainInfo;
 	type Event = Event;
 	type Balance = Balance;
@@ -433,6 +454,18 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
 		Timestamp::set(Origin::none(), START_DATE).unwrap();
+		OrmlAssetRegistry::do_register_asset(
+			AssetMetadata {
+				decimals: 18,
+				name: vec![],
+				symbol: vec![],
+				existential_deposit: 1_000_000_000_000,
+				location: None,
+				additional: CustomMetadata::default(),
+			},
+			Some(CurrencyId::AUSD),
+		)
+		.ok();
 	});
 	ext
 }

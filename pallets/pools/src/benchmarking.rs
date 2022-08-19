@@ -52,12 +52,12 @@ benchmarks! {
 	create {
 		let n in 1..T::MaxTranches::get();
 		let caller: T::AccountId = create_admin::<T>(0);
-		let tranches = build_bench_tranches::<T>(n);
+		let tranches = build_bench_input_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
 	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
-		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 		assert_eq!(pool.reserve.available, Zero::zero());
 		assert_eq!(pool.reserve.total, Zero::zero());
 		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
@@ -85,6 +85,7 @@ benchmarks! {
 			tranches: Change::NoChange,
 			min_epoch_time: Change::NewValue(SECS_PER_DAY),
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
+			tranche_metadata: Change::NoChange,
 		};
 	}: update(RawOrigin::Signed(admin), POOL, changes.clone())
 	verify {
@@ -106,12 +107,13 @@ benchmarks! {
 		tranches: Change::NewValue(build_update_tranches::<T>(n)),
 		min_epoch_time: Change::NewValue(SECS_PER_DAY),
 		max_nav_age: Change::NewValue(SECS_PER_HOUR),
+		tranche_metadata: Change::NoChange,
 	})
 	verify {
 		// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
 		// so the update should have been executed immediately.
 		let pool = get_pool::<T>();
-		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
 		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
@@ -142,6 +144,7 @@ benchmarks! {
 			tranches: Change::NewValue(build_update_tranches::<T>(n)),
 			min_epoch_time: Change::NewValue(SECS_PER_DAY),
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
+			tranche_metadata: Change::NoChange,
 		};
 
 		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, changes)?;
@@ -151,7 +154,7 @@ benchmarks! {
 	}: execute_scheduled_update(RawOrigin::Signed(admin), POOL)
 	verify {
 		let pool = get_pool::<T>();
-		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
 		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
@@ -364,13 +367,23 @@ fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 	});
 }
 
-fn assert_tranches_match<T: Config>(
+fn assert_input_tranches_match<T: Config>(
 	chain: &[TrancheOf<T>],
-	target: &[TrancheInput<T::InterestRate>],
+	target: &[TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
 ) {
-	assert!(chain.len() == target.len());
+	assert_eq!(chain.len(), target.len());
 	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.0);
+		assert_eq!(chain.tranche_type, target.tranche_type);
+	}
+}
+
+fn assert_update_tranches_match<T: Config>(
+	chain: &[TrancheOf<T>],
+	target: &[TrancheUpdate<T::InterestRate>],
+) {
+	assert_eq!(chain.len(), target.len());
+	for (chain, target) in chain.iter().zip(target.iter()) {
+		assert_eq!(chain.tranche_type, target.tranche_type);
 	}
 }
 
@@ -378,7 +391,8 @@ fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
 }
 
-fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<T::InterestRate> {
+fn get_scheduled_update<T: Config<PoolId = u64>>(
+) -> ScheduledUpdateDetails<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength> {
 	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
 }
 
@@ -446,7 +460,7 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 	num_tranches: u32,
 	caller: T::AccountId,
 ) -> DispatchResult {
-	let tranches = build_bench_tranches::<T>(num_tranches);
+	let tranches = build_bench_input_tranches::<T>(num_tranches);
 	Pallet::<T>::create(
 		RawOrigin::Signed(caller.clone()).into(),
 		caller,
@@ -458,10 +472,11 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 	)
 }
 
-fn build_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheInput<T::InterestRate>> {
-	let mut tranches = build_bench_tranches::<T>(num_tranches);
+fn build_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheUpdate<T::InterestRate>> {
+	let mut tranches = build_bench_update_tranches::<T>(num_tranches);
+
 	for tranche in &mut tranches {
-		tranche.0 = match tranche.0 {
+		tranche.tranche_type = match tranche.tranche_type {
 			TrancheType::Residual => TrancheType::Residual,
 			TrancheType::NonResidual {
 				interest_rate_per_sec,
@@ -478,23 +493,65 @@ fn build_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheInput<T::In
 	tranches
 }
 
-fn build_bench_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheInput<T::InterestRate>> {
+fn build_bench_update_tranches<T: Config>(
+	num_tranches: u32,
+) -> Vec<TrancheUpdate<T::InterestRate>> {
 	let senior_interest_rate = T::InterestRate::saturating_from_rational(5, 100)
 		/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR);
 	let mut tranches: Vec<_> = (1..num_tranches)
-		.map(|tranche_id| {
-			(
-				TrancheType::NonResidual {
-					interest_rate_per_sec: senior_interest_rate
-						/ T::InterestRate::saturating_from_integer(tranche_id)
-						+ One::one(),
-					min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
-				},
-				None,
-			)
+		.map(|tranche_id| TrancheUpdate {
+			tranche_type: TrancheType::NonResidual {
+				interest_rate_per_sec: senior_interest_rate
+					/ T::InterestRate::saturating_from_integer(tranche_id)
+					+ One::one(),
+				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+			},
+			seniority: None,
 		})
 		.collect();
-	tranches.insert(0, (TrancheType::Residual, None));
+	tranches.insert(
+		0,
+		TrancheUpdate {
+			tranche_type: TrancheType::Residual,
+			seniority: None,
+		},
+	);
+
+	tranches
+}
+
+fn build_bench_input_tranches<T: Config>(
+	num_tranches: u32,
+) -> Vec<TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
+	let senior_interest_rate = T::InterestRate::saturating_from_rational(5, 100)
+		/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR);
+	let mut tranches: Vec<_> = (1..num_tranches)
+		.map(|tranche_id| TrancheInput {
+			tranche_type: TrancheType::NonResidual {
+				interest_rate_per_sec: senior_interest_rate
+					/ T::InterestRate::saturating_from_integer(tranche_id)
+					+ One::one(),
+				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+			},
+			seniority: None,
+			metadata: TrancheMetadata {
+				token_name: BoundedVec::default(),
+				token_symbol: BoundedVec::default(),
+			},
+		})
+		.collect();
+	tranches.insert(
+		0,
+		TrancheInput {
+			tranche_type: TrancheType::Residual,
+			seniority: None,
+			metadata: TrancheMetadata {
+				token_name: BoundedVec::default(),
+				token_symbol: BoundedVec::default(),
+			},
+		},
+	);
+
 	tranches
 }
 
