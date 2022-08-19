@@ -297,23 +297,30 @@ pub trait InvestmentManager {
 pub trait AssetAccountant<AccountId> {
 	type Error;
 	type AssetId;
-	type AssetInfo: AssetProperties<AccountId>;
+	type AssetInfo: AssetProperties<AccountId, Id = Self::AssetId>;
 	type Amount;
 
 	/// Information about an asset. Must allow to derive
 	/// owner, payment and denomination currency
 	fn info(id: Self::AssetId) -> Result<Self::AssetInfo, Self::Error>;
 
+	fn transfer(
+		asset: Self::AssetId,
+		source: &AccountId,
+		dest: &AccountId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
 	/// Increases the existance of
 	fn deposit(
-		buyer: AccountId,
+		buyer: &AccountId,
 		id: Self::AssetId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
 	/// Reduce the existance of an asset
 	fn withdraw(
-		seller: AccountId,
+		seller: &AccountId,
 		id: Self::AssetId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
@@ -321,22 +328,26 @@ pub trait AssetAccountant<AccountId> {
 
 pub trait AssetProperties<AccountId> {
 	type Currency;
+	type Id;
 
 	fn owner(&self) -> AccountId;
-	fn denomination_currency(&self) -> Self::Currency;
+	fn id(&self) -> Self::Id;
 	fn payment_currency(&self) -> Self::Currency;
-	fn payment_account(&self) -> AccountId;
+	fn payment_account(&self) -> AccountId {
+		self.owner()
+	}
 }
 
 impl<AccountId, T: AssetProperties<AccountId>> AssetProperties<AccountId> for &T {
 	type Currency = T::Currency;
+	type Id = T::Id;
 
 	fn owner(&self) -> AccountId {
 		(*self).owner()
 	}
 
-	fn denomination_currency(&self) -> Self::Currency {
-		(*self).denomination_currency()
+	fn id(&self) -> Self::Id {
+		(*self).id()
 	}
 
 	fn payment_currency(&self) -> Self::Currency {

@@ -507,33 +507,32 @@ pub struct AssetAccount<AssetId> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct AssetInfo<AccountId, Currency> {
+pub struct AssetInfo<AccountId, Currency, AssetId> {
 	pub owner: AccountId,
-	pub denominating_currency: Currency,
+	pub id: AssetId,
 	pub payment_currency: Currency,
 }
 
-impl<AccountId, Currency> AssetProperties<AccountId> for AssetInfo<AccountId, Currency>
+impl<AccountId, Currency, AssetId> AssetProperties<AccountId>
+	for AssetInfo<AccountId, Currency, AssetId>
 where
 	AccountId: Clone,
 	Currency: Clone,
+	AssetId: Clone,
 {
 	type Currency = Currency;
+	type Id = AssetId;
 
 	fn owner(&self) -> AccountId {
 		self.owner.clone()
 	}
 
-	fn denomination_currency(&self) -> Self::Currency {
-		self.denominating_currency.clone()
+	fn id(&self) -> Self::Id {
+		self.id.clone()
 	}
 
 	fn payment_currency(&self) -> Self::Currency {
 		self.payment_currency.clone()
-	}
-
-	fn payment_account(&self) -> AccountId {
-		self.owner()
 	}
 }
 
