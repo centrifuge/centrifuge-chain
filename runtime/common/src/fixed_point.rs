@@ -20,10 +20,9 @@
 
 use codec::{CompactAs, Decode, Encode};
 use sp_arithmetic::{
-	Rounding,
-	helpers_128bit::{multiply_by_rational_with_rounding},
+	helpers_128bit::multiply_by_rational_with_rounding,
 	traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero},
-	FixedPointNumber, FixedPointOperand,
+	FixedPointNumber, FixedPointOperand, Rounding,
 };
 use sp_std::{
 	ops::{self},
@@ -256,9 +255,14 @@ macro_rules! implement_fixed {
 				let negative = lhs.negative != rhs.negative;
 
 				//todo(nuno): check with runtime if this rounding is fine
-				multiply_by_rational_with_rounding(lhs.value, Self::DIV as u128, rhs.value, Rounding::NearestPrefDown)
-					.and_then(|value| from_i129(I129 { value, negative }))
-					.map(Self)
+				multiply_by_rational_with_rounding(
+					lhs.value,
+					Self::DIV as u128,
+					rhs.value,
+					Rounding::NearestPrefDown,
+				)
+				.and_then(|value| from_i129(I129 { value, negative }))
+				.map(Self)
 			}
 		}
 
@@ -269,9 +273,14 @@ macro_rules! implement_fixed {
 				let negative = lhs.negative != rhs.negative;
 
 				//todo(nuno): check with runtime if this rounding is fine
-				multiply_by_rational_with_rounding(lhs.value, rhs.value, Self::DIV as u128, Rounding::NearestPrefDown)
-					.and_then(|value| from_i129(I129 { value, negative }))
-					.map(Self)
+				multiply_by_rational_with_rounding(
+					lhs.value,
+					rhs.value,
+					Self::DIV as u128,
+					Rounding::NearestPrefDown,
+				)
+				.and_then(|value| from_i129(I129 { value, negative }))
+				.map(Self)
 			}
 		}
 

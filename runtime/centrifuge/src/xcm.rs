@@ -26,13 +26,13 @@ use xcm_builder::{
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
+use runtime_common::xcm::general_key;
 use runtime_common::{
 	decimals, parachains,
 	xcm::FixedConversionRateProvider,
 	xcm_fees::{default_per_second, native_per_second},
 	CurrencyId,
 };
-use runtime_common::xcm::general_key;
 
 /// The main XCM config
 /// This is where we configure the core of our XCM integrations: how tokens are transferred,

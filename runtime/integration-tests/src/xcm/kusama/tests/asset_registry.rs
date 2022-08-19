@@ -33,6 +33,7 @@ use altair_runtime::{
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::xcm::general_key;
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 use sp_runtime::traits::BadOrigin;
@@ -40,7 +41,6 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use xcm::prelude::{Parachain, X2};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
-use runtime_common::xcm::general_key;
 
 #[test]
 fn register_air_works() {
@@ -102,7 +102,7 @@ fn register_tranche_asset_blocked() {
 			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				1,
-				X2(Parachain(2000), general_key(vec![42])),
+				X2(Parachain(2000), general_key(&[42])),
 			))),
 			additional: CustomMetadata::default(),
 		};

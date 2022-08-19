@@ -32,8 +32,11 @@ use centrifuge_runtime::{
 };
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use runtime_common::{xcm::general_key, xcm_fees::{default_per_second, ksm_per_second}};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use runtime_common::{
+	xcm::general_key,
+	xcm_fees::{default_per_second, ksm_per_second},
+};
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
@@ -48,9 +51,7 @@ fn register_cfg_works() {
 			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				0,
-				X1(general_key(
-					parachains::polkadot::centrifuge::CFG_KEY,
-				)),
+				X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
 			))),
 			additional: CustomMetadata::default(),
 		};

@@ -33,13 +33,13 @@ use centrifuge_runtime::{
 };
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::xcm::general_key;
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 use sp_runtime::traits::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
-use runtime_common::xcm::general_key;
 
 #[test]
 fn transfer_cfg_to_sibling() {
@@ -122,7 +122,7 @@ fn transfer_cfg_to_sibling() {
 		assert_eq!(current_balance, transfer_amount - fee(18));
 
 		// Sanity check for the actual amount BOB ends up with
-		assert_eq!(current_balance, 4990676000000000000);
+		assert_eq!(current_balance, 4990730400000000000);
 	});
 }
 
@@ -272,7 +272,7 @@ fn transfer_ausd_to_centrifuge() {
 		// Sanity check the actual balance
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
-			16990676000000
+			16990730400000
 		);
 	});
 }
@@ -431,7 +431,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		1,
 		X2(
 			Parachain(parachains::polkadot::acala::ID),
-			general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
+			general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".as_bytes()),
 		),
 	);
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -502,15 +502,15 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
 
 		// Sanity check to ensure the calculated is what is expected
-		assert_eq!(bob_balance, 11990676);
+		assert_eq!(bob_balance, 11990731);
 	});
 }
 
 #[test]
 fn test_total_fee() {
-	assert_eq!(cfg_fee(), 9324000000000000);
-	assert_eq!(fee(decimals::AUSD), 9324000000);
-	assert_eq!(fee(decimals::KSM), 9324000000);
+	assert_eq!(cfg_fee(), 9269600000000000);
+	assert_eq!(fee(decimals::AUSD), 9269600000);
+	assert_eq!(fee(decimals::KSM), 9269600000);
 }
 
 fn cfg_fee() -> Balance {

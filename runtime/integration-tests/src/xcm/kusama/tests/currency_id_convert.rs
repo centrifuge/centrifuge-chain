@@ -31,6 +31,7 @@ use altair_runtime::CurrencyIdConvert;
 use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::xcm::general_key;
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 use sp_runtime::traits::Convert as C2;
@@ -38,17 +39,14 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
-use runtime_common::xcm::general_key;
 
 #[test]
 fn convert_air() {
-	assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec().into(), vec![0, 1]);
+	assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
 	// The way AIR is represented relative within the Altair runtime
-	let air_location_inner: MultiLocation = MultiLocation::new(
-		0,
-		X1(general_key(parachains::kusama::altair::AIR_KEY)),
-	);
+	let air_location_inner: MultiLocation =
+		MultiLocation::new(0, X1(general_key(parachains::kusama::altair::AIR_KEY)));
 
 	assert_eq!(
 		<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
@@ -74,7 +72,7 @@ fn convert_air() {
 
 #[test]
 fn convert_ausd() {
-	assert_eq!(parachains::kusama::karura::AUSD_KEY.to_vec().into(), vec![0, 129]);
+	assert_eq!(parachains::kusama::karura::AUSD_KEY, &[0, 129]);
 
 	let ausd_location: MultiLocation = MultiLocation::new(
 		1,
@@ -120,7 +118,7 @@ fn convert_unkown_multilocation() {
 		1,
 		X2(
 			Parachain(parachains::kusama::altair::ID),
-			general_key([42].to_vec()),
+			general_key(&[42]),
 		),
 	);
 

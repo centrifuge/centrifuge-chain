@@ -34,6 +34,7 @@ use centrifuge_runtime::{
 };
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::xcm::general_key;
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 use sp_runtime::traits::Convert as C2;
@@ -41,21 +42,15 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
-use runtime_common::xcm::general_key;
 
 #[test]
 fn convert_cfg() {
-	assert_eq!(
-		parachains::polkadot::centrifuge::CFG_KEY.to_vec().into(),
-		vec![0, 1]
-	);
+	assert_eq!(parachains::polkadot::centrifuge::CFG_KEY, &[0, 1]);
 
 	// The way CFG is represented relative within the Centrifuge runtime
 	let cfg_location_inner: MultiLocation = MultiLocation::new(
 		0,
-		X1(general_key(
-			parachains::polkadot::centrifuge::CFG_KEY,
-		)),
+		X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
 	);
 
 	assert_eq!(
@@ -82,7 +77,7 @@ fn convert_cfg() {
 
 #[test]
 fn convert_ausd() {
-	assert_eq!(parachains::polkadot::acala::AUSD_KEY.to_vec().into(), vec![0, 1]);
+	assert_eq!(parachains::polkadot::acala::AUSD_KEY, &[0, 1]);
 
 	let ausd_location: MultiLocation = MultiLocation::new(
 		1,

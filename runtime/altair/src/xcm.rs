@@ -29,7 +29,7 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 pub use common_types::CurrencyId;
 use runtime_common::{
 	decimals, parachains,
-	xcm::{FixedConversionRateProvider, general_key},
+	xcm::{general_key, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
 };
 
