@@ -30,7 +30,6 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate", default-f
 pallet-anchors = { path = "../anchors", default-features = false }
 runtime-common = { path = "../../runtime/common", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = true}
-
 common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [features]
