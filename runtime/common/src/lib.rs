@@ -275,6 +275,9 @@ pub mod constants {
 	/// Minimum vesting amount, in CFG/AIR
 	pub const MIN_VESTING: Balance = 10;
 
+	/// Value for a not specified fee key.
+	pub const DEFAULT_FEE_VALUE: Balance = 1 * CFG;
+
 	/// Additional fee charged when moving native tokens to target chains (in CFGs).
 	pub const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
 

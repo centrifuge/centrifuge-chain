@@ -11,6 +11,7 @@ use codec::{EncodeLike, FullCodec};
 use common_traits::fees::{self, Fee};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
+	storage::types::ValueQuery,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, OnUnbalanced, WithdrawReasons},
 };
 use frame_system::ensure_root;
@@ -65,16 +66,19 @@ pub mod pallet {
 		/// The currency mechanism.
 		type Currency: Currency<Self::AccountId>;
 
-		/// The treasury destination
+		/// The treasury destination.
 		type Treasury: OnUnbalanced<ImbalanceOf<Self>>;
 
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// Required origin for changing fees
+		/// Required origin for changing fees.
 		type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
 
-		/// Type representing the weight of this pallet
+		/// Default value for fee keys.
+		type DefaultFeeValue: Get<BalanceOf<Self>>;
+
+		/// Type representing the weight of this pallet.
 		type WeightInfo: WeightInfo;
 	}
 
@@ -99,26 +103,21 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			for (key, fee) in self.initial_fees.iter() {
-				<Fees<T>>::insert(key, fee);
+				<FeeBalances<T>>::insert(key, fee);
 			}
 		}
 	}
 
-	/// Stores the Fees associated with a Hash identifier
+	/// Stores the fee balances associated with a Hash identifier
 	#[pallet::storage]
 	#[pallet::getter(fn fee)]
-	pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, T::FeeKey, BalanceOf<T>>;
+	pub(super) type FeeBalances<T: Config> =
+		StorageMap<_, Blake2_256, T::FeeKey, BalanceOf<T>, ValueQuery, T::DefaultFeeValue>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		FeeChanged(T::FeeKey, BalanceOf<T>),
-	}
-
-	#[pallet::error]
-	pub enum Error<T> {
-		/// Invalid author of blocked fetched
-		InvalidAuthor,
 	}
 
 	#[pallet::call]
@@ -130,7 +129,7 @@ pub mod pallet {
 				.map(|_| ())
 				.or_else(ensure_root)?;
 
-			<Fees<T>>::insert(key, fee);
+			<FeeBalances<T>>::insert(key, fee);
 			Self::deposit_event(Event::FeeChanged(key, fee));
 			Ok(())
 		}
@@ -142,13 +141,14 @@ impl<T: Config, K: EncodeLike<T::FeeKey>> fees::Fees<K> for Pallet<T> {
 	type Balance = BalanceOf<T>;
 
 	fn fee_value(key: K) -> BalanceOf<T> {
-		<Fees<T>>::get(key).unwrap_or(BalanceOf::<T>::default())
+		<FeeBalances<T>>::get(key)
 	}
 
 	fn fee_to_author(from: &Self::AccountId, fee: Fee<BalanceOf<T>, K>) -> DispatchResult {
-		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
-		let balance = Self::withdraw_fee(from, fee)?;
-		T::Currency::resolve_creating(&author, balance);
+		if let Some(author) = <pallet_authorship::Pallet<T>>::author() {
+			let balance = Self::withdraw_fee(from, fee)?;
+			T::Currency::resolve_creating(&author, balance);
+		}
 		Ok(())
 	}
 

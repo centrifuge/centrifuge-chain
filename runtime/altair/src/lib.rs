@@ -712,13 +712,17 @@ impl pallet_uniques::Config for Runtime {
 }
 
 // our pallets
+parameter_types! {
+	pub const DefaultFeeValue: Balance = DEFAULT_FEE_VALUE;
+}
+
 impl pallet_fees::Config for Runtime {
 	type FeeKey = FeeKey;
 	type Currency = Balances;
 	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
-	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
+	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
