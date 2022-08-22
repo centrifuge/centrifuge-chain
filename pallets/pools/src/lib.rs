@@ -653,8 +653,6 @@ pub mod pallet {
 				Error::<T>::InvalidCurrency
 			);
 
-			let parachain_id = T::ParachainId::get();
-
 			let now = Self::now();
 
 			let tranches = Tranches::from_input::<
@@ -675,36 +673,38 @@ pub mod pallet {
 				None => None,
 			};
 
-			// for tranche in &tranche_inputs {
-			// 	let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche
-			// 		.clone()
-			// 		.metadata
-			// 		.token_name
-			// 		.try_into()
-			// 		.map_err(|_| Error::<T>::BadMetadata)?;
-			//
-			// 	let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche
-			// 		.clone()
-			// 		.metadata
-			// 		.token_symbol
-			// 		.try_into()
-			// 		.map_err(|_| Error::<T>::BadMetadata)?;
-			//
-			// 	// let decimals = match T::AssetRegistry::metadata(&currency) {
-			// 	// 	Some(metadata) => metadata.decimals,
-			// 	// 	None => return Err(Error::<T>::BadMetadata.into()),
-			// 	// };
-			//
-			// 	let metadata = create_asset_metadata(
-			// 		decimals,
-			// 		currency,
-			// 		parachain_id,
-			// 		token_name.to_vec(),
-			// 		token_symbol.to_vec(),
-			// 	)?;
-			//
-			// 	assert_ok!(T::AssetRegistry::register_asset(Some(currency), metadata));
-			// }
+			for tranche in &tranche_inputs {
+				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche
+					.clone()
+					.metadata
+					.token_name
+					.try_into()
+					.map_err(|_| Error::<T>::BadMetadata)?;
+
+				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche
+					.clone()
+					.metadata
+					.token_symbol
+					.try_into()
+					.map_err(|_| Error::<T>::BadMetadata)?;
+
+				let decimals = match T::AssetRegistry::metadata(&currency) {
+					Some(metadata) => metadata.decimals,
+					None => return Err(Error::<T>::BadMetadata.into()),
+				};
+
+				let parachain_id = T::ParachainId::get();
+
+				let metadata = create_asset_metadata(
+					decimals,
+					currency,
+					parachain_id,
+					token_name.to_vec(),
+					token_symbol.to_vec(),
+				)?;
+
+				assert_ok!(T::AssetRegistry::register_asset(Some(currency), metadata));
+			}
 
 			Pool::<T>::insert(
 				pool_id,

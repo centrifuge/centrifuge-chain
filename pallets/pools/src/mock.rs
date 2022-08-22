@@ -18,6 +18,7 @@ use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
 use runtime_common::BlockNumber;
 use sp_core::H256;
+use sp_runtime::transaction_validity::InvalidTransaction::Custom;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -457,15 +458,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		OrmlAssetRegistry::do_register_asset(
 			AssetMetadata {
 				decimals: 18,
-				name: vec![],
-				symbol: vec![],
-				existential_deposit: 1_000_000_000_000,
+				name: "MOCK TOKEN".as_bytes().to_vec(),
+				symbol: "MOCK".as_bytes().to_vec(),
+				existential_deposit: 0,
 				location: None,
 				additional: CustomMetadata::default(),
 			},
 			Some(CurrencyId::AUSD),
 		)
-		.ok();
+		.ok()
+		.unwrap();
 	});
 	ext
 }
