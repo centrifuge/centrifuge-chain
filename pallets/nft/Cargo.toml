@@ -60,5 +60,6 @@ std = [
     'pallet-anchors/std',
     'proofs/std',
     'unique-assets/std',
+    'runtime-common/std',
     'common-traits/std'
 ]
