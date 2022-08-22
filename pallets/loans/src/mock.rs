@@ -30,6 +30,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
+use orml_traits::asset_registry::AssetMetadata;
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
@@ -430,7 +431,22 @@ impl TestExternalitiesBuilder {
 		.unwrap();
 
 		let mut externalities = TestExternalities::new(storage);
-		externalities.execute_with(|| System::set_block_number(1));
+		externalities.execute_with(|| {
+			System::set_block_number(1);
+			OrmlAssetRegistry::do_register_asset(
+				AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN".as_bytes().to_vec(),
+					symbol: "MOCK".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+				Some(CurrencyId::AUSD),
+			)
+			.ok()
+			.unwrap();
+		});
 		externalities
 	}
 }

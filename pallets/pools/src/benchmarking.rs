@@ -54,6 +54,7 @@ benchmarks! {
 		let caller: T::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_input_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
+		prepare_asset_registry::<T>();
 	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
@@ -69,8 +70,8 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
-
 		let pool = get_pool::<T>();
 		let default_min_epoch_time = pool.parameters.min_epoch_time;
 		let default_max_nav_age = pool.parameters.max_nav_age;
@@ -102,12 +103,13 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
 	}: update(RawOrigin::Signed(admin), POOL, PoolChanges {
 		tranches: Change::NewValue(build_update_tranches::<T>(n)),
 		min_epoch_time: Change::NewValue(SECS_PER_DAY),
 		max_nav_age: Change::NewValue(SECS_PER_HOUR),
-		tranche_metadata: Change::NoChange,
+		tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
 	})
 	verify {
 		// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
@@ -122,6 +124,7 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
 
 		let pool = get_pool::<T>();
@@ -144,7 +147,7 @@ benchmarks! {
 			tranches: Change::NewValue(build_update_tranches::<T>(n)),
 			min_epoch_time: Change::NewValue(SECS_PER_DAY),
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
-			tranche_metadata: Change::NoChange,
+			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
 		};
 
 		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, changes)?;
@@ -163,6 +166,7 @@ benchmarks! {
 		let n in 0..T::MaxSizeMetadata::get();
 		let caller: T::AccountId = create_admin::<T>(0);
 		let metadata = vec![0u8; n as usize];
+		prepare_asset_registry::<T>();
 		create_pool::<T>(1, caller.clone())?;
 	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
 	verify {
@@ -173,6 +177,7 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let caller: T::AccountId = create_admin::<T>(1);
 		let max_reserve = MAX_RESERVE / 2;
+		prepare_asset_registry::<T>();
 		create_pool::<T>(1, admin.clone())?;
 		set_liquidity_admin::<T>(caller.clone())?;
 	}: set_max_reserve(RawOrigin::Signed(caller), POOL, max_reserve)
@@ -182,6 +187,7 @@ benchmarks! {
 
 	update_invest_order {
 		let admin: T::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(1, admin.clone())?;
 		let locator = get_tranche_id::<T>(TRANCHE);
 		let amount = MAX_RESERVE / 2;
@@ -198,6 +204,7 @@ benchmarks! {
 
 	update_redeem_order {
 		let admin: T::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(1, admin.clone())?;
 		let amount = MAX_RESERVE / 2;
 		let caller = create_investor::<T>(0, TRANCHE)?;
@@ -215,6 +222,7 @@ benchmarks! {
 	collect {
 		let n in 1..100;
 		let admin: T::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(1, admin.clone())?;
 		let amount = MAX_RESERVE / 2;
 		let expected = amount + MINT_AMOUNT;
@@ -232,6 +240,7 @@ benchmarks! {
 	close_epoch_no_orders {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -245,6 +254,7 @@ benchmarks! {
 		let n in 1..T::MaxTranches::get(); // number of tranches
 
 		let admin: T::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -260,8 +270,8 @@ benchmarks! {
 
 	close_epoch_execute {
 		let n in 1..T::MaxTranches::get(); // number of tranches
-
 		let admin: T::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -277,8 +287,8 @@ benchmarks! {
 
 	submit_solution {
 		let n in 1..T::MaxTranches::get(); // number of tranches
-
 		let admin: T::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -304,8 +314,8 @@ benchmarks! {
 
 	execute_epoch {
 		let n in 1..T::MaxTranches::get(); // number of tranches
-
 		let admin: T::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -328,6 +338,30 @@ benchmarks! {
 		assert_eq!(get_pool::<T>().epoch.last_executed, 1);
 		assert_eq!(get_pool::<T>().epoch.current, 2);
 		assert!(Pallet::<T>::epoch_targets(POOL).is_none());
+	}
+}
+
+fn prepare_asset_registry<T: Config>()
+where
+	T::AssetRegistry:
+		OrmlMutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
+{
+	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
+		Some(_) => (),
+		None => {
+			T::AssetRegistry::register_asset(
+				Some(CurrencyId::AUSD),
+				orml_asset_registry::AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN".as_bytes().to_vec(),
+					symbol: "MOCK".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			)
+			.unwrap();
+		}
 	}
 }
 
@@ -470,6 +504,14 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 		MAX_RESERVE,
 		None,
 	)
+}
+
+fn build_update_tranche_metadata<T: Config>(
+) -> Vec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
+	vec![TrancheMetadata {
+		token_name: BoundedVec::default(),
+		token_symbol: BoundedVec::default(),
+	}]
 }
 
 fn build_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheUpdate<T::InterestRate>> {

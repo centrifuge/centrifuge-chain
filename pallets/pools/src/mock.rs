@@ -18,7 +18,6 @@ use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
 use runtime_common::BlockNumber;
 use sp_core::H256;
-use sp_runtime::transaction_validity::InvalidTransaction::Custom;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -450,6 +449,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
+
 	ext.execute_with(|| {
 		System::set_block_number(1);
 		System::on_initialize(System::block_number());
@@ -466,7 +466,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			},
 			Some(CurrencyId::AUSD),
 		)
-		.ok()
 		.unwrap();
 	});
 	ext

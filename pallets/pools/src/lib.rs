@@ -653,6 +653,17 @@ pub mod pallet {
 				Error::<T>::InvalidCurrency
 			);
 
+			Self::is_valid_tranche_change(
+				None,
+				&tranche_inputs
+					.iter()
+					.map(|t| TrancheUpdate {
+						tranche_type: t.tranche_type,
+						seniority: t.seniority,
+					})
+					.collect(),
+			)?;
+
 			let now = Self::now();
 
 			let tranches = Tranches::from_input::<
@@ -673,15 +684,15 @@ pub mod pallet {
 				None => None,
 			};
 
-			for tranche in &tranche_inputs {
-				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche
+			for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
+				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche_input
 					.clone()
 					.metadata
 					.token_name
 					.try_into()
 					.map_err(|_| Error::<T>::BadMetadata)?;
 
-				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche
+				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche_input
 					.clone()
 					.metadata
 					.token_symbol
@@ -697,13 +708,16 @@ pub mod pallet {
 
 				let metadata = create_asset_metadata(
 					decimals,
-					currency,
+					tranche.currency,
 					parachain_id,
 					token_name.to_vec(),
 					token_symbol.to_vec(),
 				)?;
 
-				assert_ok!(T::AssetRegistry::register_asset(Some(currency), metadata));
+				assert_ok!(T::AssetRegistry::register_asset(
+					Some(tranche.currency),
+					metadata
+				));
 			}
 
 			Pool::<T>::insert(

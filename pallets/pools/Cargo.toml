@@ -46,6 +46,7 @@ parachain-info = { git = "https://github.com/paritytech/cumulus", default-featur
 default = ['std']
 runtime-benchmarks = [
     'frame-benchmarking',
+    'common-types/runtime-benchmarks',
 ]
 std = [
     'codec/std',
@@ -59,10 +60,10 @@ std = [
     'sp-std/std',
     'common-types/std',
     'polkadot-parachain/std',
-    'xcm/std'
+    'xcm/std',
 ]
+
 test-benchmarks = [
     'frame-support/try-runtime',
-    'common-types/runtime-benchmarks'
 ]
 
