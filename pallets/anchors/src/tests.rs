@@ -124,11 +124,19 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 			common::MILLISECS_PER_DAY + 1
 		));
 
+		GetMockFeesState::get().with(|fees| {
+			assert_eq!(fees.borrow().author_fees.len(), 1);
+		});
+
 		// fails because of existing anchor
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
 			Error::<Test>::AnchorAlreadyExists
 		);
+
+		GetMockFeesState::get().with(|fees| {
+			assert_eq!(fees.borrow().author_fees.len(), 1);
+		});
 	});
 }
 
