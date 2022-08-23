@@ -13,8 +13,7 @@
 
 use crate::{self as pallet_anchors, *};
 
-use common_traits::fees::test_util::MockFees;
-use common_traits::impl_mock_fees_state;
+use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
 use frame_support::{
 	parameter_types,
@@ -122,14 +121,14 @@ impl pallet_timestamp::Config for Test {
 }
 
 impl_mock_fees_state!(
-	GetMockFeesState,
+	MockFeesState,
 	<Test as frame_system::Config>::AccountId,
 	Balance
 );
 
 impl Config for Test {
 	type WeightInfo = ();
-	type Fees = MockFees<Self::AccountId, Balance, GetMockFeesState>;
+	type Fees = MockFees<Self::AccountId, Balance, MockFeesState>;
 }
 
 impl Test {
