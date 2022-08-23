@@ -311,8 +311,6 @@ fn basic_commit() {
 				message: Some("EvictionDateTooBig"),
 			})
 		);
-
-
 	});
 }
 

@@ -25,7 +25,7 @@ pub fn get_days_since_epoch(ts: u64) -> Option<u32> {
 	let remainder = ts % MILLISECS_PER_DAY;
 	let days_option = u32::try_from(ts / MILLISECS_PER_DAY).ok();
 	return match days_option {
-		None => { None }
+		None => None,
 		Some(v) => {
 			if remainder == 0 {
 				Some(v)
@@ -33,7 +33,7 @@ pub fn get_days_since_epoch(ts: u64) -> Option<u32> {
 				v.checked_add(1)
 			}
 		}
-	}
+	};
 }
 
 /// Create a child info from the given specific key
