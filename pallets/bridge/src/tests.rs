@@ -20,9 +20,9 @@
 use crate::{
 	self as pallet_bridge,
 	mock::{
-		helpers::*, Balances, Bridge, ChainBridge, Event, MockRuntime, NativeTokenId, Origin,
-		ProposalLifetime, TestExternalitiesBuilder, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
-		RELAYER_B_INITIAL_BALANCE, RELAYER_C, TEST_RELAYER_VOTE_THRESHOLD,
+		helpers::*, Balances, Bridge, ChainBridge, Event, MockFeesState, MockRuntime,
+		NativeTokenId, Origin, ProposalLifetime, TestExternalitiesBuilder, ENDOWED_BALANCE,
+		RELAYER_A, RELAYER_B, RELAYER_B_INITIAL_BALANCE, RELAYER_C, TEST_RELAYER_VOTE_THRESHOLD,
 	},
 	Error,
 };
@@ -114,6 +114,11 @@ fn transfer_native() {
 			account_current_balance = Balances::free_balance(RELAYER_A);
 			assert_eq!(account_current_balance, ENDOWED_BALANCE);
 
+			// Check that all previous transfer_native() calls did not burn any fee.
+			MockFeesState::get().with(|fees| {
+				assert!(fees.borrow().burn_fees.is_empty());
+			});
+
 			// Successful transfer with relayer A account, which has enough funds
 			// for the requested amount plus transfer fees
 			assert_ok!(Bridge::transfer_native(
@@ -131,12 +136,16 @@ fn transfer_native() {
 				recipient,
 			));
 
-			// Current Relay A account balance is initial value (i.e. ENDOWED_BALANCE) less transfer fees (i.e. NATIVE_TOKEN_TRANSFER_FEE)
-			// and amount (i.e. 20 * CFG), that is, (10000 * CFG) - (2000 * CFG) - (20 * CFG) = 7980 * CFG
-			account_current_balance = Balances::free_balance(RELAYER_A);
-			let amount_and_fees = amount + NATIVE_TOKEN_TRANSFER_FEE;
-			let account_expected_balance = ENDOWED_BALANCE - amount_and_fees;
-			assert_eq!(account_current_balance, account_expected_balance);
+			MockFeesState::get().with(|fees| {
+				assert_eq!(fees.borrow().burn_fees.len(), 1);
+				assert_eq!(fees.borrow().burn_fees[0].author, RELAYER_A);
+				assert_eq!(
+					fees.borrow().burn_fees[0].balance,
+					NATIVE_TOKEN_TRANSFER_FEE
+				);
+			});
+
+			assert_eq!(ENDOWED_BALANCE - amount, Balances::free_balance(RELAYER_A));
 		})
 }
 

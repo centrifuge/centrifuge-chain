@@ -51,7 +51,7 @@ fn bad_origin() {
 			);
 
 			MockFeesState::get().with(|fees| {
-				assert_eq!(fees.borrow().burn_fees.len(), 0);
+				assert!(fees.borrow().burn_fees.is_empty());
 			});
 		})
 }
@@ -75,7 +75,7 @@ fn missing_anchor() {
 			);
 
 			MockFeesState::get().with(|fees| {
-				assert_eq!(fees.borrow().burn_fees.len(), 0);
+				assert!(fees.borrow().burn_fees.is_empty());
 			});
 		})
 }
