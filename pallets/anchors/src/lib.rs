@@ -268,7 +268,8 @@ pub mod pallet {
 				Error::<T>::AnchorStoreDateInPast
 			);
 
-			let stored_until_date_from_epoch = common::get_days_since_epoch(eviction_date_u64);
+			let stored_until_date_from_epoch =
+				common::get_days_since_epoch(eviction_date_u64).ok_or(Error::<T>::EvictionDateTooBig)?;
 			ensure!(
 				stored_until_date_from_epoch <= STORAGE_MAX_DAYS,
 				Error::<T>::AnchorStoreDateAboveMaxLimit
@@ -292,10 +293,10 @@ pub mod pallet {
 			}
 
 			// pay the state rent
+			let now_u64 =
+				TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get()).or(Err(Error::<T>::FailedToConvertEpochToDays))?;
 			let today_in_days_from_epoch =
-				TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get())
-					.map(common::get_days_since_epoch)
-					.or(Err(Error::<T>::FailedToConvertEpochToDays))?;
+				common::get_days_since_epoch(now_u64).ok_or(Error::<T>::FailedToConvertEpochToDays)?;
 
 			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
 			// we use the fee config setup on genesis for anchoring to calculate the state rent
@@ -373,12 +374,13 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_anchors())]
 		pub fn evict_anchors(origin: OriginFor<T>) -> DispatchResult {
 			ensure_signed(origin)?;
-			let current_timestamp = <pallet_timestamp::Pallet<T>>::get();
 
 			// get the today counting epoch, so that we can remove the corresponding child trie
-			let today_in_days_from_epoch = TryInto::<u64>::try_into(current_timestamp)
-				.map(common::get_days_since_epoch)
-				.or(Err(Error::<T>::FailedToConvertEpochToDays))?;
+			let now_u64 =
+				TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get()).or(Err(Error::<T>::FailedToConvertEpochToDays))?;
+			let today_in_days_from_epoch =
+				common::get_days_since_epoch(now_u64).ok_or(Error::<T>::FailedToConvertEpochToDays)?;
+
 			let evict_date = <LatestEvictedDate<T>>::get()
 				.unwrap_or_default()
 				.checked_add(1)

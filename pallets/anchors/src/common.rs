@@ -21,13 +21,18 @@ use frame_support::storage::child::ChildInfo;
 pub const MILLISECS_PER_DAY: u64 = 86400000;
 
 /// Get days(round up) since epoch given the timestamp in ms
-pub fn get_days_since_epoch(ts: u64) -> u32 {
+pub fn get_days_since_epoch(ts: u64) -> Option<u32> {
 	let remainder = ts % MILLISECS_PER_DAY;
-	let days = (ts / MILLISECS_PER_DAY) as u32;
-	if remainder == 0 {
-		days
-	} else {
-		days + 1
+	let days_option = u32::try_from(ts / MILLISECS_PER_DAY).ok();
+	return match days_option {
+		None => { None }
+		Some(v) => {
+			if remainder == 0 {
+				Some(v)
+			} else {
+				v.checked_add(1)
+			}
+		}
 	}
 }
 
@@ -46,13 +51,16 @@ mod tests {
 	#[test]
 	fn test_get_days_since_epoch() {
 		// 1971-01-01  00:00:00
-		assert_eq!(get_days_since_epoch(31536000000), 365);
+		assert_eq!(get_days_since_epoch(31536000000), Some(365));
 
 		// 1971-01-01  00:00:01
-		assert_eq!(get_days_since_epoch(31536001000), 366);
+		assert_eq!(get_days_since_epoch(31536001000), Some(366));
 
 		// 1970-12-31  11:59:59
-		assert_eq!(get_days_since_epoch(31449600000), 364);
+		assert_eq!(get_days_since_epoch(31449600000), Some(364));
+
+		// Overflow Test with MAX u32 (after division)
+		assert_eq!(get_days_since_epoch(371085174374358017), None);
 	}
 
 	#[test]

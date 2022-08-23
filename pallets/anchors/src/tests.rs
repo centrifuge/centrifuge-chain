@@ -295,6 +295,24 @@ fn basic_commit() {
 				message: Some("AnchorStoreDateInPast"),
 			})
 		);
+
+		// commit anchor triggering days overflow
+		assert_noop!(
+			Anchors::commit(
+				Origin::signed(1),
+				pre_image2,
+				doc_root,
+				<Test as frame_system::Config>::Hashing::hash_of(&0),
+				371085174374358017 // triggers overflow
+			),
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: [8, 0, 0, 0],
+				message: Some("EvictionDateTooBig"),
+			})
+		);
+
+
 	});
 }
 
