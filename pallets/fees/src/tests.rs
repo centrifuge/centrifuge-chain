@@ -16,8 +16,8 @@ fn set_default_fee() {
 #[test]
 fn fee_was_never_set() {
 	new_test_ext().execute_with(|| {
-		assert!(Fees::fee(FEE_KEY).is_none());
-		assert_eq!(Fees::fee_value(FEE_KEY), 0);
+		assert_eq!(Fees::fee(FEE_KEY), DefaultFeeValue::get());
+		assert_eq!(Fees::fee_value(FEE_KEY), DefaultFeeValue::get());
 	});
 }
 
@@ -26,7 +26,7 @@ fn fee_is_set() {
 	new_test_ext().execute_with(|| {
 		set_default_fee();
 
-		assert_eq!(Fees::fee(FEE_KEY), Some(FEE_VALUE));
+		assert_eq!(Fees::fee(FEE_KEY), FEE_VALUE);
 		assert_eq!(Fees::fee_value(FEE_KEY), FEE_VALUE);
 	});
 }
