@@ -22,7 +22,7 @@
 
 use crate::{self as pallet_bridge, Config as BridgePalletConfig, WeightInfo};
 
-use common_traits::fees::NoFees;
+use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -278,10 +278,16 @@ impl pallet_bridge_mapping::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+impl_mock_fees_state!(
+	MockFeesState,
+	<MockRuntime as frame_system::Config>::AccountId,
+	Balance
+);
+
 // Implement Centrifuge Chain anchors pallet for the mock runtime
 impl pallet_anchors::Config for MockRuntime {
 	type WeightInfo = ();
-	type Fees = NoFees<Self::AccountId, Balance>;
+	type Fees = MockFees<Self::AccountId, Balance, MockFeesState>;
 }
 
 // Parameterize Centrifuge Chain bridge pallet
