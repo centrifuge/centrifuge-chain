@@ -294,7 +294,7 @@ pub mod pallet {
 
 			// pay the state rent
 			let now_u64 = TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get())
-				.or(Err(Error::<T>::FailedToConvertEpochToDays))?;
+				.or(Err(ArithmeticError::Overflow))?;
 			let today_in_days_from_epoch = common::get_days_since_epoch(now_u64)
 				.ok_or(Error::<T>::FailedToConvertEpochToDays)?;
 
@@ -377,7 +377,7 @@ pub mod pallet {
 
 			// get the today counting epoch, so that we can remove the corresponding child trie
 			let now_u64 = TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get())
-				.or(Err(Error::<T>::FailedToConvertEpochToDays))?;
+				.or(Err(ArithmeticError::Overflow))?;
 			let today_in_days_from_epoch = common::get_days_since_epoch(now_u64)
 				.ok_or(Error::<T>::FailedToConvertEpochToDays)?;
 

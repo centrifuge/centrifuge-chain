@@ -23,17 +23,12 @@ pub const MILLISECS_PER_DAY: u64 = 86400000;
 /// Get days(round up) since epoch given the timestamp in ms
 pub fn get_days_since_epoch(ts: u64) -> Option<u32> {
 	let remainder = ts % MILLISECS_PER_DAY;
-	let days_option = u32::try_from(ts / MILLISECS_PER_DAY).ok();
-	return match days_option {
-		None => None,
-		Some(v) => {
-			if remainder == 0 {
-				Some(v)
-			} else {
-				v.checked_add(1)
-			}
-		}
-	};
+	let days = u32::try_from(ts / MILLISECS_PER_DAY).ok()?;
+	if remainder == 0 {
+		Some(days)
+	} else {
+		days.checked_add(1)
+	}
 }
 
 /// Create a child info from the given specific key
