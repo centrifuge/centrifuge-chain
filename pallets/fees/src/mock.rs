@@ -119,6 +119,7 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const Admin: u64 = 1;
+	pub const DefaultFeeValue: Balance = 1;
 }
 
 impl SortedMembers<u64> for Admin {
@@ -133,6 +134,7 @@ impl Config for Test {
 	type Treasury = Treasury;
 	type Event = ();
 	type FeeChangeOrigin = EnsureSignedBy<Admin, u64>;
+	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = ();
 }
 
