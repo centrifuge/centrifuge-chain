@@ -33,6 +33,7 @@ pallet-treasury = { git = "https://github.com/paritytech/substrate",  default-fe
 [features]
 default = ['std']
 runtime-benchmarks = ["frame-benchmarking"]
+try-runtime = ["frame-support/try-runtime"]
 std = [
     'codec/std',
     'frame-support/std',

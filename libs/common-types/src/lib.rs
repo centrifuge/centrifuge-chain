@@ -507,7 +507,7 @@ pub enum FeeKey {
 	// Others keys used go here
 }
 
-/// Only needed for initializing the rumtime benchmark with some value.
+/// Only needed for initializing the runtime benchmark with some value.
 #[cfg(feature = "runtime-benchmarks")]
 impl Default for FeeKey {
 	fn default() -> Self {
