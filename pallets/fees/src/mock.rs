@@ -1,10 +1,10 @@
 use crate::{self as pallet_fees, *};
 use frame_support::{
 	parameter_types,
-	traits::{Everything, FindAuthor, SortedMembers},
+	traits::{EnsureOneOf, Everything, FindAuthor, SortedMembers},
 	ConsensusEngineId, PalletId,
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -133,7 +133,7 @@ impl Config for Test {
 	type Currency = Balances;
 	type Treasury = Treasury;
 	type Event = ();
-	type FeeChangeOrigin = EnsureSignedBy<Admin, u64>;
+	type FeeChangeOrigin = EnsureOneOf<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
 	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = ();
 }

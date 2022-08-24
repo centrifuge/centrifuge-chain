@@ -147,6 +147,7 @@ impl pallet_nft::Config for Test {
 impl pallet_anchors::Config for Test {
 	type WeightInfo = ();
 	type Fees = NoFees<Self::AccountId, Balance>;
+	type CommitAnchorFeeKey = ();
 }
 
 // Parameterize Centrifuge Chain chainbridge pallet

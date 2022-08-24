@@ -215,7 +215,8 @@ impl_mock_fees_state!(
 // Implement Centrifuge Chain anchors pallet for the mock runtime
 impl pallet_anchors::Config for MockRuntime {
 	type WeightInfo = ();
-	type Fees = MockFees<Self::AccountId, Balance, MockFeesState>;
+	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
+	type CommitAnchorFeeKey = ();
 }
 
 // Parameterize NFT pallet

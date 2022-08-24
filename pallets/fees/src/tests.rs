@@ -1,6 +1,7 @@
 use crate::mock::*;
 use common_traits::fees::{Fee, Fees as FeesTrait};
 use frame_support::{assert_noop, assert_ok};
+use sp_runtime::traits::BadOrigin;
 
 const FEE_KEY: u8 = 1;
 const FEE_VALUE: u64 = 42;
@@ -11,6 +12,16 @@ fn set_default_fee() {
 		FEE_KEY,
 		FEE_VALUE
 	));
+}
+
+#[test]
+fn ensure_origin() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			Fees::set_fee(Origin::signed(2), FEE_KEY, FEE_VALUE),
+			BadOrigin
+		);
+	});
 }
 
 #[test]

@@ -14,8 +14,8 @@ use frame_support::{
 	storage::types::ValueQuery,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, OnUnbalanced, WithdrawReasons},
 };
-use frame_system::ensure_root;
 use scale_info::TypeInfo;
+use sp_runtime::traits::MaybeSerializeDeserialize;
 
 pub use pallet::*;
 
@@ -40,6 +40,23 @@ pub type ImbalanceOf<T> = <<T as Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
 
+pub trait FeeKey:
+	FullCodec + TypeInfo + MaybeSerializeDeserialize + sp_std::fmt::Debug + Clone + Copy + PartialEq
+{
+}
+
+impl<
+		T: FullCodec
+			+ TypeInfo
+			+ MaybeSerializeDeserialize
+			+ sp_std::fmt::Debug
+			+ Clone
+			+ Copy
+			+ PartialEq,
+	> FeeKey for T
+{
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
@@ -57,13 +74,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
 		/// Key type used for storing and identifying fees.
-		type FeeKey: FullCodec
-			+ TypeInfo
-			+ MaybeSerializeDeserialize
-			+ sp_std::fmt::Debug
-			+ Clone
-			+ Copy
-			+ PartialEq;
+		type FeeKey: FeeKey + EncodeLike;
 
 		/// The currency mechanism.
 		type Currency: Currency<Self::AccountId>;
@@ -154,15 +165,19 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config, K: EncodeLike<T::FeeKey>> fees::Fees<K> for Pallet<T> {
+impl<T: Config> fees::Fees for Pallet<T> {
 	type AccountId = T::AccountId;
 	type Balance = BalanceOf<T>;
+	type FeeKey = T::FeeKey;
 
-	fn fee_value(key: K) -> BalanceOf<T> {
+	fn fee_value(key: Self::FeeKey) -> BalanceOf<T> {
 		<FeeBalances<T>>::get(key)
 	}
 
-	fn fee_to_author(from: &Self::AccountId, fee: Fee<BalanceOf<T>, K>) -> DispatchResult {
+	fn fee_to_author(
+		from: &Self::AccountId,
+		fee: Fee<BalanceOf<T>, Self::FeeKey>,
+	) -> DispatchResult {
 		if let Some(author) = <pallet_authorship::Pallet<T>>::author() {
 			let balance = Self::withdraw_fee(from, fee)?;
 			T::Currency::resolve_creating(&author, balance);
@@ -170,11 +185,14 @@ impl<T: Config, K: EncodeLike<T::FeeKey>> fees::Fees<K> for Pallet<T> {
 		Ok(())
 	}
 
-	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>, K>) -> DispatchResult {
+	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>, Self::FeeKey>) -> DispatchResult {
 		Self::withdraw_fee(from, fee).map(|_| ())
 	}
 
-	fn fee_to_treasury(from: &Self::AccountId, fee: Fee<BalanceOf<T>, K>) -> DispatchResult {
+	fn fee_to_treasury(
+		from: &Self::AccountId,
+		fee: Fee<BalanceOf<T>, Self::FeeKey>,
+	) -> DispatchResult {
 		let amount = Self::withdraw_fee(from, fee)?;
 		T::Treasury::on_unbalanced(amount);
 		Ok(())
@@ -182,13 +200,13 @@ impl<T: Config, K: EncodeLike<T::FeeKey>> fees::Fees<K> for Pallet<T> {
 }
 
 impl<T: Config> Pallet<T> {
-	fn withdraw_fee<K: EncodeLike<T::FeeKey>>(
+	fn withdraw_fee(
 		from: &T::AccountId,
-		fee: Fee<BalanceOf<T>, K>,
+		fee: Fee<BalanceOf<T>, T::FeeKey>,
 	) -> Result<ImbalanceOf<T>, DispatchError> {
 		let balance = match fee {
 			Fee::Balance(balance) => balance,
-			Fee::Key(key) => <Self as fees::Fees<K>>::fee_value(key),
+			Fee::Key(key) => <Self as fees::Fees>::fee_value(key),
 		};
 
 		T::Currency::withdraw(

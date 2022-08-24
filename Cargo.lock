@@ -5562,7 +5562,6 @@ name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
  "common-traits",
- "common-types",
  "frame-support",
  "frame-system",
  "pallet-authorship",
