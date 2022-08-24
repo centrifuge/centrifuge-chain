@@ -28,6 +28,8 @@ mod benchmarking;
 #[cfg(test)]
 mod tests;
 
+mod migration;
+
 pub mod weights;
 pub use weights::*;
 
@@ -82,6 +84,12 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
+	/// Stores the fee balances associated with a Hash identifier
+	#[pallet::storage]
+	#[pallet::getter(fn fee)]
+	pub(super) type FeeBalances<T: Config> =
+		StorageMap<_, Blake2_256, T::FeeKey, BalanceOf<T>, ValueQuery, T::DefaultFeeValue>;
+
 	// The genesis config type.
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -108,11 +116,22 @@ pub mod pallet {
 		}
 	}
 
-	/// Stores the fee balances associated with a Hash identifier
-	#[pallet::storage]
-	#[pallet::getter(fn fee)]
-	pub(super) type FeeBalances<T: Config> =
-		StorageMap<_, Blake2_256, T::FeeKey, BalanceOf<T>, ValueQuery, T::DefaultFeeValue>;
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+			migration::fee_balances::migrate::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<(), &'static str> {
+			migration::fee_balances::pre_migrate::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade() -> Result<(), &'static str> {
+			migration::fee_balances::post_migrate::<T>()
+		}
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
