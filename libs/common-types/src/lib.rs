@@ -506,3 +506,11 @@ pub enum FeeKey {
 	CommitAnchor,
 	// Others keys used go here
 }
+
+/// Only needed for initializing the rumtime benchmark with some value.
+#[cfg(feature = "runtime-benchmarks")]
+impl Default for FeeKey {
+	fn default() -> Self {
+		FeeKey::CommitAnchor
+	}
+}

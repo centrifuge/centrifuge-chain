@@ -211,6 +211,7 @@ std = [
     "pallet-interest-accrual/std",
 ]
 runtime-benchmarks = [
+    "common-types/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",

@@ -8,11 +8,11 @@ benchmarks! {
 	where_clause {
 		where
 		T: Config + pallet_balances::Config,
-		<T as Config>::FeeKey: From<u8>,
+		<T as Config>::FeeKey: Default,
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance: From<u64>,
 	}
 	set_fee {
-		let fee_key: T::FeeKey = 23.into();
+		let fee_key = T::FeeKey::default();
 		let fee_value: BalanceOf<T> = 42.into();
 	}: _(RawOrigin::Root, fee_key, fee_value)
 	verify {

@@ -227,6 +227,7 @@ std = [
 ]
 
 runtime-benchmarks = [
+    "common-types/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
