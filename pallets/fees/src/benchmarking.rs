@@ -14,7 +14,7 @@ benchmarks! {
 	set_fee {
 		let fee_key = T::FeeKey::default();
 		let fee_value: BalanceOf<T> = 42.into();
-	}: _(RawOrigin::Root, fee_key, fee_value)
+	}: _(RawOrigin::Root, fee_key.clone(), fee_value)
 	verify {
 		assert_eq!(<Pallet<T>>::fee(fee_key), fee_value);
 	}

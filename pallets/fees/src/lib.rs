@@ -7,15 +7,14 @@
 //! it offers some utilities to transfer the fees to the author, the treasury or burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{EncodeLike, FullCodec};
-use common_traits::fees::{self, Fee};
+use codec::EncodeLike;
+use common_traits::fees::{self, Fee, FeeKey};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::types::ValueQuery,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, OnUnbalanced, WithdrawReasons},
 };
 use scale_info::TypeInfo;
-use sp_runtime::traits::MaybeSerializeDeserialize;
 
 pub use pallet::*;
 
@@ -39,23 +38,6 @@ pub type BalanceOf<T> =
 pub type ImbalanceOf<T> = <<T as Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
-
-pub trait FeeKey:
-	FullCodec + TypeInfo + MaybeSerializeDeserialize + sp_std::fmt::Debug + Clone + Copy + PartialEq
-{
-}
-
-impl<
-		T: FullCodec
-			+ TypeInfo
-			+ MaybeSerializeDeserialize
-			+ sp_std::fmt::Debug
-			+ Clone
-			+ Copy
-			+ PartialEq,
-	> FeeKey for T
-{
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -157,7 +139,7 @@ pub mod pallet {
 		pub fn set_fee(origin: OriginFor<T>, key: T::FeeKey, fee: BalanceOf<T>) -> DispatchResult {
 			T::FeeChangeOrigin::ensure_origin(origin)?;
 
-			<FeeBalances<T>>::insert(key, fee);
+			<FeeBalances<T>>::insert(key.clone(), fee);
 			Self::deposit_event(Event::FeeChanged(key, fee));
 
 			Ok(())

@@ -306,13 +306,7 @@ pub mod fees {
 
 	/// Type used for identity the key used to retrieve the fees.
 	pub trait FeeKey:
-		FullCodec
-		+ TypeInfo
-		+ MaybeSerializeDeserialize
-		+ sp_std::fmt::Debug
-		+ Clone
-		+ Copy
-		+ PartialEq
+		FullCodec + TypeInfo + MaybeSerializeDeserialize + sp_std::fmt::Debug + Clone + PartialEq
 	{
 	}
 
@@ -322,7 +316,6 @@ pub mod fees {
 				+ MaybeSerializeDeserialize
 				+ sp_std::fmt::Debug
 				+ Clone
-				+ Copy
 				+ PartialEq,
 		> FeeKey for T
 	{
