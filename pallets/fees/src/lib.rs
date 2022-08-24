@@ -145,11 +145,10 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_fee())]
 		pub fn set_fee(origin: OriginFor<T>, key: T::FeeKey, fee: BalanceOf<T>) -> DispatchResult {
 			T::FeeChangeOrigin::ensure_origin(origin)?;
-				.map(|_| ())
-				.or_else(ensure_root)?;
 
 			<FeeBalances<T>>::insert(key, fee);
 			Self::deposit_event(Event::FeeChanged(key, fee));
+
 			Ok(())
 		}
 	}
