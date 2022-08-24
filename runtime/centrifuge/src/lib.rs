@@ -774,8 +774,13 @@ impl pallet_fees::Config for Runtime {
 	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
+parameter_types! {
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
+}
+
 impl pallet_anchors::Config for Runtime {
 	type Fees = Fees;
+	type CommitAnchorFeeKey = CommitAnchorFeeKey;
 	type WeightInfo = ();
 }
 

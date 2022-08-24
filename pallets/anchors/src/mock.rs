@@ -17,7 +17,7 @@ use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
 use frame_support::{
 	parameter_types,
-	traits::{Everything, FindAuthor},
+	traits::{ConstU8, Everything, FindAuthor},
 	ConsensusEngineId,
 };
 use sp_core::H256;
@@ -128,7 +128,8 @@ impl_mock_fees_state!(
 
 impl Config for Test {
 	type WeightInfo = ();
-	type Fees = MockFees<Self::AccountId, Balance, MockFeesState>;
+	type Fees = MockFees<Self::AccountId, Balance, u8, MockFeesState>;
+	type CommitAnchorFeeKey = ConstU8<1>;
 }
 
 impl Test {

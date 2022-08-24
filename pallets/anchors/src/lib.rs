@@ -18,7 +18,6 @@
 
 use codec::{Decode, Encode};
 use common_traits::fees::{Fee, Fees};
-use common_types::FeeKey;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
@@ -100,7 +99,10 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_timestamp::Config {
 		/// Entity used to pay fees
-		type Fees: Fees<AccountId = Self::AccountId, FeeKey>;
+		type Fees: Fees<AccountId = Self::AccountId>;
+
+		/// Key used to retrieve the fee balances in the commit method.
+		type CommitAnchorFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
@@ -305,7 +307,7 @@ pub mod pallet {
 
 			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
 			// we use the fee config setup on genesis for anchoring to calculate the state rent
-			let fee = T::Fees::fee_value(FeeKey::CommitAnchor)
+			let fee = T::Fees::fee_value(T::CommitAnchorFeeKey::get())
 				.checked_mul(&multiplier.into())
 				.ok_or(ArithmeticError::Overflow)?;
 
