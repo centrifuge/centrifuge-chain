@@ -7,13 +7,17 @@ on:
 jobs:
   docs:
     runs-on: ubuntu-latest
-
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-05-09"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Rust toolchain
-        run: rustup update --no-self-update stable
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          default: true
 
       - name: Build Documentation
         uses: actions-rs/cargo@v1
