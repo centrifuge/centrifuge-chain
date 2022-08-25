@@ -15,6 +15,10 @@
       url = github:nix-community/fenix;
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    naersk = {
+      url = github:nmattia/naersk;
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs :
@@ -34,7 +38,7 @@
             file = ./rust-toolchain.toml;
             sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
           };
-          nightlyRustPlatform = pkgs.makeRustPlatform {
+          naersk' = pkgs.callPackage inputs.naersk {
             cargo = toolchain;
             rustc = toolchain;
           };
@@ -77,7 +81,7 @@
               && builtins.all (name: builtins.baseNameOf path != name) ignoreList;
         in
         rec {
-          defaultPackage = nightlyRustPlatform.buildRustPackage {
+          defaultPackage = naersk'.buildPackage {
             pname = name;
             inherit version;
 
@@ -102,6 +106,10 @@
 
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
             PROTOC = "${pkgs.protobuf}/bin/protoc";
+
+            # Either this or `singleStep = true` is needed to build.
+            # See https://github.com/nix-community/naersk/issues/133
+            copySources = ["runtime/development"];
 
             doCheck = false;
           };
