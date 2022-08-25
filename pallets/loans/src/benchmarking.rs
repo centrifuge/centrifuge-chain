@@ -19,13 +19,15 @@ use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet};
 use common_types::{CurrencyId, PoolLocator};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::assert_ok;
-use frame_support::traits::tokens::fungibles::Inspect;
-use frame_support::traits::{Currency, IsType};
+use frame_support::{
+	assert_ok,
+	traits::{tokens::fungibles::Inspect, Currency, Hooks, IsType},
+};
 use frame_system::RawOrigin;
 use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
 use orml_traits::MultiCurrency;
 use pallet_balances::Pallet as BalancePallet;
+use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
 use runtime_common::{Rate, CFG as CURRENCY};
 use test_utils::{
@@ -42,6 +44,7 @@ pub trait Config:
 	+ pallet_pools::Config
 	+ ORMLConfig
 	+ TimestampConfig
+	+ InterestAccrualConfig
 {
 }
 
@@ -172,9 +175,7 @@ where
 		(500 * CURRENCY).into(),
 	);
 
-	// add borrower role and price admin and risk admin role
 	make_free_cfg_balance::<T>(borrower::<T>());
-	make_free_cfg_balance::<T>(risk_admin::<T>());
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
@@ -185,6 +186,13 @@ where
 		borrower::<T>(),
 		Role::PoolRole(PoolRole::PricingAdmin)
 	));
+	assert_ok!(<T as pallet_pools::Config>::Permission::add(
+		PermissionScope::Pool(pool_id.into()),
+		borrower::<T>(),
+		Role::PoolRole(PoolRole::LoanAdmin)
+	));
+
+	make_free_cfg_balance::<T>(risk_admin::<T>());
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		risk_admin::<T>(),
@@ -437,6 +445,7 @@ benchmarks! {
 		let after_one_year = now + math::seconds_per_year() * 1000;
 		let amount = (40 * CURRENCY).into();
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
+		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Borrowed { pool_id, loan_id, amount }.into());
@@ -467,6 +476,7 @@ benchmarks! {
 		let now = TimestampPallet::<T>::get().into();
 		let after_maturity = now + (2 * math::seconds_per_year() + math::seconds_per_day()) * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
+		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		let amount = (100 * CURRENCY).into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
@@ -514,6 +524,7 @@ benchmarks! {
 		let after_maturity = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		// add write off groups
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
+		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id)
 	verify {
 		let index = (m-1).into();
@@ -542,6 +553,7 @@ benchmarks! {
 		let after_maturity = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		// add write off groups
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
+		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		let percentage = Rate::saturating_from_rational(100, 100).into();
 		let penalty_interest_rate_per_sec = Rate::saturating_from_rational(1, 100).into();
 	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, loan_id, percentage, penalty_interest_rate_per_sec)
@@ -572,6 +584,7 @@ benchmarks! {
 		let now = TimestampPallet::<T>::get().into();
 		let after_two_years = now + 2 * math::seconds_per_year() * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_two_years.into()).expect("timestamp set should not fail");
+		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		// repay all. sent more than current debt
 		let owner_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
 		make_free_token_balance::<T>(CurrencyId::AUSD, &loan_owner, owner_balance);
@@ -620,6 +633,7 @@ benchmarks! {
 		let now = TimestampPallet::<T>::get().into();
 		let after_two_years = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_two_years.into()).expect("timestamp set should not fail");
+		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
 		// write off loan. the loan will be moved to full write off after 120 days beyond maturity based on the test write off groups
@@ -664,6 +678,7 @@ benchmarks! {
 		let now = TimestampPallet::<T>::get().into();
 		let after_one_month = now + math::seconds_per_day() * 30 * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_month.into()).expect("timestamp set should not fail");
+		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id)

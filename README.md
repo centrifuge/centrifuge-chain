@@ -17,6 +17,8 @@ Initialize your Wasm Build environment:
 
 Build Wasm and native code:
 
+- Prerequisites : cmake,  libclang-dev
+
 ```bash
 cargo build --release
 ```
