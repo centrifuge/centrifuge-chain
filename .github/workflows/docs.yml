@@ -1,3 +1,4 @@
+name: Rustdoc
 on:
   push:
   pull_request:
