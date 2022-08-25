@@ -1,7 +1,6 @@
 name: Rustdoc
 on:
   push:
-  pull_request:
     branches:
       - parachain
       - github-actions-docs
