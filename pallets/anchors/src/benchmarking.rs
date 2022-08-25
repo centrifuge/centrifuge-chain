@@ -20,6 +20,10 @@ const PROOF: [u8; 32] = [
 	101, 65, 6, 191, 206, 210, 2, 176, 103, 161, 14,
 ];
 
+fn day<T: From<u64>>(n: u64) -> T {
+	T::from(common::MILLISECS_PER_DAY * n + 1)
+}
+
 benchmarks! {
 	where_clause {
 		where
@@ -44,9 +48,7 @@ benchmarks! {
 		T::Currency::make_free_balance_be(&caller, T::PreCommitDeposit::get());
 
 		let pre_image = T::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
-
-		let stored_until_date = common::MILLISECS_PER_DAY + 1;
+		let anchor_id = pre_image.using_encoded(T::Hashing::hash);
 
 		<Pallet<T>>::pre_commit(
 			RawOrigin::Signed(caller.clone()).into(),
@@ -54,7 +56,7 @@ benchmarks! {
 			SIGNING_ROOT.into()
 		)?;
 
-	}: _(RawOrigin::Signed(caller), pre_image, DOC_ROOT.into(), PROOF.into(), stored_until_date.into())
+	}: _(RawOrigin::Signed(caller), pre_image, DOC_ROOT.into(), PROOF.into(), day(1))
 	verify {
 		assert!(<PreCommits<T>>::get(anchor_id).is_none());
 		assert!(<AnchorEvictDates<T>>::get(anchor_id).is_some());
@@ -63,23 +65,24 @@ benchmarks! {
 	evict_pre_commits {
 		let caller = whitelisted_caller();
 
-		let anchor_ids = (0..EVICT_PRE_COMMIT_LIST_SIZE).map(|i| {
-			T::Currency::make_free_balance_be(&caller, T::PreCommitDeposit::get());
+		let anchor_ids = (0..EVICT_PRE_COMMIT_LIST_SIZE)
+			.map(|i| {
+				T::Currency::make_free_balance_be(&caller, T::PreCommitDeposit::get());
 
-			let anchor_id = T::Hashing::hash_of(&i);
+				let anchor_id = T::Hashing::hash_of(&i);
 
-			<Pallet<T>>::pre_commit(
-				RawOrigin::Signed(caller.clone()).into(),
-				anchor_id,
-				SIGNING_ROOT.into()
-			)?;
+				<Pallet<T>>::pre_commit(
+					RawOrigin::Signed(caller.clone()).into(),
+					anchor_id,
+					SIGNING_ROOT.into()
+				)?;
 
-			Ok(anchor_id)
+				Ok(anchor_id)
 
-		})
-		.collect::<Result<Vec<_>, DispatchError>>()?
-		.try_into()
-		.expect("resulting BoundedVec is equal to EVICT_PRE_COMMIT_LIST_SIZE");
+			})
+			.collect::<Result<Vec<_>, DispatchError>>()?
+			.try_into()
+			.expect("resulting BoundedVec is equal to EVICT_PRE_COMMIT_LIST_SIZE");
 
 		frame_system::Pallet::<T>::set_block_number(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS.into());
 
@@ -88,15 +91,28 @@ benchmarks! {
 		assert_eq!(<PreCommits<T>>::iter_values().count(), 0);
 	}
 
-	/*
 	evict_anchors {
 		let caller = whitelisted_caller();
 
+		for i in 0..MAX_LOOP_IN_TX {
+			let pre_image = T::Hashing::hash_of(&i);
+			let anchor_id = pre_image.using_encoded(T::Hashing::hash);
+
+			Pallet::<T>::commit(
+				RawOrigin::Signed(whitelisted_caller()).into(),
+				pre_image,
+				DOC_ROOT.into(),
+				PROOF.into(),
+				day(1)
+			)?;
+		}
+
+		pallet_timestamp::Pallet::<T>::set_timestamp(day(2));
+
 	}: _(RawOrigin::Signed(caller))
 	verify {
-		assert_eq!(<PreCommits<T>>::iter_values().count(), 0);
+		assert_eq!(<AnchorEvictDates<T>>::iter_values().count(), 0);
 	}
-	*/
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
