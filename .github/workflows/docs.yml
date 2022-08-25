@@ -2,9 +2,7 @@ name: Rustdoc
 on:
   push:
     branches:
-      - parachain
-      - github-actions-docs
-    types: [closed]
+      - [parachain, "github-actions-docs"]
 jobs:
   docs:
     runs-on: ubuntu-latest
