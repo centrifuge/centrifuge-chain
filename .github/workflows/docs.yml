@@ -2,7 +2,8 @@ on:
   push:
   pull_request:
     branches:
-      - [parachain, github-actions-docs]
+      - parachain
+      - github-actions-docs
     types: [closed]
 jobs:
   docs:
