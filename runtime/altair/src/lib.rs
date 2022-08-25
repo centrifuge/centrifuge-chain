@@ -646,7 +646,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -749,7 +749,7 @@ impl pallet_migration_manager::Config for Runtime {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
@@ -762,7 +762,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
+	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
 	pub const MaxProofLength: u32 = 30;
 }
 
@@ -779,7 +779,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 // Parameterize collator selection pallet
 parameter_types! {
-	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
@@ -934,7 +934,7 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
+	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -972,7 +972,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 // Pools & Loans
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
+	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
 	pub const MaxWriteOffGroups: u32 = 100;
 }
@@ -997,7 +997,7 @@ impl pallet_loans::Config for Runtime {
 }
 
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
 
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
 		0
@@ -1142,6 +1142,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	type InterestRate = Rate;
 	type Time = Timestamp;
+	type Weights = ();
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -1197,7 +1198,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 99,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 101,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1245,7 +1246,25 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
+	upgrade::Upgrade,
 >;
+
+/// Runtime upgrade logic
+mod upgrade {
+	use super::*;
+	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+
+	pub struct Upgrade;
+	impl OnRuntimeUpgrade for Upgrade {
+		fn on_runtime_upgrade() -> Weight {
+			let mut weight = 0;
+			weight += InterestAccrual::upgrade_to_v1();
+			weight += Loans::reference_active_rates();
+			weight += InterestAccrual::remove_unused_rates();
+			weight
+		}
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -1465,6 +1484,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1525,6 +1545,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

@@ -885,6 +885,7 @@ fn altair_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
+		interest_accrual: Default::default(),
 	}
 }
 
@@ -1011,5 +1012,6 @@ fn development_genesis(
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 		treasury: Default::default(),
+		interest_accrual: Default::default(),
 	}
 }

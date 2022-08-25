@@ -237,7 +237,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = TEST_CHAIN_ID;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"cb/bridg");
+	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
@@ -292,7 +292,7 @@ impl pallet_anchors::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
-	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;

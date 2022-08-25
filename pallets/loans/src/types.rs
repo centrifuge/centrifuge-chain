@@ -165,7 +165,7 @@ where
 	pub(crate) fn present_value(
 		&self,
 		debt: Balance,
-		write_off_groups: &Vec<WriteOffGroup<Rate>>,
+		write_off_groups: &[WriteOffGroup<Rate>],
 		now: Moment,
 	) -> Option<Balance> {
 		// if the debt is written off, write off accordingly
