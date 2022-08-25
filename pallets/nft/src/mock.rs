@@ -224,13 +224,6 @@ impl pallet_anchors::Config for MockRuntime {
 	type PreCommitDeposit = PreCommitDeposit;
 }
 
-impl pallet_fees::Config for MockRuntime {
-	type Currency = Balances;
-	type Event = Event;
-	type FeeChangeOrigin = EnsureSignedBy<One, u64>;
-	type WeightInfo = ();
-}
-
 // Parameterize NFT pallet
 parameter_types! {
 	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
