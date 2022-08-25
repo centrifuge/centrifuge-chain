@@ -393,11 +393,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
-		/// Max length of token name
+		/// Max length for a tranche token name
 		#[pallet::constant]
 		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
-		/// Max length token symbol
+		/// Max length for a tranche token symbol
 		#[pallet::constant]
 		type MaxTokenSymbolLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
@@ -580,6 +580,14 @@ pub mod pallet {
 		InvalidTrancheSeniority,
 		/// Invalid metadata passed
 		BadMetadata,
+		/// No metada for the given currency found
+		MetadataForCurrencyNoFound,
+		/// The given tranche token name exceeds the length limit
+		TrancheTokenNameTooLong,
+		/// The given tranche symbol name exceeds the length limit
+		TrancheSymbolNameTooLong,
+		/// Registering the metadata for a tranche threw an error
+		FailedtoRegisterTrancheMetadata,
 		/// Invalid TrancheId passed. In most cases out-of-bound index
 		InvalidTrancheId,
 		/// Indicates that the new passed order equals the old-order
@@ -689,19 +697,20 @@ pub mod pallet {
 					.clone()
 					.metadata
 					.token_name
+					.clone()
 					.try_into()
-					.map_err(|_| Error::<T>::BadMetadata)?;
+					.map_err(|_| Error::<T>::TrancheTokenNameTooLong)?;
 
 				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche_input
-					.clone()
 					.metadata
 					.token_symbol
+					.clone()
 					.try_into()
-					.map_err(|_| Error::<T>::BadMetadata)?;
+					.map_err(|_| Error::<T>::TrancheTokenNameTooLong)?;
 
 				let decimals = match T::AssetRegistry::metadata(&currency) {
 					Some(metadata) => metadata.decimals,
-					None => return Err(Error::<T>::BadMetadata.into()),
+					None => return Err(Error::<T>::MetadataForCurrencyNoFound.into()),
 				};
 
 				let parachain_id = T::ParachainId::get();
@@ -712,12 +721,10 @@ pub mod pallet {
 					parachain_id,
 					token_name.to_vec(),
 					token_symbol.to_vec(),
-				)?;
+				);
 
-				assert_ok!(T::AssetRegistry::register_asset(
-					Some(tranche.currency),
-					metadata
-				));
+				T::AssetRegistry::register_asset(Some(tranche.currency), metadata)
+					.map_err(|_| Error::<T>::FailedtoRegisterTrancheMetadata)?;
 			}
 
 			Pool::<T>::insert(
@@ -1649,7 +1656,7 @@ pub mod pallet {
 					{
 						let decimals = match T::AssetRegistry::metadata(&tranche.currency) {
 							Some(metadata) => metadata.decimals,
-							None => return Err(Error::<T>::BadMetadata.into()),
+							None => return Err(Error::<T>::MetadataForCurrencyNoFound.into()),
 						};
 
 						let parachain_id = T::ParachainId::get();
@@ -1659,7 +1666,7 @@ pub mod pallet {
 							parachain_id,
 							updated_metadata.clone().token_name.to_vec(),
 							updated_metadata.clone().token_symbol.to_vec(),
-						)?;
+						);
 
 						assert_ok!(T::AssetRegistry::update_asset(
 							tranche.currency,

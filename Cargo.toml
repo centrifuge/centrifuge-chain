@@ -192,7 +192,6 @@ runtime-benchmarks = [
 test-benchmarks = [
 	"runtime-benchmarks",
 	"runtime-integration-tests/runtime-benchmarks",
-	"pallet-pools/runtime-benchmarks",
 ]
 cli = [
 	'try-runtime-cli',

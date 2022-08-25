@@ -1496,7 +1496,7 @@ pub(crate) fn create_asset_metadata<Balance, CurrencyId>(
 	parachain_id: ParaId,
 	token_name: Vec<u8>,
 	token_symbol: Vec<u8>,
-) -> Result<AssetMetadata<Balance, CustomMetadata>, DispatchError>
+) -> AssetMetadata<Balance, CustomMetadata>
 where
 	Balance: Zero,
 	CurrencyId: Encode,
@@ -1504,7 +1504,7 @@ where
 {
 	let tranche_id = currency.encode();
 
-	Ok(AssetMetadata {
+	AssetMetadata {
 		decimals,
 		name: token_name,
 		symbol: token_symbol,
@@ -1521,7 +1521,7 @@ where
 				fee_per_second: None,
 			},
 		},
-	})
+	}
 }
 
 #[cfg(test)]

@@ -131,8 +131,10 @@ pub mod types {
 	/// Rate with 27 precision fixed point decimal
 	pub type Rate = crate::fixed_point::Rate;
 
+	/// Maximum allowed length of a tranche token name
 	pub type MaxTokenNameLength = u32;
 
+	/// Maximum allowed length of a tranche symbol name
 	pub type MaxTokenSymbolLength = u32;
 
 	/// Amount with 18 precision fixed point decimal
