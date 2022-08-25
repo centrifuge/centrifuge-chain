@@ -1,19 +1,21 @@
-#![cfg(feature = "runtime-benchmarks")]
 use super::*;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use sp_runtime::traits::Hash;
 
 benchmarks! {
-  pre_commit {
-	let fee_key = T::Hashing::hash_of(&1);
-	let fee: BalanceOf<T> = 1000000000u32.into();
-  }: _(RawOrigin::Root, fee_key, fee)
-  verify {
-	assert!(<Fees<T>>::get(fee_key).is_some(), "fee should be set");
-	let got_fee = <Fees<T>>::get(fee_key).unwrap();
-	assert_eq!(got_fee.price, fee);
-  }
+	pre_commit {
+		let caller = whitelisted_caller();
+		let anchor_id = T::Hashing::hash_of(&1);
+		let signing_root  = T::Hashing::hash_of(&1);
+
+		T::Currency::make_free_balance_be(&caller, T::PreCommitDeposit::get());
+
+	}: _(RawOrigin::Signed(caller), anchor_id, signing_root)
+	verify {
+		assert!(<PreCommits<T>>::get(anchor_id).is_some());
+	}
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test,);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
