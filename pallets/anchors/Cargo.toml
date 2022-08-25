@@ -35,7 +35,10 @@ pallet-authorship = { git = "https://github.com/paritytech/substrate",  default-
 
 [features]
 default = ['std']
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = [
+    "frame-benchmarking/runtime-benchmarks",
+    "pallet-timestamp/runtime-benchmarks",
+]
 std = [
     'codec/std',
     'sp-core/std',
