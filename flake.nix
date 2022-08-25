@@ -23,26 +23,20 @@
           pkgs = inputs.nixpkgs.legacyPackages.${system};
 
           cargoTOML = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-          rustToolChainTOML = builtins.fromTOML (builtins.readFile ./rust-toolchain.toml);
 
           name = cargoTOML.package.name;
           # This is the program version.
           version = cargoTOML.package.version;
-          # This selects a nightly Rust version, based on the date.
-          nightly-date = pkgs.lib.strings.removePrefix "nightly-" rustToolChainTOML.toolchain.channel;
-          # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
-          nightly-sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
 
-
-          # This instantiates a new Rust version based on nightly-date.
+          # Override the toolchain from Rust toolchain file
+          fenix = inputs.fenix.packages.${system};
+          toolchain = fenix.fromToolchainFile {
+            file = ./rust-toolchain.toml;
+            sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
+          };
           nightlyRustPlatform = pkgs.makeRustPlatform {
-            inherit
-              (inputs.fenix.packages.${system}.toolchainOf {
-                channel = "nightly";
-                date = nightly-date;
-                sha256 = nightly-sha256;
-              })
-              cargo rustc;
+            cargo = toolchain;
+            rustc = toolchain;
           };
 
           # This is a mock git program, which just returns the commit-substr value.
@@ -108,8 +102,6 @@
 
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
             PROTOC = "${pkgs.protobuf}/bin/protoc";
-            SKIP_WASM_BUILD = 1;
-
 
             doCheck = false;
           };
