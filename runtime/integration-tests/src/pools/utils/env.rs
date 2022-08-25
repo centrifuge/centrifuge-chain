@@ -12,8 +12,8 @@
 
 //! Utilities to create a relay-chain-parachain setup
 use crate::chain::centrifuge::{
-	Block as CentrifugeBlock, BlockNumber, Event, Runtime, RuntimeApi as CentrifugeRtApi, PARA_ID,
-	WASM_BINARY as CentrifugeCode,
+	AuraId, Block as CentrifugeBlock, BlockNumber, Event, Runtime, RuntimeApi as CentrifugeRtApi,
+	PARA_ID, WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
 use crate::chain::{centrifuge, relay};
@@ -23,7 +23,7 @@ use crate::pools::utils::{logs, time::START_DATE};
 use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
-use fudge::digest::FudgeBabeDigest;
+use fudge::digest::{DigestProvider, FudgeAuraDigest, FudgeBabeDigest};
 use fudge::primitives::{Chain, PoolState};
 use fudge::{
 	digest::DigestCreator,
@@ -39,9 +39,11 @@ use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use runtime_common::Index;
 
+use rand::Rng;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
+use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use std::collections::HashMap;
@@ -138,7 +140,7 @@ pub mod macros {
 	///
 	/// Usage:
 	/// ```ignore
-	/// env::assert_events!(
+	/// env::events!(
 	/// 		env, //-> The test environment create with fudge::companion
 	/// 		Chain::Para(PARA_ID), //-> The chain where we fetch the events from
 	/// 		Event, //-> The event-enum type from the runtime
@@ -285,7 +287,7 @@ type CentrifugeCidp = Box<
 		(),
 		InherentDataProviders = (
 			FudgeInherentTimestamp,
-			sp_consensus_babe::inherents::InherentDataProvider,
+			sp_consensus_aura::inherents::InherentDataProvider,
 			FudgeInherentParaParachain,
 		),
 	>,
@@ -293,7 +295,11 @@ type CentrifugeCidp = Box<
 
 /// The type creates digests for the chains.
 #[allow(unused)]
-type Dp = Box<dyn DigestCreator + Send + Sync>;
+type CentrifugeDp = Box<dyn DigestCreator<CentrifugeBlock> + Send + Sync>;
+
+/// The type creates digests for the chains.
+#[allow(unused)]
+type RelayDp = Box<dyn DigestCreator<RelayBlock> + Send + Sync>;
 
 /// A struct that stores all events that have been generated
 /// since we are building blocks locally here.
@@ -319,19 +325,21 @@ pub enum EventRange {
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
-	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp, HF>,
+	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, RelayDp, HF>,
 	#[fudge::parachain(PARA_ID)]
-	pub centrifuge:
-		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
+	pub centrifuge: ParachainBuilder<
+		CentrifugeBlock,
+		CentrifugeRtApi,
+		CentrifugeCidp,
+		CentrifugeDp,
+		CentrifugeHF,
+	>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
 	pub events: Arc<Mutex<EventsStorage>>,
 }
 
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
 //       to submit a lot of extrinsic. This interface eases this issues.
-//
-// Upon usage of this API:
-// *
 impl TestEnv {
 	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()> {
 		match chain {
@@ -644,6 +652,8 @@ fn test_env(
 	centrifuge_storage: Option<Storage>,
 ) -> TestEnv {
 	logs::init_logs();
+	let mut rng = rand::thread_rng();
+
 	// Build relay-chain builder
 	let relay = {
 		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Relay - StartUp");
@@ -678,6 +688,20 @@ fn test_env(
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
+		let instance = {
+			let mut instance = 0;
+			while FudgeInherentTimestamp::new(
+				instance,
+				std::time::Duration::from_secs(6),
+				Some(std::time::Duration::from_millis(START_DATE)),
+			)
+			.is_some()
+			{
+				instance = rng.gen()
+			}
+
+			instance
+		};
 
 		let cidp = Box::new(move |parent: H256, ()| {
 			let client = clone_client.clone();
@@ -690,16 +714,13 @@ fn test_env(
 				let uncles =
 					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
 
-				let timestamp = FudgeInherentTimestamp::new(
-					0,
-					std::time::Duration::from_secs(6),
-					Some(std::time::Duration::from_millis(START_DATE)),
-				);
+				let timestamp = FudgeInherentTimestamp::get_instance(instance)
+					.expect("Instances is initialized");
 
 				let slot =
-					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
+					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(6),
+						SlotDuration::from_millis(std::time::Duration::from_secs(6).as_millis() as u64),
 					);
 
 				let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
@@ -707,23 +728,13 @@ fn test_env(
 			}
 		});
 
-		let dp = Box::new(move || async move {
-			let mut digest = sp_runtime::Digest::default();
-
-			let slot_duration = pallet_babe::Pallet::<RelayRt>::slot_duration();
-			digest.push(<DigestItem as CompatibleDigestItem>::babe_pre_digest(
-				FudgeBabeDigest::pre_digest(
-					FudgeInherentTimestamp::get_instance(0)
-						.expect("Instance is initialised. qed")
-						.current_time(),
-					std::time::Duration::from_millis(slot_duration),
-				),
-			));
-
+		let dp = Box::new(move |parent, inherents| async move {
+			let babe = FudgeBabeDigest::<RelayBlock>::new();
+			let digest = babe.build_digest(&parent, &inherents).await?;
 			Ok(digest)
 		});
 
-		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp, HF>::new(
+		RelaychainBuilder::<_, _, RelayRt, RelayCidp, RelayDp, HF>::new(
 			manager, backend, client, cidp, dp,
 		)
 	};
@@ -742,7 +753,14 @@ fn test_env(
 					.expect("ESSENTIAL: Centrifuge WASM is some.")
 					.to_vec(),
 			}
-			.build_storage::<RelayRt>()
+			.build_storage::<Runtime>()
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+		);
+		provider.insert_storage(
+			pallet_aura::GenesisConfig::<Runtime> {
+				authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
+			}
+			.build_storage()
 			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 
@@ -757,20 +775,31 @@ fn test_env(
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
+		let instance = {
+			let mut instance = 1;
+			while FudgeInherentTimestamp::new(
+				instance,
+				std::time::Duration::from_secs(12),
+				Some(std::time::Duration::from_millis(START_DATE)),
+			)
+			.is_some()
+			{
+				instance = rng.gen()
+			}
+
+			instance
+		};
 
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
 			async move {
-				let timestamp = FudgeInherentTimestamp::new(
-					1,
-					std::time::Duration::from_secs(12),
-					Some(std::time::Duration::from_millis(START_DATE)),
-				);
+				let timestamp = FudgeInherentTimestamp::get_instance(instance)
+					.expect("Instances is initialized");
 
 				let slot =
-					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
+					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(12),
+						SlotDuration::from_millis(std::time::Duration::from_secs(12).as_millis() as u64),
 					);
 				let inherent = inherent_builder_clone
 					.parachain_inherent()
@@ -780,10 +809,34 @@ fn test_env(
 				Ok((timestamp, slot, relay_para_inherent))
 			}
 		});
-		let dp = Box::new(move || async move { Ok(sp_runtime::Digest::default()) });
+		let dp = |clone_client: Arc<
+			sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, WasmExecutor<CentrifugeHF>>,
+		>| {
+			Box::new(move |parent, inherents| {
+				let client = clone_client.clone();
 
-		ParachainBuilder::<_, _, CentrifugeCidp, Dp, CentrifugeHF>::new(
-			manager, backend, client, cidp, dp,
+				async move {
+					let aura = FudgeAuraDigest::<
+						CentrifugeBlock,
+						sc_service::TFullClient<
+							CentrifugeBlock,
+							CentrifugeRtApi,
+							WasmExecutor<CentrifugeHF>,
+						>,
+					>::new(&*client);
+
+					let digest = aura.build_digest(&parent, &inherents).await?;
+					Ok(digest)
+				}
+			})
+		};
+
+		ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp, CentrifugeHF>::new(
+			manager,
+			backend,
+			client.clone(),
+			cidp,
+			dp(client),
 		)
 	};
 

@@ -3000,6 +3000,84 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2022715d62ab30faffd124d40b76f4134a550a87792276512b18d63272333394"
 
 [[package]]
+name = "fudge"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.26#816563cb5b6d28a25f470ef6de74572bb2952482"
+dependencies = [
+ "fudge-companion",
+ "fudge-core",
+ "polkadot-parachain",
+ "sc-executor",
+ "sc-service",
+ "sp-io",
+]
+
+[[package]]
+name = "fudge-companion"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.26#816563cb5b6d28a25f470ef6de74572bb2952482"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "fudge-core"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.26#816563cb5b6d28a25f470ef6de74572bb2952482"
+dependencies = [
+ "async-trait",
+ "cumulus-primitives-parachain-inherent",
+ "cumulus-relay-chain-inprocess-interface",
+ "frame-support",
+ "frame-system",
+ "fudge-companion",
+ "futures 0.3.23",
+ "lazy_static",
+ "node-primitives",
+ "pallet-babe",
+ "parity-scale-codec",
+ "parking_lot 0.12.1",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "polkadot-primitives",
+ "polkadot-runtime-parachains",
+ "sc-basic-authorship",
+ "sc-block-builder",
+ "sc-client-api",
+ "sc-client-db",
+ "sc-consensus",
+ "sc-consensus-aura",
+ "sc-consensus-uncles",
+ "sc-executor",
+ "sc-offchain",
+ "sc-service",
+ "sc-transaction-pool",
+ "sc-transaction-pool-api",
+ "sp-api",
+ "sp-authorship",
+ "sp-block-builder",
+ "sp-consensus",
+ "sp-consensus-aura",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-database",
+ "sp-externalities",
+ "sp-inherents",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-std",
+ "sp-storage",
+ "sp-timestamp",
+ "sp-transaction-pool",
+ "tracing",
+]
+
+[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8776,6 +8854,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "fudge",
  "kusama-runtime",
  "lazy_static",
  "node-primitives",
@@ -8785,6 +8864,7 @@ dependencies = [
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-asset-tx-payment",
+ "pallet-aura",
  "pallet-babe",
  "pallet-balances",
  "pallet-loans",
@@ -8801,6 +8881,7 @@ dependencies = [
  "polkadot-runtime",
  "polkadot-runtime-common",
  "polkadot-runtime-parachains",
+ "rand 0.8.5",
  "rococo-runtime",
  "runtime-common",
  "sc-client-api",
@@ -8808,7 +8889,9 @@ dependencies = [
  "sc-executor",
  "sc-service",
  "sp-authorship",
+ "sp-consensus-aura",
  "sp-consensus-babe",
+ "sp-consensus-slots",
  "sp-core",
  "sp-inherents",
  "sp-io",

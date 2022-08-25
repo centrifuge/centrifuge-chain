@@ -21,20 +21,20 @@ use pallet_loans::{
 	Call as LoansCall,
 };
 use pallet_uniques::Call as UniquesCall;
-use runtime_common::{AccountId, ClassId, InstanceId};
+use runtime_common::{AccountId, CollectionId, ItemId};
 use std::collections::HashMap;
 
 /// Structure that manages collateral and loan nft ids
 pub struct NftManager {
-	collaterals: HashMap<PoolId, InstanceId>,
-	loans: HashMap<PoolId, InstanceId>,
+	collaterals: HashMap<PoolId, ItemId>,
+	loans: HashMap<PoolId, ItemId>,
 }
 
 /// The id we use for loans
-pub type LoanId = InstanceId;
+pub type LoanId = ItemId;
 
 // The id we use for collaterals
-pub type CollateralId = InstanceId;
+pub type CollateralId = ItemId;
 
 impl NftManager {
 	pub fn new() -> Self {
@@ -45,7 +45,7 @@ impl NftManager {
 	}
 
 	/// Currently simply maps pool_id = loan_class_id for a pool
-	pub fn loan_class_id(&self, pool_id: PoolId) -> ClassId {
+	pub fn loan_class_id(&self, pool_id: PoolId) -> CollectionId {
 		pool_id
 	}
 
@@ -53,7 +53,7 @@ impl NftManager {
 	///
 	/// panics if pool_id >= u32::MAX - 1 as this would result in an overflow
 	/// during shifting.
-	pub fn collateral_class_id(&self, pool_id: PoolId) -> ClassId {
+	pub fn collateral_class_id(&self, pool_id: PoolId) -> CollectionId {
 		assert!(
 			pool_id < u32::MAX.into(),
 			"Pool-id must be smaller u32::MAX for testing. To ensure no-clashes in NFT class-ids"
@@ -62,25 +62,25 @@ impl NftManager {
 		id
 	}
 
-	pub fn curr_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
-		self.loans.entry(pool_id).or_insert(InstanceId(1)).clone()
+	pub fn curr_loan_id(&mut self, pool_id: PoolId) -> ItemId {
+		self.loans.entry(pool_id).or_insert(ItemId(1)).clone()
 	}
 
-	fn next_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
-		let id = self.loans.entry(pool_id).or_insert(InstanceId(1));
+	fn next_loan_id(&mut self, pool_id: PoolId) -> ItemId {
+		let id = self.loans.entry(pool_id).or_insert(ItemId(1));
 		let next = id.clone();
-		*id = InstanceId(id.0);
+		*id = ItemId(id.0);
 		next
 	}
 
-	pub fn curr_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
-		self.loans.entry(pool_id).or_insert(InstanceId(1)).clone()
+	pub fn curr_collateral_id(&mut self, pool_id: PoolId) -> ItemId {
+		self.loans.entry(pool_id).or_insert(ItemId(1)).clone()
 	}
 
-	fn next_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
-		let id = self.collaterals.entry(pool_id).or_insert(InstanceId(1));
+	fn next_collateral_id(&mut self, pool_id: PoolId) -> ItemId {
+		let id = self.collaterals.entry(pool_id).or_insert(ItemId(1));
 		let next = id.clone();
-		*id = InstanceId(id.0);
+		*id = ItemId(id.0);
 		next
 	}
 }
@@ -126,7 +126,7 @@ pub fn issue_default_loan(
 		rate_from_percent(90),
 		rate_from_percent(5),
 		rate_from_percent(50),
-		Amount::from_inner(amount),
+		amount,
 		interest_rate_per_sec(rate_from_percent(4))
 			.expect("Essential: Creating rate per sec must not fail."),
 		maturity,
@@ -157,7 +157,7 @@ pub fn issue_loan(
 	owner: AccountId,
 	pool_id: PoolId,
 	intereset_rate_per_sec: Rate,
-	loan_type: LoanType<Rate, Amount>,
+	loan_type: LoanType<Rate, Balance>,
 	manager: &mut NftManager,
 ) -> Vec<Call> {
 	let mut calls = Vec::new();
@@ -182,14 +182,14 @@ pub fn issue_loan(
 	calls
 }
 
-pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: ClassId) -> Call {
+pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: CollectionId) -> Call {
 	Call::Loans(LoansCall::initialise_pool {
 		pool_id,
 		loan_nft_class_id,
 	})
 }
 
-pub fn create_loan_call(pool_id: PoolId, collateral: Asset<ClassId, InstanceId>) -> Call {
+pub fn create_loan_call(pool_id: PoolId, collateral: Asset<CollectionId, ItemId>) -> Call {
 	Call::Loans(LoansCall::create {
 		pool_id,
 		collateral,
@@ -200,7 +200,7 @@ pub fn price_loan_call(
 	pool_id: PoolId,
 	loan_id: LoanId,
 	interest_rate_per_sec: Rate,
-	loan_type: LoanType<Rate, Amount>,
+	loan_type: LoanType<Rate, Balance>,
 ) -> Call {
 	Call::Loans(LoansCall::price {
 		pool_id,
@@ -210,7 +210,7 @@ pub fn price_loan_call(
 	})
 }
 
-pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Amount) -> Call {
+pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Call {
 	Call::Loans(LoansCall::borrow {
 		pool_id,
 		loan_id,
@@ -218,7 +218,7 @@ pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Amount) -> Call {
 	})
 }
 
-pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: Amount) -> Call {
+pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Call {
 	Call::Loans(LoansCall::repay {
 		pool_id,
 		loan_id,
@@ -230,17 +230,17 @@ pub fn close_loan_call(pool_id: PoolId, loan_id: LoanId) -> Call {
 	Call::Loans(LoansCall::close { pool_id, loan_id })
 }
 
-pub fn create_nft_call(admin: AccountId, class: ClassId) -> Call {
+pub fn create_nft_call(admin: AccountId, collection: CollectionId) -> Call {
 	Call::Uniques(UniquesCall::create {
 		admin: Address::Id(admin),
-		class,
+		collection,
 	})
 }
 
-pub fn mint_nft_call(class: ClassId, instance: InstanceId, owner: AccountId) -> Call {
+pub fn mint_nft_call(collection: CollectionId, item: ItemId, owner: AccountId) -> Call {
 	Call::Uniques(UniquesCall::mint {
-		class,
-		instance,
+		collection,
+		item,
 		owner: Address::Id(owner),
 	})
 }

@@ -23,7 +23,7 @@ use crate::pools::utils::{
 use common_types::PoolRole;
 use fudge::primitives::Chain;
 use pallet_loans::types::Asset;
-use runtime_common::{AccountId, Address, Balance, InstanceId};
+use runtime_common::{AccountId, Address, Balance, ItemId};
 use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError};
 use tokio::runtime::Handle;
 
@@ -58,6 +58,18 @@ async fn create_init_and_price() {
 			)
 	);
 
+	tracing::info!(
+		"{:?}",
+		env::events!(
+			env,
+			Chain::Para(PARA_ID),
+			Event,
+			EventRange::All,
+			//Event::Pools(..) | Event::Loans(..) | Event::Uniques(..)
+			Event::System(frame_system::Event::ExtrinsicFailed { .. })
+		)
+	);
+
 	env::assert_events!(
 		env,
 		Chain::Para(PARA_ID),
@@ -65,9 +77,9 @@ async fn create_init_and_price() {
 		EventRange::All,
 		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
 		Event::Pools(pallet_pools::Event::Created { pool_id, .. }) if [pool_id == 0],
-		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == 0],
-		Event::Loans(pallet_loans::Event::Created(id, loan, asset))
-			if [id == 0 && loan == InstanceId(1) && asset == Asset(4294967296, InstanceId(1))],
-		Event::Loans(pallet_loans::Event::Priced(id, loan, ..)) if [id == 0 && loan == InstanceId(1)],
+		Event::Loans(pallet_loans::Event::PoolInitialised{pool_id}) if [pool_id == 0],
+		Event::Loans(pallet_loans::Event::Created{pool_id, loan_id, collateral})
+			if [pool_id == 0 && loan_id == ItemId(1) && collateral == Asset(4294967296, ItemId(1))],
+		Event::Loans(pallet_loans::Event::Priced{pool_id, loan_id, ..}) if [pool_id == 0 && loan_id == ItemId(1)],
 	);
 }
