@@ -302,7 +302,7 @@ pub mod fees {
 	use frame_support::dispatch::DispatchResult;
 	use frame_support::traits::tokens::Balance;
 	use scale_info::TypeInfo;
-	use sp_runtime::traits::MaybeSerializeDeserialize;
+	use sp_runtime::{traits::MaybeSerializeDeserialize, DispatchError};
 
 	/// Type used for identity the key used to retrieve the fees.
 	pub trait FeeKey:
@@ -321,15 +321,6 @@ pub mod fees {
 	{
 	}
 
-	/// A way to identify a fee value.
-	pub enum Fee<Balance, FeeKey> {
-		/// The fee value itself.
-		Balance(Balance),
-
-		/// The fee value is already stored and identified by a key.
-		Key(FeeKey),
-	}
-
 	/// A trait that used to deal with fees
 	pub trait Fees {
 		type AccountId;
@@ -342,23 +333,41 @@ pub mod fees {
 		/// Pay an amount of fee to the block author
 		/// If the `from` account has not enough balance or the author is invalid the fees are not
 		/// paid.
-		fn fee_to_author(
-			from: &Self::AccountId,
-			fee: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult;
+		fn fee_to_author(from: &Self::AccountId, fee: Self::FeeKey) -> DispatchResult {
+			Self::custom_fee_to_author(from, fee, |b| Ok(b))
+		}
 
 		/// Burn an amount of fee
 		/// If the `from` account has not enough balance the fees are not paid.
-		fn fee_to_burn(
-			from: &Self::AccountId,
-			fee: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult;
+		fn fee_to_burn(from: &Self::AccountId, fee: Self::FeeKey) -> DispatchResult {
+			Self::custom_fee_to_burn(from, fee, |b| Ok(b))
+		}
 
 		/// Send an amount of fee to the treasury
 		/// If the `from` account has not enough balance the fees are not paid.
-		fn fee_to_treasury(
+		fn fee_to_treasury(from: &Self::AccountId, fee: Self::FeeKey) -> DispatchResult {
+			Self::custom_fee_to_treasury(from, fee, |b| Ok(b))
+		}
+
+		/// Similar to [`fee_to_author()`] but allows to change the fee balance before pay it.
+		fn custom_fee_to_author(
 			from: &Self::AccountId,
-			fee: Fee<Self::Balance, Self::FeeKey>,
+			fee: Self::FeeKey,
+			mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
+		) -> DispatchResult;
+
+		/// Similar to [`fee_to_burn()`] but allows to change the fee balance before pay it.
+		fn custom_fee_to_burn(
+			from: &Self::AccountId,
+			fee: Self::FeeKey,
+			mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
+		) -> DispatchResult;
+
+		/// Similar to [`fee_to_treasury()`] but allows to change the fee balance before pay it.
+		fn custom_fee_to_treasury(
+			from: &Self::AccountId,
+			fee: Self::FeeKey,
+			mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 		) -> DispatchResult;
 	}
 
@@ -373,20 +382,28 @@ pub mod fees {
 			Self::Balance::default()
 		}
 
-		fn fee_to_author(
+		fn custom_fee_to_author(
 			_: &Self::AccountId,
-			_: Fee<Self::Balance, Self::FeeKey>,
+			_: Self::FeeKey,
+			_: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 		) -> DispatchResult {
 			Ok(())
 		}
 
-		fn fee_to_burn(_: &Self::AccountId, _: Fee<Self::Balance, Self::FeeKey>) -> DispatchResult {
+		/// Similar to [`fee_to_burn()`] but allows to change the fee balance before pay it.
+		fn custom_fee_to_burn(
+			_: &Self::AccountId,
+			_: Self::FeeKey,
+			_: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
+		) -> DispatchResult {
 			Ok(())
 		}
 
-		fn fee_to_treasury(
+		/// Similar to [`fee_to_treasury()`] but allows to change the fee balance before pay it.
+		fn custom_fee_to_treasury(
 			_: &Self::AccountId,
-			_: Fee<Self::Balance, Self::FeeKey>,
+			_: Self::FeeKey,
+			_: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 		) -> DispatchResult {
 			Ok(())
 		}
@@ -394,22 +411,23 @@ pub mod fees {
 
 	#[cfg(feature = "std")]
 	pub mod test_util {
-		use super::{Fee, FeeKey, Fees};
+		use super::{FeeKey, Fees};
 		use frame_support::dispatch::DispatchResult;
 		use frame_support::traits::{tokens::Balance, Get};
+		use sp_runtime::DispatchError;
 		use std::cell::RefCell;
 		use std::thread::LocalKey;
 
-		pub struct FeeState<Author, Balance> {
-			pub author: Author,
+		pub struct FeeState<Account, Balance> {
+			pub account: Account,
 			pub balance: Balance,
 		}
 
 		#[derive(Default)]
-		pub struct FeesState<Author, Balance> {
-			pub author_fees: Vec<FeeState<Author, Balance>>,
-			pub burn_fees: Vec<FeeState<Author, Balance>>,
-			pub treasury_fees: Vec<FeeState<Author, Balance>>,
+		pub struct FeesState<Account, Balance> {
+			pub author_fees: Vec<FeeState<Account, Balance>>,
+			pub burn_fees: Vec<FeeState<Account, Balance>>,
+			pub treasury_fees: Vec<FeeState<Account, Balance>>,
 		}
 
 		impl<A, B> FeesState<A, B> {
@@ -461,59 +479,47 @@ pub mod fees {
 				Self::Balance::default()
 			}
 
-			fn fee_to_author(
+			fn custom_fee_to_author(
 				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
+				fee: Self::FeeKey,
+				mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 			) -> DispatchResult {
 				S::get().with(|state| {
 					state.borrow_mut().author_fees.push(FeeState {
-						author: author.clone(),
-						balance: Self::balance(fee),
+						account: author.clone(),
+						balance: mut_balance(Self::fee_value(fee))?,
 					});
-				});
-				Ok(())
+					Ok(())
+				})
 			}
 
-			fn fee_to_burn(
+			fn custom_fee_to_burn(
 				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
+				fee: Self::FeeKey,
+				mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 			) -> DispatchResult {
 				S::get().with(|state| {
 					state.borrow_mut().burn_fees.push(FeeState {
-						author: author.clone(),
-						balance: Self::balance(fee),
+						account: author.clone(),
+						balance: mut_balance(Self::fee_value(fee))?,
 					});
-				});
-				Ok(())
+					Ok(())
+				})
 			}
 
-			fn fee_to_treasury(
+			fn custom_fee_to_treasury(
 				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
+				fee: Self::FeeKey,
+				mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 			) -> DispatchResult {
 				let value = S::get();
 				value.with(|state| {
 					state.borrow_mut().treasury_fees.push(FeeState {
-						author: author.clone(),
-						balance: Self::balance(fee),
+						account: author.clone(),
+						balance: mut_balance(Self::fee_value(fee))?,
 					});
-				});
-				Ok(())
-			}
-		}
-
-		impl<
-				A: Clone + 'static,
-				B: Balance + 'static,
-				K: FeeKey,
-				S: Get<&'static LocalKey<RefCell<FeesState<A, B>>>>,
-			> MockFees<A, B, K, S>
-		{
-			fn balance(fee: Fee<B, K>) -> B {
-				match fee {
-					Fee::Balance(balance) => balance,
-					Fee::Key(key) => Self::fee_value(key),
-				}
+					Ok(())
+				})
 			}
 		}
 	}

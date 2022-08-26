@@ -17,7 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::fees::{Fee, Fees};
+use common_traits::fees::Fees;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
@@ -276,9 +276,8 @@ pub mod pallet {
 			// validate the eviction date
 			let eviction_date_u64 = TryInto::<u64>::try_into(stored_until_date)
 				.or(Err(Error::<T>::EvictionDateTooBig))?;
-			let nowt = <pallet_timestamp::Pallet<T>>::get();
-			let now: u64 =
-				TryInto::<u64>::try_into(nowt).or(Err(Error::<T>::EvictionDateTooBig))?;
+			let now = TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get())
+				.or(Err(Error::<T>::EvictionDateTooBig))?;
 
 			ensure!(
 				now + common::MILLISECS_PER_DAY < eviction_date_u64,
@@ -310,24 +309,18 @@ pub mod pallet {
 				);
 			}
 
-			// pay the state rent
-			let now_u64 = TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get())
-				.or(Err(ArithmeticError::Overflow))?;
-			let today_in_days_from_epoch = common::get_days_since_epoch(now_u64)
-				.ok_or(Error::<T>::FailedToConvertEpochToDays)?;
+			// Check if this fee should be sent to the treasury.
+			T::Fees::custom_fee_to_author(&who, T::CommitAnchorFeeKey::get(), |fee| {
+				let today_in_days_from_epoch = common::get_days_since_epoch(now)
+					.ok_or(Error::<T>::FailedToConvertEpochToDays)?;
 
-			let multiplier = stored_until_date_from_epoch
-				.checked_sub(today_in_days_from_epoch)
-				.ok_or(ArithmeticError::Underflow)?;
+				let multiplier = stored_until_date_from_epoch
+					.checked_sub(today_in_days_from_epoch)
+					.ok_or(ArithmeticError::Underflow)?;
 
-			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
-			// we use the fee config setup on genesis for anchoring to calculate the state rent
-			let fee = T::Fees::fee_value(T::CommitAnchorFeeKey::get())
-				.checked_mul(&multiplier.into())
-				.ok_or(ArithmeticError::Overflow)?;
-
-			// pay state rent to block author
-			T::Fees::fee_to_author(&who, Fee::Balance(fee))?;
+				fee.checked_mul(&multiplier.into())
+					.ok_or(ArithmeticError::Overflow.into())
+			})?;
 
 			let anchored_block = <frame_system::Pallet<T>>::block_number();
 			let anchor_data = AnchorData {

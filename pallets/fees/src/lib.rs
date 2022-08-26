@@ -8,7 +8,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::EncodeLike;
-use common_traits::fees::{self, Fee, FeeKey};
+use common_traits::fees::{self, FeeKey};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::types::ValueQuery,
@@ -156,26 +156,32 @@ impl<T: Config> fees::Fees for Pallet<T> {
 		<FeeBalances<T>>::get(key)
 	}
 
-	fn fee_to_author(
+	fn custom_fee_to_author(
 		from: &Self::AccountId,
-		fee: Fee<BalanceOf<T>, Self::FeeKey>,
+		fee: Self::FeeKey,
+		mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 	) -> DispatchResult {
 		if let Some(author) = <pallet_authorship::Pallet<T>>::author() {
-			let balance = Self::withdraw_fee(from, fee)?;
+			let balance = Self::withdraw_fee(from, fee, mut_balance)?;
 			T::Currency::resolve_creating(&author, balance);
 		}
 		Ok(())
 	}
 
-	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>, Self::FeeKey>) -> DispatchResult {
-		Self::withdraw_fee(from, fee).map(|_| ())
+	fn custom_fee_to_burn(
+		from: &Self::AccountId,
+		fee: Self::FeeKey,
+		mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
+	) -> DispatchResult {
+		Self::withdraw_fee(from, fee, mut_balance).map(|_| ())
 	}
 
-	fn fee_to_treasury(
+	fn custom_fee_to_treasury(
 		from: &Self::AccountId,
-		fee: Fee<BalanceOf<T>, Self::FeeKey>,
+		fee: Self::FeeKey,
+		mut_balance: impl Fn(Self::Balance) -> Result<Self::Balance, DispatchError>,
 	) -> DispatchResult {
-		let amount = Self::withdraw_fee(from, fee)?;
+		let amount = Self::withdraw_fee(from, fee, mut_balance)?;
 		T::Treasury::on_unbalanced(amount);
 		Ok(())
 	}
@@ -184,16 +190,12 @@ impl<T: Config> fees::Fees for Pallet<T> {
 impl<T: Config> Pallet<T> {
 	fn withdraw_fee(
 		from: &T::AccountId,
-		fee: Fee<BalanceOf<T>, T::FeeKey>,
+		fee: T::FeeKey,
+		mut_balance: impl Fn(BalanceOf<T>) -> Result<BalanceOf<T>, DispatchError>,
 	) -> Result<ImbalanceOf<T>, DispatchError> {
-		let balance = match fee {
-			Fee::Balance(balance) => balance,
-			Fee::Key(key) => <Self as fees::Fees>::fee_value(key),
-		};
-
 		T::Currency::withdraw(
 			&from,
-			balance,
+			mut_balance(<Self as fees::Fees>::fee_value(fee))?,
 			WithdrawReasons::FEE.into(),
 			ExistenceRequirement::KeepAlive,
 		)

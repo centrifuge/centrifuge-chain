@@ -1,5 +1,5 @@
 use crate::mock::*;
-use common_traits::fees::{Fee, Fees as FeesTrait};
+use common_traits::fees::Fees as FeesTrait;
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::BadOrigin;
 
@@ -47,7 +47,7 @@ fn fee_to_author() {
 	new_test_ext().execute_with(|| {
 		set_default_fee();
 
-		assert_ok!(Fees::fee_to_author(&USER_ACCOUNT, Fee::Key(FEE_KEY)));
+		assert_ok!(Fees::fee_to_author(&USER_ACCOUNT, FEE_KEY));
 
 		let author_balance = Balances::free_balance(&Authorship::author().unwrap());
 		let user_balance = Balances::free_balance(&USER_ACCOUNT);
@@ -57,7 +57,7 @@ fn fee_to_author() {
 
 		// Try to perform an action over an user with insufficient balance.
 		assert_noop!(
-			Fees::fee_to_author(&USER_ACCOUNT, Fee::Key(FEE_KEY)),
+			Fees::fee_to_author(&USER_ACCOUNT, FEE_KEY),
 			pallet_balances::Error::<Test>::InsufficientBalance
 		);
 	});
@@ -68,7 +68,7 @@ fn fee_to_treasury() {
 	new_test_ext().execute_with(|| {
 		set_default_fee();
 
-		assert_ok!(Fees::fee_to_treasury(&USER_ACCOUNT, Fee::Key(FEE_KEY)));
+		assert_ok!(Fees::fee_to_treasury(&USER_ACCOUNT, FEE_KEY));
 
 		let treasury_balance = Balances::free_balance(&Treasury::account_id());
 		let user_balance = Balances::free_balance(&USER_ACCOUNT);
@@ -78,7 +78,7 @@ fn fee_to_treasury() {
 
 		// Try to perform an action over an user with insufficient balance.
 		assert_noop!(
-			Fees::fee_to_treasury(&USER_ACCOUNT, Fee::Key(FEE_KEY)),
+			Fees::fee_to_treasury(&USER_ACCOUNT, FEE_KEY),
 			pallet_balances::Error::<Test>::InsufficientBalance
 		);
 	});
@@ -89,7 +89,7 @@ fn fee_to_burn() {
 	new_test_ext().execute_with(|| {
 		set_default_fee();
 
-		assert_ok!(Fees::fee_to_burn(&USER_ACCOUNT, Fee::Key(FEE_KEY)));
+		assert_ok!(Fees::fee_to_burn(&USER_ACCOUNT, FEE_KEY));
 
 		let user_balance = Balances::free_balance(&USER_ACCOUNT);
 
@@ -97,7 +97,7 @@ fn fee_to_burn() {
 
 		// Try to perform an action over an user with insufficient balance.
 		assert_noop!(
-			Fees::fee_to_burn(&USER_ACCOUNT, Fee::Key(FEE_KEY)),
+			Fees::fee_to_burn(&USER_ACCOUNT, FEE_KEY),
 			pallet_balances::Error::<Test>::InsufficientBalance
 		);
 	});
