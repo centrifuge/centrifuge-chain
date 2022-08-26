@@ -133,6 +133,7 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 
 		MockFeesState::get().with(|fees| {
 			assert_eq!(fees.borrow().author_fees.len(), 1);
+			assert_eq!(fees.borrow().author_fees[0].balance, 0);
 		});
 
 		// fails because of existing anchor
@@ -140,10 +141,6 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
 			Error::<Test>::AnchorAlreadyExists
 		);
-
-		MockFeesState::get().with(|fees| {
-			assert_eq!(fees.borrow().author_fees.len(), 1);
-		});
 	});
 }
 

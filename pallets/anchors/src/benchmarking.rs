@@ -56,8 +56,9 @@ benchmarks! {
 			SIGNING_ROOT.into()
 		)?;
 
-	}: _(RawOrigin::Signed(caller), pre_image, DOC_ROOT.into(), PROOF.into(), day(1))
+	}: _(RawOrigin::Signed(caller.clone()), pre_image, DOC_ROOT.into(), PROOF.into(), day(1))
 	verify {
+		assert_eq!(T::Currency::free_balance(&caller), T::PreCommitDeposit::get());
 		assert!(<PreCommits<T>>::get(anchor_id).is_none());
 		assert!(<AnchorEvictDates<T>>::get(anchor_id).is_some());
 	}
