@@ -577,6 +577,9 @@ pub mod pallet {
 		/// * seniority MUST be smaller number of tranches
 		/// * MUST be increasing per tranche
 		InvalidTrancheSeniority,
+		/// Pre-requirements for a TrancheUpdate are not met
+		/// for example: Tranche changed but not its metadata or vice versa
+		InvalidTrancheUpdate,
 		/// Invalid metadata passed
 		BadMetadata,
 		/// No metada for the given currency found
@@ -711,7 +714,7 @@ pub mod pallet {
 
 				let decimals = match T::AssetRegistry::metadata(&currency) {
 					Some(metadata) => metadata.decimals,
-					None => return Err(Error::<T>::MetadataForCurrencyNoFound.into()),
+					None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
 				};
 
 				let parachain_id = T::ParachainId::get();
@@ -811,7 +814,7 @@ pub mod pallet {
 			ensure!(
 				!((changes.tranches == Change::NoChange)
 					^ (changes.tranche_metadata == Change::NoChange)),
-				Error::<T>::UpdatePrerequesitesNotFulfilled
+				Error::<T>::InvalidTrancheUpdate
 			);
 
 			if changes.min_epoch_time == Change::NoChange

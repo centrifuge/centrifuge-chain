@@ -531,3 +531,19 @@ pub struct XcmMetadata {
 	/// When `None`, the `default_per_second` will be used instead.
 	pub fee_per_second: Option<Balance>,
 }
+
+/// Different stored fees keys
+#[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum FeeKey {
+	CommitAnchor,
+	// Others keys used go here
+}
+
+/// Only needed for initializing the runtime benchmark with some value.
+#[cfg(feature = "runtime-benchmarks")]
+impl Default for FeeKey {
+	fn default() -> Self {
+		FeeKey::CommitAnchor
+	}
+}
