@@ -122,11 +122,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn set_metadata() -> Weight {
-		(73_821_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
+	// fn set_metadata() -> Weight {
+	// 	(73_821_000 as Weight)
+	// 		.saturating_add(T::DbWeight::get().reads(2 as Weight))
+	// 		.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	// }
 	fn clear_metadata() -> Weight {
 		(72_548_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))

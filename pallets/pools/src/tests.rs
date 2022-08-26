@@ -472,13 +472,6 @@ fn epoch() {
 			10_000 * CURRENCY,
 			None
 		));
-		assert_ok!(Pools::set_metadata(
-			pool_owner_origin.clone(),
-			0,
-			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
-				.as_bytes()
-				.to_vec()
-		));
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,

@@ -21,17 +21,12 @@
 /// uniqueness will almost certainly cause some wild bugs.
 use super::*;
 use common_traits::TrancheToken as TrancheTokenT;
-use common_types::{CustomMetadata, XcmMetadata};
 
 #[cfg(test)]
 use common_types::CurrencyId;
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
-use orml_asset_registry::AssetMetadata;
 use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
-use xcm::latest::prelude::*;
-use xcm::prelude::X2;
-use xcm::VersionedMultiLocation;
 
 /// Types alias for EpochExecutionTranche
 #[allow(dead_code)]
@@ -61,16 +56,6 @@ pub(super) type TrancheOf<T> = Tranche<
 
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
-
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
-pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
-	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
-}
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
 pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
@@ -1490,39 +1475,7 @@ where
 	Ok(risk_buffers)
 }
 
-pub(crate) fn create_asset_metadata<Balance, CurrencyId>(
-	decimals: u32,
-	currency: CurrencyId,
-	parachain_id: ParaId,
-	token_name: Vec<u8>,
-	token_symbol: Vec<u8>,
-) -> AssetMetadata<Balance, CustomMetadata>
-where
-	Balance: Zero,
-	CurrencyId: Encode,
-	CustomMetadata: Parameter + Member + TypeInfo,
-{
-	let tranche_id = currency.encode();
 
-	AssetMetadata {
-		decimals,
-		name: token_name,
-		symbol: token_symbol,
-		existential_deposit: Zero::zero(),
-		location: Some(VersionedMultiLocation::V1(MultiLocation {
-			parents: 1,
-			interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
-		})),
-		additional: CustomMetadata {
-			mintable: false,
-			permissioned: false,
-			pool_currency: false,
-			xcm: XcmMetadata {
-				fee_per_second: None,
-			},
-		},
-	}
-}
 
 #[cfg(test)]
 pub mod test {

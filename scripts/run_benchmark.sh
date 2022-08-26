@@ -23,7 +23,7 @@ cargo run --release --features runtime-benchmarks -- benchmark pallet \
   --output="${output}" \
   --template=./scripts/frame-weight-template.hbs
 
-# since benchmark generates a weight.rs file that may or may not cargo fmt'ed.
+# since benchmark generates a weights file that may or may not cargo fmt'ed.
 # so do cargo fmt here.
 cargo fmt
 echo "Benchmarked weights are written to ${output}"

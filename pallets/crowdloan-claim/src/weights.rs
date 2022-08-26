@@ -15,7 +15,7 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --output=pallets/crowdloan-claim/src/weight.rs
+// --output=pallets/crowdloan-claim/src/weights
 // --template=./scripts/frame-weight-template.hbs
 
 #![allow(unused_parens)]

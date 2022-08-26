@@ -29,7 +29,6 @@ common-traits = { path = '../common-traits', default-features = false }
 
 [features]
 default = ['std']
-runtime-benchmarks = []
 std = [
     'codec/std',
     'sp-std/std',

@@ -32,6 +32,8 @@ use orml_traits::{
 use polkadot_parachain::primitives::Id as ParaId;
 use scale_info::TypeInfo;
 
+use pallet_pools_registry::{create_asset_metadata, TrancheMetadata};
+
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::BaseArithmetic;
@@ -583,7 +585,7 @@ pub mod pallet {
 		/// Invalid metadata passed
 		BadMetadata,
 		/// No metada for the given currency found
-		MetadataForCurrencyNoFound,
+		MetadataForCurrencyNotFound,
 		/// The given tranche token name exceeds the length limit
 		TrancheTokenNameTooLong,
 		/// The given tranche symbol name exceeds the length limit
@@ -710,7 +712,7 @@ pub mod pallet {
 					.token_symbol
 					.clone()
 					.try_into()
-					.map_err(|_| Error::<T>::TrancheTokenNameTooLong)?;
+					.map_err(|_| Error::<T>::TrancheSymbolNameTooLong)?;
 
 				let decimals = match T::AssetRegistry::metadata(&currency) {
 					Some(metadata) => metadata.decimals,
@@ -903,42 +905,6 @@ pub mod pallet {
 
 			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
 			Ok(Some(T::WeightInfo::execute_scheduled_update(num_tranches)).into())
-		}
-
-		/// Sets the IPFS hash for the pool metadata information.
-		///
-		/// The caller must have the `PoolAdmin` role in order to
-		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len().try_into().unwrap_or(u32::MAX)))]
-		pub fn set_metadata(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			metadata: Vec<u8>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
-				BadOrigin
-			);
-
-			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata
-				.clone()
-				.try_into()
-				.map_err(|_| Error::<T>::BadMetadata)?;
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.metadata = Some(checked_metadata.clone());
-				Self::deposit_event(Event::MetadataSet {
-					pool_id,
-					metadata: checked_metadata,
-				});
-				Ok(())
-			})
 		}
 
 		/// Sets the maximum reserve for a pool

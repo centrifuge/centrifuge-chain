@@ -40,6 +40,7 @@ members = [
 	"pallets/nft",
 	"pallets/nft-sales",
 	"pallets/pools",
+	"pallets/pools-registry",
 	"pallets/loans",
 	"pallets/permissions",
 	"pallets/interest-accrual",
@@ -124,6 +125,7 @@ node-inspect = { git = "https://github.com/paritytech/substrate", branch = "polk
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
 pallet-pools = { path = "./pallets/pools" }
+pallet-pools-registry = { path = "./pallets/pools-registry" }
 common-types = { path = "./libs/common-types" }
 
 # frame dependencies

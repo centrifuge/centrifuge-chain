@@ -111,7 +111,7 @@ check $?
 echo "Moving new weights from '${build_path}' into '${weight_path}'"
 mv -f ${build_path} ${weight_path}
 
-# since benchmark generates a weight.rs file that may or may not cargo fmt'ed.
+# since benchmark generates a weights file that may or may not cargo fmt'ed.
 # so do cargo fmt here.
 cargo fmt
 check $?

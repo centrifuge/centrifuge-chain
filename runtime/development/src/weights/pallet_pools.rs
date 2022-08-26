@@ -56,12 +56,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn set_metadata(n: u32) -> Weight {
-		(35_549_000 as Weight) // Standard Error: 1_000
-			.saturating_add((2_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
+	// fn set_metadata(n: u32) -> Weight {
+	// 	(35_549_000 as Weight) // Standard Error: 1_000
+	// 		.saturating_add((2_000 as Weight).saturating_mul(n as Weight))
+	// 		.saturating_add(T::DbWeight::get().reads(2 as Weight))
+	// 		.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	// }
 	fn set_max_reserve() -> Weight {
 		(34_621_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))

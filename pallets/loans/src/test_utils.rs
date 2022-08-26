@@ -25,7 +25,8 @@ use frame_support::{assert_ok, parameter_types, Blake2_128, BoundedVec, StorageH
 use frame_system::RawOrigin;
 use pallet_pools::TrancheLoc;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
-use pallet_pools::{TrancheInput, TrancheMetadata, TrancheType};
+use pallet_pools::{TrancheInput, TrancheType};
+use pallet_pools_registry::TrancheMetadata;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},

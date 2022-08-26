@@ -23,6 +23,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 runtime-common = { path = "../../runtime/common", optional = true, default-features = false }
+pallet-pools-registry = { path = "../pools-registry", default-features = true }
 
 # our pallets
 common-traits = { path = "../../libs/common-traits", default-features = false}
@@ -34,7 +35,7 @@ pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-fea
 frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.24" }
 pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.24" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.24" }
-pallet-pools = { path = "../pools", optional = true, default-features = false}
+pallet-pools = { path = "../pools", optional = true, default-features = false }
 
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false, optional = true, branch = "polkadot-v0.9.24" }
@@ -51,6 +52,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 pallet-pools = { path = "../pools", default-features = false}
 orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+
 
 [features]
 default = ['std']
