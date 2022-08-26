@@ -22,8 +22,7 @@ use frame_support::traits::{
 	ReservableCurrency,
 };
 use frame_support::{
-	assert_ok, dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, transactional,
-	BoundedVec,
+	dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, transactional, BoundedVec,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::{
@@ -587,7 +586,9 @@ pub mod pallet {
 		/// The given tranche symbol name exceeds the length limit
 		TrancheSymbolNameTooLong,
 		/// Registering the metadata for a tranche threw an error
-		FailedtoRegisterTrancheMetadata,
+		FailedToRegisterTrancheMetadata,
+		/// Updating the metadata for a tranche threw an error
+		FailedToUpdateTrancheMetadata,
 		/// Invalid TrancheId passed. In most cases out-of-bound index
 		InvalidTrancheId,
 		/// Indicates that the new passed order equals the old-order
@@ -724,7 +725,7 @@ pub mod pallet {
 				);
 
 				T::AssetRegistry::register_asset(Some(tranche.currency), metadata)
-					.map_err(|_| Error::<T>::FailedtoRegisterTrancheMetadata)?;
+					.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 			}
 
 			Pool::<T>::insert(
@@ -1648,35 +1649,23 @@ pub mod pallet {
 				}
 
 				//
-				// The case when Metadata AND the tranche changed, we don't allow for an or. Both have to be changed (for now)
+				// The case when Metadata AND the tranche changed, we don't allow for an or.
+				// Both have to be changed (for now)
 				//
 				if let Change::NewValue(metadata) = &changes.tranche_metadata {
 					for (tranche, updated_metadata) in
 						pool.tranches.tranches.iter().zip(metadata.iter())
 					{
-						let decimals = match T::AssetRegistry::metadata(&tranche.currency) {
-							Some(metadata) => metadata.decimals,
-							None => return Err(Error::<T>::MetadataForCurrencyNoFound.into()),
-						};
-
-						let parachain_id = T::ParachainId::get();
-						let m = create_asset_metadata(
-							decimals,
+						T::AssetRegistry::update_asset(
 							tranche.currency,
-							parachain_id,
-							updated_metadata.clone().token_name.to_vec(),
-							updated_metadata.clone().token_symbol.to_vec(),
-						);
-
-						assert_ok!(T::AssetRegistry::update_asset(
-							tranche.currency,
-							Some(m.decimals),
-							Some(m.name),
-							Some(m.symbol),
-							Some(m.existential_deposit),
-							Some(m.location),
-							Some(m.additional),
-						));
+							None,
+							Some(updated_metadata.clone().token_name.to_vec()),
+							Some(updated_metadata.clone().token_symbol.to_vec()),
+							None,
+							None,
+							None,
+						)
+						.map_err(|_| Error::<T>::FailedToUpdateTrancheMetadata)?;
 					}
 				}
 

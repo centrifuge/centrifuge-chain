@@ -14,7 +14,7 @@
 //! # Common types and primitives used for Centrifuge chain runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-pub use common_types::CurrencyId;
+pub use common_types::{Balance, CurrencyId};
 
 pub use apis::*;
 pub use constants::*;
@@ -76,9 +76,6 @@ pub mod types {
 
 	/// The address format for describing accounts.
 	pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
-
-	/// Balance of an account.
-	pub type Balance = u128;
 
 	/// IBalance is the signed version of the Balance for orml tokens
 	pub type IBalance = i128;
