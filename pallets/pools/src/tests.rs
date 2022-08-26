@@ -5,11 +5,17 @@ use common_traits::Permissions as PermissionsT;
 use common_types::CurrencyId;
 use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
+use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;
 use runtime_common::Rate;
 use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::{Perquintill, TokenError};
+use xcm::{
+	latest::MultiLocation,
+	prelude::{GeneralKey, Parachain, X2},
+	VersionedMultiLocation,
+};
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
@@ -2917,5 +2923,69 @@ fn creation_takes_deposit() {
 		assert_eq!(pool.deposit, mock::PoolDeposit::get());
 		let deposit = crate::AccountDeposit::<Test>::try_get(pool_owner).unwrap();
 		assert_eq!(deposit, mock::PoolDeposit::get());
+	});
+}
+
+#[test]
+fn create_tranche_token_metadata() {
+	new_test_ext().execute_with(|| {
+		let pool_owner = 1_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		let token_name = BoundedVec::try_from("SuperToken".as_bytes().to_owned())
+			.expect("Can't create BoundedVec");
+		let token_symbol =
+			BoundedVec::try_from("ST".as_bytes().to_owned()).expect("Can't create BoundedVec");
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			3,
+			vec![
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name,
+						token_symbol,
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: Rate::one(),
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				},
+			],
+			CurrencyId::AUSD,
+			10_000 * CURRENCY,
+			None
+		));
+
+		let pool = Pool::<Test>::get(3).unwrap();
+		let tranche_currency = pool.tranches.tranches[0].currency;
+
+		assert_eq!(
+			orml_asset_registry::Pallet::<Test>::metadata(&tranche_currency).unwrap(),
+			AssetMetadata {
+				decimals: 18,
+				name: "SuperToken".into(),
+				symbol: "ST".into(),
+				existential_deposit: 0,
+				location: Some(VersionedMultiLocation::V1(MultiLocation {
+					parents: 1,
+					interior: X2(
+						Parachain(ParachainId::get()),
+						GeneralKey(tranche_currency.encode())
+					),
+				})),
+				additional: CustomMetadata::default(),
+			}
+		);
 	});
 }

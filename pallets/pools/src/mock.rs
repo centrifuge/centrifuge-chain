@@ -229,6 +229,10 @@ impl orml_asset_registry::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const ParachainId: u32 = 100;
+}
+
 impl parachain_info::Config for Test {}
 
 parameter_types! {
