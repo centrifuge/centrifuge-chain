@@ -1017,6 +1017,7 @@ dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
  "clap",
+ "common-types",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
  "cumulus-client-consensus-common",
@@ -5560,11 +5561,11 @@ dependencies = [
 name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
+ "common-traits",
  "frame-support",
  "frame-system",
  "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
  "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -5763,7 +5764,6 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-bridge-mapping",
- "pallet-fees",
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -5821,13 +5821,13 @@ name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6061,11 +6061,13 @@ dependencies = [
 name = "pallet-fees"
 version = "2.0.0"
 dependencies = [
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-treasury",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -6329,7 +6331,6 @@ dependencies = [
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",

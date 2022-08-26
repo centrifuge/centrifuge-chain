@@ -52,7 +52,7 @@ use common_traits::Permissions as PermissionsT;
 use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
 pub use common_types::CurrencyId;
 use common_types::{
-	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
 };
 use pallet_anchors::AnchorData;
@@ -783,15 +783,27 @@ impl pallet_treasury::Config for Runtime {
 }
 
 // our pallets
+parameter_types! {
+	pub const DefaultFeeValue: Balance = DEFAULT_FEE_VALUE;
+}
+
 impl pallet_fees::Config for Runtime {
+	type FeeKey = FeeKey;
 	type Currency = Tokens;
+	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
-	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
+	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
+parameter_types! {
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
+}
+
 impl pallet_anchors::Config for Runtime {
+	type Fees = Fees;
+	type CommitAnchorFeeKey = CommitAnchorFeeKey;
 	type WeightInfo = ();
 }
 

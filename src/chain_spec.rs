@@ -16,13 +16,14 @@
 
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use node_primitives::{AccountId, Hash, Signature};
+use node_primitives::{AccountId, Signature};
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
 use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use altair_runtime::constants::currency::AIR;
+use common_types::FeeKey;
 use runtime_common::{decimals, CFG};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use serde::{Deserialize, Serialize};
@@ -746,10 +747,7 @@ fn centrifuge_genesis(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				Hash::from(&[
-					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
-					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-				]),
+				FeeKey::CommitAnchor,
 				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
 				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
 				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
@@ -844,10 +842,7 @@ fn altair_genesis(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				Hash::from(&[
-					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
-					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-				]),
+				FeeKey::CommitAnchor,
 				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
 				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
 				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
@@ -946,10 +941,7 @@ fn development_genesis(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				Hash::from(&[
-					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
-					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-				]),
+				FeeKey::CommitAnchor,
 				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
 				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
 				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be

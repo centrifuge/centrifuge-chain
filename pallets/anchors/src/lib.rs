@@ -15,7 +15,9 @@
 //!
 //! This pallet provides functionality of Storing anchors on Chain
 #![cfg_attr(not(feature = "std"), no_std)]
+
 use codec::{Decode, Encode};
+use common_traits::fees::{Fee, Fees};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
@@ -95,9 +97,13 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + pallet_timestamp::Config + pallet_fees::Config
-	{
+	pub trait Config: frame_system::Config + pallet_timestamp::Config {
+		/// Entity used to pay fees
+		type Fees: Fees<AccountId = Self::AccountId>;
+
+		/// Key used to retrieve the fee balances in the commit method.
+		type CommitAnchorFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
+
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 	}
@@ -166,9 +172,6 @@ pub mod pallet {
 
 		/// Anchor store date must not be more than max store date
 		AnchorStoreDateAboveMaxLimit,
-
-		/// State rent fee not set in the Fee Pallet
-		FeeNotSet,
 
 		/// Pre-commit already exists
 		PreCommitAlreadyExists,
@@ -298,20 +301,18 @@ pub mod pallet {
 			let today_in_days_from_epoch = common::get_days_since_epoch(now_u64)
 				.ok_or(Error::<T>::FailedToConvertEpochToDays)?;
 
-			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
-			// we use the fee config setup on genesis for anchoring to calculate the state rent
-			let base_fee =
-				<pallet_fees::Pallet<T>>::price_of(Self::fee_key()).ok_or(Error::<T>::FeeNotSet)?;
 			let multiplier = stored_until_date_from_epoch
 				.checked_sub(today_in_days_from_epoch)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			let fee = base_fee
-				.checked_mul(&pallet_fees::BalanceOf::<T>::from(multiplier))
+			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
+			// we use the fee config setup on genesis for anchoring to calculate the state rent
+			let fee = T::Fees::fee_value(T::CommitAnchorFeeKey::get())
+				.checked_mul(&multiplier.into())
 				.ok_or(ArithmeticError::Overflow)?;
 
 			// pay state rent to block author
-			<pallet_fees::Pallet<T>>::pay_fee_to_author(who, fee)?;
+			T::Fees::fee_to_author(&who, Fee::Balance(fee))?;
 
 			let anchored_block = <frame_system::Pallet<T>>::block_number();
 			let anchor_data = AnchorData {
@@ -571,9 +572,5 @@ impl<T: Config> Pallet<T> {
 		<AnchorIndexes<T>>::insert(idx, &anchor_id);
 		<LatestAnchorIndex<T>>::put(idx);
 		Ok(())
-	}
-
-	fn fee_key() -> <T as frame_system::Config>::Hash {
-		<T as frame_system::Config>::Hashing::hash_of(&0)
 	}
 }
