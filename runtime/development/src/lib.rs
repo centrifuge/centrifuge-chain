@@ -1724,8 +1724,11 @@ impl_runtime_apis! {
 			 use pallet_loans::benchmarking::Pallet as LoansPallet;
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
+			// It should be called Anchors to make the runtime_benchmarks.sh script works
+			type Anchors = Anchor;
+
 			add_benchmark!(params, batches, pallet_fees, Fees);
-			add_benchmark!(params, batches, pallet_anchors, Anchor);
+			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
