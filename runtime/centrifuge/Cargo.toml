@@ -242,7 +242,8 @@ try-runtime = [
     "frame-try-runtime",
     "frame-system/try-runtime",
     "pallet-scheduler/try-runtime",
-    "pallet-claims/try-runtime"
+    "pallet-claims/try-runtime",
+    "pallet-fees/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
