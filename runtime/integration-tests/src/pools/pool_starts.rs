@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::{Amount, Call, Event, Runtime, PARA_ID};
+use crate::chain::centrifuge::{Call, Event, Rate, Runtime, PARA_ID};
 use crate::pools::utils::*;
 use crate::pools::utils::{
 	accounts::Keyring,
@@ -40,7 +40,7 @@ async fn create_init_and_price() {
 	let mut nft_manager = NftManager::new();
 	let pool_id = 0u64;
 	let loan_amount = 10_000 * DECIMAL_BASE_12;
-	let borrow_amount = Amount::from_inner(9_000 * DECIMAL_BASE_12);
+	let borrow_amount = Rate::from_inner(9_000 * DECIMAL_BASE_12);
 	let maturity = 90 * SECONDS_PER_DAY;
 
 	env::run!(

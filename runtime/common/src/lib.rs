@@ -131,9 +131,6 @@ pub mod types {
 	/// Rate with 27 precision fixed point decimal
 	pub type Rate = crate::fixed_point::Rate;
 
-	/// Amount with 18 precision fixed point decimal
-	pub type Amount = crate::fixed_point::Amount;
-
 	/// A representation of CollectionId for Uniques
 	pub type CollectionId = u64;
 

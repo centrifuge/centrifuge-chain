@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 //! Utilities around the loans pallet
-use crate::chain::centrifuge::{Address, Amount, Balance, Call, Rate};
+use crate::chain::centrifuge::{Address, Balance, Call, Rate};
 use crate::pools::utils::tokens::rate_from_percent;
 use common_types::PoolId;
 use pallet_loans::{

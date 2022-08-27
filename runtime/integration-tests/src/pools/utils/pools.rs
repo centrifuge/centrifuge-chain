@@ -356,7 +356,6 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 mod with_ext {
 	use super::*;
 	use common_traits::PoolNAV;
-	use runtime_common::Amount;
 
 	/// Whitelists 10 tranche-investors per tranche.
 	///
