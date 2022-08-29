@@ -31,7 +31,7 @@ struct Fee<Hash, Balance> {
 
 #[frame_support::storage_alias]
 type Fees<T: Config> = StorageMap<
-	_,
+	Pallet<T>,
 	Blake2_256,
 	<T as frame_system::Config>::Hash,
 	Fee<<T as frame_system::Config>::Hash, BalanceOf<T>>,
