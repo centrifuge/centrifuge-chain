@@ -1,7 +1,7 @@
 use crate::{self as pallet_fees, *};
 use frame_support::{
 	parameter_types,
-	traits::{EnsureOneOf, Everything, FindAuthor, SortedMembers},
+	traits::{EitherOfDiverse, Everything, FindAuthor, SortedMembers},
 	ConsensusEngineId, PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
@@ -99,6 +99,7 @@ impl pallet_treasury::Config for Test {
 	type WeightInfo = ();
 	type SpendFunds = ();
 	type MaxApprovals = ();
+	type SpendOrigin = EnsureSignedBy<Admin, u64>;
 }
 
 parameter_types! {
@@ -133,7 +134,7 @@ impl Config for Test {
 	type Currency = Balances;
 	type Treasury = Treasury;
 	type Event = ();
-	type FeeChangeOrigin = EnsureOneOf<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
+	type FeeChangeOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
 	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = ();
 }

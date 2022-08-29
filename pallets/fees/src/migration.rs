@@ -53,7 +53,7 @@ pub mod fee_balances {
 	}
 
 	pub fn migrate<T: Config>() -> Weight {
-		Fees::<T>::remove_all(None);
+		let _ = Fees::<T>::clear(u32::MAX, None);
 		log::info!(target: "runtime::fees::migrate", "Done Migrating");
 		T::DbWeight::get().reads_writes(1, 1)
 	}
