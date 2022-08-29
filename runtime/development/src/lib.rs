@@ -786,15 +786,15 @@ impl pallet_fees::Config for Runtime {
 
 parameter_types! {
 	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
-	pub const PreCommitDeposit: Balance = CFG;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
 }
 
 impl pallet_anchors::Config for Runtime {
 	type Fees = Fees;
 	type CommitAnchorFeeKey = CommitAnchorFeeKey;
+	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
 	type WeightInfo = ();
 	type Currency = Balances;
-	type PreCommitDeposit = PreCommitDeposit;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {

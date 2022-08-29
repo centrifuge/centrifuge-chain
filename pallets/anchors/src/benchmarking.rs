@@ -34,7 +34,9 @@ benchmarks! {
 
 	pre_commit {
 		let caller = whitelisted_caller();
-		T::Currency::make_free_balance_be(&caller, T::PreCommitDeposit::get());
+
+		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
+		T::Currency::make_free_balance_be(&caller, required_deposit);
 
 		let anchor_id = T::Hashing::hash_of(&0);
 
@@ -45,7 +47,8 @@ benchmarks! {
 
 	commit {
 		let caller = whitelisted_caller();
-		T::Currency::make_free_balance_be(&caller, T::PreCommitDeposit::get());
+		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
+		T::Currency::make_free_balance_be(&caller, required_deposit);
 
 		let pre_image = T::Hashing::hash_of(&0);
 		let anchor_id = pre_image.using_encoded(T::Hashing::hash);
@@ -58,17 +61,20 @@ benchmarks! {
 
 	}: _(RawOrigin::Signed(caller.clone()), pre_image, DOC_ROOT.into(), PROOF.into(), day(1))
 	verify {
-		assert_eq!(T::Currency::free_balance(&caller), T::PreCommitDeposit::get());
+		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
+		T::Currency::make_free_balance_be(&caller, required_deposit);
+
 		assert!(<PreCommits<T>>::get(anchor_id).is_none());
 		assert!(<AnchorEvictDates<T>>::get(anchor_id).is_some());
 	}
 
 	evict_pre_commits {
 		let caller = whitelisted_caller();
+		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
 
 		let anchor_ids = (0..EVICT_PRE_COMMIT_LIST_SIZE)
 			.map(|i| {
-				T::Currency::make_free_balance_be(&caller, T::PreCommitDeposit::get());
+				T::Currency::make_free_balance_be(&caller, required_deposit);
 
 				let anchor_id = T::Hashing::hash_of(&i);
 

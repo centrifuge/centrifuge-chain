@@ -212,16 +212,12 @@ impl_mock_fees_state!(
 	Balance
 );
 
-parameter_types! {
-	pub const PreCommitDeposit: Balance = 1;
-}
-
 impl pallet_anchors::Config for MockRuntime {
 	type WeightInfo = ();
 	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
 	type CommitAnchorFeeKey = ();
+	type PreCommitDepositFeeKey = ();
 	type Currency = Balances;
-	type PreCommitDeposit = PreCommitDeposit;
 }
 
 // Parameterize NFT pallet

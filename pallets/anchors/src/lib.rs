@@ -108,22 +108,21 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_timestamp::Config {
 		/// Entity used to pay fees
-		type Fees: Fees<AccountId = Self::AccountId>;
+		type Fees: Fees<AccountId = Self::AccountId, Balance = BalanceOf<Self>>;
 
 		/// Key used to retrieve the fee balances in the commit method.
 		type CommitAnchorFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
+
+		/// Key to identify the amount of funds reserved in a [`Pallet::pre_commit()`] call.
+		/// These funds will be unreserved once the user make the [`commit()`] succesfully
+		/// or call [`Pallet::evict_pre_commits()`]
+		type PreCommitDepositFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 
 		/// Currency as viewed from this pallet
 		type Currency: ReservableCurrency<Self::AccountId>;
-
-		/// Amount of funds reserved in a [`Pallet::pre_commit()`] call.
-		/// These funds will be unreserved once the user make the [`commit()`] succesfully
-		/// or call [`Pallet::evict_pre_commits()`]
-		#[pallet::constant]
-		type PreCommitDeposit: Get<BalanceOf<Self>>;
 	}
 
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
@@ -237,8 +236,8 @@ pub mod pallet {
 				.checked_add(&T::BlockNumber::from(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS))
 				.ok_or(ArithmeticError::Overflow)?;
 
-			let deposit = T::PreCommitDeposit::get();
-			<T as pallet::Config>::Currency::reserve(&who, deposit)?;
+			let deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
+			T::Currency::reserve(&who, deposit)?;
 
 			<PreCommits<T>>::insert(
 				anchor_id,
@@ -420,10 +419,7 @@ impl<T: Config> Pallet<T> {
 				|| pre_commit.expiration_block <= <frame_system::Pallet<T>>::block_number()
 			{
 				PreCommits::<T>::remove(anchor_id);
-				<T as pallet::Config>::Currency::unreserve(
-					&pre_commit.identity,
-					pre_commit.deposit,
-				);
+				T::Currency::unreserve(&pre_commit.identity, pre_commit.deposit);
 			}
 		}
 	}

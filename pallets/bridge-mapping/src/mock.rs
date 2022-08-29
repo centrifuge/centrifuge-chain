@@ -144,16 +144,12 @@ impl pallet_nft::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const PreCommitDeposit: Balance = 1;
-}
-
 impl pallet_anchors::Config for Test {
 	type WeightInfo = ();
 	type Fees = NoFees<Self::AccountId, Balance>;
 	type CommitAnchorFeeKey = ();
+	type PreCommitDepositFeeKey = ();
 	type Currency = Balances;
-	type PreCommitDeposit = PreCommitDeposit;
 }
 
 // Parameterize Centrifuge Chain chainbridge pallet

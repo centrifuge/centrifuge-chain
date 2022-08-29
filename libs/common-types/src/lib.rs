@@ -504,6 +504,7 @@ pub enum Adjustment<Amount> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum FeeKey {
 	CommitAnchor,
+	PreCommitDeposit,
 	// Others keys used go here
 }
 
