@@ -171,7 +171,6 @@ macro_rules! implement_fixed {
 				let rhs: I129 = n.into();
 				let negative = lhs.negative != rhs.negative;
 
-				use sp_runtime::traits::UniqueSaturatedInto;
 				multiply_by_rational_with_rounding(
 					lhs.value,
 					rhs.value,
