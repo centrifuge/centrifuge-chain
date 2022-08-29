@@ -848,8 +848,16 @@ macro_rules! implement_fixed {
 				let a = $name::saturating_from_rational(1, accuracy);
 				assert_eq!(a.into_inner(), 1);
 
-				// Out of accuracy.
-				let a = $name::saturating_from_rational(1, accuracy + 1);
+				// Round to zero if equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy).unwrap();
+				assert_eq!(a.into_inner(), 0);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy - 1).unwrap();
+				assert_eq!(a.into_inner(), 1);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy + 1).unwrap();
 				assert_eq!(a.into_inner(), 0);
 			}
 
@@ -916,7 +924,16 @@ macro_rules! implement_fixed {
 				let a = $name::checked_from_rational(1, accuracy).unwrap();
 				assert_eq!(a.into_inner(), 1);
 
-				let a = $name::checked_from_rational(1, accuracy + 1).unwrap();
+				// Round to zero if equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy).unwrap();
+				assert_eq!(a.into_inner(), 0);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy - 1).unwrap();
+				assert_eq!(a.into_inner(), 1);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy + 1).unwrap();
 				assert_eq!(a.into_inner(), 0);
 			}
 
