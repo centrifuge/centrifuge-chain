@@ -1011,6 +1011,8 @@ dependencies = [
  "pallet-balances",
  "pallet-bridge",
  "pallet-claims",
+ "pallet-collator-allowlist",
+ "pallet-collator-selection",
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",

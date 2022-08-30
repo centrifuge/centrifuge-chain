@@ -271,13 +271,6 @@ parameter_types! {
 	pub const Offset: u32 = 0;
 }
 
-pub struct ValidatorOf;
-impl<T> sp_runtime::traits::Convert<T, Option<T>> for ValidatorOf {
-	fn convert(t: T) -> Option<T> {
-		Some(t)
-	}
-}
-
 impl pallet_session::Config for Runtime {
 	type Event = Event;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
