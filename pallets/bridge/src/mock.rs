@@ -281,7 +281,9 @@ impl pallet_bridge_mapping::Config for MockRuntime {
 impl_mock_fees_state!(
 	MockFeesState,
 	<MockRuntime as frame_system::Config>::AccountId,
-	Balance
+	Balance,
+	(),
+	|_key| 0
 );
 
 impl pallet_anchors::Config for MockRuntime {

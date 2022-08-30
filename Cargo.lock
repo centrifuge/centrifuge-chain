@@ -5553,7 +5553,6 @@ dependencies = [
  "frame-system",
  "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
  "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",

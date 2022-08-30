@@ -123,7 +123,12 @@ impl pallet_timestamp::Config for Test {
 impl_mock_fees_state!(
 	MockFeesState,
 	<Test as frame_system::Config>::AccountId,
-	Balance
+	Balance,
+	u8,
+	|key| match key {
+		2 => 42,
+		_ => 0,
+	}
 );
 
 impl Config for Test {
