@@ -757,6 +757,16 @@ fn centrifuge_genesis(
 		},
 		vesting: Default::default(),
 		parachain_info: centrifuge_runtime::ParachainInfoConfig { parachain_id: id },
+		collator_selection: centrifuge_runtime::CollatorSelectionConfig {
+			invulnerables: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			candidacy_bond: 1 * CFG,
+			..Default::default()
+		},
+		collator_allowlist: Default::default(),
 		session: centrifuge_runtime::SessionConfig {
 			keys: initial_authorities
 				.iter()
