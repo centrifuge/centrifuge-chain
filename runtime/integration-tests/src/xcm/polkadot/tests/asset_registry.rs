@@ -30,7 +30,7 @@ use crate::xcm::polkadot::test_net::{Acala, Centrifuge, PolkadotNet, Sibling, Te
 use centrifuge_runtime::{
 	Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
 };
-use frame_support::{assert_noop, assert_ok, error::BadOrigin};
+use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 use runtime_common::{
