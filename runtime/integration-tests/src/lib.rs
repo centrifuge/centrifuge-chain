@@ -14,8 +14,7 @@
 #![cfg(test)]
 #![allow(unused)]
 
-//TODO(nuno): re-enable pools once fudge is compatible with polkadot 0.9.20
-// mod pools;
+mod pools;
 mod xcm;
 
 /// Re-exports the correct runtimes that we run the integration tests with

@@ -9,7 +9,7 @@ use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, Contains, EnsureOneOf, EqualPrivilegeOnly, Everything,
+		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, Everything,
 		InstanceFilter, LockIdentifier, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
@@ -192,6 +192,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -224,6 +225,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
+	type Event = Event;
 }
 
 parameter_types! {
@@ -757,6 +759,7 @@ impl pallet_treasury::Config for Runtime {
 	>;
 	// either democracy or more than 50% council votes
 	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
@@ -1047,7 +1050,7 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 100;
 }
 
-type CollatorSelectionUpdateOrigin = EnsureOneOf<
+type CollatorSelectionUpdateOrigin = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
@@ -1358,7 +1361,7 @@ construct_runtime!(
 
 		// money stuff
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
+		TransactionPayment: pallet_transaction_payment::{Event<T>, Pallet, Storage} = 21,
 
 		// authoring stuff
 		// collator_selection must go here in order for the storage to be available to pallet_session

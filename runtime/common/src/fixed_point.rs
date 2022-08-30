@@ -20,9 +20,12 @@
 
 use codec::{CompactAs, Decode, Encode};
 use sp_arithmetic::{
-	helpers_128bit::multiply_by_rational,
-	traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero},
-	FixedPointNumber, FixedPointOperand,
+	helpers_128bit::multiply_by_rational_with_rounding,
+	traits::{
+		Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating,
+		UniqueSaturatedInto, Zero,
+	},
+	FixedPointNumber, FixedPointOperand, Rounding, SignedRounding,
 };
 use sp_std::{
 	ops::{self},
@@ -133,6 +136,48 @@ macro_rules! implement_fixed {
 
 			fn into_inner(self) -> Self::Inner {
 				self.0
+			}
+
+			/// Creates `self` from a rational number. Equal to `n / d`.
+			///
+			/// Returns `None` if `d == 0` or `n / d` exceeds accuracy.
+			fn checked_from_rational<N: FixedPointOperand, D: FixedPointOperand>(
+				n: N,
+				d: D,
+			) -> Option<Self> {
+				if d == D::zero() {
+					return None;
+				}
+
+				let n: I129 = n.into();
+				let d: I129 = d.into();
+				let negative = n.negative != d.negative;
+
+				multiply_by_rational_with_rounding(
+					n.value,
+					Self::DIV.unique_saturated_into(),
+					d.value,
+					Rounding::from_signed(SignedRounding::NearestPrefLow, negative),
+				)
+				.and_then(|value| from_i129(I129 { value, negative }))
+				.map(Self::from_inner)
+			}
+
+			/// Checked multiplication for integer type `N`. Equal to `self * n`.
+			///
+			/// Returns `None` if the result does not fit in `N`.
+			fn checked_mul_int<N: FixedPointOperand>(self, n: N) -> Option<N> {
+				let lhs: I129 = self.into_inner().into();
+				let rhs: I129 = n.into();
+				let negative = lhs.negative != rhs.negative;
+
+				multiply_by_rational_with_rounding(
+					lhs.value,
+					rhs.value,
+					Self::DIV.unique_saturated_into(),
+					Rounding::from_signed(SignedRounding::NearestPrefLow, negative),
+				)
+				.and_then(|value| from_i129(I129 { value, negative }))
 			}
 		}
 
@@ -254,10 +299,14 @@ macro_rules! implement_fixed {
 				let rhs: I129 = other.0.into();
 				let negative = lhs.negative != rhs.negative;
 
-				multiply_by_rational(lhs.value, Self::DIV as u128, rhs.value)
-					.ok()
-					.and_then(|value| from_i129(I129 { value, negative }))
-					.map(Self)
+				multiply_by_rational_with_rounding(
+					lhs.value,
+					Self::DIV as u128,
+					rhs.value,
+					Rounding::from_signed(SignedRounding::NearestPrefLow, negative),
+				)
+				.and_then(|value| from_i129(I129 { value, negative }))
+				.map(Self)
 			}
 		}
 
@@ -267,10 +316,14 @@ macro_rules! implement_fixed {
 				let rhs: I129 = other.0.into();
 				let negative = lhs.negative != rhs.negative;
 
-				multiply_by_rational(lhs.value, rhs.value, Self::DIV as u128)
-					.ok()
-					.and_then(|value| from_i129(I129 { value, negative }))
-					.map(Self)
+				multiply_by_rational_with_rounding(
+					lhs.value,
+					rhs.value,
+					Self::DIV as u128,
+					Rounding::from_signed(SignedRounding::NearestPrefLow, negative),
+				)
+				.and_then(|value| from_i129(I129 { value, negative }))
+				.map(Self)
 			}
 		}
 
@@ -795,8 +848,16 @@ macro_rules! implement_fixed {
 				let a = $name::saturating_from_rational(1, accuracy);
 				assert_eq!(a.into_inner(), 1);
 
-				// Out of accuracy.
-				let a = $name::saturating_from_rational(1, accuracy + 1);
+				// Round to zero if equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy).unwrap();
+				assert_eq!(a.into_inner(), 0);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy - 1).unwrap();
+				assert_eq!(a.into_inner(), 1);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy + 1).unwrap();
 				assert_eq!(a.into_inner(), 0);
 			}
 
@@ -863,7 +924,16 @@ macro_rules! implement_fixed {
 				let a = $name::checked_from_rational(1, accuracy).unwrap();
 				assert_eq!(a.into_inner(), 1);
 
-				let a = $name::checked_from_rational(1, accuracy + 1).unwrap();
+				// Round to zero if equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy).unwrap();
+				assert_eq!(a.into_inner(), 0);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy - 1).unwrap();
+				assert_eq!(a.into_inner(), 1);
+
+				// Round to nearest if slightly of equidistant
+				let a = $name::checked_from_rational(1, 2 * accuracy + 1).unwrap();
 				assert_eq!(a.into_inner(), 0);
 			}
 
@@ -1514,22 +1584,6 @@ macro_rules! implement_fixed {
 			}
 		}
 	};
-}
-
-implement_fixed!(
-	Amount,
-	test_amount,
-	u128,
-	false,
-	1_000_000_000_000_000_000,
-	"_Fixed Point 128 bits unsigned type as Amount, range = \
-		[0.000000000000000000, 340282366920938463463.374607431768211455]_",
-);
-
-impl From<Amount> for u128 {
-	fn from(amount: Amount) -> Self {
-		amount.into_inner()
-	}
 }
 
 implement_fixed!(

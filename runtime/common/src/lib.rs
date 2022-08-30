@@ -32,7 +32,7 @@ mod mock;
 /// Common types for all runtimes
 pub mod types {
 	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
-	use frame_support::traits::EnsureOneOf;
+	use frame_support::traits::EitherOfDiverse;
 	use frame_system::EnsureRoot;
 	use pallet_collective::EnsureProportionAtLeast;
 	use scale_info::TypeInfo;
@@ -43,7 +43,7 @@ pub mod types {
 	use sp_std::vec::Vec;
 
 	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
-	pub type EnsureRootOr<O> = EnsureOneOf<EnsureRoot<AccountId>, O>;
+	pub type EnsureRootOr<O> = EitherOfDiverse<EnsureRoot<AccountId>, O>;
 
 	/// The council
 	pub type CouncilCollective = pallet_collective::Instance1;
@@ -130,9 +130,6 @@ pub mod types {
 
 	/// Rate with 27 precision fixed point decimal
 	pub type Rate = crate::fixed_point::Rate;
-
-	/// Amount with 18 precision fixed point decimal
-	pub type Amount = crate::fixed_point::Amount;
 
 	/// A representation of CollectionId for Uniques
 	pub type CollectionId = u64;
