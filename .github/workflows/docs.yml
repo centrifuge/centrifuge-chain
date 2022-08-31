@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - parachain
+<<<<<<< HEAD
+=======
+      - rustdocs
+>>>>>>> 0d00115 (Add workflow for Rustdocs)
 jobs:
   docs:
     runs-on: ubuntu-latest
