@@ -405,14 +405,14 @@ pub mod fees {
 			pub balance: Balance,
 		}
 
-		#[derive(Default)]
-		pub struct FeesState<Author, Balance> {
+		pub struct FeesState<Author, Balance, KeyFee> {
 			pub author_fees: Vec<FeeState<Author, Balance>>,
 			pub burn_fees: Vec<FeeState<Author, Balance>>,
 			pub treasury_fees: Vec<FeeState<Author, Balance>>,
+			pub initializer: Box<dyn Fn(KeyFee) -> Balance + 'static>,
 		}
 
-		impl<A, B> FeesState<A, B> {
+		impl<A, B, K> FeesState<A, B, K> {
 			pub fn no_fees(&self) -> bool {
 				self.author_fees.is_empty()
 					&& self.burn_fees.is_empty()
@@ -420,9 +420,20 @@ pub mod fees {
 			}
 		}
 
+		impl<A, B, K> FeesState<A, B, K> {
+			pub fn new(initializer: impl Fn(K) -> B + 'static) -> Self {
+				Self {
+					author_fees: Default::default(),
+					burn_fees: Default::default(),
+					treasury_fees: Default::default(),
+					initializer: Box::new(initializer),
+				}
+			}
+		}
+
 		#[macro_export]
 		macro_rules! impl_mock_fees_state {
-			($name:ident, $account:ty, $balance:ty) => {
+			($name:ident, $account:ty, $balance:ty, $feekey:ty, $initializer:expr) => {
 				use common_traits::fees::test_util::FeesState;
 
 				use std::cell::RefCell;
@@ -430,13 +441,13 @@ pub mod fees {
 
 				thread_local! {
 					pub static STATE: RefCell<
-						FeesState<$account, $balance>,
-					> = RefCell::default();
+						FeesState<$account, $balance, $feekey>,
+					> = RefCell::new(FeesState::new($initializer));
 				}
 
 				parameter_types! {
 					pub $name: &'static LocalKey<
-						RefCell<FeesState<$account, $balance>>
+						RefCell<FeesState<$account, $balance, $feekey>>
 					> = &STATE;
 				}
 			};
@@ -449,16 +460,16 @@ pub mod fees {
 		impl<
 				A: Clone + 'static,
 				B: Balance + 'static,
-				K: FeeKey,
-				S: Get<&'static LocalKey<RefCell<FeesState<A, B>>>>,
+				K: FeeKey + 'static,
+				S: Get<&'static LocalKey<RefCell<FeesState<A, B, K>>>>,
 			> Fees for MockFees<A, B, K, S>
 		{
 			type AccountId = A;
 			type Balance = B;
 			type FeeKey = K;
 
-			fn fee_value(_: Self::FeeKey) -> Self::Balance {
-				Self::Balance::default()
+			fn fee_value(key: Self::FeeKey) -> Self::Balance {
+				S::get().with(|state| (state.borrow().initializer)(key))
 			}
 
 			fn fee_to_author(
@@ -505,8 +516,8 @@ pub mod fees {
 		impl<
 				A: Clone + 'static,
 				B: Balance + 'static,
-				K: FeeKey,
-				S: Get<&'static LocalKey<RefCell<FeesState<A, B>>>>,
+				K: FeeKey + 'static,
+				S: Get<&'static LocalKey<RefCell<FeesState<A, B, K>>>>,
 			> MockFees<A, B, K, S>
 		{
 			fn balance(fee: Fee<B, K>) -> B {

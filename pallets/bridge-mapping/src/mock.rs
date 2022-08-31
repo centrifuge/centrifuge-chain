@@ -148,6 +148,8 @@ impl pallet_anchors::Config for Test {
 	type WeightInfo = ();
 	type Fees = NoFees<Self::AccountId, Balance>;
 	type CommitAnchorFeeKey = ();
+	type PreCommitDepositFeeKey = ();
+	type Currency = Balances;
 }
 
 // Parameterize Centrifuge Chain chainbridge pallet
