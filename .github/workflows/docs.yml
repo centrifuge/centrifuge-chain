@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - parachain
+      - rustdocs
 jobs:
   docs:
     runs-on: ubuntu-latest
