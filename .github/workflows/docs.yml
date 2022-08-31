@@ -1,0 +1,37 @@
+name: Rustdoc
+on:
+  push:
+    branches:
+      - parachain
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-05-09"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          default: true
+
+      - name: Build Documentation
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --all --no-deps
+
+      - name: Create Index file
+        run: ./ci/create_index_for_rust_docs.sh
+
+      - name: Deploy Docs
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./target/doc
+          cname: reference.centrifuge.io
+          force_orphan: true

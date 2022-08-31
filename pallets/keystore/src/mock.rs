@@ -14,7 +14,7 @@
 use crate::{self as pallet_keystore, Config};
 
 use frame_support::parameter_types;
-use frame_support::traits::EnsureOneOf;
+use frame_support::traits::EitherOfDiverse;
 use frame_system as system;
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
@@ -86,7 +86,7 @@ impl Config for MockRuntime {
 	type Currency = Balances;
 	type MaxKeys = MaxKeys;
 	type DefaultKeyDeposit = DefaultKeyDeposit;
-	type AdminOrigin = EnsureOneOf<EnsureRoot<Self::AccountId>, EnsureSigned<u64>>;
+	type AdminOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSigned<u64>>;
 	type WeightInfo = ();
 }
 

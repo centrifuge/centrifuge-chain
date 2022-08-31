@@ -18,7 +18,7 @@ use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
 use frame_support::sp_runtime::testing::{Header, H256};
 use frame_support::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use frame_support::traits::{Contains, EnsureOneOf, Everything, SortedMembers};
+use frame_support::traits::{Contains, EitherOfDiverse, Everything, SortedMembers};
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use pallet_permissions::Properties;
 use sp_runtime::traits::AccountIdConversion;
@@ -277,7 +277,7 @@ parameter_types! {
 	pub const MaxRoles: u32 = 10;
 }
 
-type AdminOrigin = EnsureOneOf<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
+type AdminOrigin = EitherOfDiverse<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
 
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;

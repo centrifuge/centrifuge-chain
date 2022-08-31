@@ -8,6 +8,7 @@ use xcm::VersionedMultiLocation;
 
 mod asset_registry;
 mod currency_id_convert;
+mod restricted_calls;
 mod transfers;
 
 /// Register DOT in the asset registry.

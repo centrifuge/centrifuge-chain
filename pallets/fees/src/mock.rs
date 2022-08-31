@@ -1,11 +1,10 @@
 use crate::{self as pallet_fees, *};
-use frame_support::parameter_types;
-use frame_support::traits::SortedMembers;
 use frame_support::{
-	traits::{Everything, FindAuthor},
-	ConsensusEngineId,
+	parameter_types,
+	traits::{EitherOfDiverse, Everything, FindAuthor, SortedMembers},
+	ConsensusEngineId, PalletId,
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -27,6 +26,7 @@ frame_support::construct_runtime!(
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>},
 	}
 );
 
@@ -80,6 +80,29 @@ impl pallet_authorship::Config for Test {
 }
 
 parameter_types! {
+	pub const TreasuryPalletId: PalletId = PalletId(*b"treasury");
+}
+
+impl pallet_treasury::Config for Test {
+	type Currency = Balances;
+	type ApproveOrigin = EnsureSignedBy<Admin, u64>;
+	type RejectOrigin = EnsureSignedBy<Admin, u64>;
+	type Event = ();
+	type OnSlash = Treasury;
+	type ProposalBond = ();
+	type ProposalBondMinimum = ();
+	type ProposalBondMaximum = ();
+	type SpendPeriod = ();
+	type Burn = ();
+	type PalletId = TreasuryPalletId;
+	type BurnDestination = ();
+	type WeightInfo = ();
+	type SpendFunds = ();
+	type MaxApprovals = ();
+	type SpendOrigin = EnsureSignedBy<Admin, u64>;
+}
+
+parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
@@ -96,21 +119,28 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const One: u64 = 1;
+	pub const Admin: u64 = 1;
+	pub const DefaultFeeValue: Balance = 1;
 }
 
-impl SortedMembers<u64> for One {
+impl SortedMembers<u64> for Admin {
 	fn sorted_members() -> Vec<u64> {
 		vec![1]
 	}
 }
 
 impl Config for Test {
+	type FeeKey = u8;
 	type Currency = Balances;
+	type Treasury = Treasury;
 	type Event = ();
-	type FeeChangeOrigin = EnsureSignedBy<One, u64>;
+	type FeeChangeOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
+	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = ();
 }
+
+pub const USER_ACCOUNT: u64 = 2;
+pub const USER_INITIAL_BALANCE: u64 = 50;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -118,12 +148,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.build_storage::<Test>()
 		.unwrap();
 
-	// pre-fill balances
-	// 100 is the block author
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(1, 100000), (2, 100000), (100, 100)],
+		balances: vec![(USER_ACCOUNT, USER_INITIAL_BALANCE)],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
+
 	t.into()
 }

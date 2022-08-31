@@ -9,7 +9,7 @@ use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, Contains, EnsureOneOf, EqualPrivilegeOnly, Everything,
+		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, Everything,
 		InstanceFilter, LockIdentifier, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
@@ -52,7 +52,7 @@ use common_traits::Permissions as PermissionsT;
 use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
 pub use common_types::CurrencyId;
 use common_types::{
-	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
 };
 use pallet_anchors::AnchorData;
@@ -135,7 +135,7 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Everything;
+	type BaseCallFilter = BaseCallFilter;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -192,6 +192,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -224,6 +225,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
+	type Event = Event;
 }
 
 parameter_types! {
@@ -267,13 +269,6 @@ impl pallet_authorship::Config for Runtime {
 parameter_types! {
 	pub const Period: u32 = 6 * HOURS;
 	pub const Offset: u32 = 0;
-}
-
-pub struct ValidatorOf;
-impl<T> sp_runtime::traits::Convert<T, Option<T>> for ValidatorOf {
-	fn convert(t: T) -> Option<T> {
-		Some(t)
-	}
 }
 
 impl pallet_session::Config for Runtime {
@@ -357,10 +352,8 @@ pub enum ProxyType {
 	Invest,
 	ProxyManagement,
 	KeystoreManagement,
-	NFTMint,
-	NFTTransfer,
-	NFTManagement,
-	AnchorManagement,
+	PodOperation,
+	PodAuth,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -419,17 +412,10 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Keystore(pallet_keystore::Call::add_keys { .. })
 					| Call::Keystore(pallet_keystore::Call::revoke_keys { .. })
 			),
-			ProxyType::NFTMint => matches!(
-				c,
-				Call::Uniques(pallet_uniques::Call::mint { .. })
-					| Call::Uniques(pallet_uniques::Call::set_metadata { .. })
-					| Call::Uniques(pallet_uniques::Call::set_attribute { .. })
-			),
-			ProxyType::NFTTransfer => {
-				matches!(c, Call::Uniques(pallet_uniques::Call::transfer { .. }))
-			}
-			ProxyType::NFTManagement => matches!(c, Call::Uniques(..)),
-			ProxyType::AnchorManagement => matches!(c, Call::Anchor(..)),
+			ProxyType::PodOperation => matches!(c, Call::Uniques(..) | Call::Anchor(..)),
+			// This type of proxy is used only for authenticating with the centrifuge POD,
+			// having it here also allows us to validate authentication with on-chain data.
+			ProxyType::PodAuth => false,
 		}
 	}
 
@@ -766,6 +752,7 @@ impl pallet_treasury::Config for Runtime {
 	>;
 	// either democracy or more than 50% council votes
 	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
@@ -783,16 +770,31 @@ impl pallet_treasury::Config for Runtime {
 }
 
 // our pallets
+parameter_types! {
+	pub const DefaultFeeValue: Balance = DEFAULT_FEE_VALUE;
+}
+
 impl pallet_fees::Config for Runtime {
+	type FeeKey = FeeKey;
 	type Currency = Tokens;
+	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
-	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
+	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
+parameter_types! {
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
+}
+
 impl pallet_anchors::Config for Runtime {
+	type Fees = Fees;
+	type CommitAnchorFeeKey = CommitAnchorFeeKey;
+	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
 	type WeightInfo = ();
+	type Currency = Balances;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
@@ -980,28 +982,57 @@ impl pallet_migration_manager::Config for Runtime {
 	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
 }
 
-// our base filter
-// allow base system calls needed for block production and runtime upgrade
-// other calls will be disallowed
-pub struct BaseFilter;
-
-impl Contains<Call> for BaseFilter {
+/// Base Call Filter
+/// We block any call that could lead for tranche tokens to be transferred through XCM.
+pub struct BaseCallFilter;
+impl Contains<Call> for BaseCallFilter {
 	fn contains(c: &Call) -> bool {
-		matches!(
-			c,
-			// Calls from Sudo
-			Call::Sudo(..)
-			// Calls for runtime upgrade
-			| Call::System(frame_system::Call::set_code{..})
-			| Call::System(frame_system::Call::set_code_without_checks{..})
-			// Calls that are present in each block
-			| Call::ParachainSystem(
-				cumulus_pallet_parachain_system::Call::set_validation_data{..}
-			)
-			| Call::Timestamp(pallet_timestamp::Call::set{..})
-			// Claiming logic is also enabled
-			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward{..})
-		)
+		match c {
+			Call::PolkadotXcm(method) => match method {
+				// We disable all PolkadotXcm extrinsics that allow users to build XCM messages
+				// from scratch, which could have them transferring Tranche tokens.
+				// To transfer tokens, use XTokens, for which we have specific filters
+				// blocking tranche transfers.
+				// To send a raw XCM message, use orml_xcm, which ensures the origin of
+				// such call to be root or majority of the collective.
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+				pallet_xcm::Call::__Ignore { .. } => {
+					unimplemented!()
+				}
+			},
+			Call::XTokens(method) => match method {
+				orml_xtokens::Call::transfer {
+					currency_id: CurrencyId::Tranche(_, _),
+					..
+				}
+				| orml_xtokens::Call::transfer_with_fee {
+					currency_id: CurrencyId::Tranche(_, _),
+					..
+				}
+				// We preemptively disable this as we haven't encountered a use case for it.
+				// Shall some user or use case require it, we will make it more fine-grained.
+				| orml_xtokens::Call::transfer_multiasset { .. }
+				| orml_xtokens::Call::transfer_multiasset_with_fee { .. }
+				| orml_xtokens::Call::transfer_multiassets { .. }
+				| orml_xtokens::Call::transfer_multicurrencies { .. } => false,
+				// Any other XTokens call is good to go
+				_ => true,
+			},
+			_ => true,
+		}
 	}
 }
 
@@ -1044,7 +1075,7 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 100;
 }
 
-type CollatorSelectionUpdateOrigin = EnsureOneOf<
+type CollatorSelectionUpdateOrigin = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
@@ -1258,6 +1289,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	type InterestRate = Rate;
 	type Time = Timestamp;
+	type Weights = ();
 }
 
 parameter_types! {
@@ -1354,7 +1386,7 @@ construct_runtime!(
 
 		// money stuff
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
+		TransactionPayment: pallet_transaction_payment::{Event<T>, Pallet, Storage} = 21,
 
 		// authoring stuff
 		// collator_selection must go here in order for the storage to be available to pallet_session
@@ -1392,7 +1424,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 
 		// XCM
@@ -1406,6 +1438,7 @@ construct_runtime!(
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
+		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
@@ -1691,7 +1724,11 @@ impl_runtime_apis! {
 			 use pallet_loans::benchmarking::Pallet as LoansPallet;
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
+			// It should be called Anchors to make the runtime_benchmarks.sh script works
+			type Anchors = Anchor;
+
 			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
@@ -1703,6 +1740,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
@@ -1721,6 +1759,7 @@ impl_runtime_apis! {
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_anchors, Anchor);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
@@ -1732,6 +1771,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 
 			let storage_info = AllPalletsWithSystem::storage_info();

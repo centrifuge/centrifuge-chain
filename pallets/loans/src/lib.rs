@@ -69,7 +69,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
-	use sp_runtime::traits::BadOrigin;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -296,13 +295,13 @@ pub mod pallet {
 		ValueOverflow,
 		/// Emits when principal debt calculation failed due to overflow
 		NormalizedDebtOverflow,
-		/// Emits when tries to update an active loan
-		LoanIsActive,
+		/// Emits when tries to price a closed loan
+		LoanIsClosed,
 		/// Emits when loan type given is not valid
 		LoanTypeInvalid,
 		/// Emits when operation is done on an inactive loan
 		LoanNotActive,
-		// Emits when borrow and repay happens in the same block
+		/// Emits when borrow and repay happens in the same block
 		RepayTooEarly,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
@@ -353,7 +352,7 @@ pub mod pallet {
 			loan_nft_class_id: T::ClassId,
 		) -> DispatchResult {
 			// ensure the sender has the pool admin role
-			ensure_role!(pool_id, origin, PoolRole::PoolAdmin);
+			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::PoolAdmin)?;
 
 			// ensure pool exists
 			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolMissing);
@@ -393,7 +392,8 @@ pub mod pallet {
 			collateral: AssetOf<T>,
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
-			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
+			let owner = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, owner.clone(), PoolRole::Borrower)?;
 			let loan_id = Self::create_loan(pool_id, owner, collateral)?;
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
@@ -509,7 +509,7 @@ pub mod pallet {
 
 		/// Set pricing for the loan with loan specific details like Rate, Loan type
 		///
-		/// LoanStatus must be in Created state.
+		/// LoanStatus must be in Created or Active state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
 		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
 		pub fn price(
@@ -519,16 +519,45 @@ pub mod pallet {
 			interest_rate_per_sec: T::Rate,
 			loan_type: LoanType<T::Rate, T::Balance>,
 		) -> DispatchResultWithPostInfo {
-			// ensure sender has the pricing admin role in the pool
-			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
+			let owner = ensure_signed(origin)?;
+
 			let active_count =
-				Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
+				Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
+					let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+
+					match loan.status {
+						LoanStatus::Created => {
+							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
+							let active_count = Self::price_created_loan(
+								pool_id,
+								loan_id,
+								interest_rate_per_sec,
+								loan_type,
+							);
+
+							loan.status = LoanStatus::Active;
+							active_count
+						}
+						LoanStatus::Active => {
+							Self::ensure_role(pool_id, owner, PoolRole::LoanAdmin)?;
+							Self::price_active_loan(
+								pool_id,
+								loan_id,
+								interest_rate_per_sec,
+								loan_type,
+							)
+						}
+						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsClosed)?,
+					}
+				})?;
+
 			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
 				loan_id,
 				interest_rate_per_sec,
 				loan_type,
 			});
+
 			Ok(Some(T::WeightInfo::price(active_count)).into())
 		}
 
@@ -570,7 +599,7 @@ pub mod pallet {
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
-			ensure_role!(pool_id, origin, PoolRole::LoanAdmin);
+			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 			let write_off_group_index = Self::add_write_off_group_to_pool(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded {
 				pool_id,
@@ -634,7 +663,7 @@ pub mod pallet {
 			penalty_interest_rate_per_sec: T::Rate,
 		) -> DispatchResultWithPostInfo {
 			// ensure this is a call from risk admin
-			ensure_role!(pool_id, origin, PoolRole::LoanAdmin);
+			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 
 			// try to write off
 			let (active_count, (.., percentage, penalty_interest_rate_per_sec)) =
@@ -654,6 +683,21 @@ pub mod pallet {
 				write_off_group_index: None,
 			});
 			Ok(Some(T::WeightInfo::admin_write_off(active_count)).into())
+		}
+	}
+	impl<T: Config> Pallet<T> {
+		pub fn reference_active_rates() -> Weight {
+			let mut weight = 0;
+			for (pool, active_loans) in ActiveLoans::<T>::iter() {
+				let write_off_groups = PoolWriteOffGroups::<T>::get(pool);
+				weight += T::DbWeight::get().reads(2);
+				for loan in active_loans.iter() {
+					weight += T::DbWeight::get().reads_writes(1, 1);
+					let rate = Self::rate_with_penalty(&loan, &write_off_groups);
+					T::InterestAccrual::reference_rate(rate);
+				}
+			}
+			weight
 		}
 	}
 }
@@ -677,20 +721,4 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Balance> for Pallet<T> {
 	) -> DispatchResult {
 		Self::initialise_pool(origin, pool_id, class_id)
 	}
-}
-
-#[macro_export]
-macro_rules! ensure_role {
-	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
-		let sender = ensure_signed($origin)?;
-		ensure!(
-			T::Permission::has(
-				PermissionScope::Pool($pool_id),
-				sender.clone(),
-				Role::PoolRole($role)
-			),
-			BadOrigin
-		);
-		sender
-	}};
 }

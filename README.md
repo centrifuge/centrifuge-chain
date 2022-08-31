@@ -202,3 +202,22 @@ Tip: if you face compilation errors like "type X doesn't implement trait Y", and
 doesn't suggest you import any particular trait, experience is that there are different versions
 of Polkadot|Substrate|Cumulus being pulled; Look at `Cargo.lock` and find which project is still
 depending on an older version of any of those projects.
+
+
+## NIX
+
+The CI runs a `nix-build` job that executes `nix build` on the entire repository. This job fails if the output 
+`cargoSha256` for the revision being built does not match the expected value defined in `flake.nix`.
+
+Whenever a dependency is added, removed, or updated, said `cargoSha256` value defined in `flake.nix` needs to be updated.
+To do that, you need:
+
+1. [Install Nix](https://nixos.org/download.html)
+
+2. On your feature branch, run:
+    ```shell
+    nix --extra-experimental-features "nix-command flakes" build
+    ```
+
+3. Use the new `cargoSha256` output provided on step 2. and update it in `flake.nix`
+4. Commit and push

@@ -1,17 +1,15 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
+use super::constants::{CENTI_CFG, TREASURY_FEE_RATIO};
 use super::*;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::CurrencyId;
-use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
-use frame_support::traits::{Currency, OnUnbalanced};
+use frame_support::traits::{Currency, Imbalance, OnUnbalanced};
 use frame_support::weights::{
-	WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+	constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
+	WeightToFeePolynomial,
 };
-use frame_system::pallet::Config as SystemConfig;
-use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
-use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
 use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
@@ -22,16 +20,43 @@ use sp_std::vec::Vec;
 
 common_types::impl_tranche_token!();
 
-pub struct DealWithFees<Config>(PhantomData<Config>);
-pub type NegativeImbalance<Config> =
-	<Balances<Config> as Currency<<Config as SystemConfig>::AccountId>>::NegativeImbalance;
-impl<Config> OnUnbalanced<NegativeImbalance<Config>> for DealWithFees<Config>
+pub type NegativeImbalance<R> = <pallet_balances::Pallet<R> as Currency<
+	<R as frame_system::Config>::AccountId,
+>>::NegativeImbalance;
+
+struct ToAuthor<R>(sp_std::marker::PhantomData<R>);
+impl<R> OnUnbalanced<NegativeImbalance<R>> for ToAuthor<R>
 where
-	Config: AuthorshipConfig + BalancesConfig + SystemConfig,
+	R: pallet_balances::Config + pallet_authorship::Config,
 {
-	fn on_nonzero_unbalanced(amount: NegativeImbalance<Config>) {
-		if let Some(who) = Authorship::<Config>::author() {
-			Balances::<Config>::resolve_creating(&who, amount);
+	fn on_nonzero_unbalanced(amount: NegativeImbalance<R>) {
+		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
+			<pallet_balances::Pallet<R>>::resolve_creating(&author, amount);
+		}
+	}
+}
+
+pub struct DealWithFees<R>(sp_std::marker::PhantomData<R>);
+impl<R> OnUnbalanced<NegativeImbalance<R>> for DealWithFees<R>
+where
+	R: pallet_balances::Config + pallet_treasury::Config + pallet_authorship::Config,
+	pallet_treasury::Pallet<R>: OnUnbalanced<NegativeImbalance<R>>,
+{
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance<R>>) {
+		if let Some(fees) = fees_then_tips.next() {
+			// for fees, split the destination
+			let (treasury_amount, mut author_amount) = fees.ration(
+				TREASURY_FEE_RATIO.deconstruct(),
+				(Perbill::one() - TREASURY_FEE_RATIO).deconstruct(),
+			);
+			if let Some(tips) = fees_then_tips.next() {
+				// for tips, if any, 100% to author
+				tips.merge_into(&mut author_amount);
+			}
+
+			use pallet_treasury::Pallet as Treasury;
+			<Treasury<R> as OnUnbalanced<_>>::on_unbalanced(treasury_amount);
+			<ToAuthor<R> as OnUnbalanced<_>>::on_unbalanced(author_amount);
 		}
 	}
 }
@@ -47,46 +72,19 @@ where
 ///   - Setting it to `0` will essentially disable the weight fee.
 ///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
 ///
-/// Sample weight to Fee Calculation for 1 Rad Balance transfer:
-/// ```rust
-/// 	use node_primitives::Balance;
-/// 	let extrinsic_bytes: Balance = 92;
-/// 	let weight: Balance = 195000000;
-/// 	let weight_coefficient: Balance = 315000;
-/// 	let transaction_byte_fee: Balance = 10000000000; // 0.01 Micro RAD
-///		let maximum_block_weight: Balance = 2000000000000; // 2 * WEIGHT_PER_SECOND
-/// 	let extrinsic_base_weight: Balance = 125000000; // 125 * WEIGHT_PER_MICROS
-///
-/// 	// AIR token value
-///     //
-///     // FIXME (ToZ):
-///     // The following constants are copied verbatim from Altair runtime constants so
-///     // that to avoid a circular dependency between common runtime crate and Altair
-///     // runtime crate. Can we consider such token values as primitives much like
-///     // MILLISECONDS_PER_DAY constants, for instance, and extract them in a separate
-///     // library.
-/// 	let MICRO_AIR: Balance = runtime_common::constants::MICRO_CFG;
-/// 	let MILLI_AIR: Balance = runtime_common::constants::MILLI_CFG;
-/// 	let CENTI_AIR: Balance = runtime_common::constants::CENTI_CFG;
-/// 	let AIR: Balance = runtime_common::constants::CFG;
-///
-/// 	// Calculation:
-/// 	let base_fee: Balance = extrinsic_base_weight * weight_coefficient; // 39375000000000
-/// 	let length_fee: Balance = extrinsic_bytes * transaction_byte_fee; // 920000000000
-/// 	let weight_fee: Balance = weight * weight_coefficient; // 61425000000000
-/// 	let fee: Balance = base_fee + length_fee + weight_fee;
-/// 	assert_eq!(fee, 10172 * (MICRO_AIR / 100));
-/// ```
 pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
 
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
+		let p = CENTI_CFG;
+		let q = 10 * Balance::from(ExtrinsicBaseWeight::get());
+
 		smallvec!(WeightToFeeCoefficient {
-			coeff_integer: 315000,
-			coeff_frac: Perbill::zero(),
-			negative: false,
 			degree: 1,
+			negative: false,
+			coeff_frac: Perbill::from_rational(p % q, q),
+			coeff_integer: p / q,
 		})
 	}
 }
@@ -256,6 +254,9 @@ pub mod xcm {
 	use crate::{xcm_fees::default_per_second, Balance, CustomMetadata};
 	use common_types::CurrencyId;
 	use frame_support::sp_std::marker::PhantomData;
+	use sp_runtime::traits::ConstU32;
+	use sp_runtime::WeakBoundedVec;
+	use xcm::latest::Junction::GeneralKey;
 	use xcm::latest::MultiLocation;
 
 	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
@@ -278,5 +279,47 @@ pub mod xcm {
 				.fee_per_second
 				.or_else(|| Some(default_per_second(metadata.decimals)))
 		}
+	}
+
+	pub fn general_key(key: &[u8]) -> xcm::latest::Junction {
+		GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
+			key.into(),
+			None,
+		))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use mock::*;
+
+	const TEST_ACCOUNT: AccountId = AccountId::new([1; 32]);
+
+	#[test]
+	fn test_fees_and_tip_split() {
+		TestExternalitiesBuilder::default()
+			.build()
+			.execute_with(|| {
+				const FEE: u64 = 10;
+				const TIP: u64 = 20;
+
+				let fee = Balances::issue(FEE);
+				let tip = Balances::issue(TIP);
+
+				assert_eq!(Balances::free_balance(Treasury::account_id()), 0);
+				assert_eq!(Balances::free_balance(TEST_ACCOUNT), 0);
+
+				DealWithFees::on_unbalanceds(vec![fee, tip].into_iter());
+
+				assert_eq!(
+					Balances::free_balance(Treasury::account_id()),
+					TREASURY_FEE_RATIO * FEE
+				);
+				assert_eq!(
+					Balances::free_balance(TEST_ACCOUNT),
+					TIP + (Perbill::one() - TREASURY_FEE_RATIO) * FEE
+				);
+			});
 	}
 }

@@ -29,8 +29,9 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 pub use common_types::CurrencyId;
 use runtime_common::{
 	decimals, parachains,
-	xcm::FixedConversionRateProvider,
+	xcm::{general_key, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
+	EnsureRootOr, HalfOfCouncil,
 };
 
 /// The main XCM config
@@ -74,7 +75,7 @@ parameter_types! {
 	pub CanonicalAirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+			X1(general_key(parachains::kusama::altair::AIR_KEY))
 		).into(),
 		native_per_second(),
 	);
@@ -82,7 +83,7 @@ parameter_types! {
 	pub AirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+			X2(Parachain(ParachainInfo::parachain_id().into()), general_key(parachains::kusama::altair::AIR_KEY)),
 		).into(),
 		native_per_second(),
 	);
@@ -94,7 +95,7 @@ parameter_types! {
 			1,
 			X2(
 				Parachain(parachains::kusama::karura::ID),
-				GeneralKey(parachains::kusama::karura::AUSD_KEY.to_vec())
+				general_key(parachains::kusama::karura::AUSD_KEY)
 			)
 		).into(),
 		default_per_second(decimals::AUSD)
@@ -184,14 +185,14 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				1,
 				X2(
 					Parachain(parachains::kusama::karura::ID),
-					GeneralKey(parachains::kusama::karura::AUSD_KEY.into()),
+					general_key(parachains::kusama::karura::AUSD_KEY),
 				),
 			)),
 			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(ParachainInfo::get().into()),
-					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			)),
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
@@ -371,4 +372,9 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 		})
 		.into()
 	}
+}
+
+impl orml_xcm::Config for Runtime {
+	type Event = Event;
+	type SovereignOrigin = EnsureRootOr<HalfOfCouncil>;
 }

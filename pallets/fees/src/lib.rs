@@ -1,16 +1,23 @@
 //! # Fees pallet for runtime
 //!
-//! This pallet provides functionality for setting and getting fees associated with an Hash key..
-//! Fees are set by FeeOrigin or RootOrigin
+//! This pallet provides a storing functionality for setting and getting fees associated with an Hash key.
+//! Fees can only be set by FeeOrigin or RootOrigin
+//!
+//! Also, for its internal usage from the runtime or other pallets,
+//! it offers some utilities to transfer the fees to the author, the treasury or burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
-use codec::{Decode, Encode};
+
+use codec::EncodeLike;
+use common_traits::fees::{self, Fee, FeeKey};
 use frame_support::{
-	dispatch::DispatchResult,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
+	dispatch::{DispatchError, DispatchResult},
+	storage::types::ValueQuery,
+	traits::{Currency, EnsureOrigin, ExistenceRequirement, OnUnbalanced, WithdrawReasons},
 };
-use frame_system::ensure_root;
+use scale_info::TypeInfo;
 
 pub use pallet::*;
+
 #[cfg(test)]
 mod mock;
 
@@ -20,19 +27,17 @@ mod benchmarking;
 #[cfg(test)]
 mod tests;
 
-pub mod weights;
-use scale_info::TypeInfo;
-pub use weights::*;
+mod migration;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct Fee<Hash, Balance> {
-	key: Hash,
-	price: Balance,
-}
+pub mod weights;
+pub use weights::*;
 
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+pub type ImbalanceOf<T> = <<T as Config>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::NegativeImbalance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -50,23 +55,38 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
+		/// Key type used for storing and identifying fees.
+		type FeeKey: FeeKey + EncodeLike;
+
 		/// The currency mechanism.
-		type Currency: frame_support::traits::Currency<Self::AccountId>;
+		type Currency: Currency<Self::AccountId>;
+
+		/// The treasury destination.
+		type Treasury: OnUnbalanced<ImbalanceOf<Self>>;
+
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-		/// Required origin for changing fees
+
+		/// Required origin for changing fees.
 		type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
-		/// Type representing the weight of this pallet
+
+		/// Default value for fee keys.
+		type DefaultFeeValue: Get<BalanceOf<Self>>;
+
+		/// Type representing the weight of this pallet.
 		type WeightInfo: WeightInfo;
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+	/// Stores the fee balances associated with a Hash identifier
+	#[pallet::storage]
+	#[pallet::getter(fn fee)]
+	pub(super) type FeeBalances<T: Config> =
+		StorageMap<_, Blake2_256, T::FeeKey, BalanceOf<T>, ValueQuery, T::DefaultFeeValue>;
 
 	// The genesis config type.
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_fees: Vec<(T::Hash, BalanceOf<T>)>,
+		pub initial_fees: Vec<(T::FeeKey, BalanceOf<T>)>,
 	}
 
 	// The default value for the genesis config type.
@@ -83,106 +103,99 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			for fee in self.initial_fees.iter() {
-				<Pallet<T>>::change_fee(fee.0, fee.1);
+			for (key, fee) in self.initial_fees.iter() {
+				<FeeBalances<T>>::insert(key, fee);
 			}
 		}
 	}
 
-	/// Stores the Fees associated with a Hash identifier
-	#[pallet::storage]
-	#[pallet::getter(fn fee)]
-	pub(super) type Fees<T: Config> =
-		StorageMap<_, Blake2_256, T::Hash, Fee<T::Hash, BalanceOf<T>>>;
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+			migration::fee_balances::migrate::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<(), &'static str> {
+			migration::fee_balances::pre_migrate::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade() -> Result<(), &'static str> {
+			migration::fee_balances::post_migrate::<T>()
+		}
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		FeeChanged(T::Hash, BalanceOf<T>),
-	}
-
-	#[pallet::error]
-	pub enum Error<T> {
-		/// Fee associated to given key not found
-		FeeNotFoundForKey,
-		/// Invalid author of blocked fetched
-		InvalidAuthor,
+		FeeChanged(T::FeeKey, BalanceOf<T>),
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_fee())]
-		pub fn set_fee(
-			origin: OriginFor<T>,
-			key: T::Hash,
-			new_price: BalanceOf<T>,
-		) -> DispatchResult {
-			Self::can_change_fee(origin)?;
-			Self::change_fee(key, new_price);
-			Self::deposit_event(Event::FeeChanged(key, new_price));
+		pub fn set_fee(origin: OriginFor<T>, key: T::FeeKey, fee: BalanceOf<T>) -> DispatchResult {
+			T::FeeChangeOrigin::ensure_origin(origin)?;
+
+			<FeeBalances<T>>::insert(key.clone(), fee);
+			Self::deposit_event(Event::FeeChanged(key, fee));
+
 			Ok(())
 		}
 	}
 }
 
+impl<T: Config> fees::Fees for Pallet<T> {
+	type AccountId = T::AccountId;
+	type Balance = BalanceOf<T>;
+	type FeeKey = T::FeeKey;
+
+	fn fee_value(key: Self::FeeKey) -> BalanceOf<T> {
+		<FeeBalances<T>>::get(key)
+	}
+
+	fn fee_to_author(
+		from: &Self::AccountId,
+		fee: Fee<BalanceOf<T>, Self::FeeKey>,
+	) -> DispatchResult {
+		if let Some(author) = <pallet_authorship::Pallet<T>>::author() {
+			let balance = Self::withdraw_fee(from, fee)?;
+			T::Currency::resolve_creating(&author, balance);
+		}
+		Ok(())
+	}
+
+	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>, Self::FeeKey>) -> DispatchResult {
+		Self::withdraw_fee(from, fee).map(|_| ())
+	}
+
+	fn fee_to_treasury(
+		from: &Self::AccountId,
+		fee: Fee<BalanceOf<T>, Self::FeeKey>,
+	) -> DispatchResult {
+		let amount = Self::withdraw_fee(from, fee)?;
+		T::Treasury::on_unbalanced(amount);
+		Ok(())
+	}
+}
+
 impl<T: Config> Pallet<T> {
-	/// Called by any other module who wants to trigger a fee payment for a given account.
-	/// The current fee price can be retrieved via Fees::price_of()
-	pub fn pay_fee(from: T::AccountId, key: T::Hash) -> DispatchResult {
-		let fee = <Fees<T>>::get(key).ok_or(Error::<T>::FeeNotFoundForKey)?;
-		Self::pay_fee_to_author(from, fee.price)?;
-		Ok(())
-	}
-
-	/// Burns Fee from account
-	pub fn burn_fee(from: &T::AccountId, fee: BalanceOf<T>) -> DispatchResult {
-		let _ = T::Currency::withdraw(
-			from,
-			fee,
-			WithdrawReasons::FEE.into(),
-			ExistenceRequirement::KeepAlive,
-		)?;
-
-		Ok(())
-	}
-
-	/// Pay the given fee
-	pub fn pay_fee_to_author(from: T::AccountId, fee: BalanceOf<T>) -> DispatchResult {
-		let value = T::Currency::withdraw(
-			&from,
-			fee,
-			WithdrawReasons::FEE.into(),
-			ExistenceRequirement::KeepAlive,
-		)?;
-
-		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
-		T::Currency::resolve_creating(&author, value);
-		Ok(())
-	}
-
-	/// Returns the current fee for the key
-	pub fn price_of(key: T::Hash) -> Option<BalanceOf<T>> {
-		//why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
-		let fee = <Fees<T>>::get(key)?;
-		Some(fee.price)
-	}
-
-	/// Returns true if the given origin can change the fee
-	fn can_change_fee(origin: T::Origin) -> DispatchResult {
-		T::FeeChangeOrigin::try_origin(origin)
-			.map(|_| ())
-			.or_else(ensure_root)?;
-
-		Ok(())
-	}
-
-	/// Change the fee for the given key
-	fn change_fee(key: T::Hash, fee: BalanceOf<T>) {
-		let new_fee = Fee {
-			key: key.clone(),
-			price: fee,
+	fn withdraw_fee(
+		from: &T::AccountId,
+		fee: Fee<BalanceOf<T>, T::FeeKey>,
+	) -> Result<ImbalanceOf<T>, DispatchError> {
+		let balance = match fee {
+			Fee::Balance(balance) => balance,
+			Fee::Key(key) => <Self as fees::Fees>::fee_value(key),
 		};
-		<Fees<T>>::insert(key, new_fee);
+
+		T::Currency::withdraw(
+			&from,
+			balance,
+			WithdrawReasons::FEE.into(),
+			ExistenceRequirement::KeepAlive,
+		)
 	}
 }
