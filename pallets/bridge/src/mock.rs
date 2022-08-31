@@ -309,10 +309,8 @@ impl BridgePalletConfig for MockRuntime {
 	type BridgeOrigin = EnsureBridge<MockRuntime>;
 	type Currency = Balances;
 	type NativeTokenId = NativeTokenId;
-	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
 	type WeightInfo = MockWeightInfo;
-	type NativeTokenTransferFee = NativeTokenTransferFee;
-	type NftTokenTransferFee = NftTransferFee;
+	type NativeTokenTransferFeeKey = ();
 }
 
 // ----------------------------------------------------------------------------
