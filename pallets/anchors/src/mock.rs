@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as pallet_anchors, *};
+use crate::{self as pallet_anchors, Config};
 
 use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
@@ -123,13 +123,20 @@ impl pallet_timestamp::Config for Test {
 impl_mock_fees_state!(
 	MockFeesState,
 	<Test as frame_system::Config>::AccountId,
-	Balance
+	Balance,
+	u8,
+	|key| match key {
+		2 => 42,
+		_ => 0,
+	}
 );
 
 impl Config for Test {
 	type WeightInfo = ();
 	type Fees = MockFees<Self::AccountId, Balance, u8, MockFeesState>;
 	type CommitAnchorFeeKey = ConstU8<1>;
+	type PreCommitDepositFeeKey = ConstU8<2>;
+	type Currency = Balances;
 }
 
 impl Test {

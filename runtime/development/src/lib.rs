@@ -786,12 +786,15 @@ impl pallet_fees::Config for Runtime {
 
 parameter_types! {
 	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
 }
 
 impl pallet_anchors::Config for Runtime {
 	type Fees = Fees;
 	type CommitAnchorFeeKey = CommitAnchorFeeKey;
+	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
 	type WeightInfo = ();
+	type Currency = Balances;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
@@ -1721,7 +1724,11 @@ impl_runtime_apis! {
 			 use pallet_loans::benchmarking::Pallet as LoansPallet;
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
+			// It should be called Anchors to make the runtime_benchmarks.sh script works
+			type Anchors = Anchor;
+
 			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
@@ -1752,6 +1759,7 @@ impl_runtime_apis! {
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_anchors, Anchor);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);

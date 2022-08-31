@@ -724,12 +724,15 @@ impl pallet_fees::Config for Runtime {
 
 parameter_types! {
 	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
 }
 
 impl pallet_anchors::Config for Runtime {
 	type Fees = Fees;
 	type CommitAnchorFeeKey = CommitAnchorFeeKey;
+	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
 	type WeightInfo = ();
+	type Currency = Balances;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
@@ -1536,8 +1539,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_preimage, Preimage);
 			list_benchmark!(list, extra, pallet_uniques, Uniques);
 			list_benchmark!(list, extra, pallet_fees, Fees);
-			// TODO: Currently no benchmarking implemented
-			// list_benchmark!(list, extra, pallet_anchors, Anchor);
+			list_benchmark!(list, extra, pallet_anchors, Anchor);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
@@ -1582,6 +1584,9 @@ impl_runtime_apis! {
 			use pallet_loans::benchmarking::Pallet as LoansPallet;
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
+			// It should be called Anchors to make the runtime_benchmarks.sh script works
+			type Anchors = Anchor;
+
 			// Note: Only add working benches here. Commenting out will still
 			//       result in the runtime_benchmarks.sh script trying to
 			//       the benches for the given pallet.
@@ -1600,6 +1605,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_preimage, Preimage);
 			add_benchmark!(params, batches, pallet_uniques, Uniques);
 			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);

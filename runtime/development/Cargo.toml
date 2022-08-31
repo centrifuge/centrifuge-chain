@@ -251,6 +251,7 @@ runtime-benchmarks = [
     "pallet-pools/runtime-benchmarks",
     "pallet-loans/runtime-benchmarks",
     "pallet-interest-accrual/runtime-benchmarks",
+    "pallet-anchors/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
     "pallet-uniques/runtime-benchmarks",
     "runtime-common/runtime-benchmarks",
