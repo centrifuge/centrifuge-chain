@@ -1101,6 +1101,18 @@ impl pallet_pools::Config for Runtime {
 	type UpdateGuard = UpdateGuard;
 }
 
+impl pallet_pools_registry::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type PoolId = PoolId;
+	type CurrencyId = CurrencyId;
+	type Metadata = ();
+	type TrancheId = TrancheId;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type Permission = Permissions;
+	type WeightInfo = weights::pallet_pools_registry::SubstrateWeight<Runtime>;
+}
+
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
@@ -1222,6 +1234,7 @@ construct_runtime!(
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 99,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
+		PoolsRegistry: pallet_pools_registry::{Pallet, Call, Storage, Event<T>} = 102,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

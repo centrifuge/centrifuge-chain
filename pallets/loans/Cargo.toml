@@ -23,7 +23,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 runtime-common = { path = "../../runtime/common", optional = true, default-features = false }
-pallet-pools-registry = { path = "../pools-registry", default-features = true }
+pallet-pools-registry = { path = "../pools-registry", default-features = false }
 
 # our pallets
 common-traits = { path = "../../libs/common-traits", default-features = false}

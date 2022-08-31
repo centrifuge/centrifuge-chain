@@ -1475,8 +1475,6 @@ where
 	Ok(risk_buffers)
 }
 
-
-
 #[cfg(test)]
 pub mod test {
 	#[test]

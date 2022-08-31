@@ -12,227 +12,226 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-use codec::{HasCompact, Decode, Encode};
-use frame_support::{
-    scale_info::TypeInfo,
-    pallet_prelude::*, BoundedVec,
-};
+use codec::HasCompact;
+use frame_support::{pallet_prelude::*, scale_info::TypeInfo, BoundedVec};
 use frame_system::pallet_prelude::*;
-// use frame_system::WeightInfo;
+use polkadot_parachain::primitives::Id as ParachainId;
 use sp_runtime::{
-    traits::{
-        AtLeast32BitUnsigned, Zero, BadOrigin,
-    },
-    FixedPointOperand,
+	traits::{AtLeast32BitUnsigned, BadOrigin, Zero},
+	FixedPointOperand,
 };
 use xcm::{
-    latest::MultiLocation,
-    prelude::{GeneralKey, Parachain, X2},
-    VersionedMultiLocation,
+	latest::MultiLocation,
+	prelude::{GeneralKey, Parachain, X2},
+	VersionedMultiLocation,
 };
-use polkadot_parachain::primitives::Id as ParachainId;
 
 use orml_asset_registry::AssetMetadata;
 
-use common_types::{CustomMetadata, XcmMetadata, Moment, PermissionScope, PoolRole, Role};
-use common_traits::{
-    Permissions,
-};
+use common_traits::Permissions;
+use common_types::{CustomMetadata, Moment, PermissionScope, PoolRole, Role, XcmMetadata};
+use sp_std::vec::Vec;
 
-use pallet::*;
-use weights::WeightInfo;
+pub use pallet::*;
+pub use weights::WeightInfo;
 
-mod weights;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+pub mod weights;
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
-    where
-        MaxTokenNameLength: Get<u32>,
-        MaxTokenSymbolLength: Get<u32>,
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
 {
-    pub token_name: BoundedVec<u8, MaxTokenNameLength>,
-    pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
+	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
+	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolsMetadata<MetaSize>
-    where
-        MetaSize: Get<u32>
+pub struct PoolMetadata<MetaSize>
+where
+	MetaSize: Get<u32>,
 {
-    metadata: Option<BoundedVec<u8, MetaSize>>,
+	metadata: BoundedVec<u8, MetaSize>,
 }
 
-type PoolsMetaOf<T> = PoolsMetadata<
-    <T as Config>::MaxSizeMetadata>;
+type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use super::*;
+	use super::*;
 
-    #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
-    #[pallet::without_storage_info]
-    pub struct Pallet<T>(_);
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-    #[pallet::storage]
-    #[pallet::getter(fn get_pool_metadata)]
-    pub(super) type PoolMetadata<T: Config> = StorageMap<_, Blake2_256, T::PoolId, PoolsMetaOf<T>>;
+		type Balance: Member
+			+ Parameter
+			+ AtLeast32BitUnsigned
+			+ Default
+			+ Copy
+			+ MaxEncodedLen
+			+ FixedPointOperand
+			+ From<u64>
+			+ From<u128>
+			+ TypeInfo
+			+ TryInto<u64>;
 
-    #[pallet::config]
-    pub trait Config: frame_system::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type PoolId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ core::fmt::Debug;
 
-        type Balance: Member
-            + Parameter
-            + AtLeast32BitUnsigned
-            + Default
-            + Copy
-            + MaxEncodedLen
-            + FixedPointOperand
-            + From<u64>
-            + From<u128>
-            + TypeInfo
-            + TryInto<u64>;
+		type CurrencyId: Parameter + Copy;
 
-        type PoolId: Member
-            + Parameter
-            + Default
-            + Copy
-            + HasCompact
-            + MaxEncodedLen
-            + core::fmt::Debug;
+		type Metadata: Eq
+			+ PartialEq
+			+ Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ core::fmt::Debug;
 
-        type CurrencyId: Parameter + Copy;
+		type TrancheId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ MaxEncodedLen
+			+ TypeInfo
+			+ From<[u8; 16]>;
 
-        type Metadata: Eq + PartialEq + Member
-            + Parameter
-            + Default
-            + Copy
-            + HasCompact
-            + MaxEncodedLen
-            + core::fmt::Debug;
+		/// Max size of Metadata
+		#[pallet::constant]
+		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
-        type TrancheId: Member
-            + Parameter
-            + Default
-            + Copy
-            + MaxEncodedLen
-            + TypeInfo
-            + From<[u8; 16]>;
+		type Permission: Permissions<
+			Self::AccountId,
+			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
+			Role = Role<Self::TrancheId, Moment>,
+			Error = DispatchError,
+		>;
 
-        /// Max size of Metadata
-        #[pallet::constant]
-        type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
+		/// Weight Information
+		type WeightInfo: WeightInfo;
+	}
 
-        type Permission: Permissions<
-            Self::AccountId,
-            Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
-            Role = Role<Self::TrancheId, Moment>,
-            Error = DispatchError,
-        >;
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::without_storage_info]
+	pub struct Pallet<T>(_);
 
-        /// Weight Information
-        type WeightInfo: WeightInfo;
-    }
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_metadata)]
+	pub(super) type PoolMetadata<T: Config> =
+		StorageMap<_, Blake2_256, T::PoolId, PoolMetadataOf<T>>;
 
-    #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
-        /// Pool metadata was set.
-        MetadataSet {
-            pool_id: T::PoolId,
-            metadata: BoundedVec<u8, T::MaxSizeMetadata>,
-        },
-    }
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// Pool metadata was set.
+		MetadataSet {
+			pool_id: T::PoolId,
+			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
+		},
+	}
 
-    #[pallet::error]
-    pub enum Error<T> {
-        /// Invalid metadata passed
-        BadMetadata,
-        /// Pre-requirements for a TrancheUpdate are not met
-        /// for example: Tranche changed but not its metadata or vice versa
-        InvalidTrancheUpdate,
-        /// No metada for the given currency found
-        MetadataForCurrencyNotFound,
-        /// No Metadata found for the given PoolId
-        NoSuchPoolMetadata,
-        /// The given tranche token name exceeds the length limit
-        TrancheTokenNameTooLong,
-        /// The given tranche symbol name exceeds the length limit
-        TrancheSymbolNameTooLong,
-    }
+	#[pallet::error]
+	pub enum Error<T> {
+		/// Invalid metadata passed
+		BadMetadata,
+		/// Pre-requirements for a TrancheUpdate are not met
+		/// for example: Tranche changed but not its metadata or vice versa
+		InvalidTrancheUpdate,
+		/// No metada for the given currency found
+		MetadataForCurrencyNotFound,
+		/// No Metadata found for the given PoolId
+		NoSuchPoolMetadata,
+		/// The given tranche token name exceeds the length limit
+		TrancheTokenNameTooLong,
+		/// The given tranche symbol name exceeds the length limit
+		TrancheSymbolNameTooLong,
+	}
 
-    #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        /// Sets the IPFS hash for the pool metadata information.
-        ///
-        /// The caller must have the `PoolAdmin` role in order to
-        /// invoke this extrinsic.
-        #[pallet::weight(T::WeightInfo::set_metadata(metadata.len().try_into().unwrap_or(u32::MAX)))]
-        pub fn set_metadata(
-            origin: OriginFor<T>,
-            pool_id: T::PoolId,
-            metadata: Vec<u8>,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(
-                T::Permission::has(
-                    PermissionScope::Pool(pool_id),
-                    who.clone(),
-                    Role::PoolRole(PoolRole::PoolAdmin)
-                ),
-                BadOrigin
-            );
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		/// Sets the IPFS hash for the pool metadata information.
+		///
+		/// The caller must have the `PoolAdmin` role in order to
+		/// invoke this extrinsic.
+		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len().try_into().unwrap_or(u32::MAX)))]
+		pub fn set_metadata(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			metadata: Vec<u8>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
+				BadOrigin,
+			);
 
-            let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata
-                .clone()
-                .try_into()
-                .map_err(|_| Error::<T>::BadMetadata)?;
+			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata
+				.clone()
+				.try_into()
+				.map_err(|_| Error::<T>::BadMetadata)?;
 
-            PoolMetadata::<T>::try_mutate(pool_id, |pool_metadata| -> DispatchResult {
-                let pool_metadata = pool_metadata.as_mut().ok_or(Error::<T>::NoSuchPoolMetadata)?;
-                pool_metadata.metadata = Some(checked_metadata.clone());
-                Self::deposit_event(Event::MetadataSet {
-                    pool_id,
-                    metadata: checked_metadata,
-                });
-                Ok(())
-            })
-        }
-    }
+			PoolMetadata::<T>::insert(
+				pool_id,
+				PoolMetadataOf::<T> {
+					metadata: checked_metadata,
+				},
+			);
+
+			Ok(())
+		}
+	}
 }
 
 pub fn create_asset_metadata<Balance, CurrencyId>(
-    decimals: u32,
-    currency: CurrencyId,
-    parachain_id: ParachainId,
-    token_name: Vec<u8>,
-    token_symbol: Vec<u8>,
+	decimals: u32,
+	currency: CurrencyId,
+	parachain_id: ParachainId,
+	token_name: Vec<u8>,
+	token_symbol: Vec<u8>,
 ) -> AssetMetadata<Balance, CustomMetadata>
-    where
-        Balance: Zero,
-        CurrencyId: Encode,
-        CustomMetadata: Parameter + Member + TypeInfo,
+where
+	Balance: Zero,
+	CurrencyId: Encode,
+	CustomMetadata: Parameter + Member + TypeInfo,
 {
-    let tranche_id = currency.encode();
+	let tranche_id = currency.encode();
 
-    AssetMetadata {
-        decimals,
-        name: token_name,
-        symbol: token_symbol,
-        existential_deposit: Zero::zero(),
-        location: Some(VersionedMultiLocation::V1(MultiLocation {
-            parents: 1,
-            interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
-        })),
-        additional: CustomMetadata {
-            mintable: false,
-            permissioned: false,
-            pool_currency: false,
-            xcm: XcmMetadata {
-                fee_per_second: None,
-            },
-        },
-    }
+	AssetMetadata {
+		decimals,
+		name: token_name,
+		symbol: token_symbol,
+		existential_deposit: Zero::zero(),
+		location: Some(VersionedMultiLocation::V1(MultiLocation {
+			parents: 1,
+			interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
+		})),
+		additional: CustomMetadata {
+			mintable: false,
+			permissioned: false,
+			pool_currency: false,
+			xcm: XcmMetadata {
+				fee_per_second: None,
+			},
+		},
+	}
 }

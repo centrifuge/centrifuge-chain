@@ -64,7 +64,6 @@ std = [
     'polkadot-parachain/std',
     'xcm/std',
 ]
-
 test-benchmarks = [
     'frame-support/try-runtime',
 ]

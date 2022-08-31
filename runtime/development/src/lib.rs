@@ -902,6 +902,18 @@ impl pallet_pools::Config for Runtime {
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 }
 
+impl pallet_pools_registry::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type PoolId = PoolId;
+	type CurrencyId = CurrencyId;
+	type Metadata = ();
+	type TrancheId = TrancheId;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type Permission = Permissions;
+	type WeightInfo = weights::pallet_pools_registry::SubstrateWeight<Runtime>;
+}
+
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
@@ -1418,6 +1430,7 @@ construct_runtime!(
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
+		PoolsRegistry: pallet_pools_registry::{Pallet, Call, Storage, Event<T>} = 105,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

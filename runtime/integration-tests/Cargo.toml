@@ -82,6 +82,7 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", default-feature
 common-traits = { path = "../../libs/common-traits" }
 common-types = { path = "../../libs/common-types" }
 pallet-pools = { path = "../../pallets/pools" }
+pallet-pools-registry = { path = "../../pallets/pools-registry" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 
