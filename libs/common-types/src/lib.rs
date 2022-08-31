@@ -501,7 +501,7 @@ pub enum Adjustment<Amount> {
 	Decrease(Amount),
 }
 
-/// A representation of a pool identifier that can be converted to an account address
+/// A representation of a investment identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct AssetAccount<AssetId> {
 	pub asset_id: AssetId,
@@ -539,23 +539,20 @@ where
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct TotalOrder<Balance> {
-	pub invest: Balance,
-	pub redeem: Balance,
+	pub amount: Balance,
 }
 
 impl<Balance: Zero> Default for TotalOrder<Balance> {
 	fn default() -> Self {
 		TotalOrder {
-			invest: Zero::zero(),
-			redeem: Zero::zero(),
+			amount: Zero::zero(),
 		}
 	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct FulfillmentWithPrice<BalanceRatio> {
-	pub invest: Perquintill,
-	pub redeem: Perquintill,
+	pub of_amount: Perquintill,
 	pub price: BalanceRatio,
 }
 

@@ -21,12 +21,12 @@ use frame_support::{
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 };
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::CheckedSub;
+use sp_runtime::traits::{AccountIdConversion, CheckedSub, Saturating};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, One, Zero},
+	traits::{CheckedAdd, One, Zero},
 	ArithmeticError, FixedPointNumber,
 };
-use sp_std::convert::TryInto;
+use sp_std::{cmp::min, convert::TryInto};
 
 pub use pallet::*;
 pub mod weights;
@@ -43,24 +43,37 @@ type CurrencyOf<T> =
 
 /// The outstanding collections for an account
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Collection<Balance> {
+pub struct InvestCollection<Balance> {
 	/// This is the payout in the denomination currency
 	/// of an asset
 	/// -> investment in payment currency
 	/// -> payout in denomination currency
 	pub payout_asset_invest: Balance,
 
-	/// This is the payout in the payment currency
-	/// of an asset
-	/// -> redemption in denomination currency
-	/// -> payout in payment currency
-	pub payout_asset_redeem: Balance,
-
 	/// This is the remaining investment in the payment currency
 	/// of an asset
 	/// -> investment in payment currency
 	/// -> payout in denomination currency
 	pub remaining_asset_invest: Balance,
+}
+
+impl<Balance: Zero> Default for InvestCollection<Balance> {
+	fn default() -> Self {
+		InvestCollection {
+			payout_asset_invest: Zero::zero(),
+			remaining_asset_invest: Zero::zero(),
+		}
+	}
+}
+
+/// The outstanding collections for an account
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct RedeemCollection<Balance> {
+	/// This is the payout in the payment currency
+	/// of an asset
+	/// -> redemption in denomination currency
+	/// -> payout in payment currency
+	pub payout_asset_redeem: Balance,
 
 	/// This is the remaining redemption in the denomination currency
 	/// of an asset
@@ -69,12 +82,10 @@ pub struct Collection<Balance> {
 	pub remaining_asset_redeem: Balance,
 }
 
-impl<Balance: Zero> Default for Collection<Balance> {
+impl<Balance: Zero> Default for RedeemCollection<Balance> {
 	fn default() -> Self {
-		Collection {
-			payout_asset_invest: Zero::zero(),
+		RedeemCollection {
 			payout_asset_redeem: Zero::zero(),
-			remaining_asset_invest: Zero::zero(),
 			remaining_asset_redeem: Zero::zero(),
 		}
 	}
@@ -96,15 +107,17 @@ pub enum OrderType<AccountId, AssetId, Amount> {
 }
 
 /// A newtype for Order
-pub type OrderOf<T> = Order<<T as Config>::Amount, <T as Config>::OrderId>;
+pub type OrderOf<T> = Order<<T as Config>::Amount, OrderId>;
 
 /// The order type of the pallet.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Order<Balance, OrderId> {
-	pub invest: Balance,
-	pub redeem: Balance,
-	pub id: OrderId,
+	pub amount: Balance,
+	pub submitted_at: OrderId,
 }
+
+/// Our OrderId in the pallet.
+type OrderId = u64;
 
 /// Defining how the collect logic runs.
 /// CollectType::Closing will ensure, that all unfulfilled assets
@@ -123,6 +136,7 @@ pub enum CollectType {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use codec::HasCompact;
 	use frame_support::PalletId;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
@@ -137,10 +151,10 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The underlying assets one can invest into
-		type InvestmentId: Clone + MaxEncodedLen + Parameter;
+		type InvestmentId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 
-		/// An incrementing per AssetId counter
-		type OrderId: AtLeast32BitUnsigned + Copy + Parameter + MaxEncodedLen;
+		/// Maximum number of collects that are permitted in one run.
+		type MaxCollects: Get<u64>;
 
 		/// Something that knows how to handle accounting for the given assets
 		/// and provides metadata about them
@@ -209,56 +223,89 @@ pub mod pallet {
 	{
 	}
 
-	#[pallet::type_value]
-	pub fn OnOrderIdEmpty<T: Config>() -> T::OrderId
-	where
-		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
-			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	{
-		One::one()
-	}
+	#[pallet::storage]
+	#[pallet::getter(fn invest_order_id)]
+	pub type InvestOrderId<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn order_id)]
-	pub type OrderId<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InvestmentId, T::OrderId, ValueQuery, OnOrderIdEmpty<T>>;
+	#[pallet::getter(fn redeem_order_id)]
+	pub type RedeemOrderId<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn order)]
-	pub type Orders<T: Config> = StorageDoubleMap<
+	#[pallet::getter(fn invest_orders)]
+	pub type InvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		T::InvestmentId,
-		BoundedVec<Order<T::Amount, T::OrderId>, T::MaxOutstandingCollects>,
-		ValueQuery,
+		Order<T::Amount, OrderId>,
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn acc_active_order)]
-	pub type ActiveOrder<T: Config> =
+	#[pallet::getter(fn redeem_orders)]
+	pub type RedeemOrders<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		T::InvestmentId,
+		Order<T::Amount, OrderId>,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn acc_active_invest_order)]
+	pub type ActiveInvestOrder<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn acc_in_processing_order)]
-	pub type InProcessingOrders<T: Config> = StorageDoubleMap<
+	#[pallet::getter(fn acc_active_redeem_order)]
+	pub type ActiveRedeemOrder<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn acc_in_processing_invest_order)]
+	pub type InProcessingInvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
 		Blake2_128Concat,
-		T::OrderId,
+		OrderId,
 		TotalOrder<T::Amount>,
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn cleared_order)]
-	pub type ClearedOrders<T: Config> = StorageDoubleMap<
+	#[pallet::getter(fn acc_in_processing_redeem_order)]
+	pub type InProcessingRedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
 		Blake2_128Concat,
-		T::OrderId,
+		OrderId,
+		TotalOrder<T::Amount>,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn cleared_invest_order)]
+	pub type ClearedInvestOrders<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::InvestmentId,
+		Blake2_128Concat,
+		OrderId,
+		FulfillmentWithPrice<T::BalanceRatio>,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn cleared_redeem_order)]
+	pub type ClearedRedeemOrders<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::InvestmentId,
+		Blake2_128Concat,
+		OrderId,
 		FulfillmentWithPrice<T::BalanceRatio>,
 	>;
 
@@ -270,36 +317,55 @@ pub mod pallet {
 			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		/// Fulfilled orders were collected. [asset, who, collected_orders, Collection]
-		OrdersCollected {
+		InvestOrdersCollected {
 			asset_id: T::InvestmentId,
 			who: T::AccountId,
-			processed_orders: Vec<T::OrderId>,
-			collection: Collection<T::Amount>,
+			processed_orders: Vec<OrderId>,
+			collection: InvestCollection<T::Amount>,
+		},
+		/// Fulfilled orders were collected. [asset, who, collected_orders, Collection]
+		RedeemOrdersCollected {
+			asset_id: T::InvestmentId,
+			who: T::AccountId,
+			processed_orders: Vec<OrderId>,
+			collection: RedeemCollection<T::Amount>,
 		},
 		/// An invest order was updated. [asset_id, order_id, who, amount]
 		InvestOrderUpdated {
 			asset_id: T::InvestmentId,
-			order_id: T::OrderId,
+			submitted_at: OrderId,
 			who: T::AccountId,
 			amount: T::Amount,
 		},
 		/// An invest order was updated. [asset_id, order_id, who, amount]
 		RedeemOrderUpdated {
 			asset_id: T::InvestmentId,
-			order_id: T::OrderId,
+			submitted_at: OrderId,
 			who: T::AccountId,
 			amount: T::Amount,
 		},
 		/// Order was fulfilled [asset_id, order_id, FulfillmentWithPrice]
-		OrderCleared {
+		InvestOrderCleared {
 			asset_id: T::InvestmentId,
-			order_id: T::OrderId,
+			order_id: OrderId,
+			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
+		},
+		/// Order was fulfilled [asset_id, order_id, FulfillmentWithPrice]
+		RedeemOrderCleared {
+			asset_id: T::InvestmentId,
+			order_id: OrderId,
 			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
 		},
 		/// Order is in processing state [asset_id, order_id, TotalOrder]
-		OrderInProcessing {
+		InvestOrderInProcessing {
 			asset_id: T::InvestmentId,
-			order_id: T::OrderId,
+			order_id: OrderId,
+			total_order: TotalOrder<T::Amount>,
+		},
+		/// Order is in processing state [asset_id, order_id, TotalOrder]
+		RedeemOrderInProcessing {
+			asset_id: T::InvestmentId,
+			order_id: OrderId,
 			total_order: TotalOrder<T::Amount>,
 		},
 	}
@@ -307,21 +373,25 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		// The order has been marked as cleared. It's either active or
-		// in processing
+		/// The order has been marked as cleared. It's either active or
+		/// in processing
 		OrderNotCleared,
-		// AssetManager does not now given asset
+		/// AssetManager does not now given asset
 		UnknownAsset,
-		// The user has to many uncollected orders. Before
-		// submitting new orders, a collect of those is required.
+		/// The user has to many uncollected orders. Before
+		/// submitting new orders, a collect of those is required.
 		CollectRequired,
-		// A fulfillment happened with an asset price of zero.
-		// The order will be discarded
+		/// A fulfillment happened with an asset price of zero.
+		/// The order will be discarded
 		ZeroPriceAsset,
-		// Order is still active and can not be processed further
+		/// Order is still active and can not be processed further
 		OrderNotInProcessing,
-		// Update of order was not a new order
+		/// Update of order was not a new order
 		NoNewOrder,
+		///
+		NoActiveInvestOrder,
+		///
+		NoActiveRedeemOrder,
 	}
 
 	#[pallet::call]
@@ -356,15 +426,23 @@ pub mod pallet {
 			);
 
 			let info = T::Accountant::info(asset.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
-			let cur_order_id = ActiveOrder::<T>::try_mutate(
+			let cur_order_id = ActiveInvestOrder::<T>::try_mutate(
 				&asset,
-				|total_order| -> Result<T::OrderId, DispatchError> {
-					Orders::<T>::try_mutate(
+				|total_order| -> Result<OrderId, DispatchError> {
+					InvestOrders::<T>::try_mutate(
 						&who,
 						&asset,
-						|orders| -> Result<T::OrderId, DispatchError> {
-							let cur_order_id = OrderId::<T>::get(asset.clone());
-							let order = Self::get_order(orders, cur_order_id)?;
+						|order| -> Result<OrderId, DispatchError> {
+							let mut order = Pallet::<T>::invest_order_or_default(order);
+							let cur_order_id = InvestOrderId::<T>::get(asset.clone());
+
+							// Updating an order is only allowed if it has not yet been submitted
+							// to processing
+							ensure!(
+								order.submitted_at == cur_order_id,
+								Error::<T>::CollectRequired
+							);
+
 							Self::do_update_invest_order(
 								total_order,
 								&who,
@@ -374,6 +452,8 @@ pub mod pallet {
 								amount,
 							)?;
 
+							order.submitted_at = cur_order_id;
+
 							Ok(cur_order_id)
 						},
 					)
@@ -382,7 +462,7 @@ pub mod pallet {
 
 			Self::deposit_event(Event::InvestOrderUpdated {
 				asset_id: asset,
-				order_id: cur_order_id,
+				submitted_at: cur_order_id,
 				who,
 				amount,
 			});
@@ -415,15 +495,23 @@ pub mod pallet {
 			);
 
 			let info = T::Accountant::info(asset.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
-			let cur_order_id = ActiveOrder::<T>::try_mutate(
+			let cur_order_id = ActiveRedeemOrder::<T>::try_mutate(
 				&asset,
-				|total_order| -> Result<T::OrderId, DispatchError> {
-					Orders::<T>::try_mutate(
+				|total_order| -> Result<OrderId, DispatchError> {
+					RedeemOrders::<T>::try_mutate(
 						&who,
 						&asset,
-						|active_order| -> Result<T::OrderId, DispatchError> {
-							let cur_order_id = OrderId::<T>::get(asset.clone());
-							let order = Self::get_order(active_order, cur_order_id)?;
+						|order| -> Result<OrderId, DispatchError> {
+							let mut order = Pallet::<T>::redeem_order_or_default(order);
+							let cur_order_id = RedeemOrderId::<T>::get(asset.clone());
+
+							// Updating an order is only allowed if it has not yet been submitted
+							// to processing
+							ensure!(
+								order.submitted_at == cur_order_id,
+								Error::<T>::CollectRequired
+							);
+
 							Self::do_update_redeem_order(
 								total_order,
 								&who,
@@ -432,6 +520,9 @@ pub mod pallet {
 								order,
 								amount,
 							)?;
+
+							order.submitted_at = cur_order_id;
+
 							Ok(cur_order_id)
 						},
 					)
@@ -439,7 +530,7 @@ pub mod pallet {
 			)?;
 			Self::deposit_event(Event::RedeemOrderUpdated {
 				asset_id: asset,
-				order_id: cur_order_id,
+				submitted_at: cur_order_id,
 				who,
 				amount,
 			});
@@ -454,11 +545,38 @@ pub mod pallet {
 		pub fn collect(
 			origin: OriginFor<T>,
 			asset_id: T::InvestmentId,
-			collect_type: CollectType,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			Self::do_collect(who, asset_id, collect_type)
+			Self::do_collect_both(who, asset_id)
+		}
+
+		/// Collect the results of a users orders for the given asset.
+		/// The `CollectType` allows users to refund their funds if any
+		/// are not fulfilled or directly append them to the next acitve
+		/// order for this asset.
+		#[pallet::weight(0)]
+		pub fn collect_invest(
+			origin: OriginFor<T>,
+			asset_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			Self::do_collect_redeem(who, asset_id)
+		}
+
+		/// Collect the results of a users orders for the given asset.
+		/// The `CollectType` allows users to refund their funds if any
+		/// are not fulfilled or directly append them to the next acitve
+		/// order for this asset.
+		#[pallet::weight(0)]
+		pub fn collect_redeem(
+			origin: OriginFor<T>,
+			asset_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			Self::do_collect_invest(who, asset_id)
 		}
 
 		/// Collect the results of another users orders for the given asset.
@@ -472,7 +590,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect(who, asset_id, CollectType::Closing)
+			Self::do_collect_both(who, asset_id)
 		}
 	}
 }
@@ -482,69 +600,45 @@ where
 	<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
 		AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
-	fn get_order(
-		orders: &mut BoundedVec<OrderOf<T>, T::MaxOutstandingCollects>,
-		curr_id: T::OrderId,
-	) -> Result<&mut OrderOf<T>, DispatchError> {
-		let is_latest = orders
-			.get_mut(orders.len())
-			.map(|order| order.id == curr_id)
-			.unwrap_or(false);
-
-		if !is_latest {
-			ensure!(
-				orders
-					.try_push(Order {
-						invest: T::Amount::zero(),
-						redeem: T::Amount::zero(),
-						id: curr_id,
-					})
-					.is_ok(),
-				Error::<T>::CollectRequired
-			);
-		}
-
-		Ok(orders
-			.get_mut(orders.len())
-			.expect("Latest element is current order and is Some. qed."))
-	}
-
-	pub(crate) fn do_collect(
+	pub(crate) fn do_collect_both(
 		who: T::AccountId,
 		asset_id: T::InvestmentId,
-		collect_type: CollectType,
+	) -> DispatchResultWithPostInfo {
+		Pallet::<T>::do_collect_invest(who.clone(), asset_id.clone())?;
+		Pallet::<T>::do_collect_redeem(who.clone(), asset_id.clone())
+	}
+
+	pub(crate) fn do_collect_invest(
+		who: T::AccountId,
+		asset_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(asset_id.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
-		let (collected_ids, collection) = Orders::<T>::try_mutate(
+		let (collected_ids, collection) = InvestOrders::<T>::try_mutate(
 			&who,
 			&asset_id,
-			|orders| -> Result<(Vec<T::OrderId>, Collection<T::Amount>), DispatchError> {
-				let mut collection = Collection::<T::Amount>::default();
-				let mut collected = Vec::with_capacity(orders.len());
-				let mut remove_indexes = Vec::with_capacity(orders.len());
+			|order| -> Result<(Vec<OrderId>, InvestCollection<T::Amount>), DispatchError> {
+				let mut order = order.as_mut().ok_or(Error::<T>::NoActiveInvestOrder)?;
+				let mut collection = InvestCollection::<T::Amount>::default();
+				let mut collected = Vec::new();
+				let last_processed_order_id = min(
+					order.submitted_at.saturating_add(T::MaxCollects::get()),
+					InvestOrderId::<T>::get(&asset_id),
+				);
 
-				for (index, order) in orders.iter().enumerate() {
-					// We subjectively decide here, that it is better not to error out if in the sequence of orders
-					// one has not yet been cleared.
-					//
-					// Instead we signal the collected orders via the vector if OrderId's in the event.
-					if let Ok(fulfillment) = ClearedOrders::<T>::try_get(asset_id.clone(), order.id)
-					{
-						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, &order)?;
-						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, &order)?;
-						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
-						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
-						collected.push(order.id);
-						remove_indexes.push(index);
-					}
+				for order_id in order.submitted_at..last_processed_order_id {
+					let fulfillment = ClearedInvestOrders::<T>::try_get(asset_id.clone(), order_id)
+						.map_err(|_| Error::<T>::OrderNotCleared)?;
+
+					Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, &order)?;
+					Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
+					collected.push(order_id);
 				}
 
-				// NOTE: Safe cause we do not change orders between getting the index
-				//       and removing the element at index from orders
-				remove_indexes
-					.iter()
-					.map(|index| orders.remove(*index))
-					.for_each(drop);
+				// We need to set this here, so the order is actually
+				// set correctly and a user can actually
+				// make progress, in case he could only collect
+				// till `order.submitted_at + T::MaxCollects`
+				order.submitted_at = last_processed_order_id;
 
 				// Transfer collected amounts from investment and redemption
 				let asset_account = AssetAccount {
@@ -557,6 +651,85 @@ where
 					&who,
 					collection.payout_asset_invest,
 				)?;
+
+				ActiveInvestOrder::<T>::try_mutate(&asset_id, |total_order| -> DispatchResult {
+					if collection.remaining_asset_invest > T::Amount::zero() {
+						let amount = order
+							.amount
+							.checked_add(&collection.remaining_asset_invest)
+							.ok_or(ArithmeticError::Overflow)?;
+
+						Self::do_update_invest_order(
+							total_order,
+							&who,
+							asset_id.clone(),
+							&info,
+							order,
+							amount,
+						)?;
+
+						Self::deposit_event(Event::InvestOrderUpdated {
+							asset_id,
+							submitted_at: last_processed_order_id,
+							who: who.clone(),
+							amount,
+						});
+					}
+
+					Ok(())
+				})?;
+
+				Ok((collected, collection))
+			},
+		)?;
+		Self::deposit_event(Event::InvestOrdersCollected {
+			asset_id,
+			who: who.clone(),
+			processed_orders: collected_ids,
+			collection,
+		});
+
+		// TODO: Actually weight this with collected_ids
+		Ok(().into())
+	}
+
+	pub(crate) fn do_collect_redeem(
+		who: T::AccountId,
+		asset_id: T::InvestmentId,
+	) -> DispatchResultWithPostInfo {
+		let info = T::Accountant::info(asset_id.clone()).map_err(|_| Error::<T>::UnknownAsset)?;
+		let (collected_ids, collection) = RedeemOrders::<T>::try_mutate(
+			&who,
+			&asset_id,
+			|order| -> Result<(Vec<OrderId>, RedeemCollection<T::Amount>), DispatchError> {
+				let mut order = order.as_mut().ok_or(Error::<T>::NoActiveRedeemOrder)?;
+				let mut collection = RedeemCollection::<T::Amount>::default();
+				let mut collected = Vec::new();
+				let last_processed_order_id = min(
+					order.submitted_at.saturating_add(T::MaxCollects::get()),
+					InvestOrderId::<T>::get(&asset_id),
+				);
+
+				for order_id in order.submitted_at..last_processed_order_id {
+					let fulfillment = ClearedRedeemOrders::<T>::try_get(asset_id.clone(), order_id)
+						.map_err(|_| Error::<T>::OrderNotCleared)?;
+
+					Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, &order)?;
+					Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment, &order)?;
+					collected.push(order_id);
+				}
+
+				// We need to set this here, so the order is actually
+				// set correctly and a user can actually
+				// make progress, in case he could only collect
+				// till `order.submitted_at + T::MaxCollects`
+				order.submitted_at = last_processed_order_id;
+
+				// Transfer collected amounts from investment and redemption
+				let asset_account = AssetAccount {
+					asset_id: asset_id.clone(),
+				}
+				.into_account_truncating();
 				T::Tokens::transfer(
 					info.payment_currency(),
 					&asset_account,
@@ -565,68 +738,37 @@ where
 					false,
 				)?;
 
-				match collect_type {
-					CollectType::Overflowing => {
-						ActiveOrder::<T>::try_mutate(&asset_id, |total_order| -> DispatchResult {
-							if collection.remaining_asset_invest > T::Amount::zero() {
-								let cur_order_id = OrderId::<T>::get(asset_id.clone());
-								let order = Self::get_order(orders, cur_order_id)?;
+				ActiveRedeemOrder::<T>::try_mutate(&asset_id, |total_order| -> DispatchResult {
+					if collection.remaining_asset_redeem > T::Amount::zero() {
+						let amount = order
+							.amount
+							.checked_add(&collection.remaining_asset_redeem)
+							.ok_or(ArithmeticError::Overflow)?;
 
-								Self::do_update_invest_order(
-									total_order,
-									&who,
-									asset_id.clone(),
-									&info,
-									order,
-									order
-										.invest
-										.checked_add(&collection.remaining_asset_invest)
-										.ok_or(ArithmeticError::Overflow)?,
-								)?;
-							}
-
-							if collection.remaining_asset_redeem > T::Amount::zero() {
-								let cur_order_id = OrderId::<T>::get(asset_id.clone());
-								let order = Self::get_order(orders, cur_order_id)?;
-
-								Self::do_update_redeem_order(
-									total_order,
-									&who,
-									asset_id.clone(),
-									&info,
-									order,
-									order
-										.redeem
-										.checked_add(&collection.remaining_asset_redeem)
-										.ok_or(ArithmeticError::Overflow)?,
-								)?;
-							}
-
-							Ok(())
-						})?;
-					}
-					CollectType::Closing => {
-						T::Accountant::transfer(
-							info.id(),
-							&asset_account,
+						Self::do_update_redeem_order(
+							total_order,
 							&who,
-							collection.remaining_asset_redeem,
+							asset_id.clone(),
+							&info,
+							order,
+							amount,
 						)?;
-						T::Tokens::transfer(
-							info.payment_currency(),
-							&asset_account,
-							&who,
-							collection.remaining_asset_invest,
-							false,
-						)?;
+
+						Self::deposit_event(Event::RedeemOrderUpdated {
+							asset_id,
+							submitted_at: last_processed_order_id,
+							who: who.clone(),
+							amount,
+						});
 					}
-				}
+					Ok(())
+				})?;
 
 				Ok((collected, collection))
 			},
 		)?;
 
-		Self::deposit_event(Event::OrdersCollected {
+		Self::deposit_event(Event::RedeemOrdersCollected {
 			asset_id,
 			who: who.clone(),
 			processed_orders: collected_ids,
@@ -649,9 +791,9 @@ where
 		let (send, recv, transfer_amount) = Self::update_order_amount(
 			who,
 			&asset_account,
-			&mut order.invest,
+			&mut order.amount,
 			amount,
-			&mut total_order.invest,
+			&mut total_order.amount,
 		)?;
 
 		T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false).map(|_| ())
@@ -669,9 +811,9 @@ where
 		let (send, recv, transfer_amount) = Self::update_order_amount(
 			who,
 			&asset_account,
-			&mut order.redeem,
+			&mut order.amount,
 			amount,
-			&mut total_order.redeem,
+			&mut total_order.amount,
 		)?;
 
 		T::Accountant::transfer(info.id(), send, recv, transfer_amount)
@@ -712,9 +854,9 @@ where
 	}
 
 	pub fn acc_payout_invest(
-		collection: &mut Collection<T::Amount>,
+		collection: &mut InvestCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, T::OrderId>,
+		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
 		collection.payout_asset_invest = collection
 			.payout_asset_invest
@@ -723,7 +865,7 @@ where
 					.price
 					.reciprocal()
 					.ok_or(Error::<T>::ZeroPriceAsset)?
-					.checked_mul_int(fulfillment.invest.mul_floor(order.invest))
+					.checked_mul_int(fulfillment.of_amount.mul_floor(order.amount))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;
@@ -732,16 +874,16 @@ where
 	}
 
 	pub fn acc_payout_redeem(
-		collection: &mut Collection<T::Amount>,
+		collection: &mut RedeemCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, T::OrderId>,
+		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
 		collection.payout_asset_redeem = collection
 			.payout_asset_redeem
 			.checked_add(
 				&fulfillment
 					.price
-					.checked_mul_int(fulfillment.redeem.mul_floor(order.redeem))
+					.checked_mul_int(fulfillment.of_amount.mul_floor(order.amount))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;
@@ -750,31 +892,44 @@ where
 	}
 
 	pub fn acc_remaining_redeem(
-		collection: &mut Collection<T::Amount>,
+		collection: &mut RedeemCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, T::OrderId>,
+		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
 		collection.remaining_asset_redeem = collection
 			.remaining_asset_redeem
-			.checked_sub(&fulfillment.redeem.mul_floor(order.redeem))
+			.checked_sub(&fulfillment.of_amount.mul_floor(order.amount))
 			.ok_or(ArithmeticError::Underflow)?;
 
 		Ok(())
 	}
 
 	pub fn acc_remaining_invest(
-		collection: &mut Collection<T::Amount>,
+		collection: &mut InvestCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, T::OrderId>,
+		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
 		collection.remaining_asset_invest = collection
 			.remaining_asset_invest
-			.checked_sub(&fulfillment.redeem.mul_floor(order.invest))
+			.checked_sub(&fulfillment.of_amount.mul_floor(order.amount))
 			.ok_or(ArithmeticError::Underflow)?;
 
 		Ok(())
 	}
+
+	fn invest_order_or_default(
+		order: &mut Option<Order<T::Amount, OrderId>>,
+	) -> &mut Order<T::Amount, OrderId> {
+		todo!()
+	}
+
+	fn redeem_order_or_default(
+		order: &mut Option<Order<T::Amount, OrderId>>,
+	) -> &mut Order<T::Amount, OrderId> {
+		todo!()
+	}
 }
+/*
 
 impl<T: Config> InvestmentManager for Pallet<T>
 where
@@ -784,7 +939,7 @@ where
 	type Error = DispatchError;
 	type AssetId = T::InvestmentId;
 	type Orders = TotalOrder<T::Amount>;
-	type OrderId = T::OrderId;
+	type OrderId = OrderId;
 	type Fulfillment = FulfillmentWithPrice<T::BalanceRatio>;
 
 	fn orders(asset_id: Self::AssetId) -> Result<(Self::OrderId, Self::Orders), Self::Error> {
@@ -896,3 +1051,5 @@ where
 		Ok(())
 	}
 }
+
+ */

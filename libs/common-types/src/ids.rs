@@ -22,7 +22,7 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 }
 
 // The TypeId impl we derive pool-accounts from
-impl<PoolId> TypeId for AssetAccount<PoolId> {
+impl<InvestmentId> TypeId for AssetAccount<InvestmentId> {
 	const TYPE_ID: [u8; 4] = *b"invs";
 }
 
