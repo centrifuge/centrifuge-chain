@@ -24,11 +24,7 @@ use crate::{self as pallet_bridge, Config as BridgePalletConfig, WeightInfo};
 
 use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
-use chainbridge::{
-	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
-	types::{ChainId, ResourceId},
-	EnsureBridge,
-};
+use chainbridge::{constants::DEFAULT_RELAYER_VOTE_THRESHOLD, types::ResourceId, EnsureBridge};
 
 use frame_support::{
 	parameter_types,
@@ -41,8 +37,6 @@ use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureSignedBy,
 };
-
-use pallet_bridge_mapping;
 
 use proofs::Hasher;
 
@@ -140,9 +134,6 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
-		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
-		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>} = 8,
-		Anchors: pallet_anchors::{Pallet, Call, Storage} = 9
 	}
 );
 
@@ -261,50 +252,24 @@ parameter_types! {
 	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
 }
 
-// Implement Centrifuge Chain non-fungible token (NFT) pallet configuration trait for the mock runtime
-impl pallet_nft::Config for MockRuntime {
-	type Event = Event;
-	type ChainId = ChainId;
-	type ResourceId = ResourceId;
-	type HashId = MockHashId;
-	type NftProofValidationFee = NftProofValidationFee;
-	type WeightInfo = ();
-}
-
-// Implement Centrifuge Chain bridge mapping configuration trait for the mock runtime
-impl pallet_bridge_mapping::Config for MockRuntime {
-	type Address = EthAddress;
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-	type WeightInfo = ();
-}
-
 impl_mock_fees_state!(
 	MockFeesState,
 	<MockRuntime as frame_system::Config>::AccountId,
 	Balance,
 	(),
-	|_key| 0
+	|_| NATIVE_TOKEN_TRANSFER_FEE
 );
-
-impl pallet_anchors::Config for MockRuntime {
-	type WeightInfo = ();
-	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
-	type CommitAnchorFeeKey = ();
-	type PreCommitDepositFeeKey = ();
-	type Currency = Balances;
-}
 
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
 	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
-	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
-	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
 impl BridgePalletConfig for MockRuntime {
 	type Event = Event;
+	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = EnsureBridge<MockRuntime>;
 	type Currency = Balances;

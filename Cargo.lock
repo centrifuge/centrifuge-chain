@@ -5753,7 +5753,6 @@ dependencies = [
  "pallet-balances",
  "pallet-bridge-mapping",
  "pallet-fees",
- "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",

@@ -68,8 +68,6 @@
 //! This pallet is tightly coupled to the following pallets:
 //! - Substrate FRAME's [`balances` pallet](https://github.com/paritytech/substrate/tree/master/frame/balances).
 //! - Centrifuge Chain [`chainbrige` pallet](https://github.com/centrifuge/chainbridge-substrate).
-//! - Centrifuge Chain [`nft` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/nft).
-//! - Centrifuge Chain [`registry` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/registry).
 //!
 //! ## References
 //! - [Substrate FRAME v2 attribute macros](https://crates.parity.io/frame_support/attr.pallet.html).
@@ -106,7 +104,7 @@ pub use pallet::*;
 
 use common_traits::fees::{Fee, Fees};
 
-use chainbridge::types::ChainId;
+use chainbridge::types::{ChainId, ResourceId};
 
 // Runtime, system and frame primitives
 use frame_support::{
@@ -160,12 +158,9 @@ pub mod pallet {
 	///
 	/// Associated types and constants are declared in this trait. If the pallet
 	/// depends on other super-traits, the latter must be added to this trait,
-	/// such as, in this case, [`pallet_nft::Config`] super-trait, for instance.
 	/// Note that [`frame_system::Config`] must always be included.
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + chainbridge::Config + pallet_balances::Config + pallet_nft::Config
-	{
+	pub trait Config: frame_system::Config + chainbridge::Config + pallet_balances::Config {
 		/// Pallet identifier.
 		///
 		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)
@@ -178,6 +173,9 @@ pub mod pallet {
 		/// that can only be called by the chainbridge pallet.
 		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 
+		/// Entity used to pay fees
+		type Fees: Fees<AccountId = Self::AccountId, Balance = BalanceOf<Self>>;
+
 		/// Currency as viewed from this pallet
 		type Currency: Currency<Self::AccountId>;
 
@@ -186,7 +184,7 @@ pub mod pallet {
 
 		// Type for native token ID.
 		#[pallet::constant]
-		type NativeTokenId: Get<<Self as pallet_nft::Config>::ResourceId>;
+		type NativeTokenId: Get<ResourceId>;
 
 		/// Key used to retrieve the fee that are charged when transferring native tokens to target chains.
 		#[pallet::constant]
@@ -205,7 +203,7 @@ pub mod pallet {
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Remark(T::Hash, T::ResourceId),
+		Remark(T::Hash, ResourceId),
 	}
 
 	// ------------------------------------------------------------------------
@@ -217,7 +215,7 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub chains: Vec<u8>,
 		pub relayers: Vec<T::AccountId>,
-		pub resources: Vec<(T::ResourceId, Vec<u8>)>,
+		pub resources: Vec<(ResourceId, Vec<u8>)>,
 		pub threshold: u32,
 	}
 
@@ -315,7 +313,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			to: T::AccountId,
 			amount: BalanceOf<T>,
-			_r_id: T::ResourceId,
+			_r_id: ResourceId,
 		) -> DispatchResultWithPostInfo {
 			let source = T::BridgeOrigin::ensure_origin(origin)?;
 			<T as pallet::Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
@@ -328,7 +326,7 @@ pub mod pallet {
 		pub fn remark(
 			origin: OriginFor<T>,
 			hash: T::Hash,
-			r_id: T::ResourceId,
+			r_id: ResourceId,
 		) -> DispatchResultWithPostInfo {
 			T::BridgeOrigin::ensure_origin(origin)?;
 			Self::deposit_event(Event::Remark(hash, r_id));
@@ -367,7 +365,7 @@ impl<T: Config> Pallet<T> {
 	fn initialize(
 		chains: &[u8],
 		relayers: &[T::AccountId],
-		resources: &Vec<(T::ResourceId, Vec<u8>)>,
+		resources: &Vec<(ResourceId, Vec<u8>)>,
 		threshold: &u32,
 	) {
 		chains.into_iter().for_each(|c| {
