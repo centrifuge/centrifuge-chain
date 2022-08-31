@@ -102,6 +102,7 @@ impl pallet_treasury::Config for Test {
 	type SpendFunds = ();
 	type MaxApprovals = MaxApprovals;
 	type WeightInfo = ();
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<u64>;
 }
 
 pub struct OneAuthor;
@@ -137,6 +138,7 @@ impl TestExternalitiesBuilder {
 		pallet_balances::GenesisConfig::<Test>::default()
 			.assimilate_storage(&mut t)
 			.unwrap();
-		t.into()
+
+		TestExternalities::new(t)
 	}
 }

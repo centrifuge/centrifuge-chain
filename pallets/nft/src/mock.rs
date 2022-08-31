@@ -22,13 +22,15 @@
 
 use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
 
+use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
+
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
 };
 use frame_support::{
 	parameter_types,
-	traits::{FindAuthor, GenesisBuild, SortedMembers},
+	traits::{FindAuthor, SortedMembers},
 	weights::Weight,
 	ConsensusEngineId, PalletId,
 };
@@ -91,8 +93,7 @@ frame_support::construct_runtime!(
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
-		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Storage},
+		Anchors: pallet_anchors::{Pallet, Call, Storage} = 7,
 	}
 );
 
@@ -205,17 +206,20 @@ impl chainbridge::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-// Implement Centrifuge Chain anchors pallet for the mock runtime
+impl_mock_fees_state!(
+	MockFeesState,
+	<MockRuntime as frame_system::Config>::AccountId,
+	Balance,
+	(),
+	|_key| 0
+);
+
 impl pallet_anchors::Config for MockRuntime {
 	type WeightInfo = ();
-}
-
-// Implement Centrifuge Chain fees pallet for the mock runtime
-impl pallet_fees::Config for MockRuntime {
+	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
+	type CommitAnchorFeeKey = ();
+	type PreCommitDepositFeeKey = ();
 	type Currency = Balances;
-	type Event = Event;
-	type FeeChangeOrigin = EnsureSignedBy<One, u64>;
-	type WeightInfo = ();
 }
 
 // Parameterize NFT pallet
@@ -257,20 +261,6 @@ impl TestExternalitiesBuilder {
 		let mut storage = frame_system::GenesisConfig::default()
 			.build_storage::<MockRuntime>()
 			.unwrap();
-
-		pallet_fees::GenesisConfig::<MockRuntime> {
-			initial_fees: vec![(
-				// anchoring state rent fee per day
-				H256::from(&[
-					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
-					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-				]),
-				// state rent 0 for tests
-				0,
-			)],
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
 
 		pallet_balances::GenesisConfig::<MockRuntime> {
 			balances: vec![(USER_A, USER_A_INITIAL_BALANCE)],

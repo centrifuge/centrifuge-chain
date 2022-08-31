@@ -22,6 +22,8 @@
 
 use crate::{self as pallet_bridge, Config as BridgePalletConfig, WeightInfo};
 
+use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
+
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
@@ -30,7 +32,7 @@ use chainbridge::{
 
 use frame_support::{
 	parameter_types,
-	traits::{Everything, FindAuthor, GenesisBuild, SortedMembers},
+	traits::{Everything, FindAuthor, SortedMembers},
 	weights::Weight,
 	ConsensusEngineId, PalletId,
 };
@@ -139,9 +141,8 @@ frame_support::construct_runtime!(
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
 		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
-		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Storage}
+		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>} = 8,
+		Anchors: pallet_anchors::{Pallet, Call, Storage} = 9
 	}
 );
 
@@ -254,14 +255,6 @@ impl chainbridge::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-// Implement Centrifuge Chain fees pallet configuration trait for the mock runtime
-impl pallet_fees::Config for MockRuntime {
-	type Currency = Balances;
-	type Event = Event;
-	type FeeChangeOrigin = EnsureSignedBy<TestUserId, u64>;
-	type WeightInfo = ();
-}
-
 // Parameterize Centrifuge Chain non-fungible token (NFT) pallet
 parameter_types! {
 	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
@@ -285,9 +278,20 @@ impl pallet_bridge_mapping::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-// Implement Centrifuge Chain anchors pallet for the mock runtime
+impl_mock_fees_state!(
+	MockFeesState,
+	<MockRuntime as frame_system::Config>::AccountId,
+	Balance,
+	(),
+	|_key| 0
+);
+
 impl pallet_anchors::Config for MockRuntime {
 	type WeightInfo = ();
+	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
+	type CommitAnchorFeeKey = ();
+	type PreCommitDepositFeeKey = ();
+	type Currency = Balances;
 }
 
 // Parameterize Centrifuge Chain bridge pallet
@@ -344,21 +348,6 @@ impl TestExternalitiesBuilder {
 				(RELAYER_A, ENDOWED_BALANCE),
 				(RELAYER_B, RELAYER_B_INITIAL_BALANCE),
 			],
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
-
-		// pre-fill fees
-		pallet_fees::GenesisConfig::<MockRuntime> {
-			initial_fees: vec![(
-				// anchoring state rent fee per day
-				H256::from(&[
-					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
-					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-				]),
-				// state rent 0 for tests
-				0,
-			)],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();

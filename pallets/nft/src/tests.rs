@@ -49,6 +49,10 @@ fn bad_origin() {
 				),
 				BadOrigin
 			);
+
+			MockFeesState::get().with(|fees| {
+				assert!(fees.borrow().burn_fees.is_empty());
+			});
 		})
 }
 
@@ -69,6 +73,10 @@ fn missing_anchor() {
 				),
 				Error::<MockRuntime>::DocumentNotAnchored
 			);
+
+			MockFeesState::get().with(|fees| {
+				assert!(fees.borrow().burn_fees.is_empty());
+			});
 		})
 }
 
@@ -106,11 +114,11 @@ fn valid_proof() {
 				0
 			));
 
-			// Account balance should be reduced (namely initial balance less validation fee)
-			let account_current_balance =
-				<pallet_balances::Pallet<MockRuntime>>::free_balance(USER_A);
-			let account_expected_balance = USER_A_INITIAL_BALANCE - NFT_PROOF_VALIDATION_FEE;
-			assert_eq!(account_current_balance, account_expected_balance);
+			MockFeesState::get().with(|fees| {
+				assert_eq!(fees.borrow().burn_fees.len(), 1);
+				assert_eq!(fees.borrow().burn_fees[0].author, USER_A);
+				assert_eq!(fees.borrow().burn_fees[0].balance, NFT_PROOF_VALIDATION_FEE);
+			});
 		})
 }
 
@@ -144,43 +152,9 @@ fn invalid_proof() {
 				),
 				Error::<MockRuntime>::InvalidProofs
 			);
-		})
-}
 
-#[test]
-fn insufficient_balance_to_mint() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let dest_id = 0;
-			let deposit_address: [u8; 20] = [0; 20];
-			let pre_image = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
-			let anchor_id =
-				(pre_image).using_encoded(<MockRuntime as frame_system::Config>::Hashing::hash);
-			let (pf, doc_root, static_proofs) = get_valid_proof();
-
-			assert_ok!(Anchors::commit(
-				Origin::signed(USER_B),
-				pre_image,
-				doc_root,
-				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
-				MILLISECS_PER_DAY + 1
-			));
-
-			assert_ok!(ChainBridge::whitelist_chain(
-				Origin::root(),
-				dest_id.clone()
-			));
-			assert_err!(
-				Nft::validate_mint(
-					Origin::signed(USER_B),
-					anchor_id,
-					deposit_address,
-					vec![pf],
-					static_proofs,
-					0
-				),
-				pallet_balances::Error::<MockRuntime>::InsufficientBalance
-			);
+			MockFeesState::get().with(|fees| {
+				assert_eq!(fees.borrow().burn_fees.len(), 0);
+			});
 		})
 }

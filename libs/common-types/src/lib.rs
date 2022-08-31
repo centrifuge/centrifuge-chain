@@ -498,3 +498,20 @@ pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),
 }
+
+/// Different stored fees keys
+#[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum FeeKey {
+	CommitAnchor,
+	PreCommitDeposit,
+	// Others keys used go here
+}
+
+/// Only needed for initializing the runtime benchmark with some value.
+#[cfg(feature = "runtime-benchmarks")]
+impl Default for FeeKey {
+	fn default() -> Self {
+		FeeKey::CommitAnchor
+	}
+}
