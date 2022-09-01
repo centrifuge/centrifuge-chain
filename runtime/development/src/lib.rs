@@ -1296,7 +1296,7 @@ parameter_types! {
 	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
 	//TODO rename xRAD to xCFG and create new mapping
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
-	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::NativeTokenTransfer;
+	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {

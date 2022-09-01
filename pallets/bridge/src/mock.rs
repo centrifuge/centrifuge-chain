@@ -35,13 +35,7 @@ use frame_system::{
 	EnsureNever, EnsureSignedBy,
 };
 
-pub use runtime_common::{
-	constants::{
-		CFG, MILLISECS_PER_DAY, NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
-		NFT_TOKEN_TRANSFER_FEE,
-	},
-	AssetInfo, Balance, EthAddress, RegistryId, TokenId,
-};
+pub use runtime_common::{constants::CFG, AssetInfo, Balance, EthAddress, RegistryId, TokenId};
 
 use sp_core::{blake2_128, H256};
 
@@ -60,6 +54,7 @@ use sp_runtime::{
 type UncheckedExtrinsic = MockUncheckedExtrinsic<MockRuntime>;
 type Block = MockBlock<MockRuntime>;
 
+pub(crate) const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
 pub(crate) const TEST_CHAIN_ID: u8 = 5;
 pub(crate) const TEST_USER_ID: u64 = 0x1;
 pub(crate) const RELAYER_A: u64 = 0x2;

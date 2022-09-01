@@ -806,7 +806,7 @@ impl pallet_nft::Config for Runtime {
 parameter_types! {
 	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID));
-	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::NativeTokenTransfer;
+	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {
