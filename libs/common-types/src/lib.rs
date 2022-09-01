@@ -14,7 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 ///! Common-types of the Centrifuge chain.
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, Encode};
 use common_traits::Properties;
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
@@ -531,7 +531,6 @@ pub struct XcmMetadata {
 	/// When `None`, the `default_per_second` will be used instead.
 	pub fee_per_second: Option<Balance>,
 }
-
 
 /// Different stored fees keys
 #[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]

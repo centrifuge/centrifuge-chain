@@ -1,9 +1,7 @@
 use crate::{self as pallet_pools_registry, Config};
 use common_types::{CurrencyId, Moment};
-use common_types::{PermissionRoles, PermissionScope, Role, TimeProvider};
 use frame_support::traits::SortedMembers;
 use frame_support::{parameter_types, traits::Hooks};
-use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -68,17 +66,6 @@ impl SortedMembers<u64> for One {
 	}
 }
 
-impl pallet_permissions::Config for Test {
-	type Event = Event;
-	type Scope = PermissionScope<u64, CurrencyId>;
-	type Role = Role<TrancheId, Moment>;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
-	type Editors = frame_support::traits::Everything;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type MaxRolesPerScope = MaxRoles;
-	type WeightInfo = ();
-}
-
 pub type Balance = u128;
 
 parameter_types! {
@@ -95,7 +82,7 @@ impl Config for Test {
 	type Metadata = ();
 	type TrancheId = TrancheId;
 	type MaxSizeMetadata = MaxSizeMetadata;
-	type Permission = Permissions;
+	type Permission = PermissionsMock;
 	type WeightInfo = ();
 }
 
@@ -110,9 +97,40 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		PoolsRegistry: pallet_pools_registry::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 	}
 );
+
+type AccountId = u64;
+type PoolId = u64;
+
+pub struct PermissionsMock {}
+
+impl common_traits::Permissions<AccountId> for PermissionsMock {
+	type Scope = common_types::PermissionScope<PoolId, CurrencyId>;
+	type Role = common_types::Role;
+	type Error = sp_runtime::DispatchError;
+	type Ok = ();
+
+	fn has(_scope: Self::Scope, _who: AccountId, _role: Self::Role) -> bool {
+		true
+	}
+
+	fn add(
+		_scope: Self::Scope,
+		_who: AccountId,
+		_role: Self::Role,
+	) -> Result<Self::Ok, Self::Error> {
+		todo!()
+	}
+
+	fn remove(
+		_scope: Self::Scope,
+		_who: AccountId,
+		_role: Self::Role,
+	) -> Result<Self::Ok, Self::Error> {
+		todo!()
+	}
+}
 
 // Test externalities builder
 //

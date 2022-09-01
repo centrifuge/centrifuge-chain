@@ -40,7 +40,7 @@ members = [
 	"pallets/nft",
 	"pallets/nft-sales",
 	"pallets/pools",
-#	"pallets/pools-registry",
+	"pallets/pools-registry",
 	"pallets/loans",
 	"pallets/permissions",
 	"pallets/interest-accrual",

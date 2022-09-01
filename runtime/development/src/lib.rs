@@ -412,17 +412,6 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Keystore(pallet_keystore::Call::add_keys { .. })
 					| Call::Keystore(pallet_keystore::Call::revoke_keys { .. })
 			),
-			ProxyType::NFTMint => matches!(
-				c,
-				Call::Uniques(pallet_uniques::Call::mint { .. })
-					// | Call::Uniques(pallet_uniques::Call::set_metadata { .. })
-					| Call::Uniques(pallet_uniques::Call::set_attribute { .. })
-			),
-			ProxyType::NFTTransfer => {
-				matches!(c, Call::Uniques(pallet_uniques::Call::transfer { .. }))
-			}
-			ProxyType::NFTManagement => matches!(c, Call::Uniques(..)),
-			ProxyType::AnchorManagement => matches!(c, Call::Anchor(..)),
 			ProxyType::PodOperation => matches!(c, Call::Uniques(..) | Call::Anchor(..)),
 			// This type of proxy is used only for authenticating with the centrifuge POD,
 			// having it here also allows us to validate authentication with on-chain data.
@@ -778,7 +767,6 @@ impl pallet_treasury::Config for Runtime {
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
 	type SpendFunds = ();
 	type MaxApprovals = MaxApprovals;
-	type SpendOrigin = ();
 }
 
 // our pallets
