@@ -1,9 +1,8 @@
 use crate::{self as pallet_pools_registry, Config};
-use codec::Encode;
 use common_types::{CurrencyId, Moment};
 use common_types::{PermissionRoles, PermissionScope, Role, TimeProvider};
 use frame_support::traits::SortedMembers;
-use frame_support::{parameter_types, traits::Hooks, Blake2_128, StorageHasher};
+use frame_support::{parameter_types, traits::Hooks};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{
@@ -82,17 +81,10 @@ impl pallet_permissions::Config for Test {
 
 pub type Balance = u128;
 
-fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
-	let hash_input = (tranche, pool).encode();
-	Blake2_128::hash(&hash_input)
-}
-
 parameter_types! {
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
-	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
-	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
 }
 
 impl Config for Test {

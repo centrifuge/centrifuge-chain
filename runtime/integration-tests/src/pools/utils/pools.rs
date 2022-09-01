@@ -24,10 +24,12 @@ use crate::pools::utils::{
 use codec::Encode;
 use common_traits::Permissions as PermissionsT;
 use common_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
-use frame_support::{Blake2_128, StorageHasher};
+use development_runtime::{MaxTokenNameLength, MaxTokenSymbolLength};
+use frame_support::{Blake2_128, BoundedVec, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
+use pallet_pools_registry::TrancheMetadata;
 use runtime_common::{AccountId, Balance, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
@@ -136,7 +138,7 @@ pub fn pool_setup_calls(
 	pool_id: PoolId,
 	currency: CurrencyId,
 	max_reserve: Balance,
-	tranche_input: Vec<TrancheInput<Rate>>,
+	tranche_input: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 	nfts: &mut NftManager,
 ) -> Vec<Call> {
 	let mut calls = Vec::new();
@@ -166,7 +168,7 @@ pub fn create_tranche_input(
 	rates: Vec<Option<u64>>,
 	risk_buffs: Vec<Option<u64>>,
 	seniorities: Option<Vec<Option<u32>>>,
-) -> Vec<TrancheInput<Rate>> {
+) -> Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>> {
 	let interest_rates = rates
 		.into_iter()
 		.map(|rate| {
@@ -201,15 +203,26 @@ pub fn create_tranche_input(
 		.zip(seniority)
 		.map(|((rate, buff), seniority)| {
 			if let (Some(interest_rate_per_sec), Some(min_risk_buffer)) = (rate, buff) {
-				(
-					TrancheType::NonResidual {
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
 						interest_rate_per_sec,
 						min_risk_buffer,
 					},
 					seniority,
-				)
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				}
 			} else {
-				(TrancheType::Residual, seniority)
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					},
+				}
 			}
 		})
 		.collect()
@@ -331,12 +344,12 @@ pub fn create_pool_call(
 	pool_id: PoolId,
 	currency: CurrencyId,
 	max_reserve: Balance,
-	tranches: Vec<TrancheInput<Rate>>,
+	tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 ) -> Call {
 	Call::Pools(PoolsCall::create {
 		admin,
 		pool_id,
-		tranches,
+		tranche_inputs,
 		currency,
 		max_reserve,
 		metadata: None,

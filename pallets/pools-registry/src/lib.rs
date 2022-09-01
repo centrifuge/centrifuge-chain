@@ -18,7 +18,7 @@ use frame_system::pallet_prelude::*;
 use polkadot_parachain::primitives::Id as ParachainId;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin, Zero},
-	FixedPointOperand,
+	FixedPointOperand, WeakBoundedVec,
 };
 use xcm::{
 	latest::MultiLocation,
@@ -214,7 +214,7 @@ where
 	CurrencyId: Encode,
 	CustomMetadata: Parameter + Member + TypeInfo,
 {
-	let tranche_id = currency.encode();
+	let tranche_id = WeakBoundedVec::<u8, ConstU32<32>>::force_from(currency.encode(), None);
 
 	AssetMetadata {
 		decimals,

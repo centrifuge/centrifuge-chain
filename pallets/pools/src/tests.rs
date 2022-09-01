@@ -10,7 +10,7 @@ use rand::Rng;
 use runtime_common::Rate;
 use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
-use sp_runtime::{Perquintill, TokenError};
+use sp_runtime::{Perquintill, TokenError, WeakBoundedVec};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralKey, Parachain, X2},
@@ -2962,6 +2962,8 @@ fn create_tranche_token_metadata() {
 
 		let pool = Pool::<Test>::get(3).unwrap();
 		let tranche_currency = pool.tranches.tranches[0].currency;
+		let tranche_id =
+			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 
 		assert_eq!(
 			orml_asset_registry::Pallet::<Test>::metadata(&tranche_currency).unwrap(),
@@ -2972,10 +2974,7 @@ fn create_tranche_token_metadata() {
 				existential_deposit: 0,
 				location: Some(VersionedMultiLocation::V1(MultiLocation {
 					parents: 1,
-					interior: X2(
-						Parachain(ParachainId::get()),
-						GeneralKey(tranche_currency.encode())
-					),
+					interior: X2(Parachain(ParachainId::get()), GeneralKey(tranche_id)),
 				})),
 				additional: CustomMetadata::default(),
 			}

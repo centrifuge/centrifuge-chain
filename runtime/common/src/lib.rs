@@ -134,9 +134,6 @@ pub mod types {
 	/// Maximum allowed length of a tranche symbol name
 	pub type MaxTokenSymbolLength = u32;
 
-	/// Amount with 18 precision fixed point decimal
-	pub type Amount = crate::fixed_point::Amount;
-
 	/// A representation of CollectionId for Uniques
 	pub type CollectionId = u64;
 
