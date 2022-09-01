@@ -160,7 +160,7 @@ pub mod pallet {
 	/// depends on other super-traits, the latter must be added to this trait,
 	/// Note that [`frame_system::Config`] must always be included.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + chainbridge::Config + pallet_balances::Config {
+	pub trait Config: frame_system::Config + chainbridge::Config {
 		/// Pallet identifier.
 		///
 		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)

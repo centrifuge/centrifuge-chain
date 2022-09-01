@@ -20,9 +20,10 @@
 use crate::{
 	self as pallet_bridge,
 	mock::{
-		helpers::*, Balances, Bridge, ChainBridge, Event, MockFeesState, MockRuntime,
-		NativeTokenId, Origin, ProposalLifetime, TestExternalitiesBuilder, ENDOWED_BALANCE,
-		RELAYER_A, RELAYER_B, RELAYER_B_INITIAL_BALANCE, RELAYER_C, TEST_RELAYER_VOTE_THRESHOLD,
+		helpers::*, Balances, Bridge, ChainBridge, Event, MockRuntime, NativeTokenId, Origin,
+		ProposalLifetime, System, TestExternalitiesBuilder, ENDOWED_BALANCE,
+		NATIVE_TOKEN_TRANSFER_FEE, RELAYER_A, RELAYER_B, RELAYER_B_INITIAL_BALANCE, RELAYER_C,
+		TEST_RELAYER_VOTE_THRESHOLD,
 	},
 };
 
@@ -33,7 +34,7 @@ use frame_support::{
 	traits::{LockableCurrency, WithdrawReasons},
 };
 
-use runtime_common::{CFG, NATIVE_TOKEN_TRANSFER_FEE};
+use runtime_common::CFG;
 
 use sp_core::{blake2_256, H256};
 
@@ -102,21 +103,12 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				pallet_balances::Error::<MockRuntime>::InsufficientBalance
+				pallet_balances::Error::<MockRuntime>::LiquidityRestrictions
 			);
 
 			Balances::remove_lock(*b"testlock", &RELAYER_A);
 			account_current_balance = Balances::free_balance(RELAYER_A);
 			assert_eq!(account_current_balance, ENDOWED_BALANCE);
-
-			// Account balance of relayer A should be tantamount to the initial endowed value
-			account_current_balance = Balances::free_balance(RELAYER_A);
-			assert_eq!(account_current_balance, ENDOWED_BALANCE);
-
-			// Check that all previous transfer_native() calls did not burn any fee.
-			MockFeesState::get().with(|fees| {
-				assert!(fees.borrow().burn_fees.is_empty());
-			});
 
 			// Successful transfer with relayer A account, which has enough funds
 			// for the requested amount plus transfer fees
@@ -135,16 +127,15 @@ fn transfer_native() {
 				recipient,
 			));
 
-			MockFeesState::get().with(|fees| {
-				assert_eq!(fees.borrow().burn_fees.len(), 1);
-				assert_eq!(fees.borrow().burn_fees[0].author, RELAYER_A);
-				assert_eq!(
-					fees.borrow().burn_fees[0].balance,
-					NATIVE_TOKEN_TRANSFER_FEE
-				);
-			});
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Withdraw {
+				who: RELAYER_A,
+				amount: NATIVE_TOKEN_TRANSFER_FEE,
+			}));
 
-			assert_eq!(ENDOWED_BALANCE - amount, Balances::free_balance(RELAYER_A));
+			assert_eq!(
+				ENDOWED_BALANCE - (amount + NATIVE_TOKEN_TRANSFER_FEE),
+				Balances::free_balance(RELAYER_A)
+			);
 		})
 }
 
