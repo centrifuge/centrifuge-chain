@@ -13,7 +13,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common_traits::{InvestmentAccountant, InvestmentManager, InvestmentProperties, PreConditions};
+use common_traits::{
+	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
+};
 use common_types::{FulfillmentWithPrice, InvestmentAccount, TotalOrder};
 use frame_support::pallet_prelude::*;
 use frame_support::{
@@ -422,59 +424,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(
-				T::PreConditions::check(OrderType::Investment {
-					who: who.clone(),
-					investment_id,
-					amount
-				}),
-				BadOrigin
-			);
-
-			let info =
-				T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-			let cur_order_id = ActiveInvestOrder::<T>::try_mutate(
-				&investment_id,
-				|total_order| -> Result<OrderId, DispatchError> {
-					InvestOrders::<T>::try_mutate(
-						&who,
-						&investment_id,
-						|order| -> Result<OrderId, DispatchError> {
-							let mut order =
-								Pallet::<T>::invest_order_or_default(investment_id, order);
-							let cur_order_id = InvestOrderId::<T>::get(investment_id);
-
-							// Updating an order is only allowed if it has not yet been submitted
-							// to processing
-							ensure!(
-								order.submitted_at == cur_order_id,
-								Error::<T>::CollectRequired
-							);
-
-							Self::do_update_invest_order(
-								total_order,
-								&who,
-								investment_id,
-								info,
-								order,
-								amount,
-							)?;
-
-							order.submitted_at = cur_order_id;
-
-							Ok(cur_order_id)
-						},
-					)
-				},
-			)?;
-
-			Self::deposit_event(Event::InvestOrderUpdated {
-				investment_id,
-				submitted_at: cur_order_id,
-				who,
-				amount,
-			});
-			Ok(())
+			Pallet::<T>::do_update_investment(who, investment_id, amount)
 		}
 
 		/// Update an order to redeem from a given investment.
@@ -493,58 +443,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(
-				T::PreConditions::check(OrderType::Redemption {
-					who: who.clone(),
-					investment_id,
-					amount
-				}),
-				BadOrigin
-			);
-
-			let info =
-				T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-			let cur_order_id = ActiveRedeemOrder::<T>::try_mutate(
-				&investment_id,
-				|total_order| -> Result<OrderId, DispatchError> {
-					RedeemOrders::<T>::try_mutate(
-						&who,
-						&investment_id,
-						|order| -> Result<OrderId, DispatchError> {
-							let mut order =
-								Pallet::<T>::redeem_order_or_default(investment_id, order);
-							let cur_order_id = RedeemOrderId::<T>::get(investment_id);
-
-							// Updating an order is only allowed if it has not yet been submitted
-							// to processing
-							ensure!(
-								order.submitted_at == cur_order_id,
-								Error::<T>::CollectRequired
-							);
-
-							Self::do_update_redeem_order(
-								total_order,
-								&who,
-								investment_id,
-								info,
-								order,
-								amount,
-							)?;
-
-							order.submitted_at = cur_order_id;
-
-							Ok(cur_order_id)
-						},
-					)
-				},
-			)?;
-			Self::deposit_event(Event::RedeemOrderUpdated {
-				investment_id,
-				submitted_at: cur_order_id,
-				who,
-				amount,
-			});
-			Ok(())
+			Pallet::<T>::do_update_redemption(who, investment_id, amount)
 		}
 
 		/// Collect the results of a users orders for the given investment.
@@ -638,6 +537,121 @@ where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
+	pub(crate) fn do_update_investment(
+		who: T::AccountId,
+		investment_id: T::InvestmentId,
+		amount: T::Amount,
+	) -> DispatchResult {
+		ensure!(
+			T::PreConditions::check(OrderType::Investment {
+				who: who.clone(),
+				investment_id,
+				amount
+			}),
+			BadOrigin
+		);
+
+		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		let cur_order_id = ActiveInvestOrder::<T>::try_mutate(
+			&investment_id,
+			|total_order| -> Result<OrderId, DispatchError> {
+				InvestOrders::<T>::try_mutate(
+					&who,
+					&investment_id,
+					|order| -> Result<OrderId, DispatchError> {
+						let mut order = Pallet::<T>::invest_order_or_default(investment_id, order);
+						let cur_order_id = InvestOrderId::<T>::get(investment_id);
+
+						// Updating an order is only allowed if it has not yet been submitted
+						// to processing
+						ensure!(
+							order.submitted_at == cur_order_id,
+							Error::<T>::CollectRequired
+						);
+
+						Self::do_update_invest_order(
+							total_order,
+							&who,
+							investment_id,
+							info,
+							order,
+							amount,
+						)?;
+
+						order.submitted_at = cur_order_id;
+
+						Ok(cur_order_id)
+					},
+				)
+			},
+		)?;
+
+		Self::deposit_event(Event::InvestOrderUpdated {
+			investment_id,
+			submitted_at: cur_order_id,
+			who,
+			amount,
+		});
+		Ok(())
+	}
+
+	pub(crate) fn do_update_redemption(
+		who: T::AccountId,
+		investment_id: T::InvestmentId,
+		amount: T::Amount,
+	) -> DispatchResult {
+		ensure!(
+			T::PreConditions::check(OrderType::Redemption {
+				who: who.clone(),
+				investment_id,
+				amount
+			}),
+			BadOrigin
+		);
+
+		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
+		let cur_order_id = ActiveRedeemOrder::<T>::try_mutate(
+			&investment_id,
+			|total_order| -> Result<OrderId, DispatchError> {
+				RedeemOrders::<T>::try_mutate(
+					&who,
+					&investment_id,
+					|order| -> Result<OrderId, DispatchError> {
+						let mut order = Pallet::<T>::redeem_order_or_default(investment_id, order);
+						let cur_order_id = RedeemOrderId::<T>::get(investment_id);
+
+						// Updating an order is only allowed if it has not yet been submitted
+						// to processing
+						ensure!(
+							order.submitted_at == cur_order_id,
+							Error::<T>::CollectRequired
+						);
+
+						Self::do_update_redeem_order(
+							total_order,
+							&who,
+							investment_id,
+							info,
+							order,
+							amount,
+						)?;
+
+						order.submitted_at = cur_order_id;
+
+						Ok(cur_order_id)
+					},
+				)
+			},
+		)?;
+		Self::deposit_event(Event::RedeemOrderUpdated {
+			investment_id,
+			submitted_at: cur_order_id,
+			who,
+			amount,
+		});
+		Ok(())
+	}
+
 	pub(crate) fn do_collect_both(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
@@ -1013,7 +1027,55 @@ where
 	}
 }
 
-impl<T: Config> InvestmentManager for Pallet<T>
+impl<T: Config> Investment<T::AccountId> for Pallet<T>
+where
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+{
+	type Error = DispatchError;
+	type InvestmentId = T::InvestmentId;
+	type Amount = T::Amount;
+
+	fn update_investment(
+		who: &T::AccountId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error> {
+		Pallet::<T>::do_update_investment(who.clone(), investment_id, amount)
+	}
+
+	fn investment(
+		who: &T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error> {
+		if let Some(order) = InvestOrders::<T>::get(&who, investment_id) {
+			Ok(order.amount)
+		} else {
+			Ok(Zero::zero())
+		}
+	}
+
+	fn update_redemption(
+		who: &T::AccountId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error> {
+		Pallet::<T>::do_update_redemption(who.clone(), investment_id, amount)
+	}
+
+	fn redemption(
+		who: &T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error> {
+		if let Some(order) = RedeemOrders::<T>::get(&who, investment_id) {
+			Ok(order.amount)
+		} else {
+			Ok(Zero::zero())
+		}
+	}
+}
+
+impl<T: Config> OrderManager for Pallet<T>
 where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,

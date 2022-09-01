@@ -297,11 +297,53 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
 
+/// A trait, when implemented allows to invest into
+/// investment classes
+pub trait Investment<AccountId> {
+	type Error;
+	type InvestmentId;
+	type Amount;
+
+	/// Updates the current investment amount of who into the
+	/// investment class to amount.
+	/// Meaning: if amount < previous investment, then investment
+	/// will be reduced, and increases in the opposite case.
+	fn update_investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Returns, if possible, the current investment amount of who into the given investment
+	/// class
+	fn investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error>;
+
+	/// Updates the current redemption amount of who into the
+	/// investment class to amount.
+	/// Meaning: if amount < previous redemption, then redemption
+	/// will be reduced, and increases in the opposite case.
+	fn update_redemption(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Returns, if possible, the current redemption amount of who into the given investment
+	/// class
+	fn redemption(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error>;
+}
+
 /// A trait, when implemented must take care of
 /// collecting orders (invest & redeem) for a given investment class.
 /// When being asked it must return the current orders and
 /// when being singled about a fulfillment, it must act accordingly.
-pub trait InvestmentManager {
+pub trait OrderManager {
 	type Error;
 	type InvestmentId;
 	type Orders;
