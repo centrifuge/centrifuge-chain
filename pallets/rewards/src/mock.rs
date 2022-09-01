@@ -52,6 +52,8 @@ impl system::Config for Test {
 
 impl pallet_rewards::Config for Test {
 	type Event = Event;
+	type BlockPerEpoch = ConstU64<10>;
+	type Balance = u64;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

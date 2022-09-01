@@ -8,17 +8,30 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+//#[cfg(feature = "runtime-benchmarks")]
+//mod benchmarking;
+
+use frame_support::pallet_prelude::*;
+
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct EpochDetails<BlockNumber, Balance> {
+	ends_on: BlockNumber,
+	total_reward: Balance,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
+	use super::*;
+
+	use frame_support::traits::tokens::Balance;
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type BlockPerEpoch: Get<Self::BlockNumber>;
+		type Balance: Balance + MaxEncodedLen;
 	}
 
 	#[pallet::pallet]
@@ -26,46 +39,51 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	#[pallet::getter(fn something)]
-	pub type Something<T> = StorageValue<_, u32>;
+	pub type ActiveEpoch<T: Config> = StorageValue<_, EpochDetails<T::BlockNumber, T::Balance>>;
+
+	#[pallet::storage]
+	pub type NextTotalReward<T: Config> = StorageValue<_, T::Balance, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {
-		SomethingStored(u32, T::AccountId),
-	}
+	pub enum Event<T> {}
 
 	#[pallet::error]
-	pub enum Error<T> {
-		NoneValue,
-		StorageOverflow,
+	pub enum Error<T> {}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(current_block: T::BlockNumber) -> Weight {
+			if let Some(active_epoch) = ActiveEpoch::<T>::get() {
+				if active_epoch.ends_on != current_block {
+					return 0; //FIXME
+				}
+			}
+
+			ActiveEpoch::<T>::put(EpochDetails {
+				ends_on: current_block + T::BlockPerEpoch::get(),
+				total_reward: NextTotalReward::<T>::get(),
+			});
+
+			0 //FIXME
+		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			<Something<T>>::put(something);
-
-			Self::deposit_event(Event::SomethingStored(something, who));
-
-			Ok(())
+		#[pallet::weight(10_000)]
+		pub fn stake(origin: OriginFor<T>) -> DispatchResult {
+			todo!()
 		}
 
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+		#[pallet::weight(10_000)]
+		pub fn unstake(origin: OriginFor<T>) -> DispatchResult {
+			todo!()
+		}
 
-			match <Something<T>>::get() {
-				None => return Err(Error::<T>::NoneValue.into()),
-				Some(old) => {
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					<Something<T>>::put(new);
-					Ok(())
-				}
-			}
+		#[pallet::weight(10_000)]
+		pub fn claim(origin: OriginFor<T>) -> DispatchResult {
+			todo!()
 		}
 	}
 }
