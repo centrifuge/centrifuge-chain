@@ -434,7 +434,8 @@ pub mod pallet {
 						&who,
 						&investment_id,
 						|order| -> Result<OrderId, DispatchError> {
-							let mut order = Pallet::<T>::invest_order_or_default(order);
+							let mut order =
+								Pallet::<T>::invest_order_or_default(investment_id, order);
 							let cur_order_id = InvestOrderId::<T>::get(investment_id);
 
 							// Updating an order is only allowed if it has not yet been submitted
@@ -504,7 +505,8 @@ pub mod pallet {
 						&who,
 						&investment_id,
 						|order| -> Result<OrderId, DispatchError> {
-							let mut order = Pallet::<T>::redeem_order_or_default(order);
+							let mut order =
+								Pallet::<T>::redeem_order_or_default(investment_id, order);
 							let cur_order_id = RedeemOrderId::<T>::get(investment_id);
 
 							// Updating an order is only allowed if it has not yet been submitted
@@ -922,15 +924,35 @@ where
 	}
 
 	fn invest_order_or_default(
+		investment_id: T::InvestmentId,
 		order: &mut Option<Order<T::Amount, OrderId>>,
 	) -> &mut Order<T::Amount, OrderId> {
-		todo!()
+		if order.is_none() {
+			let mut new_order = Some(Order {
+				amount: T::Amount::zero(),
+				submitted_at: InvestOrderId::<T>::get(investment_id),
+			});
+
+			sp_std::mem::swap(order, &mut new_order);
+		}
+
+		order.as_mut().expect("Order is Some(). qed.")
 	}
 
 	fn redeem_order_or_default(
+		investment_id: T::InvestmentId,
 		order: &mut Option<Order<T::Amount, OrderId>>,
 	) -> &mut Order<T::Amount, OrderId> {
-		todo!()
+		if order.is_none() {
+			let mut new_order = Some(Order {
+				amount: T::Amount::zero(),
+				submitted_at: RedeemOrderId::<T>::get(investment_id),
+			});
+
+			sp_std::mem::swap(order, &mut new_order);
+		}
+
+		order.as_mut().expect("Order is Some(). qed.")
 	}
 }
 
