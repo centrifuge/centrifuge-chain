@@ -1093,6 +1093,10 @@ where
 					.ok_or(Error::<T>::OrderNotInProcessing)?;
 
 				let invest_amount = fulfillment.of_amount.mul_floor(orders.amount);
+				let remaining_invest_amount = orders
+					.amount
+					.checked_sub(&invest_amount)
+					.ok_or(ArithmeticError::Underflow)?;
 				let investment_account =
 					InvestmentAccount { investment_id }.into_account_truncating();
 				let info = T::Accountant::info(investment_id)?;
@@ -1118,6 +1122,19 @@ where
 				T::Accountant::deposit(&investment_account, info.id(), amount_of_investment_units)?;
 
 				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
+
+				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
+				ActiveInvestOrder::<T>::try_mutate(
+					investment_id,
+					|total_orders| -> DispatchResult {
+						total_orders.amount = total_orders
+							.amount
+							.checked_add(&remaining_invest_amount)
+							.ok_or(ArithmeticError::Overflow)?;
+
+						Ok(())
+					},
+				)?;
 
 				// Removing the order from its processing state. We actually do not need it anymore as from now forward
 				// we only need the per-user orders.
@@ -1158,6 +1175,10 @@ where
 						.checked_mul_int(orders.amount)
 						.ok_or(ArithmeticError::Overflow)?,
 				);
+				let remaining_redeem_amount = orders
+					.amount
+					.checked_sub(&redeem_amount)
+					.ok_or(ArithmeticError::Underflow)?;
 				let investment_account = InvestmentAccount {
 					investment_id: investment_id.clone(),
 				}
@@ -1186,11 +1207,24 @@ where
 					amount_of_investment_units,
 				)?;
 
-				ClearedInvestOrders::<T>::insert(
+				ClearedRedeemOrders::<T>::insert(
 					investment_id.clone(),
 					order_id,
 					fulfillment.clone(),
 				);
+
+				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
+				ActiveRedeemOrder::<T>::try_mutate(
+					investment_id,
+					|total_orders| -> DispatchResult {
+						total_orders.amount = total_orders
+							.amount
+							.checked_add(&remaining_redeem_amount)
+							.ok_or(ArithmeticError::Overflow)?;
+
+						Ok(())
+					},
+				)?;
 
 				// Removing the order from its processing state. We actually do not need it anymore as from now forward
 				// we only need the per-user orders.
