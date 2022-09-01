@@ -21,7 +21,7 @@ fn set_metadata() {
 			.expect("Cannot set permissions");
 
 			assert_ok!(PoolsRegistry::set_metadata(
-				Origin::signed(pool_admin),
+				Origin::signed(pool_owner),
 				pool_id,
 				"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
 					.as_bytes()

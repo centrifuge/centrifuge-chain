@@ -6383,29 +6383,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-pools-registry"
-version = "1.0.0"
-dependencies = [
- "common-traits",
- "common-types",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "orml-asset-registry",
- "pallet-permissions",
- "pallet-timestamp",
- "parity-scale-codec",
- "polkadot-parachain",
- "scale-info",
- "serde",
- "sp-core 6.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
- "sp-io",
- "sp-runtime",
- "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26)",
- "xcm",
-]
-
-[[package]]
 name = "pallet-preimage"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26#e8a7d161f39db70cb27fdad6c6e215cf493ebc3b"
