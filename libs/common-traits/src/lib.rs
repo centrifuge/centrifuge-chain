@@ -307,9 +307,11 @@ pub trait InvestmentManager {
 	fn invest_orders(
 		asset_id: Self::InvestmentId,
 	) -> Result<(Self::OrderId, Self::Orders), Self::Error>;
+
 	fn redeem_orders(
 		asset_id: Self::InvestmentId,
 	) -> Result<(Self::OrderId, Self::Orders), Self::Error>;
+
 	fn invest_fulfillment(
 		order_id: Self::OrderId,
 		asset_id: Self::InvestmentId,

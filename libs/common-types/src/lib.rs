@@ -503,26 +503,26 @@ pub enum Adjustment<Amount> {
 
 /// A representation of a investment identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct AssetAccount<AssetId> {
-	pub asset_id: AssetId,
+pub struct InvestmentAccount<InvestmentId> {
+	pub investment_id: InvestmentId,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct AssetInfo<AccountId, Currency, AssetId> {
+pub struct InvestmentInfo<AccountId, Currency, InvestmentId> {
 	pub owner: AccountId,
-	pub id: AssetId,
+	pub id: InvestmentId,
 	pub payment_currency: Currency,
 }
 
-impl<AccountId, Currency, AssetId> InvestmentProperties<AccountId>
-	for AssetInfo<AccountId, Currency, AssetId>
+impl<AccountId, Currency, InvestmentId> InvestmentProperties<AccountId>
+	for InvestmentInfo<AccountId, Currency, InvestmentId>
 where
 	AccountId: Clone,
 	Currency: Clone,
-	AssetId: Clone,
+	InvestmentId: Clone,
 {
 	type Currency = Currency;
-	type Id = AssetId;
+	type Id = InvestmentId;
 
 	fn owner(&self) -> AccountId {
 		self.owner.clone()
