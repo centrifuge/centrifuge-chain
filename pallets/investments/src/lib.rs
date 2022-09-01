@@ -278,25 +278,13 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_in_processing_invest_order)]
-	pub type InProcessingInvestOrders<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::InvestmentId,
-		Twox64Concat,
-		OrderId,
-		TotalOrder<T::Amount>,
-	>;
+	pub type InProcessingInvestOrders<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_in_processing_redeem_order)]
-	pub type InProcessingRedeemOrders<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::InvestmentId,
-		Twox64Concat,
-		OrderId,
-		TotalOrder<T::Amount>,
-	>;
+	pub type InProcessingRedeemOrders<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn cleared_invest_order)]
@@ -401,11 +389,14 @@ pub mod pallet {
 		ZeroPricedInvestment,
 		/// Order is still active and can not be processed further
 		OrderNotInProcessing,
+		/// Order is not yet cleared and must be processed first
+		/// before requesting new orders is allowed
+		OrderInProcessing,
 		/// Update of order was not a new order
 		NoNewOrder,
-		///
+		/// User has currently no invest orders active and can not collect
 		NoActiveInvestOrder,
-		///
+		/// User has currently no redeem orders active and can not collect
 		NoActiveRedeemOrder,
 	}
 
@@ -1030,64 +1021,109 @@ where
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
 	type Orders = TotalOrder<T::Amount>;
-	type OrderId = OrderId;
 	type Fulfillment = FulfillmentWithPrice<T::BalanceRatio>;
 
-	fn invest_orders(
-		investment_id: Self::InvestmentId,
-	) -> Result<(Self::OrderId, Self::Orders), Self::Error> {
-		let order = ActiveInvestOrder::<T>::get(&investment_id);
-		let order_id = InvestOrderId::<T>::get(&investment_id);
-
-		InProcessingInvestOrders::<T>::insert(&investment_id, &order_id, order.clone());
-		InvestOrderId::<T>::insert(
+	fn invest_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
+		let total_orders = ActiveInvestOrder::<T>::try_mutate(
 			&investment_id,
-			&order_id
-				.checked_add(One::one())
-				.ok_or(ArithmeticError::Overflow)?,
-		);
+			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
+				InProcessingInvestOrders::<T>::try_mutate(
+					&investment_id,
+					|in_processing_orders| -> DispatchResult {
+						ensure!(
+							in_processing_orders.is_none(),
+							Error::<T>::OrderInProcessing
+						);
+
+						*in_processing_orders = Some(orders.clone());
+
+						Ok(())
+					},
+				)?;
+
+				let mut total_orders = TotalOrder::default();
+				sp_std::mem::swap(orders, &mut total_orders);
+
+				Ok(total_orders)
+			},
+		)?;
+
+		let order_id = InvestOrderId::<T>::try_mutate(
+			&investment_id,
+			|order_id| -> Result<OrderId, DispatchError> {
+				let cur_order_id = *order_id;
+
+				*order_id = order_id
+					.checked_add(One::one())
+					.ok_or(ArithmeticError::Overflow)?;
+
+				Ok(cur_order_id)
+			},
+		)?;
 
 		Self::deposit_event(Event::InvestOrderInProcessing {
 			investment_id,
 			order_id,
-			total_order: order.clone(),
+			total_order: total_orders.clone(),
 		});
 
-		Ok((order_id, order))
+		Ok(total_orders)
 	}
 
-	fn redeem_orders(
-		investment_id: Self::InvestmentId,
-	) -> Result<(Self::OrderId, Self::Orders), Self::Error> {
-		let order = ActiveRedeemOrder::<T>::get(&investment_id);
-		let order_id = RedeemOrderId::<T>::get(&investment_id);
-
-		InProcessingRedeemOrders::<T>::insert(&investment_id, &order_id, order.clone());
-		RedeemOrderId::<T>::insert(
+	fn redeem_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
+		let total_orders = ActiveRedeemOrder::<T>::try_mutate(
 			&investment_id,
-			&order_id
-				.checked_add(One::one())
-				.ok_or(ArithmeticError::Overflow)?,
-		);
+			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
+				InProcessingRedeemOrders::<T>::try_mutate(
+					&investment_id,
+					|in_processing_orders| -> DispatchResult {
+						ensure!(
+							in_processing_orders.is_none(),
+							Error::<T>::OrderInProcessing
+						);
+
+						*in_processing_orders = Some(orders.clone());
+
+						Ok(())
+					},
+				)?;
+
+				let mut total_orders = TotalOrder::default();
+				sp_std::mem::swap(orders, &mut total_orders);
+
+				Ok(total_orders)
+			},
+		)?;
+
+		let order_id = RedeemOrderId::<T>::try_mutate(
+			&investment_id,
+			|order_id| -> Result<OrderId, DispatchError> {
+				let cur_order_id = *order_id;
+
+				*order_id = order_id
+					.checked_add(One::one())
+					.ok_or(ArithmeticError::Overflow)?;
+
+				Ok(cur_order_id)
+			},
+		)?;
 
 		Self::deposit_event(Event::RedeemOrderInProcessing {
 			investment_id,
 			order_id,
-			total_order: order.clone(),
+			total_order: total_orders.clone(),
 		});
 
-		Ok((order_id, order))
+		Ok(total_orders)
 	}
 
 	fn invest_fulfillment(
-		order_id: Self::OrderId,
 		investment_id: Self::InvestmentId,
 		fulfillment: Self::Fulfillment,
 	) -> Result<(), DispatchError> {
-		InProcessingInvestOrders::<T>::try_mutate(
+		let order_id = InProcessingInvestOrders::<T>::try_mutate(
 			&investment_id,
-			&order_id,
-			|maybe_orders| -> DispatchResult {
+			|maybe_orders| -> Result<OrderId, DispatchError> {
 				let orders = maybe_orders
 					.as_ref()
 					.ok_or(Error::<T>::OrderNotInProcessing)?;
@@ -1121,6 +1157,15 @@ where
 
 				T::Accountant::deposit(&investment_account, info.id(), amount_of_investment_units)?;
 
+				// The previous OrderId is always 1 away
+				//
+				// We only increase the OrderId, when there is currently no processing order
+				// and upon calling this traits invest_orders(). Hence, we can always subtract 1
+				// as our u64 defaults to zero, and MUST be at least 1 at this place here.
+				let order_id = InvestOrderId::<T>::get(investment_id)
+					.checked_sub(1)
+					.ok_or(ArithmeticError::Underflow)?;
+
 				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
@@ -1139,7 +1184,7 @@ where
 				// Removing the order from its processing state. We actually do not need it anymore as from now forward
 				// we only need the per-user orders.
 				*maybe_orders = None;
-				Ok(())
+				Ok(order_id)
 			},
 		)?;
 
@@ -1153,14 +1198,12 @@ where
 	}
 
 	fn redeem_fulfillment(
-		order_id: Self::OrderId,
 		investment_id: Self::InvestmentId,
 		fulfillment: Self::Fulfillment,
 	) -> Result<(), DispatchError> {
-		InProcessingRedeemOrders::<T>::try_mutate(
+		let order_id = InProcessingRedeemOrders::<T>::try_mutate(
 			&investment_id,
-			&order_id,
-			|maybe_orders| -> DispatchResult {
+			|maybe_orders| -> Result<OrderId, DispatchError> {
 				let orders = maybe_orders
 					.as_ref()
 					.ok_or(Error::<T>::OrderNotInProcessing)?;
@@ -1207,6 +1250,15 @@ where
 					amount_of_investment_units,
 				)?;
 
+				// The previous OrderId is always 1 away
+				//
+				// We only increase the OrderId, when there is currently no processing order
+				// and upon calling this traits redeem_orders(). Hence, we can always subtract 1
+				// as our u64 defaults to zero, and MUST be at least 1 at this place here.
+				let order_id = RedeemOrderId::<T>::get(investment_id)
+					.checked_sub(1)
+					.ok_or(ArithmeticError::Underflow)?;
+
 				ClearedRedeemOrders::<T>::insert(
 					investment_id.clone(),
 					order_id,
@@ -1229,7 +1281,7 @@ where
 				// Removing the order from its processing state. We actually do not need it anymore as from now forward
 				// we only need the per-user orders.
 				*maybe_orders = None;
-				Ok(())
+				Ok(order_id)
 			},
 		)?;
 
