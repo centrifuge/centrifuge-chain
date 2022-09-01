@@ -13,7 +13,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common_traits::{AssetAccountant, AssetProperties, InvestmentManager, PreConditions};
+use common_traits::{InvestmentAccountant, InvestmentManager, InvestmentProperties, PreConditions};
 use common_types::{AssetAccount, FulfillmentWithPrice, TotalOrder};
 use frame_support::pallet_prelude::*;
 use frame_support::{
@@ -144,8 +144,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config
 	where
-		<Self::Accountant as AssetAccountant<Self::AccountId>>::AssetInfo:
-			AssetProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
+		<Self::Accountant as InvestmentAccountant<Self::AccountId>>::InvestmentInfo:
+			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
 	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -158,10 +158,10 @@ pub mod pallet {
 
 		/// Something that knows how to handle accounting for the given assets
 		/// and provides metadata about them
-		type Accountant: AssetAccountant<
+		type Accountant: InvestmentAccountant<
 			Self::AccountId,
 			Error = DispatchError,
-			AssetId = Self::InvestmentId,
+			InvestmentId = Self::InvestmentId,
 			Amount = Self::Amount,
 		>;
 
@@ -218,8 +218,8 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> where
-		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
-			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>
 	{
 	}
 
@@ -271,7 +271,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
-		Blake2_128Concat,
+		Twox64Concat,
 		OrderId,
 		TotalOrder<T::Amount>,
 	>;
@@ -282,7 +282,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
-		Blake2_128Concat,
+		Twox64Concat,
 		OrderId,
 		TotalOrder<T::Amount>,
 	>;
@@ -293,7 +293,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
-		Blake2_128Concat,
+		Twox64Concat,
 		OrderId,
 		FulfillmentWithPrice<T::BalanceRatio>,
 	>;
@@ -304,7 +304,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
-		Blake2_128Concat,
+		Twox64Concat,
 		OrderId,
 		FulfillmentWithPrice<T::BalanceRatio>,
 	>;
@@ -313,8 +313,8 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config>
 	where
-		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
-			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		/// Fulfilled orders were collected. [asset, who, collected_orders, Collection]
 		InvestOrdersCollected {
@@ -397,8 +397,8 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
 	where
-		<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
-			AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		/// Update an order to invest into a given asset.
 		///
@@ -597,8 +597,8 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T>
 where
-	<T::Accountant as AssetAccountant<T::AccountId>>::AssetInfo:
-		AssetProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	pub(crate) fn do_collect_both(
 		who: T::AccountId,
@@ -783,7 +783,7 @@ where
 		total_order: &mut TotalOrder<T::Amount>,
 		who: &T::AccountId,
 		asset_id: T::InvestmentId,
-		info: impl AssetProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
+		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
 	) -> DispatchResult {
@@ -803,7 +803,7 @@ where
 		total_order: &mut TotalOrder<T::Amount>,
 		who: &T::AccountId,
 		asset_id: T::InvestmentId,
-		info: impl AssetProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
+		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
 	) -> DispatchResult {

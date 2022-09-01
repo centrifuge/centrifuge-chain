@@ -299,31 +299,42 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 
 pub trait InvestmentManager {
 	type Error;
-	type AssetId;
+	type InvestmentId;
 	type Orders;
 	type OrderId: Copy;
 	type Fulfillment;
 
-	fn orders(asset_id: Self::AssetId) -> Result<(Self::OrderId, Self::Orders), Self::Error>;
-	fn fulfillment(
+	fn invest_orders(
+		asset_id: Self::InvestmentId,
+	) -> Result<(Self::OrderId, Self::Orders), Self::Error>;
+	fn redeem_orders(
+		asset_id: Self::InvestmentId,
+	) -> Result<(Self::OrderId, Self::Orders), Self::Error>;
+	fn invest_fulfillment(
 		order_id: Self::OrderId,
-		asset_id: Self::AssetId,
+		asset_id: Self::InvestmentId,
+		fulfillment: Self::Fulfillment,
+	) -> Result<(), Self::Error>;
+
+	fn redeem_fulfillment(
+		order_id: Self::OrderId,
+		asset_id: Self::InvestmentId,
 		fulfillment: Self::Fulfillment,
 	) -> Result<(), Self::Error>;
 }
 
-pub trait AssetAccountant<AccountId> {
+pub trait InvestmentAccountant<AccountId> {
 	type Error;
-	type AssetId;
-	type AssetInfo: AssetProperties<AccountId, Id = Self::AssetId>;
+	type InvestmentId;
+	type InvestmentInfo: InvestmentProperties<AccountId, Id = Self::InvestmentId>;
 	type Amount;
 
 	/// Information about an asset. Must allow to derive
 	/// owner, payment and denomination currency
-	fn info(id: Self::AssetId) -> Result<Self::AssetInfo, Self::Error>;
+	fn info(id: Self::InvestmentId) -> Result<Self::InvestmentInfo, Self::Error>;
 
 	fn transfer(
-		asset: Self::AssetId,
+		asset: Self::InvestmentId,
 		source: &AccountId,
 		dest: &AccountId,
 		amount: Self::Amount,
@@ -332,19 +343,19 @@ pub trait AssetAccountant<AccountId> {
 	/// Increases the existance of
 	fn deposit(
 		buyer: &AccountId,
-		id: Self::AssetId,
+		id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
 	/// Reduce the existance of an asset
 	fn withdraw(
 		seller: &AccountId,
-		id: Self::AssetId,
+		id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 }
 
-pub trait AssetProperties<AccountId> {
+pub trait InvestmentProperties<AccountId> {
 	type Currency;
 	type Id;
 
@@ -356,7 +367,7 @@ pub trait AssetProperties<AccountId> {
 	}
 }
 
-impl<AccountId, T: AssetProperties<AccountId>> AssetProperties<AccountId> for &T {
+impl<AccountId, T: InvestmentProperties<AccountId>> InvestmentProperties<AccountId> for &T {
 	type Currency = T::Currency;
 	type Id = T::Id;
 

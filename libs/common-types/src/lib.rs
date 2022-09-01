@@ -15,7 +15,7 @@
 
 ///! Common-types of the Centrifuge chain.
 use codec::{Decode, Encode};
-use common_traits::{AssetProperties, Properties};
+use common_traits::{InvestmentProperties, Properties};
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
@@ -514,7 +514,7 @@ pub struct AssetInfo<AccountId, Currency, AssetId> {
 	pub payment_currency: Currency,
 }
 
-impl<AccountId, Currency, AssetId> AssetProperties<AccountId>
+impl<AccountId, Currency, AssetId> InvestmentProperties<AccountId>
 	for AssetInfo<AccountId, Currency, AssetId>
 where
 	AccountId: Clone,
