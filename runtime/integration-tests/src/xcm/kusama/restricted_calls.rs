@@ -26,12 +26,19 @@ use crate::xcm::kusama::setup::{
 };
 use crate::xcm::kusama::test_net::{Altair, KusamaNet, Sibling, TestNet};
 use altair_runtime::{Balances, Call, CustomMetadata, Origin, PolkadotXcm, XTokens};
+<<<<<<< HEAD
 use common_types::XcmMetadata;
+=======
+>>>>>>> 4f37ec12 (Filter tranche transfers (#886))
 use frame_support::dispatch::Dispatchable;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
+<<<<<<< HEAD
 use runtime_common::{decimals, parachains, Balance};
+=======
+use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+>>>>>>> 4f37ec12 (Filter tranche transfers (#886))
 use sp_runtime::DispatchError;
 use sp_runtime::DispatchError::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};

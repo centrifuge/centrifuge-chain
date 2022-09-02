@@ -37,10 +37,7 @@ use crate::xcm::kusama::setup::{
 use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
-<<<<<<< HEAD
 use common_types::XcmMetadata;
-=======
->>>>>>> 76dd2212 (Update Polkadot v0.9.26 (#888))
 use runtime_common::xcm::general_key;
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance};

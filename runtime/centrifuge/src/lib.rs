@@ -945,6 +945,7 @@ impl Contains<Call> for BaseCallFilter {
 	}
 }
 
+<<<<<<< HEAD
 // Parameterize collator selection pallet
 parameter_types! {
 	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
@@ -971,6 +972,8 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
+=======
+>>>>>>> 4f37ec12 (Filter tranche transfers (#886))
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
