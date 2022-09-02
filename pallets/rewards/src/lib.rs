@@ -23,8 +23,15 @@ pub struct EpochDetails<BlockNumber, Balance> {
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupDetails<Balance, Rate> {
-	amount_staked: Balance,
+	total_staked: Balance,
 	reward_per_token: Rate,
+}
+
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct StakedDetails<Balance> {
+	amount: Balance,
+	reward_tally: Balance,
 }
 
 #[frame_support::pallet]
@@ -69,10 +76,14 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type Group<T: Config> = StorageValue<_, GroupDetails<T::Balance, T::Rate>, ValueQuery>;
 
+	#[pallet::storage]
+	pub type Staked<T: Config> =
+		StorageMap<_, Blake2_256, T::AccountId, StakedDetails<T::Balance>, ValueQuery>;
+
 	// --------------------------
 
 	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	//#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T> {}
 
 	#[pallet::error]
@@ -91,10 +102,10 @@ pub mod pallet {
 			}
 
 			Group::<T>::mutate(|group| {
-				if group.amount_staked > T::Balance::default() {
+				if group.total_staked > T::Balance::default() {
 					let rate = T::Rate::saturating_from_rational(
 						active_epoch.total_reward,
-						group.amount_staked,
+						group.total_staked,
 					);
 					group.reward_per_token = group.reward_per_token + rate;
 				}
@@ -113,22 +124,27 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn stake(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
-			let who = ensure_signed(origin);
+			let who = ensure_signed(origin)?;
 
 			Group::<T>::mutate(|group| {
-				group.amount_staked += amount;
+				group.total_staked += amount;
+
+				Staked::<T>::mutate(who, |staked| {
+					staked.amount += amount;
+					staked.reward_tally += group.reward_per_token.saturating_mul_int(amount);
+				});
 			});
 
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn unstake(origin: OriginFor<T>) -> DispatchResult {
+		pub fn unstake(_origin: OriginFor<T>) -> DispatchResult {
 			todo!()
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn claim(origin: OriginFor<T>) -> DispatchResult {
+		pub fn claim(_origin: OriginFor<T>) -> DispatchResult {
 			todo!()
 		}
 	}
