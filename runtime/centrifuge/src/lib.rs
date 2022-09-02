@@ -7,7 +7,6 @@
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::FeeKey;
-use frame_support::traits::Everything;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -771,8 +770,8 @@ impl pallet_fees::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
-	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::AnchorsCommit;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::AnchorsPreCommit;
 }
 
 impl pallet_anchors::Config for Runtime {
