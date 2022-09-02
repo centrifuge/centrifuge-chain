@@ -32,6 +32,7 @@ use runtime_common::{
 	decimals, parachains,
 	xcm::{general_key, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
+	EnsureRootOr, HalfOfCouncil,
 };
 
 /// The main XCM config
@@ -372,4 +373,9 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 		})
 		.into()
 	}
+}
+
+impl orml_xcm::Config for Runtime {
+	type Event = Event;
+	type SovereignOrigin = EnsureRootOr<HalfOfCouncil>;
 }

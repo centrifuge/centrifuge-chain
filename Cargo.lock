@@ -108,6 +108,7 @@ dependencies = [
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
+ "orml-xcm",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
@@ -999,6 +1000,7 @@ dependencies = [
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
+ "orml-xcm",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
@@ -2183,6 +2185,7 @@ dependencies = [
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
+ "orml-xcm",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-anchors",
@@ -5476,6 +5479,20 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "orml-xcm"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.26#33dbc5e35305d0cf5937c896dae8655ca7da95d8"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-xcm",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -12128,7 +12145,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.3",
  "rand 0.8.5",
  "static_assertions",
@@ -12284,7 +12301,7 @@ checksum = "e7141e445af09c8919f1d5f8a20dae0b20c3b57a45dee0d5823c6ed5d237f15a"
 dependencies = [
  "bitflags",
  "chrono",
- "rustc_version 0.4.0",
+ "rustc_version 0.2.3",
 ]
 
 [[package]]
