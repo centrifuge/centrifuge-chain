@@ -3,6 +3,7 @@ use crate as pallet_rewards;
 use frame_support::traits::{ConstU16, ConstU32, ConstU64};
 use frame_system as system;
 
+use sp_arithmetic::fixed_point::FixedU64;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -11,6 +12,8 @@ use sp_runtime::{
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+pub const REWARD_INTERVAL: u64 = 10;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -52,8 +55,9 @@ impl system::Config for Test {
 
 impl pallet_rewards::Config for Test {
 	type Event = Event;
-	type BlockPerEpoch = ConstU64<10>;
+	type BlockPerEpoch = ConstU64<REWARD_INTERVAL>;
 	type Balance = u64;
+	type Rate = FixedU64;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
