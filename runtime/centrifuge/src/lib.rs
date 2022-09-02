@@ -781,6 +781,7 @@ impl pallet_anchors::Config for Runtime {
 	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
 	type WeightInfo = ();
 	type Currency = Balances;
+<<<<<<< HEAD
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
@@ -789,6 +790,8 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type WeightInfo = ();
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
+=======
+>>>>>>> 2613b7df ([WIP] pallet-anchors: add precommit deposit (#879))
 }
 
 impl pallet_collator_allowlist::Config for Runtime {

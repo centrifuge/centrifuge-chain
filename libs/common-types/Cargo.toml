@@ -30,7 +30,6 @@ frame-support = { git = "https://github.com/paritytech/substrate",  default-feat
 
 [features]
 default = ['std']
-runtime-benchmarks = []
 std = [
     'codec/std',
     'sp-std/std',
