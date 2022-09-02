@@ -206,6 +206,7 @@ std = [
 ]
 
 runtime-benchmarks = [
+    "common-types/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-session-benchmarking",
@@ -241,7 +242,8 @@ try-runtime = [
     "frame-try-runtime",
     "frame-system/try-runtime",
     "pallet-scheduler/try-runtime",
-    "pallet-claims/try-runtime"
+    "pallet-claims/try-runtime",
+    "pallet-fees/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

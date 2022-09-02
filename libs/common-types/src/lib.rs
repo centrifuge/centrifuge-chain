@@ -532,6 +532,7 @@ pub struct XcmMetadata {
 	pub fee_per_second: Option<Balance>,
 }
 
+
 /// Different stored fees keys
 #[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

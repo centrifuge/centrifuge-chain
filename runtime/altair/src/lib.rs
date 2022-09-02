@@ -55,7 +55,7 @@ use xcm_executor::XcmExecutor;
 use common_traits::PoolUpdateGuard;
 pub use common_types::{CurrencyId, CustomMetadata};
 use common_types::{
-	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider,
 };
 
@@ -712,15 +712,27 @@ impl pallet_uniques::Config for Runtime {
 }
 
 // our pallets
+parameter_types! {
+	pub const DefaultFeeValue: Balance = DEFAULT_FEE_VALUE;
+}
+
 impl pallet_fees::Config for Runtime {
+	type FeeKey = FeeKey;
 	type Currency = Balances;
+	type Treasury = pallet_treasury::Pallet<Self>;
 	type Event = Event;
-	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
+	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
+parameter_types! {
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
+}
+
 impl pallet_anchors::Config for Runtime {
+	type Fees = Fees;
+	type CommitAnchorFeeKey = CommitAnchorFeeKey;
 	type WeightInfo = ();
 }
 
