@@ -9,8 +9,8 @@ use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, Everything,
-		InstanceFilter, LockIdentifier, U128CurrencyToVote, UnixTime,
+		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
+		LockIdentifier, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
