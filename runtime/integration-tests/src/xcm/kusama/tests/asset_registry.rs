@@ -34,6 +34,7 @@ use common_types::XcmMetadata;
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::xcm::general_key;
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance};
 use sp_runtime::traits::BadOrigin;
@@ -52,7 +53,7 @@ fn register_air_works() {
 			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				0,
-				X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+				X1(general_key(parachains::kusama::altair::AIR_KEY)),
 			))),
 			additional: CustomMetadata::default(),
 		};
@@ -77,7 +78,7 @@ fn register_foreign_asset_works() {
 				1,
 				X2(
 					Parachain(2000),
-					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			))),
 			additional: CustomMetadata::default(),
@@ -102,7 +103,7 @@ fn register_tranche_asset_blocked() {
 			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				1,
-				X2(Parachain(2000), GeneralKey(vec![42])),
+				X2(Parachain(2000), general_key(&[42])),
 			))),
 			additional: CustomMetadata::default(),
 		};

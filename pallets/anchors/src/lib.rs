@@ -498,7 +498,7 @@ impl<T: Config> Pallet<T> {
 				}
 				key
 			})
-			.map(|key| child::kill_storage(&key, None))
+			.map(|key| child::clear_storage(&key, None, None))
 			.count()
 	}
 

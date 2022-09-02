@@ -31,7 +31,7 @@ struct Fee<Hash, Balance> {
 
 #[frame_support::storage_alias]
 type Fees<T: Config> = StorageMap<
-	_,
+	Pallet<T>,
 	Blake2_256,
 	<T as frame_system::Config>::Hash,
 	Fee<<T as frame_system::Config>::Hash, BalanceOf<T>>,
@@ -53,7 +53,7 @@ pub mod fee_balances {
 	}
 
 	pub fn migrate<T: Config>() -> Weight {
-		Fees::<T>::remove_all(None);
+		let _ = Fees::<T>::clear(u32::MAX, None);
 		log::info!(target: "runtime::fees::migrate", "Done Migrating");
 		T::DbWeight::get().reads_writes(1, 1)
 	}

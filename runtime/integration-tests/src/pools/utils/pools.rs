@@ -304,7 +304,7 @@ pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> V
 /// Whitelist a given investor for a fiven pool and tranche for 1 year of time
 pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: TrancheId) -> Call {
 	permission_call(
-		PoolRole::PoolAdmin,
+		PoolRole::MemberListAdmin,
 		investor.to_account_id(),
 		pool,
 		PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
@@ -339,6 +339,7 @@ pub fn create_pool_call(
 		tranches,
 		currency,
 		max_reserve,
+		metadata: None,
 	})
 }
 
@@ -355,7 +356,6 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 mod with_ext {
 	use super::*;
 	use common_traits::PoolNAV;
-	use runtime_common::Amount;
 
 	/// Whitelists 10 tranche-investors per tranche.
 	///
@@ -407,9 +407,9 @@ mod with_ext {
 		let mut details = Pools::pool(pool).expect("POOLS: Getting pool failed.");
 		Loans::update_nav(Keyring::Admin.into(), pool).expect("LOANS: UpdatingNav failed");
 		let (epoch_nav, _) =
-			<Loans as PoolNAV<PoolId, Amount>>::nav(pool).expect("LOANS: Getting NAV failed");
+			<Loans as PoolNAV<PoolId, Balance>>::nav(pool).expect("LOANS: Getting NAV failed");
 
-		let total_assets = details.reserve.total + epoch_nav.into_inner();
+		let total_assets = details.reserve.total + epoch_nav;
 
 		details
 			.tranches
