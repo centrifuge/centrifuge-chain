@@ -791,6 +791,14 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type ValidatorRegistration = Session;
 }
 
+impl pallet_collator_allowlist::Config for Runtime {
+	type Event = Event;
+	//type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
+	type WeightInfo = ();
+	type ValidatorId = AccountId;
+	type ValidatorRegistration = Session;
+}
+
 parameter_types! {
 	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
 }
@@ -945,7 +953,6 @@ impl Contains<Call> for BaseCallFilter {
 	}
 }
 
-<<<<<<< HEAD
 // Parameterize collator selection pallet
 parameter_types! {
 	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
@@ -972,8 +979,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
-=======
->>>>>>> 4f37ec12 (Filter tranche transfers (#886))
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
