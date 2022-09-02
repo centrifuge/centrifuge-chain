@@ -778,14 +778,13 @@ impl pallet_anchors::Config for Runtime {
 	type Fees = Fees;
 	type CommitAnchorFeeKey = CommitAnchorFeeKey;
 	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_anchors::SubstrateWeight<Self>;
 	type Currency = Balances;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
-	//type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 }
