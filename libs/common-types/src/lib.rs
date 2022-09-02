@@ -499,19 +499,32 @@ pub enum Adjustment<Amount> {
 	Decrease(Amount),
 }
 
-/// Different stored fees keys
+/// Different fees keys available.
+/// Each variant represents a balance previously determined and configured.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum FeeKey {
-	CommitAnchor,
-	PreCommitDeposit,
-	// Others keys used go here
+	/// Key to identify the balance reserved for the author.
+	/// See more at `pallet-anchors`
+	AnchorsCommit,
+
+	/// Key to identify the balance reserved for the deposit.
+	/// See more at `pallet-anchors`
+	AnchorsPreCommit,
+
+	/// Key to identify the balance reserved for burning.
+	/// See more at `pallet-bridge`
+	BridgeNativeTransfer,
+
+	/// Key to identify the balance reserved for burning.
+	/// See more at `pallet-nft`
+	NftProofValidation,
 }
 
 /// Only needed for initializing the runtime benchmark with some value.
 #[cfg(feature = "runtime-benchmarks")]
 impl Default for FeeKey {
 	fn default() -> Self {
-		FeeKey::CommitAnchor
+		FeeKey::AnchorsCommit
 	}
 }

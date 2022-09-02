@@ -771,8 +771,8 @@ impl pallet_fees::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
-	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::AnchorsCommit;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::AnchorsPreCommit;
 }
 
 impl pallet_anchors::Config for Runtime {
