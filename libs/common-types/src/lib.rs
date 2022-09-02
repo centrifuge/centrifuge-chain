@@ -504,6 +504,7 @@ pub enum Adjustment<Amount> {
 	Decrease(Amount),
 }
 
+<<<<<<< HEAD
 /// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
 #[derive(Clone, Copy, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo)]
 pub struct CustomMetadata {
@@ -531,6 +532,7 @@ pub struct XcmMetadata {
 	/// When `None`, the `default_per_second` will be used instead.
 	pub fee_per_second: Option<Balance>,
 }
+
 
 /// Different stored fees keys
 #[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo)]

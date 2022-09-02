@@ -5734,6 +5734,8 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-treasury",
+<<<<<<< HEAD
+=======
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -5755,7 +5757,75 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-bridge-mapping",
+ "pallet-nft",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "proofs",
+ "runtime-common",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique-assets",
+]
+
+[[package]]
+name = "pallet-bridge-dispatch"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.24#22836e55d41eef24ed5917fd654ee82a683a7cfe"
+dependencies = [
+ "bp-message-dispatch",
+ "bp-runtime",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-bridge-grandpa"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.24#22836e55d41eef24ed5917fd654ee82a683a7cfe"
+dependencies = [
+ "bp-header-chain",
+ "bp-runtime",
+ "bp-test-utils",
+ "finality-grandpa",
+ "frame-support",
+ "frame-system",
+ "log",
+ "num-traits",
+>>>>>>> 4a2e6b2f (Pallet fees refactor (#890))
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-bridge"
+version = "2.0.0"
+dependencies = [
+ "chainbridge",
+ "common-traits",
+ "common-types",
+ "frame-support",
+ "frame-system",
+ "pallet-anchors",
+ "pallet-authorship",
+ "pallet-balances",
+<<<<<<< HEAD
+ "pallet-bridge-mapping",
  "pallet-fees",
+=======
+>>>>>>> 4a2e6b2f (Pallet fees refactor (#890))
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",

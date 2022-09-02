@@ -209,17 +209,27 @@ impl chainbridge::Config for MockRuntime {
 impl_mock_fees_state!(
 	MockFeesState,
 	<MockRuntime as frame_system::Config>::AccountId,
+<<<<<<< HEAD
 	Balance,
 	(),
 	|_key| 0
 );
 
+=======
+	Balance
+);
+
+// Implement Centrifuge Chain anchors pallet for the mock runtime
+>>>>>>> 4a2e6b2f (Pallet fees refactor (#890))
 impl pallet_anchors::Config for MockRuntime {
 	type WeightInfo = ();
 	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
 	type CommitAnchorFeeKey = ();
+<<<<<<< HEAD
 	type PreCommitDepositFeeKey = ();
 	type Currency = Balances;
+=======
+>>>>>>> 4a2e6b2f (Pallet fees refactor (#890))
 }
 
 // Parameterize NFT pallet
