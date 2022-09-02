@@ -112,12 +112,12 @@ pub mod pallet {
 
 		/// Key used to retrieve the fee balances in the commit method.
 		type CommitAnchorFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
-
+		
 		/// Key to identify the amount of funds reserved in a [`Pallet::pre_commit()`] call.
 		/// These funds will be unreserved once the user make the [`commit()`] succesfully
 		/// or call [`Pallet::evict_pre_commits()`]
 		type PreCommitDepositFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
-
+		
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 
