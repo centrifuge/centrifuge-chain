@@ -791,14 +791,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type ValidatorRegistration = Session;
 }
 
-impl pallet_collator_allowlist::Config for Runtime {
-	type Event = Event;
-	//type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
-	type WeightInfo = ();
-	type ValidatorId = AccountId;
-	type ValidatorRegistration = Session;
-}
-
 parameter_types! {
 	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
 }
