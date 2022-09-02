@@ -38,7 +38,7 @@ pub struct StakedDetails<Balance> {
 pub mod pallet {
 	use super::*;
 
-	use frame_support::traits::tokens::Balance;
+	use frame_support::{traits::tokens::Balance, transactional};
 	use frame_system::pallet_prelude::*;
 
 	use sp_runtime::{FixedPointNumber, FixedPointOperand};
@@ -97,17 +97,19 @@ pub mod pallet {
 				total_reward: NextTotalReward::<T>::get(),
 			});
 
+			//TODO: transfer active_epoch.total_reward to rewards account.
+
 			if active_epoch.ends_on != current_block {
 				return 0; //FIXME
 			}
 
 			Group::<T>::mutate(|group| {
 				if group.total_staked > T::Balance::default() {
-					let rate = T::Rate::saturating_from_rational(
+					let rate_increment = T::Rate::saturating_from_rational(
 						active_epoch.total_reward,
 						group.total_staked,
 					);
-					group.reward_per_token = group.reward_per_token + rate;
+					group.reward_per_token = group.reward_per_token + rate_increment;
 				}
 			});
 
@@ -123,29 +125,66 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn stake(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			Group::<T>::mutate(|group| {
-				group.total_staked += amount;
-
+			let _amount = Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(who, |staked| {
 					staked.amount += amount;
 					staked.reward_tally += group.reward_per_token.saturating_mul_int(amount);
 				});
+
+				group.total_staked += amount;
 			});
+
+			//TODO: reserve _amount
 
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn unstake(_origin: OriginFor<T>) -> DispatchResult {
-			todo!()
+		#[transactional]
+		pub fn unstake(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let _amount = Group::<T>::mutate(|group| {
+				Staked::<T>::mutate(who, |staked| {
+					staked.amount -= amount;
+					println!("aaa: {:?}", staked.reward_tally);
+					println!(
+						"bbb: {:?}",
+						group.reward_per_token.saturating_mul_int(amount)
+					);
+					staked.reward_tally -= group.reward_per_token.saturating_mul_int(amount);
+				});
+
+				group.total_staked -= amount;
+				amount
+			});
+
+			//TODO: unreserve _amount
+
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn claim(_origin: OriginFor<T>) -> DispatchResult {
-			todo!()
+		#[transactional]
+		pub fn claim(origin: OriginFor<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let group = Group::<T>::get();
+
+			let _reward = Staked::<T>::mutate(who, |staked| {
+				let reward = group.reward_per_token.saturating_mul_int(staked.amount);
+				let rectified_reward = reward - staked.reward_tally;
+				staked.reward_tally = reward;
+				rectified_reward
+			});
+
+			//TODO: transfer _reward
+
+			Ok(())
 		}
 	}
 }
