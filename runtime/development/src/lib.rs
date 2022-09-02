@@ -357,10 +357,8 @@ pub enum ProxyType {
 	Invest,
 	ProxyManagement,
 	KeystoreManagement,
-	NFTMint,
-	NFTTransfer,
-	NFTManagement,
-	AnchorManagement,
+	PodOperation,
+	PodAuth,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -430,6 +428,10 @@ impl InstanceFilter<Call> for ProxyType {
 			}
 			ProxyType::NFTManagement => matches!(c, Call::Uniques(..)),
 			ProxyType::AnchorManagement => matches!(c, Call::Anchor(..)),
+			ProxyType::PodOperation => matches!(c, Call::Uniques(..) | Call::Anchor(..)),
+			// This type of proxy is used only for authenticating with the centrifuge POD,
+			// having it here also allows us to validate authentication with on-chain data.
+			ProxyType::PodAuth => false,
 		}
 	}
 
@@ -780,6 +782,7 @@ impl pallet_treasury::Config for Runtime {
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
 	type SpendFunds = ();
 	type MaxApprovals = MaxApprovals;
+	type SpendOrigin = ();
 }
 
 // our pallets
