@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 pub mod frame_system;
+pub mod pallet_anchors;
 pub mod pallet_balances;
 pub mod pallet_collator_allowlist;
 pub mod pallet_collective;

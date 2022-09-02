@@ -11,13 +11,13 @@
 // --chain=centrifuge-dev
 // --steps=50
 // --repeat=20
-// --pallet=pallet-anchors
+// --pallet=pallet_anchors
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --output=./pallets/anchors/src/weights.rs
-// --template=./scripts/frame-weight-template.hbs
+// --output=/tmp/runtime/centrifuge/src/weights/pallet_anchors.rs
+// --template=./scripts/runtime-weight-template.hbs
 
 #![allow(unused_parens)]
 #![allow(unused_imports)]
@@ -26,61 +26,30 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_anchors::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_anchors.
-pub trait WeightInfo {
-	fn pre_commit() -> Weight;
-	fn commit() -> Weight;
-	fn evict_pre_commits() -> Weight;
-	fn evict_anchors() -> Weight;
-}
 
 /// Weights for pallet_anchors using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn pre_commit() -> Weight {
-		(65_453_000 as Weight)
+		(64_052_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn commit() -> Weight {
-		(104_841_000 as Weight)
+		(106_263_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn evict_pre_commits() -> Weight {
-		(2_764_733_000 as Weight)
+		(2_673_717_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(100 as Weight))
 			.saturating_add(T::DbWeight::get().writes(100 as Weight))
 	}
 	fn evict_anchors() -> Weight {
-		(12_387_595_000 as Weight)
+		(12_077_723_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1008 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1504 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn pre_commit() -> Weight {
-		(65_453_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn commit() -> Weight {
-		(104_841_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-	}
-	fn evict_pre_commits() -> Weight {
-		(2_764_733_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(100 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(100 as Weight))
-	}
-	fn evict_anchors() -> Weight {
-		(12_387_595_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1008 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1504 as Weight))
 	}
 }

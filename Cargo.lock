@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.18"
+version = "0.10.19"
 dependencies = [
  "common-traits",
  "common-types",
@@ -874,7 +874,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.18"
+version = "0.10.19"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -972,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.9"
+version = "0.10.10"
 dependencies = [
  "chainbridge",
  "common-traits",
@@ -2159,7 +2159,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.3"
+version = "0.10.4"
 dependencies = [
  "chainbridge",
  "common-traits",
