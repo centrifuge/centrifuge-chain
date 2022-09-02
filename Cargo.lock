@@ -874,7 +874,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.18"
+version = "0.10.19"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
