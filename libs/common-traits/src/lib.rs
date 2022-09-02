@@ -405,7 +405,6 @@ pub mod fees {
 			pub balance: Balance,
 		}
 
-<<<<<<< HEAD
 		pub struct FeesState<Author, Balance, KeyFee> {
 			pub author_fees: Vec<FeeState<Author, Balance>>,
 			pub burn_fees: Vec<FeeState<Author, Balance>>,
@@ -435,11 +434,6 @@ pub mod fees {
 		#[macro_export]
 		macro_rules! impl_mock_fees_state {
 			($name:ident, $account:ty, $balance:ty, $feekey:ty, $initializer:expr) => {
-=======
-		#[macro_export]
-		macro_rules! impl_mock_fees_state {
-			($name:ident, $account:ty, $balance:ty) => {
->>>>>>> 4a2e6b2f (Pallet fees refactor (#890))
 				use common_traits::fees::test_util::FeesState;
 
 				use std::cell::RefCell;
