@@ -9,8 +9,8 @@ use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, Everything,
-		InstanceFilter, LockIdentifier, U128CurrencyToVote, UnixTime,
+		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
+		LockIdentifier, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -50,7 +50,7 @@ use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
 use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
-pub use common_types::CurrencyId;
+pub use common_types::{CurrencyId, CustomMetadata};
 use common_types::{
 	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
@@ -845,6 +845,12 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 100 * CFG;
 }
@@ -852,34 +858,50 @@ parameter_types! {
 impl pallet_pools::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
+	type TrancheWeight = TrancheWeight;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
+	type PalletId = PoolPalletId;
 	type PoolId = PoolId;
 	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
+	type PoolCurrency = PoolCurrency;
+	type UpdateGuard = UpdateGuard;
+	type AssetRegistry = OrmlAssetRegistry;
+	type ParachainId = ParachainInfo;
 	type Currency = Balances;
 	type Tokens = Tokens;
+	type Permission = Permissions;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
-	type Permission = Permissions;
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
-	type MinUpdateDelay = MinUpdateDelay;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type PalletId = PoolPalletId;
+	type MinUpdateDelay = MinUpdateDelay;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
-	type TrancheWeight = TrancheWeight;
-	type PoolCurrency = PoolCurrency;
-	type UpdateGuard = UpdateGuard;
+}
+
+impl pallet_pools_registry::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type PoolId = PoolId;
+	type CurrencyId = CurrencyId;
+	type Metadata = ();
+	type TrancheId = TrancheId;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type Permission = Permissions;
+	type WeightInfo = weights::pallet_pools_registry::SubstrateWeight<Runtime>;
 }
 
 pub struct PoolCurrency;
@@ -907,7 +929,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(
@@ -1426,6 +1449,7 @@ construct_runtime!(
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
+		PoolsRegistry: pallet_pools_registry::{Pallet, Call, Storage, Event<T>} = 105,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

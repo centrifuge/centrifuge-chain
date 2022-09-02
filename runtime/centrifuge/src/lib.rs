@@ -7,7 +7,7 @@
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::FeeKey;
-use frame_support::traits::Everything;
+
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -52,6 +52,7 @@ mod weights;
 pub mod xcm;
 
 pub use crate::xcm::*;
+pub use common_types::CustomMetadata;
 /// common types for the runtime.
 pub use runtime_common::*;
 

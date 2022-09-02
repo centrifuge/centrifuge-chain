@@ -40,6 +40,7 @@ members = [
 	"pallets/nft",
 	"pallets/nft-sales",
 	"pallets/pools",
+	"pallets/pools-registry",
 	"pallets/loans",
 	"pallets/permissions",
 	"pallets/interest-accrual",
@@ -124,6 +125,7 @@ node-inspect = { git = "https://github.com/paritytech/substrate", branch = "polk
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
 pallet-pools = { path = "./pallets/pools" }
+pallet-pools-registry = { path = "./pallets/pools-registry" }
 common-types = { path = "./libs/common-types" }
 
 # frame dependencies
@@ -169,6 +171,7 @@ substrate-build-script-utils  = { optional = true, git = "https://github.com/par
 [dev-dependencies]
 sc-service-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 tempfile = "3.1.0"
+common-types = { path = "./libs/common-types" }
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
@@ -187,6 +190,7 @@ runtime-benchmarks = [
 	"centrifuge-runtime/runtime-benchmarks",
 	"development-runtime/runtime-benchmarks",
 	"runtime-common/runtime-benchmarks",
+
 ]
 test-benchmarks = [
 	"runtime-benchmarks",
@@ -197,7 +201,7 @@ cli = [
 ]
 try-runtime = [
 	"centrifuge-runtime/try-runtime",
-	"try-runtime-cli"
+	"try-runtime-cli",
 ]
 
 fast-runtime = [

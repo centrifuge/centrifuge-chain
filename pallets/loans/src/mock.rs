@@ -18,8 +18,10 @@
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use common_traits::PoolUpdateGuard;
+use common_types::impls::AuthorityOrigin;
 use common_types::{
-	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
+	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role,
+	TimeProvider,
 };
 use frame_support::traits::Everything;
 use frame_support::{
@@ -27,12 +29,13 @@ use frame_support::{
 	traits::{AsEnsureOriginWithArg, GenesisBuild, SortedMembers},
 	PalletId,
 };
-use frame_system::{EnsureSigned, EnsureSignedBy};
+use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
+use orml_traits::asset_registry::AssetMetadata;
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
-	Balance, CollectionId, ItemId, Moment, Rate, TrancheId, TrancheToken,
-	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
+	asset_registry::CustomAssetProcessor, Balance, CollectionId, ItemId, Moment, Rate, TrancheId,
+	TrancheToken, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -60,7 +63,8 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>}
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>},
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>}
 	}
 );
 
@@ -133,6 +137,16 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
+impl orml_asset_registry::Config for MockRuntime {
+	type Event = Event;
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
+	type AuthorityOrigin = AuthorityOrigin<Origin, EnsureRoot<u64>>;
+	type AssetProcessor = CustomAssetProcessor;
+	type Balance = Balance;
+	type WeightInfo = ();
+}
+
 impl orml_tokens::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
@@ -169,12 +183,22 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	pub const ZeroDeposit: Balance = 0;
+
+	pub const ParachainId: u32 = 2008;
 }
 
 impl pallet_pools::Config for MockRuntime {
+	type AssetRegistry = OrmlAssetRegistry;
 	type PoolCurrency = Everything;
 	type Event = Event;
+	type ParachainId = ParachainId;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
@@ -198,6 +222,8 @@ impl pallet_pools::Config for MockRuntime {
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = ZeroDeposit;
 	type WeightInfo = ();
@@ -217,7 +243,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(
@@ -404,7 +431,22 @@ impl TestExternalitiesBuilder {
 		.unwrap();
 
 		let mut externalities = TestExternalities::new(storage);
-		externalities.execute_with(|| System::set_block_number(1));
+		externalities.execute_with(|| {
+			System::set_block_number(1);
+			OrmlAssetRegistry::do_register_asset(
+				AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN".as_bytes().to_vec(),
+					symbol: "MOCK".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+				Some(CurrencyId::AUSD),
+			)
+			.ok()
+			.unwrap();
+		});
 		externalities
 	}
 }

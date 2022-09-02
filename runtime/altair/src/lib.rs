@@ -53,7 +53,7 @@ use constants::currency::*;
 use xcm_executor::XcmExecutor;
 
 use common_traits::PoolUpdateGuard;
-pub use common_types::CurrencyId;
+pub use common_types::{CurrencyId, CustomMetadata};
 use common_types::{
 	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider,
@@ -1046,6 +1046,12 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 0;
 }
@@ -1062,6 +1068,8 @@ impl pallet_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
+	type AssetRegistry = OrmlAssetRegistry;
+	type ParachainId = ParachainInfo;
 	type PoolId = PoolId;
 	type TrancheId = TrancheId;
 	type EpochId = u32;
@@ -1081,6 +1089,8 @@ impl pallet_pools::Config for Runtime {
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
 	type PoolCreateOrigin = PoolCreateOrigin;
@@ -1088,6 +1098,18 @@ impl pallet_pools::Config for Runtime {
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
 	type UpdateGuard = UpdateGuard;
+}
+
+impl pallet_pools_registry::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type PoolId = PoolId;
+	type CurrencyId = CurrencyId;
+	type Metadata = ();
+	type TrancheId = TrancheId;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type Permission = Permissions;
+	type WeightInfo = weights::pallet_pools_registry::SubstrateWeight<Runtime>;
 }
 
 pub struct PoolCurrency;
@@ -1115,7 +1137,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(
@@ -1264,6 +1287,7 @@ construct_runtime!(
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 99,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
+		PoolsRegistry: pallet_pools_registry::{Pallet, Call, Storage, Event<T>} = 102,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

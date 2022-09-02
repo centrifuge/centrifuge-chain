@@ -34,7 +34,6 @@ pub trait WeightInfo {
 	fn update_no_execution(n: u32) -> Weight;
 	fn update_and_execute(n: u32) -> Weight;
 	fn execute_scheduled_update(n: u32) -> Weight;
-	fn set_metadata(n: u32) -> Weight;
 	fn set_max_reserve() -> Weight;
 	fn update_invest_order() -> Weight;
 	fn update_redeem_order() -> Weight;
@@ -72,12 +71,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add((1_074_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn set_metadata(n: u32) -> Weight {
-		(35_072_000 as Weight) // Standard Error: 0
-			.saturating_add((13_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_max_reserve() -> Weight {
 		(34_009_000 as Weight)
@@ -164,12 +157,6 @@ impl WeightInfo for () {
 			.saturating_add((1_074_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-	}
-	fn set_metadata(n: u32) -> Weight {
-		(35_072_000 as Weight) // Standard Error: 0
-			.saturating_add((13_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_max_reserve() -> Weight {
 		(34_009_000 as Weight)

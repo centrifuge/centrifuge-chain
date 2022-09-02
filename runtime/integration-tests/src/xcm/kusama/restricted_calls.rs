@@ -26,11 +26,12 @@ use crate::xcm::kusama::setup::{
 };
 use crate::xcm::kusama::test_net::{Altair, KusamaNet, Sibling, TestNet};
 use altair_runtime::{Balances, Call, CustomMetadata, Origin, PolkadotXcm, XTokens};
+use common_types::XcmMetadata;
 use frame_support::dispatch::Dispatchable;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use runtime_common::{decimals, parachains, Balance};
 use sp_runtime::DispatchError;
 use sp_runtime::DispatchError::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};

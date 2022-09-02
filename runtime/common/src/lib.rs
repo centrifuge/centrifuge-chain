@@ -14,7 +14,7 @@
 //! # Common types and primitives used for Centrifuge chain runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-pub use common_types::CurrencyId;
+pub use common_types::{Balance, CurrencyId};
 
 pub use apis::*;
 pub use constants::*;
@@ -80,9 +80,6 @@ pub mod types {
 	/// The address format for describing accounts.
 	pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
 
-	/// Balance of an account.
-	pub type Balance = u128;
-
 	/// IBalance is the signed version of the Balance for orml tokens
 	pub type IBalance = i128;
 
@@ -139,6 +136,12 @@ pub mod types {
 	/// Rate with 27 precision fixed point decimal
 	pub type Rate = crate::fixed_point::Rate;
 
+	/// Maximum allowed length of a tranche token name
+	pub type MaxTokenNameLength = u32;
+
+	/// Maximum allowed length of a tranche symbol name
+	pub type MaxTokenSymbolLength = u32;
+
 	/// A representation of CollectionId for Uniques
 	pub type CollectionId = u64;
 
@@ -167,60 +170,6 @@ pub mod types {
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct ItemId(pub u128);
-
-	/// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
-	#[derive(
-		Clone,
-		Copy,
-		Default,
-		PartialOrd,
-		Ord,
-		PartialEq,
-		Eq,
-		Debug,
-		Encode,
-		Decode,
-		TypeInfo,
-		MaxEncodedLen,
-	)]
-	pub struct CustomMetadata {
-		/// XCM-related metadata.
-		pub xcm: XcmMetadata,
-
-		/// Whether an asset can be minted.
-		/// When `true`, the right permissions will checked in the permissions
-		/// pallet to authorize asset minting by an origin.
-		pub mintable: bool,
-
-		/// Whether an asset is _permissioned_, i.e., whether the asset can only
-		/// be transferred from and to whitelisted accounts. When `true`, the
-		/// right permissions will checked in the permissions pallet to authorize
-		/// transfer between mutually allowed from and to accounts.
-		pub permissioned: bool,
-
-		/// Whether an asset can be used as a currency to fund Centrifuge Pools.
-		pub pool_currency: bool,
-	}
-
-	#[derive(
-		Clone,
-		Copy,
-		Default,
-		PartialOrd,
-		Ord,
-		PartialEq,
-		Eq,
-		Debug,
-		Encode,
-		Decode,
-		TypeInfo,
-		MaxEncodedLen,
-	)]
-	pub struct XcmMetadata {
-		/// The fee charged for every second that an XCM message takes to execute.
-		/// When `None`, the `default_per_second` will be used instead.
-		pub fee_per_second: Option<Balance>,
-	}
 }
 
 /// Common constants for all runtimes

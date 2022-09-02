@@ -21,11 +21,12 @@ use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::traits::{Currency, Get};
-use frame_support::{assert_ok, parameter_types, Blake2_128, StorageHasher};
+use frame_support::{assert_ok, parameter_types, Blake2_128, BoundedVec, StorageHasher};
 use frame_system::RawOrigin;
 use pallet_pools::TrancheLoc;
-use pallet_pools::TrancheType;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
+use pallet_pools::{TrancheInput, TrancheType};
+use pallet_pools_registry::TrancheMetadata;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -144,14 +145,25 @@ pub(crate) fn create<T>(
 		owner.clone(),
 		pool_id,
 		vec![
-			(TrancheType::Residual, None),
-			(
-				TrancheType::NonResidual {
+			TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			},
+			TrancheInput {
+				tranche_type: TrancheType::NonResidual {
 					interest_rate_per_sec: One::one(),
 					min_risk_buffer: Perquintill::from_percent(10),
 				},
-				None
-			)
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			}
 		],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
