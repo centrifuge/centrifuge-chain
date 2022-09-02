@@ -39,7 +39,10 @@ pub mod types {
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
-	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
+	use sp_runtime::{
+		traits::{BlakeTwo256, IdentifyAccount, Verify},
+		OpaqueExtrinsic,
+	};
 	use sp_std::vec::Vec;
 
 	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
@@ -85,6 +88,11 @@ pub mod types {
 
 	/// A hash of some data used by the chain.
 	pub type Hash = sp_core::H256;
+
+	/// A generic block for the node to use, as we can not commit to
+	/// a specific Extrinsic format at this point. Runtimes will ensure
+	/// Extrinsic are correctly decoded.
+	pub type Block = sp_runtime::generic::Block<Header, OpaqueExtrinsic>;
 
 	/// Block header type as expected by this runtime.
 	pub type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
