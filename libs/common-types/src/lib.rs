@@ -504,7 +504,6 @@ pub enum Adjustment<Amount> {
 	Decrease(Amount),
 }
 
-<<<<<<< HEAD
 /// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
 #[derive(Clone, Copy, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo)]
 pub struct CustomMetadata {
