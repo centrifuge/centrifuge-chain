@@ -1,6 +1,9 @@
 use crate as pallet_rewards;
 
-use frame_support::traits::{ConstU16, ConstU32, ConstU64};
+use frame_support::{
+	traits::{ConstU16, ConstU32, ConstU64},
+	PalletId,
+};
 use frame_system as system;
 
 use sp_arithmetic::fixed_point::FixedU64;
@@ -66,8 +69,13 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = ();
 }
 
+frame_support::parameter_types! {
+	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
+}
+
 impl pallet_rewards::Config for Test {
 	type Event = Event;
+	type PalletId = RewardsPalletId;
 	type BlockPerEpoch = ConstU64<REWARD_INTERVAL>;
 	type Currency = Balances;
 	type SignedBalance = i128;

@@ -13,12 +13,14 @@ mod tests;
 
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Currency, ReservableCurrency},
-	transactional,
+	traits::{Currency, ExistenceRequirement, ReservableCurrency},
+	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
 
-use sp_runtime::{ArithmeticError, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{
+	traits::AccountIdConversion, ArithmeticError, FixedPointNumber, FixedPointOperand,
+};
 
 use num_traits::{NumAssignOps, NumOps, Signed};
 
@@ -53,6 +55,9 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
 
 		#[pallet::constant]
 		type BlockPerEpoch: Get<Self::BlockNumber>;
@@ -123,11 +128,14 @@ pub mod pallet {
 				total_reward: NextTotalReward::<T>::get(),
 			});
 
-			//TODO: transfer active_epoch.total_reward to rewards account.
-
 			if active_epoch.ends_on != current_block {
 				return 0; //FIXME
 			}
+
+			T::Currency::deposit_creating(
+				&T::PalletId::get().into_account_truncating(),
+				active_epoch.total_reward,
+			);
 
 			Group::<T>::mutate(|group| {
 				if group.total_staked > BalanceOf::<T>::default() {
@@ -196,7 +204,7 @@ pub mod pallet {
 
 			let group = Group::<T>::get();
 
-			let _reward: BalanceOf<T> = Staked::<T>::try_mutate(who, |staked| {
+			let reward: BalanceOf<T> = Staked::<T>::try_mutate(&who, |staked| {
 				let reward = group
 					.reward_per_token
 					.saturating_mul_int(staked.amount)
@@ -210,9 +218,12 @@ pub mod pallet {
 					.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Underflow))
 			})?;
 
-			//TODO: transfer _reward
-
-			Ok(())
+			T::Currency::transfer(
+				&T::PalletId::get().into_account_truncating(),
+				&who,
+				reward,
+				ExistenceRequirement::KeepAlive,
+			)
 		}
 	}
 }
