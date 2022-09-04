@@ -156,7 +156,34 @@ fn stake_unstake_reward() {
 
 #[test]
 fn claim() {
-	new_test_ext().execute_with(|| todo!());
+	new_test_ext().execute_with(|| {
+		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+		assert_eq!(
+			Staked::<Test>::get(USER_A),
+			StakedDetails {
+				amount: 0,
+				reward_tally: 0,
+			}
+		);
+	});
+}
+
+#[test]
+fn reward_claim() {
+	new_test_ext().execute_with(|| {
+		finish_epoch_and_reward(REWARD_INTERVAL, 100);
+
+		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+		assert_eq!(
+			Staked::<Test>::get(USER_A),
+			StakedDetails {
+				amount: 0,
+				reward_tally: 0,
+			}
+		);
+	});
 }
 
 #[test]
