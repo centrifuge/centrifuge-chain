@@ -11,7 +11,16 @@ mod tests;
 //#[cfg(feature = "runtime-benchmarks")]
 //mod benchmarking;
 
-use frame_support::pallet_prelude::*;
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Currency, ReservableCurrency},
+	transactional,
+};
+use frame_system::pallet_prelude::*;
+
+use sp_runtime::{ArithmeticError, FixedPointNumber, FixedPointOperand};
+
+use num_traits::{NumAssignOps, NumOps, Signed};
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -38,13 +47,6 @@ pub struct StakedDetails<Balance, SignedBalance> {
 pub mod pallet {
 	use super::*;
 
-	use frame_support::{traits::Currency, transactional};
-	use frame_system::pallet_prelude::*;
-
-	use sp_runtime::{ArithmeticError, FixedPointNumber, FixedPointOperand};
-
-	use num_traits::{NumAssignOps, NumOps, Signed};
-
 	pub type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
@@ -55,7 +57,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type BlockPerEpoch: Get<Self::BlockNumber>;
 
-		type Currency: Currency<Self::AccountId>;
+		type Currency: ReservableCurrency<Self::AccountId>;
 
 		type SignedBalance: From<BalanceOf<Self>>
 			+ TryInto<BalanceOf<Self>>
@@ -156,8 +158,8 @@ pub mod pallet {
 		pub fn stake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _amount = Group::<T>::mutate(|group| {
-				Staked::<T>::mutate(who, |staked| {
+			Group::<T>::mutate(|group| {
+				Staked::<T>::mutate(&who, |staked| {
 					staked.amount += amount;
 					staked.reward_tally += group.reward_per_token.saturating_mul_int(amount).into();
 				});
@@ -165,9 +167,7 @@ pub mod pallet {
 				group.total_staked += amount;
 			});
 
-			//TODO: reserve _amount
-
-			Ok(())
+			T::Currency::reserve(&who, amount)
 		}
 
 		#[pallet::weight(10_000)]
@@ -175,17 +175,16 @@ pub mod pallet {
 		pub fn unstake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let _amount = Group::<T>::mutate(|group| {
-				Staked::<T>::mutate(who, |staked| {
+			Group::<T>::mutate(|group| {
+				Staked::<T>::mutate(&who, |staked| {
 					staked.amount -= amount;
 					staked.reward_tally -= group.reward_per_token.saturating_mul_int(amount).into();
 				});
 
 				group.total_staked -= amount;
-				amount
 			});
 
-			//TODO: unreserve _amount
+			T::Currency::unreserve(&who, amount);
 
 			Ok(())
 		}
