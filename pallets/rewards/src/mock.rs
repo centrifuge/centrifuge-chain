@@ -22,6 +22,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Rewards: pallet_rewards::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -44,7 +45,7 @@ impl system::Config for Test {
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -53,10 +54,23 @@ impl system::Config for Test {
 	type MaxConsumers = ConstU32<16>;
 }
 
+impl pallet_balances::Config for Test {
+	type Balance = u64;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ();
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
+}
+
 impl pallet_rewards::Config for Test {
 	type Event = Event;
 	type BlockPerEpoch = ConstU64<REWARD_INTERVAL>;
-	type Balance = u64;
+	type Currency = Balances;
+	type SignedBalance = i128;
 	type Rate = FixedU64;
 }
 

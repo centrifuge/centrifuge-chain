@@ -29,19 +29,24 @@ pub struct GroupDetails<Balance, Rate> {
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct StakedDetails<Balance> {
+pub struct StakedDetails<Balance, SignedBalance> {
 	amount: Balance,
-	reward_tally: Balance,
+	reward_tally: SignedBalance,
 }
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 
-	use frame_support::{traits::tokens::Balance, transactional};
+	use frame_support::{traits::Currency, transactional};
 	use frame_system::pallet_prelude::*;
 
-	use sp_runtime::{FixedPointNumber, FixedPointOperand};
+	use sp_runtime::{ArithmeticError, FixedPointNumber, FixedPointOperand};
+
+	use num_traits::{NumAssignOps, NumOps, Signed};
+
+	pub type BalanceOf<T> =
+		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -50,9 +55,20 @@ pub mod pallet {
 		#[pallet::constant]
 		type BlockPerEpoch: Get<Self::BlockNumber>;
 
-		type Balance: Balance + MaxEncodedLen + FixedPointOperand;
+		type Currency: Currency<Self::AccountId>;
 
-		type Rate: FixedPointNumber<Inner = Self::Balance>
+		type SignedBalance: From<BalanceOf<Self>>
+			+ TryInto<BalanceOf<Self>>
+			+ codec::FullCodec
+			+ Copy
+			+ Default
+			+ scale_info::TypeInfo
+			+ MaxEncodedLen
+			+ NumOps
+			+ NumAssignOps
+			+ Signed;
+
+		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TypeInfo
 			+ MaxEncodedLen
 			+ Encode
@@ -68,17 +84,22 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub type ActiveEpoch<T: Config> = StorageValue<_, EpochDetails<T::BlockNumber, T::Balance>>;
+	pub type ActiveEpoch<T: Config> = StorageValue<_, EpochDetails<T::BlockNumber, BalanceOf<T>>>;
 
 	#[pallet::storage]
-	pub type NextTotalReward<T: Config> = StorageValue<_, T::Balance, ValueQuery>;
+	pub type NextTotalReward<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::storage]
-	pub type Group<T: Config> = StorageValue<_, GroupDetails<T::Balance, T::Rate>, ValueQuery>;
+	pub type Group<T: Config> = StorageValue<_, GroupDetails<BalanceOf<T>, T::Rate>, ValueQuery>;
 
 	#[pallet::storage]
-	pub type Staked<T: Config> =
-		StorageMap<_, Blake2_256, T::AccountId, StakedDetails<T::Balance>, ValueQuery>;
+	pub type Staked<T: Config> = StorageMap<
+		_,
+		Blake2_256,
+		T::AccountId,
+		StakedDetails<BalanceOf<T>, T::SignedBalance>,
+		ValueQuery,
+	>;
 
 	// --------------------------
 
@@ -90,7 +111,10 @@ pub mod pallet {
 	pub enum Error<T> {}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T>
+	where
+		BalanceOf<T>: FixedPointOperand,
+	{
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let active_epoch = ActiveEpoch::<T>::get().unwrap_or(EpochDetails {
 				ends_on: current_block,
@@ -104,7 +128,7 @@ pub mod pallet {
 			}
 
 			Group::<T>::mutate(|group| {
-				if group.total_staked > T::Balance::default() {
+				if group.total_staked > BalanceOf::<T>::default() {
 					let rate_increment = T::Rate::saturating_from_rational(
 						active_epoch.total_reward,
 						group.total_staked,
@@ -123,16 +147,19 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		BalanceOf<T>: FixedPointOperand,
+	{
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn stake(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
+		pub fn stake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let _amount = Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(who, |staked| {
 					staked.amount += amount;
-					staked.reward_tally += group.reward_per_token.saturating_mul_int(amount);
+					staked.reward_tally += group.reward_per_token.saturating_mul_int(amount).into();
 				});
 
 				group.total_staked += amount;
@@ -145,18 +172,13 @@ pub mod pallet {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn unstake(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
+		pub fn unstake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let _amount = Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(who, |staked| {
 					staked.amount -= amount;
-					println!("aaa: {:?}", staked.reward_tally);
-					println!(
-						"bbb: {:?}",
-						group.reward_per_token.saturating_mul_int(amount)
-					);
-					staked.reward_tally -= group.reward_per_token.saturating_mul_int(amount);
+					staked.reward_tally -= group.reward_per_token.saturating_mul_int(amount).into();
 				});
 
 				group.total_staked -= amount;
@@ -175,12 +197,19 @@ pub mod pallet {
 
 			let group = Group::<T>::get();
 
-			let _reward = Staked::<T>::mutate(who, |staked| {
-				let reward = group.reward_per_token.saturating_mul_int(staked.amount);
+			let _reward: BalanceOf<T> = Staked::<T>::try_mutate(who, |staked| {
+				let reward = group
+					.reward_per_token
+					.saturating_mul_int(staked.amount)
+					.into();
+
 				let rectified_reward = reward - staked.reward_tally;
+
 				staked.reward_tally = reward;
 				rectified_reward
-			});
+					.try_into()
+					.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Underflow))
+			})?;
 
 			//TODO: transfer _reward
 
