@@ -297,8 +297,9 @@ where
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
-	if matches!(parachain_config.role, Role::Light) {
-		return Err("Light client not supported!".into());
+	// Light clients got removed in polkadot-v0.9.28
+	if matches!(parachain_config.role, Role::Full) {
+		return Err("Full client not supported!".into());
 	}
 
 	let parachain_config = prepare_node_config(parachain_config);
