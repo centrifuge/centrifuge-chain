@@ -155,6 +155,13 @@ fn stake_insufficient_balance() {
 }
 
 #[test]
+fn stake_nothing() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Rewards::stake(Origin::signed(USER_A), 0));
+	});
+}
+
+#[test]
 fn unstake() {
 	const REWARD: u64 = 100;
 	const USER_A_STAKED: u64 = 1000;
