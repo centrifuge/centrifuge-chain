@@ -125,7 +125,7 @@ pub mod pallet {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let active_epoch = ActiveEpoch::<T>::get().unwrap_or(EpochDetails {
 				ends_on: current_block,
-				total_reward: NextTotalReward::<T>::get(),
+				total_reward: BalanceOf::<T>::default(),
 			});
 
 			if active_epoch.ends_on != current_block {
