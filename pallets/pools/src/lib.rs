@@ -16,15 +16,20 @@ use codec::HasCompact;
 use common_traits::{
 	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
 };
-use common_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
+use common_types::{CustomMetadata, Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	ReservableCurrency,
 };
-use frame_support::transactional;
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
+use frame_support::{
+	dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, transactional, BoundedVec,
+};
 use frame_system::pallet_prelude::*;
-use orml_traits::Change;
+use orml_traits::{
+	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
+	Change,
+};
+use polkadot_parachain::primitives::Id as ParaId;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -112,15 +117,24 @@ pub struct PoolParameters {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolChanges<Rate> {
-	pub tranches: Change<Vec<TrancheInput<Rate>>>,
+pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	pub tranches: Change<Vec<TrancheUpdate<Rate>>>,
+	pub tranche_metadata: Change<Vec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>>>,
 	pub min_epoch_time: Change<Moment>,
 	pub max_nav_age: Change<Moment>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct ScheduledUpdateDetails<Rate> {
-	pub changes: PoolChanges<Rate>,
+pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
 	pub scheduled_time: Moment,
 }
 
@@ -312,9 +326,22 @@ pub mod pallet {
 
 		type UpdateGuard: PoolUpdateGuard<
 			PoolDetails = PoolDetailsOf<Self>,
-			ScheduledUpdateDetails = ScheduledUpdateDetails<Self::InterestRate>,
+			ScheduledUpdateDetails = ScheduledUpdateDetails<
+				Self::InterestRate,
+				Self::MaxTokenNameLength,
+				Self::MaxTokenSymbolLength,
+			>,
 			Moment = Moment,
 		>;
+
+		type AssetRegistry: OrmlMutate<
+			AssetId = Self::CurrencyId,
+			Balance = Self::Balance,
+			CustomMetadata = CustomMetadata,
+		>;
+
+		#[pallet::constant]
+		type ParachainId: Get<ParaId>;
 
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
 
@@ -365,6 +392,14 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
+		/// Max length for a tranche token name
+		#[pallet::constant]
+		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
+
+		/// Max length for a tranche token symbol
+		#[pallet::constant]
+		type MaxTokenSymbolLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
+
 		/// Max number of Tranches
 		#[pallet::constant]
 		type MaxTranches: Get<u32>;
@@ -391,8 +426,12 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn scheduled_update)]
-	pub type ScheduledUpdate<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, ScheduledUpdateDetails<T::InterestRate>>;
+	pub type ScheduledUpdate<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		ScheduledUpdateDetails<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn order)]
@@ -538,8 +577,21 @@ pub mod pallet {
 		/// * seniority MUST be smaller number of tranches
 		/// * MUST be increasing per tranche
 		InvalidTrancheSeniority,
+		/// Pre-requirements for a TrancheUpdate are not met
+		/// for example: Tranche changed but not its metadata or vice versa
+		InvalidTrancheUpdate,
 		/// Invalid metadata passed
 		BadMetadata,
+		/// No metada for the given currency found
+		MetadataForCurrencyNotFound,
+		/// The given tranche token name exceeds the length limit
+		TrancheTokenNameTooLong,
+		/// The given tranche symbol name exceeds the length limit
+		TrancheSymbolNameTooLong,
+		/// Registering the metadata for a tranche threw an error
+		FailedToRegisterTrancheMetadata,
+		/// Updating the metadata for a tranche threw an error
+		FailedToUpdateTrancheMetadata,
 		/// Invalid TrancheId passed. In most cases out-of-bound index
 		InvalidTrancheId,
 		/// Indicates that the new passed order equals the old-order
@@ -580,13 +632,15 @@ pub mod pallet {
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
-		#[pallet::weight(T::WeightInfo::create(tranches.len().try_into().unwrap_or(u32::MAX)))]
+		#[pallet::weight(T::WeightInfo::create(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: T::AccountId,
 			pool_id: T::PoolId,
-			tranches: Vec<TrancheInput<T::InterestRate>>,
+			tranche_inputs: Vec<
+				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
@@ -611,10 +665,24 @@ pub mod pallet {
 				Error::<T>::InvalidCurrency
 			);
 
-			Self::is_valid_tranche_change(None, &tranches)?;
+			Self::is_valid_tranche_change(
+				None,
+				&tranche_inputs
+					.iter()
+					.map(|t| TrancheUpdate {
+						tranche_type: t.tranche_type,
+						seniority: t.seniority,
+					})
+					.collect(),
+			)?;
 
 			let now = Self::now();
-			let tranches = Tranches::from_input::<T::TrancheToken>(pool_id, tranches, now)?;
+
+			let tranches = Tranches::from_input::<
+				T::TrancheToken,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>(pool_id, tranche_inputs.clone(), now)?;
 
 			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
 				Some(metadata_value) => {
@@ -627,6 +695,40 @@ pub mod pallet {
 				}
 				None => None,
 			};
+
+			for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
+				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche_input
+					.clone()
+					.metadata
+					.token_name
+					.clone()
+					.try_into()
+					.map_err(|_| Error::<T>::TrancheTokenNameTooLong)?;
+
+				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche_input
+					.metadata
+					.token_symbol
+					.clone()
+					.try_into()
+					.map_err(|_| Error::<T>::TrancheSymbolNameTooLong)?;
+
+				let decimals = match T::AssetRegistry::metadata(&currency) {
+					Some(metadata) => metadata.decimals,
+					None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
+				};
+
+				let parachain_id = T::ParachainId::get();
+
+				let metadata = tranche.create_asset_metadata(
+					decimals,
+					parachain_id,
+					token_name.to_vec(),
+					token_symbol.to_vec(),
+				);
+
+				T::AssetRegistry::register_asset(Some(tranche.currency), metadata)
+					.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
+			}
 
 			Pool::<T>::insert(
 				pool_id,
@@ -688,7 +790,7 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges<T::InterestRate>,
+			changes: PoolChanges<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -703,6 +805,15 @@ pub mod pallet {
 			ensure!(
 				EpochExecution::<T>::try_get(pool_id).is_err(),
 				Error::<T>::InSubmissionPeriod
+			);
+
+			// Both changes.tranches and changes.tranche_metadata
+			// have to be NoChange or Change, we don't allow to change either or
+			// ^ = XOR, !^ = negated XOR
+			ensure!(
+				!((changes.tranches == Change::NoChange)
+					^ (changes.tranche_metadata == Change::NoChange)),
+				Error::<T>::InvalidTrancheUpdate
 			);
 
 			if changes.min_epoch_time == Change::NoChange
@@ -736,7 +847,7 @@ pub mod pallet {
 			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 			if let Change::NewValue(tranches) = &changes.tranches {
-				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
+				Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
 			}
 
 			let now = Self::now();
@@ -1191,10 +1302,10 @@ pub mod pallet {
 							tranche.order_as_currency::<T::BalanceRatio>(price)?;
 
 						let epoch_tranche = EpochExecutionTranche {
-							supply: supply,
+							supply,
 							price: *price,
-							invest: invest,
-							redeem: redeem,
+							invest,
+							redeem,
 							seniority: tranche.seniority,
 							min_risk_buffer: tranche.min_risk_buffer(),
 							_phantom: Default::default(),
@@ -1506,7 +1617,7 @@ pub mod pallet {
 
 		pub(crate) fn do_update_pool(
 			pool_id: &T::PoolId,
-			changes: &PoolChanges<T::InterestRate>,
+			changes: &PoolChanges<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 		) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
@@ -1524,18 +1635,40 @@ pub mod pallet {
 
 					pool.tranches.combine_with_mut_residual_top(
 						tranches.into_iter(),
-						|tranche, (new_tranche_type, seniority)| {
+						|tranche, tranche_update| {
 							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
 							tranche.accrue(now)?;
 
-							tranche.tranche_type = new_tranche_type.clone();
+							tranche.tranche_type = tranche_update.tranche_type.clone();
 
-							if let Some(new_seniority) = seniority {
+							if let Some(new_seniority) = tranche_update.seniority {
 								tranche.seniority = new_seniority.clone();
 							}
+
 							Ok(())
 						},
 					)?;
+				}
+
+				//
+				// The case when Metadata AND the tranche changed, we don't allow for an or.
+				// Both have to be changed (for now)
+				//
+				if let Change::NewValue(metadata) = &changes.tranche_metadata {
+					for (tranche, updated_metadata) in
+						pool.tranches.tranches.iter().zip(metadata.iter())
+					{
+						T::AssetRegistry::update_asset(
+							tranche.currency,
+							None,
+							Some(updated_metadata.clone().token_name.to_vec()),
+							Some(updated_metadata.clone().token_symbol.to_vec()),
+							None,
+							None,
+							None,
+						)
+						.map_err(|_| Error::<T>::FailedToUpdateTrancheMetadata)?;
+					}
 				}
 
 				ScheduledUpdate::<T>::remove(pool_id);
@@ -1816,7 +1949,7 @@ pub mod pallet {
 
 		pub fn is_valid_tranche_change(
 			old_tranches: Option<&TranchesOf<T>>,
-			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
+			new_tranches: &Vec<TrancheUpdate<T::InterestRate>>,
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
 			ensure!(
@@ -1829,7 +1962,9 @@ pub mod pallet {
 			ensure!(
 				match new_tranches.first() {
 					None => false,
-					Some((tranche_type, _)) => tranche_type == &TrancheType::Residual,
+					Some(tranche_input) => {
+						tranche_input.tranche_type == TrancheType::Residual
+					}
 				},
 				Error::<T>::InvalidJuniorTranche
 			);
@@ -1844,7 +1979,9 @@ pub mod pallet {
 			ensure!(
 				match non_residual_tranche.iter().next() {
 					None => true,
-					Some((next_tranche, _)) => next_tranche != &TrancheType::Residual,
+					Some(next_tranche) => {
+						next_tranche.tranche_type != TrancheType::Residual
+					}
 				},
 				Error::<T>::InvalidTrancheStructure
 			);
@@ -1856,19 +1993,20 @@ pub mod pallet {
 				.try_into()
 				.expect("MaxTranches is u32. qed.");
 
-			for (tranche_type, seniority) in new_tranches.iter() {
+			for tranche_input in new_tranches.iter() {
 				ensure!(
-					prev_tranche_type.valid_next_tranche(tranche_type),
+					prev_tranche_type.valid_next_tranche(&tranche_input.tranche_type),
 					Error::<T>::InvalidTrancheStructure
 				);
 
 				ensure!(
-					prev_seniority <= seniority && seniority <= &Some(max_seniority),
+					prev_seniority <= &tranche_input.seniority
+						&& tranche_input.seniority <= Some(max_seniority),
 					Error::<T>::InvalidTrancheSeniority
 				);
 
-				prev_tranche_type = tranche_type;
-				prev_seniority = seniority;
+				prev_tranche_type = &tranche_input.tranche_type;
+				prev_seniority = &tranche_input.seniority;
 			}
 
 			// In case we are not setting up a new pool (i.e. a tranche setup already exists) we check

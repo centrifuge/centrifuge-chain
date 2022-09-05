@@ -1294,11 +1294,15 @@ dependencies = [
  "bitflags",
  "common-traits",
  "frame-support",
+ "frame-system",
+ "orml-asset-registry",
  "parity-scale-codec",
+ "polkadot-parachain",
  "scale-info",
  "serde",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -6163,6 +6167,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -6171,6 +6176,7 @@ dependencies = [
  "pallet-pools",
  "pallet-timestamp",
  "pallet-uniques",
+ "parachain-info",
  "parity-scale-codec",
  "runtime-common",
  "scale-info",
@@ -6375,13 +6381,16 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-permissions",
  "pallet-restricted-tokens",
  "pallet-timestamp",
+ "parachain-info",
  "parity-scale-codec",
+ "polkadot-parachain",
  "rand 0.8.5",
  "rev_slice",
  "runtime-common",
@@ -6392,6 +6401,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]

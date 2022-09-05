@@ -35,6 +35,8 @@ use sp_std::vec::Vec;
 pub use tokens::*;
 
 pub mod ids;
+#[cfg(feature = "runtime-benchmarks")]
+pub mod impls;
 #[cfg(test)]
 mod tests;
 mod tokens;
@@ -44,6 +46,9 @@ pub type PoolId = u64;
 
 /// A representation of a tranche identifier
 pub type TrancheId = [u8; 16];
+
+/// Balance of an account.
+pub type Balance = u128;
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 // NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
@@ -584,4 +589,32 @@ impl Default for FeeKey {
 	fn default() -> Self {
 		FeeKey::AnchorsCommit
 	}
+}
+
+/// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
+#[derive(Clone, Copy, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo)]
+pub struct CustomMetadata {
+	/// XCM-related metadata.
+	pub xcm: XcmMetadata,
+
+	/// Whether an asset can be minted.
+	/// When `true`, the right permissions will checked in the permissions
+	/// pallet to authorize asset minting by an origin.
+	pub mintable: bool,
+
+	/// Whether an asset is _permissioned_, i.e., whether the asset can only
+	/// be transferred from and to whitelisted accounts. When `true`, the
+	/// right permissions will checked in the permissions pallet to authorize
+	/// transfer between mutually allowed from and to accounts.
+	pub permissioned: bool,
+
+	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
+	pub pool_currency: bool,
+}
+
+#[derive(Clone, Copy, Default, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo)]
+pub struct XcmMetadata {
+	/// The fee charged for every second that an XCM message takes to execute.
+	/// When `None`, the `default_per_second` will be used instead.
+	pub fee_per_second: Option<Balance>,
 }

@@ -14,7 +14,7 @@
 //! # Common types and primitives used for Centrifuge chain runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-pub use common_types::CurrencyId;
+pub use common_types::{Balance, CurrencyId};
 
 pub use apis::*;
 pub use constants::*;
@@ -80,11 +80,11 @@ pub mod types {
 	/// The address format for describing accounts.
 	pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
 
-	/// Balance of an account.
-	pub type Balance = u128;
-
 	/// IBalance is the signed version of the Balance for orml tokens
 	pub type IBalance = i128;
+
+	/// Balance of an account.
+	pub type Balance = u128;
 
 	/// Index of a transaction in the chain.
 	pub type Index = u32;
@@ -138,6 +138,12 @@ pub mod types {
 
 	/// Rate with 27 precision fixed point decimal
 	pub type Rate = crate::fixed_point::Rate;
+
+	/// Maximum allowed length of a tranche token name
+	pub type MaxTokenNameLength = u32;
+
+	/// Maximum allowed length of a tranche symbol name
+	pub type MaxTokenSymbolLength = u32;
 
 	/// A representation of CollectionId for Uniques
 	pub type CollectionId = u64;

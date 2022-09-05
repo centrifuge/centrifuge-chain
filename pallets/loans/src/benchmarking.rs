@@ -17,7 +17,7 @@ use crate::loan_type::{BulletLoan, CreditLineWithMaturity};
 use crate::test_utils::initialise_test_pool;
 use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet};
-use common_types::{CurrencyId, PoolLocator};
+use common_types::{CurrencyId, CustomMetadata, PoolLocator};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
 	assert_ok,
@@ -25,6 +25,7 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
+use orml_traits::asset_registry::Mutate;
 use orml_traits::MultiCurrency;
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
@@ -301,9 +302,35 @@ fn pool_account<T: pallet_pools::Config>(pool_id: T::PoolId) -> T::AccountId {
 	PoolLocator { pool_id }.into_account_truncating()
 }
 
+fn prepare_asset_registry<T: Config>()
+where
+	T::AssetRegistry: orml_traits::asset_registry::Mutate<
+		AssetId = CurrencyId,
+		Balance = u128,
+		CustomMetadata = CustomMetadata,
+	>,
+{
+	T::AssetRegistry::register_asset(
+		Some(CurrencyId::AUSD),
+		orml_asset_registry::AssetMetadata {
+			decimals: 18,
+			name: "MOCK TOKEN".as_bytes().to_vec(),
+			symbol: "MOCK".as_bytes().to_vec(),
+			existential_deposit: 0,
+			location: None,
+			additional: CustomMetadata::default(),
+		},
+	)
+	.unwrap();
+}
+
 benchmarks! {
 	where_clause {
 		where
+		T: pallet_pools::Config<
+			CurrencyId = common_types::CurrencyId,
+			Balance = u128,
+		>,
 		<T as pallet_uniques::Config>::CollectionId: From<u64>,
 		<T as pallet_balances::Config>::Balance: From<u128>,
 		<T as LoanConfig>::Rate: From<Rate>,
@@ -331,6 +358,7 @@ benchmarks! {
 	}
 
 	create {
+		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, collateral) = create_asset::<T>(1.into());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, collateral)
@@ -350,6 +378,7 @@ benchmarks! {
 
 	price {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -389,6 +418,7 @@ benchmarks! {
 	}
 
 	add_write_off_group {
+		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let write_off_group = WriteOffGroup {
 			// 10%
@@ -404,6 +434,7 @@ benchmarks! {
 
 	initial_borrow {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -429,6 +460,7 @@ benchmarks! {
 
 	further_borrows {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -461,6 +493,7 @@ benchmarks! {
 
 	repay {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -498,6 +531,7 @@ benchmarks! {
 	write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..T::MaxWriteOffGroups::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -537,6 +571,7 @@ benchmarks! {
 
 	admin_write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -565,6 +600,7 @@ benchmarks! {
 
 	repay_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let mut collateral = None;
 		for idx in 0..n {
@@ -615,6 +651,7 @@ benchmarks! {
 
 	write_off_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let mut collateral = None;
 		for idx in 0..n {
@@ -663,6 +700,7 @@ benchmarks! {
 
 	update_nav {
 		let n in 1..T::MaxActiveLoansPerPool::get();
+		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let amount = (CURRENCY / 4).into();
 		for idx in 0..n {

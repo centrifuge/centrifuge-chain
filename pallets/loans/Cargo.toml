@@ -15,6 +15,7 @@ serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 
+parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.26" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
@@ -38,6 +39,7 @@ pallet-pools = { path = "../pools", optional = true, default-features = false}
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false, optional = true, branch = "polkadot-v0.9.26" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
+orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", default-features =  false, branch = "polkadot-v0.9.26" }
@@ -47,6 +49,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-f
 
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.26" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
+orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
 
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 pallet-pools = { path = "../pools", default-features = false}
