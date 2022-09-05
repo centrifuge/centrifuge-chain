@@ -19,7 +19,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 
 use sp_runtime::{
-	traits::AccountIdConversion, ArithmeticError, FixedPointNumber, FixedPointOperand,
+	traits::AccountIdConversion, ArithmeticError, FixedPointNumber, FixedPointOperand, TokenError,
 };
 
 use num_traits::{NumAssignOps, NumOps, Signed};
@@ -182,6 +182,10 @@ pub mod pallet {
 		#[transactional]
 		pub fn unstake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
+			if T::Currency::reserved_balance(&who) < amount {
+				return Err(DispatchError::Token(TokenError::NoFunds));
+			}
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {

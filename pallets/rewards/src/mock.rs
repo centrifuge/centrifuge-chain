@@ -17,7 +17,6 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 pub const EPOCH_INTERVAL: u64 = 10;
-pub const INITIAL_REWARD: u64 = 100;
 
 pub const USER_A: u64 = 1;
 pub const USER_INITIAL_BALANCE: u64 = 100000;
@@ -96,7 +95,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Balances::make_free_balance_be(&USER_A, USER_INITIAL_BALANCE);
 
 		// Set a correct epoch initial state
-		pallet_rewards::NextTotalReward::<Test>::put(INITIAL_REWARD);
 		System::set_block_number(0);
 		Rewards::on_initialize(0);
 	});
@@ -112,8 +110,4 @@ pub fn finalize_epoch() {
 
 	System::set_block_number(new_block);
 	Rewards::on_initialize(new_block);
-}
-
-pub fn add_total_staked(amount: u64) {
-	pallet_rewards::Group::<Test>::mutate(|group| group.total_staked += amount);
 }
