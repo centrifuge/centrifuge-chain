@@ -49,7 +49,7 @@ impl<AssetId, AccountId, Balance>
 
 impl<T: Config> Inspect<T::AccountId> for Pallet<T>
 where
-	T::CurrencyId: MaxEncodedLen
+	T::CurrencyId: MaxEncodedLen,
 {
 	type AssetId = T::CurrencyId;
 	type Balance = T::Balance;
@@ -136,8 +136,8 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T>
-	where
-		T::CurrencyId: MaxEncodedLen
+where
+	T::CurrencyId: MaxEncodedLen,
 {
 	fn balance_on_hold(asset: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		if asset == T::NativeToken::get() {
@@ -182,8 +182,8 @@ pub enum FungiblesMutateEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> Mutate<T::AccountId> for Pallet<T>
-	where
-		T::CurrencyId: MaxEncodedLen
+where
+	T::CurrencyId: MaxEncodedLen,
 {
 	fn mint_into(
 		asset: Self::AssetId,
@@ -262,8 +262,8 @@ pub enum FungiblesMutateHoldEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> MutateHold<T::AccountId> for Pallet<T>
-	where
-		T::CurrencyId: MaxEncodedLen
+where
+	T::CurrencyId: MaxEncodedLen,
 {
 	fn hold(asset: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		if asset == T::NativeToken::get() {
@@ -361,8 +361,8 @@ pub enum FungiblesTransferEffects<AssetId, AccountId, Balance> {
 }
 
 impl<T: Config> Transfer<T::AccountId> for Pallet<T>
-	where
-		T::CurrencyId: MaxEncodedLen
+where
+	T::CurrencyId: MaxEncodedLen,
 {
 	fn transfer(
 		asset: Self::AssetId,
