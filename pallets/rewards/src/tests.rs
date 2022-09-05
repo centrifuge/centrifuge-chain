@@ -12,12 +12,6 @@ const INITIAL_TOTAL_STAKED: u64 = 5000;
 #[test]
 fn epoch_rewards() {
 	new_test_ext().execute_with(|| {
-		//EPOCH 1
-		assert_eq!(
-			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			INITIAL_REWARD
-		);
-
 		mock::add_total_staked(INITIAL_TOTAL_STAKED);
 
 		assert_eq!(
@@ -39,12 +33,11 @@ fn epoch_rewards() {
 		let next_reward = INITIAL_REWARD * 5;
 		NextTotalReward::<Test>::put(next_reward);
 
-		mock::finalize_epoch();
+		mock::finalize_epoch(); // EPOCH 2
 
-		//EPOCH 2
 		assert_eq!(
 			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			INITIAL_REWARD + INITIAL_REWARD
+			INITIAL_REWARD
 		);
 
 		assert_eq!(
@@ -66,12 +59,11 @@ fn epoch_rewards() {
 			}
 		);
 
-		mock::finalize_epoch();
+		mock::finalize_epoch(); // EPOCH 2
 
-		//EPOCH 3
 		assert_eq!(
 			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			INITIAL_REWARD + INITIAL_REWARD + INITIAL_REWARD * 5
+			INITIAL_REWARD + INITIAL_REWARD * 5
 		);
 
 		assert_eq!(
@@ -100,7 +92,6 @@ fn stake() {
 	const USER_A_STAKED: u64 = 1000;
 
 	new_test_ext().execute_with(|| {
-		// EPOCH 1
 		mock::add_total_staked(INITIAL_TOTAL_STAKED);
 
 		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED));
@@ -126,8 +117,7 @@ fn stake() {
 			}
 		);
 
-		// EPOCH 2
-		mock::finalize_epoch();
+		mock::finalize_epoch(); // EPOCH 1
 
 		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED));
 
@@ -146,9 +136,10 @@ fn stake() {
 			Staked::<Test>::get(USER_A),
 			StakedDetails {
 				amount: USER_A_STAKED * 2,
-				reward_tally: USER_A_STAKED as i128
-					* (INITIAL_REWARD as f64 / (INITIAL_TOTAL_STAKED + USER_A_STAKED) as f64)
-						as i128,
+				reward_tally: Group::<Test>::get()
+					.reward_per_token
+					.saturating_mul_int(USER_A_STAKED)
+					.into(),
 			}
 		);
 	});
