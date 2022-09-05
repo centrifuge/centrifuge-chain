@@ -2,264 +2,427 @@ use crate::mock::*;
 
 use super::*;
 
-use frame_support::{assert_ok, traits::Hooks};
+use frame_support::{assert_noop, assert_ok};
 
 use sp_arithmetic::fixed_point::FixedU64;
-use sp_runtime::FixedPointNumber;
+use sp_runtime::{traits::AccountIdConversion, FixedPointNumber};
 
-const USER_A: u64 = 1;
-const USER_B: u64 = 2;
-
-fn finish_epoch_and_reward(at_block: u64, reward: u64) {
-	NextTotalReward::<Test>::put(reward);
-	System::set_block_number(at_block);
-	Rewards::on_initialize(at_block);
-}
+const INITIAL_TOTAL_STAKED: u64 = 5000;
 
 #[test]
-fn reward() {
+fn epoch_rewards() {
 	new_test_ext().execute_with(|| {
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
+		//EPOCH 1
+		assert_eq!(
+			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
+			INITIAL_REWARD
+		);
+
+		mock::add_total_staked(INITIAL_TOTAL_STAKED);
 
 		assert_eq!(
 			ActiveEpoch::<Test>::get(),
 			Some(EpochDetails {
-				ends_on: REWARD_INTERVAL * 2,
-				total_reward: 100,
+				ends_on: EPOCH_INTERVAL,
+				total_reward: INITIAL_REWARD,
 			})
 		);
 
-		assert_eq!(Group::<Test>::get(), GroupDetails::default());
+		assert_eq!(
+			Group::<Test>::get(),
+			GroupDetails {
+				total_staked: INITIAL_TOTAL_STAKED,
+				reward_per_token: 0.into(),
+			}
+		);
+
+		let next_reward = INITIAL_REWARD * 5;
+		NextTotalReward::<Test>::put(next_reward);
+
+		mock::finalize_epoch();
+
+		//EPOCH 2
+		assert_eq!(
+			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
+			INITIAL_REWARD + INITIAL_REWARD
+		);
+
+		assert_eq!(
+			ActiveEpoch::<Test>::get(),
+			Some(EpochDetails {
+				ends_on: EPOCH_INTERVAL * 2,
+				total_reward: next_reward,
+			})
+		);
+
+		assert_eq!(
+			Group::<Test>::get(),
+			GroupDetails {
+				total_staked: INITIAL_TOTAL_STAKED,
+				reward_per_token: FixedU64::saturating_from_rational(
+					INITIAL_REWARD,
+					INITIAL_TOTAL_STAKED
+				),
+			}
+		);
+
+		mock::finalize_epoch();
+
+		//EPOCH 3
+		assert_eq!(
+			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
+			INITIAL_REWARD + INITIAL_REWARD + INITIAL_REWARD * 5
+		);
+
+		assert_eq!(
+			ActiveEpoch::<Test>::get(),
+			Some(EpochDetails {
+				ends_on: EPOCH_INTERVAL * 3,
+				total_reward: next_reward,
+			})
+		);
+
+		assert_eq!(
+			Group::<Test>::get(),
+			GroupDetails {
+				total_staked: INITIAL_TOTAL_STAKED,
+				reward_per_token: FixedU64::saturating_from_rational(
+					INITIAL_REWARD + next_reward,
+					INITIAL_TOTAL_STAKED
+				),
+			}
+		);
 	});
 }
 
 #[test]
 fn stake() {
+	const USER_A_STAKED: u64 = 1000;
+
 	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+		// EPOCH 1
+		mock::add_total_staked(INITIAL_TOTAL_STAKED);
+
+		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED));
+
+		assert_eq!(
+			Balances::free_balance(&USER_A),
+			USER_INITIAL_BALANCE - USER_A_STAKED
+		);
+
+		assert_eq!(
+			Group::<Test>::get(),
+			GroupDetails {
+				total_staked: INITIAL_TOTAL_STAKED + USER_A_STAKED,
+				reward_per_token: 0.into(),
+			}
+		);
 
 		assert_eq!(
 			Staked::<Test>::get(USER_A),
 			StakedDetails {
-				amount: 1000,
+				amount: USER_A_STAKED,
 				reward_tally: 0,
 			}
 		);
 
+		// EPOCH 2
+		mock::finalize_epoch();
+
+		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED));
+
 		assert_eq!(
 			Group::<Test>::get(),
 			GroupDetails {
-				total_staked: 1000,
-				reward_per_token: 0.into(),
+				total_staked: INITIAL_TOTAL_STAKED + USER_A_STAKED + USER_A_STAKED,
+				reward_per_token: FixedU64::saturating_from_rational(
+					INITIAL_REWARD,
+					INITIAL_TOTAL_STAKED + USER_A_STAKED
+				),
+			}
+		);
+
+		assert_eq!(
+			Staked::<Test>::get(USER_A),
+			StakedDetails {
+				amount: USER_A_STAKED * 2,
+				reward_tally: USER_A_STAKED as i128
+					* (INITIAL_REWARD as f64 / (INITIAL_TOTAL_STAKED + USER_A_STAKED) as f64)
+						as i128,
 			}
 		);
 	});
 }
 
 #[test]
-fn stake_reward() {
+fn stake_insufficient_balance() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
-
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: 1000,
-				reward_per_token: FixedU64::saturating_from_rational(100, 1000),
-			}
+		assert_noop!(
+			Rewards::stake(Origin::signed(USER_A), USER_INITIAL_BALANCE + 1),
+			pallet_balances::Error::<Test>::InsufficientBalance
 		);
 	});
 }
 
-#[test]
-fn stake_n() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::stake(Origin::signed(USER_B), 2000));
-
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: 3000,
-				reward_per_token: 0.into(),
-			}
-		);
-	});
-}
-
-#[test]
-fn stake_n_reward() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::stake(Origin::signed(USER_B), 2000));
-
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
-
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: 3000,
-				reward_per_token: FixedU64::saturating_from_rational(100, 3000),
-			}
-		);
-	});
-}
-
+/*
 #[test]
 fn unstake() {
-	new_test_ext().execute_with(|| todo!());
-}
+	const USER_A_STAKED: u64 = 1000;
 
-#[test]
-fn stake_unstake() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED));
+		assert_ok!(Rewards::unstake(Origin::signed(USER_A), USER_A_STAKED));
 
-		assert_eq!(
-			Staked::<Test>::get(USER_A),
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: 0,
-				reward_per_token: 0.into(),
-			}
-		);
 	});
 }
+*/
 
-#[test]
-fn stake_unstake_reward() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+/*
+mod a {
+	use super::*;
 
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
+	#[test]
+	fn reward() {
+		new_test_ext().execute_with(|| {
+			assert_eq!(
+				ActiveEpoch::<Test>::get(),
+				Some(EpochDetails {
+					ends_on: EPOCH_INTERVAL * 2,
+					total_reward: 100,
+				})
+			);
 
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: 0,
-				reward_per_token: 0.into(),
-			}
-		);
-	});
+			assert_eq!(Group::<Test>::get(), GroupDetails::default());
+		});
+	}
+
+	#[test]
+	fn stake() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 1000,
+					reward_tally: 0,
+				}
+			);
+
+			assert_eq!(
+				Group::<Test>::get(),
+				GroupDetails {
+					total_staked: 1000,
+					reward_per_token: 0.into(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_reward() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+
+			mock::finalize_epoch();
+
+			assert_eq!(
+				Group::<Test>::get(),
+				GroupDetails {
+					total_staked: 1000,
+					reward_per_token: FixedU64::saturating_from_rational(INITIAL_REWARD, 1000),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_n() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::stake(Origin::signed(USER_B), 2000));
+
+			assert_eq!(
+				Group::<Test>::get(),
+				GroupDetails {
+					total_staked: 3000,
+					reward_per_token: 0.into(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_n_reward() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::stake(Origin::signed(USER_B), 2000));
+
+			mock::finalize_epoch();
+
+			assert_eq!(
+				Group::<Test>::get(),
+				GroupDetails {
+					total_staked: 3000,
+					reward_per_token: FixedU64::saturating_from_rational(INITIAL_REWARD, 3000),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn unstake() {
+		new_test_ext().execute_with(|| todo!());
+	}
+
+	#[test]
+	fn stake_unstake() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 0,
+					reward_tally: 0,
+				}
+			);
+
+			assert_eq!(
+				Group::<Test>::get(),
+				GroupDetails {
+					total_staked: 0,
+					reward_per_token: 0.into(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_unstake_reward() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+
+			mock::finalize_epoch();
+
+			assert_eq!(
+				Group::<Test>::get(),
+				GroupDetails {
+					total_staked: 0,
+					reward_per_token: 0.into(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn claim() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 0,
+					reward_tally: 0,
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn reward_claim() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 0,
+					reward_tally: 0,
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_unstake_claim() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 0,
+					reward_tally: 0,
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_unstake_reward_claim() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+
+			mock::finalize_epoch();
+
+			assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 0,
+					reward_tally: 0,
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_reward_unstake_claim() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+
+			mock::finalize_epoch();
+
+			assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+			assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 0,
+					reward_tally: 0,
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn stake_reward_claim_unstake() {
+		new_test_ext().execute_with(|| {
+			assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
+
+			mock::finalize_epoch();
+
+			assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+
+			assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
+
+			assert_eq!(
+				Staked::<Test>::get(USER_A),
+				StakedDetails {
+					amount: 0,
+					reward_tally: 0,
+				}
+			);
+		});
+	}
 }
-
-#[test]
-fn claim() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
-
-		assert_eq!(
-			Staked::<Test>::get(USER_A),
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-	});
-}
-
-#[test]
-fn reward_claim() {
-	new_test_ext().execute_with(|| {
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
-
-		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
-
-		assert_eq!(
-			Staked::<Test>::get(USER_A),
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-	});
-}
-
-#[test]
-fn stake_unstake_claim() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
-
-		assert_eq!(
-			Staked::<Test>::get(USER_A),
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-	});
-}
-
-#[test]
-fn stake_unstake_reward_claim() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
-
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
-
-		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
-
-		assert_eq!(
-			Staked::<Test>::get(USER_A),
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-	});
-}
-
-#[test]
-fn stake_reward_unstake_claim() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
-
-		assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
-		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
-
-		assert_eq!(
-			Staked::<Test>::get(USER_A),
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-	});
-}
-
-#[test]
-fn stake_reward_claim_unstake() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1000));
-
-		finish_epoch_and_reward(REWARD_INTERVAL, 100);
-
-		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
-
-		assert_ok!(Rewards::unstake(Origin::signed(USER_A), 1000));
-
-		assert_eq!(
-			Staked::<Test>::get(USER_A),
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-	});
-}
+*/
