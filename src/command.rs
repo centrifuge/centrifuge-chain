@@ -545,7 +545,10 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.role(is_dev)
 	}
 
-	fn transaction_pool(&self, _is_dev: bool) -> Result<sc_service::config::TransactionPoolOptions> {
+	fn transaction_pool(
+		&self,
+		_is_dev: bool,
+	) -> Result<sc_service::config::TransactionPoolOptions> {
 		self.base.base.transaction_pool()
 	}
 
