@@ -37,6 +37,8 @@ async fn create_init_and_price() {
 		env::test_env_with_centrifuge_storage(&manager, genesis)
 	};
 
+	env::setup_orml_asset_registry();
+
 	let mut nft_manager = NftManager::new();
 	let pool_id = 0u64;
 	let loan_amount = 10_000 * DECIMAL_BASE_12;
