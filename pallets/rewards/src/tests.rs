@@ -67,28 +67,17 @@ fn stake() {
 	new_test_ext().execute_with(|| {
 		NextTotalReward::<Test>::put(REWARD);
 
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: 0,
-				reward_per_token: 0.into()
-			}
-		);
+		assert_eq!(Group::<Test>::get(), GroupDetails::default());
 
 		mock::finalize_epoch(); // EPOCH 1
+		assert_eq!(Group::<Test>::get().reward_per_token, 0.into());
 
 		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED_1));
 		assert_eq!(
 			Balances::free_balance(&USER_A),
 			USER_INITIAL_BALANCE - USER_A_STAKED_1
 		);
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: USER_A_STAKED_1,
-				reward_per_token: 0.into()
-			}
-		);
+		assert_eq!(Group::<Test>::get().total_staked, USER_A_STAKED_1);
 		assert_eq!(
 			Staked::<Test>::get(USER_A),
 			StakedDetails {
@@ -101,6 +90,10 @@ fn stake() {
 		);
 
 		mock::finalize_epoch(); // EPOCH 2
+		assert_eq!(
+			Group::<Test>::get().reward_per_token,
+			FixedU64::saturating_from_rational(REWARD, USER_A_STAKED_1)
+		);
 
 		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED_2));
 		assert_eq!(
@@ -108,11 +101,8 @@ fn stake() {
 			USER_INITIAL_BALANCE - (USER_A_STAKED_1 + USER_A_STAKED_2)
 		);
 		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: USER_A_STAKED_1 + USER_A_STAKED_2,
-				reward_per_token: FixedU64::saturating_from_rational(REWARD, USER_A_STAKED_1)
-			}
+			Group::<Test>::get().total_staked,
+			USER_A_STAKED_1 + USER_A_STAKED_2
 		);
 		assert_eq!(
 			Staked::<Test>::get(USER_A),
@@ -125,14 +115,10 @@ fn stake() {
 		);
 
 		mock::finalize_epoch(); // EPOCH 3
-
 		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: USER_A_STAKED_1 + USER_A_STAKED_2,
-				reward_per_token: FixedU64::saturating_from_rational(REWARD, USER_A_STAKED_1)
-					+ FixedU64::saturating_from_rational(REWARD, USER_A_STAKED_1 + USER_A_STAKED_2)
-			}
+			Group::<Test>::get().reward_per_token,
+			FixedU64::saturating_from_rational(REWARD, USER_A_STAKED_1)
+				+ FixedU64::saturating_from_rational(REWARD, USER_A_STAKED_1 + USER_A_STAKED_2)
 		);
 	});
 }
@@ -165,6 +151,7 @@ fn unstake() {
 		NextTotalReward::<Test>::put(REWARD);
 
 		mock::finalize_epoch(); // EPOCH 1
+		assert_eq!(Group::<Test>::get().reward_per_token, 0.into());
 
 		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED));
 		assert_ok!(Rewards::unstake(Origin::signed(USER_A), USER_A_UNSTAKED_1));
@@ -173,11 +160,8 @@ fn unstake() {
 			USER_INITIAL_BALANCE - (USER_A_STAKED - USER_A_UNSTAKED_1)
 		);
 		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: USER_A_STAKED - USER_A_UNSTAKED_1,
-				reward_per_token: 0.into(),
-			}
+			Group::<Test>::get().total_staked,
+			USER_A_STAKED - USER_A_UNSTAKED_1
 		);
 		assert_eq!(
 			Staked::<Test>::get(USER_A),
@@ -188,19 +172,14 @@ fn unstake() {
 		);
 
 		mock::finalize_epoch(); // EPOCH 2
+		assert_eq!(
+			Group::<Test>::get().reward_per_token,
+			FixedU64::saturating_from_rational(REWARD, USER_A_STAKED - USER_A_UNSTAKED_1)
+		);
 
 		assert_ok!(Rewards::unstake(Origin::signed(USER_A), USER_A_UNSTAKED_2));
 		assert_eq!(Balances::free_balance(&USER_A), USER_INITIAL_BALANCE);
-		assert_eq!(
-			Group::<Test>::get(),
-			GroupDetails {
-				total_staked: 0,
-				reward_per_token: FixedU64::saturating_from_rational(
-					REWARD,
-					USER_A_STAKED - USER_A_UNSTAKED_1
-				)
-			}
-		);
+		assert_eq!(Group::<Test>::get().total_staked, 0);
 		assert_eq!(
 			Staked::<Test>::get(USER_A),
 			StakedDetails {
