@@ -129,7 +129,7 @@ pub mod pallet {
 			});
 
 			if active_epoch.ends_on != current_block {
-				return 0; //FIXME
+				return T::DbWeight::get().reads(1);
 			}
 
 			T::Currency::deposit_creating(
@@ -152,7 +152,7 @@ pub mod pallet {
 				total_reward: NextTotalReward::<T>::get(),
 			});
 
-			0 //FIXME
+			T::DbWeight::get().reads_writes(2, 2) // + deposit_creating weight
 		}
 	}
 
@@ -161,7 +161,7 @@ pub mod pallet {
 	where
 		BalanceOf<T>: FixedPointOperand,
 	{
-		#[pallet::weight(10_000)]
+		#[pallet::weight(10_000)] //TODO
 		#[transactional]
 		pub fn stake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -178,7 +178,7 @@ pub mod pallet {
 			T::Currency::reserve(&who, amount)
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(10_000)] //TODO
 		#[transactional]
 		pub fn unstake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -201,7 +201,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(10_000)] //TODO
 		#[transactional]
 		pub fn claim(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -209,17 +209,18 @@ pub mod pallet {
 			let group = Group::<T>::get();
 
 			let reward: BalanceOf<T> = Staked::<T>::try_mutate(&who, |staked| {
-				let reward = group
+				let reward: T::SignedBalance = group
 					.reward_per_token
 					.saturating_mul_int(staked.amount)
 					.into();
 
-				let rectified_reward = reward - staked.reward_tally;
+				let rectified_reward = (reward - staked.reward_tally)
+					.try_into()
+					.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Underflow));
 
 				staked.reward_tally = reward;
+
 				rectified_reward
-					.try_into()
-					.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Underflow))
 			})?;
 
 			T::Currency::transfer(
