@@ -747,7 +747,7 @@ fn centrifuge_genesis(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				FeeKey::CommitAnchor,
+				FeeKey::AnchorsCommit,
 				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
 				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
 				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
@@ -852,7 +852,7 @@ fn altair_genesis(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				FeeKey::CommitAnchor,
+				FeeKey::AnchorsCommit,
 				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
 				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
 				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
@@ -951,7 +951,7 @@ fn development_genesis(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-				FeeKey::CommitAnchor,
+				FeeKey::AnchorsCommit,
 				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
 				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
 				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be

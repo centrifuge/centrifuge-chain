@@ -12,7 +12,9 @@ use common_traits::fees::{self, Fee, FeeKey};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::types::ValueQuery,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, OnUnbalanced, WithdrawReasons},
+	traits::{
+		Currency, EnsureOrigin, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons,
+	},
 };
 use scale_info::TypeInfo;
 
@@ -129,7 +131,22 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		FeeChanged(T::FeeKey, BalanceOf<T>),
+		FeeChanged {
+			key: T::FeeKey,
+			fee: BalanceOf<T>,
+		},
+		FeeToAuthor {
+			from: T::AccountId,
+			balance: BalanceOf<T>,
+		},
+		FeeToBurn {
+			from: T::AccountId,
+			balance: BalanceOf<T>,
+		},
+		FeeToTreasury {
+			from: T::AccountId,
+			balance: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::call]
@@ -140,7 +157,7 @@ pub mod pallet {
 			T::FeeChangeOrigin::ensure_origin(origin)?;
 
 			<FeeBalances<T>>::insert(key.clone(), fee);
-			Self::deposit_event(Event::FeeChanged(key, fee));
+			Self::deposit_event(Event::FeeChanged { key, fee });
 
 			Ok(())
 		}
@@ -161,22 +178,43 @@ impl<T: Config> fees::Fees for Pallet<T> {
 		fee: Fee<BalanceOf<T>, Self::FeeKey>,
 	) -> DispatchResult {
 		if let Some(author) = <pallet_authorship::Pallet<T>>::author() {
-			let balance = Self::withdraw_fee(from, fee)?;
-			T::Currency::resolve_creating(&author, balance);
+			let imbalance = Self::withdraw_fee(from, fee)?;
+			let balance = imbalance.peek();
+
+			T::Currency::resolve_creating(&author, imbalance);
+
+			Self::deposit_event(Event::FeeToAuthor {
+				from: author,
+				balance,
+			});
 		}
 		Ok(())
 	}
 
 	fn fee_to_burn(from: &Self::AccountId, fee: Fee<BalanceOf<T>, Self::FeeKey>) -> DispatchResult {
-		Self::withdraw_fee(from, fee).map(|_| ())
+		let imbalance = Self::withdraw_fee(from, fee)?;
+		let balance = imbalance.peek();
+
+		Self::deposit_event(Event::FeeToBurn {
+			from: from.clone(),
+			balance,
+		});
+		Ok(())
 	}
 
 	fn fee_to_treasury(
 		from: &Self::AccountId,
 		fee: Fee<BalanceOf<T>, Self::FeeKey>,
 	) -> DispatchResult {
-		let amount = Self::withdraw_fee(from, fee)?;
-		T::Treasury::on_unbalanced(amount);
+		let imbalance = Self::withdraw_fee(from, fee)?;
+		let balance = imbalance.peek();
+
+		T::Treasury::on_unbalanced(imbalance);
+
+		Self::deposit_event(Event::FeeToTreasury {
+			from: from.clone(),
+			balance,
+		});
 		Ok(())
 	}
 }

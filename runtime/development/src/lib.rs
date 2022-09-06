@@ -9,8 +9,8 @@ use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, Everything,
-		InstanceFilter, LockIdentifier, U128CurrencyToVote, UnixTime,
+		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
+		LockIdentifier, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -88,7 +88,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1003,
+	spec_version: 1004,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -785,8 +785,8 @@ impl pallet_fees::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
-	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::AnchorsCommit;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::AnchorsPreCommit;
 }
 
 impl pallet_anchors::Config for Runtime {

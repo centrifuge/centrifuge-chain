@@ -7,7 +7,6 @@
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::FeeKey;
-use frame_support::traits::Everything;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -71,7 +70,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1009,
+	spec_version: 1010,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -771,22 +770,21 @@ impl pallet_fees::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
-	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::PreCommitDeposit;
+	pub const CommitAnchorFeeKey: FeeKey = FeeKey::AnchorsCommit;
+	pub const PreCommitDepositFeeKey: FeeKey = FeeKey::AnchorsPreCommit;
 }
 
 impl pallet_anchors::Config for Runtime {
 	type Fees = Fees;
 	type CommitAnchorFeeKey = CommitAnchorFeeKey;
 	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_anchors::SubstrateWeight<Self>;
 	type Currency = Balances;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
-	//type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 }
