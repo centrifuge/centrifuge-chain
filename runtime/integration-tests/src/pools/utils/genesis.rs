@@ -78,3 +78,61 @@ where
 	default_native_balances::<Runtime>(storage);
 	default_ausd_balances::<Runtime>(storage);
 }
+
+/// Register the CurrencyID::KSM and CurrencyId::AUSD as assets
+pub fn register_default_asset<Runtime>(storage: &mut Storage)
+	where
+		Runtime: orml_asset_registry::Config,
+		<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
+{
+	MockGenesisConfigAssetRegistry {
+		assets: vec![CurrencyId::AUSD, CurrencyId::KSM],
+	}
+		.assimilate_storage(storage)
+		.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+/// Register the given asset in the orml_asset_registry storage from genesis onwards
+pub fn register_asset<Runtime>(asset: CurrencyId, storage: &mut Storage)
+	where
+		Runtime: orml_asset_registry::Config,
+		<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
+		<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
+		<Runtime as orml_asset_registry::Config>::CustomMetadata: From<runtime_common::CustomMetadata>,
+{
+	MockGenesisConfigAssetRegistry {
+		assets: vec![asset],
+	}
+		.assimilate_storage(storage)
+		.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+#[derive(Default)]
+struct MockGenesisConfigAssetRegistry {
+	pub assets: Vec<CurrencyId>,
+}
+
+impl<Runtime> GenesisBuild<Runtime>
+for MockGenesisConfigAssetRegistry
+	where
+		Runtime: orml_asset_registry::Config,
+		<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
+		<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
+		<Runtime as orml_asset_registry::Config>::CustomMetadata: From<runtime_common::CustomMetadata>,
+{
+	fn build(&self) {
+		for asset in self.assets {
+			orml_asset_registry::Pallet::<Runtime>::do_register_asset(
+				orml_asset_registry::AssetMetadata {
+					decimals: 18,
+					name: b"mock_name".to_vec(),
+					symbol: b"mock_symbol".to_vec(),
+					existential_deposit: 0u128.into(),
+					location: None,
+					additional: runtime_common::CustomMetadata::default().into()
+				},
+				Some(asset)
+			).expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+		}
+	}
+}
