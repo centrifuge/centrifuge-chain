@@ -19,6 +19,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 pub const EPOCH_INTERVAL: u64 = 10;
 
 pub const USER_A: u64 = 1;
+pub const USER_B: u64 = 2;
 pub const USER_INITIAL_BALANCE: u64 = 100000;
 
 frame_support::construct_runtime!(
@@ -93,6 +94,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	ext.execute_with(|| {
 		Balances::make_free_balance_be(&USER_A, USER_INITIAL_BALANCE);
+		Balances::make_free_balance_be(&USER_B, USER_INITIAL_BALANCE);
 
 		// Set a correct epoch initial state
 		System::set_block_number(0);

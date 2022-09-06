@@ -250,15 +250,16 @@ fn claim() {
 			Balances::free_balance(&USER_A),
 			USER_INITIAL_BALANCE - USER_A_STAKED + REWARD * 2
 		);
+		assert_ok!(Rewards::unstake(Origin::signed(USER_A), USER_A_STAKED));
 
 		mock::finalize_epoch(); // EPOCH 4
 
-		assert_ok!(Rewards::unstake(Origin::signed(USER_A), USER_A_STAKED));
 		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
 		assert_eq!(
 			Balances::free_balance(&USER_A),
-			USER_INITIAL_BALANCE + REWARD * 3
+			USER_INITIAL_BALANCE + REWARD * 2
 		);
+		assert_eq!(Staked::<Test>::get(USER_A), StakedDetails::default());
 	});
 }
 
@@ -274,6 +275,7 @@ fn claim_nothing() {
 
 		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
 		assert_eq!(Balances::free_balance(&USER_A), USER_INITIAL_BALANCE);
+		assert_eq!(Staked::<Test>::get(USER_A), StakedDetails::default());
 
 		mock::finalize_epoch(); // EPOCH 2
 
@@ -281,10 +283,70 @@ fn claim_nothing() {
 		assert_ok!(Rewards::unstake(Origin::signed(USER_A), USER_A_STAKED));
 		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
 		assert_eq!(Balances::free_balance(&USER_A), USER_INITIAL_BALANCE);
+		assert_eq!(Staked::<Test>::get(USER_A), StakedDetails::default());
 
 		mock::finalize_epoch(); // EPOCH 3
 
 		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
 		assert_eq!(Balances::free_balance(&USER_A), USER_INITIAL_BALANCE);
+		assert_eq!(Staked::<Test>::get(USER_A), StakedDetails::default());
+	});
+}
+
+#[test]
+fn several_users() {
+	const REWARD: u64 = 100;
+	const USER_A_STAKED: u64 = 1000;
+	const USER_B_STAKED: u64 = 4000;
+
+	new_test_ext().execute_with(|| {
+		NextTotalReward::<Test>::put(REWARD);
+
+		mock::finalize_epoch(); // EPOCH 1
+
+		assert_ok!(Rewards::stake(Origin::signed(USER_A), USER_A_STAKED));
+		assert_ok!(Rewards::stake(Origin::signed(USER_B), USER_B_STAKED));
+
+		mock::finalize_epoch(); // EPOCH 2
+
+		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+		assert_ok!(Rewards::claim(Origin::signed(USER_B)));
+		assert_eq!(
+			Balances::free_balance(&USER_A),
+			USER_INITIAL_BALANCE - USER_A_STAKED + 1 * REWARD / 5
+		);
+		assert_eq!(
+			Balances::free_balance(&USER_B),
+			USER_INITIAL_BALANCE - USER_B_STAKED + 4 * REWARD / 5
+		);
+		assert_ok!(Rewards::unstake(Origin::signed(USER_A), USER_A_STAKED));
+
+		mock::finalize_epoch(); // EPOCH 3
+
+		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+		assert_ok!(Rewards::claim(Origin::signed(USER_B)));
+		assert_eq!(
+			Balances::free_balance(&USER_A),
+			USER_INITIAL_BALANCE + 1 * REWARD / 5
+		);
+		assert_eq!(
+			Balances::free_balance(&USER_B),
+			USER_INITIAL_BALANCE - USER_B_STAKED + 4 * REWARD / 5 + REWARD
+		);
+		assert_ok!(Rewards::unstake(Origin::signed(USER_B), USER_B_STAKED));
+
+		mock::finalize_epoch(); // EPOCH 4
+
+		assert_ok!(Rewards::claim(Origin::signed(USER_A)));
+		assert_ok!(Rewards::claim(Origin::signed(USER_B)));
+		assert_eq!(
+			Balances::free_balance(&USER_A),
+			USER_INITIAL_BALANCE + 1 * REWARD / 5
+		);
+		assert_eq!(
+			Balances::free_balance(&USER_B),
+			USER_INITIAL_BALANCE + 4 * REWARD / 5 + REWARD
+		);
 	});
 }
