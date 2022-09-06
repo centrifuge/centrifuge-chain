@@ -111,7 +111,7 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::event]
-	//#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	//#[pallet::generate_deposit(pub(super) fn deposit_event)] // TODO
 	pub enum Event<T> {}
 
 	#[pallet::error]
@@ -152,7 +152,7 @@ pub mod pallet {
 				total_reward: NextTotalReward::<T>::get(),
 			});
 
-			T::DbWeight::get().reads_writes(2, 2) // + deposit_creating weight
+			T::DbWeight::get().reads_writes(2, 2) // + deposit_creating weight // TODO
 		}
 	}
 
