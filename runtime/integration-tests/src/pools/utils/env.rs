@@ -853,23 +853,6 @@ pub fn task_manager(tokio_handle: Handle) -> TaskManager {
 	TaskManager::new(tokio_handle, None).expect("ESSENTIAL: TaskManager must exist for tests.")
 }
 
-pub fn setup_orml_asset_registry() {
-	sp_io::TestExternalities::default().execute_with(|| {
-		orml_asset_registry::Pallet::<Runtime>::do_register_asset(
-			orml_asset_registry::AssetMetadata {
-				decimals: 18,
-				name: "MOCK TOKEN".as_bytes().to_vec(),
-				symbol: "MOCK".as_bytes().to_vec(),
-				existential_deposit: 0,
-				location: None,
-				additional: common_types::CustomMetadata::default(),
-			},
-			Some(common_types::CurrencyId::AUSD),
-		)
-		.unwrap();
-	});
-}
-
 /// Pass n_blocks on the parachain-side!
 pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 	for _ in 0..n {
