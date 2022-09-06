@@ -12,13 +12,18 @@
 
 //! A module that contains all ids where we should be REALLY careful
 //! when changing them.
-use crate::PoolLocator;
+use crate::{InvestmentAccount, PoolLocator};
 use frame_support::PalletId;
 use sp_runtime::TypeId;
 
 // The TypeId impl we derive pool-accounts from
 impl<PoolId> TypeId for PoolLocator<PoolId> {
 	const TYPE_ID: [u8; 4] = *b"pool";
+}
+
+// The TypeId impl we derive pool-accounts from
+impl<InvestmentId> TypeId for InvestmentAccount<InvestmentId> {
+	const TYPE_ID: [u8; 4] = *b"invs";
 }
 
 // Pallet-Ids that define pallets accounts

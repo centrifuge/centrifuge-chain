@@ -297,6 +297,167 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
 
+/// A trait, when implemented allows to invest into
+/// investment classes
+pub trait Investment<AccountId> {
+	type Error;
+	type InvestmentId;
+	type Amount;
+
+	/// Updates the current investment amount of who into the
+	/// investment class to amount.
+	/// Meaning: if amount < previous investment, then investment
+	/// will be reduced, and increases in the opposite case.
+	fn update_investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Returns, if possible, the current investment amount of who into the given investment
+	/// class
+	fn investment(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error>;
+
+	/// Updates the current redemption amount of who into the
+	/// investment class to amount.
+	/// Meaning: if amount < previous redemption, then redemption
+	/// will be reduced, and increases in the opposite case.
+	fn update_redemption(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Returns, if possible, the current redemption amount of who into the given investment
+	/// class
+	fn redemption(
+		who: &AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Amount, Self::Error>;
+}
+
+/// A trait, when implemented must take care of
+/// collecting orders (invest & redeem) for a given investment class.
+/// When being asked it must return the current orders and
+/// when being singled about a fulfillment, it must act accordingly.
+pub trait OrderManager {
+	type Error;
+	type InvestmentId;
+	type Orders;
+	type Fulfillment;
+
+	/// When called the manager return the current
+	/// invest orders for the given investment class.
+	fn invest_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+
+	/// When called the manager return the current
+	/// redeem orders for the given investment class.
+	fn redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+
+	/// Signals the manager that the previously
+	/// fetch invest orders for a given investment class
+	/// will be fulfilled by fulfillment.
+	fn invest_fulfillment(
+		asset_id: Self::InvestmentId,
+		fulfillment: Self::Fulfillment,
+	) -> Result<(), Self::Error>;
+
+	/// Signals the manager that the previously
+	/// fetch redeem orders for a given investment class
+	/// will be fulfilled by fulfillment.
+	fn redeem_fulfillment(
+		asset_id: Self::InvestmentId,
+		fulfillment: Self::Fulfillment,
+	) -> Result<(), Self::Error>;
+}
+
+/// A trait whos implementer provides means of accounting
+/// for investments of a generic kind.
+pub trait InvestmentAccountant<AccountId> {
+	type Error;
+	type InvestmentId;
+	type InvestmentInfo: InvestmentProperties<AccountId, Id = Self::InvestmentId>;
+	type Amount;
+
+	/// Information about an asset. Must allow to derive
+	/// owner, payment and denomination currency
+	fn info(id: Self::InvestmentId) -> Result<Self::InvestmentInfo, Self::Error>;
+
+	/// Transfer a given investment from source, to destination
+	fn transfer(
+		asset: Self::InvestmentId,
+		source: &AccountId,
+		dest: &AccountId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Increases the existance of
+	fn deposit(
+		buyer: &AccountId,
+		id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+
+	/// Reduce the existance of an asset
+	fn withdraw(
+		seller: &AccountId,
+		id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error>;
+}
+
+/// A trait that allows to retrieve information
+/// about an investment class.
+pub trait InvestmentProperties<AccountId> {
+	/// The overarching Currency that payments
+	/// for this class are made in
+	type Currency;
+	/// Who the investment class can be identified
+	type Id;
+
+	/// Returns the owner of the investment class
+	fn owner(&self) -> AccountId;
+
+	/// Returns the id of the investment class
+	fn id(&self) -> Self::Id;
+
+	/// Returns the currency in which the investment class
+	/// can be bought.
+	fn payment_currency(&self) -> Self::Currency;
+
+	/// Returns the account a payment for the investment class
+	/// must be made to.
+	///
+	/// Defaults to owner.
+	fn payment_account(&self) -> AccountId {
+		self.owner()
+	}
+}
+
+impl<AccountId, T: InvestmentProperties<AccountId>> InvestmentProperties<AccountId> for &T {
+	type Currency = T::Currency;
+	type Id = T::Id;
+
+	fn owner(&self) -> AccountId {
+		(*self).owner()
+	}
+
+	fn id(&self) -> Self::Id {
+		(*self).id()
+	}
+
+	fn payment_currency(&self) -> Self::Currency {
+		(*self).payment_currency()
+	}
+
+	fn payment_account(&self) -> AccountId {
+		(*self).payment_account()
+	}
+}
+
 pub mod fees {
 	use codec::FullCodec;
 	use frame_support::dispatch::DispatchResult;

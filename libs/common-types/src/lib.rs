@@ -15,7 +15,7 @@
 
 ///! Common-types of the Centrifuge chain.
 use codec::{Decode, Encode};
-use common_traits::Properties;
+use common_traits::{InvestmentProperties, Properties};
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
@@ -25,6 +25,8 @@ use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::traits::Zero;
+use sp_runtime::Perquintill;
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -497,6 +499,61 @@ pub use common_traits::Moment;
 pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),
+}
+
+/// A representation of a investment identifier that can be converted to an account address
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct InvestmentAccount<InvestmentId> {
+	pub investment_id: InvestmentId,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct InvestmentInfo<AccountId, Currency, InvestmentId> {
+	pub owner: AccountId,
+	pub id: InvestmentId,
+	pub payment_currency: Currency,
+}
+
+impl<AccountId, Currency, InvestmentId> InvestmentProperties<AccountId>
+	for InvestmentInfo<AccountId, Currency, InvestmentId>
+where
+	AccountId: Clone,
+	Currency: Clone,
+	InvestmentId: Clone,
+{
+	type Currency = Currency;
+	type Id = InvestmentId;
+
+	fn owner(&self) -> AccountId {
+		self.owner.clone()
+	}
+
+	fn id(&self) -> Self::Id {
+		self.id.clone()
+	}
+
+	fn payment_currency(&self) -> Self::Currency {
+		self.payment_currency.clone()
+	}
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct TotalOrder<Balance> {
+	pub amount: Balance,
+}
+
+impl<Balance: Zero> Default for TotalOrder<Balance> {
+	fn default() -> Self {
+		TotalOrder {
+			amount: Zero::zero(),
+		}
+	}
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct FulfillmentWithPrice<BalanceRatio> {
+	pub of_amount: Perquintill,
+	pub price: BalanceRatio,
 }
 
 /// Different fees keys available.
