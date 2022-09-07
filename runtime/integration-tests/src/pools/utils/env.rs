@@ -356,7 +356,8 @@ pub struct TestEnv {
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, <Runtime as frame_system::Config>::Call, u64, ()>;
+pub type UncheckedExtrinsic =
+	sp_runtime::generic::UncheckedExtrinsic<u32, <Runtime as frame_system::Config>::Call, u64, ()>;
 
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
 //       to submit a lot of extrinsic. This interface eases this issues.

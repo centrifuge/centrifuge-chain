@@ -389,8 +389,7 @@ fn buy_nft_respects_max_offer_currency() {
 fn prepared_nft(owner: &Origin) -> (u64, ItemId) {
 	let (collection_id, item_id) = (0, ItemId(1));
 
-	// Mint the nft in the uniques pallet
-	assert_ok!(Uniques::create(owner.clone(), collection_id));
+	assert_ok!(Uniques::create(owner.clone(), SELLER));
 	assert_ok!(Uniques::mint(owner.clone(), collection_id, item_id, SELLER));
 
 	(collection_id, item_id)

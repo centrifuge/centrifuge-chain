@@ -413,7 +413,7 @@ pub fn run() -> Result<()> {
 						return runner.sync_run(|config| {
 							cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())
 						});
-					},
+					}
 				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
@@ -547,10 +547,7 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.role(is_dev)
 	}
 
-	fn transaction_pool(
-		&self,
-		is_dev: bool,
-	) -> Result<sc_service::config::TransactionPoolOptions> {
+	fn transaction_pool(&self, is_dev: bool) -> Result<sc_service::config::TransactionPoolOptions> {
 		self.base.base.transaction_pool(is_dev)
 	}
 
