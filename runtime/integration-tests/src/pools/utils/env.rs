@@ -355,9 +355,8 @@ pub struct TestEnv {
 	pub events: Arc<Mutex<EventsStorage>>,
 }
 
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic =
-	sp_runtime::generic::UncheckedExtrinsic<u32, <Runtime as frame_system::Config>::Call, u64, ()>;
+pub type Block = runtime_common::Block;
+pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
 
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
 //       to submit a lot of extrinsic. This interface eases this issues.
