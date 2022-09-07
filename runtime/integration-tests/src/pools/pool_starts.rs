@@ -34,7 +34,6 @@ async fn create_init_and_price() {
 	let mut env = {
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
-		genesis::register_default_asset(&mut genesis);
 		env::test_env_with_centrifuge_storage(&manager, genesis)
 	};
 
@@ -42,6 +41,22 @@ async fn create_init_and_price() {
 	let pool_id = 0u64;
 	let loan_amount = 10_000 * DECIMAL_BASE_12;
 	let maturity = 90 * SECONDS_PER_DAY;
+
+	// Get latest block and mutate state
+	env.with_mut_state(Chain::Para(PARA_ID), || {
+		orml_asset_registry::Pallet::<Runtime>::do_register_asset(
+			orml_asset_registry::AssetMetadata {
+				decimals: 18,
+				name: "MOCK TOKEN".as_bytes().to_vec(),
+				symbol: "MOCK".as_bytes().to_vec(),
+				existential_deposit: 0,
+				location: None,
+				additional: common_types::CustomMetadata::default(),
+			},
+			Some(common_types::CurrencyId::AUSD),
+		)
+		.unwrap();
+	});
 
 	env::run!(
 		env,
