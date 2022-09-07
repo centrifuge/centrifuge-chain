@@ -43,22 +43,6 @@ async fn create_init_and_price() {
 	let loan_amount = 10_000 * DECIMAL_BASE_12;
 	let maturity = 90 * SECONDS_PER_DAY;
 
-	// // Get latest block and mutate state
-	// env.with_mut_state(Chain::Para(PARA_ID), || {
-	// 	orml_asset_registry::Pallet::<Runtime>::do_register_asset(
-	// 		orml_asset_registry::AssetMetadata {
-	// 			decimals: 18,
-	// 			name: "MOCK TOKEN".as_bytes().to_vec(),
-	// 			symbol: "MOCK".as_bytes().to_vec(),
-	// 			existential_deposit: 0,
-	// 			location: None,
-	// 			additional: common_types::CustomMetadata::default(),
-	// 		},
-	// 		Some(common_types::CurrencyId::AUSD),
-	// 	)
-	// 	.unwrap();
-	// });
-
 	env::run!(
 		env,
 		Chain::Para(PARA_ID),

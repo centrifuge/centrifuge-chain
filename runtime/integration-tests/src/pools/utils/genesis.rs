@@ -18,6 +18,7 @@ use crate::pools::utils::{
 use common_types::CurrencyId;
 use frame_support::traits::GenesisBuild;
 use sp_runtime::{AccountId32, Storage};
+use sp_runtime::traits::MaybeSerializeDeserialize;
 
 /// Provides 100_000 * DECIMAL_BASE_18 native tokens to the `accounts::default_accounts()`
 pub fn default_native_balances<Runtime>(storage: &mut Storage)
