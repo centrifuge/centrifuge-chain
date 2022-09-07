@@ -20,28 +20,28 @@ use pallet_balances::Call as BalancesCall;
 use sp_runtime::Storage;
 use tokio::runtime::Handle;
 
-// #[tokio::test]
-// async fn env_works() {
-// 	let manager = env::task_manager(Handle::current());
-// 	let mut env = env::test_env_default(&manager);
-//
-// 	let num_blocks = 10;
-// 	let block_before = env
-// 		.with_state(Chain::Para(PARA_ID), || {
-// 			frame_system::Pallet::<Runtime>::block_number()
-// 		})
-// 		.expect("Cannot create block before");
-//
-// 	env::pass_n(&mut env, num_blocks).unwrap();
-//
-// 	let block_after = env
-// 		.with_state(Chain::Para(PARA_ID), || {
-// 			frame_system::Pallet::<Runtime>::block_number()
-// 		})
-// 		.expect("Cannot create block after");
-//
-// 	assert_eq!(block_before + num_blocks as u32, block_after)
-// }
+#[tokio::test]
+async fn env_works() {
+	let manager = env::task_manager(Handle::current());
+	let mut env = env::test_env_default(&manager);
+
+	let num_blocks = 10;
+	let block_before = env
+		.with_state(Chain::Para(PARA_ID), || {
+			frame_system::Pallet::<Runtime>::block_number()
+		})
+		.expect("Cannot create block before");
+
+	env::pass_n(&mut env, num_blocks).unwrap();
+
+	let block_after = env
+		.with_state(Chain::Para(PARA_ID), || {
+			frame_system::Pallet::<Runtime>::block_number()
+		})
+		.expect("Cannot create block after");
+
+	assert_eq!(block_before + num_blocks as u32, block_after)
+}
 
 #[tokio::test]
 async fn extrinsics_works() {

@@ -58,18 +58,6 @@ async fn create_init_and_price() {
 			)
 	);
 
-	tracing::info!(
-		"{:?}",
-		env::events!(
-			env,
-			Chain::Para(PARA_ID),
-			Event,
-			EventRange::All,
-			// Event::Pools(..) | Event::Loans(..) | Event::Uniques(..)
-			Event::System(frame_system::Event::ExtrinsicFailed { .. })
-		)
-	);
-
 	env::assert_events!(
 		env,
 		Chain::Para(PARA_ID),
