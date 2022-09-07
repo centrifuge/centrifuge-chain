@@ -9,7 +9,10 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::FeeKey;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{
+		Currency, EqualPrivilegeOnly, InstanceFilter, LockIdentifier, OnRuntimeUpgrade,
+		U128CurrencyToVote,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, DispatchClass, Weight,
@@ -40,6 +43,7 @@ pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill, Permill,
 };
+use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -86,6 +90,78 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
+	}
+}
+
+/// Custom runtime upgrades
+///
+/// Migration to include collator-selection in a running chain
+
+pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
+
+type BalanceOfCollatorSelection<T> =
+	<<T as pallet_collator_selection::Config>::Currency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
+
+impl<T> IntegrateCollatorSelection<T>
+where
+	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+	T::AccountId: From<sp_runtime::AccountId32>,
+	T::Keys: From<SessionKeys>,
+{
+	fn to_version() -> u32 {
+		1010
+	}
+
+	fn db_access_weights(reads: Option<u64>, writes: Option<u64>) -> Weight {
+		let mut weight: Weight = 0u32 as Weight;
+
+		if let Some(num_reads) = reads {
+			weight += T::DbWeight::get()
+				.reads(1 as Weight)
+				.saturating_mul(num_reads);
+		}
+
+		if let Some(num_writes) = writes {
+			weight += T::DbWeight::get()
+				.writes(1 as Weight)
+				.saturating_mul(num_writes);
+		}
+
+		weight
+	}
+}
+
+impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
+where
+	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+	BalanceOfCollatorSelection<T>: From<u128>,
+	T::AccountId: From<sp_runtime::AccountId32>,
+	T::Keys: From<SessionKeys>,
+	<T as frame_system::Config>::AccountId: From<<T as pallet_session::Config>::ValidatorId>,
+{
+	fn on_runtime_upgrade() -> Weight {
+		let mut consumed: Weight = 0;
+
+		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
+			let mut current_validators = <pallet_session::Validators<T>>::get()
+				.into_iter()
+				.map(|who| who.into())
+				.collect::<Vec<_>>();
+
+			current_validators.truncate(T::MaxInvulnerables::get() as usize);
+
+			// SAFETY: The vector is truncate before to ensure the vector fit into the
+			// expected BoundedVec from pallet_collator_selection.
+			let current_validators = current_validators.try_into().unwrap();
+
+			<pallet_collator_selection::Invulnerables<T>>::set(current_validators);
+
+			consumed += Self::db_access_weights(Some(1), Some(1))
+		}
+
+		return consumed;
 	}
 }
 
@@ -347,7 +423,7 @@ impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = ();
+	type EventHandler = CollatorSelection;
 }
 
 parameter_types! {
@@ -362,7 +438,7 @@ impl pallet_session::Config for Runtime {
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type SessionManager = ();
+	type SessionManager = CollatorSelection;
 	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
@@ -1063,6 +1139,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
+	IntegrateCollatorSelection<Runtime>,
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]
