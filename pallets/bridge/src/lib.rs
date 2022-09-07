@@ -32,12 +32,11 @@
 //!
 //! ### Types
 //! `BridgeOrigin` - Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet.
-//! `AdminOrigin` - Admin user authorized to modify [NativeTokenTransferFee] and [NftTokenTransferFee] values.
 //! `Currency` - Currency as viewed from this pallet.
 //! `Event` - Type for events triggered by this pallet.
 //! `NativeTokenId` - Identifier of the native token.
-//! `NativeTokenTransferFee` - Additional fee charged for transfering native tokens.
-//! `NftTokenTransferFee` - Additional fee charged when moving NFTs to target chains.
+//! `NativeTokenTransferFeeKey` - Additional fee charged for transfering native tokens.
+//! `NftTokenTransferFeeKKey` - Additional fee charged when moving NFTs to target chains.
 //! `WeightInfo` - Weight information for extrinsics in this pallet.
 //!
 //! ### Events
@@ -45,8 +44,6 @@
 //!
 //! ### Errors
 //! `InvalidTransfer` - Invalid transfer.
-//! `InsufficientBalance` - Not enough resources/assets for performing a transfer.
-//! `TotalAmountOverflow` - Total amount to be transfered overflows balance type size.
 //!
 //! ### Dispatchable Functions
 //! Callable functions (or extrinsics), also considered as transactions, materialize the
@@ -55,10 +52,7 @@
 //! [`receive_nonfungible`]
 //! [`remark`]
 //! [`transfer`]
-//! [`transfer_asset`]
 //! [`transfer_native`]
-//! [`set_native_token_transfer_fee`]
-//! [`set_nft_token_transfer_fee`]
 //!
 //! ### Public Functions
 //!
@@ -74,8 +68,6 @@
 //! This pallet is tightly coupled to the following pallets:
 //! - Substrate FRAME's [`balances` pallet](https://github.com/paritytech/substrate/tree/master/frame/balances).
 //! - Centrifuge Chain [`chainbrige` pallet](https://github.com/centrifuge/chainbridge-substrate).
-//! - Centrifuge Chain [`nft` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/nft).
-//! - Centrifuge Chain [`registry` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/registry).
 //!
 //! ## References
 //! - [Substrate FRAME v2 attribute macros](https://crates.parity.io/frame_support/attr.pallet.html).
@@ -112,21 +104,20 @@ pub use pallet::*;
 
 use common_traits::fees::{Fee, Fees};
 
-use chainbridge::types::ChainId;
+use chainbridge::types::{ChainId, ResourceId};
 
 // Runtime, system and frame primitives
 use frame_support::{
-	dispatch::DispatchResult,
 	ensure,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
+	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get},
 	transactional, PalletId,
 };
 
-use frame_system::{ensure_root, pallet_prelude::OriginFor};
+use frame_system::pallet_prelude::OriginFor;
 use sp_core::U256;
 use sp_std::vec::Vec;
 
-use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
+use sp_runtime::traits::{AccountIdConversion, SaturatedConversion};
 // ----------------------------------------------------------------------------
 // Type aliases
 // ----------------------------------------------------------------------------
@@ -167,12 +158,9 @@ pub mod pallet {
 	///
 	/// Associated types and constants are declared in this trait. If the pallet
 	/// depends on other super-traits, the latter must be added to this trait,
-	/// such as, in this case, [`pallet_nft::Config`] super-trait, for instance.
 	/// Note that [`frame_system::Config`] must always be included.
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + chainbridge::Config + pallet_balances::Config + pallet_nft::Config
-	{
+	pub trait Config: frame_system::Config + chainbridge::Config {
 		/// Pallet identifier.
 		///
 		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)
@@ -185,8 +173,8 @@ pub mod pallet {
 		/// that can only be called by the chainbridge pallet.
 		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 
-		/// Admin user is able to modify transfer fees (see [NativeTokenTransferFee] and [NftTokenTransferFee]).
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		/// Entity used to pay fees
+		type Fees: Fees<AccountId = Self::AccountId, Balance = BalanceOf<Self>>;
 
 		/// Currency as viewed from this pallet
 		type Currency: Currency<Self::AccountId>;
@@ -196,15 +184,11 @@ pub mod pallet {
 
 		// Type for native token ID.
 		#[pallet::constant]
-		type NativeTokenId: Get<<Self as pallet_nft::Config>::ResourceId>;
+		type NativeTokenId: Get<ResourceId>;
 
-		/// Type for setting fee that are charged when transferring native tokens to target chains (in CFGs).
+		/// Key used to retrieve the fee that are charged when transferring native tokens to target chains.
 		#[pallet::constant]
-		type NativeTokenTransferFee: Get<u128>;
-
-		/// Type for setting fee that are charged when transferring NFT tokens to target chains (in CFGs).
-		#[pallet::constant]
-		type NftTokenTransferFee: Get<u128>;
+		type NativeTokenTransferFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: WeightInfo;
@@ -219,24 +203,8 @@ pub mod pallet {
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Remark(T::Hash, T::ResourceId),
+		Remark(T::Hash, ResourceId),
 	}
-
-	// ------------------------------------------------------------------------
-	// Pallet storage items
-	// ------------------------------------------------------------------------
-
-	// Additional fee charged when transferring native tokens to target chains (in CFGs).
-	#[pallet::storage]
-	#[pallet::getter(fn get_native_token_transfer_fee)]
-	pub type NativeTokenTransferFee<T> =
-		StorageValue<_, u128, ValueQuery, <T as Config>::NativeTokenTransferFee>;
-
-	// Additional fee charged when transferring NFT tokens to target chains (in CFGs).
-	#[pallet::storage]
-	#[pallet::getter(fn get_nft_token_transfer_fee)]
-	pub type NftTokenTransferFee<T> =
-		StorageValue<_, u128, ValueQuery, <T as Config>::NftTokenTransferFee>;
 
 	// ------------------------------------------------------------------------
 	// Pallet genesis configuration
@@ -247,7 +215,7 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub chains: Vec<u8>,
 		pub relayers: Vec<T::AccountId>,
-		pub resources: Vec<(T::ResourceId, Vec<u8>)>,
+		pub resources: Vec<(ResourceId, Vec<u8>)>,
 		pub threshold: u32,
 	}
 
@@ -285,12 +253,6 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Invalid transfer
 		InvalidTransfer,
-
-		/// Not enough means for performing a transfer
-		InsufficientBalance,
-
-		/// Total amount to be transferred overflows balance type size
-		TotalAmountOverflow,
 	}
 
 	// ------------------------------------------------------------------------
@@ -316,38 +278,13 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let source = ensure_signed(origin)?;
 
-			let token_transfer_fee: BalanceOf<T> =
-				Self::get_native_token_transfer_fee().saturated_into();
-
-			// Add fees to initial amount (so that to be sure account has sufficient funds)
-			let total_transfer_amount = amount
-				.checked_add(&token_transfer_fee)
-				.ok_or(Error::<T>::TotalAmountOverflow)?;
-
-			// Ensure account has enough balance for both fee and transfer
-			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
-			let remaining_balance = <T as pallet::Config>::Currency::free_balance(&source)
-				.checked_sub(&total_transfer_amount)
-				.ok_or(Error::<T>::InsufficientBalance)?;
-
-			<T as pallet::Config>::Currency::ensure_can_withdraw(
-				&source,
-				total_transfer_amount,
-				WithdrawReasons::all(),
-				remaining_balance,
-			)
-			.map_err(|_| Error::<T>::InsufficientBalance)?;
-
 			ensure!(
 				<chainbridge::Pallet<T>>::chain_whitelisted(dest_id),
 				Error::<T>::InvalidTransfer
 			);
 
 			// Burn additional fees
-			T::Fees::fee_to_burn(
-				&source,
-				Fee::Balance(NativeTokenTransferFee::<T>::get().saturated_into()),
-			)?;
+			T::Fees::fee_to_burn(&source, Fee::Key(T::NativeTokenTransferFeeKey::get()))?;
 
 			let bridge_id = <chainbridge::Pallet<T>>::account_id();
 			<T as pallet::Config>::Currency::transfer(
@@ -376,7 +313,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			to: T::AccountId,
 			amount: BalanceOf<T>,
-			_r_id: T::ResourceId,
+			_r_id: ResourceId,
 		) -> DispatchResultWithPostInfo {
 			let source = T::BridgeOrigin::ensure_origin(origin)?;
 			<T as pallet::Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
@@ -389,34 +326,10 @@ pub mod pallet {
 		pub fn remark(
 			origin: OriginFor<T>,
 			hash: T::Hash,
-			r_id: T::ResourceId,
+			r_id: ResourceId,
 		) -> DispatchResultWithPostInfo {
 			T::BridgeOrigin::ensure_origin(origin)?;
 			Self::deposit_event(Event::Remark(hash, r_id));
-
-			Ok(().into())
-		}
-
-		/// Modify native token transfer fee value
-		#[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
-		pub fn set_native_token_transfer_fee(
-			origin: OriginFor<T>,
-			new_fee: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
-			Self::ensure_admin(origin)?;
-			NativeTokenTransferFee::<T>::mutate(|fee_value| *fee_value = new_fee.saturated_into());
-
-			Ok(().into())
-		}
-
-		/// Modify NFT token transfer fee value
-		#[pallet::weight(<T as Config>::WeightInfo::set_nft_transfer_fee())]
-		pub fn set_nft_token_transfer_fee(
-			origin: OriginFor<T>,
-			new_fee: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
-			Self::ensure_admin(origin)?;
-			NftTokenTransferFee::<T>::mutate(|fee_value| *fee_value = new_fee.saturated_into());
 
 			Ok(().into())
 		}
@@ -452,7 +365,7 @@ impl<T: Config> Pallet<T> {
 	fn initialize(
 		chains: &[u8],
 		relayers: &[T::AccountId],
-		resources: &Vec<(T::ResourceId, Vec<u8>)>,
+		resources: &Vec<(ResourceId, Vec<u8>)>,
 		threshold: &u32,
 	) {
 		chains.into_iter().for_each(|c| {
@@ -468,13 +381,5 @@ impl<T: Config> Pallet<T> {
 			let (rid, m) = (i.0.clone(), i.1.clone());
 			<chainbridge::Pallet<T>>::register_resource(rid.into(), m.clone()).unwrap_or_default();
 		});
-	}
-
-	// Ensure that the caller has admin rights
-	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
-		<T as Config>::AdminOrigin::try_origin(origin)
-			.map(|_| ())
-			.or_else(ensure_root)?;
-		Ok(())
 	}
 }

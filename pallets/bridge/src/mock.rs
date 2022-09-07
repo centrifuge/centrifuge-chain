@@ -20,41 +20,24 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_bridge, Config as BridgePalletConfig, WeightInfo};
+use crate::{self as pallet_bridge, Config as BridgePalletConfig};
 
-use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
-
-use chainbridge::{
-	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
-	types::{ChainId, ResourceId},
-	EnsureBridge,
-};
+use chainbridge::{constants::DEFAULT_RELAYER_VOTE_THRESHOLD, types::ResourceId, EnsureBridge};
 
 use frame_support::{
 	parameter_types,
-	traits::{Everything, FindAuthor, SortedMembers},
-	weights::Weight,
-	ConsensusEngineId, PalletId,
+	traits::{Everything, SortedMembers},
+	PalletId,
 };
 
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureSignedBy,
+	EnsureNever, EnsureSignedBy,
 };
 
-use pallet_bridge_mapping;
+pub use runtime_common::{constants::CFG, AssetInfo, Balance, EthAddress, RegistryId, TokenId};
 
-use proofs::Hasher;
-
-pub use runtime_common::{
-	constants::{
-		CFG, MILLISECS_PER_DAY, NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
-		NFT_TOKEN_TRANSFER_FEE,
-	},
-	AssetInfo, Balance, EthAddress, RegistryId, TokenId,
-};
-
-use sp_core::{blake2_128, blake2_256, H256};
+use sp_core::{blake2_128, H256};
 
 use sp_io::TestExternalities;
 
@@ -71,55 +54,14 @@ use sp_runtime::{
 type UncheckedExtrinsic = MockUncheckedExtrinsic<MockRuntime>;
 type Block = MockBlock<MockRuntime>;
 
-// Implement testing extrinsic weights for the pallet
-pub struct MockWeightInfo;
-impl WeightInfo for MockWeightInfo {
-	fn receive_nonfungible() -> Weight {
-		0 as Weight
-	}
-
-	fn remark() -> Weight {
-		0 as Weight
-	}
-
-	fn transfer() -> Weight {
-		0 as Weight
-	}
-
-	fn transfer_asset() -> Weight {
-		0 as Weight
-	}
-
-	fn transfer_native() -> Weight {
-		0 as Weight
-	}
-
-	fn set_token_transfer_fee() -> Weight {
-		0 as Weight
-	}
-
-	fn set_nft_transfer_fee() -> Weight {
-		0 as Weight
-	}
-}
-
-// Bridge hasher for building document root hash (from static proofs).
-struct MockProofVerifier;
-impl Hasher for MockProofVerifier {
-	type Hash = H256;
-
-	fn hash(data: &[u8]) -> Self::Hash {
-		blake2_256(data).into()
-	}
-}
-
+pub(crate) const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
 pub(crate) const TEST_CHAIN_ID: u8 = 5;
 pub(crate) const TEST_USER_ID: u64 = 0x1;
 pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
 pub(crate) const ENDOWED_BALANCE: Balance = 10000 * CFG;
-pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance = 2000 * CFG;
+pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance = NATIVE_TOKEN_TRANSFER_FEE;
 pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
 
 // ----------------------------------------------------------------------------
@@ -135,14 +77,11 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
+		Fees: pallet_fees::{Pallet, Call, Config<T>, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
-		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
-		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>} = 8,
-		Anchors: pallet_anchors::{Pallet, Call, Storage} = 9
 	}
 );
 
@@ -190,17 +129,12 @@ impl frame_system::Config for MockRuntime {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-// Parameterize FRAME balances pallet
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-}
-
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ();
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
@@ -208,30 +142,25 @@ impl pallet_balances::Config for MockRuntime {
 	type ReserveIdentifier = ();
 }
 
-pub struct AuthorGiven;
-
-impl FindAuthor<u64> for AuthorGiven {
-	fn find_author<'a, I>(_digests: I) -> Option<u64>
-	where
-		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
-	{
-		Some(100)
-	}
-}
-
-// Implement FRAME authorship pallet configuration trait for the mock runtime
+// Required as a tight dependency from pallet_fees, but not used for it in the bridge pallet.
 impl pallet_authorship::Config for MockRuntime {
-	type FindAuthor = AuthorGiven;
+	type FindAuthor = ();
 	type UncleGenerations = ();
 	type FilterUncle = ();
 	type EventHandler = ();
 }
 
-// Implement FRAME timestamp pallet configuration trait for the mock runtime
-impl pallet_timestamp::Config for MockRuntime {
-	type Moment = u64;
-	type OnTimestampSet = ();
-	type MinimumPeriod = ();
+parameter_types! {
+	pub const DefaultFeeValue: Balance = NATIVE_TOKEN_TRANSFER_FEE;
+}
+
+impl pallet_fees::Config for MockRuntime {
+	type FeeKey = ();
+	type Currency = Balances;
+	type Treasury = ();
+	type Event = Event;
+	type FeeChangeOrigin = EnsureNever<MockRuntime>; // Not used in the tests.
+	type DefaultFeeValue = DefaultFeeValue;
 	type WeightInfo = ();
 }
 
@@ -255,64 +184,22 @@ impl chainbridge::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-// Parameterize Centrifuge Chain non-fungible token (NFT) pallet
-parameter_types! {
-	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
-	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
-}
-
-// Implement Centrifuge Chain non-fungible token (NFT) pallet configuration trait for the mock runtime
-impl pallet_nft::Config for MockRuntime {
-	type Event = Event;
-	type ChainId = ChainId;
-	type ResourceId = ResourceId;
-	type HashId = MockHashId;
-	type NftProofValidationFee = NftProofValidationFee;
-	type WeightInfo = ();
-}
-
-// Implement Centrifuge Chain bridge mapping configuration trait for the mock runtime
-impl pallet_bridge_mapping::Config for MockRuntime {
-	type Address = EthAddress;
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-	type WeightInfo = ();
-}
-
-impl_mock_fees_state!(
-	MockFeesState,
-	<MockRuntime as frame_system::Config>::AccountId,
-	Balance,
-	(),
-	|_key| 0
-);
-
-impl pallet_anchors::Config for MockRuntime {
-	type WeightInfo = ();
-	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
-	type CommitAnchorFeeKey = ();
-	type PreCommitDepositFeeKey = ();
-	type Currency = Balances;
-}
-
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
 	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
-	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
-	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
 impl BridgePalletConfig for MockRuntime {
 	type Event = Event;
+	type Fees = Fees;
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = EnsureBridge<MockRuntime>;
 	type Currency = Balances;
 	type NativeTokenId = NativeTokenId;
-	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
-	type WeightInfo = MockWeightInfo;
-	type NativeTokenTransferFee = NativeTokenTransferFee;
-	type NftTokenTransferFee = NftTransferFee;
+	type WeightInfo = ();
+	type NativeTokenTransferFeeKey = ();
 }
 
 // ----------------------------------------------------------------------------

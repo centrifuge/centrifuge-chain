@@ -790,6 +790,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 }
 
 parameter_types! {
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_HASH_ID));
 	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
 }
 
@@ -804,22 +805,18 @@ impl pallet_nft::Config for Runtime {
 
 parameter_types! {
 	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_HASH_ID));
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID));
-	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
-	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
+	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type AdminOrigin =
-		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
+	type Fees = Fees;
 	type Currency = Balances;
 	type Event = Event;
 	type NativeTokenId = NativeTokenId;
-	type NativeTokenTransferFee = NativeTokenTransferFee;
-	type NftTokenTransferFee = NftTransferFee;
+	type NativeTokenTransferFeeKey = NativeTokenTransferFeeKey;
 	type WeightInfo = ();
 }
 
