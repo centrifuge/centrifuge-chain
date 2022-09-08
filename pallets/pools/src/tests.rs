@@ -2984,13 +2984,13 @@ fn create_tranche_token_metadata() {
 					interior: X2(Parachain(ParachainId::get()), GeneralKey(tranche_id)),
 				})),
 				additional: CustomMetadata {
-				mintable: false,
-				permissioned: true,
-				pool_currency: false,
-				xcm: common_types::XcmMetadata {
-					fee_per_second: None,
+					mintable: false,
+					permissioned: true,
+					pool_currency: false,
+					xcm: common_types::XcmMetadata {
+						fee_per_second: None,
+					},
 				},
-			},
 			}
 		);
 	});
