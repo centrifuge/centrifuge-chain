@@ -972,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.10"
+version = "0.10.11"
 dependencies = [
  "chainbridge",
  "common-traits",
