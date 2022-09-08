@@ -287,7 +287,7 @@ where
 			})),
 			additional: CustomMetadata {
 				mintable: false,
-				permissioned: false,
+				permissioned: true,
 				pool_currency: false,
 				xcm: XcmMetadata {
 					fee_per_second: None,
