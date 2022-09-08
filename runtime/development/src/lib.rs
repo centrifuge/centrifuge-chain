@@ -1294,19 +1294,23 @@ impl pallet_interest_accrual::Config for Runtime {
 
 parameter_types! {
 	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_HASH_ID));
 	//TODO rename xRAD to xCFG and create new mapping
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
-	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
+	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type Fees = Fees;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
 	type Currency = Balances;
 	type Event = Event;
 	type NativeTokenId = NativeTokenId;
-	type NativeTokenTransferFeeKey = NativeTokenTransferFeeKey;
+	type NativeTokenTransferFee = NativeTokenTransferFee;
+	type NftTokenTransferFee = NftTransferFee;
 	type WeightInfo = ();
 }
 
@@ -1331,7 +1335,6 @@ impl chainbridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_HASH_ID));
 	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
 }
 
