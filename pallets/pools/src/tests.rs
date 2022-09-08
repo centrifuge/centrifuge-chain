@@ -2983,7 +2983,14 @@ fn create_tranche_token_metadata() {
 					parents: 1,
 					interior: X2(Parachain(ParachainId::get()), GeneralKey(tranche_id)),
 				})),
-				additional: CustomMetadata::default(),
+				additional: CustomMetadata {
+				mintable: false,
+				permissioned: true,
+				pool_currency: false,
+				xcm: common_types::XcmMetadata {
+					fee_per_second: None,
+				},
+			},
 			}
 		);
 	});
