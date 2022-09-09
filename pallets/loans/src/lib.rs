@@ -16,10 +16,10 @@
 //! This pallet provides functionality for managing loans on Tinlake
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use cfg_types::{Adjustment, Moment, PermissionScope, PoolRole, Role};
-use codec::{Decode, Encode};
 use cfg_traits::{InterestAccrual as InterestAccrualT, Permissions as PermissionsT};
 use cfg_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
+pub use cfg_types::{Adjustment, Moment, PermissionScope, PoolRole, Role};
+use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
