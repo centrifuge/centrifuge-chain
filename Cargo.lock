@@ -8955,6 +8955,7 @@ dependencies = [
  "sp-inherents",
  "sp-io",
  "sp-runtime",
+ "sp-std",
  "sp-tracing",
  "tokio",
  "tracing",
