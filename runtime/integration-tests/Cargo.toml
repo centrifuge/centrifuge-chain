@@ -75,7 +75,7 @@ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", branch = "mas
 
 # Local
 runtime-common = { path = "../common" }
-common-traits = { path = "../../libs/common-traits" }
+cfg-traits = { path = "../../libs/traits" }
 development-runtime = { path = "../development" }
 altair-runtime = { path = "../altair" }
 centrifuge-runtime = { path = "../centrifuge" }
@@ -83,8 +83,8 @@ centrifuge-runtime = { path = "../centrifuge" }
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
-common-traits = { path = "../../libs/common-traits" }
-common-types = { path = "../../libs/common-types" }
+cfg-traits = { path = "../../libs/traits" }
+cfg-types = { path = "../../libs/types" }
 pallet-pools = { path = "../../pallets/pools" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }

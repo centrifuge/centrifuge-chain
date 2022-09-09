@@ -20,7 +20,7 @@ use crate::pools::utils::{
 	time::secs::SECONDS_PER_DAY,
 	tokens::DECIMAL_BASE_12,
 };
-use common_types::PoolRole;
+use cfg_types::PoolRole;
 use fudge::primitives::Chain;
 use pallet_loans::types::Asset;
 use runtime_common::{AccountId, Address, Balance, ItemId};

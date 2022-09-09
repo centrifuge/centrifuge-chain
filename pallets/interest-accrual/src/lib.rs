@@ -53,9 +53,9 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
+use cfg_traits::InterestAccrual;
+use cfg_types::{Adjustment, Moment};
 use codec::{Decode, Encode};
-use common_traits::InterestAccrual;
-use common_types::{Adjustment, Moment};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One};

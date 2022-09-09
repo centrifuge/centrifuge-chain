@@ -71,7 +71,7 @@ pub mod pallet {
 		FungiblesInspectEffects, FungiblesInspectHoldEffects, FungiblesMutateEffects,
 		FungiblesMutateHoldEffects, FungiblesTransferEffects,
 	};
-	use common_traits::PreConditions;
+	use cfg_traits::PreConditions;
 	use frame_support::scale_info::TypeInfo;
 	use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup};
 	use frame_support::sp_runtime::ArithmeticError;

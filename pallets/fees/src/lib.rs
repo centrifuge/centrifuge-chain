@@ -7,8 +7,8 @@
 //! it offers some utilities to transfer the fees to the author, the treasury or burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_traits::fees::{self, Fee, FeeKey};
 use codec::EncodeLike;
-use common_traits::fees::{self, Fee, FeeKey};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::types::ValueQuery,

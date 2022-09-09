@@ -13,8 +13,8 @@
 use super::*;
 use crate as pallet_permissions;
 use crate::Pallet as PermissionsPallet;
-use common_traits::Permissions as TPermissions;
-use common_types::{PoolRole, Role};
+use cfg_traits::Permissions as TPermissions;
+use cfg_types::{PoolRole, Role};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;

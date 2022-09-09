@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 pub use crate as pallet_restricted_tokens;
-use common_traits::PreConditions;
-use common_types::Moment;
+use cfg_traits::PreConditions;
+use cfg_types::Moment;
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -85,7 +85,7 @@ mod filter {
 		use crate::impl_fungibles::*;
 		use crate::mock::{AccountId, Balance, CurrencyId, RestrictedTokens, POOL_PALLET_ID};
 		use crate::TransferDetails;
-		use common_traits::PreConditions;
+		use cfg_traits::PreConditions;
 
 		/// Dummy filter, that allows to reduce the balance of native normally
 		/// but other balances are only allowed to be reduced by the half of
@@ -212,7 +212,7 @@ mod filter {
 		use crate::mock::{
 			AccountId, Balance, ExistentialDeposit, HoldingPeriodChecker, Timer, MIN_HOLD_PERIOD,
 		};
-		use common_traits::PreConditions;
+		use cfg_traits::PreConditions;
 
 		/// Dummy filter, that allows to reduce only till the ExistentialDeposit.
 		pub struct InspectFilter;
@@ -267,7 +267,7 @@ mod filter {
 	pub mod currency {
 		use crate::impl_currency::*;
 		use crate::mock::{AccountId, Balance};
-		use common_traits::PreConditions;
+		use cfg_traits::PreConditions;
 		use frame_support::traits::WithdrawReasons;
 
 		/// A dummy filter that ensures that a call to Currency::ensure_can_withdraw and
@@ -425,11 +425,11 @@ impl pallet_restricted_tokens::Config for MockRuntime {
 	type PreFungiblesTransfer = filter::fungibles::TransferFilter;
 	type Fungibles = OrmlTokens;
 	type PreCurrency = filter::currency::CurrencyFilter;
-	type PreReservableCurrency = common_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
 	type PreFungibleInspect = filter::fungible::InspectFilter;
-	type PreFungibleInspectHold = common_traits::Always;
-	type PreFungibleMutate = common_traits::Always;
-	type PreFungibleMutateHold = common_traits::Always;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
 	type PreFungibleTransfer = filter::fungible::TransferFilter;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;

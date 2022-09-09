@@ -24,7 +24,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate",  default-fe
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.26" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
-common-types = { path = "../../libs/common-types", default-features = false, optional = true }
+cfg-types = { path = "../../libs/types", default-features = false, optional = true }
 runtime-common = { path = "../../runtime/common", default-features = false, optional = true }
 
 [dev-dependencies]
@@ -40,7 +40,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 # Local crates
 runtime-common = { path = "../../runtime/common", default-features = true }
-common-types = { path = "../../libs/common-types", default-features = true}
+cfg-types = { path = "../../libs/types", default-features = true}
 
 [features]
 default = ['std']
@@ -48,14 +48,14 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "pallet-balances",
     "pallet-uniques",
-    "common-types",
+    "cfg-types",
     "runtime-common",
     "orml-tokens",
     "orml-traits",
 ]
 std = [
     'codec/std',
-    'common-types/std',
+    'cfg-types/std',
     'frame-support/std',
     'frame-system/std',
     'sp-std/std',

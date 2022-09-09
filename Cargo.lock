@@ -86,8 +86,9 @@ dependencies = [
 name = "altair-runtime"
 version = "0.10.19"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -878,8 +879,8 @@ version = "0.10.19"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
+ "cfg-types",
  "clap",
- "common-types",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
  "cumulus-client-consensus-common",
@@ -974,9 +975,10 @@ dependencies = [
 name = "centrifuge-runtime"
 version = "0.10.11"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -1095,6 +1097,51 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "cfg-primitives"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-collective",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "cfg-traits"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "cfg-types"
+version = "2.0.0"
+dependencies = [
+ "bitflags",
+ "cfg-primitives",
+ "cfg-traits",
+ "frame-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "cfg_aliases"
@@ -1272,33 +1319,6 @@ dependencies = [
  "strum 0.23.0",
  "strum_macros 0.23.1",
  "unicode-width",
-]
-
-[[package]]
-name = "common-traits"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "impl-trait-for-tuples",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "common-types"
-version = "2.0.0"
-dependencies = [
- "bitflags",
- "common-traits",
- "frame-support",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -2161,9 +2181,10 @@ dependencies = [
 name = "development-runtime"
 version = "0.10.4"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -5548,7 +5569,7 @@ dependencies = [
 name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
- "common-traits",
+ "cfg-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5743,9 +5764,9 @@ dependencies = [
 name = "pallet-bridge"
 version = "2.0.0"
 dependencies = [
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
@@ -5770,9 +5791,9 @@ dependencies = [
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
@@ -5810,7 +5831,7 @@ dependencies = [
 name = "pallet-claims"
 version = "2.0.0"
 dependencies = [
- "common-types",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5881,8 +5902,8 @@ dependencies = [
 name = "pallet-crowdloan-claim"
 version = "0.1.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5911,8 +5932,8 @@ dependencies = [
 name = "pallet-crowdloan-reward"
 version = "0.1.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5990,7 +6011,7 @@ dependencies = [
 name = "pallet-fees"
 version = "2.0.0"
 dependencies = [
- "common-traits",
+ "cfg-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6099,8 +6120,8 @@ name = "pallet-interest-accrual"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6119,8 +6140,8 @@ dependencies = [
 name = "pallet-investments"
 version = "1.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6163,8 +6184,8 @@ dependencies = [
 name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6278,9 +6299,10 @@ dependencies = [
 name = "pallet-nft"
 version = "2.0.0"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6303,7 +6325,7 @@ dependencies = [
 name = "pallet-nft-sales"
 version = "2.0.0"
 dependencies = [
- "common-types",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6359,8 +6381,8 @@ name = "pallet-permissions"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6375,8 +6397,8 @@ dependencies = [
 name = "pallet-pools"
 version = "3.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6463,8 +6485,8 @@ dependencies = [
 name = "pallet-restricted-tokens"
 version = "0.1.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -8862,8 +8884,9 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "frame-support",
  "frame-system",
  "node-primitives",
@@ -8895,8 +8918,8 @@ version = "0.1.0"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "cumulus-primitives-core",
  "development-runtime",
  "frame-benchmarking",

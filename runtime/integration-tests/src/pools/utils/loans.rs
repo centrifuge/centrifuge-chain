@@ -13,7 +13,7 @@
 //! Utilities around the loans pallet
 use crate::chain::centrifuge::{Address, Balance, Call, Rate};
 use crate::pools::utils::tokens::rate_from_percent;
-use common_types::PoolId;
+use cfg_types::PoolId;
 use pallet_loans::{
 	loan_type::{BulletLoan, LoanType},
 	math::interest_rate_per_sec,

@@ -13,7 +13,7 @@
 
 //! Module provides all the interest and rate related calculations
 use crate::WriteOffGroup;
-pub use common_types::Moment;
+pub use cfg_types::Moment;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_arithmetic::{traits::BaseArithmetic, FixedPointNumber, FixedPointOperand};
 use sp_runtime::{ArithmeticError, DispatchError};

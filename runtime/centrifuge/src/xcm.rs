@@ -26,12 +26,15 @@ use xcm_builder::{
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
-use runtime_common::xcm::general_key;
+use cfg_primitives::{
+	constants::currency_decimals,
+	parachains,
+	types::{EnsureRootOr, HalfOfCouncil},
+};
+pub use cfg_types::CurrencyId;
 use runtime_common::{
-	decimals, parachains,
-	xcm::FixedConversionRateProvider,
+	xcm::{general_key, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, native_per_second},
-	CurrencyId, EnsureRootOr, HalfOfCouncil,
 };
 
 /// The main XCM config
@@ -95,7 +98,7 @@ parameter_types! {
 				general_key(parachains::polkadot::acala::AUSD_KEY)
 			)
 		).into(),
-		default_per_second(decimals::AUSD)
+		default_per_second(currency_decimals::AUSD)
 	);
 
 }

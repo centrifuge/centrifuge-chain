@@ -52,13 +52,13 @@ use static_assertions::const_assert;
 use constants::currency::*;
 use xcm_executor::XcmExecutor;
 
-use common_traits::PoolUpdateGuard;
-pub use common_types::CurrencyId;
-use common_types::{
-	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
-	TimeProvider,
+use cfg_primitives::{constants::*, types::*};
+use cfg_traits::PoolUpdateGuard;
+pub use cfg_types::CurrencyId;
+use cfg_types::{
+	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
+	Rate, Role, TimeProvider, TrancheToken,
 };
-
 use pallet_pools::{
 	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
 };
@@ -641,7 +641,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
+	pub const TreasuryPalletId: PalletId = cfg_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -760,7 +760,7 @@ impl pallet_migration_manager::Config for Runtime {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
+	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
@@ -773,7 +773,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
+	pub const CrowdloanClaimPalletId: PalletId = cfg_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
 	pub const MaxProofLength: u32 = 30;
 }
 
@@ -790,7 +790,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 // Parameterize collator selection pallet
 parameter_types! {
-	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
+	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
@@ -886,20 +886,20 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type PreExtrTransfer = common_traits::Always;
+	type PreExtrTransfer = cfg_traits::Always;
 	type PreFungiblesInspect = FungiblesInspectPassthrough;
-	type PreFungiblesInspectHold = common_traits::Always;
-	type PreFungiblesMutate = common_traits::Always;
-	type PreFungiblesMutateHold = common_traits::Always;
-	type PreFungiblesTransfer = common_traits::Always;
+	type PreFungiblesInspectHold = cfg_traits::Always;
+	type PreFungiblesMutate = cfg_traits::Always;
+	type PreFungiblesMutateHold = cfg_traits::Always;
+	type PreFungiblesTransfer = cfg_traits::Always;
 	type Fungibles = OrmlTokens;
-	type PreCurrency = common_traits::Always;
-	type PreReservableCurrency = common_traits::Always;
+	type PreCurrency = cfg_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
 	type PreFungibleInspect = FungibleInspectPassthrough;
-	type PreFungibleInspectHold = common_traits::Always;
-	type PreFungibleMutate = common_traits::Always;
-	type PreFungibleMutateHold = common_traits::Always;
-	type PreFungibleTransfer = common_traits::Always;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
+	type PreFungibleTransfer = cfg_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
@@ -945,7 +945,7 @@ impl orml_asset_registry::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
+	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -983,7 +983,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 // Pools & Loans
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
+	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
 	pub const MaxWriteOffGroups: u32 = 100;
 }
@@ -1008,7 +1008,7 @@ impl pallet_loans::Config for Runtime {
 }
 
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
+	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
 		0
@@ -1069,7 +1069,7 @@ impl pallet_pools::Config for Runtime {
 	type Currency = Balances;
 	type Tokens = Tokens;
 	type NAV = Loans;
-	type TrancheToken = TrancheToken<Runtime>;
+	type TrancheToken = TrancheToken;
 	type Permission = Permissions;
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;

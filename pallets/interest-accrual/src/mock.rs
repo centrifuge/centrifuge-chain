@@ -1,5 +1,5 @@
 use crate::*;
-use common_types::Moment;
+use cfg_types::Moment;
 use frame_support::{parameter_types, traits::Hooks, weights::constants::RocksDbWeight};
 use sp_core::H256;
 use sp_io::TestExternalities;

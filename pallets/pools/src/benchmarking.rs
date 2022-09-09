@@ -13,8 +13,8 @@
 
 //! Module provides benchmarking for Loan Pallet
 use super::*;
-use common_traits::PoolNAV;
-use common_types::CurrencyId;
+use cfg_traits::PoolNAV;
+use cfg_types::CurrencyId;
 
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};

@@ -110,7 +110,7 @@ use crate::traits::WeightInfo;
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
 
-use common_traits::fees::{Fee, Fees};
+use cfg_traits::fees::{Fee, Fees};
 
 use chainbridge::types::ChainId;
 

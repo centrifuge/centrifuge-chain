@@ -29,7 +29,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 
 # Local dependencies
-common-traits = { path= '../../libs/common-traits', default_features = false }
+cfg-traits = { path= '../../libs/traits', default_features = false }
 
 
 [dev-dependencies]
@@ -37,7 +37,7 @@ pallet-vesting = { git = "https://github.com/paritytech/substrate", default-feat
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 serde = { version = "1.0.119" }
-common-types = { path= '../../libs/common-types', default_features = true }
+cfg-types = { path= '../../libs/types', default_features = true }
 
 
 [features]
@@ -51,5 +51,5 @@ std = [
   'log',
   'pallet-balances/std',
   'pallet-vesting/std',
-  'common-traits/std'
+  'cfg-traits/std'
 ]

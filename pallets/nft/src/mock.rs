@@ -22,7 +22,7 @@
 
 use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
 
-use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
+use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -189,7 +189,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: ChainId = 5;
-	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }

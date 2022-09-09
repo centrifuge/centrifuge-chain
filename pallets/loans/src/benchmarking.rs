@@ -17,7 +17,7 @@ use crate::loan_type::{BulletLoan, CreditLineWithMaturity};
 use crate::test_utils::initialise_test_pool;
 use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet};
-use common_types::{CurrencyId, PoolLocator};
+use cfg_types::{CurrencyId, PoolLocator};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
 	assert_ok,

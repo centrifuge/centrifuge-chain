@@ -33,7 +33,7 @@ enum Who {
 	Editor,
 }
 
-use common_traits::{Permissions, Properties};
+use cfg_traits::{Permissions, Properties};
 use frame_support::traits::Contains;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::*;

@@ -108,8 +108,9 @@ orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-l
 
 # our custom pallets
 runtime-common = { path = "../common", default-features = false }
-common-types = { path = "../../libs/common-types", default-features = false }
-common-traits = { path = "../../libs/common-traits", default-features = false }
+cfg-types = { path = "../../libs/types", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
@@ -147,6 +148,7 @@ std = [
     "sp-inherents/std",
     "pallet-membership/std",
     "pallet-multisig/std",
+    "cfg-primitives/std",
     "pallet-identity/std",
     "pallet-scheduler/std",
     "node-primitives/std",
@@ -212,7 +214,7 @@ std = [
     "pallet-interest-accrual/std",
 ]
 runtime-benchmarks = [
-    "common-types/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-session-benchmarking",

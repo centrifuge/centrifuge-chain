@@ -24,7 +24,7 @@ use crate::test_utils::{
 	assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
 	initialise_test_pool, mint_nft,
 };
-use common_types::{CurrencyId, PoolId, PoolLocator};
+use cfg_types::{CurrencyId, PoolId, PoolLocator};
 use frame_support::traits::{fungibles::Inspect, Hooks};
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};

@@ -23,7 +23,7 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use altair_runtime::constants::currency::AIR;
-use common_types::FeeKey;
+use cfg_types::FeeKey;
 use runtime_common::{decimals, CFG};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use serde::{Deserialize, Serialize};

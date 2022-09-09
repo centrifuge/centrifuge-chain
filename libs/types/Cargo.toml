@@ -3,7 +3,7 @@ authors = ["Centrifuge <admin@centrifuge.io>"]
 description = 'Common types for Centrifuge runtime'
 edition = '2021'
 license = "LGPL-3.0"
-name = 'common-types'
+name = 'cfg-types'
 repository = "https://github.com/centrifuge/centrifuge-chain/proofs"
 version = '2.0.0'
 
@@ -20,10 +20,12 @@ serde = { version = "1.0.119" }
 sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 
 
 # local dependencies
-common-traits = { path = '../common-traits', default-features = false }
+cfg-traits = { path = '../traits', default-features = false }
+cfg-primitives = { path = '../primitives', default-features = false }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate",  default-features = true , branch = "polkadot-v0.9.26" }
@@ -35,8 +37,9 @@ std = [
     'codec/std',
     'sp-std/std',
     'frame-support/std',
-    'common-traits/std',
-    'sp-runtime/std'
+    'cfg-traits/std',
+    'sp-runtime/std',
+    'cfg-primitives/std'
 ]
 
 

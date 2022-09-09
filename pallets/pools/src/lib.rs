@@ -12,11 +12,9 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken};
+use cfg_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use codec::HasCompact;
-use common_traits::{
-	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
-};
-use common_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	ReservableCurrency,

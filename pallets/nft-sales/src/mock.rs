@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 pub use crate::{self as nft_sales};
-use common_types::CurrencyId;
+use cfg_types::CurrencyId;
 use frame_support::traits::{AsEnsureOriginWithArg, Everything, GenesisBuild};
 use frame_support::{parameter_types, PalletId};
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -177,7 +177,7 @@ impl nft_sales::Config for Test {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
+	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
 }
 
 pub(crate) const SELLER: u64 = 0x1;

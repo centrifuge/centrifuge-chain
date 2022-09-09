@@ -21,8 +21,8 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , optional = true, branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-common-traits = { path = "../../libs/common-traits", default-features = false }
-common-types = { path = "../../libs/common-types", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-types = { path = "../../libs/types", default-features = false }
 
 ## Benchmarkind dependencies
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
@@ -56,8 +56,8 @@ std = [
     'frame-system/std',
     'sp-runtime/std',
     'sp-std/std',
-    'common-types/std',
-    'common-traits/std'
+    'cfg-types/std',
+    'cfg-traits/std'
 ]
 try-runtime = ['frame-support/try-runtime']
 

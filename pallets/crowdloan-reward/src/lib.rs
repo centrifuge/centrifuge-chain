@@ -101,7 +101,7 @@ use sp_runtime::{
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
 // Claim reward trait to be implemented
-use common_traits::Reward;
+use cfg_traits::Reward;
 
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;

@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use super::*;
-use common_traits::PreConditions;
+use cfg_traits::PreConditions;
 use frame_support::traits::{
 	fungible::{Inspect, InspectHold, Mutate, MutateHold, Transfer},
 	tokens::{DepositConsequence, WithdrawConsequence},

@@ -21,9 +21,9 @@ use crate::pools::utils::{
 	tokens,
 	tokens::{DECIMAL_BASE_12, YEAR_RATE},
 };
+use cfg_traits::Permissions as PermissionsT;
+use cfg_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
 use codec::Encode;
-use common_traits::Permissions as PermissionsT;
-use common_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
@@ -355,7 +355,7 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 /// externalities provided environment.
 mod with_ext {
 	use super::*;
-	use common_traits::PoolNAV;
+	use cfg_traits::PoolNAV;
 
 	/// Whitelists 10 tranche-investors per tranche.
 	///

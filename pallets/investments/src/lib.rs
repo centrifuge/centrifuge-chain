@@ -13,10 +13,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common_traits::{
+use cfg_traits::{
 	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
 };
-use common_types::{FulfillmentWithPrice, InvestmentAccount, TotalOrder};
+use cfg_types::{FulfillmentWithPrice, InvestmentAccount, TotalOrder};
 use frame_support::pallet_prelude::*;
 use frame_support::{
 	error::BadOrigin,

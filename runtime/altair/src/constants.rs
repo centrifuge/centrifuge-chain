@@ -2,8 +2,10 @@
 
 /// Money matters.
 pub mod currency {
-	use node_primitives::Balance;
-	use runtime_common::*;
+	use cfg_primitives::{
+		constants::{CENTI_CFG, CFG, MICRO_CFG, MILLI_CFG},
+		types::Balance,
+	};
 
 	pub const MICRO_AIR: Balance = MICRO_CFG;
 	pub const MILLI_AIR: Balance = MILLI_CFG;

@@ -1,6 +1,6 @@
 #![cfg(feature = "runtime-benchmarks")]
 use crate::{self as pallet_nft_sales, *};
-use common_types::CurrencyId;
+use cfg_types::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};

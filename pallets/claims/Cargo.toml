@@ -30,7 +30,7 @@ node-primitives = { git = "https://github.com/paritytech/substrate",  default-fe
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false  , branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 
-common-types = { path= '../../libs/common-types', default_features = true }
+cfg-types = { path= '../../libs/types', default_features = true }
 
 [features]
 default = ['std']

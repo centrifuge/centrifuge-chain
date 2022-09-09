@@ -13,7 +13,7 @@
 
 //! Module provides loan related functions
 use super::*;
-use common_types::{Adjustment, PoolLocator};
+use cfg_types::{Adjustment, PoolLocator};
 use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 impl<T: Config> Pallet<T> {

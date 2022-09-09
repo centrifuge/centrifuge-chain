@@ -20,9 +20,9 @@
 /// currency, but nothing enforces that. Failure to ensure currency
 /// uniqueness will almost certainly cause some wild bugs.
 use super::*;
-use common_traits::TrancheToken as TrancheTokenT;
 #[cfg(test)]
-use common_types::CurrencyId;
+use cfg_types::CurrencyId;
+use cfg_traits::TrancheToken as TrancheTokenT;
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
 use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};

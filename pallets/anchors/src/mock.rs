@@ -13,7 +13,7 @@
 
 use crate::{self as pallet_anchors, Config};
 
-use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
+use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
 use frame_support::{
 	parameter_types,

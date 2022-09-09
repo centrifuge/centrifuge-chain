@@ -28,7 +28,7 @@ use sp_std::vec;
 use proofs::{Hasher, Verifier};
 
 // Runtime common types
-use runtime_common::types::FixedArray;
+use cfg_primitives::types::FixedArray;
 
 // ----------------------------------------------------------------------------
 // Type alias and definitions

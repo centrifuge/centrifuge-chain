@@ -92,11 +92,6 @@ pub trait Reward {
 	) -> DispatchResultWithPostInfo;
 }
 
-/// A trait used to convert a type to BigEndian format
-pub trait BigEndian<T> {
-	fn to_big_endian(&self) -> T;
-}
-
 /// A trait that can be used to fetch the nav and update nav for a given pool
 pub trait PoolNAV<PoolId, Amount> {
 	type ClassId;
@@ -595,7 +590,7 @@ pub mod fees {
 		#[macro_export]
 		macro_rules! impl_mock_fees_state {
 			($name:ident, $account:ty, $balance:ty, $feekey:ty, $initializer:expr) => {
-				use common_traits::fees::test_util::FeesState;
+				use cfg_traits::fees::test_util::FeesState;
 
 				use std::cell::RefCell;
 				use std::thread::LocalKey;

@@ -107,8 +107,9 @@ orml-xcm-support = {  git = "https://github.com/open-web3-stack/open-runtime-mod
 orml-xtokens = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
 
 runtime-common = { path = "../common", default-features = false }
-common-types = { path = "../../libs/common-types", default-features = false }
-common-traits = { path = "../../libs/common-traits", default-features = false }
+cfg-types = { path = "../../libs/types", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
 
 # bridge pallets
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.26" }
@@ -137,9 +138,10 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 [features]
 default = ["std"]
 std = [
+    "cfg-primitives/std",
     "pallet-collator-allowlist/std",
     "pallet-restricted-tokens/std",
-    "common-types/std",
+    "cfg-types/std",
     "pallet-migration-manager/std",
     "pallet-permissions/std",
     "pallet-crowdloan-claim/std",
@@ -228,7 +230,7 @@ std = [
 ]
 
 runtime-benchmarks = [
-    "common-types/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",

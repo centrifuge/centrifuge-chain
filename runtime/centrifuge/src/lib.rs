@@ -5,8 +5,8 @@
 #![recursion_limit = "256"]
 
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
+use cfg_types::FeeKey;
 use codec::{Decode, Encode, MaxEncodedLen};
-use common_types::FeeKey;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
@@ -50,6 +50,9 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
+
+use cfg_primitives::{constants::*, types::*};
+use cfg_types::CustomMetadata;
 
 mod weights;
 pub mod xcm;
@@ -297,20 +300,20 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type PreExtrTransfer = common_traits::Always;
+	type PreExtrTransfer = cfg_traits::Always;
 	type PreFungiblesInspect = FungiblesInspectPassthrough;
-	type PreFungiblesInspectHold = common_traits::Always;
-	type PreFungiblesMutate = common_traits::Always;
-	type PreFungiblesMutateHold = common_traits::Always;
-	type PreFungiblesTransfer = common_traits::Always;
+	type PreFungiblesInspectHold = cfg_traits::Always;
+	type PreFungiblesMutate = cfg_traits::Always;
+	type PreFungiblesMutateHold = cfg_traits::Always;
+	type PreFungiblesTransfer = cfg_traits::Always;
 	type Fungibles = OrmlTokens;
-	type PreCurrency = common_traits::Always;
-	type PreReservableCurrency = common_traits::Always;
+	type PreCurrency = cfg_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
 	type PreFungibleInspect = FungibleInspectPassthrough;
-	type PreFungibleInspectHold = common_traits::Always;
-	type PreFungibleMutate = common_traits::Always;
-	type PreFungibleMutateHold = common_traits::Always;
-	type PreFungibleTransfer = common_traits::Always;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
+	type PreFungibleTransfer = cfg_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
@@ -801,7 +804,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
+	pub const TreasuryPalletId: PalletId = cfg_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -879,9 +882,9 @@ impl pallet_nft::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_HASH_ID));
-	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID));
+	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
@@ -902,7 +905,7 @@ impl pallet_bridge::Config for Runtime {
 parameter_types! {
 	pub const ChainId: chainbridge::ChainId = 1;
 	pub const ProposalLifetime: u32 = 500;
-	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const RelayerVoteThreshold: u32 = chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
@@ -921,7 +924,7 @@ impl chainbridge::Config for Runtime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const ClaimsPalletId: PalletId = common_types::ids::CLAIMS_PALLET_ID;
+	pub const ClaimsPalletId: PalletId = cfg_types::ids::CLAIMS_PALLET_ID;
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -937,7 +940,7 @@ impl pallet_claims::Config for Runtime {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
+	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
@@ -950,7 +953,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-	pub const CrowdloanClaimPalletId: PalletId = common_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
+	pub const CrowdloanClaimPalletId: PalletId = cfg_types::ids::CROWDLOAN_CLAIM_PALLET_ID;
 	pub const MaxProofLength: u32 = 30;
 }
 
@@ -1021,7 +1024,7 @@ impl Contains<Call> for BaseCallFilter {
 
 // Parameterize collator selection pallet
 parameter_types! {
-	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
+	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const SessionLength: BlockNumber = 6 * HOURS;

@@ -118,8 +118,8 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, ensure};
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 
-use common_traits::fees::{Fee, Fees};
-use runtime_common::types::FixedArray;
+use cfg_primitives::types::FixedArray;
+use cfg_traits::fees::{Fee, Fees};
 
 use sp_core::H256;
 use sp_runtime::traits::Member;

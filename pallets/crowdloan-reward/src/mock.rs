@@ -90,7 +90,7 @@ impl pallet_vesting::Config for MockRuntime {
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
 	pub const One: u64 = 1;
-	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
+	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet configuration for mock runtime

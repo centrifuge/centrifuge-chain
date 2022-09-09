@@ -23,7 +23,7 @@ sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-feat
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-common-traits = { path = "../../libs/common-traits", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
 
 # optional dependencies for benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.26" }
@@ -49,5 +49,5 @@ std = [
     "sp-arithmetic/std",
     'pallet-timestamp/std',
     'pallet-balances/std',
-    'common-traits/std',
+    'cfg-traits/std',
 ]

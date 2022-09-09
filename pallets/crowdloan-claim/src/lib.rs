@@ -110,7 +110,7 @@ pub use pallet::*;
 
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
-use common_traits::Reward;
+use cfg_traits::Reward;
 
 // Mock runtime and unit test cases
 #[cfg(test)]

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use super::*;
-use common_traits::PreConditions;
+use cfg_traits::PreConditions;
 use frame_support::traits::{
 	BalanceStatus, Currency, ExistenceRequirement, LockIdentifier, LockableCurrency,
 	ReservableCurrency, SignedImbalance, WithdrawReasons,

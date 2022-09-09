@@ -16,8 +16,8 @@
 //! This pallet provides functionality of Storing anchors on Chain
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_traits::fees::{Fee, Fees};
 use codec::{Decode, Encode};
-use common_traits::fees::{Fee, Fees};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,

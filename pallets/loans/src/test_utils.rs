@@ -14,9 +14,9 @@
 //! Module provides testing utilities for benchmarking and tests.
 use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
+use cfg_traits::{Permissions, PoolNAV};
+use cfg_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use codec::Encode;
-use common_traits::{Permissions, PoolNAV};
-use common_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
@@ -38,7 +38,7 @@ type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
 
 pub(crate) fn set_role<T: pallet_loans::Config>(
 	scope: PermissionScope<
-		<T::Pool as common_traits::PoolInspect<T::AccountId, T::CurrencyId>>::PoolId,
+		<T::Pool as cfg_traits::PoolInspect<T::AccountId, T::CurrencyId>>::PoolId,
 		<T as pallet_loans::Config>::CurrencyId,
 	>,
 	who: T::AccountId,

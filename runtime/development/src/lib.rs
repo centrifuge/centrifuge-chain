@@ -48,12 +48,15 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use common_traits::Permissions as PermissionsT;
-use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
-pub use common_types::CurrencyId;
-use common_types::{
-	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
-	TimeProvider, UNION,
+use cfg_primitives::types::PoolId;
+use cfg_traits::{
+	CurrencyPrice, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard, PreConditions,
+	PriceValue,
+};
+pub use cfg_types::CurrencyId;
+use cfg_types::{
+	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
+	Rate, Role, TimeProvider, TrancheToken, UNION,
 };
 use pallet_anchors::AnchorData;
 use pallet_pools::{
@@ -62,10 +65,10 @@ use pallet_pools::{
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };
-/// common types for the runtime.
-pub use runtime_common::{Index, *};
 
+use cfg_primitives::{constants::*, types::*};
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+pub use runtime_common::*;
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -704,7 +707,7 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
+	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
 }
 
 impl pallet_nft_sales::Config for Runtime {
@@ -738,7 +741,7 @@ parameter_types! {
 	pub const Burn: Permill = Permill::from_percent(1);
 
 	// treasury pallet account id
-	pub const TreasuryPalletId: PalletId = common_types::ids::TREASURY_PALLET_ID;
+	pub const TreasuryPalletId: PalletId = cfg_types::ids::TREASURY_PALLET_ID;
 
 	// Maximum number of approvals that can be in the spending queue
 	pub const MaxApprovals: u32 = 100;
@@ -806,7 +809,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const ClaimsPalletId: PalletId = common_types::ids::CLAIMS_PALLET_ID;
+	pub const ClaimsPalletId: PalletId = cfg_types::ids::CLAIMS_PALLET_ID;
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -822,7 +825,7 @@ impl pallet_claims::Config for Runtime {
 
 // Pool config parameters
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
+	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
@@ -861,7 +864,7 @@ impl pallet_pools::Config for Runtime {
 	type Currency = Balances;
 	type Tokens = Tokens;
 	type NAV = Loans;
-	type TrancheToken = TrancheToken<Runtime>;
+	type TrancheToken = TrancheToken;
 	type Permission = Permissions;
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
@@ -1068,7 +1071,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 // Parameterize collator selection pallet
 parameter_types! {
-	pub const PotId: PalletId = common_types::ids::STAKE_POT_PALLET_ID;
+	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
@@ -1098,7 +1101,7 @@ impl pallet_collator_selection::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
+	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 50;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
@@ -1228,18 +1231,18 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
 	type PreFungiblesInspect = FungiblesInspectPassthrough;
-	type PreFungiblesInspectHold = common_traits::Always;
-	type PreFungiblesMutate = common_traits::Always;
-	type PreFungiblesMutateHold = common_traits::Always;
-	type PreFungiblesTransfer = common_traits::Always;
+	type PreFungiblesInspectHold = cfg_traits::Always;
+	type PreFungiblesMutate = cfg_traits::Always;
+	type PreFungiblesMutateHold = cfg_traits::Always;
+	type PreFungiblesTransfer = cfg_traits::Always;
 	type Fungibles = OrmlTokens;
-	type PreCurrency = common_traits::Always;
-	type PreReservableCurrency = common_traits::Always;
+	type PreCurrency = cfg_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
 	type PreFungibleInspect = FungibleInspectPassthrough;
-	type PreFungibleInspectHold = common_traits::Always;
-	type PreFungibleMutate = common_traits::Always;
-	type PreFungibleMutateHold = common_traits::Always;
-	type PreFungibleTransfer = common_traits::Always;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
+	type PreFungibleTransfer = cfg_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
@@ -1293,8 +1296,8 @@ impl pallet_interest_accrual::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = common_types::ids::BRIDGE_PALLET_ID;
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&common_types::ids::CHAIN_BRIDGE_HASH_ID));
+	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
 	//TODO rename xRAD to xCFG and create new mapping
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;

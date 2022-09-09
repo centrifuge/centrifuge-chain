@@ -1,5 +1,5 @@
 [package]
-name = "common-traits"
+name = "cfg-traits"
 authors = ['The Centrifugians Tribe']
 edition = '2021'
 homepage = 'https://centrifuge.io'

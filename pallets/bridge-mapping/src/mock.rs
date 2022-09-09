@@ -13,7 +13,7 @@
 
 use crate::{self as pallet_bridge_mapping, Config as PalletBridgeMappingConfig};
 
-use common_traits::fees::NoFees;
+use cfg_traits::fees::NoFees;
 
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -156,7 +156,7 @@ impl pallet_anchors::Config for Test {
 parameter_types! {
 	pub const One: u64 = 1;
 	pub const MockChainId: u8 = 5;
-	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }

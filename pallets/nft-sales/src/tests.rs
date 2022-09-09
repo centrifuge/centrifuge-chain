@@ -13,7 +13,7 @@
 
 use crate::mock::*;
 use crate::{NftsBySeller, Price};
-use common_types::CurrencyId;
+use cfg_types::CurrencyId;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_noop, assert_ok};

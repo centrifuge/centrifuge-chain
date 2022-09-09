@@ -30,7 +30,8 @@ pallet-anchors = { path = "../anchors", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
 runtime-common = { path = "../../runtime/common", default-features = false }
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.26" }
-common-traits = { path = "../../libs/common-traits", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-primitives = { path = '../../libs/primitives', default-features = false }
 
 [dev-dependencies]
 # Testing and mocking dependencies
@@ -42,7 +43,7 @@ proofs = { path = "../../libs/proofs", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
-common-types = { path = "../../libs/common-types", default-features = true}
+cfg-types = { path = "../../libs/types", default-features = true}
 
 [features]
 default = ['std']
@@ -62,5 +63,6 @@ std = [
     'proofs/std',
     'unique-assets/std',
     'runtime-common/std',
-    'common-traits/std'
+    'cfg-traits/std',
+    'cfg-primitives/std'
 ]

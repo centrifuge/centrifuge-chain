@@ -27,7 +27,7 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git",
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.26" }
-common-traits = { path = "../../libs/common-traits", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
 
 [dev-dependencies]
 # Testing/mocking dependencies
@@ -40,7 +40,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 runtime-common = { path = "../../runtime/common", default_features = false }
-common-types = { path = "../../libs/common-types", default-features = true}
+cfg-types = { path = "../../libs/types", default-features = true}
 
 [features]
 default = ['std']
@@ -56,7 +56,7 @@ std = [
     'chainbridge/std',
     'pallet-nft/std',
     'unique-assets/std',
-    'common-traits/std',
+    'cfg-traits/std',
     'runtime-common/std',
     'pallet-bridge-mapping/std'
 ]

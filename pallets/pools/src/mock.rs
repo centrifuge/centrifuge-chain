@@ -1,8 +1,8 @@
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
+use cfg_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
+use cfg_types::{CurrencyId, Moment};
+use cfg_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
 use codec::Encode;
-use common_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
-use common_types::{CurrencyId, Moment};
-use common_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
@@ -24,7 +24,7 @@ use sp_runtime::{
 
 pub use runtime_common::{Rate, TrancheWeight};
 
-common_types::impl_tranche_token!();
+cfg_types::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -67,7 +67,7 @@ mod fake_nav {
 		}
 	}
 
-	impl<T: Config> common_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
+	impl<T: Config> cfg_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
 		type ClassId = u64;
 		type Origin = super::Origin;
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
@@ -220,18 +220,18 @@ impl pallet_restricted_tokens::Config for Test {
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
 	type PreFungiblesInspect = pallet_restricted_tokens::FungiblesInspectPassthrough;
-	type PreFungiblesInspectHold = common_traits::Always;
-	type PreFungiblesMutate = common_traits::Always;
-	type PreFungiblesMutateHold = common_traits::Always;
-	type PreFungiblesTransfer = common_traits::Always;
+	type PreFungiblesInspectHold = cfg_traits::Always;
+	type PreFungiblesMutate = cfg_traits::Always;
+	type PreFungiblesMutateHold = cfg_traits::Always;
+	type PreFungiblesTransfer = cfg_traits::Always;
 	type Fungibles = OrmlTokens;
-	type PreCurrency = common_traits::Always;
-	type PreReservableCurrency = common_traits::Always;
+	type PreCurrency = cfg_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
 	type PreFungibleInspect = pallet_restricted_tokens::FungibleInspectPassthrough;
-	type PreFungibleInspectHold = common_traits::Always;
-	type PreFungibleMutate = common_traits::Always;
-	type PreFungibleMutateHold = common_traits::Always;
-	type PreFungibleTransfer = common_traits::Always;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
+	type PreFungibleTransfer = cfg_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type WeightInfo = ();
@@ -270,7 +270,7 @@ where
 }
 
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
+	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 	pub const MaxTranches: u32 = 5;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
