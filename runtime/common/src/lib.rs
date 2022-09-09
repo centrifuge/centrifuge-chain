@@ -289,6 +289,12 @@ pub mod constants {
 	/// Value for a not specified fee key.
 	pub const DEFAULT_FEE_VALUE: Balance = 1 * CFG;
 
+	/// Additional fee charged when moving native tokens to target chains (in CFGs).
+	pub const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
+
+	/// Additional fee charged when moving NFTs to target chains (in CFGs).
+	pub const NFT_TOKEN_TRANSFER_FEE: Balance = 20 * CFG;
+
 	/// Additional fee charged when validating NFT proofs
 	pub const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
 
