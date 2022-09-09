@@ -106,6 +106,7 @@ Summary:
   Wasm       : ./target/srtool/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.wasm
 ```
 4. `Proposal` hash should match the runtime upgrade proposal
+    See more [here](docs/runtime-upgrade.md).
 
 ## Generate new Spec and Parachain files
 This script will take a valid chain-spec chain_id, a parachain_id and a flag to build new spec or not, and will output genesis spec (raw and plain), wasm and state files.
@@ -199,7 +200,7 @@ depending on an older version of any of those projects.
 
 ## NIX
 
-The CI runs a `nix-build` job that executes `nix build` on the entire repository. This job fails if the output 
+The CI runs a `nix-build` job that executes `nix build` on the entire repository. This job fails if the output
 `cargoSha256` for the revision being built does not match the expected value defined in `flake.nix`.
 
 Whenever a dependency is added, removed, or updated, said `cargoSha256` value defined in `flake.nix` needs to be updated.
