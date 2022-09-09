@@ -35,19 +35,20 @@ pub enum MigrationStatus {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use crate::weights::WeightInfo;
-	use frame_support::pallet_prelude::*;
-	use frame_support::transactional;
+	use frame_support::{
+		pallet_prelude::*,
+		sp_runtime::{traits::Saturating, ArithmeticError},
+		traits::VestingSchedule,
+		transactional,
+	};
 	use frame_system::pallet_prelude::*;
+	use pallet_proxy::ProxyDefinition;
+	use pallet_vesting::VestingInfo;
 	use sp_std::vec::Vec;
 
 	// Import various types used to declare pallet in scope.
 	use super::*;
-	use frame_support::sp_runtime::traits::Saturating;
-	use frame_support::sp_runtime::ArithmeticError;
-	use frame_support::traits::VestingSchedule;
-	use pallet_proxy::ProxyDefinition;
-	use pallet_vesting::VestingInfo;
+	use crate::weights::WeightInfo;
 
 	pub type NumAccounts = u64;
 

@@ -157,10 +157,10 @@ pub mod types {
 
 /// Common constants for all runtimes
 pub mod constants {
-	use super::types::Balance;
-	use super::types::BlockNumber;
 	use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
 	use sp_runtime::Perbill;
+
+	use super::types::{Balance, BlockNumber};
 
 	/// This determines the average expected block time that we are targeting. Blocks will be
 	/// produced at a minimum duration defined by `SLOT_DURATION`. `SLOT_DURATION` is picked up by

@@ -23,7 +23,6 @@ mod mock;
 mod benchmarking;
 
 use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
-
 use frame_system::ensure_root;
 pub use pallet::*;
 
@@ -32,9 +31,10 @@ pub use weights::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]

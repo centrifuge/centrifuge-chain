@@ -12,28 +12,33 @@
 // GNU General Public License for more details.
 
 //! Unit test cases for Loan pallet
-use super::*;
-use crate as pallet_loans;
-use crate::loan_type::{CreditLine, CreditLineWithMaturity};
-use crate::mock::{
-	Borrower, Event, InterestAccrual, JuniorInvestor, LoanAdmin, Loans, MockRuntime, Origin,
-	SeniorInvestor, Timestamp, Tokens,
-};
-use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
-use crate::test_utils::{
-	assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
-	initialise_test_pool, mint_nft,
-};
 use cfg_types::{CurrencyId, PoolId, PoolLocator};
-use frame_support::traits::{fungibles::Inspect, Hooks};
-use frame_support::{assert_err, assert_ok};
+use frame_support::{
+	assert_err, assert_ok,
+	traits::{fungibles::Inspect, Hooks},
+};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
 use runtime_common::{Balance, CollectionId, ItemId, Rate, CFG as USD};
-use sp_arithmetic::traits::checked_pow;
-use sp_arithmetic::FixedPointNumber;
-use sp_runtime::traits::{BadOrigin, StaticLookup};
-use sp_runtime::ArithmeticError;
+use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
+use sp_runtime::{
+	traits::{BadOrigin, StaticLookup},
+	ArithmeticError,
+};
+
+use super::*;
+use crate as pallet_loans;
+use crate::{
+	loan_type::{CreditLine, CreditLineWithMaturity},
+	mock::{
+		Borrower, Event, InterestAccrual, JuniorInvestor, LoanAdmin, Loans, MockRuntime, Origin,
+		PoolAdmin, SeniorInvestor, TestExternalitiesBuilder, Timestamp, Tokens,
+	},
+	test_utils::{
+		assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
+		initialise_test_pool, mint_nft,
+	},
+};
 
 // Return last triggered event
 fn last_event() -> Event {

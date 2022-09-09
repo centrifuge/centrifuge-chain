@@ -12,8 +12,9 @@
 // GNU General Public License for more details.
 
 //! Module provides functionality for different loan types
-use super::*;
 use scale_info::TypeInfo;
+
+use super::*;
 
 /// different types of loans
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
@@ -252,9 +253,9 @@ impl<Rate: PartialOrd + One, Balance> CreditLineWithMaturity<Rate, Balance> {
 
 #[cfg(test)]
 mod tests {
+	use runtime_common::{Rate, CFG as CURRENCY};
+
 	use super::*;
-	use runtime_common::Rate;
-	use runtime_common::CFG as CURRENCY;
 
 	#[test]
 	fn test_bullet_loan_is_valid() {

@@ -12,9 +12,10 @@
 // GNU General Public License for more details.
 
 //! Module provides loan related functions
-use super::*;
 use cfg_types::{Adjustment, PoolLocator};
 use sp_runtime::{traits::BadOrigin, ArithmeticError};
+
+use super::*;
 
 impl<T: Config> Pallet<T> {
 	/// returns the account_id of the loan pallet
@@ -100,6 +101,7 @@ impl<T: Config> Pallet<T> {
 			} => loan.interest_rate_per_sec + penalty_interest_rate_per_sec,
 		}
 	}
+
 	/// issues a new loan nft and returns the LoanID
 	pub(crate) fn create_loan(
 		pool_id: PoolIdOf<T>,

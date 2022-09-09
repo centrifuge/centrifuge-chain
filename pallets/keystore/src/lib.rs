@@ -58,11 +58,11 @@ pub struct AddKey<Hash> {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::traits::ReservableCurrency;
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::AtLeast32BitUnsigned;
-	use sp_runtime::FixedPointOperand;
+	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointOperand};
+
+	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {

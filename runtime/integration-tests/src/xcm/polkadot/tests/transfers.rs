@@ -22,24 +22,32 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::register_dot;
-use crate::xcm::polkadot::setup::{
-	acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, CurrencyId, ALICE,
-	BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
-};
-use crate::xcm::polkadot::test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet};
 use centrifuge_runtime::{
 	Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
 };
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use runtime_common::xcm::general_key;
-use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use runtime_common::{
+	decimals, parachains,
+	xcm::general_key,
+	xcm_fees::{default_per_second, ksm_per_second},
+	Balance, XcmMetadata,
+};
 use sp_runtime::traits::BadOrigin;
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::VersionedMultiLocation;
+use xcm::{
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	VersionedMultiLocation,
+};
 use xcm_emulator::TestExt;
+
+use super::register_dot;
+use crate::xcm::polkadot::{
+	setup::{
+		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, CurrencyId,
+		ALICE, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+	},
+	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+};
 
 #[test]
 fn transfer_cfg_to_sibling() {

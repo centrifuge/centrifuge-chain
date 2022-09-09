@@ -1,9 +1,9 @@
-use super::*;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::Hash;
-use sp_runtime::DispatchError;
+use sp_runtime::{traits::Hash, DispatchError};
+
+use super::*;
 
 const DOC_ROOT: [u8; 32] = [
 	238, 250, 118, 84, 35, 55, 212, 193, 69, 104, 25, 244, 240, 31, 54, 36, 85, 171, 12, 71, 247,

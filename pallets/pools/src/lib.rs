@@ -15,17 +15,23 @@
 use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken};
 use cfg_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use codec::HasCompact;
-use frame_support::traits::{
-	fungibles::{Inspect, Mutate, Transfer},
-	ReservableCurrency,
+use frame_support::{
+	dispatch::DispatchResult,
+	pallet_prelude::*,
+	traits::{
+		fungibles::{Inspect, Mutate, Transfer},
+		ReservableCurrency, UnixTime,
+	},
+	transactional, BoundedVec,
 };
-use frame_support::transactional;
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
+pub use impls::*;
 use orml_traits::Change;
+pub use pallet::*;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+pub use solution::*;
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
@@ -33,12 +39,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
-use sp_std::cmp::Ordering;
-use sp_std::vec::Vec;
-
-pub use impls::*;
-pub use pallet::*;
-pub use solution::*;
+use sp_std::{cmp::Ordering, vec::Vec};
 pub use tranche::*;
 pub use weights::*;
 
@@ -229,12 +230,10 @@ type PoolDepositOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
+	use sp_runtime::{traits::BadOrigin, ArithmeticError};
+
 	use super::*;
-	use frame_support::sp_runtime::traits::Convert;
-	use frame_support::traits::Contains;
-	use frame_support::PalletId;
-	use sp_runtime::traits::BadOrigin;
-	use sp_runtime::ArithmeticError;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {

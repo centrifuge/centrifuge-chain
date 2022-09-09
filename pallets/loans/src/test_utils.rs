@@ -12,26 +12,30 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
-use crate as pallet_loans;
-use crate::{AssetOf, PoolIdOf};
 use cfg_traits::{Permissions, PoolNAV};
 use cfg_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use codec::Encode;
-use frame_support::sp_runtime::traits::One;
-use frame_support::traits::fungibles::Transfer;
-use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
-use frame_support::traits::{Currency, Get};
-use frame_support::{assert_ok, parameter_types, Blake2_128, StorageHasher};
+use frame_support::{
+	assert_ok, parameter_types,
+	sp_runtime::traits::One,
+	traits::{
+		fungibles::Transfer,
+		tokens::nonfungibles::{Create, Inspect, Mutate},
+		Currency, Get,
+	},
+	Blake2_128, StorageHasher,
+};
 use frame_system::RawOrigin;
-use pallet_pools::TrancheLoc;
-use pallet_pools::TrancheType;
-use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
+use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage, TrancheLoc, TrancheType};
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,
 };
 use sp_std::vec;
+
+use crate as pallet_loans;
+use crate::{AssetOf, PoolIdOf};
 
 type TrancheId = [u8; 16];
 type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;

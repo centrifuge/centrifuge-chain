@@ -12,11 +12,12 @@
 // GNU General Public License for more details.
 
 //! Module provides base types and their functions
-use super::*;
 use cfg_traits::PoolInspect;
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
+
+use super::*;
 
 /// Asset that represents a non fungible
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]

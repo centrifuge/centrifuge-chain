@@ -17,18 +17,17 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use super::*;
+// Runtime common types
+use cfg_primitives::types::FixedArray;
 use codec::{Decode, Encode};
+// Routines for building and validating proofs
+use proofs::{Hasher, Verifier};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::sp_std::vec::Vec;
 use sp_std::vec;
 
-// Routines for building and validating proofs
-use proofs::{Hasher, Verifier};
-
-// Runtime common types
-use cfg_primitives::types::FixedArray;
+use super::*;
 
 // ----------------------------------------------------------------------------
 // Type alias and definitions
@@ -63,8 +62,8 @@ pub(crate) struct ProofVerifier {
 impl ProofVerifier {
 	// Defined associated constants of static proof indexes
 	const BASIC_DATA_ROOT_HASH: usize = 0;
-	const ZK_DATA_ROOT_HASH: usize = 1;
 	const SIGNATURE_ROOT_HASH: usize = 2;
+	const ZK_DATA_ROOT_HASH: usize = 1;
 
 	/// Build a new proof verifier instance, given a list of static proofs.
 	///

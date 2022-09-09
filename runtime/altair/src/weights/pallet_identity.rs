@@ -38,6 +38,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_identity(r: u32, x: u32) -> Weight {
 		(69_372_000 as Weight) // Standard Error: 28_000
 			.saturating_add((667_000 as Weight).saturating_mul(r as Weight)) // Standard Error: 3_000
@@ -45,6 +46,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_subs_new(s: u32) -> Weight {
 		(66_664_000 as Weight) // Standard Error: 7_000
 			.saturating_add((7_713_000 as Weight).saturating_mul(s as Weight))
@@ -53,6 +55,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(s as Weight)))
 	}
+
 	fn set_subs_old(p: u32) -> Weight {
 		(64_494_000 as Weight) // Standard Error: 4_000
 			.saturating_add((2_672_000 as Weight).saturating_mul(p as Weight))
@@ -60,6 +63,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(p as Weight)))
 	}
+
 	fn clear_identity(r: u32, s: u32, x: u32) -> Weight {
 		(69_929_000 as Weight) // Standard Error: 44_000
 			.saturating_add((897_000 as Weight).saturating_mul(r as Weight)) // Standard Error: 5_000
@@ -69,6 +73,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(s as Weight)))
 	}
+
 	fn request_judgement(r: u32, x: u32) -> Weight {
 		(76_196_000 as Weight) // Standard Error: 28_000
 			.saturating_add((592_000 as Weight).saturating_mul(r as Weight)) // Standard Error: 3_000
@@ -76,6 +81,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn cancel_request(r: u32, x: u32) -> Weight {
 		(75_246_000 as Weight) // Standard Error: 21_000
 			.saturating_add((163_000 as Weight).saturating_mul(r as Weight)) // Standard Error: 2_000
@@ -83,24 +89,28 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_fee(r: u32) -> Weight {
 		(18_422_000 as Weight) // Standard Error: 15_000
 			.saturating_add((417_000 as Weight).saturating_mul(r as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_account_id(r: u32) -> Weight {
 		(18_610_000 as Weight) // Standard Error: 18_000
 			.saturating_add((432_000 as Weight).saturating_mul(r as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_fields(r: u32) -> Weight {
 		(17_920_000 as Weight) // Standard Error: 18_000
 			.saturating_add((563_000 as Weight).saturating_mul(r as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn provide_judgement(r: u32, x: u32) -> Weight {
 		(46_896_000 as Weight) // Standard Error: 142_000
 			.saturating_add((863_000 as Weight).saturating_mul(r as Weight)) // Standard Error: 17_000
@@ -108,6 +118,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn kill_identity(r: u32, s: u32, x: u32) -> Weight {
 		(101_396_000 as Weight) // Standard Error: 40_000
 			.saturating_add((523_000 as Weight).saturating_mul(r as Weight)) // Standard Error: 4_000
@@ -117,24 +128,28 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(s as Weight)))
 	}
+
 	fn add_sub(s: u32) -> Weight {
 		(82_094_000 as Weight) // Standard Error: 3_000
 			.saturating_add((255_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn rename_sub(s: u32) -> Weight {
 		(31_237_000 as Weight) // Standard Error: 2_000
 			.saturating_add((117_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn remove_sub(s: u32) -> Weight {
 		(83_807_000 as Weight) // Standard Error: 3_000
 			.saturating_add((228_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn quit_sub(s: u32) -> Weight {
 		(57_850_000 as Weight) // Standard Error: 3_000
 			.saturating_add((240_000 as Weight).saturating_mul(s as Weight))

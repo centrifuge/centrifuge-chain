@@ -20,14 +20,14 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate as pallet_crowdloan_claim;
-use crate::{mock::*, Error as CrowdloanClaimError, *};
-use hex;
-
 use frame_support::{assert_noop, assert_ok, traits::VestingSchedule};
+use hex;
 use sp_core::H256;
 use sp_runtime::Perbill;
 use sp_std::str::FromStr;
+
+use crate as pallet_crowdloan_claim;
+use crate::{mock::*, Error as CrowdloanClaimError, *};
 
 struct Contributor {
 	proof: proofs::Proof<H256>,

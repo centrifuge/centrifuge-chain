@@ -11,11 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::mock::*;
-use frame_support::dispatch::DispatchError;
-use frame_support::traits::ValidatorRegistration;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{
+	assert_noop, assert_ok, dispatch::DispatchError, traits::ValidatorRegistration,
+};
 use sp_runtime::traits::BadOrigin;
+
+use crate::mock::*;
 
 /// Verify that calling `ValidatorRegistration.is_registered` on the Collator Allowlist
 /// pallet returns true for a collator that is both registered in the mock session and

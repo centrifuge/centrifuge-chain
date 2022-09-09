@@ -36,16 +36,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(67_513_000 as Weight) // Standard Error: 21_000
 			.saturating_add((9_255_000 as Weight).saturating_mul(c as Weight))
 	}
+
 	fn as_derivative() -> Weight {
 		(12_924_000 as Weight)
 	}
+
 	fn batch_all(c: u32) -> Weight {
 		(64_070_000 as Weight) // Standard Error: 18_000
 			.saturating_add((9_663_000 as Weight).saturating_mul(c as Weight))
 	}
+
 	fn dispatch_as() -> Weight {
 		(29_522_000 as Weight)
 	}
+
 	fn force_batch(c: u32) -> Weight {
 		(69_875_000 as Weight) // Standard Error: 13_000
 			.saturating_add((9_252_000 as Weight).saturating_mul(c as Weight))

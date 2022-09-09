@@ -146,9 +146,11 @@ pub mod asset_registry {
 	use cfg_primitives::types::{AccountId, Balance};
 	use cfg_types::{CurrencyId, CustomMetadata};
 	use codec::{Decode, Encode, MaxEncodedLen};
-	use frame_support::dispatch::RawOrigin;
-	use frame_support::sp_std::marker::PhantomData;
-	use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
+	use frame_support::{
+		dispatch::RawOrigin,
+		sp_std::marker::PhantomData,
+		traits::{EnsureOrigin, EnsureOriginWithArg},
+	};
 	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
@@ -214,14 +216,13 @@ pub mod asset_registry {
 }
 
 pub mod xcm {
-	use crate::xcm_fees::default_per_second;
 	use cfg_primitives::types::Balance;
 	use cfg_types::{CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::traits::ConstU32;
-	use sp_runtime::WeakBoundedVec;
-	use xcm::latest::Junction::GeneralKey;
-	use xcm::latest::MultiLocation;
+	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
+	use xcm::latest::{Junction::GeneralKey, MultiLocation};
+
+	use crate::xcm_fees::default_per_second;
 
 	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
 	/// the asset registry that were not already handled by native Trader rules.

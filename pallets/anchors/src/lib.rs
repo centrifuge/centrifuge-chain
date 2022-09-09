@@ -24,13 +24,11 @@ use frame_support::{
 	traits::{Currency, ReservableCurrency},
 	RuntimeDebug, StateVersion,
 };
-
+pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{traits::Hash, ArithmeticError};
 use sp_std::vec::Vec;
-
-pub use pallet::*;
 pub use weights::*;
 pub mod weights;
 
@@ -91,12 +89,12 @@ pub struct AnchorData<Hash, BlockNumber> {
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use super::*;
-	use frame_support::pallet_prelude::*;
-	use frame_support::traits::ReservableCurrency;
+	use frame_support::{pallet_prelude::*, traits::ReservableCurrency};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::Hash;
 	use sp_std::vec::Vec;
+
+	use super::*;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
 	// method.

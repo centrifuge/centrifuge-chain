@@ -1,15 +1,14 @@
-use jsonrpsee::{core::RpcResult, proc_macros::rpc};
+use std::sync::Arc;
 
+use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_anchors::AnchorData;
+pub use runtime_common::AnchorApi as AnchorRuntimeApi;
 use runtime_common::BlockNumber;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use std::sync::Arc;
 
 use crate::rpc::invalid_params_error;
-
-pub use runtime_common::AnchorApi as AnchorRuntimeApi;
 
 #[rpc(client, server)]
 pub trait AnchorApi<IdHash, BlockHash> {

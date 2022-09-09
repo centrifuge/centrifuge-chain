@@ -12,15 +12,6 @@
 
 //! Utilities around creating a pool
 
-use crate::chain::centrifuge::{Call, Loans, OrmlTokens, Permissions, Pools, Timestamp, PARA_ID};
-use crate::pools::utils::loans::NftManager;
-use crate::pools::utils::{
-	accounts::Keyring,
-	env::TestEnv,
-	time::secs::*,
-	tokens,
-	tokens::{DECIMAL_BASE_12, YEAR_RATE},
-};
 use cfg_traits::Permissions as PermissionsT;
 use cfg_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
 use codec::Encode;
@@ -30,6 +21,18 @@ use pallet_permissions::Call as PermissionsCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
 use runtime_common::{AccountId, Balance, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
+
+use crate::{
+	chain::centrifuge::{Call, Loans, OrmlTokens, Permissions, Pools, Timestamp, PARA_ID},
+	pools::utils::{
+		accounts::Keyring,
+		env::TestEnv,
+		loans::NftManager,
+		time::secs::*,
+		tokens,
+		tokens::{DECIMAL_BASE_12, YEAR_RATE},
+	},
+};
 
 /// Creates a default pool.
 ///
@@ -354,8 +357,9 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 /// A module where all calls need to be called within an
 /// externalities provided environment.
 mod with_ext {
-	use super::*;
 	use cfg_traits::PoolNAV;
+
+	use super::*;
 
 	/// Whitelists 10 tranche-investors per tranche.
 	///

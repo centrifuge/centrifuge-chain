@@ -34,8 +34,7 @@ enum Who {
 }
 
 use cfg_traits::{Permissions, Properties};
-use frame_support::traits::Contains;
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Contains};
 use frame_system::pallet_prelude::*;
 
 #[frame_support::pallet]
@@ -269,10 +268,10 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
-	type Scope = T::Scope;
-	type Role = T::Role;
 	type Error = DispatchError;
 	type Ok = ();
+	type Role = T::Role;
+	type Scope = T::Scope;
 
 	fn has(scope: T::Scope, who: T::AccountId, role: T::Role) -> bool {
 		Permission::<T>::get(who, scope).map_or(false, |roles| roles.exists(role))

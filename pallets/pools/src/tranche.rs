@@ -10,6 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::TrancheToken as TrancheTokenT;
+#[cfg(test)]
+use cfg_types::CurrencyId;
+use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
+use rev_slice::{RevSlice, SliceExt};
+use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
+
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
 /// This should be implemented in the runtime to convert from the
@@ -20,12 +27,6 @@
 /// currency, but nothing enforces that. Failure to ensure currency
 /// uniqueness will almost certainly cause some wild bugs.
 use super::*;
-use cfg_traits::TrancheToken as TrancheTokenT;
-#[cfg(test)]
-use cfg_types::CurrencyId;
-use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
-use rev_slice::{RevSlice, SliceExt};
-use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 
 /// Types alias for EpochExecutionTranche
 #[allow(dead_code)]

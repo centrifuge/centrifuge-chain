@@ -10,18 +10,23 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-///! Mock environment setup for testing the pallet-permissions
-use crate::{self as pallet_permissions};
 use codec::{Decode, Encode};
 pub use dummy::pallet as pallet_dummy;
-use frame_support::parameter_types;
-use frame_support::sp_io::TestExternalities;
-use frame_support::sp_runtime::testing::{Header, H256};
-use frame_support::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use frame_support::traits::{Contains, EitherOfDiverse, Everything, SortedMembers};
+use frame_support::{
+	parameter_types,
+	sp_io::TestExternalities,
+	sp_runtime::{
+		testing::{Header, H256},
+		traits::{BlakeTwo256, IdentityLookup},
+	},
+	traits::{Contains, EitherOfDiverse, Everything, SortedMembers},
+};
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use pallet_permissions::Properties;
 use sp_runtime::traits::AccountIdConversion;
+
+///! Mock environment setup for testing the pallet-permissions
+use crate::{self as pallet_permissions};
 
 #[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
 pub enum OrganisationRole {
@@ -89,9 +94,9 @@ impl Default for Scope {
 }
 
 impl Properties for Storage {
-	type Property = Role;
 	type Error = ();
 	type Ok = ();
+	type Property = Role;
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
@@ -151,10 +156,10 @@ impl Properties for Storage {
 mod dummy {
 	#[frame_support::pallet]
 	pub mod pallet {
-		use crate::Permissions;
 		use frame_support::pallet_prelude::*;
-		use frame_system::ensure_signed;
-		use frame_system::pallet_prelude::OriginFor;
+		use frame_system::{ensure_signed, pallet_prelude::OriginFor};
+
+		use crate::Permissions;
 
 		/// Configure the pallet by specifying the parameters and types on which it depends.
 		#[pallet::config]
@@ -246,30 +251,30 @@ parameter_types! {
 
 // Implement frame system configuration for the mock runtime
 impl frame_system::Config for MockRuntime {
+	type AccountData = ();
+	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
-	type BlockWeights = BlockWeights;
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Index = u64;
-	type Call = Call;
 	type BlockNumber = u64;
+	type BlockWeights = BlockWeights;
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = ();
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 parameter_types! {
@@ -280,13 +285,13 @@ parameter_types! {
 type AdminOrigin = EitherOfDiverse<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
 
 impl pallet_permissions::Config for MockRuntime {
-	type Event = Event;
-	type Scope = Scope;
-	type Role = Role;
-	type Storage = Storage;
 	type AdminOrigin = AdminOrigin;
 	type Editors = Editors;
+	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
+	type Role = Role;
+	type Scope = Scope;
+	type Storage = Storage;
 	type WeightInfo = ();
 }
 
@@ -338,10 +343,10 @@ impl SortedMembers<u64> for One {
 }
 
 impl pallet_dummy::Config for MockRuntime {
+	type PalletId = DummyAccount;
+	type Permission = Permissions;
 	type Role = Role;
 	type Scope = Scope;
-	type Permission = Permissions;
-	type PalletId = DummyAccount;
 }
 
 #[derive(Default)]

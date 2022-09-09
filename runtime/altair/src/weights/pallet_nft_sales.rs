@@ -37,11 +37,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn remove() -> Weight {
 		(92_470_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
+
 	fn buy() -> Weight {
 		(154_352_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))

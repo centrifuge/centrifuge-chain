@@ -4,7 +4,16 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+use cfg_primitives::{constants::*, types::*};
+use cfg_traits::PoolUpdateGuard;
+pub use cfg_types::CurrencyId;
+use cfg_types::{
+	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
+	Rate, Role, TimeProvider, TrancheToken,
+};
 use codec::{Decode, Encode, MaxEncodedLen};
+/// Constant values used within the runtime.
+use constants::currency::*;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
@@ -22,50 +31,38 @@ use frame_system::{
 	EnsureRoot, EnsureSigned,
 };
 use orml_traits::parameter_type_with_key;
-
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
+use pallet_pools::{
+	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
+};
+use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
+pub use runtime_common::*;
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
-use sp_runtime::traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto};
-use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
-
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill, Permill,
+	create_runtime_str, generic, impl_opaque_keys,
+	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto},
+	transaction_validity::{TransactionSource, TransactionValidity},
+	ApplyExtrinsicResult, Perbill, Permill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
-
-/// Constant values used within the runtime.
-use constants::currency::*;
 use xcm_executor::XcmExecutor;
 
-use cfg_primitives::{constants::*, types::*};
-use cfg_traits::PoolUpdateGuard;
-pub use cfg_types::CurrencyId;
-use cfg_types::{
-	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
-	Rate, Role, TimeProvider, TrancheToken,
-};
-use pallet_pools::{
-	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
-};
-use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
-
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
-pub use runtime_common::*;
 
 pub mod constants;
 mod weights;
@@ -136,47 +133,47 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
+	/// Data to be associated with an account (other than nonce/transaction counter, which this
+	/// module does regardless).
+	type AccountData = pallet_balances::AccountData<Balance>;
+	/// The identifier used to distinguish between accounts.
+	type AccountId = AccountId;
 	type BaseCallFilter = BaseCallFilter;
-	type BlockWeights = RuntimeBlockWeights;
+	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = RuntimeBlockLength;
-	/// The ubiquitous origin type.
-	type Origin = Origin;
-	/// The aggregated dispatch type that is available for extrinsics.
-	type Call = Call;
-	/// The index type for storing how many extrinsics an account has signed.
-	type Index = Index;
 	/// The index type for blocks.
 	type BlockNumber = BlockNumber;
+	type BlockWeights = RuntimeBlockWeights;
+	/// The aggregated dispatch type that is available for extrinsics.
+	type Call = Call;
+	type DbWeight = RocksDbWeight;
+	/// The overarching event type.
+	type Event = Event;
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
 	/// The hashing algorithm used.
 	type Hashing = BlakeTwo256;
-	/// The identifier used to distinguish between accounts.
-	type AccountId = AccountId;
-	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-	type Lookup = sp_runtime::traits::AccountIdLookup<AccountId, ()>;
 	/// The header type.
 	type Header = Header;
-	/// The overarching event type.
-	type Event = Event;
-	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = RocksDbWeight;
-	/// Get the chain's current version.
-	type Version = Version;
-	type PalletInfo = PalletInfo;
-	/// Data to be associated with an account (other than nonce/transaction counter, which this
-	/// module does regardless).
-	type AccountData = pallet_balances::AccountData<Balance>;
-	/// Handler for when a new account has just been created.
-	type OnNewAccount = ();
+	/// The index type for storing how many extrinsics an account has signed.
+	type Index = Index;
+	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
+	type Lookup = sp_runtime::traits::AccountIdLookup<AccountId, ()>;
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 	/// A function that is invoked when an account has been determined to be dead.
 	/// All resources should be cleaned up associated with the given account.
 	type OnKilledAccount = ();
-	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
-	type SS58Prefix = SS58Prefix;
+	/// Handler for when a new account has just been created.
+	type OnNewAccount = ();
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	/// The ubiquitous origin type.
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = SS58Prefix;
+	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
+	/// Get the chain's current version.
+	type Version = Version;
 }
 
 parameter_types! {
@@ -185,15 +182,15 @@ parameter_types! {
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
+	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
+	type DmpMessageHandler = DmpQueue;
 	type Event = Event;
 	type OnSystemEvent = ();
-	type SelfParaId = parachain_info::Pallet<Runtime>;
-	type DmpMessageHandler = DmpQueue;
-	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
-	type XcmpMessageHandler = XcmpQueue;
+	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
-	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
+	type SelfParaId = parachain_info::Pallet<Runtime>;
+	type XcmpMessageHandler = XcmpQueue;
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -204,10 +201,10 @@ parameter_types! {
 	pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
 }
 impl pallet_timestamp::Config for Runtime {
+	type MinimumPeriod = MinimumPeriod;
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
 	type WeightInfo = weights::pallet_timestamp::SubstrateWeight<Self>;
 }
 
@@ -222,11 +219,11 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
 	type Event = Event;
+	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees<Runtime>>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = WeightToFee;
-	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 }
 
 parameter_types! {
@@ -239,6 +236,8 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Runtime {
+	/// The means of storing the balances of an account.
+	type AccountStore = System;
 	/// The type for recording an account's balance.
 	type Balance = Balance;
 	/// Handler for the unbalanced reduction when removing a dust account.
@@ -247,12 +246,10 @@ impl pallet_balances::Config for Runtime {
 	type Event = Event;
 	/// The minimum amount required to keep an account open.
 	type ExistentialDeposit = ExistentialDeposit;
-	/// The means of storing the balances of an account.
-	type AccountStore = System;
-	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -261,10 +258,10 @@ parameter_types! {
 
 // We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
+	type EventHandler = (CollatorSelection,);
+	type FilterUncle = ();
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
-	type FilterUncle = ();
-	type EventHandler = (CollatorSelection,);
 }
 
 parameter_types! {
@@ -274,15 +271,15 @@ parameter_types! {
 
 impl pallet_session::Config for Runtime {
 	type Event = Event;
+	type Keys = SessionKeys;
+	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	// Essentially just Aura, but lets be pedantic.
+	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
+	type SessionManager = CollatorSelection;
+	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type SessionManager = CollatorSelection;
-	// Essentially just Aura, but lets be pedantic.
-	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
-	type Keys = SessionKeys;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Self>;
 }
 
@@ -308,11 +305,11 @@ parameter_types! {
 }
 
 impl pallet_multisig::Config for Runtime {
-	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
+	type Event = Event;
 	type MaxSignatories = MaxSignatories;
 	type WeightInfo = weights::pallet_multisig::SubstrateWeight<Self>;
 }
@@ -385,23 +382,23 @@ impl InstanceFilter<Call> for ProxyType {
 }
 
 impl pallet_proxy::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-	type Currency = Balances;
-	type ProxyType = ProxyType;
-	type ProxyDepositBase = ProxyDepositBase;
-	type ProxyDepositFactor = ProxyDepositFactor;
-	type MaxProxies = MaxProxies;
-	type WeightInfo = weights::pallet_proxy::SubstrateWeight<Self>;
-	type MaxPending = MaxPending;
-	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+	type Call = Call;
+	type CallHasher = BlakeTwo256;
+	type Currency = Balances;
+	type Event = Event;
+	type MaxPending = MaxPending;
+	type MaxProxies = MaxProxies;
+	type ProxyDepositBase = ProxyDepositBase;
+	type ProxyDepositFactor = ProxyDepositFactor;
+	type ProxyType = ProxyType;
+	type WeightInfo = weights::pallet_proxy::SubstrateWeight<Self>;
 }
 
 impl pallet_utility::Config for Runtime {
-	type Event = Event;
 	type Call = Call;
+	type Event = Event;
 	type PalletsOrigin = OriginCaller;
 	type WeightInfo = weights::pallet_utility::SubstrateWeight<Self>;
 }
@@ -414,17 +411,17 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Runtime {
-	type Event = Event;
-	type Origin = Origin;
-	type PalletsOrigin = OriginCaller;
 	type Call = Call;
-	type MaximumWeight = MaximumSchedulerWeight;
-	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type Event = Event;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
-	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type WeightInfo = weights::pallet_scheduler::SubstrateWeight<Self>;
-	type PreimageProvider = Preimage;
+	type MaximumWeight = MaximumSchedulerWeight;
 	type NoPreimagePostponement = NoPreimagePostponement;
+	type Origin = Origin;
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
+	type PalletsOrigin = OriginCaller;
+	type PreimageProvider = Preimage;
+	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = weights::pallet_scheduler::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -434,13 +431,13 @@ parameter_types! {
 }
 
 impl pallet_preimage::Config for Runtime {
-	type Event = Event;
-	type WeightInfo = weights::pallet_preimage::SubstrateWeight<Self>;
-	type Currency = Balances;
-	type ManagerOrigin = EnsureRoot<AccountId>;
-	type MaxSize = PreimageMaxSize;
 	type BaseDeposit = PreimageBaseDeposit;
 	type ByteDeposit = PreimageByteDeposit;
+	type Currency = Balances;
+	type Event = Event;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type MaxSize = PreimageMaxSize;
+	type WeightInfo = weights::pallet_preimage::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -450,13 +447,13 @@ parameter_types! {
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type Event = Event;
+	type MaxMembers = CouncilMaxMembers;
+	type MaxProposals = CouncilMaxProposals;
+	type MotionDuration = CouncilMotionDuration;
 	type Origin = Origin;
 	type Proposal = Call;
-	type Event = Event;
-	type MotionDuration = CouncilMotionDuration;
-	type MaxProposals = CouncilMaxProposals;
-	type MaxMembers = CouncilMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = weights::pallet_collective::SubstrateWeight<Self>;
 }
 
@@ -474,35 +471,28 @@ parameter_types! {
 const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 
 impl pallet_elections_phragmen::Config for Runtime {
-	type Event = Event;
-	type PalletId = ElectionsPhragmenModuleId;
-	type Currency = Balances;
-	type ChangeMembers = Council;
-	type InitializeMembers = Council;
-	type CurrencyToVote = U128CurrencyToVote;
-
 	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
-
-	/// Base deposit associated with voting
-	type VotingBondBase = VotingBondBase;
-
-	/// How much should be locked up in order to be able to submit votes.
-	type VotingBondFactor = VotingBond;
-
-	type LoserCandidate = Treasury;
-	type KickedMember = Treasury;
-
+	type ChangeMembers = Council;
+	type Currency = Balances;
+	type CurrencyToVote = U128CurrencyToVote;
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
-
 	/// Number of runners_up to keep.
 	type DesiredRunnersUp = DesiredRunnersUp;
-
+	type Event = Event;
+	type InitializeMembers = Council;
+	type KickedMember = Treasury;
+	type LoserCandidate = Treasury;
+	type PalletId = ElectionsPhragmenModuleId;
 	/// How long each seat is kept. This defines the next block number at which an election
 	/// round will happen. If set to zero, no elections are ever triggered and the module will
 	/// be in passive mode.
 	type TermDuration = TermDuration;
+	/// Base deposit associated with voting
+	type VotingBondBase = VotingBondBase;
+	/// How much should be locked up in order to be able to submit votes.
+	type VotingBondFactor = VotingBond;
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
 }
 
@@ -519,8 +509,13 @@ parameter_types! {
 }
 
 impl pallet_democracy::Config for Runtime {
-	type Proposal = Call;
-	type Event = Event;
+	type BlacklistOrigin = EnsureRoot<AccountId>;
+	// To cancel a proposal before it has been passed, must be root.
+	type CancelProposalOrigin = EnsureRoot<AccountId>;
+	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
+	type CancellationOrigin = EnsureRootOr<TwoThirdOfCouncil>;
+	/// Period in blocks where an external proposal may not be re-submitted after being vetoed.
+	type CooloffPeriod = CooloffPeriod;
 	type Currency = Balances;
 	/// The minimum period of locking and the period between a proposal being approved and enacted.
 	///
@@ -528,58 +523,42 @@ impl pallet_democracy::Config for Runtime {
 	/// voting stakers have an opportunity to remove themselves from the system in the case where
 	/// they are on the losing side of a vote.
 	type EnactmentPeriod = EnactmentPeriod;
-	type VoteLockingPeriod = EnactmentPeriod; // Same as EnactmentPeriod
-	/// How often (in blocks) new public referenda are launched.
-	type LaunchPeriod = LaunchPeriod;
-
-	/// How often (in blocks) to check for new votes.
-	type VotingPeriod = VotingPeriod;
-
-	/// The minimum amount to be used as a deposit for a public referendum proposal.
-	type MinimumDeposit = MinimumDeposit;
-
-	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = HalfOfCouncil;
-
-	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = HalfOfCouncil;
-
+	type Event = Event;
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
 	type ExternalDefaultOrigin = AllOfCouncil;
-
+	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
+	type ExternalMajorityOrigin = HalfOfCouncil;
+	/// A straight majority of the council can decide what their next motion is.
+	type ExternalOrigin = HalfOfCouncil;
 	/// Half of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
 	type FastTrackOrigin = EnsureRootOr<HalfOfCouncil>;
-
-	type InstantOrigin = EnsureRootOr<AllOfCouncil>;
-
-	type InstantAllowed = InstantAllowed;
-
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
-
-	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = EnsureRootOr<TwoThirdOfCouncil>;
-
-	type BlacklistOrigin = EnsureRoot<AccountId>;
-
-	// To cancel a proposal before it has been passed, must be root.
-	type CancelProposalOrigin = EnsureRoot<AccountId>;
+	type InstantAllowed = InstantAllowed;
+	type InstantOrigin = EnsureRootOr<AllOfCouncil>;
+	// Same as EnactmentPeriod
+	/// How often (in blocks) new public referenda are launched.
+	type LaunchPeriod = LaunchPeriod;
+	type MaxProposals = MaxProposals;
+	type MaxVotes = MaxVotes;
+	/// The minimum amount to be used as a deposit for a public referendum proposal.
+	type MinimumDeposit = MinimumDeposit;
+	type OperationalPreimageOrigin = EnsureMember<AccountId, CouncilCollective>;
+	type PalletsOrigin = OriginCaller;
+	/// The amount of balance that must be deposited per byte of preimage stored.
+	type PreimageByteDeposit = PreimageByteDeposit;
+	type Proposal = Call;
+	type Scheduler = Scheduler;
+	/// Handler for the unbalanced reduction when slashing a preimage deposit.
+	type Slash = Treasury;
 	// Any single council member may veto a coming council proposal, however they can
 	// only do it once and it lasts only for the cooloff period.
 	type VetoOrigin = EnsureMember<AccountId, CouncilCollective>;
-	/// Period in blocks where an external proposal may not be re-submitted after being vetoed.
-	type CooloffPeriod = CooloffPeriod;
-	/// The amount of balance that must be deposited per byte of preimage stored.
-	type PreimageByteDeposit = PreimageByteDeposit;
-	type OperationalPreimageOrigin = EnsureMember<AccountId, CouncilCollective>;
-	/// Handler for the unbalanced reduction when slashing a preimage deposit.
-	type Slash = Treasury;
-	type Scheduler = Scheduler;
-	type PalletsOrigin = OriginCaller;
-	type MaxVotes = MaxVotes;
+	type VoteLockingPeriod = EnactmentPeriod;
+	/// How often (in blocks) to check for new votes.
+	type VotingPeriod = VotingPeriod;
 	type WeightInfo = weights::pallet_democracy::SubstrateWeight<Self>;
-	type MaxProposals = MaxProposals;
 }
 
 parameter_types! {
@@ -592,18 +571,18 @@ parameter_types! {
 }
 
 impl pallet_identity::Config for Runtime {
-	type Event = Event;
-	type Currency = Balances;
 	type BasicDeposit = BasicDeposit;
+	type Currency = Balances;
+	type Event = Event;
 	type FieldDeposit = FieldDeposit;
-	type SubAccountDeposit = SubAccountDeposit;
-	type MaxSubAccounts = MaxSubAccounts;
+	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
-	type Slashed = Treasury;
-	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
+	type MaxSubAccounts = MaxSubAccounts;
 	type RegistrarOrigin =
 		EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
+	type Slashed = Treasury;
+	type SubAccountDeposit = SubAccountDeposit;
 	type WeightInfo = weights::pallet_identity::SubstrateWeight<Self>;
 }
 
@@ -612,11 +591,12 @@ parameter_types! {
 }
 
 impl pallet_vesting::Config for Runtime {
-	type Event = Event;
-	type Currency = Balances;
 	type BlockNumberToBalance = ConvertInto;
+	type Currency = Balances;
+	type Event = Event;
 	type MinVestedTransfer = MinVestedTransfer;
 	type WeightInfo = weights::pallet_vesting::SubstrateWeight<Self>;
+
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
 
@@ -648,26 +628,26 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Runtime {
-	type Currency = Balances;
 	// either democracy or 66% of council votes
 	type ApproveOrigin = EnsureRootOr<TwoThirdOfCouncil>;
-	// either democracy or more than 50% council votes
-	type RejectOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
-	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
-	type Event = Event;
-	// slashed amount goes to treasury account
-	type OnSlash = Treasury;
-	type ProposalBond = ProposalBond;
-	type ProposalBondMinimum = ProposalBondMinimum;
-	type ProposalBondMaximum = ProposalBondMaximum;
-	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
-	type PalletId = TreasuryPalletId;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
-	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
-	type SpendFunds = ();
+	type Currency = Balances;
+	type Event = Event;
 	type MaxApprovals = MaxApprovals;
+	// slashed amount goes to treasury account
+	type OnSlash = Treasury;
+	type PalletId = TreasuryPalletId;
+	type ProposalBond = ProposalBond;
+	type ProposalBondMaximum = ProposalBondMaximum;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	// either democracy or more than 50% council votes
+	type RejectOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
+	type SpendFunds = ();
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
+	type SpendPeriod = SpendPeriod;
+	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -686,25 +666,25 @@ parameter_types! {
 }
 
 impl pallet_uniques::Config for Runtime {
-	type Event = Event;
+	type AttributeDepositBase = AttributeDepositBase;
+	type CollectionDeposit = CollectionDeposit;
 	type CollectionId = CollectionId;
-	type ItemId = ItemId;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
+	type DepositPerByte = DepositPerByte;
+	type Event = Event;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type Locker = ();
-	type CollectionDeposit = CollectionDeposit;
-	type ItemDeposit = ItemDeposit;
-	type MetadataDepositBase = MetadataDepositBase;
-	type AttributeDepositBase = AttributeDepositBase;
-	type DepositPerByte = DepositPerByte;
-	type StringLimit = Limit;
-	type KeyLimit = Limit;
-	type ValueLimit = Limit;
-	type WeightInfo = weights::pallet_uniques::SubstrateWeight<Self>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
+	type ItemDeposit = ItemDeposit;
+	type ItemId = ItemId;
+	type KeyLimit = Limit;
+	type Locker = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type StringLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = weights::pallet_uniques::SubstrateWeight<Self>;
 }
 
 // our pallets
@@ -713,12 +693,12 @@ parameter_types! {
 }
 
 impl pallet_fees::Config for Runtime {
-	type FeeKey = FeeKey;
 	type Currency = Balances;
-	type Treasury = pallet_treasury::Pallet<Self>;
+	type DefaultFeeValue = DefaultFeeValue;
 	type Event = Event;
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type DefaultFeeValue = DefaultFeeValue;
+	type FeeKey = FeeKey;
+	type Treasury = pallet_treasury::Pallet<Self>;
 	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
@@ -728,18 +708,18 @@ parameter_types! {
 }
 
 impl pallet_anchors::Config for Runtime {
-	type Fees = Fees;
 	type CommitAnchorFeeKey = CommitAnchorFeeKey;
+	type Currency = Balances;
+	type Fees = Fees;
 	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
 	type WeightInfo = ();
-	type Currency = Balances;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
+	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -751,10 +731,10 @@ parameter_types! {
 // Implement the migration manager pallet
 // The actual associated type, which executes the migration can be found in the migration folder
 impl pallet_migration_manager::Config for Runtime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxProxies = MigrationMaxProxies;
+	type MigrationMaxVestings = MigrationMaxVestings;
 	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
 }
 
@@ -765,9 +745,9 @@ parameter_types! {
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
@@ -779,13 +759,13 @@ parameter_types! {
 
 // Implement crowdloan claim pallet configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
-	type Event = Event;
-	type PalletId = CrowdloanClaimPalletId;
-	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type RelayChainAccountId = AccountId;
+	type Event = Event;
 	type MaxProofLength = MaxProofLength;
+	type PalletId = CrowdloanClaimPalletId;
+	type RelayChainAccountId = AccountId;
 	type RewardMechanism = CrowdloanReward;
+	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 }
 
 // Parameterize collator selection pallet
@@ -799,15 +779,15 @@ parameter_types! {
 
 // Implement Collator Selection pallet configuration trait for the runtime
 impl pallet_collator_selection::Config for Runtime {
-	type Event = Event;
 	type Currency = Balances;
-	type UpdateOrigin = EnsureRootOr<ThreeFourthOfCouncil>;
-	type PotId = PotId;
-	type MaxCandidates = MaxCandidates;
-	type MinCandidates = MinCandidates;
-	type MaxInvulnerables = MaxInvulnerables;
+	type Event = Event;
 	// should be a multiple of session or things will get inconsistent
 	type KickThreshold = Period;
+	type MaxCandidates = MaxCandidates;
+	type MaxInvulnerables = MaxInvulnerables;
+	type MinCandidates = MinCandidates;
+	type PotId = PotId;
+	type UpdateOrigin = EnsureRootOr<ThreeFourthOfCouncil>;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ValidatorRegistration = CollatorAllowlist;
@@ -826,13 +806,13 @@ parameter_types! {
 }
 
 impl pallet_permissions::Config for Runtime {
-	type Event = Event;
-	type Scope = PermissionScope<PoolId, CurrencyId>;
-	type Role = Role<TrancheId, Moment>;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
-	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Editors = Editors;
+	type Event = Event;
 	type MaxRolesPerScope = MaxRolesPerPool;
+	type Role = Role<TrancheId, Moment>;
+	type Scope = PermissionScope<PoolId, CurrencyId>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Self>;
 }
 
@@ -883,25 +863,25 @@ parameter_types! {
 }
 
 impl pallet_restricted_tokens::Config for Runtime {
-	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type PreExtrTransfer = cfg_traits::Always;
-	type PreFungiblesInspect = FungiblesInspectPassthrough;
-	type PreFungiblesInspectHold = cfg_traits::Always;
-	type PreFungiblesMutate = cfg_traits::Always;
-	type PreFungiblesMutateHold = cfg_traits::Always;
-	type PreFungiblesTransfer = cfg_traits::Always;
+	type Event = Event;
 	type Fungibles = OrmlTokens;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
 	type PreCurrency = cfg_traits::Always;
-	type PreReservableCurrency = cfg_traits::Always;
+	type PreExtrTransfer = cfg_traits::Always;
 	type PreFungibleInspect = FungibleInspectPassthrough;
 	type PreFungibleInspectHold = cfg_traits::Always;
 	type PreFungibleMutate = cfg_traits::Always;
 	type PreFungibleMutateHold = cfg_traits::Always;
 	type PreFungibleTransfer = cfg_traits::Always;
-	type NativeFungible = Balances;
-	type NativeToken = NativeToken;
+	type PreFungiblesInspect = FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = cfg_traits::Always;
+	type PreFungiblesMutate = cfg_traits::Always;
+	type PreFungiblesMutateHold = cfg_traits::Always;
+	type PreFungiblesTransfer = cfg_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
 	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
 }
 
@@ -919,28 +899,28 @@ parameter_types! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
-	type Balance = Balance;
 	type Amount = IBalance;
+	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
-	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type OnNewTokenAccount = ();
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
 }
 
 impl orml_asset_registry::Config for Runtime {
-	type Event = Event;
-	type CustomMetadata = CustomMetadata;
 	type AssetId = CurrencyId;
-	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin, EnsureRootOr<HalfOfCouncil>>;
 	type AssetProcessor = asset_registry::CustomAssetProcessor;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin, EnsureRootOr<HalfOfCouncil>>;
 	type Balance = Balance;
+	type CustomMetadata = CustomMetadata;
+	type Event = Event;
 	type WeightInfo = ();
 }
 
@@ -949,35 +929,35 @@ parameter_types! {
 }
 
 impl pallet_nft_sales::Config for Runtime {
-	type Event = Event;
-	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
-	type Fungibles = Tokens;
-	type NonFungibles = Uniques;
 	type CollectionId = CollectionId;
+	type Event = Event;
+	type Fungibles = Tokens;
 	type ItemId = ItemId;
+	type NonFungibles = Uniques;
 	type PalletId = NftSalesPalletId;
+	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
 }
 
 // XCM
 
 /// XCMP Queue is responsible to handle XCM messages coming directly from sibling parachains.
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = PolkadotXcm;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type Event = Event;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 /// The config for the Downward Message Passing Queue, i.e., how messages coming from the
 /// relay-chain are handled.
 impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 // Pools & Loans
@@ -989,22 +969,22 @@ parameter_types! {
 }
 
 impl pallet_loans::Config for Runtime {
-	type Event = Event;
-	type ClassId = CollectionId;
-	type LoanId = ItemId;
-	type Rate = Rate;
 	type Balance = Balance;
-	type NonFungible = Uniques;
-	type Time = Timestamp;
-	type LoansPalletId = LoansPalletId;
-	type Pool = Pools;
+	type BlockNumberProvider = System;
+	type ClassId = CollectionId;
 	type CurrencyId = CurrencyId;
-	type Permission = Permissions;
+	type Event = Event;
 	type InterestAccrual = InterestAccrual;
-	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
+	type LoanId = ItemId;
+	type LoansPalletId = LoansPalletId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
-	type BlockNumberProvider = System;
+	type NonFungible = Uniques;
+	type Permission = Permissions;
+	type Pool = Pools;
+	type Rate = Rate;
+	type Time = Timestamp;
+	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -1058,36 +1038,36 @@ type PoolCreateOrigin = EnsureRoot<AccountId>;
 type PoolCreateOrigin = EnsureSigned<AccountId>;
 
 impl pallet_pools::Config for Runtime {
-	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
-	type InterestRate = Rate;
-	type PoolId = PoolId;
-	type TrancheId = TrancheId;
-	type EpochId = u32;
-	type CurrencyId = CurrencyId;
-	type Currency = Balances;
-	type Tokens = Tokens;
-	type NAV = Loans;
-	type TrancheToken = TrancheToken;
-	type Permission = Permissions;
-	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
-	type MinUpdateDelay = MinUpdateDelay;
-	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type Currency = Balances;
+	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
-	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
-	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
+	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type EpochId = u32;
+	type Event = Event;
+	type InterestRate = Rate;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
-	type PoolDeposit = PoolDeposit;
+	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
+	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
+	type MinUpdateDelay = MinUpdateDelay;
+	type NAV = Loans;
+	type PalletId = PoolPalletId;
+	type Permission = Permissions;
 	type PoolCreateOrigin = PoolCreateOrigin;
-	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
-	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
+	type PoolDeposit = PoolDeposit;
+	type PoolId = PoolId;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TrancheId = TrancheId;
+	type TrancheToken = TrancheToken;
+	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
+	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 }
 
 pub struct PoolCurrency;
@@ -1105,6 +1085,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
+	type Moment = Moment;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
 		u32,
@@ -1116,7 +1097,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		PoolId,
 	>;
 	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
-	type Moment = Moment;
 
 	fn released(
 		pool: &Self::PoolDetails,
@@ -1149,8 +1129,8 @@ impl PoolUpdateGuard for UpdateGuard {
 }
 
 impl pallet_interest_accrual::Config for Runtime {
-	type Event = Event;
 	type Balance = Balance;
+	type Event = Event;
 	type InterestRate = Rate;
 	type Time = Timestamp;
 	type Weights = ();
@@ -1317,8 +1297,9 @@ pub type Executive = frame_executive::Executive<
 
 /// Runtime upgrade logic
 mod upgrade {
-	use super::*;
 	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+
+	use super::*;
 
 	pub struct Upgrade;
 	impl OnRuntimeUpgrade for Upgrade {

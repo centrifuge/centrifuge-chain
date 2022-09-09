@@ -35,27 +35,32 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn spend() -> Weight {
 		(486_000 as Weight)
 	}
+
 	fn propose_spend() -> Weight {
 		(61_415_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn reject_proposal() -> Weight {
 		(87_485_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn approve_proposal(p: u32) -> Weight {
 		(24_568_000 as Weight) // Standard Error: 2_000
 			.saturating_add((332_000 as Weight).saturating_mul(p as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn remove_approval() -> Weight {
 		(16_449_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn on_initialize_proposals(p: u32) -> Weight {
 		(35_735_000 as Weight) // Standard Error: 12_000
 			.saturating_add((6_846_000 as Weight).saturating_mul(p as Weight))

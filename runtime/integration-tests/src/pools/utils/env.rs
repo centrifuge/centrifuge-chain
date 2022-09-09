@@ -11,44 +11,54 @@
 // GNU General Public License for more details.
 
 //! Utilities to create a relay-chain-parachain setup
-use crate::chain::centrifuge::{
-	AuraId, Block as CentrifugeBlock, BlockNumber, Event, Runtime, RuntimeApi as CentrifugeRtApi,
-	PARA_ID, WASM_BINARY as CentrifugeCode,
+use std::{
+	collections::HashMap,
+	sync::{Arc, Mutex},
 };
-use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
-use crate::chain::{centrifuge, relay};
-use crate::pools::utils::accounts::{Keyring, NonceManager};
-use crate::pools::utils::extrinsics::{xt_centrifuge, xt_relay};
-use crate::pools::utils::{logs, time::START_DATE};
+
 use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
-use fudge::digest::{DigestProvider, FudgeAuraDigest, FudgeBabeDigest};
-use fudge::primitives::{Chain, PoolState};
 use fudge::{
-	digest::DigestCreator,
+	digest::{DigestCreator, DigestProvider, FudgeAuraDigest, FudgeBabeDigest},
 	inherent::{
 		CreateInherentDataProviders, FudgeDummyInherentRelayParachain, FudgeInherentParaParachain,
 		FudgeInherentTimestamp,
 	},
+	primitives::{Chain, PoolState},
 	EnvProvider, ParachainBuilder, RelaychainBuilder,
 };
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
-use runtime_common::Index;
-
 use rand::Rng;
+use runtime_common::Index;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
+
+use crate::{
+	chain::{
+		centrifuge,
+		centrifuge::{
+			AuraId, Block as CentrifugeBlock, BlockNumber, Event, Runtime,
+			RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
+		},
+		relay,
+		relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode},
+	},
+	pools::utils::{
+		accounts::{Keyring, NonceManager},
+		extrinsics::{xt_centrifuge, xt_relay},
+		logs,
+		time::START_DATE,
+	},
+};
 
 pub mod macros {
 	/// A macro that helps checking whether a given list of events

@@ -12,10 +12,8 @@
 
 // NOTE: Taken mostly from paritytech-substrate
 
-use crate::chain::centrifuge;
-use crate::chain::centrifuge::PARA_ID;
-use crate::chain::relay;
-use crate::pools::utils::env::TestEnv;
+use std::collections::HashMap;
+
 use fudge::primitives::Chain;
 use node_primitives::{AccountId as RelayAccountId, Index as RelayIndex};
 use runtime_common::Index;
@@ -25,7 +23,11 @@ use sp_core::{
 	Pair as PairT,
 };
 use sp_runtime::AccountId32;
-use std::collections::HashMap;
+
+use crate::{
+	chain::{centrifuge, centrifuge::PARA_ID, relay},
+	pools::utils::env::TestEnv,
+};
 
 /// Struct that takes care of handling nonces for accounts
 pub struct NonceManager {
@@ -459,8 +461,9 @@ impl From<Keyring> for crate::chain::relay::Origin {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use sp_core::{sr25519::Pair, Pair as PairT};
+
+	use super::*;
 
 	#[test]
 	fn keyring_works() {

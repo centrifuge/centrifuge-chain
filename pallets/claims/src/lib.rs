@@ -103,11 +103,10 @@ use frame_support::{
 	weights::Weight,
 	PalletId,
 };
-
 use frame_system::ensure_root;
-
+// Re-export in crate namespace (for runtime construction)
+pub use pallet::*;
 use sp_core::Encode;
-
 use sp_runtime::{
 	sp_std::vec::Vec,
 	traits::{AccountIdConversion, CheckedSub, Hash, SaturatedConversion},
@@ -115,9 +114,6 @@ use sp_runtime::{
 
 // Re-export weight information in crate namespace
 pub use crate::traits::WeightInfo as PalletWeightInfo;
-
-// Re-export in crate namespace (for runtime construction)
-pub use pallet::*;
 
 // ----------------------------------------------------------------------------
 // Traits and types declaration
@@ -150,9 +146,10 @@ pub mod traits {
 #[frame_support::pallet]
 pub mod pallet {
 
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	// Rad claim pallet type declaration.
 	//

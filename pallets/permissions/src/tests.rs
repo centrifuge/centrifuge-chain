@@ -10,12 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use frame_support::{assert_noop, assert_ok};
+use pallet_permissions::{Permissions, Properties};
+
 ///! Tests for the permissions pallet
 use crate as pallet_permissions;
 use crate::{mock::*, Error as PermissionsError};
-
-use frame_support::{assert_noop, assert_ok};
-use pallet_permissions::{Permissions, Properties};
 
 #[test]
 fn add_ext_works() {

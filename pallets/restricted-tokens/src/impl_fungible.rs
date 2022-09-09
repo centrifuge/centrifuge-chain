@@ -10,12 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::*;
 use cfg_traits::PreConditions;
 use frame_support::traits::{
 	fungible::{Inspect, InspectHold, Mutate, MutateHold, Transfer},
 	tokens::{DepositConsequence, WithdrawConsequence},
 };
+
+use super::*;
 
 /// Represents the trait `fungible::Inspect` effects that are called via
 /// the pallet-restricted-tokens.

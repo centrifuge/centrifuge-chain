@@ -1,10 +1,10 @@
-use super::setup::DOT_ASSET_ID;
 use centrifuge_runtime::{Origin, OrmlAssetRegistry};
 use frame_support::assert_ok;
 use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::{xcm_fees::ksm_per_second, Balance, CustomMetadata, XcmMetadata};
-use xcm::latest::MultiLocation;
-use xcm::VersionedMultiLocation;
+use xcm::{latest::MultiLocation, VersionedMultiLocation};
+
+use super::setup::DOT_ASSET_ID;
 
 mod asset_registry;
 mod currency_id_convert;

@@ -12,15 +12,15 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
-use super::*;
 use cfg_traits::PoolNAV;
 use cfg_types::CurrencyId;
-
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
 use sp_std::vec;
+
+use super::*;
 
 const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;

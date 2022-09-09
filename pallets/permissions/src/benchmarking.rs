@@ -10,17 +10,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::*;
-use crate as pallet_permissions;
-use crate::Pallet as PermissionsPallet;
 use cfg_traits::Permissions as TPermissions;
 use cfg_types::{PoolRole, Role};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 
+use super::*;
+use crate as pallet_permissions;
 #[cfg(test)]
 use crate::mock::{OrganisationRole, Role as MockRole, XcmRole};
+use crate::Pallet as PermissionsPallet;
 
 fn whitelist_acc<T: frame_system::Config>(acc: &T::AccountId) {
 	frame_benchmarking::benchmarking::add_to_whitelist(

@@ -17,15 +17,14 @@
 use cfg_primitives::types::Balance;
 use cfg_traits::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
+pub use fixed_point::*;
 use frame_support::{traits::UnixTime, RuntimeDebug};
+pub use permissions::*;
 use scale_info::{build::Fields, Path, Type, TypeInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Zero, Perquintill};
 use sp_std::{cmp::PartialEq, marker::PhantomData};
-
-pub use fixed_point::*;
-pub use permissions::*;
 pub use tokens::*;
 
 pub mod fixed_point;

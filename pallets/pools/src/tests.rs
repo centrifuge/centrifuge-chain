@@ -1,15 +1,16 @@
-use super::*;
-use crate::mock::TrancheToken as TT;
-use crate::mock::{self, *};
 use cfg_traits::Permissions as PermissionsT;
 use cfg_types::CurrencyId;
-use frame_support::traits::fungibles;
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
 use rand::Rng;
 use runtime_common::Rate;
 use sp_core::storage::StateVersion;
-use sp_runtime::traits::{One, Zero};
-use sp_runtime::{Perquintill, TokenError};
+use sp_runtime::{
+	traits::{One, Zero},
+	Perquintill, TokenError,
+};
+
+use super::*;
+use crate::mock::{self, TrancheToken as TT, *};
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {

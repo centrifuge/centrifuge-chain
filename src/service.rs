@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-	cli::RpcConfig,
-	rpc::{
-		self,
-		anchors::{AnchorApiServer, Anchors},
-		pools::{Pools, PoolsApiServer},
-	},
-};
+use std::{sync::Arc, time::Duration};
 
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
@@ -43,8 +36,16 @@ use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerH
 use sp_api::ConstructRuntimeApi;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
-use std::{sync::Arc, time::Duration};
 use substrate_prometheus_endpoint::Registry;
+
+use crate::{
+	cli::RpcConfig,
+	rpc::{
+		self,
+		anchors::{AnchorApiServer, Anchors},
+		pools::{Pools, PoolsApiServer},
+	},
+};
 
 // Native Altair executor instance.
 pub struct AltairRuntimeExecutor;

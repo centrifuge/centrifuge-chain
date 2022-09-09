@@ -16,9 +16,8 @@ use frame_support::{
 		Currency, EnsureOrigin, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons,
 	},
 };
-use scale_info::TypeInfo;
-
 pub use pallet::*;
+use scale_info::TypeInfo;
 
 #[cfg(test)]
 mod mock;
@@ -44,9 +43,10 @@ pub type ImbalanceOf<T> = <<T as Config>::Currency as Currency<
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
 	// method.

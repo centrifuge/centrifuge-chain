@@ -1,20 +1,25 @@
-use super::{
-	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
+use cfg_primitives::{
+	constants::currency_decimals,
+	parachains,
+	types::{EnsureRootOr, HalfOfCouncil},
 };
+pub use cfg_types::CurrencyId;
 pub use cumulus_primitives_core::ParaId;
-use frame_support::sp_std::marker::PhantomData;
-use frame_support::traits::fungibles;
 pub use frame_support::{
 	parameter_types,
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
+use frame_support::{sp_std::marker::PhantomData, traits::fungibles};
 use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
+use runtime_common::{
+	xcm::{general_key, FixedConversionRateProvider},
+	xcm_fees::{default_per_second, native_per_second},
+};
 use sp_runtime::traits::{Convert, Zero};
 use xcm::latest::prelude::*;
 use xcm_builder::{
@@ -26,15 +31,9 @@ use xcm_builder::{
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
-use cfg_primitives::{
-	constants::currency_decimals,
-	parachains,
-	types::{EnsureRootOr, HalfOfCouncil},
-};
-pub use cfg_types::CurrencyId;
-use runtime_common::{
-	xcm::{general_key, FixedConversionRateProvider},
-	xcm_fees::{default_per_second, native_per_second},
+use super::{
+	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 
 /// The main XCM config
@@ -42,21 +41,21 @@ use runtime_common::{
 /// how fees are calculated, what barriers we impose on incoming XCM messages, etc.
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
-	type Call = Call;
-	type XcmSender = XcmRouter;
+	type AssetClaims = PolkadotXcm;
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = FungiblesTransactor;
-	type OriginConverter = XcmOriginToTransactDispatchOrigin;
+	type AssetTrap = PolkadotXcm;
+	type Barrier = Barrier;
+	type Call = Call;
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
-	type Barrier = Barrier;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	type Trader = Trader;
+	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = PolkadotXcm;
-	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
+	type Trader = Trader;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
+	type XcmSender = XcmRouter;
 }
 
 /// Trader - The means of purchasing weight credit for XCM execution.
@@ -251,20 +250,21 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 /// Pallet Xcm offers a lot of out-of-the-box functionality and features to configure
 /// and handle XCM messages.
 impl pallet_xcm::Config for Runtime {
+	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type Call = Call;
 	type Event = Event;
-	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmRouter = XcmRouter;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmExecuteFilter = Nothing;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmTeleportFilter = Everything;
-	type XcmReserveTransferFilter = Everything;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Origin = Origin;
-	type Call = Call;
+	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
+	type XcmExecuteFilter = Nothing;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type XcmReserveTransferFilter = Everything;
+	type XcmRouter = XcmRouter;
+	type XcmTeleportFilter = Everything;
+
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
-	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
 
 parameter_types! {
@@ -336,20 +336,20 @@ parameter_type_with_key! {
 }
 
 impl orml_xtokens::Config for Runtime {
-	type Event = Event;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type Balance = Balance;
+	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
-	type SelfLocation = SelfLocation;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	type BaseXcmWeight = BaseXcmWeight;
+	type Event = Event;
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type MultiLocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type SelfLocation = SelfLocation;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

@@ -9,16 +9,23 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge;
-use crate::chain::centrifuge::{Runtime, PARA_ID};
-use crate::pools::utils::accounts::Keyring;
-use crate::pools::utils::extrinsics::{nonce_centrifuge, xt_centrifuge};
-use crate::pools::utils::*;
 use codec::Encode;
 use fudge::primitives::Chain;
 use pallet_balances::Call as BalancesCall;
 use sp_runtime::Storage;
 use tokio::runtime::Handle;
+
+use crate::{
+	chain::{
+		centrifuge,
+		centrifuge::{Runtime, PARA_ID},
+	},
+	pools::utils::{
+		accounts::Keyring,
+		extrinsics::{nonce_centrifuge, xt_centrifuge},
+		*,
+	},
+};
 
 #[tokio::test]
 async fn env_works() {

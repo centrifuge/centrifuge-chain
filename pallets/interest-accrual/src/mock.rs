@@ -1,4 +1,3 @@
-use crate::*;
 use cfg_types::Moment;
 use frame_support::{parameter_types, traits::Hooks, weights::constants::RocksDbWeight};
 use sp_core::H256;
@@ -7,6 +6,8 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate::*;
 
 pub type Balance = u128;
 pub type Rate = sp_arithmetic::fixed_point::FixedU128;
@@ -20,42 +21,42 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
+	type AccountData = ();
+	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type DbWeight = RocksDbWeight;
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = RocksDbWeight;
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = ();
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = SS58Prefix;
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = SS58Prefix;
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 impl pallet_timestamp::Config for Test {
+	type MinimumPeriod = ();
 	type Moment = Moment;
 	type OnTimestampSet = ();
-	type MinimumPeriod = ();
 	type WeightInfo = ();
 }
 
 impl Config for Test {
-	type Event = Event;
 	type Balance = Balance;
+	type Event = Event;
 	type InterestRate = Rate;
 	type Time = Timestamp;
 	type Weights = ();

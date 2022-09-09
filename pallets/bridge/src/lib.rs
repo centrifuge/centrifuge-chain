@@ -105,15 +105,8 @@ pub mod traits;
 
 // Pallet extrinsics weight information
 mod weights;
-use crate::traits::WeightInfo;
-
-// Re-export pallet components in crate namespace (for runtime construction)
-pub use pallet::*;
-
 use cfg_traits::fees::{Fee, Fees};
-
 use chainbridge::types::ChainId;
-
 // Runtime, system and frame primitives
 use frame_support::{
 	dispatch::DispatchResult,
@@ -121,12 +114,14 @@ use frame_support::{
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
 	transactional, PalletId,
 };
-
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
+// Re-export pallet components in crate namespace (for runtime construction)
+pub use pallet::*;
 use sp_core::U256;
+use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
 use sp_std::vec::Vec;
 
-use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
+use crate::traits::WeightInfo;
 // ----------------------------------------------------------------------------
 // Type aliases
 // ----------------------------------------------------------------------------
@@ -146,9 +141,10 @@ type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	// Bridge pallet type declaration.
 	//

@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::chain_spec;
-use clap::Parser;
 use std::path::PathBuf;
+
+use clap::Parser;
+
+use crate::chain_spec;
 
 #[derive(Debug, Parser)]
 pub enum Subcommand {

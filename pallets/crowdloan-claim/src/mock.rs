@@ -23,9 +23,11 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_crowdloan_claim, Config};
-use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{parameter_types, traits::SortedMembers, PalletId};
+use frame_support::{
+	parameter_types,
+	traits::{Everything, GenesisBuild, SortedMembers},
+	PalletId,
+};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -34,6 +36,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	AccountId32,
 };
+
+use crate::{self as pallet_crowdloan_claim, Config};
 
 // ----------------------------------------------------------------------------
 // Type alias, constants
@@ -70,30 +74,30 @@ parameter_types! {
 
 // Implement frame system configuration for the mock runtime
 impl frame_system::Config for MockRuntime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = u64;
 	type BaseCallFilter = Everything;
-	type BlockWeights = BlockWeights;
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Index = u64;
-	type Call = Call;
 	type BlockNumber = u64;
+	type BlockWeights = BlockWeights;
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 // Parameterize balances pallet
@@ -104,15 +108,15 @@ parameter_types! {
 
 // Implement balances pallet configuration for mock runtime
 impl pallet_balances::Config for MockRuntime {
-	type MaxLocks = ();
-	type Balance = Balance;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -122,12 +126,13 @@ parameter_types! {
 
 // Parameterize vesting pallet configuration
 impl pallet_vesting::Config for MockRuntime {
-	type Event = Event;
-	type Currency = Balances;
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
+	type Currency = Balances;
+	type Event = Event;
 	type MinVestedTransfer = TestMinVestedTransfer;
-	const MAX_VESTING_SCHEDULES: u32 = 1;
 	type WeightInfo = ();
+
+	const MAX_VESTING_SCHEDULES: u32 = 1;
 }
 
 // Parameterize crowdloan reward pallet configuration
@@ -138,9 +143,9 @@ parameter_types! {
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for MockRuntime {
+	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
 }
 
@@ -152,13 +157,13 @@ parameter_types! {
 
 // Implement crowdloan claim pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
-	type Event = Event;
-	type PalletId = CrowdloanClaimPalletId;
-	type WeightInfo = ();
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type RelayChainAccountId = AccountId32;
+	type Event = Event;
 	type MaxProofLength = MaxProofLength;
+	type PalletId = CrowdloanClaimPalletId;
+	type RelayChainAccountId = AccountId32;
 	type RewardMechanism = CrowdloanReward;
+	type WeightInfo = ();
 }
 
 impl SortedMembers<u64> for One {

@@ -11,18 +11,20 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::*;
-use crate::common;
-use crate::{self as pallet_anchors};
-use crate::{mock::*, PRE_COMMIT_EXPIRATION_DURATION_BLOCKS};
+use std::time::Instant;
+
 use codec::Encode;
-use frame_support::pallet_prelude::Hooks;
-use frame_support::traits::Randomness;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, pallet_prelude::Hooks, traits::Randomness};
 use frame_system::ensure_signed;
 use sp_core::H256;
 use sp_runtime::traits::{BadOrigin, Hash, Header};
-use std::time::Instant;
+
+use super::*;
+use crate::{
+	common,
+	mock::*,
+	PRE_COMMIT_EXPIRATION_DURATION_BLOCKS, {self as pallet_anchors},
+};
 
 fn setup_blocks(blocks: u64) {
 	let mut parent_hash = System::parent_hash();

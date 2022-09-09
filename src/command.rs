@@ -14,13 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-	chain_spec,
-	cli::{Cli, RelayChainCli, RpcConfig, Subcommand},
-	service::{
-		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
-	},
-};
+use std::{io::Write, net::SocketAddr};
+
 use codec::Encode;
 use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
@@ -33,9 +28,15 @@ use sc_cli::{
 };
 use sc_service::config::{BasePath, PrometheusConfig};
 use sp_core::hexdisplay::HexDisplay;
-use sp_runtime::traits::AccountIdConversion;
-use sp_runtime::traits::Block as BlockT;
-use std::{io::Write, net::SocketAddr};
+use sp_runtime::traits::{AccountIdConversion, Block as BlockT};
+
+use crate::{
+	chain_spec,
+	cli::{Cli, RelayChainCli, RpcConfig, Subcommand},
+	service::{
+		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
+	},
+};
 
 enum ChainIdentity {
 	Altair,

@@ -84,29 +84,28 @@
 // ----------------------------------------------------------------------------
 
 // Runtime, system and frame primitives
+// Claim reward trait to be implemented
+use cfg_traits::Reward;
 use frame_support::{
 	dispatch::DispatchResultWithPostInfo,
 	ensure,
-	sp_runtime::traits::CheckedSub,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, VestingSchedule},
+	sp_runtime::traits::{CheckedSub, One},
+	traits::{
+		Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, VestingSchedule,
+		WithdrawReasons,
+	},
 	BoundedVec, PalletId,
 };
-
 use frame_system::ensure_root;
+// Re-export in crate namespace (for runtime construction)
+pub use pallet::*;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, Convert, Zero},
 	Perbill,
 };
 
-// Re-export in crate namespace (for runtime construction)
-pub use pallet::*;
-// Claim reward trait to be implemented
-use cfg_traits::Reward;
-
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
-use frame_support::sp_runtime::traits::One;
-use frame_support::traits::WithdrawReasons;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -419,9 +418,9 @@ impl<T: Config> Reward for Pallet<T>
 where
 	BalanceOf<T>: Send + Sync,
 {
-	type ParachainAccountId = T::AccountId;
-	type ContributionAmount = BalanceOf<T>;
 	type BlockNumber = T::BlockNumber;
+	type ContributionAmount = BalanceOf<T>;
+	type ParachainAccountId = T::AccountId;
 
 	// Reward a payout for a claim on a given parachain account
 	fn reward(

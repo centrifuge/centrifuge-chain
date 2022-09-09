@@ -9,23 +9,25 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::{Call, Event, Rate, Runtime, PARA_ID};
-use crate::pools::utils::*;
-use crate::pools::utils::{
-	accounts::Keyring,
-	env::{ChainState, EventRange},
-	loans::NftManager,
-	loans::{borrow_call, init_loans_for_pool, issue_default_loan},
-	pools::{default_pool_calls, permission_call},
-	time::secs::SECONDS_PER_DAY,
-	tokens::DECIMAL_BASE_12,
-};
 use cfg_types::PoolRole;
 use fudge::primitives::Chain;
 use pallet_loans::types::Asset;
 use runtime_common::{AccountId, Address, Balance, ItemId};
 use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError};
 use tokio::runtime::Handle;
+
+use crate::{
+	chain::centrifuge::{Call, Event, Rate, Runtime, PARA_ID},
+	pools::utils::{
+		accounts::Keyring,
+		env::{ChainState, EventRange},
+		loans::{borrow_call, init_loans_for_pool, issue_default_loan, NftManager},
+		pools::{default_pool_calls, permission_call},
+		time::secs::SECONDS_PER_DAY,
+		tokens::DECIMAL_BASE_12,
+		*,
+	},
+};
 
 #[tokio::test]
 async fn create_init_and_price() {

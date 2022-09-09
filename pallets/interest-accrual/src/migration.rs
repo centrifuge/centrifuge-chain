@@ -1,8 +1,9 @@
-use crate::*;
 use frame_support::{
 	pallet_prelude::OptionQuery, storage_alias, traits::Get, weights::Weight, Blake2_128Concat,
 };
 use weights::WeightInfo;
+
+use crate::*;
 
 mod v0 {
 	use super::*;
@@ -45,9 +46,10 @@ pub mod v1 {
 
 #[cfg(test)]
 mod test {
-	use super::*;
 	use frame_support::traits::Hooks;
 	use mock::*;
+
+	use super::*;
 
 	/// returns the seconds in a given normal day
 	fn seconds_per_day() -> Moment {

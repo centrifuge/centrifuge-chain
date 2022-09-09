@@ -12,14 +12,18 @@
 
 use cfg_traits::Properties;
 use codec::{Decode, Encode};
-use frame_support::sp_runtime::traits::Saturating;
-use frame_support::traits::{Get, UnixTime};
+use frame_support::{
+	sp_runtime::traits::Saturating,
+	traits::{Get, UnixTime},
+};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_std::cmp::{Ord, PartialEq, PartialOrd};
-use sp_std::marker::PhantomData;
-use sp_std::vec::Vec;
+use sp_std::{
+	cmp::{Ord, PartialEq, PartialOrd},
+	marker::PhantomData,
+	vec::Vec,
+};
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 // NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
@@ -193,9 +197,9 @@ where
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 	TrancheId: PartialEq + PartialOrd,
 {
-	type Property = Role<TrancheId, Moment>;
 	type Error = ();
 	type Ok = ();
+	type Property = Role<TrancheId, Moment>;
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
@@ -440,10 +444,12 @@ where
 
 #[cfg(test)]
 mod tests {
+	use core::time::Duration;
+
+	use frame_support::parameter_types;
+
 	///! Tests for some types in the common section for our runtimes
 	use super::*;
-	use core::time::Duration;
-	use frame_support::parameter_types;
 
 	parameter_types! {
 		pub const MinDelay: u64 = 4;

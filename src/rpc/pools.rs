@@ -1,13 +1,12 @@
-use jsonrpsee::{core::RpcResult, proc_macros::rpc};
+use std::{fmt::Debug, sync::Arc};
 
 use codec::Codec;
+use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_pools::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
 use runtime_common::apis::PoolsApi as PoolsRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use std::fmt::Debug;
-use std::sync::Arc;
 
 use crate::rpc::{invalid_params_error, runtime_error};
 

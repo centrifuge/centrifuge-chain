@@ -22,25 +22,32 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::xcm::kusama::setup::{
-	air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
-	PARA_ID_SIBLING,
-};
-use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 use altair_runtime::{
 	Balances, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
 };
-use frame_support::assert_noop;
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use runtime_common::xcm::general_key;
-use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use runtime_common::{
+	decimals, parachains,
+	xcm::general_key,
+	xcm_fees::{default_per_second, ksm_per_second},
+	Balance, XcmMetadata,
+};
 use sp_runtime::traits::BadOrigin;
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::prelude::{Parachain, X2};
-use xcm::VersionedMultiLocation;
+use xcm::{
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	prelude::{Parachain, X2},
+	VersionedMultiLocation,
+};
 use xcm_emulator::TestExt;
+
+use crate::xcm::kusama::{
+	setup::{
+		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
+		PARA_ID_SIBLING,
+	},
+	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+};
 
 #[test]
 fn register_air_works() {

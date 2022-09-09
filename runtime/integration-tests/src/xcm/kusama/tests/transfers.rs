@@ -22,24 +22,29 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
 use frame_support::assert_ok;
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::VersionedMultiLocation;
+use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::{
+	decimals, parachains,
+	xcm::general_key,
+	xcm_fees::{default_per_second, ksm_per_second},
+	Balance, XcmMetadata,
+};
+use sp_runtime::DispatchError::BadOrigin;
+use xcm::{
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	VersionedMultiLocation,
+};
 use xcm_emulator::TestExt;
 
-use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use sp_runtime::DispatchError::BadOrigin;
-
-use crate::xcm::kusama::setup::{
-	air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId, ALICE,
-	BOB, PARA_ID_SIBLING,
+use crate::xcm::kusama::{
+	setup::{
+		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId,
+		ALICE, BOB, PARA_ID_SIBLING,
+	},
+	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 };
-use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
-
-use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
-use runtime_common::xcm::general_key;
-use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 
 #[test]
 fn transfer_air_to_sibling() {

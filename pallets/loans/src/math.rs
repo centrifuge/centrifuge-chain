@@ -12,11 +12,14 @@
 // GNU General Public License for more details.
 
 //! Module provides all the interest and rate related calculations
-use crate::WriteOffGroup;
 pub use cfg_types::Moment;
-use sp_arithmetic::traits::{checked_pow, One};
-use sp_arithmetic::{traits::BaseArithmetic, FixedPointNumber, FixedPointOperand};
+use sp_arithmetic::{
+	traits::{checked_pow, BaseArithmetic, One},
+	FixedPointNumber, FixedPointOperand,
+};
 use sp_runtime::{ArithmeticError, DispatchError};
+
+use crate::WriteOffGroup;
 
 /// calculates the latest accumulated rate since the last
 pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
@@ -261,10 +264,11 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Balance: Fixe
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use frame_support::assert_ok;
 	use runtime_common::{Rate, CFG as USD};
 	use sp_arithmetic::{PerThing, Percent};
+
+	use super::*;
 
 	#[test]
 	fn test_calculate_accumulated_rate() {

@@ -10,10 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::types::{Balance, Bytes32, EthAddress, ItemId, RegistryId, TokenId, TrancheWeight};
 use sp_core::{H160, U256};
 use sp_runtime::traits::Convert;
 use sp_std::vec::Vec;
+
+use super::types::{Balance, Bytes32, EthAddress, ItemId, RegistryId, TokenId, TrancheWeight};
 
 // In order to be generic into T::Address
 impl From<Bytes32> for EthAddress {

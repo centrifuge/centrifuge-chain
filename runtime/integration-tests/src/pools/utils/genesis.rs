@@ -11,13 +11,14 @@
 // GNU General Public License for more details.
 
 //! Utilitites around populating a genesis storage
+use cfg_types::CurrencyId;
+use frame_support::traits::GenesisBuild;
+use sp_runtime::{AccountId32, Storage};
+
 use crate::pools::utils::{
 	accounts::default_accounts,
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 };
-use cfg_types::CurrencyId;
-use frame_support::traits::GenesisBuild;
-use sp_runtime::{AccountId32, Storage};
 
 /// Provides 100_000 * DECIMAL_BASE_18 native tokens to the `accounts::default_accounts()`
 pub fn default_native_balances<Runtime>(storage: &mut Storage)

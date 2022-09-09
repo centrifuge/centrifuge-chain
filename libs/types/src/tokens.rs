@@ -1,7 +1,6 @@
+use cfg_primitives::types::{PoolId, TrancheId};
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-
-use cfg_primitives::types::{PoolId, TrancheId};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
