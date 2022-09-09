@@ -12,14 +12,10 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
-use frame_support::{
-	dispatch::DispatchResult,
-	traits::{
-		fungibles::{self, Transfer as FungiblesTransfer},
-		tokens::nonfungibles::{self, Inspect as _, Transfer as _},
-	},
+use frame_support::traits::{
+	fungibles::{self, Transfer as FungiblesTransfer},
+	tokens::nonfungibles::{self, Inspect as _, Transfer as _},
 };
-use frame_system::ensure_signed;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;

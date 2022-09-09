@@ -22,8 +22,7 @@ mod mock;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
-use frame_system::ensure_root;
+use frame_support::traits::ValidatorRegistration;
 pub use pallet::*;
 
 pub mod weights;

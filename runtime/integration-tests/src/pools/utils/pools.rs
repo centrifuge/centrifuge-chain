@@ -12,14 +12,14 @@
 
 //! Utilities around creating a pool
 
+use cfg_primitives::{AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::Permissions as PermissionsT;
-use cfg_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
+use cfg_types::{CurrencyId, Moment, PermissionScope, PoolRole, Rate, Role};
 use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
-use runtime_common::{AccountId, Balance, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
 use crate::{

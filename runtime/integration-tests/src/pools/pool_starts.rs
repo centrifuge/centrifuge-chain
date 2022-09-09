@@ -9,15 +9,15 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_types::PoolRole;
+use cfg_primitives::{AccountId, Address, Balance, ItemId};
+use cfg_types::{PoolRole, Rate};
 use fudge::primitives::Chain;
 use pallet_loans::types::Asset;
-use runtime_common::{AccountId, Address, Balance, ItemId};
 use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError};
 use tokio::runtime::Handle;
 
 use crate::{
-	chain::centrifuge::{Call, Event, Rate, Runtime, PARA_ID},
+	chain::centrifuge::{Call, Event, Runtime, PARA_ID},
 	pools::utils::{
 		accounts::Keyring,
 		env::{ChainState, EventRange},

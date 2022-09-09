@@ -15,6 +15,8 @@
 
 mod impls;
 
+pub use types::*;
+
 /// Common types for all runtimes
 pub mod types {
 	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};

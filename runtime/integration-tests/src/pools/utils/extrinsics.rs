@@ -13,12 +13,12 @@
 //! Utilities for creating extrinsics
 #![allow(unused)]
 
+use cfg_primitives::{
+	AccountId as CentrifugeAccountId, Address as CentrifugeAddress, Index as CentrifugeIndex,
+};
 use codec::Encode;
 use node_primitives::Index as RelayIndex;
 use polkadot_core_primitives::{AccountId as RelayAccountId, BlockId as RelayBlockId};
-use runtime_common::{
-	AccountId as CentrifugeAccountId, Address as CentrifugeAddress, Index as CentrifugeIndex,
-};
 use sc_client_api::client::BlockBackend;
 use sp_core::H256;
 use sp_runtime::{
@@ -49,7 +49,7 @@ use crate::{
 pub fn xt_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
-	nonce: centrifuge::Index,
+	nonce: cfg_primitives::Index,
 	call: centrifuge::Call,
 ) -> Result<centrifuge::UncheckedExtrinsic, ()> {
 	let client = env.centrifuge.client();
@@ -96,7 +96,7 @@ pub fn xt_relay(
 		.map_err(|_| ())
 }
 
-fn signed_extra_centrifuge(nonce: centrifuge::Index) -> CentrifugeSignedExtra {
+fn signed_extra_centrifuge(nonce: cfg_primitives::Index) -> CentrifugeSignedExtra {
 	(
 		frame_system::CheckNonZeroSender::<CentrifugeRuntime>::new(),
 		frame_system::CheckSpecVersion::<CentrifugeRuntime>::new(),
@@ -111,7 +111,7 @@ fn signed_extra_centrifuge(nonce: centrifuge::Index) -> CentrifugeSignedExtra {
 
 fn sign_centrifuge(
 	who: Keyring,
-	nonce: centrifuge::Index,
+	nonce: cfg_primitives::Index,
 	call: CentrifugeCall,
 	spec_version: u32,
 	tx_version: u32,
@@ -188,7 +188,7 @@ fn sign_relay(
 ///
 /// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
 ///         the same `who` as the sender**
-pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
+pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 	env.centrifuge
 		.with_state(|| {
 			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(

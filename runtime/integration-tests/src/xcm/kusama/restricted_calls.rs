@@ -21,14 +21,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use altair_runtime::{Balances, Call, CustomMetadata, Origin, PolkadotXcm, XTokens};
+use altair_runtime::{Balances, Call, Origin, PolkadotXcm, XTokens};
+use cfg_primitives::{constants::currency_decimals, parachains, Balance};
+use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
 use frame_support::{assert_err, assert_noop, assert_ok, dispatch::Dispatchable};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use runtime_common::{
-	decimals, parachains,
-	xcm_fees::{default_per_second, ksm_per_second},
-	Balance, XcmMetadata,
-};
+use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 use xcm::{
 	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
@@ -39,7 +37,7 @@ use xcm::{
 use xcm_emulator::TestExt;
 
 use crate::xcm::kusama::{
-	setup::{air, foreign, sibling_account, CurrencyId, ALICE, BOB, PARA_ID_SIBLING},
+	setup::{air, foreign, sibling_account, ALICE, BOB, PARA_ID_SIBLING},
 	test_net::{Altair, KusamaNet, Sibling, TestNet},
 };
 

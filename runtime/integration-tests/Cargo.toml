@@ -74,8 +74,9 @@ orml-xtokens = {  git = "https://github.com/open-web3-stack/open-runtime-module-
 xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", branch = "master" }
 
 # Local
-runtime-common = { path = "../common" }
+cfg-primitives = { path = "../../libs/primitives" }
 cfg-traits = { path = "../../libs/traits" }
+runtime-common = { path = "../common" }
 development-runtime = { path = "../development" }
 altair-runtime = { path = "../altair" }
 centrifuge-runtime = { path = "../centrifuge" }

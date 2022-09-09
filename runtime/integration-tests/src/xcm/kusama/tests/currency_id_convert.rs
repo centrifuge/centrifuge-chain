@@ -22,16 +22,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use altair_runtime::{
-	Balances, CurrencyIdConvert, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
-};
+use altair_runtime::{Balances, CurrencyIdConvert, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use cfg_primitives::{constants::currency_decimals, parachains, Balance};
+use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::{
-	decimals, parachains,
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
-	Balance, XcmMetadata,
 };
 use sp_runtime::traits::Convert as C2;
 use xcm::{
@@ -43,8 +41,8 @@ use xcm_executor::traits::Convert as C1;
 
 use crate::xcm::kusama::{
 	setup::{
-		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId,
-		ALICE, BOB, PARA_ID_SIBLING,
+		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
+		PARA_ID_SIBLING,
 	},
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 };

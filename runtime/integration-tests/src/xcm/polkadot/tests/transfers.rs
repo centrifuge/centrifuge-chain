@@ -22,16 +22,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use centrifuge_runtime::{
-	Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
-};
+use centrifuge_runtime::{Balances, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use cfg_primitives::{constants::currency_decimals, parachains, Balance};
+use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::{
-	decimals, parachains,
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
-	Balance, XcmMetadata,
 };
 use sp_runtime::traits::BadOrigin;
 use xcm::{
@@ -43,8 +41,8 @@ use xcm_emulator::TestExt;
 use super::register_dot;
 use crate::xcm::polkadot::{
 	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, CurrencyId,
-		ALICE, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE, BOB,
+		DOT_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
 };
@@ -517,16 +515,16 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 #[test]
 fn test_total_fee() {
 	assert_eq!(cfg_fee(), 9269600000000000);
-	assert_eq!(fee(decimals::AUSD), 9269600000);
-	assert_eq!(fee(decimals::KSM), 9269600000);
+	assert_eq!(fee(currency_decimals::AUSD), 9269600000);
+	assert_eq!(fee(currency_decimals::KSM), 9269600000);
 }
 
 fn cfg_fee() -> Balance {
-	fee(decimals::NATIVE)
+	fee(currency_decimals::NATIVE)
 }
 
 fn ausd_fee() -> Balance {
-	fee(decimals::AUSD)
+	fee(currency_decimals::AUSD)
 }
 
 fn fee(decimals: u32) -> Balance {

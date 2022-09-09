@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 //! Time balances and tokens
-use runtime_common::Rate;
+use cfg_types::Rate;
 use sp_runtime::FixedPointNumber;
 
 use crate::pools::utils::time::secs::SECONDS_PER_YEAR;

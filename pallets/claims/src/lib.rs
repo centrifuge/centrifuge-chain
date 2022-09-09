@@ -98,7 +98,6 @@ mod weights;
 // Runtime, system and frame primitives
 use frame_support::{
 	dispatch::DispatchResult,
-	ensure,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, Get},
 	weights::Weight,
 	PalletId,

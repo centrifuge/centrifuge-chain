@@ -14,9 +14,9 @@
 
 use std::collections::HashMap;
 
+use cfg_primitives::Index;
 use fudge::primitives::Chain;
 use node_primitives::{AccountId as RelayAccountId, Index as RelayIndex};
-use runtime_common::Index;
 pub use sp_core::sr25519;
 use sp_core::{
 	sr25519::{Pair, Public, Signature},
@@ -61,7 +61,7 @@ impl NonceManager {
 				who.clone().to_account_id().into(),
 			),
 			Chain::Para(id) => match id {
-				_ if id == PARA_ID => nonce::<centrifuge::Runtime, centrifuge::AccountId, centrifuge::Index>(
+				_ if id == PARA_ID => nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
 					who.clone().to_account_id().into()
 				),
 				_ => unreachable!("Currently no nonces for chains differing from Relay and centrifuge are supported. Para ID {}", id)
@@ -103,10 +103,10 @@ impl NonceManager {
 /// Retrieves a nonce from the centrifuge state
 ///
 /// **NOTE: Usually one should use the TestEnv::nonce() api**
-fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
+fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 	env.centrifuge
 		.with_state(|| {
-			nonce::<centrifuge::Runtime, centrifuge::AccountId, centrifuge::Index>(
+			nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
 				who.clone().to_account_id().into(),
 			)
 		})

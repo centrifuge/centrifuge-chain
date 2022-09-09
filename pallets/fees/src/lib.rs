@@ -11,10 +11,7 @@ use cfg_traits::fees::{self, Fee, FeeKey};
 use codec::EncodeLike;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	storage::types::ValueQuery,
-	traits::{
-		Currency, EnsureOrigin, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons,
-	},
+	traits::{Currency, ExistenceRequirement, Imbalance, OnUnbalanced, WithdrawReasons},
 };
 pub use pallet::*;
 use scale_info::TypeInfo;

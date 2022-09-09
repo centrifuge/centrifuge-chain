@@ -16,6 +16,7 @@ use std::{
 	sync::{Arc, Mutex},
 };
 
+use cfg_primitives::{AuraId, BlockNumber, Index};
 use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
@@ -33,7 +34,6 @@ pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use rand::Rng;
-use runtime_common::Index;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
@@ -46,8 +46,8 @@ use crate::{
 	chain::{
 		centrifuge,
 		centrifuge::{
-			AuraId, Block as CentrifugeBlock, BlockNumber, Event, Runtime,
-			RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
+			Block as CentrifugeBlock, Event, Runtime, RuntimeApi as CentrifugeRtApi, PARA_ID,
+			WASM_BINARY as CentrifugeCode,
 		},
 		relay,
 		relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode},

@@ -30,12 +30,11 @@ use frame_support::{
 	ensure,
 	pallet_prelude::Get,
 	sp_runtime::traits::{One, Zero},
-	storage::types::OptionQuery,
 	traits::{
 		tokens::nonfungibles::{Inspect, Mutate, Transfer},
 		UnixTime,
 	},
-	transactional, Parameter,
+	transactional,
 };
 use frame_system::pallet_prelude::OriginFor;
 use loan_type::LoanType;
@@ -44,7 +43,7 @@ pub use pallet::*;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Member},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::{vec, vec::Vec};

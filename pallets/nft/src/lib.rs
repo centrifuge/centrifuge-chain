@@ -105,13 +105,10 @@ use cfg_primitives::types::FixedArray;
 use cfg_traits::fees::{Fee, Fees};
 use chainbridge::types::ResourceId;
 use codec::FullCodec;
-use frame_support::{dispatch::DispatchResultWithPostInfo, ensure};
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
-use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::traits::Member;
 use sp_std::{fmt::Debug, vec::Vec};
 
 use crate::{
