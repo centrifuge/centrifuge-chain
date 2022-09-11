@@ -4896,15 +4896,6 @@ dependencies = [
 
 [[package]]
 name = "memmap2"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "723e3ebdcdc5c023db1df315364573789f8857c11b631a2fdfad7c00f5c046b4"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "memmap2"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95af15f345b17af2efc8ead6080fb8bc376f8cec1b35277b935637595fe77498"
@@ -5764,6 +5755,7 @@ dependencies = [
 name = "pallet-bridge"
 version = "2.0.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "chainbridge",
@@ -5773,24 +5765,22 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-bridge-mapping",
- "pallet-fees",
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
 ]
 
 [[package]]
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "chainbridge",
@@ -5802,7 +5792,6 @@ dependencies = [
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -6312,13 +6301,11 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
 ]
 
 [[package]]
@@ -6801,9 +6788,9 @@ dependencies = [
 
 [[package]]
 name = "parity-db"
-version = "0.3.16"
+version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bb474d0ed0836e185cb998a6b140ed1073d1fbf27d690ecf9ede8030289382c"
+checksum = "2c8fdb726a43661fa54b43e7114e6b88b2289cae388eb3ad766d9d1754d83fce"
 dependencies = [
  "blake2-rfc",
  "crc32fast",
@@ -6812,8 +6799,8 @@ dependencies = [
  "libc",
  "log",
  "lz4",
- "memmap2 0.2.3",
- "parking_lot 0.11.2",
+ "memmap2",
+ "parking_lot 0.12.1",
  "rand 0.8.5",
  "snap",
 ]
@@ -9208,7 +9195,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26#e8a7d161f39db70cb27fdad6c6e215cf493ebc3b"
 dependencies = [
  "impl-trait-for-tuples",
- "memmap2 0.5.7",
+ "memmap2",
  "parity-scale-codec",
  "sc-chain-spec-derive",
  "sc-network",
@@ -12163,9 +12150,9 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.3",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
@@ -12240,14 +12227,6 @@ name = "unicode-xid"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "957e51f3646910546462e67d5f7599b9e4fb8acdd304b087a6494730f9eebf04"
-
-[[package]]
-name = "unique-assets"
-version = "1.0.0"
-source = "git+https://github.com/centrifuge/unique-assets?branch=polkadot-v0.9.26#98a35e95ce5aabd374e5c72509f8696430744a28"
-dependencies = [
- "frame-support",
-]
 
 [[package]]
 name = "universal-hash"

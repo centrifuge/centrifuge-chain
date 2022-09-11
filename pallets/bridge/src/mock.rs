@@ -20,6 +20,13 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+pub use cfg_primitives::{
+	constants::{
+		CFG, MILLISECS_PER_DAY, NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
+		NFT_TOKEN_TRANSFER_FEE,
+	},
+	Balance, EthAddress, RegistryId, TokenId,
+};
 use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -38,13 +45,6 @@ use frame_system::{
 };
 use pallet_bridge_mapping;
 use proofs::Hasher;
-pub use runtime_common::{
-	constants::{
-		CFG, MILLISECS_PER_DAY, NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
-		NFT_TOKEN_TRANSFER_FEE,
-	},
-	Balance, EthAddress, RegistryId, TokenId,
-};
 use sp_core::{blake2_128, blake2_256, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{

@@ -11,8 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::EthAddress;
 use frame_support::{assert_noop, assert_ok};
-use runtime_common::EthAddress;
 
 use crate::mock::*;
 

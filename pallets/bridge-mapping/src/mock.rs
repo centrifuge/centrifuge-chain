@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::{Balance, EthAddress};
 use cfg_traits::fees::NoFees;
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -23,7 +24,6 @@ use frame_support::{
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
-use runtime_common::{Balance, EthAddress};
 use sp_core::{blake2_128, H256};
 use sp_runtime::{
 	testing::Header,

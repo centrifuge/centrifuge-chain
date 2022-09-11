@@ -28,8 +28,6 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.26" }
 pallet-anchors = { path = "../anchors", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-runtime-common = { path = "../../runtime/common", default-features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.26" }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-primitives = { path = '../../libs/primitives', default-features = false }
 
@@ -61,8 +59,6 @@ std = [
     'chainbridge/std',
     'pallet-anchors/std',
     'proofs/std',
-    'unique-assets/std',
-    'runtime-common/std',
     'cfg-traits/std',
     'cfg-primitives/std'
 ]
