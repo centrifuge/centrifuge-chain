@@ -23,6 +23,7 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
+use cfg_primitives::Balance;
 use frame_support::{
 	parameter_types,
 	traits::{Everything, SortedMembers},
@@ -30,7 +31,6 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use node_primitives::Balance;
 pub use pallet_balances as balances;
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -157,7 +157,7 @@ parameter_types! {
 	pub const One: u64 = 1;
 	pub const Longevity: u32 = 64;
 	pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const MinimalPayoutAmount: node_primitives::Balance = 5 * CFG;
+	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
 impl SortedMembers<u64> for One {

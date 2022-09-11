@@ -14,8 +14,6 @@ targets = ['x86_64-unknown-linux-gnu']
 [dependencies]
 # General dependencies
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
-log = { version = "0.4.14", default-features = false }
-lazy_static = "1.4.0"
 serde = { version = "1.0.119" }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 
@@ -29,32 +27,26 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 
 # optional dependencies for benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.26" }
-schnorrkel = { version = "0.10.2", features = ["u64_backend"], default-features = false, optional = true }
-getrandom = { version = "0.2", default-features = false, optional = true }
-rand_core = { version = "0.6.2", default-features = false, optional = true}
 
 # Local dependencies
 cfg-traits = { path= '../../libs/traits', default_features = false }
 proofs = { path= '../../libs/proofs', default_features = false }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
-pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = false }
-hex = { version="0.4.3", default_features = false }
+pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = true }
+hex = { version="0.4.3", default_features = true }
 cfg-types = { path= '../../libs/types', default_features = true }
 
 
 [features]
 default = ['std']
-runtime-benchmarks = ["frame-benchmarking", "schnorrkel"]
+runtime-benchmarks = ["frame-benchmarking"]
 std = [
   'codec/std',
   'frame-support/std',
   'frame-system/std',
-  'log/std',
   'pallet-balances/std',
   'sp-std/std',
   'cfg-traits/std',
