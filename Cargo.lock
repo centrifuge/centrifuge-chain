@@ -879,6 +879,7 @@ version = "0.10.19"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
+ "cfg-primitives",
  "cfg-types",
  "clap",
  "cumulus-client-cli",

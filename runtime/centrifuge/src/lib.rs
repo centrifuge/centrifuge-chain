@@ -16,7 +16,7 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
-use cfg_primitives::{constants::*, types::*};
+pub use cfg_primitives::{constants::*, types::*};
 use cfg_types::{CustomMetadata, FeeKey};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{

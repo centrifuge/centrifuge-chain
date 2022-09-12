@@ -15,11 +15,10 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use altair_runtime::constants::currency::AIR;
+use cfg_primitives::{decimals, CFG};
 use cfg_types::FeeKey;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use node_primitives::{AccountId, Signature};
-use runtime_common::{decimals, CFG};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
@@ -74,10 +73,10 @@ pub fn get_development_session_keys(
 	development_runtime::SessionKeys { aura: keys }
 }
 
-type AccountPublic = <Signature as Verify>::Signer;
+type AccountPublic = <cfg_primitives::Signature as Verify>::Signer;
 
 /// Helper function to generate an account ID from seed
-pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
+pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> cfg_primitives::AccountId
 where
 	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
@@ -684,7 +683,7 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 	)
 }
 
-fn endowed_accounts() -> Vec<AccountId> {
+fn endowed_accounts() -> Vec<cfg_primitives::AccountId> {
 	vec![
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -701,7 +700,7 @@ fn endowed_accounts() -> Vec<AccountId> {
 	]
 }
 
-fn council_members_bootstrap() -> Vec<AccountId> {
+fn council_members_bootstrap() -> Vec<cfg_primitives::AccountId> {
 	endowed_accounts().into_iter().take(4).collect()
 }
 
@@ -894,7 +893,7 @@ fn altair_genesis(
 }
 
 fn development_genesis(
-	root_key: AccountId,
+	root_key: development_runtime::AccountId,
 	initial_authorities: Vec<(development_runtime::AccountId, development_runtime::AuraId)>,
 	endowed_accounts: Vec<development_runtime::AccountId>,
 	total_issuance: Option<development_runtime::Balance>,

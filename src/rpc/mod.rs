@@ -14,12 +14,12 @@
 
 use std::{fmt::Debug, sync::Arc};
 
+use cfg_primitives::{AccountId, Balance, Index};
 use jsonrpsee::{
 	core::Error as JsonRpseeError,
 	types::error::{CallError, ErrorCode, ErrorObject},
 };
 use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
-use runtime_common::{AccountId, Balance, Index};
 use sc_rpc_api::DenyUnsafe;
 use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;

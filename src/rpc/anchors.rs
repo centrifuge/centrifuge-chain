@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use cfg_primitives::BlockNumber;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_anchors::AnchorData;
-pub use runtime_common::AnchorApi as AnchorRuntimeApi;
-use runtime_common::BlockNumber;
+pub use runtime_common::apis::AnchorApi as AnchorRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
@@ -37,17 +37,17 @@ impl<C, P> Anchors<C, P> {
 	}
 }
 
-impl<C, Block> AnchorApiServer<runtime_common::Hash, Block::Hash> for Anchors<C, Block>
+impl<C, Block> AnchorApiServer<cfg_primitives::Hash, Block::Hash> for Anchors<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: AnchorRuntimeApi<Block, runtime_common::Hash, BlockNumber>,
+	C::Api: AnchorRuntimeApi<Block, cfg_primitives::Hash, BlockNumber>,
 {
 	fn get_anchor_by_id(
 		&self,
-		id: runtime_common::Hash,
+		id: cfg_primitives::Hash,
 		at: Option<Block::Hash>,
-	) -> RpcResult<AnchorData<runtime_common::Hash, BlockNumber>> {
+	) -> RpcResult<AnchorData<cfg_primitives::Hash, BlockNumber>> {
 		let api = self.client.runtime_api();
 		let at = if let Some(hash) = at {
 			BlockId::hash(hash)

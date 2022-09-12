@@ -156,7 +156,7 @@ altair-runtime = { path = "runtime/altair" }
 centrifuge-runtime = { path = "runtime/centrifuge" }
 development-runtime = { path = "runtime/development" }
 runtime-common = { path = "runtime/common" }
-node-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+cfg-primitives = { path = "libs/primitives" }
 
 # benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.26" }
