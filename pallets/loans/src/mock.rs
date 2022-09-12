@@ -15,9 +15,14 @@
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
+use cfg_primitives::{
+	Balance, CollectionId, ItemId, Moment, PoolId, TrancheId, TrancheWeight,
+	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
+};
 use cfg_traits::PoolUpdateGuard;
 use cfg_types::{
-	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
+	CurrencyId, PermissionRoles, PermissionScope, PoolLocator, Rate, Role, TimeProvider,
+	TrancheToken,
 };
 use frame_support::{
 	parameter_types,
@@ -27,10 +32,6 @@ use frame_support::{
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
-use runtime_common::{
-	Balance, CollectionId, ItemId, Moment, Rate, TrancheId, TrancheToken,
-	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
-};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -198,8 +199,8 @@ impl pallet_pools::Config for MockRuntime {
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheId = [u8; 16];
-	type TrancheToken = TrancheToken<MockRuntime>;
-	type TrancheWeight = runtime_common::TrancheWeight;
+	type TrancheToken = TrancheToken;
+	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
 	type WeightInfo = ();
 }
@@ -213,7 +214,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		Balance,
 		Rate,
 		MaxSizeMetadata,
-		runtime_common::TrancheWeight,
+		TrancheWeight,
 		TrancheId,
 		PoolId,
 	>;

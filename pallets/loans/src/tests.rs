@@ -12,14 +12,14 @@
 // GNU General Public License for more details.
 
 //! Unit test cases for Loan pallet
-use cfg_types::{CurrencyId, PoolId, PoolLocator};
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, CFG as USD};
+use cfg_types::{CurrencyId, PoolLocator, Rate};
 use frame_support::{
 	assert_err, assert_ok,
 	traits::{fungibles::Inspect, Hooks},
 };
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
-use runtime_common::{Balance, CollectionId, ItemId, Rate, CFG as USD};
 use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
 use sp_runtime::{
 	traits::{BadOrigin, StaticLookup},

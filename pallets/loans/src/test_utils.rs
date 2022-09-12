@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
+use cfg_primitives::CFG as CURRENCY;
 use cfg_traits::{Permissions, PoolNAV};
 use cfg_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use codec::Encode;
@@ -27,7 +28,6 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage, TrancheLoc, TrancheType};
-use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,

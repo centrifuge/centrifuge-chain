@@ -6138,6 +6138,7 @@ dependencies = [
 name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -6152,7 +6153,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-uniques",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-arithmetic",

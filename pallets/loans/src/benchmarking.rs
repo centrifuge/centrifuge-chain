@@ -12,7 +12,8 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
-use cfg_types::{CurrencyId, PoolLocator};
+use cfg_primitives::CFG as CURRENCY;
+use cfg_types::{CurrencyId, PoolLocator, Rate};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
 	assert_ok,
@@ -24,7 +25,6 @@ use orml_traits::MultiCurrency;
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
-use runtime_common::{Rate, CFG as CURRENCY};
 use test_utils::{
 	assert_last_event, create as create_test_pool, create_nft_class_if_needed, expect_asset_owner,
 	expect_asset_to_be_burned, get_tranche_id, mint_nft_of,

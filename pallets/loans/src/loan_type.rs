@@ -253,7 +253,8 @@ impl<Rate: PartialOrd + One, Balance> CreditLineWithMaturity<Rate, Balance> {
 
 #[cfg(test)]
 mod tests {
-	use runtime_common::{Rate, CFG as CURRENCY};
+	use cfg_primitives::CFG as CURRENCY;
+	use cfg_types::Rate;
 
 	use super::*;
 
