@@ -17,9 +17,9 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+use cfg_primitives::{MILLISECS_PER_DAY, NFT_PROOF_VALIDATION_FEE};
 use codec::Encode;
 use frame_support::{assert_err, assert_ok};
-use runtime_common::{MILLISECS_PER_DAY, NFT_PROOF_VALIDATION_FEE};
 use sp_runtime::traits::{BadOrigin, Hash};
 
 use crate::{

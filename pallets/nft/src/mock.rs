@@ -20,6 +20,7 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+use cfg_primitives::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
 use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -33,7 +34,6 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use proofs::Proof;
-use runtime_common::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
 use sp_core::{blake2_128, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
