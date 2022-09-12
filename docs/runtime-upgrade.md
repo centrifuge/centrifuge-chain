@@ -27,7 +27,7 @@ Supposing we are testing centrifuge runtime in local:
     - Copy the `BLAKE2_256` hash
     - Download your runtime assert `.wasm` file.
 
-1. In **Centrifuge Local** client -> Governance -> Democracy, click on **send preimage**.
+1. In **Centrifuge Local** client -> Governance -> Democracy, click on **Submit preimage**.
     - At **proponer**, choose: `parachainSystem` with `authorizeUpgrade`
     - At **codeHash**, copy the `BLAKE2_256` of the previous step.
     - Click on **Submit preimage**
