@@ -114,7 +114,7 @@ benchmarks! {
 			)?;
 		}
 
-		pallet_timestamp::Pallet::<T>::set_timestamp(day(2));
+		pallet_timestamp::Pallet::<T>::set_timestamp(day(MAX_LOOP_IN_TX));
 
 	}: _(RawOrigin::Signed(caller))
 	verify {

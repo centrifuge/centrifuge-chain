@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-chain"
-version = "0.10.19"
+version = "0.10.20"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge chain implementation in Rust."
 build = "build.rs"
@@ -198,6 +198,7 @@ cli = [
 ]
 try-runtime = [
 	"centrifuge-runtime/try-runtime",
+	"altair-runtime/try-runtime",
 	"try-runtime-cli"
 ]
 

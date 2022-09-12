@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.19"
+version = "0.10.20"
 dependencies = [
  "common-traits",
  "common-types",
@@ -102,6 +102,7 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
  "hex-literal 0.2.2",
  "integer-sqrt",
  "node-primitives",
@@ -874,7 +875,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.19"
+version = "0.10.20"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -972,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.11"
+version = "0.10.12"
 dependencies = [
  "chainbridge",
  "common-traits",
