@@ -5,16 +5,14 @@
   <h2 align="center">Centrifuge Chain</h2>
 
   <p align="center">
-    The layer-1 blockchain for real-world assets, built on <a href="https://docs.substrate.io/" target="_blank">Substrate</a>.
+    The layer-1 blockchain for real-world assets, built on <a href="https://docs.substrate.io/">Substrate</a>.
     <br />
     <a href="https://docs.centrifuge.io/build/cent-chain/"><strong>Read the documentation »</strong></a>
   </p>
 </p>
 
 ## About Centrifuge
-Centrifuge Protocol is the Layer 1 (L1) protocol for bringing “real-world assets” (RWAs) on the blockchain creating the first global on-chain credit market. Centrifuge allows anyone to launch an on-chain credit fund creating collateral backed pools of assets. This on-chain securitization	 offers access to DeFi liquidity for any business and brings credit investment opportunities to DeFi protocols, institutional investors and retail investors alike.
-
-Doing so will bring economic value from the real-world into DeFi, which in turn will help increase its mass adoption. Leveraging DeFi to finance these assets will be pivotal in building a more efficient, transparent, open, scalable financial system.
+Centrifuge is the infrastructure that facilitates the decentralized financing of real-world assets natively on-chain, creating a fully transparent market which allows borrowers and lenders to transact without unnecessary intermediaries. Asset pools are fully collateralized, liquidity providers have legal recourse, and the protocol is asset-class agnostic with pools for assets spanning mortgages, invoices, microlending and consumer finance. Ultimately, the protocol aims to lower the cost of borrowing for businesses around the world, while providing DeFi users with a stable source of collateralized yield that is uncorrelated to the volatile crypto markets. By bringing the entire structured credit market on-chain across securitization, tokenization, privacy, governance, and liquidity integrations, Centrifuge is building a more transparent, affordable, and limitless financial system.
 
 ## Building blocks
 The Substrate runtime makes use of various custom pallets that are found in the crates folder.
