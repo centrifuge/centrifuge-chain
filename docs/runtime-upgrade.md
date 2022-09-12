@@ -21,7 +21,7 @@ Supposing we are testing centrifuge runtime in local:
     ```sh
     DOCKER_ONBOARD=true PARA_DOCKER_IMAGE_TAG=<DOCKER_TAG> PARA_CHAIN_SPEC=centrifuge-local ./scripts/init.sh onboard-parachain
     ```
-    After 2 minuts you should see block production in the **parachain**
+    After 2 minutes you should see block production in the **parachain**
 
 1. Open the Github **release** section and find the release/runtime you want to test.
     - Copy the `BLAKE2_256` hash
@@ -35,11 +35,11 @@ Supposing we are testing centrifuge runtime in local:
 1. In Network -> Explorer -> Check the `democracy.PreImageNoted` event where the preimage of your blake hash is dispatched
     and copy it.
 
-1. In Governance -> Council -> Motions, click on **propose a motion**.
+1. In Governance -> Council -> Motions, click on **propose motion**.
     - At **umbral**, put `3` (a 75% of the total which is 4).
     - At **propose**: choose: `utility` with `batch` in order to propose a motion with several calls.
         - First call, choose: `democracy` with `externalProposedMajority` and add the copied preimage value as **proposedHash**.
-        - Second call, choose: `democracy` with `fastTract` and add the copied preimage value as **proposedHash** and
+        - Second call, choose: `democracy` with `fastTrack` and add the copied preimage value as **proposedHash** and
             write a `10` on **votingPeriod**.
 
     - Click on **propose**
@@ -48,9 +48,11 @@ Supposing we are testing centrifuge runtime in local:
     **Warning**, once the proposal appears, you will have `10 * 12` (`votingPeriod * secons_per_block`) seconds to perform
     all votes in favor.
 
-    Once the time ends, close and sign the motion.
+    Once the time ends, **close** the motion.
+
+1. Go to democracy and add a vote to the referendum.
+    (You can reduce the amount used to vote if the account don't has enough).
+    **Warning**, you will have a reduce time to make this step.
 
 1. In Developer -> Extrinsics, choose `parachainSystem` with `enactAuthorizedUpgrade`.
     Click then on **file upload** and upload the `.wasm` file previously downlaoded.
-
-TODO: check the runtime is done ok.
