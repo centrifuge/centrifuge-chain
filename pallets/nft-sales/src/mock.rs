@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::{Balance, CollectionId, ItemId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use cfg_types::CurrencyId;
 use frame_support::{
 	parameter_types,
@@ -19,7 +20,6 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use runtime_common::{Balance, CollectionId, ItemId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,

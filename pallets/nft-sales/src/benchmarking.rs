@@ -1,11 +1,11 @@
 #![cfg(feature = "runtime-benchmarks")]
+use cfg_primitives::CFG as CURRENCY;
 use cfg_types::CurrencyId;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::tokens::nonfungibles::{Create, Mutate};
 use frame_system::RawOrigin;
 use orml_tokens::{self as OrmlTokens};
 use orml_traits::MultiCurrency;
-use runtime_common::CFG as CURRENCY;
 
 use crate::{self as pallet_nft_sales, *};
 

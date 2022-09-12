@@ -6277,6 +6277,7 @@ dependencies = [
 name = "pallet-nft-sales"
 version = "2.0.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-types",
  "frame-benchmarking",
  "frame-support",
@@ -6286,7 +6287,6 @@ dependencies = [
  "pallet-balances",
  "pallet-uniques",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
