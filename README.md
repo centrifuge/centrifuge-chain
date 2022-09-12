@@ -8,12 +8,8 @@
     The layer-1 blockchain for real-world assets, built on <a href="https://docs.substrate.io/" target="_blank">Substrate</a>.
     <br />
     <a href="https://docs.centrifuge.io/build/cent-chain/"><strong>Read the documentation »</strong></a>
-    <br />
-    [![Build Status](https://travis-ci.com/centrifuge/centrifuge-chain.svg?branch=master)](https://travis-ci.com/centrifuge/centrifuge-chain)
-    [![codecov](https://codecov.io/gh/centrifuge/centrifuge-chain/branch/master/graph/badge.svg)](https://codecov.io/gh/centrifuge/centrifuge-chain)
   </p>
 </p>
-
 
 ## About Centrifuge
 Centrifuge Protocol is the Layer 1 (L1) protocol for bringing “real-world assets” (RWAs) on the blockchain creating the first global on-chain credit market. Centrifuge allows anyone to launch an on-chain credit fund creating collateral backed pools of assets. This on-chain securitization	 offers access to DeFi liquidity for any business and brings credit investment opportunities to DeFi protocols, institutional investors and retail investors alike.
