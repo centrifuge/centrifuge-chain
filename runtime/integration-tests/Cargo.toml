@@ -38,6 +38,7 @@ sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = 
 sp-consensus-slots = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 ## Substrate-Client
 sc-service = { git = "https://github.com/paritytech/substrate", features = ["rocksdb", "test-helpers"], branch = "polkadot-v0.9.26" }

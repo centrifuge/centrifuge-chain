@@ -29,6 +29,7 @@ use fudge::{
 	primitives::{Chain, PoolState},
 	EnvProvider, ParachainBuilder, RelaychainBuilder,
 };
+use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
@@ -248,6 +249,11 @@ pub mod macros {
 	pub(crate) use extra_counts;
 	pub(crate) use extra_guards;
 	pub(crate) use run;
+}
+
+lazy_static! {
+	pub static ref INSTANCE_COUNTER: Arc<sp_std::sync::atomic::AtomicU64> =
+		Arc::new(sp_std::sync::atomic::AtomicU64::new(0));
 }
 
 #[derive(Clone, Copy)]
@@ -698,20 +704,13 @@ fn test_env(
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
-		let instance = {
-			let mut instance = 0;
-			while FudgeInherentTimestamp::new(
-				instance,
-				std::time::Duration::from_secs(6),
-				Some(std::time::Duration::from_millis(START_DATE)),
-			)
-			.is_some()
-			{
-				instance = rng.gen()
-			}
-
-			instance
-		};
+		let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
+		assert!(FudgeInherentTimestamp::new(
+			instance,
+			std::time::Duration::from_secs(6),
+			Some(std::time::Duration::from_millis(START_DATE)),
+		)
+		.is_none());
 
 		let cidp = Box::new(move |parent: H256, ()| {
 			let client = clone_client.clone();
@@ -785,20 +784,13 @@ fn test_env(
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
-		let instance = {
-			let mut instance = 1;
-			while FudgeInherentTimestamp::new(
-				instance,
-				std::time::Duration::from_secs(12),
-				Some(std::time::Duration::from_millis(START_DATE)),
-			)
-			.is_some()
-			{
-				instance = rng.gen()
-			}
-
-			instance
-		};
+		let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
+		assert!(FudgeInherentTimestamp::new(
+			instance,
+			std::time::Duration::from_secs(12),
+			Some(std::time::Duration::from_millis(START_DATE)),
+		)
+		.is_none());
 
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
