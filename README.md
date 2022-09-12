@@ -19,56 +19,38 @@ Doing so will bring economic value from the real-world into DeFi, which in turn 
 ## Building blocks
 The Substrate runtime makes use of various custom pallets that are found in the crates folder.
 
-- `pools` ([docs](https://reference.centrifuge.io/pallet_pools/index.html) | Altair)
-Preparing the chain for a new investment. It is bundling loans, slicing pools into tranches and managing investment epochs.
+- [**pools**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/pools) ([docs](https://reference.centrifuge.io/pallet_pools/index.html)): Preparing the chain for a new investment. It is bundling loans, slicing pools into tranches and managing investment epochs.
 
-- `loans` ([docs](https://reference.centrifuge.io/pallet_loans/index.html) | Altair)
-Locking a collateral NFT into a pool. The loans pallet is also used for bookkeeping its own value and outstanding debt.
+- [**loans**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/loans) ([docs](https://reference.centrifuge.io/pallet_loans/index.html)): Locking a collateral NFT into a pool. The loans pallet is also used for bookkeeping its own value and outstanding debt.
 
-- `connectors` ([docs]() | Altiar, Centrifuge)
-Connecting to parachains (via XCM) and other blockchains through bridges. For investments into pools and transfers of tranche tokens.
+- [**anchors**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/anchors) ([docs](https://reference.centrifuge.io/pallet_anchors/index.html)): Storing hashes of documents on-chain. The documents are stored in the Private Off-chain Data (POD) node network.
 
-- `anchors` ([docs](https://reference.centrifuge.io/pallet_anchors/index.html) | Altair, Centrifuge)
-Storing hashes of documents on-chain. The documents are stored in the Private Off-chain Data (POD) node network.
+- [**bridge**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/bridge) ([docs](https://reference.centrifuge.io/pallet_bridge/index.html)): Connecting [ChainBridge](https://github.com/centrifuge/chainbridge-substrate) to transfer tranche tokens to and from Ethereum.
 
-- `bridge` ([docs](https://reference.centrifuge.io/pallet_bridge/index.html) | Centrifuge)
-Connecting [ChainBridge](https://github.com/centrifuge/chainbridge-substrate) to transfer tranche tokens to and from Ethereum.
+- [**bridge-mapping**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/bridge-mapping) ([docs](https://reference.centrifuge.io/pallet_bridge_mapping/index.html)): Setting and tracking allowed paths for assets to be transferred across chains.
 
-- `bridge-mapping` ([docs](https://reference.centrifuge.io/pallet_bridge_mapping/index.html))
-Setting and tracking allowed paths for assets to be transferred across chains.
+- [**claims**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/claims) ([docs](https://reference.centrifuge.io/pallet_claims/index.html)): Processing claims of liquidity reward tokens acquired through Tinlake investments
 
-- `claims` ([docs](https://reference.centrifuge.io/pallet_claims/index.html) | Centrifuge)
-Processing claims of liquidity reward tokens acquired through Tinlake investments
+- [**collator-allowlist**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/collator-allowlist) ([docs](https://reference.centrifuge.io/pallet_collator_allowlist/index.html)): Tracking active collators, and allows the root account to manage this list
 
-- `collator-allowlist` ([docs](https://reference.centrifuge.io/pallet_collator_allowlist/index.html) | Altair) 
-Tracking active collators, and allows the root account to manage this list
+- [**crowdloan-claim**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/crowdloan-claim) ([docs](https://reference.centrifuge.io/pallet_crowdloan_claim/index.html)): Claiming user rewards for their crowdloan funding support.
 
-- `crowdloan-claim` ([docs](https://reference.centrifuge.io/pallet_crowdloan_claim/index.html) | Altair, Centrifuge)
-Claiming user rewards for their crowdloan funding support.
+- [**crowdloan-rewards**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/crowdloan-reward) ([docs](https://reference.centrifuge.io/pallet_crowdloan_reward/index.html)): Calculating the reward amounts for crowdloan contributors. This is used by the `crowdloan-claim` pallet which handles the actual claims.
 
-- `crowdloan-reward` ([docs](https://reference.centrifuge.io/pallet_crowdloan_reward/index.html) | Altair, Centrifuge)
-Calculating the reward amounts for crowdloan contributors. This is used by the `crowdloan-claim` pallet which handles the actual claims.
+- [**fees**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/fees) ([docs](https://reference.centrifuge.io/pallet_fees/index.html)): Taking fees from interactions throughout the ecosystem.
 
-- `fees` ([docs](https://reference.centrifuge.io/pallet_fees/index.html) | Altair, Centrifuge)
-Taking fees from interactions throughout the ecosystem.
+- [**interest-accrual**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/interest-accrual) ([docs](https://reference.centrifuge.io/pallet_interest_accrual/index.html)): Keeping account of the outstanding dept through interest accrual calcualations.
 
-- `interest-accrual` ([docs](https://reference.centrifuge.io/pallet_interest_accrual/index.html) | Altair)
-Keeping account of the outstanding dept through interest accrual calcualations.
+- [**keystore**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/keystore) ([docs](https://reference.centrifuge.io/pallet_keystore/index.html)): Linking public keys to accounts.
 
-- `keystore` ([docs](https://reference.centrifuge.io/pallet_keystore/index.html))
-Linking public keys to accounts.
-
-- `nft` ([docs](https://reference.centrifuge.io/pallet_nft/index.html) | Centrifuge)
+- [**nft**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/nft) ([docs](https://reference.centrifuge.io/pallet_nft/index.html)):
 ...
 
-- `nft-sales` ([docs](https://reference.centrifuge.io/pallet_nft_sales/index.html) | Altair)
-Listing NFTs for sale and letting accounts buy NFTs.
+- [**nft-sales**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/nft-sales) ([docs](https://reference.centrifuge.io/pallet_nft_sales/index.html)): Listing NFTs for sale and letting accounts buy NFTs.
 
-- `permissions` ([docs](https://reference.centrifuge.io/pallet_permissions/index.html) | Altair) 
-Linking roles to accounts. It is adding and removing relationships between roles and accounts on chain.
+- [**permissions**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/permissions) ([docs](https://reference.centrifuge.io/pallet_permissions/index.html)): Linking roles to accounts. It is adding and removing relationships between roles and accounts on chain.
 
-- `restricted-tokens` ([docs](https://reference.centrifuge.io/pallet_restricted_tokens/index.html) | Altair, Centrifuge)
-Transferring tokens and setting balances. It is wrapping `orml-tokens` with the addition of checking for permissions.
+- [**restricted-tokens**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/restricted-tokens) ([docs](https://reference.centrifuge.io/pallet_restricted_tokens/index.html)): Transferring tokens and setting balances. It is wrapping `orml-tokens` with the addition of checking for permissions.
 
 ## Contributions
 Please follow the contributions guidelines as outlined in [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md).
