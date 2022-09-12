@@ -11,7 +11,8 @@ use frame_support::{
 	Blake2_128, StorageHasher,
 };
 use frame_system as system;
-use frame_system::{EnsureSigned, EnsureSignedBy};
+use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
+use orml_traits::asset_registry::AssetMetadata;
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
@@ -22,7 +23,13 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-pub use runtime_common::{Rate, TrancheWeight};
+use common_types::impls::AuthorityOrigin;
+use common_types::CustomMetadata;
+pub use runtime_common::{
+	asset_registry::CustomAssetProcessor,
+	types::{EnsureRootOr, HalfOfCouncil},
+	Rate, TrancheWeight,
+};
 
 common_types::impl_tranche_token!();
 
@@ -96,7 +103,9 @@ frame_support::construct_runtime!(
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
 		FakeNav: fake_nav::{Pallet, Storage},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Storage, Event<T>}
+		Balances: pallet_balances::{Pallet, Storage, Event<T>},
+		ParachainInfo: parachain_info::{Pallet, Storage},
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>}
 	}
 );
 
@@ -210,6 +219,22 @@ impl orml_tokens::Config for Test {
 	type OnKilledTokenAccount = ();
 }
 
+impl orml_asset_registry::Config for Test {
+	type Event = Event;
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
+	type AuthorityOrigin = AuthorityOrigin<Origin, EnsureRoot<u64>>;
+	type AssetProcessor = CustomAssetProcessor;
+	type Balance = Balance;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ParachainId: u32 = 100;
+}
+
+impl parachain_info::Config for Test {}
+
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
@@ -289,10 +314,18 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
 impl Config for Test {
+	type AssetRegistry = OrmlAssetRegistry;
+	type ParachainId = ParachainInfo;
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
@@ -317,6 +350,8 @@ impl Config for Test {
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
 	type WeightInfo = ();
@@ -339,7 +374,8 @@ pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
 	type PoolDetails =
 		PoolDetails<CurrencyId, u32, Balance, Rate, MaxSizeMetadata, TrancheWeight, TrancheId, u64>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(
@@ -417,11 +453,24 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
+
 	ext.execute_with(|| {
 		System::set_block_number(1);
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
 		Timestamp::set(Origin::none(), START_DATE).unwrap();
+		OrmlAssetRegistry::do_register_asset(
+			AssetMetadata {
+				decimals: 18,
+				name: "MOCK TOKEN".as_bytes().to_vec(),
+				symbol: "MOCK".as_bytes().to_vec(),
+				existential_deposit: 0,
+				location: None,
+				additional: CustomMetadata::default(),
+			},
+			Some(CurrencyId::AUSD),
+		)
+		.unwrap();
 	});
 	ext
 }

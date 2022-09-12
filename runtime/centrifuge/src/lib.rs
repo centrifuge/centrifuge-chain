@@ -55,6 +55,7 @@ mod weights;
 pub mod xcm;
 
 pub use crate::xcm::*;
+pub use common_types::CustomMetadata;
 /// common types for the runtime.
 pub use runtime_common::*;
 
