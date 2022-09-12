@@ -1,8 +1,7 @@
 use cfg_traits::Permissions as PermissionsT;
-use cfg_types::CurrencyId;
+use cfg_types::{CurrencyId, Rate};
 use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
 use rand::Rng;
-use runtime_common::Rate;
 use sp_core::storage::StateVersion;
 use sp_runtime::{
 	traits::{One, Zero},
@@ -15,7 +14,7 @@ use crate::mock::{self, TrancheToken as TT, *};
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches = Tranches::new::<TT<Test>>(
+		let tranches = Tranches::new::<TT>(
 			0,
 			std::iter::repeat(Tranche {
 				outstanding_redeem_orders: 10,
@@ -117,7 +116,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			..Default::default()
 		};
 		let tranches =
-			Tranches::new::<TT<Test>>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
+			Tranches::new::<TT>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
@@ -216,7 +215,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			..Default::default()
 		};
 		let tranches =
-			Tranches::new::<TT<Test>>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
@@ -329,7 +328,7 @@ fn pool_constraints_pass() {
 			..Default::default()
 		};
 		let tranches =
-			Tranches::new::<TT<Test>>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
@@ -391,11 +390,8 @@ fn pool_constraints_pass() {
 		assert_ok!(Pools::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			crate::calculate_risk_buffers::<u128, runtime_common::Rate>(
-				&vec![3, 1],
-				&vec![One::one(), One::one()]
-			)
-			.unwrap(),
+			crate::calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
+				.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
 		assert_eq!(

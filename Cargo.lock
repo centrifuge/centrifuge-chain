@@ -6349,6 +6349,7 @@ dependencies = [
 name = "pallet-pools"
 version = "3.0.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -6363,7 +6364,6 @@ dependencies = [
  "parity-scale-codec",
  "rand 0.8.5",
  "rev_slice",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-arithmetic",

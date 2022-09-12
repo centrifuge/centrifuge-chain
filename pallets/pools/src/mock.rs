@@ -1,7 +1,10 @@
+use cfg_primitives::BlockNumber;
+pub use cfg_primitives::TrancheWeight;
 use cfg_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
 use cfg_types::{
 	CurrencyId, Moment, PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION,
 };
+pub use cfg_types::{Rate, TrancheToken};
 use codec::Encode;
 use frame_support::{
 	parameter_types,
@@ -14,8 +17,6 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
-use runtime_common::BlockNumber;
-pub use runtime_common::{Rate, TrancheWeight};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -23,8 +24,6 @@ use sp_runtime::{
 };
 
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
-
-cfg_types::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -323,7 +322,7 @@ impl Config for Test {
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheId = TrancheId;
-	type TrancheToken = TrancheToken<Test>;
+	type TrancheToken = TrancheToken;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
 	type WeightInfo = ();
