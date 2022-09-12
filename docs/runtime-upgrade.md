@@ -30,7 +30,7 @@ Supposing we are testing centrifuge runtime in local:
 1. In **Centrifuge Local** client -> Governance -> Democracy, click on **send preimage**.
     - At **proponer**, choose: `parachainSystem` with `authorizeUpgrade`
     - At **codeHash**, copy the `BLAKE2_256` of the previous step.
-    - Click on **send preimage**
+    - Click on **Submit preimage**
 
 1. In Network -> Explorer -> Check the `democracy.PreImageNoted` event where the preimage of your blake hash is dispatched
     and copy it.
