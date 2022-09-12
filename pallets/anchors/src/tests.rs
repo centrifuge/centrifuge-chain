@@ -861,3 +861,18 @@ fn basic_commit_perf() {
 		println!("time {}", elapsed);
 	});
 }
+
+#[test]
+fn evict_anchors() {
+	let day = |n| common::MILLISECS_PER_DAY * n + 1;
+
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			Anchors::evict_anchors(Origin::signed(1)),
+			ArithmeticError::Underflow
+		);
+
+		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(1));
+		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+	});
+}
