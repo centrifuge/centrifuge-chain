@@ -901,7 +901,6 @@ dependencies = [
  "jsonrpsee",
  "log",
  "node-inspect",
- "node-primitives",
  "pallet-anchors",
  "pallet-im-online",
  "pallet-loans",
