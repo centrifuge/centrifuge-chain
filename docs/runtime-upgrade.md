@@ -48,7 +48,7 @@ Supposing we are testing centrifuge runtime in local:
     **Warning**, once the proposal appears, you will have `10 * 12` (`votingPeriod * secons_per_block`) seconds to perform
     all votes in favor.
 
-    Once the time ends, close and sign the votation.
+    Once the time ends, close and sign the motion.
 
 1. In Developer -> Extrinsics, choose `parachainSystem` with `enactAuthorizedUpgrade`.
     Click then on **file upload** and upload the `.wasm` file previously downlaoded.
