@@ -3,7 +3,7 @@ use super::*;
 pub mod fix_evict_date {
 	use super::*;
 
-	use frame_support::{traits::Get, weights::Weight};
+	use frame_support::{log, traits::Get, weights::Weight};
 
 	pub const HARDCODED_EVICTED_DATE: u32 = 19200;
 
@@ -20,8 +20,13 @@ pub mod fix_evict_date {
 	}
 
 	pub fn migrate<T: Config>() -> Weight {
-		LatestEvictedDate::<T>::put(HARDCODED_EVICTED_DATE);
-		T::DbWeight::get().writes(1)
+		if LatestEvictedDate::<T>::get().is_none() {
+			LatestEvictedDate::<T>::put(HARDCODED_EVICTED_DATE);
+			log::info!("pallet_anchors: fix evict date");
+			return T::DbWeight::get().writes(1);
+		}
+
+		0
 	}
 
 	#[cfg(feature = "try-runtime")]

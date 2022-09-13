@@ -102,6 +102,7 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
  "hex-literal 0.2.2",
  "integer-sqrt",
  "node-primitives",

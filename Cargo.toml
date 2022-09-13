@@ -198,6 +198,7 @@ cli = [
 ]
 try-runtime = [
 	"centrifuge-runtime/try-runtime",
+	"altair-runtime/try-runtime",
 	"try-runtime-cli"
 ]
 
