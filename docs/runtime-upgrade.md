@@ -1,4 +1,4 @@
-# Testing a runtime upgrade in local
+# Testing a runtime upgrade on a local environment
 This must be done before each new release we do in any of out runtimes.
 Supposing we are testing centrifuge runtime in local:
 
