@@ -58,7 +58,7 @@ type BalanceOf<T> =
 const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u32 = 800;
 
 /// Determines how many loop iterations are allowed to run at a time inside the runtime.
-const MAX_LOOP_IN_TX: u64 = 500;
+const MAX_LOOP_IN_TX: u64 = 100;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
