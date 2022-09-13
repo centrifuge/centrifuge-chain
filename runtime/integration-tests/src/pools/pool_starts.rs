@@ -34,6 +34,7 @@ async fn create_init_and_price() {
 	let mut env = {
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
+		genesis::register_default_asset::<Runtime>(&mut genesis);
 		env::test_env_with_centrifuge_storage(&manager, genesis)
 	};
 
@@ -55,18 +56,6 @@ async fn create_init_and_price() {
 				maturity,
 				&mut nft_manager,
 			)
-	);
-
-	tracing::info!(
-		"{:?}",
-		env::events!(
-			env,
-			Chain::Para(PARA_ID),
-			Event,
-			EventRange::All,
-			//Event::Pools(..) | Event::Loans(..) | Event::Uniques(..)
-			Event::System(frame_system::Event::ExtrinsicFailed { .. })
-		)
 	);
 
 	env::assert_events!(

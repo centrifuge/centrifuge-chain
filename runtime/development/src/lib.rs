@@ -50,7 +50,7 @@ use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
 use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
-pub use common_types::CurrencyId;
+pub use common_types::{CurrencyId, CustomMetadata};
 use common_types::{
 	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
@@ -845,6 +845,12 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 100 * CFG;
 }
@@ -880,6 +886,10 @@ impl pallet_pools::Config for Runtime {
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
 	type UpdateGuard = UpdateGuard;
+	type AssetRegistry = OrmlAssetRegistry;
+	type ParachainId = ParachainInfo;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 }
 
 pub struct PoolCurrency;
@@ -907,7 +917,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(

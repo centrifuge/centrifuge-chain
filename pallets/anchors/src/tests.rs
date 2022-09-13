@@ -545,7 +545,7 @@ fn pre_commit_and_then_evict() {
 }
 
 #[test]
-fn anchor_evict_single_anchor_per_day_1000_days() {
+fn anchor_evict_single_anchor_per_day_many_days() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
 		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
@@ -580,7 +580,7 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 
 		// create 1000 anchors one per day
 		setup_blocks(100);
-		for i in 0..1000 {
+		for i in 0..MAX_LOOP_IN_TX * 2 {
 			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Test as frame_system::Config>::Hashing::hash);
@@ -619,8 +619,9 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 
 		verify_next_anchor_after_eviction(2, &anchors);
 
-		// do the same as above for next 99 days without child trie root verification
-		for i in 3..102 {
+		const FIRST_ONES: u64 = MAX_LOOP_IN_TX / 5;
+		// do the same as above for next FIRST_ONES - 1 days without child trie root verification
+		for i in 3..FIRST_ONES as usize + 2 {
 			<pallet_timestamp::Pallet<Test>>::set_timestamp(day(i as u64));
 			assert!(Anchors::get_anchor_by_id(anchors[i - 2]).is_some());
 
@@ -629,65 +630,94 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 			verify_anchor_eviction(i, &anchors);
 			verify_next_anchor_after_eviction(i, &anchors);
 		}
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 100);
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			FIRST_ONES
+		);
 
 		// test out limit on the number of anchors removed at a time
-		// eviction on day 602, i.e 501 anchors to be removed one anchor
-		// per day from the last eviction on day 102
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(602));
-		assert!(Anchors::get_anchor_by_id(anchors[600]).is_some());
+		// eviction on day 2 + FIRST_ONES * MAX_LOOP_IN_TX, i.e MAX_LOOP_IN_TX + 1 anchors to be removed one anchor
+		// per day from the last eviction on day 2 + FIRST_ONES
+		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(2 + FIRST_ONES + MAX_LOOP_IN_TX));
+		assert!(
+			Anchors::get_anchor_by_id(anchors[(FIRST_ONES + MAX_LOOP_IN_TX) as usize]).is_some()
+		);
 		// evict
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
 		// verify anchor data has been removed until 520th anchor
-		for i in 102..602 {
-			assert!(Anchors::get_anchor_by_id(anchors[i - 2]).is_none());
+		for i in (2 + FIRST_ONES) as usize..(2 + FIRST_ONES + MAX_LOOP_IN_TX) as usize {
+			assert!(Anchors::get_anchor_by_id(anchors[i as usize - 2]).is_none());
 			assert!(Anchors::get_evicted_anchor_root_by_day(i as u32).unwrap() != [0; 32]);
 		}
 
-		assert!(Anchors::get_anchor_by_id(anchors[600]).is_none());
-		assert!(Anchors::get_anchor_by_id(anchors[601]).is_some());
+		assert!(
+			Anchors::get_anchor_by_id(anchors[(FIRST_ONES + MAX_LOOP_IN_TX) as usize]).is_none()
+		);
+		assert!(
+			Anchors::get_anchor_by_id(anchors[(1 + FIRST_ONES + MAX_LOOP_IN_TX) as usize])
+				.is_some()
+		);
 
 		// verify that 601st anchors` indexes are left still because of 500 limit while
 		// 600th anchors` indexes have been removed
 		// 600th anchor
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 600);
 		assert_eq!(
-			Anchors::get_anchor_id_by_index(600).unwrap_or_default(),
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			FIRST_ONES + MAX_LOOP_IN_TX
+		);
+		assert_eq!(
+			Anchors::get_anchor_id_by_index(FIRST_ONES + MAX_LOOP_IN_TX).unwrap_or_default(),
 			H256([0; 32])
 		);
 		assert_eq!(
-			Anchors::get_anchor_evict_date(anchors[599]).unwrap_or_default(),
+			Anchors::get_anchor_evict_date(anchors[(FIRST_ONES - 1 + MAX_LOOP_IN_TX) as usize])
+				.unwrap_or_default(),
 			0
 		);
 		// 601st anchor indexes are left
-		assert!(Anchors::get_anchor_id_by_index(601).unwrap() != H256([0; 32]));
-		assert_eq!(Anchors::get_anchor_evict_date(anchors[600]).unwrap(), 602);
+		assert!(
+			Anchors::get_anchor_id_by_index(FIRST_ONES + 1 + MAX_LOOP_IN_TX).unwrap()
+				!= H256([0; 32])
+		);
+		assert_eq!(
+			Anchors::get_anchor_evict_date(anchors[(FIRST_ONES + MAX_LOOP_IN_TX) as usize])
+				.unwrap(),
+			(2 + FIRST_ONES + MAX_LOOP_IN_TX) as u32
+		);
 
 		// call evict on same day to remove the remaining indexes
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
 		// verify that 521st anchors indexes are removed since we called a second time
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 601);
 		assert_eq!(
-			Anchors::get_anchor_id_by_index(601).unwrap_or_default(),
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			1 + FIRST_ONES + MAX_LOOP_IN_TX
+		);
+		assert_eq!(
+			Anchors::get_anchor_id_by_index(1 + FIRST_ONES + MAX_LOOP_IN_TX).unwrap_or_default(),
 			H256([0; 32])
 		);
 		assert_eq!(
-			Anchors::get_anchor_evict_date(anchors[600]).unwrap_or_default(),
+			Anchors::get_anchor_evict_date(anchors[(FIRST_ONES + MAX_LOOP_IN_TX) as usize])
+				.unwrap_or_default(),
 			0
 		);
 
 		// remove remaining anchors
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(1001));
-		assert!(Anchors::get_anchor_by_id(anchors[999]).is_some());
+		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(MAX_LOOP_IN_TX as u64 * 2 + 1));
+		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_some());
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
-		assert!(Anchors::get_anchor_by_id(anchors[999]).is_none());
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1000);
+		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_none());
 		assert_eq!(
-			Anchors::get_anchor_id_by_index(1000).unwrap_or_default(),
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 2
+		);
+		assert_eq!(
+			Anchors::get_anchor_id_by_index(MAX_LOOP_IN_TX * 2).unwrap_or_default(),
 			H256([0; 32])
 		);
 		assert_eq!(
-			Anchors::get_anchor_evict_date(anchors[999]).unwrap_or_default(),
+			Anchors::get_anchor_evict_date(anchors[MAX_LOOP_IN_TX as usize * 2 - 1])
+				.unwrap_or_default(),
 			0
 		);
 	});
@@ -699,9 +729,9 @@ fn test_remove_anchor_indexes() {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
 		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
 
-		// create 2000 anchors that expire on same day
+		// create MAX_LOOP_IN_TX * 4 anchors that expire on same day
 		setup_blocks(100);
-		for i in 0..2000 {
+		for i in 0..MAX_LOOP_IN_TX * 4 {
 			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Test as frame_system::Config>::Hashing::hash);
@@ -716,45 +746,63 @@ fn test_remove_anchor_indexes() {
 				day(1)
 			));
 		}
-		assert_eq!(Anchors::get_latest_anchor_index().unwrap(), 2000);
+		assert_eq!(
+			Anchors::get_latest_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 4
+		);
 
 		// first MAX_LOOP_IN_TX items
 		let removed = Anchors::remove_anchor_indexes(2).unwrap();
-		assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 500);
+		assert_eq!(removed, MAX_LOOP_IN_TX as usize);
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX
+		);
 
 		// second MAX_LOOP_IN_TX items
 		let removed = Anchors::remove_anchor_indexes(2).unwrap();
-		assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1000);
+		assert_eq!(removed, MAX_LOOP_IN_TX as usize);
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 2
+		);
 
 		// third MAX_LOOP_IN_TX items
 		let removed = Anchors::remove_anchor_indexes(2).unwrap();
-		assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1500);
+		assert_eq!(removed, MAX_LOOP_IN_TX as usize);
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 3
+		);
 
 		// fourth MAX_LOOP_IN_TX items
 		let removed = Anchors::remove_anchor_indexes(2).unwrap();
-		assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 2000);
+		assert_eq!(removed, MAX_LOOP_IN_TX as usize);
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 4
+		);
 
 		// all done
 		let removed = Anchors::remove_anchor_indexes(2).unwrap();
 		assert_eq!(removed, 0);
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 2000);
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 4
+		);
 	});
 }
 
 #[test]
-fn test_same_day_1001_anchors() {
+fn test_same_day_many_anchors() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
 		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
 		let mut anchors = vec![];
 
-		// create 1001 anchors that expire on same day
+		// create MAX_LOOP_IN_TX * 2 + 1 anchors that expire on same day
 		setup_blocks(100);
-		for i in 0..1001 {
+		for i in 0..MAX_LOOP_IN_TX * 2 + 1 {
 			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
 			let pre_image =
 				(random_seed, i).using_encoded(<Test as frame_system::Config>::Hashing::hash);
@@ -770,51 +818,69 @@ fn test_same_day_1001_anchors() {
 			));
 			anchors.push(anchor_id);
 		}
-		assert_eq!(Anchors::get_latest_anchor_index().unwrap(), 1001);
-
-		// first 500
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(2));
-		assert!(Anchors::get_anchor_by_id(anchors[999]).is_some());
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
-		assert!(Anchors::get_anchor_by_id(anchors[999]).is_none());
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 500);
 		assert_eq!(
-			Anchors::get_anchor_id_by_index(500).unwrap_or_default(),
+			Anchors::get_latest_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 2 + 1
+		);
+
+		// first MAX_LOOP_IN_TX
+		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(2));
+		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_some());
+		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_none());
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX
+		);
+		assert_eq!(
+			Anchors::get_anchor_id_by_index(MAX_LOOP_IN_TX).unwrap_or_default(),
 			H256([0; 32])
 		);
 		assert_eq!(
-			Anchors::get_anchor_evict_date(anchors[499]).unwrap_or_default(),
+			Anchors::get_anchor_evict_date(anchors[MAX_LOOP_IN_TX as usize - 1])
+				.unwrap_or_default(),
 			0
 		);
 		assert!(Anchors::get_evicted_anchor_root_by_day(2).is_some());
 
-		// second 500
+		// second MAX_LOOP_IN_TX
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1000);
 		assert_eq!(
-			Anchors::get_anchor_id_by_index(1000).unwrap_or_default(),
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 2
+		);
+		assert_eq!(
+			Anchors::get_anchor_id_by_index(MAX_LOOP_IN_TX * 2).unwrap_or_default(),
 			H256([0; 32])
 		);
 		assert_eq!(
-			Anchors::get_anchor_evict_date(anchors[999]).unwrap_or_default(),
+			Anchors::get_anchor_evict_date(anchors[MAX_LOOP_IN_TX as usize * 2 - 1])
+				.unwrap_or_default(),
 			0
 		);
 
 		// remaining
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1001);
 		assert_eq!(
-			Anchors::get_anchor_id_by_index(1001).unwrap_or_default(),
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 2 + 1
+		);
+		assert_eq!(
+			Anchors::get_anchor_id_by_index(MAX_LOOP_IN_TX * 2 + 1).unwrap_or_default(),
 			H256([0; 32])
 		);
 		assert_eq!(
-			Anchors::get_anchor_evict_date(anchors[1000]).unwrap_or_default(),
+			Anchors::get_anchor_evict_date(anchors[MAX_LOOP_IN_TX as usize * 2])
+				.unwrap_or_default(),
 			0
 		);
 
 		// all done
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
-		assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1001);
+		assert_eq!(
+			Anchors::get_latest_evicted_anchor_index().unwrap(),
+			MAX_LOOP_IN_TX * 2 + 1
+		);
 	});
 }
 
@@ -859,5 +925,20 @@ fn basic_commit_perf() {
 		}
 
 		println!("time {}", elapsed);
+	});
+}
+
+#[test]
+fn evict_anchors() {
+	let day = |n| common::MILLISECS_PER_DAY * n + 1;
+
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			Anchors::evict_anchors(Origin::signed(1)),
+			ArithmeticError::Underflow
+		);
+
+		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(1));
+		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
 	});
 }

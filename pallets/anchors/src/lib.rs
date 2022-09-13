@@ -46,6 +46,8 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub mod migration;
+
 mod common;
 
 type BalanceOf<T> =
@@ -58,7 +60,7 @@ type BalanceOf<T> =
 const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u32 = 800;
 
 /// Determines how many loop iterations are allowed to run at a time inside the runtime.
-const MAX_LOOP_IN_TX: u64 = 500;
+const MAX_LOOP_IN_TX: u64 = 100;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
@@ -385,9 +387,14 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Overflow)?;
 
 			// store yesterday as the last day of eviction
-			let yesterday = today_in_days_from_epoch
+			let mut yesterday = today_in_days_from_epoch
 				.checked_sub(1)
 				.ok_or(ArithmeticError::Underflow)?;
+
+			// Avoid to iterate more than 500 days
+			if yesterday > evict_date + MAX_LOOP_IN_TX as u32 {
+				yesterday = evict_date + MAX_LOOP_IN_TX as u32 - 1;
+			}
 
 			// remove child tries starting from day next to last evicted day
 			let _evicted_trie_count =

@@ -30,7 +30,7 @@ async fn env_works() {
 		.with_state(Chain::Para(PARA_ID), || {
 			frame_system::Pallet::<Runtime>::block_number()
 		})
-		.unwrap();
+		.expect("Cannot create block before");
 
 	env::pass_n(&mut env, num_blocks).unwrap();
 
@@ -38,7 +38,7 @@ async fn env_works() {
 		.with_state(Chain::Para(PARA_ID), || {
 			frame_system::Pallet::<Runtime>::block_number()
 		})
-		.unwrap();
+		.expect("Cannot create block after");
 
 	assert_eq!(block_before + num_blocks as u32, block_after)
 }

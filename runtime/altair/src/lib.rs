@@ -53,7 +53,7 @@ use constants::currency::*;
 use xcm_executor::XcmExecutor;
 
 use common_traits::PoolUpdateGuard;
-pub use common_types::CurrencyId;
+pub use common_types::{CurrencyId, CustomMetadata};
 use common_types::{
 	FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider,
@@ -89,7 +89,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1019,
+	spec_version: 1020,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1046,6 +1046,12 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 0;
 }
@@ -1062,6 +1068,8 @@ impl pallet_pools::Config for Runtime {
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
+	type AssetRegistry = OrmlAssetRegistry;
+	type ParachainId = ParachainInfo;
 	type PoolId = PoolId;
 	type TrancheId = TrancheId;
 	type EpochId = u32;
@@ -1081,6 +1089,8 @@ impl pallet_pools::Config for Runtime {
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
 	type PoolCreateOrigin = PoolCreateOrigin;
@@ -1115,7 +1125,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 	type Moment = Moment;
 
 	fn released(
@@ -1327,7 +1338,18 @@ mod upgrade {
 			weight += InterestAccrual::upgrade_to_v1();
 			weight += Loans::reference_active_rates();
 			weight += InterestAccrual::remove_unused_rates();
+			weight += pallet_anchors::migration::fix_evict_date::migrate::<Runtime>();
 			weight
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<(), &'static str> {
+			pallet_anchors::migration::fix_evict_date::pre_migrate::<Runtime>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade() -> Result<(), &'static str> {
+			pallet_anchors::migration::fix_evict_date::post_migrate::<Runtime>()
 		}
 	}
 }
@@ -1618,6 +1640,17 @@ impl_runtime_apis! {
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
+		}
+	}
+
+	#[cfg(feature = "try-runtime")]
+	impl frame_try_runtime::TryRuntime<Block> for Runtime {
+		fn on_runtime_upgrade() -> (Weight, Weight) {
+			let weight = Executive::try_runtime_upgrade().unwrap();
+			(weight, RuntimeBlockWeights::get().max_block)
+		}
+		fn execute_block_no_check(block: Block) -> Weight {
+			Executive::execute_block_no_check(block)
 		}
 	}
 }
