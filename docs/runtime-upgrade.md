@@ -15,7 +15,7 @@ Supposing we are testing centrifuge runtime in local:
     The `DOCKER_TAG` has the following format: `test-parachain-<DATE>-<COMMIT_HASH>`.
     You can see the available `DOCKER_TAG`s [here](https://hub.docker.com/r/centrifugeio/centrifuge-chain/tags)
 
-    Open **Centrifuge Local** client [here](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9946#/explorer)
+    Open the **Centrifuge Local** client [here](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9946#/explorer)
 
 1. After see block production in the **relay chain^**, run the boarding:
     ```sh
