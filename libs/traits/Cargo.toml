@@ -24,6 +24,10 @@ orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-
 
 cfg-primitives = { path = '../primitives', default-features = false }
 
+[dev-dependencies]
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.26" }
+cfg-types = { path = '../types', default-features = true }
+
 [features]
 default = ['std']
 std = [

@@ -180,7 +180,7 @@ parameter_types! {
 	pub const ParachainId: u32 = 2008;
 }
 
-cfg_traits::mocks::orml_asset_registry::impl_mock! {
+cfg_traits::mocks::orml_asset_registry::impl_mock_registry! {
 	RegistryMock,
 	CurrencyId,
 	Balance,

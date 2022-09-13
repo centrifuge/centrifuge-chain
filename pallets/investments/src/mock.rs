@@ -10,3 +10,248 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
+use cfg_primitives::{CFG as CURRENCY, *};
+use cfg_traits::Always;
+use cfg_types::{CurrencyId, Rate};
+use codec::{Decode, Encode};
+use frame_support::{
+	parameter_types,
+	traits::{GenesisBuild, Nothing},
+	RuntimeDebug,
+};
+use orml_traits::GetByKey;
+use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
+use sp_io::TestExternalities;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_std::convert::{TryFrom, TryInto};
+
+use crate as pallet_investments;
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
+type Block = frame_system::mocking::MockBlock<MockRuntime>;
+pub type MockAccountId = u64;
+
+frame_support::construct_runtime!(
+	pub enum MockRuntime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
+		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Balances: pallet_balances::{Pallet, Storage, Event<T>}
+	}
+);
+
+parameter_types! {
+	pub const BlockHashCount: u32 = 250;
+	pub const SS58Prefix: u8 = 42;
+}
+
+impl frame_system::Config for MockRuntime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = MockAccountId;
+	type BaseCallFilter = frame_support::traits::Everything;
+	type BlockHashCount = BlockHashCount;
+	type BlockLength = ();
+	type BlockNumber = BlockNumber;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
+	type Hash = Hash;
+	type Hashing = BlakeTwo256;
+	type Header = Header;
+	type Index = Index;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = SS58Prefix;
+	type SystemWeightInfo = ();
+	type Version = ();
+}
+
+parameter_types! {
+	pub MaxLocks: u32 = 2;
+	pub const MaxReserves: u32 = 50;
+}
+
+impl GetByKey<CurrencyId, u128> for ExistentialDeposit {
+	fn get(_: &CurrencyId) -> u128 {
+		ExistentialDeposit::get()
+	}
+}
+
+impl orml_tokens::Config for MockRuntime {
+	type Amount = i64;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type DustRemovalWhitelist = Nothing;
+	type Event = Event;
+	type ExistentialDeposits = ExistentialDeposit;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type OnDust = ();
+	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ExistentialDeposit: u128 = 1;
+}
+
+impl pallet_balances::Config for MockRuntime {
+	type AccountStore = System;
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
+	type WeightInfo = ();
+}
+
+cfg_traits::mocks::accountant::impl_mock_accountant!(
+	MockAccountant,
+	MockAccountId,
+	InvestmentId,
+	CurrencyId,
+	Balance
+);
+
+parameter_types! {
+	pub const MaxOutstandingCollect: u64 = 10;
+}
+
+impl pallet_investments::Config for MockRuntime {
+	type Accountant = MockAccountant<OrmlTokens>;
+	type Amount = Balance;
+	type BalanceRatio = Rate;
+	type Event = Event;
+	type InvestmentId = InvestmentId;
+	type MaxOutstandingCollects = MaxOutstandingCollect;
+	type PreConditions = Always;
+	type Tokens = OrmlTokens;
+	type WeightInfo = ();
+}
+
+// TODO: This struct should be temporarily needed only
+//       We should add the possibiltiy to use subsets of the
+//       global CurrencyId enum
+#[derive(
+	Copy,
+	Clone,
+	Encode,
+	Decode,
+	PartialEq,
+	RuntimeDebug,
+	Ord,
+	PartialOrd,
+	Eq,
+	TypeInfo,
+	Serialize,
+	Deserialize,
+)]
+pub enum InvestmentId {
+	PoolTranche {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+	},
+}
+
+impl Into<CurrencyId> for InvestmentId {
+	fn into(self) -> CurrencyId {
+		match self {
+			InvestmentId::PoolTranche {
+				pool_id,
+				tranche_id,
+			} => CurrencyId::Tranche(pool_id, tranche_id),
+		}
+	}
+}
+
+// Test externalities builder
+//
+// This type is mainly used for mocking storage in tests. It is the type alias
+// for an in-memory, hashmap-based externalities implementation.
+pub struct TestExternalitiesBuilder;
+
+parameter_types! {
+	pub const InvestorA: MockAccountId = 1;
+	pub const InvestorB: MockAccountId = 2;
+	pub const InvestorC: MockAccountId = 3;
+	pub const Owner: MockAccountId = 100;
+}
+
+impl TestExternalitiesBuilder {
+	// Build a genesis storage key/value store
+	pub(crate) fn build() -> TestExternalities {
+		let mut storage = frame_system::GenesisConfig::default()
+			.build_storage::<MockRuntime>()
+			.unwrap();
+
+		orml_tokens::GenesisConfig::<MockRuntime> {
+			balances: vec![
+				(InvestorA::get(), CurrencyId::AUSD, 100 * CURRENCY),
+				(InvestorB::get(), CurrencyId::AUSD, 100 * CURRENCY),
+				(InvestorC::get(), CurrencyId::AUSD, 100 * CURRENCY),
+			],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		use accountant_mock::InvestmentInfo;
+		accountant_mock::GenesisConfig {
+			infos: vec![
+				(
+					InvestmentId::PoolTranche {
+						pool_id: 0,
+						tranche_id: [0u8; 16],
+					},
+					InvestmentInfo {
+						owner: Owner::get(),
+						id: InvestmentId::PoolTranche {
+							pool_id: 0,
+							tranche_id: [0u8; 16],
+						},
+						payment_currency: CurrencyId::AUSD,
+					},
+				),
+				(
+					InvestmentId::PoolTranche {
+						pool_id: 0,
+						tranche_id: [1u8; 16],
+					},
+					InvestmentInfo {
+						owner: Owner::get(),
+						id: InvestmentId::PoolTranche {
+							pool_id: 0,
+							tranche_id: [1u8; 16],
+						},
+						payment_currency: CurrencyId::AUSD,
+					},
+				),
+			],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		let mut externalities = TestExternalities::new(storage);
+		externalities.execute_with(|| {
+			// We need to set this, otherwise on genesis (i.e. 0)
+			// no events are stored
+			System::set_block_number(1);
+		});
+		externalities
+	}
+}

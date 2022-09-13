@@ -215,7 +215,7 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
-cfg_traits::mocks::orml_asset_registry::impl_mock! {
+cfg_traits::mocks::orml_asset_registry::impl_mock_registry! {
 	RegistryMock,
 	CurrencyId,
 	Balance,
