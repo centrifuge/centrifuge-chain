@@ -1,5 +1,5 @@
 # Testing a runtime upgrade on a local environment
-This must be done before each new release we do in any of out runtimes.
+This must be done before releasing a new version of any of our runtimes to ensure that the chain still produces blocks once the latest version is applied.
 Supposing we are testing centrifuge runtime in local:
 
 1. Run the relay chain:
