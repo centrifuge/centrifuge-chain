@@ -46,7 +46,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod migration;
+pub mod migration;
 
 mod common;
 
@@ -198,23 +198,6 @@ pub mod pallet {
 
 		/// Failed to convert epoch in MS to days
 		FailedToConvertEpochToDays,
-	}
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<(), &'static str> {
-			migration::fix_evict_date::pre_migrate::<T>()
-		}
-
-		fn on_runtime_upgrade() -> frame_support::weights::Weight {
-			migration::fix_evict_date::migrate::<T>()
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade() -> Result<(), &'static str> {
-			migration::fix_evict_date::post_migrate::<T>()
-		}
 	}
 
 	#[pallet::call]
