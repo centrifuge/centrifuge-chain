@@ -17,7 +17,7 @@ Supposing we are testing centrifuge runtime in local:
 
     Open the **Centrifuge Local** client [here](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9946#/explorer)
 
-1. After see block production in the **relay chain^**, run the boarding:
+1. After verifying block production in the **relay chain**, onboard the parachain:
     ```sh
     DOCKER_ONBOARD=true PARA_DOCKER_IMAGE_TAG=<DOCKER_TAG> PARA_CHAIN_SPEC=centrifuge-local ./scripts/init.sh onboard-parachain
     ```
