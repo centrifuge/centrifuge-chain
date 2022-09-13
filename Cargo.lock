@@ -1120,9 +1120,11 @@ name = "cfg-traits"
 version = "0.1.0"
 dependencies = [
  "cfg-primitives",
+ "cfg-types",
  "frame-support",
  "impl-trait-for-tuples",
  "orml-asset-registry",
+ "orml-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6100,6 +6102,7 @@ dependencies = [
 name = "pallet-investments"
 version = "1.0.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -6108,15 +6111,12 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-permissions",
  "pallet-restricted-tokens",
- "pallet-timestamp",
  "parity-scale-codec",
  "rand 0.8.5",
  "runtime-common",
  "scale-info",
  "serde",
- "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",

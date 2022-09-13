@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 #[macro_export]
-macro_rules! impl_mock {
+macro_rules! impl_mock_registry {
 	($name:ident, $asset_id:ty, $balance:ty, $custom_metadata:ty) => {
 		pub use orml_asset_registry_mock::$name;
 
@@ -273,4 +273,4 @@ macro_rules! impl_mock {
 	};
 }
 
-pub use impl_mock;
+pub use impl_mock_registry;

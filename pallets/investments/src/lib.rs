@@ -146,8 +146,6 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use codec::HasCompact;
-	use frame_support::PalletId;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -163,10 +161,7 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The underlying investments one can invest into
-		type InvestmentId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
-
-		/// Maximum number of collects that are permitted in one run.
-		type MaxCollects: Get<u64>;
+		type InvestmentId: Member + Parameter + Copy;
 
 		/// Something that knows how to handle accounting for the given investments
 		/// and provides metadata about them
@@ -198,13 +193,9 @@ pub mod pallet {
 			+ Copy
 			+ FixedPointNumber<Inner = Self::Amount>;
 
-		#[pallet::constant]
-		/// The address if this pallet
-		type PalletId: Get<PalletId>;
-
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
-		type MaxOutstandingCollects: Get<u32>;
+		type MaxOutstandingCollects: Get<u64>;
 
 		/// Something that can handle payments and transfers of
 		/// currencies
@@ -677,7 +668,9 @@ where
 					let mut collected = Vec::new();
 					let cur_order_id = InvestOrderId::<T>::get(&investment_id);
 					let last_processed_order_id = min(
-						order.submitted_at.saturating_add(T::MaxCollects::get()),
+						order
+							.submitted_at
+							.saturating_add(T::MaxOutstandingCollects::get()),
 						cur_order_id,
 					);
 
@@ -694,7 +687,7 @@ where
 					// We need to set this here, so the order is actually
 					// set correctly and a user can actually
 					// make progress, in case he could only collect
-					// till `order.submitted_at + T::MaxCollects`
+					// till `order.submitted_at + T::MaxOutstandingCollects`
 					order.submitted_at = last_processed_order_id;
 
 					// Transfer collected amounts from investment and redemption
@@ -775,7 +768,9 @@ where
 					let mut collected = Vec::new();
 					let cur_order_id = InvestOrderId::<T>::get(&investment_id);
 					let last_processed_order_id = min(
-						order.submitted_at.saturating_add(T::MaxCollects::get()),
+						order
+							.submitted_at
+							.saturating_add(T::MaxOutstandingCollects::get()),
 						cur_order_id,
 					);
 
@@ -792,7 +787,7 @@ where
 					// We need to set this here, so the order is actually
 					// set correctly and a user can actually
 					// make progress, in case he could only collect
-					// till `order.submitted_at + T::MaxCollects`
+					// till `order.submitted_at + T::MaxOutstandingCollects`
 					order.submitted_at = last_processed_order_id;
 
 					// Transfer collected amounts from investment and redemption

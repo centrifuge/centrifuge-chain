@@ -35,7 +35,7 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
 
-//#[cfg(test)]
+// #[cfg(test)]
 pub mod mocks;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
@@ -372,7 +372,7 @@ pub trait OrderManager {
 	) -> Result<(), Self::Error>;
 }
 
-/// A trait whos implementer provides means of accounting
+/// A trait who's implementer provides means of accounting
 /// for investments of a generic kind.
 pub trait InvestmentAccountant<AccountId> {
 	type Error;
@@ -386,7 +386,7 @@ pub trait InvestmentAccountant<AccountId> {
 
 	/// Transfer a given investment from source, to destination
 	fn transfer(
-		asset: Self::InvestmentId,
+		id: Self::InvestmentId,
 		source: &AccountId,
 		dest: &AccountId,
 		amount: Self::Amount,
