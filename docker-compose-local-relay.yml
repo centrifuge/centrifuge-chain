@@ -28,7 +28,6 @@ services:
       --ws-external
       --rpc-methods=Unsafe
       --alice
-      --wasmtime-instantiation-strategy=legacy-instance-reuse
       --log="main,info,xcm=trace,xcm-executor=trace"
 
   node_bob:
@@ -57,5 +56,4 @@ services:
       --rpc-cors all
       --rpc-methods=Unsafe
       --bob
-      --wasmtime-instantiation-strategy=legacy-instance-reuse
       --log="main,info,xcm=trace,xcm-executor=trace"
