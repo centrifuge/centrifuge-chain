@@ -439,6 +439,12 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		storage.into()
+		let mut externalities = TestExternalities::new(storage);
+		externalities.execute_with(|| {
+			// We need to set this, otherwise on genesis (i.e. 0)
+			// no events are stored
+			System::set_block_number(1);
+		});
+		externalities
 	}
 }

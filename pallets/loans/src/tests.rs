@@ -1854,9 +1854,17 @@ macro_rules! repay_too_early {
 }
 
 #[test]
-fn test_repay_too_early() {
+fn test_repay_too_early_bullet() {
 	repay_too_early!(price_bullet_loan);
+}
+
+#[test]
+fn test_repay_too_early_credit_line() {
 	repay_too_early!(price_credit_line_loan);
+}
+
+#[test]
+fn test_repay_too_early_credit_lin_with_maturity() {
 	repay_too_early!(price_credit_line_with_maturity_loan);
 }
 
@@ -1924,7 +1932,11 @@ macro_rules! write_off_overflow {
 }
 
 #[test]
-fn test_write_off_overflow() {
+fn test_write_off_overflow_bullet_loan() {
 	write_off_overflow!(price_bullet_loan);
+}
+
+#[test]
+fn test_write_off_overflow_credit_line() {
 	write_off_overflow!(price_credit_line_with_maturity_loan);
 }

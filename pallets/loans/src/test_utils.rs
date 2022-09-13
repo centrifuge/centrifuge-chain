@@ -291,7 +291,7 @@ where
 	let events = frame_system::Pallet::<T>::events();
 	let system_event = generic_event.into();
 	// compare to the last event record
-	let frame_system::EventRecord { event, .. } = &events[events.len() - 1];
+	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(1)];
 	assert_eq!(event, &system_event);
 }
 
