@@ -323,7 +323,7 @@ where
 			additional: CustomMetadata::default(),
 		},
 	)
-	.unwrap();
+	.expect("Registering Pool asset must work");
 }
 
 benchmarks! {

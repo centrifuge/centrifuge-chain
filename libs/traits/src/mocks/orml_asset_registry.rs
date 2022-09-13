@@ -187,11 +187,10 @@ macro_rules! impl_mock {
 						asset_id: &$asset_id,
 						meta: __private_AssetMetadata<$balance, $custom_metadata>,
 					) -> __private_DispatchResult {
-						for (curr_id, meta) in &self.metadata {
+						for (curr_id, curr_meta) in &mut self.metadata {
 							if curr_id == asset_id {
-								return Err(__private_DispatchError::Other(
-									"Asset already registered",
-								));
+								*curr_meta = meta;
+								return Ok(());
 							}
 						}
 

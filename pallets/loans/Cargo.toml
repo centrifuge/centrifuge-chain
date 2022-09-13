@@ -58,13 +58,13 @@ pallet-pools = { path = "../pools", default-features = true}
 [features]
 default = ['std']
 runtime-benchmarks = [
-    "frame-benchmarking",
-    "pallet-balances",
-    "pallet-uniques",
-    "orml-tokens",
+    "frame-benchmarking/runtime-benchmarks",
+    "pallet-balances/runtime-benchmarks",
+    "pallet-uniques/runtime-benchmarks",
+    "orml-tokens/runtime-benchmarks",
     "orml-traits",
-    "pallet-timestamp",
-    "pallet-pools",
+    "pallet-timestamp/runtime-benchmarks",
+    "pallet-pools/runtime-benchmarks",
 ]
 std = [
     'serde/std',
