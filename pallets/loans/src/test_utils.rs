@@ -12,9 +12,9 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
-use cfg_primitives::CFG as CURRENCY;
+use cfg_primitives::{Moment, CFG as CURRENCY};
 use cfg_traits::{Permissions, PoolNAV};
-use cfg_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
+use cfg_types::{CurrencyId, PermissionScope, PoolLocator, PoolRole, Role};
 use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
@@ -24,10 +24,13 @@ use frame_support::{
 		tokens::nonfungibles::{Create, Inspect, Mutate},
 		Currency, Get,
 	},
-	Blake2_128, StorageHasher,
+	Blake2_128, BoundedVec, StorageHasher,
 };
 use frame_system::RawOrigin;
-use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage, TrancheLoc, TrancheType};
+use pallet_pools::{
+	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheLoc, TrancheMetadata,
+	TrancheType,
+};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,
@@ -148,14 +151,25 @@ pub(crate) fn create<T>(
 		owner.clone(),
 		pool_id,
 		vec![
-			(TrancheType::Residual, None),
-			(
-				TrancheType::NonResidual {
+			TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			},
+			TrancheInput {
+				tranche_type: TrancheType::NonResidual {
 					interest_rate_per_sec: One::one(),
 					min_risk_buffer: Perquintill::from_percent(10),
 				},
-				None
-			)
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				}
+			}
 		],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),

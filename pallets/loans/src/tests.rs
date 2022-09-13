@@ -31,8 +31,9 @@ use crate as pallet_loans;
 use crate::{
 	loan_type::{CreditLine, CreditLineWithMaturity},
 	mock::{
-		Borrower, Event, InterestAccrual, JuniorInvestor, LoanAdmin, Loans, MockRuntime, Origin,
-		PoolAdmin, SeniorInvestor, TestExternalitiesBuilder, Timestamp, Tokens,
+		Borrower, Event as MockEvents, InterestAccrual, JuniorInvestor, LoanAdmin, Loans,
+		MockRuntime, Origin, PoolAdmin, SeniorInvestor, TestExternalitiesBuilder, Timestamp,
+		Tokens,
 	},
 	test_utils::{
 		assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
@@ -41,16 +42,16 @@ use crate::{
 };
 
 // Return last triggered event
-fn last_event() -> Event {
+fn last_event() -> MockEvents {
 	frame_system::Pallet::<MockRuntime>::events()
 		.pop()
 		.map(|item| item.event)
 		.expect("Event expected")
 }
 
-fn fetch_loan_event(event: Event) -> Option<LoanEvent<MockRuntime>> {
+fn fetch_loan_event(event: MockEvents) -> Option<LoanEvent<MockRuntime>> {
 	match event {
-		Event::Loans(loan_event) => Some(loan_event),
+		MockEvents::Loans(loan_event) => Some(loan_event),
 		_ => None,
 	}
 }

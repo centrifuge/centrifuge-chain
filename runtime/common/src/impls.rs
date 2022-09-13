@@ -1,22 +1,26 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
-use super::constants::{CENTI_CFG, TREASURY_FEE_RATIO};
-use super::*;
 use cfg_types::CurrencyId;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::sp_runtime::app_crypto::sp_core::U256;
-use frame_support::traits::{Currency, Imbalance, OnUnbalanced};
-use frame_support::weights::{
-	constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
-	WeightToFeePolynomial,
+use frame_support::{
+	sp_runtime::app_crypto::sp_core::U256,
+	traits::{Currency, Imbalance, OnUnbalanced},
+	weights::{
+		constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
+		WeightToFeePolynomial,
+	},
 };
 use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_core::H160;
 use sp_runtime::traits::Convert;
-use sp_std::vec;
-use sp_std::vec::Vec;
+use sp_std::{vec, vec::Vec};
+
+use super::{
+	constants::{CENTI_CFG, TREASURY_FEE_RATIO},
+	*,
+};
 
 pub mod fees {
 	pub type NegativeImbalance<R> = <pallet_balances::Pallet<R> as Currency<
@@ -91,12 +95,15 @@ pub mod fees {
 
 /// AssetRegistry's AssetProcessor
 pub mod asset_registry {
-	use super::*;
-	use frame_support::dispatch::RawOrigin;
-	use frame_support::sp_std::marker::PhantomData;
-	use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
+	use frame_support::{
+		dispatch::RawOrigin,
+		sp_std::marker::PhantomData,
+		traits::{EnsureOrigin, EnsureOriginWithArg},
+	};
 	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
 	use sp_runtime::DispatchError;
+
+	use super::*;
 
 	#[derive(
 		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
@@ -159,13 +166,12 @@ pub mod asset_registry {
 }
 
 pub mod xcm {
-	use crate::{xcm_fees::default_per_second, Balance, CustomMetadata};
 	use cfg_types::CurrencyId;
 	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::traits::ConstU32;
-	use sp_runtime::WeakBoundedVec;
-	use xcm::latest::Junction::GeneralKey;
-	use xcm::latest::MultiLocation;
+	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
+	use xcm::latest::{Junction::GeneralKey, MultiLocation};
+
+	use crate::{xcm_fees::default_per_second, Balance, CustomMetadata};
 
 	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
 	/// the asset registry that were not already handled by native Trader rules.

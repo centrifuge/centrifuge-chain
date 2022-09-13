@@ -39,7 +39,7 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.26" }
 
 # Local crates
-cfg-primitives = { path = "../../libs/primitives", default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = true }
 cfg-types = { path = "../../libs/types", default-features = true}
 
 [features]

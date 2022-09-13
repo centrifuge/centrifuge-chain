@@ -1,6 +1,6 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Common types for Centrifuge runtime'
+description = 'Primitive types for Centrifuge'
 edition = '2021'
 license = "LGPL-3.0"
 name = 'cfg-primitives'

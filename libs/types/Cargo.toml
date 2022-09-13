@@ -19,9 +19,13 @@ serde = { version = "1.0.119" }
 # substrate dependencies
 sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
+orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
 
 # local dependencies
 cfg-traits = { path = '../traits', default-features = false }
@@ -32,14 +36,19 @@ frame-support = { git = "https://github.com/paritytech/substrate",  default-feat
 
 [features]
 default = ['std']
-runtime-benchmarks = []
+runtime-benchmarks = [
+    'frame-support/runtime-benchmarks',
+    'frame-system/runtime-benchmarks'
+]
 std = [
     'codec/std',
     'sp-std/std',
     'frame-support/std',
     'cfg-traits/std',
     'sp-runtime/std',
-    'cfg-primitives/std'
+    'cfg-primitives/std',
+    'frame-system/std',
+    'sp-runtime/std'
 ]
 
 

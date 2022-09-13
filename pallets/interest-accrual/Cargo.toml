@@ -27,6 +27,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-fe
 
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
 
 [dev-dependencies]
 bitflags = "1.3"

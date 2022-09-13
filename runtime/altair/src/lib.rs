@@ -54,6 +54,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
+use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -1038,6 +1039,12 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 0;
 }
@@ -1050,6 +1057,7 @@ type PoolCreateOrigin = EnsureRoot<AccountId>;
 type PoolCreateOrigin = EnsureSigned<AccountId>;
 
 impl pallet_pools::Config for Runtime {
+	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
@@ -1062,12 +1070,15 @@ impl pallet_pools::Config for Runtime {
 	type InterestRate = Rate;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
+	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolCurrency = PoolCurrency;
@@ -1108,7 +1119,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 
 	fn released(
 		pool: &Self::PoolDetails,

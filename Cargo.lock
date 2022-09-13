@@ -1118,8 +1118,10 @@ dependencies = [
 name = "cfg-traits"
 version = "0.1.0"
 dependencies = [
+ "cfg-primitives",
  "frame-support",
  "impl-trait-for-tuples",
+ "orml-asset-registry",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -1135,12 +1137,16 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "frame-support",
+ "frame-system",
+ "orml-asset-registry",
  "parity-scale-codec",
+ "polkadot-parachain",
  "scale-info",
  "serde",
  "sp-arithmetic",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -6074,6 +6080,7 @@ name = "pallet-interest-accrual"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -6144,6 +6151,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -6152,6 +6160,7 @@ dependencies = [
  "pallet-pools",
  "pallet-timestamp",
  "pallet-uniques",
+ "parachain-info",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6160,6 +6169,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -6355,13 +6365,16 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-permissions",
  "pallet-restricted-tokens",
  "pallet-timestamp",
+ "parachain-info",
  "parity-scale-codec",
+ "polkadot-parachain",
  "rand 0.8.5",
  "rev_slice",
  "scale-info",
@@ -6371,6 +6384,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -6437,6 +6451,7 @@ dependencies = [
 name = "pallet-restricted-tokens"
 version = "0.1.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -6447,7 +6462,6 @@ dependencies = [
  "pallet-balances",
  "pallet-permissions",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-io",
@@ -8912,6 +8926,7 @@ dependencies = [
  "sc-consensus-uncles",
  "sc-executor",
  "sc-service",
+ "serde",
  "sp-authorship",
  "sp-consensus-aura",
  "sp-consensus-babe",

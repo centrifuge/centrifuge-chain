@@ -18,6 +18,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
@@ -34,7 +35,8 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
 
-pub type Moment = u64;
+//#[cfg(test)]
+pub mod mocks;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///

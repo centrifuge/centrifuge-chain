@@ -11,9 +11,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::{AccountId, TREASURY_FEE_RATIO};
+use frame_support::traits::{Currency, OnUnbalanced};
 use mock::*;
+use sp_runtime::Perbill;
 
-use super::*;
+use super::fees::*;
+
+mod mock;
 
 const TEST_ACCOUNT: AccountId = AccountId::new([1; 32]);
 

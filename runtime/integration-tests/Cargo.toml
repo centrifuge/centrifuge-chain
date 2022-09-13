@@ -16,6 +16,7 @@ tracing-subscriber = "0.2"
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 lazy_static = "1.4.0"
 rand = "0.8.5"
+serde = { version = "1.0.102" }
 
 # Substrate
 ## Substrate-Frame
@@ -32,13 +33,13 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate", default-feat
 ## Substrate-Primitives
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-consensus-slots = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 ## Substrate-Client
 sc-service = { git = "https://github.com/paritytech/substrate", features = ["rocksdb", "test-helpers"], branch = "polkadot-v0.9.26" }
@@ -84,7 +85,7 @@ centrifuge-runtime = { path = "../centrifuge" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
 pallet-pools = { path = "../../pallets/pools" }

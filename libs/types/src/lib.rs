@@ -63,9 +63,6 @@ pub struct PoolLocator<PoolId> {
 	pub pool_id: PoolId,
 }
 
-// Type that indicates a point in time
-pub use cfg_traits::Moment;
-
 pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),
@@ -156,6 +153,7 @@ impl Default for FeeKey {
 	}
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
 	Clone,
 	Copy,

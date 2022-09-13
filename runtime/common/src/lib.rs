@@ -18,10 +18,6 @@
 #[cfg(test)]
 mod tests;
 
-pub use asset_registry::*;
-pub use fees::*;
-pub use xcm_fees::*;
-
 pub mod apis;
 
 pub mod xcm_fees {

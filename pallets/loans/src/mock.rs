@@ -21,8 +21,8 @@ use cfg_primitives::{
 };
 use cfg_traits::PoolUpdateGuard;
 use cfg_types::{
-	CurrencyId, PermissionRoles, PermissionScope, PoolLocator, Rate, Role, TimeProvider,
-	TrancheToken,
+	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolLocator, Rate, Role,
+	TimeProvider, TrancheToken,
 };
 use frame_support::{
 	parameter_types,
@@ -30,7 +30,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
-use orml_traits::parameter_type_with_key;
+use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -60,7 +60,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
-		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>}
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>},
 	}
 );
 
@@ -169,10 +169,26 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
 
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenNameLength: u32 = 128;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxTokenSymbolLength: u32 = 128;
+
 	pub const ZeroDeposit: Balance = 0;
+
+	pub const ParachainId: u32 = 2008;
+}
+
+cfg_traits::mocks::orml_asset_registry::impl_mock! {
+	RegistryMock,
+	CurrencyId,
+	Balance,
+	CustomMetadata
 }
 
 impl pallet_pools::Config for MockRuntime {
+	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
@@ -185,12 +201,15 @@ impl pallet_pools::Config for MockRuntime {
 	type InterestRate = Rate;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
+	type ParachainId = ParachainId;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = Everything;
@@ -218,7 +237,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type ScheduledUpdateDetails =
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
 
 	fn released(
 		_pool: &Self::PoolDetails,
@@ -403,8 +423,22 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		let mut externalities = TestExternalities::new(storage);
-		externalities.execute_with(|| System::set_block_number(1));
-		externalities
+		orml_asset_registry_mock::GenesisConfig {
+			metadata: vec![(
+				CurrencyId::AUSD,
+				AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN".as_bytes().to_vec(),
+					symbol: "MOCK".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			)],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		storage.into()
 	}
 }

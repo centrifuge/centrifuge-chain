@@ -19,11 +19,12 @@
 #[cfg(feature = "std")]
 use std::fmt::Debug;
 
+use cfg_primitives::Moment;
 use cfg_traits::{
 	InterestAccrual as InterestAccrualT, Permissions as PermissionsT, PoolInspect,
 	PoolNAV as TPoolNav, PoolReserve,
 };
-pub use cfg_types::{Adjustment, Moment, PermissionScope, PoolRole, Role};
+pub use cfg_types::{Adjustment, PermissionScope, PoolRole, Role};
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult,

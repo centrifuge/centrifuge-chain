@@ -11,8 +11,9 @@
 // GNU General Public License for more details.
 
 //! Utilitites around populating a genesis storage
-use cfg_types::CurrencyId;
+use cfg_types::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;
+use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};
 
 use crate::pools::utils::{
@@ -78,4 +79,71 @@ where
 {
 	default_native_balances::<Runtime>(storage);
 	default_ausd_balances::<Runtime>(storage);
+}
+
+/// Register the CurrencyID::KSM and CurrencyId::AUSD as assets
+pub fn register_default_asset<Runtime>(storage: &mut Storage)
+where
+	Runtime: orml_asset_registry::Config,
+	<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
+	<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
+	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
+{
+	let genesis = MockGenesisConfigAssetRegistry {
+		assets: vec![CurrencyId::AUSD, CurrencyId::KSM],
+	};
+
+	<MockGenesisConfigAssetRegistry as GenesisBuild<Runtime>>::assimilate_storage(
+		&genesis, storage,
+	)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+/// Register the given asset in the orml_asset_registry storage from genesis onwards
+pub fn register_asset<Runtime>(asset: CurrencyId, storage: &mut Storage)
+where
+	Runtime: orml_asset_registry::Config + Default,
+	<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
+	<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
+	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
+{
+	let genesis = MockGenesisConfigAssetRegistry {
+		assets: vec![asset],
+	};
+
+	<MockGenesisConfigAssetRegistry as GenesisBuild<Runtime>>::assimilate_storage(
+		&genesis, storage,
+	)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+#[derive(Default, Serialize, Deserialize)]
+struct MockGenesisConfigAssetRegistry {
+	pub assets: Vec<CurrencyId>,
+}
+
+impl<Runtime> GenesisBuild<Runtime> for MockGenesisConfigAssetRegistry
+where
+	Runtime: orml_asset_registry::Config,
+	<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
+	<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
+	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
+{
+	fn build(&self) {
+		let assets = self.assets.clone();
+		for asset in assets {
+			orml_asset_registry::Pallet::<Runtime>::do_register_asset(
+				orml_asset_registry::AssetMetadata {
+					decimals: 18,
+					name: b"mock_name".to_vec(),
+					symbol: b"mock_symbol".to_vec(),
+					existential_deposit: 0u128.into(),
+					location: None,
+					additional: CustomMetadata::default().into(),
+				},
+				Some(asset.clone().into()),
+			)
+			.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+		}
+	}
 }

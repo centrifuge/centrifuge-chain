@@ -68,6 +68,7 @@ use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 mod weights;
 pub mod xcm;
 
+use runtime_common::fees::{DealWithFees, WeightToFee};
 /// common types for the runtime.
 pub use runtime_common::*;
 

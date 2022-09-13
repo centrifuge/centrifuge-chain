@@ -45,6 +45,7 @@ impl cfg_traits::TrancheToken<PoolId, TrancheId, CurrencyId> for TrancheToken {
 }
 
 /// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
 	Clone,
 	Copy,

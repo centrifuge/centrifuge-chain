@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 //! Module provides all the interest and rate related calculations
-pub use cfg_types::Moment;
+use cfg_primitives::Moment;
 use sp_arithmetic::{
 	traits::{checked_pow, BaseArithmetic, One},
 	FixedPointNumber, FixedPointOperand,

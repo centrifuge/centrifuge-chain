@@ -1,0 +1,3353 @@
+mod mock {
+    //! Testing environment for Loan pallet
+    //!
+    //! The main components implemented in this mock module is a mock runtime
+    //! and some helper functions.
+    use cfg_primitives::{
+        Balance, CollectionId, ItemId, Moment, PoolId, TrancheId, TrancheWeight,
+        CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
+    };
+    use cfg_traits::PoolUpdateGuard;
+    use cfg_types::{
+        CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolLocator, Rate, Role,
+        TimeProvider, TrancheToken,
+    };
+    use frame_support::{
+        parameter_types,
+        traits::{AsEnsureOriginWithArg, Everything, GenesisBuild, SortedMembers},
+        PalletId,
+    };
+    use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
+    use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+    use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
+    use sp_core::H256;
+    use sp_io::TestExternalities;
+    use sp_runtime::{
+        testing::Header,
+        traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+    };
+    use crate as pallet_loans;
+    use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
+    type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
+    type Block = frame_system::mocking::MockBlock<MockRuntime>;
+    #[doc(hidden)]
+    mod sp_api_hidden_includes_construct_runtime {
+        pub extern crate frame_support as hidden_include;
+    }
+    const _: () = {
+        #[allow(unused)]
+        type __hidden_use_of_unchecked_extrinsic = UncheckedExtrinsic;
+    };
+    pub struct MockRuntime;
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::clone::Clone for MockRuntime {
+        #[inline]
+        fn clone(&self) -> MockRuntime {
+            {
+                *self
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::marker::Copy for MockRuntime {}
+    impl ::core::marker::StructuralPartialEq for MockRuntime {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::PartialEq for MockRuntime {
+        #[inline]
+        fn eq(&self, other: &MockRuntime) -> bool {
+            match *other {
+                MockRuntime => match *self {
+                    MockRuntime => true,
+                },
+            }
+        }
+    }
+    impl ::core::marker::StructuralEq for MockRuntime {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::Eq for MockRuntime {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {}
+        }
+    }
+    impl core::fmt::Debug for MockRuntime {
+        fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+            fmt.debug_tuple("MockRuntime").finish()
+        }
+    }
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for MockRuntime {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                ::scale_info::Type::builder()
+                    .path(::scale_info::Path::new("MockRuntime", "pallet_loans::mock"))
+                    .type_params(::alloc::vec::Vec::new())
+                    .docs(&[])
+                    .composite(::scale_info::build::Fields::unit())
+            }
+        };
+    };
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: traits :: GetNodeBlockType for MockRuntime { type NodeBlock = Block ; }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: traits :: GetRuntimeBlockType for MockRuntime { type RuntimeBlock = Block ; }
+    #[allow(non_camel_case_types)]
+    pub enum Event {
+        #[codec(index = 0u8)]
+        System(frame_system::Event<MockRuntime>),
+        #[codec(index = 1u8)]
+        Balances(pallet_balances::Event<MockRuntime>),
+        #[codec(index = 2u8)]
+        Pools(pallet_pools::Event<MockRuntime>),
+        #[codec(index = 3u8)]
+        Loans(pallet_loans::Event<MockRuntime>),
+        #[codec(index = 5u8)]
+        Tokens(orml_tokens::Event<MockRuntime>),
+        #[codec(index = 6u8)]
+        Uniques(pallet_uniques::Event<MockRuntime>),
+        #[codec(index = 7u8)]
+        Permissions(pallet_permissions::Event<MockRuntime>),
+        #[codec(index = 8u8)]
+        InterestAccrual(pallet_interest_accrual::Event<MockRuntime>),
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    #[allow(non_camel_case_types)]
+    impl ::core::clone::Clone for Event {
+        #[inline]
+        fn clone(&self) -> Event {
+            match (&*self,) {
+                (&Event::System(ref __self_0),) => {
+                    Event::System(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Event::Balances(ref __self_0),) => {
+                    Event::Balances(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Event::Pools(ref __self_0),) => {
+                    Event::Pools(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Event::Loans(ref __self_0),) => {
+                    Event::Loans(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Event::Tokens(ref __self_0),) => {
+                    Event::Tokens(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Event::Uniques(ref __self_0),) => {
+                    Event::Uniques(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Event::Permissions(ref __self_0),) => {
+                    Event::Permissions(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Event::InterestAccrual(ref __self_0),) => {
+                    Event::InterestAccrual(::core::clone::Clone::clone(&(*__self_0)))
+                }
+            }
+        }
+    }
+    #[allow(non_camel_case_types)]
+    impl ::core::marker::StructuralPartialEq for Event {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    #[allow(non_camel_case_types)]
+    impl ::core::cmp::PartialEq for Event {
+        #[inline]
+        fn eq(&self, other: &Event) -> bool {
+            {
+                let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+                let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+                if true && __self_vi == __arg_1_vi {
+                    match (&*self, &*other) {
+                        (&Event::System(ref __self_0), &Event::System(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Event::Balances(ref __self_0), &Event::Balances(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Event::Pools(ref __self_0), &Event::Pools(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Event::Loans(ref __self_0), &Event::Loans(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Event::Tokens(ref __self_0), &Event::Tokens(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Event::Uniques(ref __self_0), &Event::Uniques(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Event::Permissions(ref __self_0), &Event::Permissions(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (
+                            &Event::InterestAccrual(ref __self_0),
+                            &Event::InterestAccrual(ref __arg_1_0),
+                        ) => (*__self_0) == (*__arg_1_0),
+                        _ => unsafe { ::core::intrinsics::unreachable() },
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+        #[inline]
+        fn ne(&self, other: &Event) -> bool {
+            {
+                let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+                let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+                if true && __self_vi == __arg_1_vi {
+                    match (&*self, &*other) {
+                        (&Event::System(ref __self_0), &Event::System(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Event::Balances(ref __self_0), &Event::Balances(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Event::Pools(ref __self_0), &Event::Pools(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Event::Loans(ref __self_0), &Event::Loans(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Event::Tokens(ref __self_0), &Event::Tokens(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Event::Uniques(ref __self_0), &Event::Uniques(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Event::Permissions(ref __self_0), &Event::Permissions(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (
+                            &Event::InterestAccrual(ref __self_0),
+                            &Event::InterestAccrual(ref __arg_1_0),
+                        ) => (*__self_0) != (*__arg_1_0),
+                        _ => unsafe { ::core::intrinsics::unreachable() },
+                    }
+                } else {
+                    true
+                }
+            }
+        }
+    }
+    #[allow(non_camel_case_types)]
+    impl ::core::marker::StructuralEq for Event {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    #[allow(non_camel_case_types)]
+    impl ::core::cmp::Eq for Event {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {
+                let _: ::core::cmp::AssertParamIsEq<frame_system::Event<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<pallet_balances::Event<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<pallet_pools::Event<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<pallet_loans::Event<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<orml_tokens::Event<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<pallet_uniques::Event<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<pallet_permissions::Event<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<pallet_interest_accrual::Event<MockRuntime>>;
+            }
+        }
+    }
+    #[allow(deprecated)]
+    const _: () = {
+        #[allow(non_camel_case_types)]
+        #[automatically_derived]
+        impl ::codec::Encode for Event {
+            fn encode_to<__CodecOutputEdqy: ::codec::Output + ?::core::marker::Sized>(
+                &self,
+                __codec_dest_edqy: &mut __CodecOutputEdqy,
+            ) {
+                match *self {
+                    Event::System(ref aa) => {
+                        __codec_dest_edqy.push_byte(0u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Event::Balances(ref aa) => {
+                        __codec_dest_edqy.push_byte(1u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Event::Pools(ref aa) => {
+                        __codec_dest_edqy.push_byte(2u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Event::Loans(ref aa) => {
+                        __codec_dest_edqy.push_byte(3u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Event::Tokens(ref aa) => {
+                        __codec_dest_edqy.push_byte(5u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Event::Uniques(ref aa) => {
+                        __codec_dest_edqy.push_byte(6u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Event::Permissions(ref aa) => {
+                        __codec_dest_edqy.push_byte(7u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Event::InterestAccrual(ref aa) => {
+                        __codec_dest_edqy.push_byte(8u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        #[automatically_derived]
+        impl ::codec::EncodeLike for Event {}
+    };
+    #[allow(deprecated)]
+    const _: () = {
+        #[allow(non_camel_case_types)]
+        #[automatically_derived]
+        impl ::codec::Decode for Event {
+            fn decode<__CodecInputEdqy: ::codec::Input>(
+                __codec_input_edqy: &mut __CodecInputEdqy,
+            ) -> ::core::result::Result<Self, ::codec::Error> {
+                match __codec_input_edqy
+                    .read_byte()
+                    .map_err(|e| e.chain("Could not decode `Event`, failed to read variant byte"))?
+                {
+                    __codec_x_edqy if __codec_x_edqy == 0u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::System({
+                            let __codec_res_edqy =
+                                <frame_system::Event<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::System.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 1u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::Balances({
+                            let __codec_res_edqy =
+                                <pallet_balances::Event<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::Balances.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 2u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::Pools({
+                            let __codec_res_edqy =
+                                <pallet_pools::Event<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::Pools.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 3u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::Loans({
+                            let __codec_res_edqy =
+                                <pallet_loans::Event<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::Loans.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 5u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::Tokens({
+                            let __codec_res_edqy =
+                                <orml_tokens::Event<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::Tokens.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 6u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::Uniques({
+                            let __codec_res_edqy =
+                                <pallet_uniques::Event<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::Uniques.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 7u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::Permissions({
+                            let __codec_res_edqy =
+                                <pallet_permissions::Event<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::Permissions.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 8u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Event::InterestAccrual({
+                            let __codec_res_edqy = < pallet_interest_accrual :: Event < MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Event::InterestAccrual.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    _ => ::core::result::Result::Err(<_ as ::core::convert::Into<_>>::into(
+                        "Could not decode `Event`, variant doesn't exist",
+                    )),
+                }
+            }
+        }
+    };
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for Event {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                ::scale_info::Type::builder()
+                    .path(::scale_info::Path::new("Event", "pallet_loans::mock"))
+                    .type_params(::alloc::vec::Vec::new())
+                    .docs(&[])
+                    .variant(
+                        ::scale_info::build::Variants::new()
+                            .variant("System", |v| {
+                                v.index(0u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<frame_system::Event<MockRuntime>>()
+                                            .type_name("frame_system::Event<MockRuntime>")
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            })
+                            .variant("Balances", |v| {
+                                v.index(1u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<pallet_balances::Event<MockRuntime>>()
+                                            .type_name("pallet_balances::Event<MockRuntime>")
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            })
+                            .variant("Pools", |v| {
+                                v.index(2u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<pallet_pools::Event<MockRuntime>>()
+                                            .type_name("pallet_pools::Event<MockRuntime>")
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            })
+                            .variant("Loans", |v| {
+                                v.index(3u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<pallet_loans::Event<MockRuntime>>()
+                                            .type_name("pallet_loans::Event<MockRuntime>")
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            })
+                            .variant("Tokens", |v| {
+                                v.index(5u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<orml_tokens::Event<MockRuntime>>()
+                                            .type_name("orml_tokens::Event<MockRuntime>")
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            })
+                            .variant("Uniques", |v| {
+                                v.index(6u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<pallet_uniques::Event<MockRuntime>>()
+                                            .type_name("pallet_uniques::Event<MockRuntime>")
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            })
+                            .variant("Permissions", |v| {
+                                v.index(7u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<pallet_permissions::Event<MockRuntime>>()
+                                            .type_name("pallet_permissions::Event<MockRuntime>")
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            })
+                            .variant("InterestAccrual", |v| {
+                                v.index(8u8 as ::core::primitive::u8)
+                                    .fields(::scale_info::build::Fields::unnamed().field(|f| {
+                                        f.ty::<pallet_interest_accrual::Event<MockRuntime>>()
+                                            .type_name(
+                                                "pallet_interest_accrual::Event<MockRuntime>",
+                                            )
+                                            .docs(&[])
+                                    }))
+                                    .docs(&[])
+                            }),
+                    )
+            }
+        };
+    };
+    impl core::fmt::Debug for Event {
+        fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+            match self {
+                Self::System(ref a0) => fmt.debug_tuple("Event::System").field(a0).finish(),
+                Self::Balances(ref a0) => fmt.debug_tuple("Event::Balances").field(a0).finish(),
+                Self::Pools(ref a0) => fmt.debug_tuple("Event::Pools").field(a0).finish(),
+                Self::Loans(ref a0) => fmt.debug_tuple("Event::Loans").field(a0).finish(),
+                Self::Tokens(ref a0) => fmt.debug_tuple("Event::Tokens").field(a0).finish(),
+                Self::Uniques(ref a0) => fmt.debug_tuple("Event::Uniques").field(a0).finish(),
+                Self::Permissions(ref a0) => {
+                    fmt.debug_tuple("Event::Permissions").field(a0).finish()
+                }
+                Self::InterestAccrual(ref a0) => {
+                    fmt.debug_tuple("Event::InterestAccrual").field(a0).finish()
+                }
+                _ => Ok(()),
+            }
+        }
+    }
+    impl From<frame_system::Event<MockRuntime>> for Event {
+        fn from(x: frame_system::Event<MockRuntime>) -> Self {
+            Event::System(x)
+        }
+    }
+    impl TryInto<frame_system::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < frame_system :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::System(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    impl From<pallet_balances::Event<MockRuntime>> for Event {
+        fn from(x: pallet_balances::Event<MockRuntime>) -> Self {
+            Event::Balances(x)
+        }
+    }
+    impl TryInto<pallet_balances::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < pallet_balances :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::Balances(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    impl From<pallet_pools::Event<MockRuntime>> for Event {
+        fn from(x: pallet_pools::Event<MockRuntime>) -> Self {
+            Event::Pools(x)
+        }
+    }
+    impl TryInto<pallet_pools::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < pallet_pools :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::Pools(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    impl From<pallet_loans::Event<MockRuntime>> for Event {
+        fn from(x: pallet_loans::Event<MockRuntime>) -> Self {
+            Event::Loans(x)
+        }
+    }
+    impl TryInto<pallet_loans::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < pallet_loans :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::Loans(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    impl From<orml_tokens::Event<MockRuntime>> for Event {
+        fn from(x: orml_tokens::Event<MockRuntime>) -> Self {
+            Event::Tokens(x)
+        }
+    }
+    impl TryInto<orml_tokens::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < orml_tokens :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::Tokens(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    impl From<pallet_uniques::Event<MockRuntime>> for Event {
+        fn from(x: pallet_uniques::Event<MockRuntime>) -> Self {
+            Event::Uniques(x)
+        }
+    }
+    impl TryInto<pallet_uniques::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < pallet_uniques :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::Uniques(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    impl From<pallet_permissions::Event<MockRuntime>> for Event {
+        fn from(x: pallet_permissions::Event<MockRuntime>) -> Self {
+            Event::Permissions(x)
+        }
+    }
+    impl TryInto<pallet_permissions::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < pallet_permissions :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::Permissions(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    impl From<pallet_interest_accrual::Event<MockRuntime>> for Event {
+        fn from(x: pallet_interest_accrual::Event<MockRuntime>) -> Self {
+            Event::InterestAccrual(x)
+        }
+    }
+    impl TryInto<pallet_interest_accrual::Event<MockRuntime>> for Event {
+        type Error = ();        fn try_into (self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < pallet_interest_accrual :: Event < MockRuntime > , Self :: Error >{
+            match self {
+                Self::InterestAccrual(evt) => Ok(evt),
+                _ => Err(()),
+            }
+        }
+    }
+    /// The runtime origin type representing the origin of a call.
+    ///
+    /// Origin is always created with the base filter configured in [`frame_system::Config::BaseCallFilter`].
+    pub struct Origin {
+        caller: OriginCaller,
+        filter: self::sp_api_hidden_includes_construct_runtime::hidden_include::sp_std::rc::Rc<
+            Box<dyn Fn(&<MockRuntime as frame_system::Config>::Call) -> bool>,
+        >,
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::clone::Clone for Origin {
+        #[inline]
+        fn clone(&self) -> Origin {
+            match *self {
+                Origin {
+                    caller: ref __self_0_0,
+                    filter: ref __self_0_1,
+                } => Origin {
+                    caller: ::core::clone::Clone::clone(&(*__self_0_0)),
+                    filter: ::core::clone::Clone::clone(&(*__self_0_1)),
+                },
+            }
+        }
+    }
+    #[cfg(feature = "std")]
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::sp_std::fmt::Debug for Origin {
+        fn fmt (& self , fmt : & mut self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: fmt :: Formatter) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < () , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: fmt :: Error >{
+            fmt.debug_struct("Origin")
+                .field("caller", &self.caller)
+                .field("filter", &"[function ptr]")
+                .finish()
+        }
+    }
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::traits::OriginTrait
+        for Origin
+    {
+        type Call = <MockRuntime as frame_system::Config>::Call;
+        type PalletsOrigin = OriginCaller;
+        type AccountId = <MockRuntime as frame_system::Config>::AccountId;
+        fn add_filter(&mut self, filter: impl Fn(&Self::Call) -> bool + 'static) {
+            let f = self.filter.clone();
+            self.filter =
+                self::sp_api_hidden_includes_construct_runtime::hidden_include::sp_std::rc::Rc::new(
+                    Box::new(move |call| f(call) && filter(call)),
+                );
+        }
+        fn reset_filter(&mut self) {
+            let filter = < < MockRuntime as frame_system :: Config > :: BaseCallFilter as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: Contains < < MockRuntime as frame_system :: Config > :: Call > > :: contains ;
+            self.filter =
+                self::sp_api_hidden_includes_construct_runtime::hidden_include::sp_std::rc::Rc::new(
+                    Box::new(filter),
+                );
+        }
+        fn set_caller_from(&mut self, other: impl Into<Self>) {
+            self.caller = other.into().caller;
+        }
+        fn filter_call(&self, call: &Self::Call) -> bool {
+            match self.caller {
+                OriginCaller::system(frame_system::Origin::<MockRuntime>::Root) => true,
+                _ => (self.filter)(call),
+            }
+        }
+        fn caller(&self) -> &Self::PalletsOrigin {
+            &self.caller
+        }
+        fn try_with_caller<R>(
+            mut self,
+            f: impl FnOnce(Self::PalletsOrigin) -> Result<R, Self::PalletsOrigin>,
+        ) -> Result<R, Self> {
+            match f(self.caller) {
+                Ok(r) => Ok(r),
+                Err(caller) => {
+                    self.caller = caller;
+                    Err(self)
+                }
+            }
+        }
+        fn none() -> Self {
+            frame_system::RawOrigin::None.into()
+        }
+        fn root() -> Self {
+            frame_system::RawOrigin::Root.into()
+        }
+        fn signed(by: Self::AccountId) -> Self {
+            frame_system::RawOrigin::Signed(by).into()
+        }
+        fn as_signed(self) -> Option<Self::AccountId> {
+            match self.caller {
+                OriginCaller::system(frame_system::RawOrigin::Signed(by)) => Some(by),
+                _ => None,
+            }
+        }
+    }
+    #[allow(non_camel_case_types)]
+    pub enum OriginCaller {
+        #[codec(index = 0u8)]
+        system(frame_system::Origin<MockRuntime>),
+        #[allow(dead_code)]
+        Void(self::sp_api_hidden_includes_construct_runtime::hidden_include::Void),
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    #[allow(non_camel_case_types)]
+    impl ::core::clone::Clone for OriginCaller {
+        #[inline]
+        fn clone(&self) -> OriginCaller {
+            match (&*self,) {
+                (&OriginCaller::system(ref __self_0),) => {
+                    OriginCaller::system(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&OriginCaller::Void(ref __self_0),) => {
+                    OriginCaller::Void(::core::clone::Clone::clone(&(*__self_0)))
+                }
+            }
+        }
+    }
+    #[allow(non_camel_case_types)]
+    impl ::core::marker::StructuralPartialEq for OriginCaller {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    #[allow(non_camel_case_types)]
+    impl ::core::cmp::PartialEq for OriginCaller {
+        #[inline]
+        fn eq(&self, other: &OriginCaller) -> bool {
+            {
+                let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+                let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+                if true && __self_vi == __arg_1_vi {
+                    match (&*self, &*other) {
+                        (
+                            &OriginCaller::system(ref __self_0),
+                            &OriginCaller::system(ref __arg_1_0),
+                        ) => (*__self_0) == (*__arg_1_0),
+                        (&OriginCaller::Void(ref __self_0), &OriginCaller::Void(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        _ => unsafe { ::core::intrinsics::unreachable() },
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+        #[inline]
+        fn ne(&self, other: &OriginCaller) -> bool {
+            {
+                let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+                let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+                if true && __self_vi == __arg_1_vi {
+                    match (&*self, &*other) {
+                        (
+                            &OriginCaller::system(ref __self_0),
+                            &OriginCaller::system(ref __arg_1_0),
+                        ) => (*__self_0) != (*__arg_1_0),
+                        (&OriginCaller::Void(ref __self_0), &OriginCaller::Void(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        _ => unsafe { ::core::intrinsics::unreachable() },
+                    }
+                } else {
+                    true
+                }
+            }
+        }
+    }
+    #[allow(non_camel_case_types)]
+    impl ::core::marker::StructuralEq for OriginCaller {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    #[allow(non_camel_case_types)]
+    impl ::core::cmp::Eq for OriginCaller {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {
+                let _: ::core::cmp::AssertParamIsEq<frame_system::Origin<MockRuntime>>;
+                let _: ::core::cmp::AssertParamIsEq<
+                    self::sp_api_hidden_includes_construct_runtime::hidden_include::Void,
+                >;
+            }
+        }
+    }
+    impl core::fmt::Debug for OriginCaller {
+        fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+            match self {
+                Self::system(ref a0) => fmt.debug_tuple("OriginCaller::system").field(a0).finish(),
+                Self::Void(ref a0) => fmt.debug_tuple("OriginCaller::Void").field(a0).finish(),
+                _ => Ok(()),
+            }
+        }
+    }
+    #[allow(deprecated)]
+    const _: () = {
+        #[allow(non_camel_case_types)]
+        #[automatically_derived]
+        impl ::codec::Encode for OriginCaller {
+            fn encode_to<__CodecOutputEdqy: ::codec::Output + ?::core::marker::Sized>(
+                &self,
+                __codec_dest_edqy: &mut __CodecOutputEdqy,
+            ) {
+                match *self {
+                    OriginCaller::system(ref aa) => {
+                        __codec_dest_edqy.push_byte(0u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    OriginCaller::Void(ref aa) => {
+                        __codec_dest_edqy.push_byte(1usize as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        #[automatically_derived]
+        impl ::codec::EncodeLike for OriginCaller {}
+    };
+    #[allow(deprecated)]
+    const _: () = {
+        #[allow(non_camel_case_types)]
+        #[automatically_derived]
+        impl ::codec::Decode for OriginCaller {
+            fn decode<__CodecInputEdqy: ::codec::Input>(
+                __codec_input_edqy: &mut __CodecInputEdqy,
+            ) -> ::core::result::Result<Self, ::codec::Error> {
+                match __codec_input_edqy.read_byte().map_err(|e| {
+                    e.chain("Could not decode `OriginCaller`, failed to read variant byte")
+                })? {
+                    __codec_x_edqy if __codec_x_edqy == 0u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(OriginCaller::system({
+                            let __codec_res_edqy =
+                                <frame_system::Origin<MockRuntime> as ::codec::Decode>::decode(
+                                    __codec_input_edqy,
+                                );
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `OriginCaller::system.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 1usize as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(OriginCaller::Void({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: Void as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `OriginCaller::Void.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    _ => ::core::result::Result::Err(<_ as ::core::convert::Into<_>>::into(
+                        "Could not decode `OriginCaller`, variant doesn't exist",
+                    )),
+                }
+            }
+        }
+    };
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for OriginCaller {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                :: scale_info :: Type :: builder () . path (:: scale_info :: Path :: new ("OriginCaller" , "pallet_loans::mock")) . type_params (:: alloc :: vec :: Vec :: new ()) . docs (& []) . variant (:: scale_info :: build :: Variants :: new () . variant ("system" , | v | v . index (0u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < frame_system :: Origin < MockRuntime > > () . type_name ("frame_system::Origin<MockRuntime>") . docs (& []))) . docs (& [])) . variant ("Void" , | v | v . index (1usize as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: Void > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::Void") . docs (& []))) . docs (& [])))
+            }
+        };
+    };
+    const _: () = {
+        impl ::codec::MaxEncodedLen for OriginCaller {
+            fn max_encoded_len() -> ::core::primitive::usize {
+                0_usize . max (0_usize . saturating_add (< frame_system :: Origin < MockRuntime > > :: max_encoded_len ())) . max (0_usize . saturating_add (< self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: Void > :: max_encoded_len ())) . saturating_add (1)
+            }
+        }
+    };
+    #[allow(dead_code)]
+    impl Origin {
+        /// Create with system none origin and [`frame_system::Config::BaseCallFilter`].
+        pub fn none() -> Self {
+            < Origin as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: OriginTrait > :: none ()
+        }
+        /// Create with system root origin and [`frame_system::Config::BaseCallFilter`].
+        pub fn root() -> Self {
+            < Origin as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: OriginTrait > :: root ()
+        }
+        /// Create with system signed origin and [`frame_system::Config::BaseCallFilter`].
+        pub fn signed(by: <MockRuntime as frame_system::Config>::AccountId) -> Self {
+            < Origin as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: OriginTrait > :: signed (by)
+        }
+    }
+    impl From<frame_system::Origin<MockRuntime>> for OriginCaller {
+        fn from(x: frame_system::Origin<MockRuntime>) -> Self {
+            OriginCaller::system(x)
+        }
+    }
+    impl TryFrom<OriginCaller> for frame_system::Origin<MockRuntime> {
+        type Error = OriginCaller;        fn try_from (x : OriginCaller) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result < frame_system :: Origin < MockRuntime > , OriginCaller >{
+            if let OriginCaller::system(l) = x {
+                Ok(l)
+            } else {
+                Err(x)
+            }
+        }
+    }
+    impl From<frame_system::Origin<MockRuntime>> for Origin {
+        /// Convert to runtime origin, using as filter: [`frame_system::Config::BaseCallFilter`].
+        fn from(x: frame_system::Origin<MockRuntime>) -> Self {
+            let o: OriginCaller = x.into();
+            o.into()
+        }
+    }
+    impl From<OriginCaller> for Origin {
+        fn from(x: OriginCaller) -> Self {
+            let mut o = Origin { caller : x , filter : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: rc :: Rc :: new (Box :: new (| _ | true)) , } ;
+            self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: OriginTrait :: reset_filter (& mut o) ;
+            o
+        }
+    }
+    impl From<Origin>
+        for self::sp_api_hidden_includes_construct_runtime::hidden_include::sp_std::result::Result<
+            frame_system::Origin<MockRuntime>,
+            Origin,
+        >
+    {
+        /// NOTE: converting to pallet origin loses the origin filter information.
+        fn from(val: Origin) -> Self {
+            if let OriginCaller::system(l) = val.caller {
+                Ok(l)
+            } else {
+                Err(val)
+            }
+        }
+    }
+    impl From<Option<<MockRuntime as frame_system::Config>::AccountId>> for Origin {
+        /// Convert to runtime origin with caller being system signed or none and use filter [`frame_system::Config::BaseCallFilter`].
+        fn from(x: Option<<MockRuntime as frame_system::Config>::AccountId>) -> Self {
+            <frame_system::Origin<MockRuntime>>::from(x).into()
+        }
+    }
+    pub type System = frame_system::Pallet<MockRuntime>;
+    pub type Balances = pallet_balances::Pallet<MockRuntime>;
+    pub type Pools = pallet_pools::Pallet<MockRuntime>;
+    pub type Loans = pallet_loans::Pallet<MockRuntime>;
+    pub type Timestamp = pallet_timestamp::Pallet<MockRuntime>;
+    pub type Tokens = orml_tokens::Pallet<MockRuntime>;
+    pub type Uniques = pallet_uniques::Pallet<MockRuntime>;
+    pub type Permissions = pallet_permissions::Pallet<MockRuntime>;
+    pub type InterestAccrual = pallet_interest_accrual::Pallet<MockRuntime>;
+    /// All pallets included in the runtime as a nested tuple of types.
+    #[deprecated(
+        note = "The type definition has changed from representing all pallets \
+			excluding system, in reversed order to become the representation of all pallets \
+			including system pallet in regular order. For this reason it is encouraged to use \
+			explicitly one of `AllPalletsWithSystem`, `AllPalletsWithoutSystem`, \
+			`AllPalletsWithSystemReversed`, `AllPalletsWithoutSystemReversed`. \
+			Note that the type `frame_executive::Executive` expects one of `AllPalletsWithSystem` \
+			, `AllPalletsWithSystemReversed`, `AllPalletsReversedWithSystemFirst`. More details in \
+			https://github.com/paritytech/substrate/pull/10043"
+    )]
+    pub type AllPallets = AllPalletsWithSystem;
+    /// All pallets included in the runtime as a nested tuple of types.
+    pub type AllPalletsWithSystem = ((
+        System,
+        (
+            Balances,
+            (
+                Pools,
+                (
+                    Loans,
+                    (
+                        Timestamp,
+                        (Tokens, (Uniques, (Permissions, (InterestAccrual,)))),
+                    ),
+                ),
+            ),
+        ),
+    ));
+    /// All pallets included in the runtime as a nested tuple of types.
+    /// Excludes the System pallet.
+    pub type AllPalletsWithoutSystem = ((
+        Balances,
+        (
+            Pools,
+            (
+                Loans,
+                (
+                    Timestamp,
+                    (Tokens, (Uniques, (Permissions, (InterestAccrual,)))),
+                ),
+            ),
+        ),
+    ));
+    /// All pallets included in the runtime as a nested tuple of types in reversed order.
+    /// Excludes the System pallet.
+    pub type AllPalletsWithoutSystemReversed = ((
+        InterestAccrual,
+        (
+            Permissions,
+            (
+                Uniques,
+                (Tokens, (Timestamp, (Loans, (Pools, (Balances,))))),
+            ),
+        ),
+    ));
+    /// All pallets included in the runtime as a nested tuple of types in reversed order.
+    pub type AllPalletsWithSystemReversed = ((
+        InterestAccrual,
+        (
+            Permissions,
+            (
+                Uniques,
+                (Tokens, (Timestamp, (Loans, (Pools, (Balances, (System,)))))),
+            ),
+        ),
+    ));
+    /// All pallets included in the runtime as a nested tuple of types in reversed order.
+    /// With the system pallet first.
+    pub type AllPalletsReversedWithSystemFirst = (System, AllPalletsWithoutSystemReversed);
+    /// Provides an implementation of `PalletInfo` to provide information
+    /// about the pallet setup in the runtime.
+    pub struct PalletInfo;
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::traits::PalletInfo
+        for PalletInfo
+    {
+        fn index<P: 'static>() -> Option<usize> {
+            let type_id = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < P > () ;
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < System > () { return Some (0usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Balances > () { return Some (1usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Pools > () { return Some (2usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Loans > () { return Some (3usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Timestamp > () { return Some (4usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Tokens > () { return Some (5usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Uniques > () { return Some (6usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Permissions > () { return Some (7usize) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < InterestAccrual > () { return Some (8usize) }
+            None
+        }
+        fn name<P: 'static>() -> Option<&'static str> {
+            let type_id = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < P > () ;
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < System > () { return Some ("System") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Balances > () { return Some ("Balances") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Pools > () { return Some ("Pools") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Loans > () { return Some ("Loans") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Timestamp > () { return Some ("Timestamp") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Tokens > () { return Some ("Tokens") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Uniques > () { return Some ("Uniques") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Permissions > () { return Some ("Permissions") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < InterestAccrual > () { return Some ("InterestAccrual") }
+            None
+        }
+        fn module_name<P: 'static>() -> Option<&'static str> {
+            let type_id = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < P > () ;
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < System > () { return Some ("frame_system") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Balances > () { return Some ("pallet_balances") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Pools > () { return Some ("pallet_pools") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Loans > () { return Some ("pallet_loans") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Timestamp > () { return Some ("pallet_timestamp") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Tokens > () { return Some ("orml_tokens") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Uniques > () { return Some ("pallet_uniques") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Permissions > () { return Some ("pallet_permissions") }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < InterestAccrual > () { return Some ("pallet_interest_accrual") }
+            None
+        }
+        fn crate_version<P: 'static>() -> Option<
+            self::sp_api_hidden_includes_construct_runtime::hidden_include::traits::CrateVersion,
+        > {
+            let type_id = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < P > () ;
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < System > () { return Some (< frame_system :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Balances > () { return Some (< pallet_balances :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Pools > () { return Some (< pallet_pools :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Loans > () { return Some (< pallet_loans :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Timestamp > () { return Some (< pallet_timestamp :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Tokens > () { return Some (< orml_tokens :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Uniques > () { return Some (< pallet_uniques :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < Permissions > () { return Some (< pallet_permissions :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            if type_id == self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: any :: TypeId :: of :: < InterestAccrual > () { return Some (< pallet_interest_accrual :: Pallet < MockRuntime > as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: PalletInfoAccess > :: crate_version ()) }
+            None
+        }
+    }
+    pub enum Call {
+        # [codec (index = 0u8)] System (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime >) , # [codec (index = 1u8)] Balances (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime >) , # [codec (index = 2u8)] Pools (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime >) , # [codec (index = 3u8)] Loans (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime >) , # [codec (index = 4u8)] Timestamp (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime >) , # [codec (index = 6u8)] Uniques (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime >) , # [codec (index = 7u8)] Permissions (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime >) , }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::clone::Clone for Call {
+        #[inline]
+        fn clone(&self) -> Call {
+            match (&*self,) {
+                (&Call::System(ref __self_0),) => {
+                    Call::System(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Call::Balances(ref __self_0),) => {
+                    Call::Balances(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Call::Pools(ref __self_0),) => {
+                    Call::Pools(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Call::Loans(ref __self_0),) => {
+                    Call::Loans(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Call::Timestamp(ref __self_0),) => {
+                    Call::Timestamp(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Call::Uniques(ref __self_0),) => {
+                    Call::Uniques(::core::clone::Clone::clone(&(*__self_0)))
+                }
+                (&Call::Permissions(ref __self_0),) => {
+                    Call::Permissions(::core::clone::Clone::clone(&(*__self_0)))
+                }
+            }
+        }
+    }
+    impl ::core::marker::StructuralPartialEq for Call {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::PartialEq for Call {
+        #[inline]
+        fn eq(&self, other: &Call) -> bool {
+            {
+                let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+                let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+                if true && __self_vi == __arg_1_vi {
+                    match (&*self, &*other) {
+                        (&Call::System(ref __self_0), &Call::System(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Call::Balances(ref __self_0), &Call::Balances(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Call::Pools(ref __self_0), &Call::Pools(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Call::Loans(ref __self_0), &Call::Loans(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Call::Timestamp(ref __self_0), &Call::Timestamp(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Call::Uniques(ref __self_0), &Call::Uniques(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        (&Call::Permissions(ref __self_0), &Call::Permissions(ref __arg_1_0)) => {
+                            (*__self_0) == (*__arg_1_0)
+                        }
+                        _ => unsafe { ::core::intrinsics::unreachable() },
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+        #[inline]
+        fn ne(&self, other: &Call) -> bool {
+            {
+                let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+                let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+                if true && __self_vi == __arg_1_vi {
+                    match (&*self, &*other) {
+                        (&Call::System(ref __self_0), &Call::System(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Call::Balances(ref __self_0), &Call::Balances(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Call::Pools(ref __self_0), &Call::Pools(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Call::Loans(ref __self_0), &Call::Loans(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Call::Timestamp(ref __self_0), &Call::Timestamp(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Call::Uniques(ref __self_0), &Call::Uniques(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        (&Call::Permissions(ref __self_0), &Call::Permissions(ref __arg_1_0)) => {
+                            (*__self_0) != (*__arg_1_0)
+                        }
+                        _ => unsafe { ::core::intrinsics::unreachable() },
+                    }
+                } else {
+                    true
+                }
+            }
+        }
+    }
+    impl ::core::marker::StructuralEq for Call {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::Eq for Call {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {
+                let _ : :: core :: cmp :: AssertParamIsEq < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime > > ;
+                let _ : :: core :: cmp :: AssertParamIsEq < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime > > ;
+                let _ : :: core :: cmp :: AssertParamIsEq < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime > > ;
+                let _ : :: core :: cmp :: AssertParamIsEq < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime > > ;
+                let _ : :: core :: cmp :: AssertParamIsEq < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime > > ;
+                let _ : :: core :: cmp :: AssertParamIsEq < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime > > ;
+                let _ : :: core :: cmp :: AssertParamIsEq < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime > > ;
+            }
+        }
+    }
+    #[allow(deprecated)]
+    const _: () = {
+        #[automatically_derived]
+        impl ::codec::Encode for Call {
+            fn encode_to<__CodecOutputEdqy: ::codec::Output + ?::core::marker::Sized>(
+                &self,
+                __codec_dest_edqy: &mut __CodecOutputEdqy,
+            ) {
+                match *self {
+                    Call::System(ref aa) => {
+                        __codec_dest_edqy.push_byte(0u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Call::Balances(ref aa) => {
+                        __codec_dest_edqy.push_byte(1u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Call::Pools(ref aa) => {
+                        __codec_dest_edqy.push_byte(2u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Call::Loans(ref aa) => {
+                        __codec_dest_edqy.push_byte(3u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Call::Timestamp(ref aa) => {
+                        __codec_dest_edqy.push_byte(4u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Call::Uniques(ref aa) => {
+                        __codec_dest_edqy.push_byte(6u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    Call::Permissions(ref aa) => {
+                        __codec_dest_edqy.push_byte(7u8 as ::core::primitive::u8);
+                        ::codec::Encode::encode_to(aa, __codec_dest_edqy);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        #[automatically_derived]
+        impl ::codec::EncodeLike for Call {}
+    };
+    #[allow(deprecated)]
+    const _: () = {
+        #[automatically_derived]
+        impl ::codec::Decode for Call {
+            fn decode<__CodecInputEdqy: ::codec::Input>(
+                __codec_input_edqy: &mut __CodecInputEdqy,
+            ) -> ::core::result::Result<Self, ::codec::Error> {
+                match __codec_input_edqy
+                    .read_byte()
+                    .map_err(|e| e.chain("Could not decode `Call`, failed to read variant byte"))?
+                {
+                    __codec_x_edqy if __codec_x_edqy == 0u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Call::System({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Call::System.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 1u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Call::Balances({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Call::Balances.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 2u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Call::Pools({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Call::Pools.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 3u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Call::Loans({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Call::Loans.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 4u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Call::Timestamp({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Call::Timestamp.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 6u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Call::Uniques({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Call::Uniques.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    __codec_x_edqy if __codec_x_edqy == 7u8 as ::core::primitive::u8 => {
+                        ::core::result::Result::Ok(Call::Permissions({
+                            let __codec_res_edqy = < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime > as :: codec :: Decode > :: decode (__codec_input_edqy) ;
+                            match __codec_res_edqy {
+                                ::core::result::Result::Err(e) => {
+                                    return ::core::result::Result::Err(
+                                        e.chain("Could not decode `Call::Permissions.0`"),
+                                    )
+                                }
+                                ::core::result::Result::Ok(__codec_res_edqy) => __codec_res_edqy,
+                            }
+                        }))
+                    }
+                    _ => ::core::result::Result::Err(<_ as ::core::convert::Into<_>>::into(
+                        "Could not decode `Call`, variant doesn't exist",
+                    )),
+                }
+            }
+        }
+    };
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for Call {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                :: scale_info :: Type :: builder () . path (:: scale_info :: Path :: new ("Call" , "pallet_loans::mock")) . type_params (:: alloc :: vec :: Vec :: new ()) . docs (& []) . variant (:: scale_info :: build :: Variants :: new () . variant ("System" , | v | v . index (0u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime > > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<System, MockRuntime>") . docs (& []))) . docs (& [])) . variant ("Balances" , | v | v . index (1u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime > > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Balances, MockRuntime>") . docs (& []))) . docs (& [])) . variant ("Pools" , | v | v . index (2u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime > > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Pools, MockRuntime>") . docs (& []))) . docs (& [])) . variant ("Loans" , | v | v . index (3u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime > > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Loans, MockRuntime>") . docs (& []))) . docs (& [])) . variant ("Timestamp" , | v | v . index (4u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime > > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Timestamp, MockRuntime>") . docs (& []))) . docs (& [])) . variant ("Uniques" , | v | v . index (6u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime > > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Uniques, MockRuntime>") . docs (& []))) . docs (& [])) . variant ("Permissions" , | v | v . index (7u8 as :: core :: primitive :: u8) . fields (:: scale_info :: build :: Fields :: unnamed () . field (| f | f . ty :: < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime > > () . type_name ("self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<Permissions, MockRuntime>") . docs (& []))) . docs (& [])))
+            }
+        };
+    };
+    impl core::fmt::Debug for Call {
+        fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+            match self {
+                Self::System(ref a0) => fmt.debug_tuple("Call::System").field(a0).finish(),
+                Self::Balances(ref a0) => fmt.debug_tuple("Call::Balances").field(a0).finish(),
+                Self::Pools(ref a0) => fmt.debug_tuple("Call::Pools").field(a0).finish(),
+                Self::Loans(ref a0) => fmt.debug_tuple("Call::Loans").field(a0).finish(),
+                Self::Timestamp(ref a0) => fmt.debug_tuple("Call::Timestamp").field(a0).finish(),
+                Self::Uniques(ref a0) => fmt.debug_tuple("Call::Uniques").field(a0).finish(),
+                Self::Permissions(ref a0) => {
+                    fmt.debug_tuple("Call::Permissions").field(a0).finish()
+                }
+                _ => Ok(()),
+            }
+        }
+    }
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch::GetDispatchInfo
+        for Call
+    {
+        fn get_dispatch_info(
+            &self,
+        ) -> self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch::DispatchInfo
+        {
+            match self {
+                Call::System(call) => call.get_dispatch_info(),
+                Call::Balances(call) => call.get_dispatch_info(),
+                Call::Pools(call) => call.get_dispatch_info(),
+                Call::Loans(call) => call.get_dispatch_info(),
+                Call::Timestamp(call) => call.get_dispatch_info(),
+                Call::Uniques(call) => call.get_dispatch_info(),
+                Call::Permissions(call) => call.get_dispatch_info(),
+            }
+        }
+    }
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch::GetCallMetadata
+        for Call
+    {
+        fn get_call_metadata(
+            &self,
+        ) -> self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch::CallMetadata
+        {
+            use self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch::GetCallName;
+            match self {
+                Call::System(call) => {
+                    let function_name = call.get_call_name();
+                    let pallet_name = "System";
+                    self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallMetadata { function_name , pallet_name , }
+                }
+                Call::Balances(call) => {
+                    let function_name = call.get_call_name();
+                    let pallet_name = "Balances";
+                    self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallMetadata { function_name , pallet_name , }
+                }
+                Call::Pools(call) => {
+                    let function_name = call.get_call_name();
+                    let pallet_name = "Pools";
+                    self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallMetadata { function_name , pallet_name , }
+                }
+                Call::Loans(call) => {
+                    let function_name = call.get_call_name();
+                    let pallet_name = "Loans";
+                    self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallMetadata { function_name , pallet_name , }
+                }
+                Call::Timestamp(call) => {
+                    let function_name = call.get_call_name();
+                    let pallet_name = "Timestamp";
+                    self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallMetadata { function_name , pallet_name , }
+                }
+                Call::Uniques(call) => {
+                    let function_name = call.get_call_name();
+                    let pallet_name = "Uniques";
+                    self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallMetadata { function_name , pallet_name , }
+                }
+                Call::Permissions(call) => {
+                    let function_name = call.get_call_name();
+                    let pallet_name = "Permissions";
+                    self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallMetadata { function_name , pallet_name , }
+                }
+            }
+        }
+        fn get_module_names() -> &'static [&'static str] {
+            &[
+                "System",
+                "Balances",
+                "Pools",
+                "Loans",
+                "Timestamp",
+                "Uniques",
+                "Permissions",
+            ]
+        }
+        fn get_call_names(module: &str) -> &'static [&'static str] {
+            use self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch::{
+                Callable, GetCallName,
+            };
+            match module {
+                "System" => {
+                    <<System as Callable<MockRuntime>>::Call as GetCallName>::get_call_names()
+                }
+                "Balances" => {
+                    <<Balances as Callable<MockRuntime>>::Call as GetCallName>::get_call_names()
+                }
+                "Pools" => {
+                    <<Pools as Callable<MockRuntime>>::Call as GetCallName>::get_call_names()
+                }
+                "Loans" => {
+                    <<Loans as Callable<MockRuntime>>::Call as GetCallName>::get_call_names()
+                }
+                "Timestamp" => {
+                    <<Timestamp as Callable<MockRuntime>>::Call as GetCallName>::get_call_names()
+                }
+                "Uniques" => {
+                    <<Uniques as Callable<MockRuntime>>::Call as GetCallName>::get_call_names()
+                }
+                "Permissions" => {
+                    <<Permissions as Callable<MockRuntime>>::Call as GetCallName>::get_call_names()
+                }
+                _ => ::core::panicking::panic("internal error: entered unreachable code"),
+            }
+        }
+    }
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch::Dispatchable
+        for Call
+    {
+        type Origin = Origin;
+        type Config = Call;
+        type Info =
+            self::sp_api_hidden_includes_construct_runtime::hidden_include::weights::DispatchInfo;
+        type PostInfo = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: weights :: PostDispatchInfo ;        fn dispatch (self , origin : Origin) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: DispatchResultWithPostInfo{
+            if ! < Self :: Origin as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: OriginTrait > :: filter_call (& origin , & self) { return self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_std :: result :: Result :: Err (frame_system :: Error :: < MockRuntime > :: CallFiltered . into ()) ; }
+            self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (self , origin)
+        }
+    }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable for Call { type Origin = Origin ; fn dispatch_bypass_filter (self , origin : Origin) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: DispatchResultWithPostInfo { match self { Call :: System (call) => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (call , origin) , Call :: Balances (call) => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (call , origin) , Call :: Pools (call) => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (call , origin) , Call :: Loans (call) => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (call , origin) , Call :: Timestamp (call) => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (call , origin) , Call :: Uniques (call) => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (call , origin) , Call :: Permissions (call) => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (call , origin) , } } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: DispatchableWithStorageLayer for Call { type Origin = Origin ; fn dispatch_with_storage_layer (self , origin : Origin) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: DispatchResultWithPostInfo { self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: storage :: with_storage_layer (| | { self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: Dispatchable :: dispatch (self , origin) }) } fn dispatch_bypass_filter_with_storage_layer (self , origin : Origin) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: DispatchResultWithPostInfo { self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: storage :: with_storage_layer (| | { self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: UnfilteredDispatchable :: dispatch_bypass_filter (self , origin) }) } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: IsSubType < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime > > for Call { # [allow (unreachable_patterns)] fn is_sub_type (& self) -> Option < & self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime > > { match self { Call :: System (call) => Some (call) , _ => None , } } }
+    impl From < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime > > for Call { fn from (call : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < System , MockRuntime >) -> Self { Call :: System (call) } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: IsSubType < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime > > for Call { # [allow (unreachable_patterns)] fn is_sub_type (& self) -> Option < & self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime > > { match self { Call :: Balances (call) => Some (call) , _ => None , } } }
+    impl From < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime > > for Call { fn from (call : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Balances , MockRuntime >) -> Self { Call :: Balances (call) } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: IsSubType < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime > > for Call { # [allow (unreachable_patterns)] fn is_sub_type (& self) -> Option < & self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime > > { match self { Call :: Pools (call) => Some (call) , _ => None , } } }
+    impl From < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime > > for Call { fn from (call : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Pools , MockRuntime >) -> Self { Call :: Pools (call) } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: IsSubType < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime > > for Call { # [allow (unreachable_patterns)] fn is_sub_type (& self) -> Option < & self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime > > { match self { Call :: Loans (call) => Some (call) , _ => None , } } }
+    impl From < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime > > for Call { fn from (call : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Loans , MockRuntime >) -> Self { Call :: Loans (call) } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: IsSubType < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime > > for Call { # [allow (unreachable_patterns)] fn is_sub_type (& self) -> Option < & self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime > > { match self { Call :: Timestamp (call) => Some (call) , _ => None , } } }
+    impl From < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime > > for Call { fn from (call : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Timestamp , MockRuntime >) -> Self { Call :: Timestamp (call) } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: IsSubType < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime > > for Call { # [allow (unreachable_patterns)] fn is_sub_type (& self) -> Option < & self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime > > { match self { Call :: Uniques (call) => Some (call) , _ => None , } } }
+    impl From < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime > > for Call { fn from (call : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Uniques , MockRuntime >) -> Self { Call :: Uniques (call) } }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: IsSubType < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime > > for Call { # [allow (unreachable_patterns)] fn is_sub_type (& self) -> Option < & self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime > > { match self { Call :: Permissions (call) => Some (call) , _ => None , } } }
+    impl From < self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime > > for Call { fn from (call : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: dispatch :: CallableCallFor < Permissions , MockRuntime >) -> Self { Call :: Permissions (call) } }
+    impl MockRuntime {
+        pub fn metadata () -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: RuntimeMetadataPrefixed{
+            self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: RuntimeMetadataLastVersion :: new (< [_] > :: into_vec (box [self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "System" , index : 0u8 , storage : Some (frame_system :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : Some (frame_system :: Pallet :: < MockRuntime > :: call_functions ()) , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < frame_system :: Event < MockRuntime > > () , }) , constants : frame_system :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : frame_system :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "Balances" , index : 1u8 , storage : Some (pallet_balances :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : Some (pallet_balances :: Pallet :: < MockRuntime > :: call_functions ()) , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < pallet_balances :: Event < MockRuntime > > () , }) , constants : pallet_balances :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : pallet_balances :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "Pools" , index : 2u8 , storage : Some (pallet_pools :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : Some (pallet_pools :: Pallet :: < MockRuntime > :: call_functions ()) , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < pallet_pools :: Event < MockRuntime > > () , }) , constants : pallet_pools :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : pallet_pools :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "Loans" , index : 3u8 , storage : Some (pallet_loans :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : Some (pallet_loans :: Pallet :: < MockRuntime > :: call_functions ()) , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < pallet_loans :: Event < MockRuntime > > () , }) , constants : pallet_loans :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : pallet_loans :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "Timestamp" , index : 4u8 , storage : Some (pallet_timestamp :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : Some (pallet_timestamp :: Pallet :: < MockRuntime > :: call_functions ()) , event : None , constants : pallet_timestamp :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : pallet_timestamp :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "Tokens" , index : 5u8 , storage : Some (orml_tokens :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : None , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < orml_tokens :: Event < MockRuntime > > () , }) , constants : orml_tokens :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : orml_tokens :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "Uniques" , index : 6u8 , storage : Some (pallet_uniques :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : Some (pallet_uniques :: Pallet :: < MockRuntime > :: call_functions ()) , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < pallet_uniques :: Event < MockRuntime > > () , }) , constants : pallet_uniques :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : pallet_uniques :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "Permissions" , index : 7u8 , storage : Some (pallet_permissions :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : Some (pallet_permissions :: Pallet :: < MockRuntime > :: call_functions ()) , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < pallet_permissions :: Event < MockRuntime > > () , }) , constants : pallet_permissions :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : pallet_permissions :: Pallet :: < MockRuntime > :: error_metadata () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletMetadata { name : "InterestAccrual" , index : 8u8 , storage : Some (pallet_interest_accrual :: Pallet :: < MockRuntime > :: storage_metadata ()) , calls : None , event : Some (self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: PalletEventMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < pallet_interest_accrual :: Event < MockRuntime > > () , }) , constants : pallet_interest_accrual :: Pallet :: < MockRuntime > :: pallet_constants_metadata () , error : pallet_interest_accrual :: Pallet :: < MockRuntime > :: error_metadata () , }]) , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: ExtrinsicMetadata { ty : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < UncheckedExtrinsic > () , version : < UncheckedExtrinsic as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: traits :: ExtrinsicMetadata > :: VERSION , signed_extensions : < < UncheckedExtrinsic as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: traits :: ExtrinsicMetadata > :: SignedExtensions as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: traits :: SignedExtension > :: metadata () . into_iter () . map (| meta | self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: metadata :: SignedExtensionMetadata { identifier : meta . identifier , ty : meta . ty , additional_signed : meta . additional_signed , }) . collect () , } , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: scale_info :: meta_type :: < MockRuntime > ()) . into ()
+        }
+    }
+    #[cfg(any(feature = "std", test))]
+    pub type SystemConfig = frame_system::GenesisConfig;
+    #[cfg(any(feature = "std", test))]
+    pub type BalancesConfig = pallet_balances::GenesisConfig<MockRuntime>;
+    #[cfg(any(feature = "std", test))]
+    pub type TokensConfig = orml_tokens::GenesisConfig<MockRuntime>;
+    #[cfg(any(feature = "std", test))]
+    use self::sp_api_hidden_includes_construct_runtime::hidden_include::serde as __genesis_config_serde_import__;
+    #[cfg(any(feature = "std", test))]
+    #[serde(rename_all = "camelCase")]
+    #[serde(deny_unknown_fields)]
+    #[serde(crate = "__genesis_config_serde_import__")]
+    pub struct GenesisConfig {
+        pub system: SystemConfig,
+        pub balances: BalancesConfig,
+        pub tokens: TokensConfig,
+    }
+    #[doc(hidden)]
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        use __genesis_config_serde_import__ as _serde;
+        #[automatically_derived]
+        impl __genesis_config_serde_import__::Serialize for GenesisConfig {
+            fn serialize<__S>(
+                &self,
+                __serializer: __S,
+            ) -> __genesis_config_serde_import__::__private::Result<__S::Ok, __S::Error>
+            where
+                __S: __genesis_config_serde_import__::Serializer,
+            {
+                let mut __serde_state = match _serde::Serializer::serialize_struct(
+                    __serializer,
+                    "GenesisConfig",
+                    false as usize + 1 + 1 + 1,
+                ) {
+                    _serde::__private::Ok(__val) => __val,
+                    _serde::__private::Err(__err) => {
+                        return _serde::__private::Err(__err);
+                    }
+                };
+                match _serde::ser::SerializeStruct::serialize_field(
+                    &mut __serde_state,
+                    "system",
+                    &self.system,
+                ) {
+                    _serde::__private::Ok(__val) => __val,
+                    _serde::__private::Err(__err) => {
+                        return _serde::__private::Err(__err);
+                    }
+                };
+                match _serde::ser::SerializeStruct::serialize_field(
+                    &mut __serde_state,
+                    "balances",
+                    &self.balances,
+                ) {
+                    _serde::__private::Ok(__val) => __val,
+                    _serde::__private::Err(__err) => {
+                        return _serde::__private::Err(__err);
+                    }
+                };
+                match _serde::ser::SerializeStruct::serialize_field(
+                    &mut __serde_state,
+                    "tokens",
+                    &self.tokens,
+                ) {
+                    _serde::__private::Ok(__val) => __val,
+                    _serde::__private::Err(__err) => {
+                        return _serde::__private::Err(__err);
+                    }
+                };
+                _serde::ser::SerializeStruct::end(__serde_state)
+            }
+        }
+    };
+    #[doc(hidden)]
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        use __genesis_config_serde_import__ as _serde;
+        #[automatically_derived]
+        impl<'de> __genesis_config_serde_import__::Deserialize<'de> for GenesisConfig {
+            fn deserialize<__D>(
+                __deserializer: __D,
+            ) -> __genesis_config_serde_import__::__private::Result<Self, __D::Error>
+            where
+                __D: __genesis_config_serde_import__::Deserializer<'de>,
+            {
+                #[allow(non_camel_case_types)]
+                enum __Field {
+                    __field0,
+                    __field1,
+                    __field2,
+                }
+                struct __FieldVisitor;
+                impl<'de> _serde::de::Visitor<'de> for __FieldVisitor {
+                    type Value = __Field;
+                    fn expecting(
+                        &self,
+                        __formatter: &mut _serde::__private::Formatter,
+                    ) -> _serde::__private::fmt::Result {
+                        _serde::__private::Formatter::write_str(__formatter, "field identifier")
+                    }
+                    fn visit_u64<__E>(
+                        self,
+                        __value: u64,
+                    ) -> _serde::__private::Result<Self::Value, __E>
+                    where
+                        __E: _serde::de::Error,
+                    {
+                        match __value {
+                            0u64 => _serde::__private::Ok(__Field::__field0),
+                            1u64 => _serde::__private::Ok(__Field::__field1),
+                            2u64 => _serde::__private::Ok(__Field::__field2),
+                            _ => _serde::__private::Err(_serde::de::Error::invalid_value(
+                                _serde::de::Unexpected::Unsigned(__value),
+                                &"field index 0 <= i < 3",
+                            )),
+                        }
+                    }
+                    fn visit_str<__E>(
+                        self,
+                        __value: &str,
+                    ) -> _serde::__private::Result<Self::Value, __E>
+                    where
+                        __E: _serde::de::Error,
+                    {
+                        match __value {
+                            "system" => _serde::__private::Ok(__Field::__field0),
+                            "balances" => _serde::__private::Ok(__Field::__field1),
+                            "tokens" => _serde::__private::Ok(__Field::__field2),
+                            _ => _serde::__private::Err(_serde::de::Error::unknown_field(
+                                __value, FIELDS,
+                            )),
+                        }
+                    }
+                    fn visit_bytes<__E>(
+                        self,
+                        __value: &[u8],
+                    ) -> _serde::__private::Result<Self::Value, __E>
+                    where
+                        __E: _serde::de::Error,
+                    {
+                        match __value {
+                            b"system" => _serde::__private::Ok(__Field::__field0),
+                            b"balances" => _serde::__private::Ok(__Field::__field1),
+                            b"tokens" => _serde::__private::Ok(__Field::__field2),
+                            _ => {
+                                let __value = &_serde::__private::from_utf8_lossy(__value);
+                                _serde::__private::Err(_serde::de::Error::unknown_field(
+                                    __value, FIELDS,
+                                ))
+                            }
+                        }
+                    }
+                }
+                impl<'de> _serde::Deserialize<'de> for __Field {
+                    #[inline]
+                    fn deserialize<__D>(
+                        __deserializer: __D,
+                    ) -> _serde::__private::Result<Self, __D::Error>
+                    where
+                        __D: _serde::Deserializer<'de>,
+                    {
+                        _serde::Deserializer::deserialize_identifier(__deserializer, __FieldVisitor)
+                    }
+                }
+                struct __Visitor<'de> {
+                    marker: _serde::__private::PhantomData<GenesisConfig>,
+                    lifetime: _serde::__private::PhantomData<&'de ()>,
+                }
+                impl<'de> _serde::de::Visitor<'de> for __Visitor<'de> {
+                    type Value = GenesisConfig;
+                    fn expecting(
+                        &self,
+                        __formatter: &mut _serde::__private::Formatter,
+                    ) -> _serde::__private::fmt::Result {
+                        _serde::__private::Formatter::write_str(__formatter, "struct GenesisConfig")
+                    }
+                    #[inline]
+                    fn visit_seq<__A>(
+                        self,
+                        mut __seq: __A,
+                    ) -> _serde::__private::Result<Self::Value, __A::Error>
+                    where
+                        __A: _serde::de::SeqAccess<'de>,
+                    {
+                        let __field0 = match match _serde::de::SeqAccess::next_element::<SystemConfig>(
+                            &mut __seq,
+                        ) {
+                            _serde::__private::Ok(__val) => __val,
+                            _serde::__private::Err(__err) => {
+                                return _serde::__private::Err(__err);
+                            }
+                        } {
+                            _serde::__private::Some(__value) => __value,
+                            _serde::__private::None => {
+                                return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                    0usize,
+                                    &"struct GenesisConfig with 3 elements",
+                                ));
+                            }
+                        };
+                        let __field1 = match match _serde::de::SeqAccess::next_element::<
+                            BalancesConfig,
+                        >(&mut __seq)
+                        {
+                            _serde::__private::Ok(__val) => __val,
+                            _serde::__private::Err(__err) => {
+                                return _serde::__private::Err(__err);
+                            }
+                        } {
+                            _serde::__private::Some(__value) => __value,
+                            _serde::__private::None => {
+                                return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                    1usize,
+                                    &"struct GenesisConfig with 3 elements",
+                                ));
+                            }
+                        };
+                        let __field2 = match match _serde::de::SeqAccess::next_element::<TokensConfig>(
+                            &mut __seq,
+                        ) {
+                            _serde::__private::Ok(__val) => __val,
+                            _serde::__private::Err(__err) => {
+                                return _serde::__private::Err(__err);
+                            }
+                        } {
+                            _serde::__private::Some(__value) => __value,
+                            _serde::__private::None => {
+                                return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                    2usize,
+                                    &"struct GenesisConfig with 3 elements",
+                                ));
+                            }
+                        };
+                        _serde::__private::Ok(GenesisConfig {
+                            system: __field0,
+                            balances: __field1,
+                            tokens: __field2,
+                        })
+                    }
+                    #[inline]
+                    fn visit_map<__A>(
+                        self,
+                        mut __map: __A,
+                    ) -> _serde::__private::Result<Self::Value, __A::Error>
+                    where
+                        __A: _serde::de::MapAccess<'de>,
+                    {
+                        let mut __field0: _serde::__private::Option<SystemConfig> =
+                            _serde::__private::None;
+                        let mut __field1: _serde::__private::Option<BalancesConfig> =
+                            _serde::__private::None;
+                        let mut __field2: _serde::__private::Option<TokensConfig> =
+                            _serde::__private::None;
+                        while let _serde::__private::Some(__key) =
+                            match _serde::de::MapAccess::next_key::<__Field>(&mut __map) {
+                                _serde::__private::Ok(__val) => __val,
+                                _serde::__private::Err(__err) => {
+                                    return _serde::__private::Err(__err);
+                                }
+                            }
+                        {
+                            match __key {
+                                __Field::__field0 => {
+                                    if _serde::__private::Option::is_some(&__field0) {
+                                        return _serde::__private::Err(
+                                            <__A::Error as _serde::de::Error>::duplicate_field(
+                                                "system",
+                                            ),
+                                        );
+                                    }
+                                    __field0 = _serde::__private::Some(
+                                        match _serde::de::MapAccess::next_value::<SystemConfig>(
+                                            &mut __map,
+                                        ) {
+                                            _serde::__private::Ok(__val) => __val,
+                                            _serde::__private::Err(__err) => {
+                                                return _serde::__private::Err(__err);
+                                            }
+                                        },
+                                    );
+                                }
+                                __Field::__field1 => {
+                                    if _serde::__private::Option::is_some(&__field1) {
+                                        return _serde::__private::Err(
+                                            <__A::Error as _serde::de::Error>::duplicate_field(
+                                                "balances",
+                                            ),
+                                        );
+                                    }
+                                    __field1 = _serde::__private::Some(
+                                        match _serde::de::MapAccess::next_value::<BalancesConfig>(
+                                            &mut __map,
+                                        ) {
+                                            _serde::__private::Ok(__val) => __val,
+                                            _serde::__private::Err(__err) => {
+                                                return _serde::__private::Err(__err);
+                                            }
+                                        },
+                                    );
+                                }
+                                __Field::__field2 => {
+                                    if _serde::__private::Option::is_some(&__field2) {
+                                        return _serde::__private::Err(
+                                            <__A::Error as _serde::de::Error>::duplicate_field(
+                                                "tokens",
+                                            ),
+                                        );
+                                    }
+                                    __field2 = _serde::__private::Some(
+                                        match _serde::de::MapAccess::next_value::<TokensConfig>(
+                                            &mut __map,
+                                        ) {
+                                            _serde::__private::Ok(__val) => __val,
+                                            _serde::__private::Err(__err) => {
+                                                return _serde::__private::Err(__err);
+                                            }
+                                        },
+                                    );
+                                }
+                            }
+                        }
+                        let __field0 = match __field0 {
+                            _serde::__private::Some(__field0) => __field0,
+                            _serde::__private::None => {
+                                match _serde::__private::de::missing_field("system") {
+                                    _serde::__private::Ok(__val) => __val,
+                                    _serde::__private::Err(__err) => {
+                                        return _serde::__private::Err(__err);
+                                    }
+                                }
+                            }
+                        };
+                        let __field1 = match __field1 {
+                            _serde::__private::Some(__field1) => __field1,
+                            _serde::__private::None => {
+                                match _serde::__private::de::missing_field("balances") {
+                                    _serde::__private::Ok(__val) => __val,
+                                    _serde::__private::Err(__err) => {
+                                        return _serde::__private::Err(__err);
+                                    }
+                                }
+                            }
+                        };
+                        let __field2 = match __field2 {
+                            _serde::__private::Some(__field2) => __field2,
+                            _serde::__private::None => {
+                                match _serde::__private::de::missing_field("tokens") {
+                                    _serde::__private::Ok(__val) => __val,
+                                    _serde::__private::Err(__err) => {
+                                        return _serde::__private::Err(__err);
+                                    }
+                                }
+                            }
+                        };
+                        _serde::__private::Ok(GenesisConfig {
+                            system: __field0,
+                            balances: __field1,
+                            tokens: __field2,
+                        })
+                    }
+                }
+                const FIELDS: &'static [&'static str] = &["system", "balances", "tokens"];
+                _serde::Deserializer::deserialize_struct(
+                    __deserializer,
+                    "GenesisConfig",
+                    FIELDS,
+                    __Visitor {
+                        marker: _serde::__private::PhantomData::<GenesisConfig>,
+                        lifetime: _serde::__private::PhantomData,
+                    },
+                )
+            }
+        }
+    };
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::default::Default for GenesisConfig {
+        #[inline]
+        fn default() -> GenesisConfig {
+            GenesisConfig {
+                system: ::core::default::Default::default(),
+                balances: ::core::default::Default::default(),
+                tokens: ::core::default::Default::default(),
+            }
+        }
+    }
+    #[cfg(any(feature = "std", test))]
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::sp_runtime::BuildStorage
+        for GenesisConfig
+    {
+        fn assimilate_storage(
+            &self,
+            storage : & mut self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: Storage,
+        ) -> std::result::Result<(), String> {
+            self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: BuildModuleGenesisStorage :: < MockRuntime , frame_system :: __InherentHiddenInstance > :: build_module_genesis_storage (& self . system , storage) ? ;
+            self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: BuildModuleGenesisStorage :: < MockRuntime , pallet_balances :: __InherentHiddenInstance > :: build_module_genesis_storage (& self . balances , storage) ? ;
+            self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: BuildModuleGenesisStorage :: < MockRuntime , orml_tokens :: __InherentHiddenInstance > :: build_module_genesis_storage (& self . tokens , storage) ? ;
+            self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: BasicExternalities :: execute_with_storage (storage , | | { < AllPalletsWithSystem as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: OnGenesis > :: on_genesis () ; }) ;
+            Ok(())
+        }
+    }
+    trait InherentDataExt {
+        fn create_extrinsics (& self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: Vec < < Block as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: BlockT > :: Extrinsic > ;
+        fn check_extrinsics (& self , block : & Block) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: CheckInherentsResult ;
+    }
+    impl InherentDataExt
+        for self::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::InherentData
+    {
+        fn create_extrinsics (& self) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: Vec < < Block as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: BlockT > :: Extrinsic >{
+            use self::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::ProvideInherent;
+            let mut inherents = Vec::new();
+            if let Some(inherent) = Timestamp::create_inherent(self) {
+                let inherent = < UncheckedExtrinsic as self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: Extrinsic > :: new (inherent . into () , None) . expect ("Runtime UncheckedExtrinsic is not Opaque, so it has to return \
+							`Some`; qed") ;
+                inherents.push(inherent);
+            }
+            inherents
+        }        fn check_extrinsics (& self , block : & Block) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: CheckInherentsResult{
+            use self::sp_api_hidden_includes_construct_runtime::hidden_include::inherent::{
+                ProvideInherent, IsFatalError,
+            };
+            use self::sp_api_hidden_includes_construct_runtime::hidden_include::traits::{
+                IsSubType, ExtrinsicCall,
+            };
+            use self::sp_api_hidden_includes_construct_runtime::hidden_include::sp_runtime::traits::Block as _;
+            let mut result = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: CheckInherentsResult :: new () ;
+            for xt in block.extrinsics() {
+                if self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: Extrinsic :: is_signed (xt) . unwrap_or (false) { break }
+                let mut is_inherent = false;
+                {
+                    let call = <UncheckedExtrinsic as ExtrinsicCall>::call(xt);
+                    if let Some(call) = IsSubType::<_>::is_sub_type(call) {
+                        if Timestamp::is_inherent(call) {
+                            is_inherent = true;
+                            if let Err(e) = Timestamp::check_inherent(call, self) {
+                                result
+                                    .put_error(Timestamp::INHERENT_IDENTIFIER, &e)
+                                    .expect("There is only one fatal error; qed");
+                                if e.is_fatal_error() {
+                                    return result;
+                                }
+                            }
+                        }
+                    }
+                }
+                if !is_inherent {
+                    break;
+                }
+            }
+            match Timestamp::is_inherent_required(self) {
+                Ok(Some(e)) => {
+                    let found = block . extrinsics () . iter () . any (| xt | { let is_signed = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: Extrinsic :: is_signed (xt) . unwrap_or (false) ; if ! is_signed { let call = < UncheckedExtrinsic as ExtrinsicCall > :: call (xt) ; if let Some (call) = IsSubType :: < _ > :: is_sub_type (call) { Timestamp :: is_inherent (& call) } else { false } } else { false } }) ;
+                    if !found {
+                        result
+                            .put_error(Timestamp::INHERENT_IDENTIFIER, &e)
+                            .expect("There is only one fatal error; qed");
+                        if e.is_fatal_error() {
+                            return result;
+                        }
+                    }
+                }
+                Ok(None) => (),
+                Err(e) => {
+                    result
+                        .put_error(Timestamp::INHERENT_IDENTIFIER, &e)
+                        .expect("There is only one fatal error; qed");
+                    if e.is_fatal_error() {
+                        return result;
+                    }
+                }
+            }
+            result
+        }
+    }
+    impl self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: EnsureInherentsAreFirst < Block > for MockRuntime { fn ensure_inherents_are_first (block : & Block) -> Result < () , u32 > { use self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: ProvideInherent ; use self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: traits :: { IsSubType , ExtrinsicCall , } ; use self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: sp_runtime :: traits :: Block as _ ; let mut first_signed_observed = false ; for (i , xt) in block . extrinsics () . iter () . enumerate () { let is_signed = self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: inherent :: Extrinsic :: is_signed (xt) . unwrap_or (false) ; let is_inherent = if is_signed { false } else { let mut is_inherent = false ; { let call = < UncheckedExtrinsic as ExtrinsicCall > :: call (xt) ; if let Some (call) = IsSubType :: < _ > :: is_sub_type (call) { if Timestamp :: is_inherent (& call) { is_inherent = true ; } } } is_inherent } ; if ! is_inherent { first_signed_observed = true ; } if first_signed_observed && is_inherent { return Err (i as u32) } } Ok (()) } }
+    impl self::sp_api_hidden_includes_construct_runtime::hidden_include::unsigned::ValidateUnsigned
+        for MockRuntime
+    {
+        type Call = Call;        fn pre_dispatch (call : & Self :: Call) -> Result < () , self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: unsigned :: TransactionValidityError >{
+            #[allow(unreachable_patterns)]
+            match call {
+                _ => Ok(()),
+            }
+        }        fn validate_unsigned (# [allow (unused_variables)] source : self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: unsigned :: TransactionSource , call : & Self :: Call) -> self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: unsigned :: TransactionValidity{
+            # [allow (unreachable_patterns)] match call { _ => self :: sp_api_hidden_includes_construct_runtime :: hidden_include :: unsigned :: UnknownTransaction :: NoUnsignedValidator . into () , }
+        }
+    }
+    const _ : () = if ! (< frame_system :: Error < MockRuntime > as :: frame_support :: traits :: PalletError > :: MAX_ENCODED_SIZE <= :: frame_support :: MAX_MODULE_ERROR_ENCODED_SIZE) { :: core :: panicking :: panic_fmt (:: core :: fmt :: Arguments :: new_v1 (& ["The maximum encoded size of the error type in the `System` pallet exceeds `MAX_MODULE_ERROR_ENCODED_SIZE`"] , & [])) } ;
+    const _ : () = if ! (< pallet_loans :: Error < MockRuntime > as :: frame_support :: traits :: PalletError > :: MAX_ENCODED_SIZE <= :: frame_support :: MAX_MODULE_ERROR_ENCODED_SIZE) { :: core :: panicking :: panic_fmt (:: core :: fmt :: Arguments :: new_v1 (& ["The maximum encoded size of the error type in the `Loans` pallet exceeds `MAX_MODULE_ERROR_ENCODED_SIZE`"] , & [])) } ;
+    const _ : () = if ! (< pallet_permissions :: Error < MockRuntime > as :: frame_support :: traits :: PalletError > :: MAX_ENCODED_SIZE <= :: frame_support :: MAX_MODULE_ERROR_ENCODED_SIZE) { :: core :: panicking :: panic_fmt (:: core :: fmt :: Arguments :: new_v1 (& ["The maximum encoded size of the error type in the `Permissions` pallet exceeds `MAX_MODULE_ERROR_ENCODED_SIZE`"] , & [])) } ;
+    const _ : () = if ! (< pallet_interest_accrual :: Error < MockRuntime > as :: frame_support :: traits :: PalletError > :: MAX_ENCODED_SIZE <= :: frame_support :: MAX_MODULE_ERROR_ENCODED_SIZE) { :: core :: panicking :: panic_fmt (:: core :: fmt :: Arguments :: new_v1 (& ["The maximum encoded size of the error type in the `InterestAccrual` pallet exceeds `MAX_MODULE_ERROR_ENCODED_SIZE`"] , & [])) } ;
+    pub struct One;
+    impl One {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            1
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for One {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for One {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    impl SortedMembers<u64> for One {
+        fn sorted_members() -> Vec<u64> {
+            <[_]>::into_vec(box [1])
+        }
+    }
+    pub struct BlockHashCount;
+    impl BlockHashCount {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            250
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for BlockHashCount {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for BlockHashCount {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    impl frame_system::Config for MockRuntime {
+        type AccountData = pallet_balances::AccountData<Balance>;
+        type AccountId = u64;
+        type BaseCallFilter = frame_support::traits::Everything;
+        type BlockHashCount = BlockHashCount;
+        type BlockLength = ();
+        type BlockNumber = u64;
+        type BlockWeights = ();
+        type Call = Call;
+        type DbWeight = ();
+        type Event = Event;
+        type Hash = H256;
+        type Hashing = BlakeTwo256;
+        type Header = Header;
+        type Index = u64;
+        type Lookup = IdentityLookup<Self::AccountId>;
+        type MaxConsumers = frame_support::traits::ConstU32<16>;
+        type OnKilledAccount = ();
+        type OnNewAccount = ();
+        type OnSetCode = ();
+        type Origin = Origin;
+        type PalletInfo = PalletInfo;
+        type SS58Prefix = ();
+        type SystemWeightInfo = ();
+        type Version = ();
+    }
+    pub struct ExistentialDeposit;
+    impl ExistentialDeposit {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            1
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for ExistentialDeposit {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for ExistentialDeposit {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    impl pallet_timestamp::Config for MockRuntime {
+        type MinimumPeriod = ();
+        type Moment = u64;
+        type OnTimestampSet = ();
+        type WeightInfo = ();
+    }
+    pub struct MaxLocks;
+    impl MaxLocks {
+        /// Returns the value of this parameter type.
+        pub fn get() -> u32 {
+            2
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxLocks {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxLocks {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    pub struct MaxReserves;
+    impl MaxReserves {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            50
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxReserves {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxReserves {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    impl orml_tokens::Config for MockRuntime {
+        type Amount = i64;
+        type Balance = Balance;
+        type CurrencyId = CurrencyId;
+        type DustRemovalWhitelist = frame_support::traits::Nothing;
+        type Event = Event;
+        type ExistentialDeposits = ExistentialDeposits;
+        type MaxLocks = MaxLocks;
+        type MaxReserves = MaxReserves;
+        type OnDust = ();
+        type OnKilledTokenAccount = ();
+        type OnNewTokenAccount = ();
+        type ReserveIdentifier = [u8; 8];
+        type WeightInfo = ();
+    }
+    pub struct PoolPalletId;
+    impl PoolPalletId {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> frame_support::PalletId {
+            cfg_types::ids::POOLS_PALLET_ID
+        }
+    }
+    impl<I: From<frame_support::PalletId>> ::frame_support::traits::Get<I> for PoolPalletId {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for PoolPalletId {
+        type Type = frame_support::PalletId;
+        fn get() -> frame_support::PalletId {
+            Self::get()
+        }
+    }
+    pub struct ChallengeTime;
+    impl ChallengeTime {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            0
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for ChallengeTime {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for ChallengeTime {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct MinUpdateDelay;
+    impl MinUpdateDelay {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            0
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for MinUpdateDelay {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MinUpdateDelay {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct RequireRedeemFulfillmentsBeforeUpdates;
+    impl RequireRedeemFulfillmentsBeforeUpdates {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> bool {
+            false
+        }
+    }
+    impl<I: From<bool>> ::frame_support::traits::Get<I> for RequireRedeemFulfillmentsBeforeUpdates {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for RequireRedeemFulfillmentsBeforeUpdates {
+        type Type = bool;
+        fn get() -> bool {
+            Self::get()
+        }
+    }
+    pub struct DefaultMinEpochTime;
+    impl DefaultMinEpochTime {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            0
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for DefaultMinEpochTime {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for DefaultMinEpochTime {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct DefaultMaxNAVAge;
+    impl DefaultMaxNAVAge {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            u64::MAX
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for DefaultMaxNAVAge {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for DefaultMaxNAVAge {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct MinEpochTimeLowerBound;
+    impl MinEpochTimeLowerBound {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            0
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for MinEpochTimeLowerBound {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MinEpochTimeLowerBound {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct MinEpochTimeUpperBound;
+    impl MinEpochTimeUpperBound {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            u64::MAX
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for MinEpochTimeUpperBound {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MinEpochTimeUpperBound {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct MaxNAVAgeUpperBound;
+    impl MaxNAVAgeUpperBound {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            u64::MAX
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for MaxNAVAgeUpperBound {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxNAVAgeUpperBound {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct MaxSizeMetadata;
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for MaxSizeMetadata {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                ::scale_info::Type::builder()
+                    .path(::scale_info::Path::new(
+                        "MaxSizeMetadata",
+                        "pallet_loans::mock",
+                    ))
+                    .type_params(::alloc::vec::Vec::new())
+                    .docs(&[])
+                    .composite(::scale_info::build::Fields::unit())
+            }
+        };
+    };
+    impl ::core::marker::StructuralEq for MaxSizeMetadata {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::Eq for MaxSizeMetadata {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {}
+        }
+    }
+    impl ::core::marker::StructuralPartialEq for MaxSizeMetadata {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::PartialEq for MaxSizeMetadata {
+        #[inline]
+        fn eq(&self, other: &MaxSizeMetadata) -> bool {
+            match *other {
+                MaxSizeMetadata => match *self {
+                    MaxSizeMetadata => true,
+                },
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::fmt::Debug for MaxSizeMetadata {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            match *self {
+                MaxSizeMetadata => ::core::fmt::Formatter::write_str(f, "MaxSizeMetadata"),
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::clone::Clone for MaxSizeMetadata {
+        #[inline]
+        fn clone(&self) -> MaxSizeMetadata {
+            {
+                *self
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::marker::Copy for MaxSizeMetadata {}
+    impl MaxSizeMetadata {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            100
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxSizeMetadata {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxSizeMetadata {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    pub struct MaxTokenNameLength;
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for MaxTokenNameLength {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                ::scale_info::Type::builder()
+                    .path(::scale_info::Path::new(
+                        "MaxTokenNameLength",
+                        "pallet_loans::mock",
+                    ))
+                    .type_params(::alloc::vec::Vec::new())
+                    .docs(&[])
+                    .composite(::scale_info::build::Fields::unit())
+            }
+        };
+    };
+    impl ::core::marker::StructuralEq for MaxTokenNameLength {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::Eq for MaxTokenNameLength {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {}
+        }
+    }
+    impl ::core::marker::StructuralPartialEq for MaxTokenNameLength {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::PartialEq for MaxTokenNameLength {
+        #[inline]
+        fn eq(&self, other: &MaxTokenNameLength) -> bool {
+            match *other {
+                MaxTokenNameLength => match *self {
+                    MaxTokenNameLength => true,
+                },
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::fmt::Debug for MaxTokenNameLength {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            match *self {
+                MaxTokenNameLength => ::core::fmt::Formatter::write_str(f, "MaxTokenNameLength"),
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::clone::Clone for MaxTokenNameLength {
+        #[inline]
+        fn clone(&self) -> MaxTokenNameLength {
+            {
+                *self
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::marker::Copy for MaxTokenNameLength {}
+    impl MaxTokenNameLength {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            128
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxTokenNameLength {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxTokenNameLength {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    pub struct MaxTokenSymbolLength;
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for MaxTokenSymbolLength {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                ::scale_info::Type::builder()
+                    .path(::scale_info::Path::new(
+                        "MaxTokenSymbolLength",
+                        "pallet_loans::mock",
+                    ))
+                    .type_params(::alloc::vec::Vec::new())
+                    .docs(&[])
+                    .composite(::scale_info::build::Fields::unit())
+            }
+        };
+    };
+    impl ::core::marker::StructuralEq for MaxTokenSymbolLength {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::Eq for MaxTokenSymbolLength {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {}
+        }
+    }
+    impl ::core::marker::StructuralPartialEq for MaxTokenSymbolLength {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::PartialEq for MaxTokenSymbolLength {
+        #[inline]
+        fn eq(&self, other: &MaxTokenSymbolLength) -> bool {
+            match *other {
+                MaxTokenSymbolLength => match *self {
+                    MaxTokenSymbolLength => true,
+                },
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::fmt::Debug for MaxTokenSymbolLength {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            match *self {
+                MaxTokenSymbolLength => {
+                    ::core::fmt::Formatter::write_str(f, "MaxTokenSymbolLength")
+                }
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::clone::Clone for MaxTokenSymbolLength {
+        #[inline]
+        fn clone(&self) -> MaxTokenSymbolLength {
+            {
+                *self
+            }
+        }
+    }
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::marker::Copy for MaxTokenSymbolLength {}
+    impl MaxTokenSymbolLength {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            128
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxTokenSymbolLength {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxTokenSymbolLength {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    pub struct ZeroDeposit;
+    impl ZeroDeposit {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> Balance {
+            0
+        }
+    }
+    impl<I: From<Balance>> ::frame_support::traits::Get<I> for ZeroDeposit {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for ZeroDeposit {
+        type Type = Balance;
+        fn get() -> Balance {
+            Self::get()
+        }
+    }
+    pub struct ParachainId;
+    impl ParachainId {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            2008
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for ParachainId {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for ParachainId {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    pub use orml_asset_registry_mock::RegistryMock;
+    mod orml_asset_registry_mock {
+        use orml_asset_registry::{Inspect, Mutate, AssetMetadata};
+        use xcm::latest::prelude::*;
+        use xcm::VersionedMultiLocation;
+        use frame_support::{dispatch::DispatchResult, traits::GenesisBuild};
+        pub struct RegistryMock;
+        impl Inspect for RegistryMock {}
+        impl Mutate for RegistryMock {
+            fn register_asset(
+                asset_id: Option<Self::AssetId>,
+                metadata: AssetMetadata<Self::Balance, Self::CustomMetadata>,
+            ) -> DispatchResult {
+                if let Some(_) = __private::STATE.with(|s| s.borrow().metadata.get(asset_id)) {
+                    Err(DispatchError::Other("Asset already registered"))
+                } else {
+                    __private::STATE.with(|s| s.borrow_mut().metadata.insert(asset_id, metadata));
+                    Ok(())
+                }
+            }
+            fn update_asset(
+                asset_id: Self::AssetId,
+                decimals: Option<u32>,
+                name: Option<Vec<u8>>,
+                symbol: Option<Vec<u8>>,
+                existential_deposit: Option<Self::Balance>,
+                location: Option<Option<VersionedMultiLocation>>,
+                additional: Option<Self::CustomMetadata>,
+            ) -> DispatchResult {
+                if let Some(meta) =
+                    __private::STATE.with(|s| s.borrow_mut().metadata.get_mut(asset_id))
+                {
+                    if let Some(decimals_update) = decimals {
+                        meta.decimals = decimals_update;
+                    }
+                    if let Some(name_update) = name {
+                        meta.name = name_update;
+                    }
+                    if let Some(decimals_update) = decimals {
+                        meta.name = name_update;
+                    }
+                    if let Some(existential_deposit_update) = existential_deposit {
+                        meta.existential_deposit = existential_deposit_update;
+                    }
+                    if let Some(location_update) = location {
+                        meta.location = Some(location_update);
+                    }
+                    if let Some(additional_update) = additional {
+                        meta.additional = additional_update;
+                    }
+                    Ok(())
+                } else {
+                    Err(DispatchError::Other("No asset registered"))
+                }
+            }
+        }
+        pub struct GenesisConfig {
+            metadata: Vec<CurrencyId, AssetMetadata<CustomMetadata>>,
+        }
+        impl GenesisBuild for GenesisConfig {
+            fn build(&self) {
+                for (asset, metadata) in self.metadata {
+                    __private::STATE.with(|s| {
+                        let state = s.borrow_mut();
+                        if let Some(location) = metadata.location {
+                            state
+                                .location_to_metadata
+                                .insert(location.into(), asset.clone());
+                        }
+                        state.metadata.insert(asset, metadata);
+                    })
+                }
+            }
+        }
+        mod __private {
+            use super::*;
+            use std::{cell::RefCell, collections::HashMap, thread::LocalKey};
+            pub struct RegistryState {
+                pub location_to_asset: HashMap<MultiLocation, CurrencyId>,
+                pub metadata: HashMap<CurrencyId, AssetMetadata<Balance, CustomMetadata>>,
+            }
+            impl RegistryState {
+                fn new() -> Self {
+                    Self {
+                        location_to_asset: HashMap::new(),
+                        metadata: HashMap::new(),
+                    }
+                }
+            }
+            pub const STATE: ::std::thread::LocalKey<RefCell<RegistryState>> = {
+                #[inline]
+                fn __init() -> RefCell<RegistryState> {
+                    RefCell::new(RegistryState::new())
+                }
+                #[inline]
+                unsafe fn __getit(
+                    init: ::std::option::Option<&mut ::std::option::Option<RefCell<RegistryState>>>,
+                ) -> ::std::option::Option<&'static RefCell<RegistryState>> {
+                    #[thread_local]
+                    #[cfg(all(
+                        target_thread_local,
+                        not(all(target_family = "wasm", not(target_feature = "atomics"))),
+                    ))]
+                    static __KEY: ::std::thread::__FastLocalKeyInner<RefCell<RegistryState>> =
+                        ::std::thread::__FastLocalKeyInner::new();
+                    #[allow(unused_unsafe)]
+                    unsafe {
+                        __KEY.get(move || {
+                            if let ::std::option::Option::Some(init) = init {
+                                if let ::std::option::Option::Some(value) = init.take() {
+                                    return value;
+                                } else if true {
+                                    ::core::panicking::panic_fmt(::core::fmt::Arguments::new_v1(
+                                        &["internal error: entered unreachable code: "],
+                                        &[::core::fmt::ArgumentV1::new_display(
+                                            &::core::fmt::Arguments::new_v1(
+                                                &["missing default value"],
+                                                &[],
+                                            ),
+                                        )],
+                                    ));
+                                }
+                            }
+                            __init()
+                        })
+                    }
+                }
+                unsafe { ::std::thread::LocalKey::new(__getit) }
+            };
+        }
+    }
+    impl pallet_pools::Config for MockRuntime {
+        type AssetRegistry = MockRegistry;
+        type Balance = Balance;
+        type BalanceRatio = Rate;
+        type ChallengeTime = ChallengeTime;
+        type Currency = Balances;
+        type CurrencyId = CurrencyId;
+        type DefaultMaxNAVAge = DefaultMaxNAVAge;
+        type DefaultMinEpochTime = DefaultMinEpochTime;
+        type EpochId = u32;
+        type Event = Event;
+        type InterestRate = Rate;
+        type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
+        type MaxSizeMetadata = MaxSizeMetadata;
+        type MaxTokenNameLength = MaxTokenNameLength;
+        type MaxTokenSymbolLength = MaxTokenSymbolLength;
+        type MaxTranches = MaxTranches;
+        type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
+        type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
+        type MinUpdateDelay = MinUpdateDelay;
+        type NAV = Loans;
+        type PalletId = PoolPalletId;
+        type ParachainId = ParachainId;
+        type Permission = Permissions;
+        type PoolCreateOrigin = EnsureSigned<u64>;
+        type PoolCurrency = Everything;
+        type PoolDeposit = ZeroDeposit;
+        type PoolId = PoolId;
+        type Time = Timestamp;
+        type Tokens = Tokens;
+        type TrancheId = [u8; 16];
+        type TrancheToken = TrancheToken;
+        type TrancheWeight = TrancheWeight;
+        type UpdateGuard = UpdateGuard;
+        type WeightInfo = ();
+    }
+    pub struct UpdateGuard;
+    impl PoolUpdateGuard for UpdateGuard {
+        type Moment = Moment;
+        type Moment = Moment;
+        type PoolDetails = PoolDetails<
+            CurrencyId,
+            u32,
+            Balance,
+            Rate,
+            MaxSizeMetadata,
+            TrancheWeight,
+            TrancheId,
+            PoolId,
+        >;
+        type ScheduledUpdateDetails =
+            ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
+        fn released(
+            _pool: &Self::PoolDetails,
+            _update: &Self::ScheduledUpdateDetails,
+            _now: Self::Moment,
+        ) -> bool {
+            true
+        }
+    }
+    impl pallet_balances::Config for MockRuntime {
+        type AccountStore = System;
+        type Balance = Balance;
+        type DustRemoval = ();
+        type Event = Event;
+        type ExistentialDeposit = ExistentialDeposit;
+        type MaxLocks = ();
+        type MaxReserves = ();
+        type ReserveIdentifier = ();
+        type WeightInfo = ();
+    }
+    pub struct DepositPerByte;
+    impl DepositPerByte {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> Balance {
+            CENTI_CURRENCY
+        }
+    }
+    impl<I: From<Balance>> ::frame_support::traits::Get<I> for DepositPerByte {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for DepositPerByte {
+        type Type = Balance;
+        fn get() -> Balance {
+            Self::get()
+        }
+    }
+    pub struct AttributeDepositBase;
+    impl AttributeDepositBase {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> Balance {
+            10 * CENTI_CURRENCY
+        }
+    }
+    impl<I: From<Balance>> ::frame_support::traits::Get<I> for AttributeDepositBase {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for AttributeDepositBase {
+        type Type = Balance;
+        fn get() -> Balance {
+            Self::get()
+        }
+    }
+    pub struct MetadataDepositBase;
+    impl MetadataDepositBase {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> Balance {
+            10 * CENTI_CURRENCY
+        }
+    }
+    impl<I: From<Balance>> ::frame_support::traits::Get<I> for MetadataDepositBase {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MetadataDepositBase {
+        type Type = Balance;
+        fn get() -> Balance {
+            Self::get()
+        }
+    }
+    pub struct CollectionDeposit;
+    impl CollectionDeposit {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> Balance {
+            CURRENCY
+        }
+    }
+    impl<I: From<Balance>> ::frame_support::traits::Get<I> for CollectionDeposit {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for CollectionDeposit {
+        type Type = Balance;
+        fn get() -> Balance {
+            Self::get()
+        }
+    }
+    pub struct ItemDeposit;
+    impl ItemDeposit {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> Balance {
+            10 * CENTI_CURRENCY
+        }
+    }
+    impl<I: From<Balance>> ::frame_support::traits::Get<I> for ItemDeposit {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for ItemDeposit {
+        type Type = Balance;
+        fn get() -> Balance {
+            Self::get()
+        }
+    }
+    pub struct Limit;
+    impl Limit {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            256
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for Limit {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for Limit {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    impl pallet_uniques::Config for MockRuntime {
+        type AttributeDepositBase = AttributeDepositBase;
+        type CollectionDeposit = CollectionDeposit;
+        type CollectionId = CollectionId;
+        type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
+        type Currency = Balances;
+        type DepositPerByte = DepositPerByte;
+        type Event = Event;
+        type ForceOrigin = EnsureSignedBy<One, u64>;
+        type ItemDeposit = ItemDeposit;
+        type ItemId = ItemId;
+        type KeyLimit = Limit;
+        type Locker = ();
+        type MetadataDepositBase = MetadataDepositBase;
+        type StringLimit = Limit;
+        type ValueLimit = Limit;
+        type WeightInfo = ();
+    }
+    impl pallet_interest_accrual::Config for MockRuntime {
+        type Balance = Balance;
+        type Event = Event;
+        type InterestRate = Rate;
+        type Time = Timestamp;
+        type Weights = ();
+    }
+    pub struct MaxTranches;
+    impl MaxTranches {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u8 {
+            5
+        }
+    }
+    impl<I: From<u8>> ::frame_support::traits::Get<I> for MaxTranches {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxTranches {
+        type Type = u8;
+        fn get() -> u8 {
+            Self::get()
+        }
+    }
+    pub struct MinDelay;
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::fmt::Debug for MinDelay {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            match *self {
+                MinDelay => ::core::fmt::Formatter::write_str(f, "MinDelay"),
+            }
+        }
+    }
+    impl ::core::marker::StructuralEq for MinDelay {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::Eq for MinDelay {
+        #[inline]
+        #[doc(hidden)]
+        #[no_coverage]
+        fn assert_receiver_is_total_eq(&self) -> () {
+            {}
+        }
+    }
+    impl ::core::marker::StructuralPartialEq for MinDelay {}
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::cmp::PartialEq for MinDelay {
+        #[inline]
+        fn eq(&self, other: &MinDelay) -> bool {
+            match *other {
+                MinDelay => match *self {
+                    MinDelay => true,
+                },
+            }
+        }
+    }
+    #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+    const _: () = {
+        impl ::scale_info::TypeInfo for MinDelay {
+            type Identity = Self;
+            fn type_info() -> ::scale_info::Type {
+                ::scale_info::Type::builder()
+                    .path(::scale_info::Path::new("MinDelay", "pallet_loans::mock"))
+                    .type_params(::alloc::vec::Vec::new())
+                    .docs(&[])
+                    .composite(::scale_info::build::Fields::unit())
+            }
+        };
+    };
+    #[automatically_derived]
+    #[allow(unused_qualifications)]
+    impl ::core::clone::Clone for MinDelay {
+        #[inline]
+        fn clone(&self) -> MinDelay {
+            match *self {
+                MinDelay => MinDelay,
+            }
+        }
+    }
+    impl MinDelay {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> Moment {
+            0
+        }
+    }
+    impl<I: From<Moment>> ::frame_support::traits::Get<I> for MinDelay {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MinDelay {
+        type Type = Moment;
+        fn get() -> Moment {
+            Self::get()
+        }
+    }
+    pub struct MaxRoles;
+    impl MaxRoles {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            u32::MAX
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxRoles {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxRoles {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    impl pallet_permissions::Config for MockRuntime {
+        type AdminOrigin = EnsureSignedBy<One, u64>;
+        type Editors = frame_support::traits::Everything;
+        type Event = Event;
+        type MaxRolesPerScope = MaxRoles;
+        type Role = Role;
+        type Scope = PermissionScope<u64, CurrencyId>;
+        type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
+        type WeightInfo = ();
+    }
+    pub struct LoansPalletId;
+    impl LoansPalletId {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> PalletId {
+            cfg_types::ids::LOANS_PALLET_ID
+        }
+    }
+    impl<I: From<PalletId>> ::frame_support::traits::Get<I> for LoansPalletId {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for LoansPalletId {
+        type Type = PalletId;
+        fn get() -> PalletId {
+            Self::get()
+        }
+    }
+    pub struct MaxActiveLoansPerPool;
+    impl MaxActiveLoansPerPool {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            200
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxActiveLoansPerPool {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxActiveLoansPerPool {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    pub struct MaxWriteOffGroups;
+    impl MaxWriteOffGroups {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u32 {
+            10
+        }
+    }
+    impl<I: From<u32>> ::frame_support::traits::Get<I> for MaxWriteOffGroups {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for MaxWriteOffGroups {
+        type Type = u32;
+        fn get() -> u32 {
+            Self::get()
+        }
+    }
+    impl pallet_loans::Config for MockRuntime {
+        type Balance = Balance;
+        type BlockNumberProvider = System;
+        type ClassId = CollectionId;
+        type CurrencyId = CurrencyId;
+        type Event = Event;
+        type InterestAccrual = InterestAccrual;
+        type LoanId = ItemId;
+        type LoansPalletId = LoansPalletId;
+        type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
+        type MaxWriteOffGroups = MaxWriteOffGroups;
+        type NonFungible = Uniques;
+        type Permission = Permissions;
+        type Pool = Pools;
+        type Rate = Rate;
+        type Time = Timestamp;
+        type WeightInfo = ();
+    }
+    pub const USD: CurrencyId = CurrencyId::AUSD;
+    pub struct TestExternalitiesBuilder {}
+    impl Default for TestExternalitiesBuilder {
+        fn default() -> Self {
+            Self {}
+        }
+    }
+    pub struct PoolAdmin;
+    impl PoolAdmin {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            1
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for PoolAdmin {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for PoolAdmin {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct Borrower;
+    impl Borrower {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            2
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for Borrower {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for Borrower {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct LoanAdmin;
+    impl LoanAdmin {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            3
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for LoanAdmin {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for LoanAdmin {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct SeniorInvestor;
+    impl SeniorInvestor {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            4
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for SeniorInvestor {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for SeniorInvestor {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    pub struct JuniorInvestor;
+    impl JuniorInvestor {
+        /// Returns the value of this parameter type.
+        pub const fn get() -> u64 {
+            5
+        }
+    }
+    impl<I: From<u64>> ::frame_support::traits::Get<I> for JuniorInvestor {
+        fn get() -> I {
+            I::from(Self::get())
+        }
+    }
+    impl ::frame_support::traits::TypedGet for JuniorInvestor {
+        type Type = u64;
+        fn get() -> u64 {
+            Self::get()
+        }
+    }
+    impl TestExternalitiesBuilder {
+        pub(crate) fn build(self) -> TestExternalities {
+            let mut storage = frame_system::GenesisConfig::default()
+                .build_storage::<MockRuntime>()
+                .unwrap();
+            pallet_balances::GenesisConfig::<MockRuntime> {
+                balances: <[_]>::into_vec(box [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    pallet_loans::Pallet::<MockRuntime>::account_id(),
+                ])
+                .into_iter()
+                .map(|acc| (acc, 100 * CURRENCY))
+                .collect(),
+            }
+            .assimilate_storage(&mut storage)
+            .unwrap();
+            orml_tokens::GenesisConfig::<MockRuntime> {
+                balances: <[_]>::into_vec(box [
+                    (
+                        PoolLocator { pool_id: 0 }.into_account_truncating(),
+                        CurrencyId::Tranche(0, JuniorTrancheId::get()),
+                        100_000 * CURRENCY,
+                    ),
+                    (
+                        PoolLocator { pool_id: 0 }.into_account_truncating(),
+                        CurrencyId::Tranche(0, SeniorTrancheId::get()),
+                        100_000 * CURRENCY,
+                    ),
+                    (7, USD, 100 * CURRENCY),
+                    (SeniorInvestor::get(), USD, 1000 * CURRENCY),
+                    (JuniorInvestor::get(), USD, 1000 * CURRENCY),
+                ]),
+            }
+            .assimilate_storage(&mut storage)
+            .unwrap();
+            let mut externalities = TestExternalities::new(storage);
+            externalities.execute_with(|| {
+                System::set_block_number(1);
+                OrmlAssetRegistry::do_register_asset(
+                    AssetMetadata {
+                        decimals: 18,
+                        name: "MOCK TOKEN".as_bytes().to_vec(),
+                        symbol: "MOCK".as_bytes().to_vec(),
+                        existential_deposit: 0,
+                        location: None,
+                        additional: CustomMetadata::default(),
+                    },
+                    Some(CurrencyId::AUSD),
+                )
+                .ok()
+                .unwrap();
+            });
+            externalities
+        }
+    }
+}

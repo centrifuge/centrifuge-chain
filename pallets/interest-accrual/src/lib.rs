@@ -53,8 +53,9 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
+use cfg_primitives::Moment;
 use cfg_traits::InterestAccrual;
-use cfg_types::{Adjustment, Moment};
+use cfg_types::Adjustment;
 use codec::{Decode, Encode};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;

@@ -1,4 +1,4 @@
-use super::*;
+use cfg_primitives::AccountId;
 use frame_support::{parameter_types, traits::FindAuthor, weights::DispatchClass, PalletId};
 use frame_system::limits;
 use sp_core::H256;
@@ -43,38 +43,38 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-	type BaseCallFilter = frame_support::traits::Everything;
-	type Origin = Origin;
-	type Index = u64;
-	type BlockNumber = u64;
-	type Call = Call;
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
+	type AccountData = pallet_balances::AccountData<u64>;
 	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
+	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = BlockLength;
+	type BlockNumber = u64;
 	type BlockWeights = BlockWeights;
+	type Call = Call;
 	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u64>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Event = Event;
+	type Hash = H256;
+	type Hashing = BlakeTwo256;
+	type Header = Header;
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 impl pallet_balances::Config for Test {
-	type Balance = u64;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ();
 	type AccountStore = System;
+	type Balance = u64;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -87,22 +87,22 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Test {
-	type Currency = pallet_balances::Pallet<Test>;
 	type ApproveOrigin = frame_system::EnsureRoot<AccountId>;
-	type RejectOrigin = frame_system::EnsureRoot<AccountId>;
-	type Event = Event;
-	type OnSlash = ();
-	type ProposalBond = ();
-	type ProposalBondMinimum = ();
-	type ProposalBondMaximum = ();
-	type SpendPeriod = ();
 	type Burn = ();
 	type BurnDestination = ();
-	type PalletId = TreasuryPalletId;
-	type SpendFunds = ();
+	type Currency = pallet_balances::Pallet<Test>;
+	type Event = Event;
 	type MaxApprovals = MaxApprovals;
-	type WeightInfo = ();
+	type OnSlash = ();
+	type PalletId = TreasuryPalletId;
+	type ProposalBond = ();
+	type ProposalBondMaximum = ();
+	type ProposalBondMinimum = ();
+	type RejectOrigin = frame_system::EnsureRoot<AccountId>;
+	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<u64>;
+	type SpendPeriod = ();
+	type WeightInfo = ();
 }
 
 pub struct OneAuthor;
@@ -115,10 +115,10 @@ impl FindAuthor<AccountId> for OneAuthor {
 	}
 }
 impl pallet_authorship::Config for Test {
+	type EventHandler = ();
+	type FilterUncle = ();
 	type FindAuthor = OneAuthor;
 	type UncleGenerations = ();
-	type FilterUncle = ();
-	type EventHandler = ();
 }
 
 pub struct TestExternalitiesBuilder {}

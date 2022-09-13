@@ -10,8 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::Moment;
 use cfg_traits::PreConditions;
-use cfg_types::Moment;
 use frame_support::{
 	parameter_types,
 	sp_io::TestExternalities,
