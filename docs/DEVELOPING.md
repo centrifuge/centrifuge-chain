@@ -25,7 +25,7 @@ and another one to verify how it works in a more real environment as a parachain
 
 ### Chain tests
 
-The following command will the unit and the integration tests:
+The following command will run the unit and integration tests:
 
 ```bash
 cargo +nightly test --workspace --release --features test-benchmarks,try-runtime
