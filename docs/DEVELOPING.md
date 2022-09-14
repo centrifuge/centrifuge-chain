@@ -51,7 +51,7 @@ It contains two [validator](https://wiki.polkadot.network/docs/learn-validator) 
     *Note: You can stop the relay chain using `./scripts/init.sh stop-relay-chain`*
 
 2. Start a *Centrifuge Chain* as [parachain](https://wiki.polkadot.network/docs/learn-parachains).
-It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
+It runs a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     ```bash
     ./scripts/init.sh start-parachain
     ```
