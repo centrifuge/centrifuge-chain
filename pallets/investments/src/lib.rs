@@ -13,10 +13,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::OrderId;
 use cfg_traits::{
 	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
 };
-use cfg_types::{FulfillmentWithPrice, InvestmentAccount, TotalOrder};
+use cfg_types::{FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder};
 use frame_support::{
 	error::BadOrigin,
 	pallet_prelude::*,
@@ -119,16 +120,6 @@ pub enum CollectOutcome {
 
 /// A newtype for Order
 pub type OrderOf<T> = Order<<T as Config>::Amount, OrderId>;
-
-/// The order type of the pallet.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Order<Balance, OrderId> {
-	pub amount: Balance,
-	pub submitted_at: OrderId,
-}
-
-/// Our OrderId in the pallet.
-type OrderId = u64;
 
 /// Defining how the collect logic runs.
 /// CollectType::Closing will ensure, that all unfulfilled investments
@@ -260,12 +251,12 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_invest_order)]
-	pub type ActiveInvestOrder<T: Config> =
+	pub type ActiveInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_redeem_order)]
-	pub type ActiveRedeemOrder<T: Config> =
+	pub type ActiveRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
@@ -542,7 +533,7 @@ where
 		);
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		let cur_order_id = ActiveInvestOrder::<T>::try_mutate(
+		let cur_order_id = ActiveInvestOrders::<T>::try_mutate(
 			&investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
 				InvestOrders::<T>::try_mutate(
@@ -600,7 +591,7 @@ where
 		);
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		let cur_order_id = ActiveRedeemOrder::<T>::try_mutate(
+		let cur_order_id = ActiveRedeemOrders::<T>::try_mutate(
 			&investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
 				RedeemOrders::<T>::try_mutate(
@@ -700,7 +691,7 @@ where
 						collection.payout_investment_invest,
 					)?;
 
-					ActiveInvestOrder::<T>::try_mutate(
+					ActiveInvestOrders::<T>::try_mutate(
 						&investment_id,
 						|total_order| -> DispatchResult {
 							if collection.remaining_investment_invest > T::Amount::zero() {
@@ -801,7 +792,7 @@ where
 						false,
 					)?;
 
-					ActiveRedeemOrder::<T>::try_mutate(
+					ActiveRedeemOrders::<T>::try_mutate(
 						&investment_id,
 						|total_order| -> DispatchResult {
 							if collection.remaining_investment_redeem > T::Amount::zero() {
@@ -1080,7 +1071,7 @@ where
 	type Orders = TotalOrder<T::Amount>;
 
 	fn invest_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-		let total_orders = ActiveInvestOrder::<T>::try_mutate(
+		let total_orders = ActiveInvestOrders::<T>::try_mutate(
 			&investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
 				InProcessingInvestOrders::<T>::try_mutate(
@@ -1127,7 +1118,7 @@ where
 	}
 
 	fn redeem_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-		let total_orders = ActiveRedeemOrder::<T>::try_mutate(
+		let total_orders = ActiveRedeemOrders::<T>::try_mutate(
 			&investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
 				InProcessingRedeemOrders::<T>::try_mutate(
@@ -1225,7 +1216,7 @@ where
 				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
-				ActiveInvestOrder::<T>::try_mutate(
+				ActiveInvestOrders::<T>::try_mutate(
 					investment_id,
 					|total_orders| -> DispatchResult {
 						total_orders.amount = total_orders
@@ -1322,7 +1313,7 @@ where
 				);
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
-				ActiveRedeemOrder::<T>::try_mutate(
+				ActiveRedeemOrders::<T>::try_mutate(
 					investment_id,
 					|total_orders| -> DispatchResult {
 						total_orders.amount = total_orders

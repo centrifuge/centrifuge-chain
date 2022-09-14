@@ -11,7 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{CFG as CURRENCY, *};
+pub use cfg_primitives::CFG as CURRENCY;
+use cfg_primitives::*;
 use cfg_traits::Always;
 use cfg_types::{CurrencyId, Rate};
 use codec::{Decode, Encode};
@@ -27,7 +28,7 @@ use sp_io::TestExternalities;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_std::convert::{TryFrom, TryInto};
 
-use crate as pallet_investments;
+pub use crate as pallet_investments;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -254,4 +255,15 @@ impl TestExternalitiesBuilder {
 		});
 		externalities
 	}
+}
+
+pub(crate) fn assert_last_event<E>(generic_event: E)
+where
+	E: Into<<MockRuntime as frame_system::Config>::Event>,
+{
+	let events = frame_system::Pallet::<MockRuntime>::events();
+	let system_event = generic_event.into();
+	// compare to the last event record
+	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(1)];
+	assert_eq!(event, &system_event);
 }
