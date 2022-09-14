@@ -21,26 +21,31 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::xcm::polkadot::setup::{
-	acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, CurrencyId, ALICE,
-	BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
-};
-use crate::xcm::polkadot::test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet};
-use centrifuge_runtime::{Balances, Call, CustomMetadata, Origin, PolkadotXcm, XTokens};
-use common_types::XcmMetadata;
-use frame_support::dispatch::Dispatchable;
-use frame_support::{assert_err, assert_noop, assert_ok};
+use centrifuge_runtime::{Balances, Call, Origin, PolkadotXcm, XTokens};
+use cfg_primitives::{constants::currency_decimals, parachains, Balance};
+use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
+use frame_support::{assert_err, assert_noop, assert_ok, dispatch::Dispatchable};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance};
-use sp_runtime::DispatchError;
-use sp_runtime::DispatchError::BadOrigin;
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::v1::MultiAsset;
-use xcm::v2::{AssetId, Fungibility};
-use xcm::v2::{Instruction::WithdrawAsset, Xcm};
-use xcm::VersionedMultiLocation;
+use runtime_common::{
+	xcm::general_key,
+	xcm_fees::{default_per_second, ksm_per_second},
+};
+use sp_runtime::{DispatchError, DispatchError::BadOrigin};
+use xcm::{
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	v1::MultiAsset,
+	v2::{AssetId, Fungibility, Instruction::WithdrawAsset, Xcm},
+	VersionedMultiLocation,
+};
 use xcm_emulator::TestExt;
+
+use crate::xcm::polkadot::{
+	setup::{
+		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE, BOB,
+		DOT_ASSET_ID, PARA_ID_SIBLING,
+	},
+	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+};
 
 /// Verify that calls that must be blocked by the BaseCallFilter are indeed blocked.
 pub mod blocked {

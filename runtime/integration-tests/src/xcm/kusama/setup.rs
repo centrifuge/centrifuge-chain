@@ -10,11 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use altair_runtime::CustomMetadata;
-pub use altair_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
+pub use altair_runtime::{Origin, Runtime, System};
+use cfg_primitives::{constants::currency_decimals, parachains, AccountId, Balance};
+use cfg_types::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use orml_traits::asset_registry::AssetMetadata;
-use runtime_common::{decimals, parachains, Balance};
 
 /// Accounts
 pub const ALICE: [u8; 32] = [4u8; 32];
@@ -99,15 +99,15 @@ impl ExtBuilder {
 }
 
 pub fn air(amount: Balance) -> Balance {
-	amount * dollar(decimals::NATIVE)
+	amount * dollar(currency_decimals::NATIVE)
 }
 
 pub fn ausd(amount: Balance) -> Balance {
-	amount * dollar(decimals::AUSD)
+	amount * dollar(currency_decimals::AUSD)
 }
 
 pub fn ksm(amount: Balance) -> Balance {
-	amount * dollar(decimals::KSM)
+	amount * dollar(currency_decimals::KSM)
 }
 
 pub fn foreign(amount: Balance, decimals: u32) -> Balance {

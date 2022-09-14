@@ -10,15 +10,21 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::mock::DISTR_PER_ACCOUNT;
-use crate::mock::*;
-use crate::Error;
-use frame_support::traits::{
-	tokens::{fungible, fungibles, DepositConsequence, ExistenceRequirement, WithdrawConsequence},
-	BalanceStatus, Currency, LockableCurrency, ReservableCurrency, WithdrawReasons,
+use frame_support::{
+	assert_noop, assert_ok,
+	traits::{
+		tokens::{
+			fungible, fungibles, DepositConsequence, ExistenceRequirement, WithdrawConsequence,
+		},
+		BalanceStatus, Currency, LockableCurrency, ReservableCurrency, WithdrawReasons,
+	},
 };
-use frame_support::{assert_noop, assert_ok};
 use orml_traits::GetByKey;
+
+use crate::{
+	mock::{DISTR_PER_ACCOUNT, *},
+	Error,
+};
 
 #[test]
 fn transfer_works() {

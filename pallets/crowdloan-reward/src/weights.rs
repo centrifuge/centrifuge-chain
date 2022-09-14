@@ -41,12 +41,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialize() -> Weight {
 		(27_555_000 as Weight).saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn set_vesting_start() -> Weight {
 		(23_581_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_vesting_period() -> Weight {
 		(23_603_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_direct_payout_ratio() -> Weight {
 		(23_767_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -57,12 +60,15 @@ impl WeightInfo for () {
 	fn initialize() -> Weight {
 		(27_555_000 as Weight).saturating_add(RocksDbWeight::get().writes(3 as Weight))
 	}
+
 	fn set_vesting_start() -> Weight {
 		(23_581_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_vesting_period() -> Weight {
 		(23_603_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_direct_payout_ratio() -> Weight {
 		(23_767_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

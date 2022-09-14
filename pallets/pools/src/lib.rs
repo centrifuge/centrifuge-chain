@@ -12,27 +12,31 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::Moment;
+use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use cfg_types::{PermissionScope, PoolLocator, PoolRole, Role};
 use codec::HasCompact;
-use common_traits::{
-	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
-};
-use common_types::{CustomMetadata, Moment, PermissionScope, PoolLocator, PoolRole, Role};
-use frame_support::traits::{
-	fungibles::{Inspect, Mutate, Transfer},
-	ReservableCurrency,
-};
 use frame_support::{
-	dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, transactional, BoundedVec,
+	dispatch::DispatchResult,
+	pallet_prelude::*,
+	traits::{
+		fungibles::{Inspect, Mutate, Transfer},
+		ReservableCurrency, UnixTime,
+	},
+	transactional, BoundedVec,
 };
 use frame_system::pallet_prelude::*;
+pub use impls::*;
 use orml_traits::{
 	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,
 };
-use polkadot_parachain::primitives::Id as ParaId;
+pub use pallet::*;
+use polkadot_parachain::primitives::Id as ParachainId;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+pub use solution::*;
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
@@ -40,12 +44,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
-use sp_std::cmp::Ordering;
-use sp_std::vec::Vec;
-
-pub use impls::*;
-pub use pallet::*;
-pub use solution::*;
+use sp_std::{cmp::Ordering, vec::Vec};
 pub use tranche::*;
 pub use weights::*;
 
@@ -245,12 +244,12 @@ type PoolDepositOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
+	use cfg_traits::PoolUpdateGuard;
+	use cfg_types::CustomMetadata;
+	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
+	use sp_runtime::{traits::BadOrigin, ArithmeticError};
+
 	use super::*;
-	use frame_support::sp_runtime::traits::Convert;
-	use frame_support::traits::Contains;
-	use frame_support::PalletId;
-	use sp_runtime::traits::BadOrigin;
-	use sp_runtime::ArithmeticError;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -341,7 +340,7 @@ pub mod pallet {
 		>;
 
 		#[pallet::constant]
-		type ParachainId: Get<ParaId>;
+		type ParachainId: Get<ParachainId>;
 
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
 

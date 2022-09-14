@@ -15,35 +15,32 @@
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
-use crate as pallet_loans;
-use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
-use common_traits::PoolUpdateGuard;
-use common_types::impls::AuthorityOrigin;
-use common_types::{
-	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role,
-	TimeProvider,
+use cfg_primitives::{
+	Balance, CollectionId, ItemId, Moment, PoolId, TrancheId, TrancheWeight,
+	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
-use frame_support::traits::Everything;
+use cfg_traits::PoolUpdateGuard;
+use cfg_types::{
+	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolLocator, Rate, Role,
+	TimeProvider, TrancheToken,
+};
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, GenesisBuild, SortedMembers},
+	traits::{AsEnsureOriginWithArg, Everything, GenesisBuild, SortedMembers},
 	PalletId,
 };
-use frame_system::{EnsureRoot, EnsureSigned, EnsureSignedBy};
-use orml_traits::asset_registry::AssetMetadata;
-use orml_traits::parameter_type_with_key;
+use frame_system::{EnsureSigned, EnsureSignedBy};
+use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
-use runtime_common::{
-	asset_registry::CustomAssetProcessor, Balance, CollectionId, ItemId, Moment, Rate, TrancheId,
-	TrancheToken, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
-};
 use sp_core::H256;
 use sp_io::TestExternalities;
-use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 };
+
+use crate as pallet_loans;
+use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -64,7 +61,6 @@ frame_support::construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>},
-		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>}
 	}
 );
 
@@ -85,30 +81,30 @@ parameter_types! {
 }
 
 impl frame_system::Config for MockRuntime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 // Parameterize FRAME balances pallet
@@ -118,9 +114,9 @@ parameter_types! {
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime
 impl pallet_timestamp::Config for MockRuntime {
+	type MinimumPeriod = ();
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = ();
 	type WeightInfo = ();
 }
 
@@ -132,39 +128,29 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_asset_registry::Config for MockRuntime {
-	type Event = Event;
-	type CustomMetadata = CustomMetadata;
-	type AssetId = CurrencyId;
-	type AuthorityOrigin = AuthorityOrigin<Origin, EnsureRoot<u64>>;
-	type AssetProcessor = CustomAssetProcessor;
-	type Balance = Balance;
-	type WeightInfo = ();
-}
-
 parameter_types! {
 	pub MaxLocks: u32 = 2;
 	pub const MaxReserves: u32 = 50;
 }
 
 impl orml_tokens::Config for MockRuntime {
-	type Event = Event;
-	type Balance = Balance;
 	type Amount = i64;
+	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-	type WeightInfo = ();
-	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type Event = Event;
+	type ExistentialDeposits = ExistentialDeposits;
+	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
-	type OnNewTokenAccount = ();
+	type OnDust = ();
 	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const PoolPalletId: frame_support::PalletId = common_types::ids::POOLS_PALLET_ID;
+	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	pub const ChallengeTime: u64 = 0; // disable challenge period
 	pub const MinUpdateDelay: u64 = 0; // no delay
@@ -194,58 +180,65 @@ parameter_types! {
 	pub const ParachainId: u32 = 2008;
 }
 
+cfg_traits::mocks::orml_asset_registry::impl_mock! {
+	RegistryMock,
+	CurrencyId,
+	Balance,
+	CustomMetadata
+}
+
 impl pallet_pools::Config for MockRuntime {
-	type AssetRegistry = OrmlAssetRegistry;
-	type PoolCurrency = Everything;
-	type Event = Event;
-	type ParachainId = ParachainId;
+	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
-	type InterestRate = Rate;
-	type PoolId = PoolId;
-	type TrancheId = [u8; 16];
-	type EpochId = u32;
-	type CurrencyId = CurrencyId;
-	type Currency = Balances;
-	type Tokens = Tokens;
-	type NAV = Loans;
-	type TrancheToken = TrancheToken<MockRuntime>;
-	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
-	type MinUpdateDelay = MinUpdateDelay;
-	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type Currency = Balances;
+	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
-	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
-	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
+	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type EpochId = u32;
+	type Event = Event;
+	type InterestRate = Rate;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type PalletId = PoolPalletId;
-	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
+	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
+	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
+	type MinUpdateDelay = MinUpdateDelay;
+	type NAV = Loans;
+	type PalletId = PoolPalletId;
+	type ParachainId = ParachainId;
+	type Permission = Permissions;
+	type PoolCreateOrigin = EnsureSigned<u64>;
+	type PoolCurrency = Everything;
 	type PoolDeposit = ZeroDeposit;
-	type WeightInfo = ();
-	type TrancheWeight = runtime_common::TrancheWeight;
+	type PoolId = PoolId;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type TrancheId = [u8; 16];
+	type TrancheToken = TrancheToken;
+	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
+	type WeightInfo = ();
 }
 
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
+	type Moment = Moment;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
 		u32,
 		Balance,
 		Rate,
 		MaxSizeMetadata,
-		runtime_common::TrancheWeight,
+		TrancheWeight,
 		TrancheId,
 		PoolId,
 	>;
 	type ScheduledUpdateDetails =
 		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
-	type Moment = Moment;
 
 	fn released(
 		_pool: &Self::PoolDetails,
@@ -258,15 +251,15 @@ impl PoolUpdateGuard for UpdateGuard {
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -285,29 +278,29 @@ parameter_types! {
 }
 
 impl pallet_uniques::Config for MockRuntime {
-	type Event = Event;
-	type CollectionId = CollectionId;
-	type ItemId = ItemId;
-	type Currency = Balances;
-	type ForceOrigin = EnsureSignedBy<One, u64>;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
-	type Locker = ();
-	type CollectionDeposit = CollectionDeposit;
-	type ItemDeposit = ItemDeposit;
-	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
+	type CollectionDeposit = CollectionDeposit;
+	type CollectionId = CollectionId;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
+	type Currency = Balances;
 	type DepositPerByte = DepositPerByte;
-	type StringLimit = Limit;
-	type KeyLimit = Limit;
-	type ValueLimit = Limit;
-	type WeightInfo = ();
+	type Event = Event;
+	type ForceOrigin = EnsureSignedBy<One, u64>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
+	type ItemDeposit = ItemDeposit;
+	type ItemId = ItemId;
+	type KeyLimit = Limit;
+	type Locker = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type StringLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = ();
 }
 
 impl pallet_interest_accrual::Config for MockRuntime {
-	type Event = Event;
 	type Balance = Balance;
+	type Event = Event;
 	type InterestRate = Rate;
 	type Time = Timestamp;
 	type Weights = ();
@@ -321,39 +314,39 @@ parameter_types! {
 	pub const MaxRoles: u32 = u32::MAX;
 }
 impl pallet_permissions::Config for MockRuntime {
-	type Event = Event;
-	type Scope = PermissionScope<u64, CurrencyId>;
-	type Role = Role;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
-	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type Editors = frame_support::traits::Everything;
+	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
+	type Role = Role;
+	type Scope = PermissionScope<u64, CurrencyId>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = common_types::ids::LOANS_PALLET_ID;
+	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 200;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
 
 impl pallet_loans::Config for MockRuntime {
-	type Event = Event;
-	type ClassId = CollectionId;
-	type LoanId = ItemId;
-	type Rate = Rate;
 	type Balance = Balance;
-	type NonFungible = Uniques;
-	type Time = Timestamp;
-	type LoansPalletId = LoansPalletId;
-	type Pool = Pools;
+	type BlockNumberProvider = System;
+	type ClassId = CollectionId;
 	type CurrencyId = CurrencyId;
-	type Permission = Permissions;
+	type Event = Event;
 	type InterestAccrual = InterestAccrual;
-	type WeightInfo = ();
+	type LoanId = ItemId;
+	type LoansPalletId = LoansPalletId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
-	type BlockNumberProvider = System;
+	type NonFungible = Uniques;
+	type Permission = Permissions;
+	type Pool = Pools;
+	type Rate = Rate;
+	type Time = Timestamp;
+	type WeightInfo = ();
 }
 
 // USD currencyId
@@ -430,10 +423,9 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		let mut externalities = TestExternalities::new(storage);
-		externalities.execute_with(|| {
-			System::set_block_number(1);
-			OrmlAssetRegistry::do_register_asset(
+		orml_asset_registry_mock::GenesisConfig {
+			metadata: vec![(
+				CurrencyId::AUSD,
 				AssetMetadata {
 					decimals: 18,
 					name: "MOCK TOKEN".as_bytes().to_vec(),
@@ -442,10 +434,16 @@ impl TestExternalitiesBuilder {
 					location: None,
 					additional: CustomMetadata::default(),
 				},
-				Some(CurrencyId::AUSD),
-			)
-			.ok()
-			.unwrap();
+			)],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		let mut externalities = TestExternalities::new(storage);
+		externalities.execute_with(|| {
+			// We need to set this, otherwise on genesis (i.e. 0)
+			// no events are stored
+			System::set_block_number(1);
 		});
 		externalities
 	}

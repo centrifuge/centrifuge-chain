@@ -11,16 +11,15 @@
 // GNU General Public License for more details.
 
 //! Utilitites around populating a genesis storage
+use cfg_types::{CurrencyId, CustomMetadata};
+use frame_support::traits::GenesisBuild;
+use serde::{Deserialize, Serialize};
+use sp_runtime::{AccountId32, Storage};
+
 use crate::pools::utils::{
 	accounts::default_accounts,
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 };
-use common_types::CurrencyId;
-use frame_support::traits::GenesisBuild;
-use serde::{Deserialize, Serialize};
-use sp_runtime::traits::MaybeSerializeDeserialize;
-use sp_runtime::{AccountId32, Storage};
-use std::marker::PhantomData;
 
 /// Provides 100_000 * DECIMAL_BASE_18 native tokens to the `accounts::default_accounts()`
 pub fn default_native_balances<Runtime>(storage: &mut Storage)
@@ -87,8 +86,8 @@ pub fn register_default_asset<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_asset_registry::Config,
 	<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
-	<Runtime as orml_asset_registry::Config>::AssetId: From<common_types::CurrencyId>,
-	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<common_types::CustomMetadata>,
+	<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
+	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
 {
 	let genesis = MockGenesisConfigAssetRegistry {
 		assets: vec![CurrencyId::AUSD, CurrencyId::KSM],
@@ -104,9 +103,9 @@ where
 pub fn register_asset<Runtime>(asset: CurrencyId, storage: &mut Storage)
 where
 	Runtime: orml_asset_registry::Config + Default,
-	<Runtime as orml_asset_registry::Config>::AssetId: From<common_types::CurrencyId>,
+	<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
 	<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
-	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<common_types::CustomMetadata>,
+	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
 {
 	let genesis = MockGenesisConfigAssetRegistry {
 		assets: vec![asset],
@@ -126,9 +125,9 @@ struct MockGenesisConfigAssetRegistry {
 impl<Runtime> GenesisBuild<Runtime> for MockGenesisConfigAssetRegistry
 where
 	Runtime: orml_asset_registry::Config,
-	<Runtime as orml_asset_registry::Config>::AssetId: From<common_types::CurrencyId>,
+	<Runtime as orml_asset_registry::Config>::AssetId: From<CurrencyId>,
 	<Runtime as orml_asset_registry::Config>::Balance: From<u128>,
-	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<common_types::CustomMetadata>,
+	<Runtime as orml_asset_registry::Config>::CustomMetadata: From<CustomMetadata>,
 {
 	fn build(&self) {
 		let assets = self.assets.clone();
@@ -140,7 +139,7 @@ where
 					symbol: b"mock_symbol".to_vec(),
 					existential_deposit: 0u128.into(),
 					location: None,
-					additional: common_types::CustomMetadata::default().into(),
+					additional: CustomMetadata::default().into(),
 				},
 				Some(asset.clone().into()),
 			)

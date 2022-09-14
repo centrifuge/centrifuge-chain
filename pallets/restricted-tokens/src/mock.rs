@@ -10,22 +10,24 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use crate as pallet_restricted_tokens;
-use common_traits::PreConditions;
-use common_types::Moment;
-use frame_support::parameter_types;
-use frame_support::sp_io::TestExternalities;
-use frame_support::traits::{Everything, GenesisBuild};
+use cfg_primitives::Moment;
+use cfg_traits::PreConditions;
+use frame_support::{
+	parameter_types,
+	sp_io::TestExternalities,
+	traits::{Everything, GenesisBuild},
+};
 use orml_traits::parameter_type_with_key;
 use pallet_restricted_tokens::TransferDetails;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::testing::H256;
 use sp_runtime::{
-	testing::Header,
+	testing::{Header, H256},
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use sp_std::collections::btree_map::BTreeMap;
+
+pub use crate as pallet_restricted_tokens;
 
 pub const DISTR_PER_ACCOUNT: u64 = 1000;
 pub type AccountId = u64;
@@ -82,10 +84,13 @@ impl Timer {
 
 mod filter {
 	pub mod fungibles {
-		use crate::impl_fungibles::*;
-		use crate::mock::{AccountId, Balance, CurrencyId, RestrictedTokens, POOL_PALLET_ID};
-		use crate::TransferDetails;
-		use common_traits::PreConditions;
+		use cfg_traits::PreConditions;
+
+		use crate::{
+			impl_fungibles::*,
+			mock::{AccountId, Balance, CurrencyId, RestrictedTokens, POOL_PALLET_ID},
+			TransferDetails,
+		};
 
 		/// Dummy filter, that allows to reduce the balance of native normally
 		/// but other balances are only allowed to be reduced by the half of
@@ -208,11 +213,15 @@ mod filter {
 	}
 
 	pub mod fungible {
-		use crate::impl_fungible::*;
-		use crate::mock::{
-			AccountId, Balance, ExistentialDeposit, HoldingPeriodChecker, Timer, MIN_HOLD_PERIOD,
+		use cfg_traits::PreConditions;
+
+		use crate::{
+			impl_fungible::*,
+			mock::{
+				AccountId, Balance, ExistentialDeposit, HoldingPeriodChecker, Timer,
+				MIN_HOLD_PERIOD,
+			},
 		};
-		use common_traits::PreConditions;
 
 		/// Dummy filter, that allows to reduce only till the ExistentialDeposit.
 		pub struct InspectFilter;
@@ -265,10 +274,13 @@ mod filter {
 	}
 
 	pub mod currency {
-		use crate::impl_currency::*;
-		use crate::mock::{AccountId, Balance};
-		use common_traits::PreConditions;
+		use cfg_traits::PreConditions;
 		use frame_support::traits::WithdrawReasons;
+
+		use crate::{
+			impl_currency::*,
+			mock::{AccountId, Balance},
+		};
 
 		/// A dummy filter that ensures that a call to Currency::ensure_can_withdraw and
 		/// withdraw result in the expected behaviour. Especially, it only allows
@@ -338,30 +350,30 @@ parameter_types! {
 
 // Implement frame system configuration for the mock runtime
 impl frame_system::Config for MockRuntime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
-	type BlockWeights = BlockWeights;
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Index = u64;
-	type Call = Call;
 	type BlockNumber = u64;
+	type BlockWeights = BlockWeights;
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 parameter_type_with_key! {
@@ -379,15 +391,15 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for MockRuntime {
-	type MaxLocks = MaxLocks;
-	type Balance = Balance;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -395,44 +407,44 @@ parameter_types! {
 }
 
 impl orml_tokens::Config for MockRuntime {
-	type Event = Event;
-	type Balance = Balance;
 	type Amount = i64;
+	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-	type WeightInfo = ();
-	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type Event = Event;
+	type ExistentialDeposits = ExistentialDeposits;
+	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
-	type OnNewTokenAccount = ();
+	type OnDust = ();
 	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
 }
 
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Cfg;
 }
 impl pallet_restricted_tokens::Config for MockRuntime {
-	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type Event = Event;
+	type Fungibles = OrmlTokens;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
+	type PreCurrency = filter::currency::CurrencyFilter;
 	type PreExtrTransfer = RestrictedTokens;
+	type PreFungibleInspect = filter::fungible::InspectFilter;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
+	type PreFungibleTransfer = filter::fungible::TransferFilter;
 	type PreFungiblesInspect = filter::fungibles::InspectFilter;
 	type PreFungiblesInspectHold = filter::fungibles::InspectHoldFilter;
 	type PreFungiblesMutate = filter::fungibles::MutateFilter;
 	type PreFungiblesMutateHold = filter::fungibles::MutateHoldFilter;
 	type PreFungiblesTransfer = filter::fungibles::TransferFilter;
-	type Fungibles = OrmlTokens;
-	type PreCurrency = filter::currency::CurrencyFilter;
-	type PreReservableCurrency = common_traits::Always;
-	type PreFungibleInspect = filter::fungible::InspectFilter;
-	type PreFungibleInspectHold = common_traits::Always;
-	type PreFungibleMutate = common_traits::Always;
-	type PreFungibleMutateHold = common_traits::Always;
-	type PreFungibleTransfer = filter::fungible::TransferFilter;
-	type NativeFungible = Balances;
-	type NativeToken = NativeToken;
+	type PreReservableCurrency = cfg_traits::Always;
 	type WeightInfo = ();
 }
 

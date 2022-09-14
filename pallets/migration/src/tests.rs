@@ -1,9 +1,3 @@
-use crate as pallet_migration_manager;
-use crate::mock::*;
-use crate::test_data::balances_total_issuance::TOTAL_ISSUANCE;
-use crate::test_data::proxy_proxies::PROXY_PROXIES;
-use crate::test_data::system_account::*;
-use crate::test_data::vesting_vesting::VESTING_VESTING;
 use frame_support::{assert_noop, BoundedVec};
 use frame_system::AccountInfo;
 use pallet_balances::AccountData;
@@ -11,6 +5,15 @@ use pallet_proxy::ProxyDefinition;
 use pallet_vesting::VestingInfo;
 use rand::Rng;
 use sp_runtime::AccountId32;
+
+use crate as pallet_migration_manager;
+use crate::{
+	mock::*,
+	test_data::{
+		balances_total_issuance::TOTAL_ISSUANCE, proxy_proxies::PROXY_PROXIES, system_account::*,
+		vesting_vesting::VESTING_VESTING,
+	},
+};
 
 #[test]
 fn finalize_works() {

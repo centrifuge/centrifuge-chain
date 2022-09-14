@@ -37,16 +37,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn commit() -> Weight {
 		(106_424_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn evict_pre_commits() -> Weight {
 		(2_694_291_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(100 as Weight))
 			.saturating_add(T::DbWeight::get().writes(100 as Weight))
 	}
+
 	fn evict_anchors() -> Weight {
 		(12_040_337_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1008 as Weight))

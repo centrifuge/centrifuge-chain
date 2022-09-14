@@ -1,1 +1,6 @@
 hard_tabs = true
+imports_granularity = "Crate"
+reorder_impl_items = true
+reorder_imports = true
+group_imports = "StdExternalCrate"
+reorder_modules = true 

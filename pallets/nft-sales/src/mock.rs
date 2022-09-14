@@ -11,18 +11,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use crate::{self as nft_sales};
-use common_types::CurrencyId;
-use frame_support::traits::{AsEnsureOriginWithArg, Everything, GenesisBuild};
-use frame_support::{parameter_types, PalletId};
+use cfg_primitives::{Balance, CollectionId, ItemId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
+use cfg_types::CurrencyId;
+use frame_support::{
+	parameter_types,
+	traits::{AsEnsureOriginWithArg, Everything, GenesisBuild},
+	PalletId,
+};
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use runtime_common::{Balance, CollectionId, ItemId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+pub use crate::{self as nft_sales};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -48,19 +52,19 @@ parameter_types! {
 }
 
 impl orml_tokens::Config for Test {
-	type Event = ();
-	type Balance = Balance;
 	type Amount = i64;
+	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-	type WeightInfo = ();
-	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type Event = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
-	type OnNewTokenAccount = ();
+	type OnDust = ();
 	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -76,24 +80,24 @@ parameter_type_with_key! {
 }
 
 impl pallet_uniques::Config for Test {
-	type Event = ();
-	type CollectionId = CollectionId;
-	type ItemId = ItemId;
-	type Currency = Balances;
-	type ForceOrigin = EnsureSignedBy<One, u64>;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type Locker = ();
-	type CollectionDeposit = CollectionDeposit;
-	type ItemDeposit = ItemDeposit;
-	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
+	type CollectionDeposit = CollectionDeposit;
+	type CollectionId = CollectionId;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
 	type DepositPerByte = DepositPerByte;
-	type StringLimit = Limit;
-	type KeyLimit = Limit;
-	type ValueLimit = Limit;
-	type WeightInfo = ();
+	type Event = ();
+	type ForceOrigin = EnsureSignedBy<One, u64>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
+	type ItemDeposit = ItemDeposit;
+	type ItemId = ItemId;
+	type KeyLimit = Limit;
+	type Locker = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type StringLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -114,30 +118,30 @@ parameter_types! {
 type AccountId = u64;
 
 impl frame_system::Config for Test {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
+	type BlockHashCount = ();
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
-	type BlockHashCount = ();
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 parameter_types! {
@@ -145,15 +149,15 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -167,17 +171,17 @@ impl frame_support::traits::SortedMembers<u64> for One {
 }
 
 impl nft_sales::Config for Test {
-	type Event = ();
-	type WeightInfo = ();
-	type Fungibles = OrmlTokens;
-	type NonFungibles = Uniques;
 	type CollectionId = CollectionId;
+	type Event = ();
+	type Fungibles = OrmlTokens;
 	type ItemId = ItemId;
+	type NonFungibles = Uniques;
 	type PalletId = NftSalesPalletId;
+	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const NftSalesPalletId: PalletId = common_types::ids::NFT_SALES_PALLET_ID;
+	pub const NftSalesPalletId: PalletId = cfg_types::ids::NFT_SALES_PALLET_ID;
 }
 
 pub(crate) const SELLER: u64 = 0x1;

@@ -101,31 +101,20 @@ mod tests;
 mod weights;
 
 // Export crate types and traits
+use cfg_primitives::types::FixedArray;
+use cfg_traits::fees::{Fee, Fees};
+use chainbridge::types::ResourceId;
+use codec::FullCodec;
+// Re-export pallet components in crate namespace (for runtime construction)
+pub use pallet::*;
+use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
+use sp_core::H256;
+use sp_std::{fmt::Debug, vec::Vec};
+
 use crate::{
 	traits::WeightInfo,
 	types::{BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
 };
-
-// Re-export pallet components in crate namespace (for runtime construction)
-pub use pallet::*;
-
-use chainbridge::types::ResourceId;
-
-use codec::FullCodec;
-use scale_info::TypeInfo;
-
-use frame_support::{dispatch::DispatchResultWithPostInfo, ensure};
-
-use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
-
-use common_traits::fees::{Fee, Fees};
-use runtime_common::types::FixedArray;
-
-use sp_core::H256;
-use sp_runtime::traits::Member;
-
-use sp_std::fmt::Debug;
-use sp_std::vec::Vec;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -139,10 +128,11 @@ use sp_std::vec::Vec;
 #[frame_support::pallet]
 pub mod pallet {
 
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::SaturatedConversion;
+
+	use super::*;
 
 	// NFT pallet type declaration.
 	//

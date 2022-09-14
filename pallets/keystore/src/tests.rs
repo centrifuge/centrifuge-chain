@@ -11,14 +11,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::*;
-use crate::mock::Event as MockEvent;
-use crate::mock::*;
-use crate::Event as CrateEvent;
 use frame_support::{assert_err, assert_ok};
 use frame_system::{Account, AccountInfo};
 use pallet_balances::AccountData;
 use sp_runtime::testing::H256;
+
+use super::*;
+use crate::{
+	mock::{Event as MockEvent, *},
+	Event as CrateEvent,
+};
 
 #[test]
 fn add_keys() {

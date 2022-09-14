@@ -16,29 +16,38 @@
 //! This pallet provides functionality for managing loans on Tinlake
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(feature = "std")]
+use std::fmt::Debug;
+
+use cfg_primitives::Moment;
+use cfg_traits::{
+	InterestAccrual as InterestAccrualT, Permissions as PermissionsT, PoolInspect,
+	PoolNAV as TPoolNav, PoolReserve,
+};
+pub use cfg_types::{Adjustment, PermissionScope, PoolRole, Role};
 use codec::{Decode, Encode};
-use common_traits::{InterestAccrual as InterestAccrualT, Permissions as PermissionsT};
-use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::{Adjustment, Moment, PermissionScope, PoolRole, Role};
-use frame_support::dispatch::DispatchResult;
-use frame_support::pallet_prelude::Get;
-use frame_support::sp_runtime::traits::{One, Zero};
-use frame_support::storage::types::OptionQuery;
-use frame_support::traits::tokens::nonfungibles::{Inspect, Mutate, Transfer};
-use frame_support::traits::UnixTime;
-use frame_support::transactional;
-use frame_support::{ensure, Parameter};
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	pallet_prelude::Get,
+	sp_runtime::traits::{One, Zero},
+	traits::{
+		tokens::nonfungibles::{Inspect, Mutate, Transfer},
+		UnixTime,
+	},
+	transactional,
+};
 use frame_system::pallet_prelude::OriginFor;
 use loan_type::LoanType;
 pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Member};
-use sp_runtime::{DispatchError, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider},
+	DispatchError, FixedPointNumber, FixedPointOperand,
+};
 use sp_std::{vec, vec::Vec};
-#[cfg(feature = "std")]
-use std::fmt::Debug;
 use types::*;
 
 #[cfg(test)]
@@ -62,13 +71,13 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use super::*;
-	use crate::weights::WeightInfo;
-	use frame_support::pallet_prelude::*;
-	use frame_support::PalletId;
+	use frame_support::{pallet_prelude::*, PalletId};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
+
+	use super::*;
+	use crate::weights::WeightInfo;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -705,6 +714,7 @@ pub mod pallet {
 impl<T: Config> TPoolNav<PoolIdOf<T>, T::Balance> for Pallet<T> {
 	type ClassId = T::ClassId;
 	type Origin = T::Origin;
+
 	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
 		PoolNAV::<T>::get(pool_id).map(|nav_details| (nav_details.latest, nav_details.last_updated))
 	}

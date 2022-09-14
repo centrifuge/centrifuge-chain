@@ -40,12 +40,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn revoke_keys(n: u32) -> Weight {
 		(12_542_000 as Weight) // Standard Error: 105_000
 			.saturating_add((18_740_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn set_deposit() -> Weight {
 		(20_999_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

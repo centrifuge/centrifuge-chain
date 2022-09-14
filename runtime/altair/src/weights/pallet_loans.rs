@@ -37,40 +37,47 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn create() -> Weight {
 		(198_658_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
+
 	fn price(n: u32) -> Weight {
 		(157_717_000 as Weight) // Standard Error: 7_000
 			.saturating_add((1_261_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn add_write_off_group() -> Weight {
 		(69_343_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn initial_borrow(n: u32) -> Weight {
 		(323_174_000 as Weight) // Standard Error: 9_000
 			.saturating_add((905_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn further_borrows(n: u32) -> Weight {
 		(423_773_000 as Weight) // Standard Error: 8_000
 			.saturating_add((909_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn repay(n: u32) -> Weight {
 		(370_552_000 as Weight) // Standard Error: 7_000
 			.saturating_add((929_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn write_off(n: u32, m: u32) -> Weight {
 		(246_336_000 as Weight) // Standard Error: 4_000
 			.saturating_add((836_000 as Weight).saturating_mul(n as Weight)) // Standard Error: 12_000
@@ -78,24 +85,28 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
+
 	fn admin_write_off(n: u32) -> Weight {
 		(268_178_000 as Weight) // Standard Error: 7_000
 			.saturating_add((846_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
+
 	fn repay_and_close(n: u32) -> Weight {
 		(241_547_000 as Weight) // Standard Error: 7_000
 			.saturating_add((863_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
 	}
+
 	fn write_off_and_close(n: u32) -> Weight {
 		(247_235_000 as Weight) // Standard Error: 6_000
 			.saturating_add((872_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
 	}
+
 	fn update_nav(n: u32) -> Weight {
 		(100_613_000 as Weight) // Standard Error: 18_000
 			.saturating_add((65_459_000 as Weight).saturating_mul(n as Weight))

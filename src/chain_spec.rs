@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
+use altair_runtime::constants::currency::AIR;
+use cfg_primitives::{currency_decimals, CFG};
+use cfg_types::FeeKey;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use node_primitives::{AccountId, Signature};
+use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
+use serde::{Deserialize, Serialize};
 use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
-
-use altair_runtime::constants::currency::AIR;
-use common_types::FeeKey;
-use runtime_common::{decimals, CFG};
-use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
-use serde::{Deserialize, Serialize};
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
@@ -75,10 +73,10 @@ pub fn get_development_session_keys(
 	development_runtime::SessionKeys { aura: keys }
 }
 
-type AccountPublic = <Signature as Verify>::Signer;
+type AccountPublic = <cfg_primitives::Signature as Verify>::Signer;
 
 /// Helper function to generate an account ID from seed
-pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
+pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> cfg_primitives::AccountId
 where
 	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
@@ -95,7 +93,7 @@ pub fn centrifuge_config() -> CentrifugeChainSpec {
 pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CFG".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge",
@@ -149,7 +147,7 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DCFG".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge Dev",
@@ -189,7 +187,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DCFG".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge Local",
@@ -224,7 +222,7 @@ pub fn catalyst_config() -> CentrifugeChainSpec {
 pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NCFG".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Catalyst Testnet",
@@ -281,7 +279,7 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NCFG".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Catalyst Local",
@@ -318,7 +316,7 @@ pub fn altair_config() -> AltairChainSpec {
 pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "AIR".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Altair",
@@ -370,7 +368,7 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DAIR".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Altair Dev",
@@ -410,7 +408,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DAIR".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Altair Local",
@@ -444,7 +442,7 @@ pub fn antares_config() -> AltairChainSpec {
 pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NAIR".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Antares Testnet",
@@ -502,7 +500,7 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NAIR".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Antares Local",
@@ -536,7 +534,7 @@ pub fn charcoal_config() -> AltairChainSpec {
 pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Charcoal Testnet",
@@ -588,7 +586,7 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Charcoal Local",
@@ -618,7 +616,7 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	DevelopmentChainSpec::from_genesis(
 		"Dev Live",
@@ -658,7 +656,7 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
-	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
 
 	DevelopmentChainSpec::from_genesis(
 		"Dev Local",
@@ -685,7 +683,7 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 	)
 }
 
-fn endowed_accounts() -> Vec<AccountId> {
+fn endowed_accounts() -> Vec<cfg_primitives::AccountId> {
 	vec![
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -702,7 +700,7 @@ fn endowed_accounts() -> Vec<AccountId> {
 	]
 }
 
-fn council_members_bootstrap() -> Vec<AccountId> {
+fn council_members_bootstrap() -> Vec<cfg_primitives::AccountId> {
 	endowed_accounts().into_iter().take(4).collect()
 }
 
@@ -895,7 +893,7 @@ fn altair_genesis(
 }
 
 fn development_genesis(
-	root_key: AccountId,
+	root_key: development_runtime::AccountId,
 	initial_authorities: Vec<(development_runtime::AccountId, development_runtime::AuraId)>,
 	endowed_accounts: Vec<development_runtime::AccountId>,
 	total_issuance: Option<development_runtime::Balance>,

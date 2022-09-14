@@ -11,10 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as pallet_anchors, Config};
-
-use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
-
+use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU8, Everything, FindAuthor},
@@ -25,6 +22,8 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate::{self as pallet_anchors, Config};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -51,30 +50,30 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = u64;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 impl pallet_randomness_collective_flip::Config for Test {}
@@ -84,15 +83,15 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 pub struct AuthorGiven;
@@ -107,16 +106,16 @@ impl FindAuthor<u64> for AuthorGiven {
 }
 
 impl pallet_authorship::Config for Test {
+	type EventHandler = ();
+	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
 	type UncleGenerations = ();
-	type FilterUncle = ();
-	type EventHandler = ();
 }
 
 impl pallet_timestamp::Config for Test {
+	type MinimumPeriod = ();
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = ();
 	type WeightInfo = ();
 }
 
@@ -132,11 +131,11 @@ impl_mock_fees_state!(
 );
 
 impl Config for Test {
-	type WeightInfo = ();
-	type Fees = MockFees<Self::AccountId, Balance, u8, MockFeesState>;
 	type CommitAnchorFeeKey = ConstU8<1>;
-	type PreCommitDepositFeeKey = ConstU8<2>;
 	type Currency = Balances;
+	type Fees = MockFees<Self::AccountId, Balance, u8, MockFeesState>;
+	type PreCommitDepositFeeKey = ConstU8<2>;
+	type WeightInfo = ();
 }
 
 impl Test {

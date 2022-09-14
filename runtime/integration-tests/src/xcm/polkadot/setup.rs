@@ -10,11 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use centrifuge_runtime::CustomMetadata;
-pub use centrifuge_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
+use altair_runtime::constants;
+pub use centrifuge_runtime::{Origin, Runtime, System};
+use cfg_primitives::{constants::currency_decimals, parachains, AccountId, Balance};
+use cfg_types::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use orml_traits::asset_registry::AssetMetadata;
-use runtime_common::{decimals, parachains, Balance};
 
 /// Accounts
 pub const ALICE: [u8; 32] = [4u8; 32];
@@ -102,15 +103,15 @@ impl ExtBuilder {
 }
 
 pub fn cfg(amount: Balance) -> Balance {
-	amount * dollar(decimals::NATIVE)
+	amount * dollar(currency_decimals::NATIVE)
 }
 
 pub fn ausd(amount: Balance) -> Balance {
-	amount * dollar(decimals::AUSD)
+	amount * dollar(currency_decimals::AUSD)
 }
 
 pub fn dot(amount: Balance) -> Balance {
-	amount * dollar(decimals::KSM)
+	amount * dollar(currency_decimals::KSM)
 }
 
 pub fn foreign(amount: Balance, decimals: u32) -> Balance {

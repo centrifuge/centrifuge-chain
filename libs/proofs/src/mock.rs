@@ -1,6 +1,7 @@
-use crate::{hashing::sort_hash_of, Hasher, Proof};
 use sp_core::{blake2_256, keccak_256, H256};
 use sp_std::vec::Vec;
+
+use crate::{hashing::sort_hash_of, Hasher, Proof};
 
 pub struct BundleHasher;
 

@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::*;
-
 use codec::{Decode, Encode};
+#[cfg(feature = "try-runtime")]
+use frame_support::ensure;
 use frame_support::{log, traits::Get, weights::Weight, Blake2_256};
 
-#[cfg(feature = "try-runtime")]
-use frame_support::ensure; // Not in prelude for try-runtime
+use super::*; // Not in prelude for try-runtime
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -72,10 +71,11 @@ pub mod fee_balances {
 #[cfg(test)]
 #[cfg(feature = "try-runtime")]
 mod test {
-	use super::{fee_balances::*, Fee, Fees};
-	use crate::mock::{new_test_ext, Test};
 	use frame_support::assert_ok;
 	use sp_core::H256;
+
+	use super::{fee_balances::*, Fee, Fees};
+	use crate::mock::{new_test_ext, Test};
 
 	#[test]
 	fn should_remove_all() {

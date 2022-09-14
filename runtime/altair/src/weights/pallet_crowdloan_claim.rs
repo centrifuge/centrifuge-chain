@@ -37,33 +37,41 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn claim_reward_sr25519() -> Weight {
 		(319_981_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn claim_reward_ecdsa() -> Weight {
 		(297_094_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn initialize() -> Weight {
 		(49_415_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
+
 	fn set_lease_start() -> Weight {
 		(27_155_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_lease_period() -> Weight {
 		(27_215_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_contributions_root() -> Weight {
 		(28_744_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_locked_at() -> Weight {
 		(26_880_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_crowdloan_trie_index() -> Weight {
 		(27_276_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

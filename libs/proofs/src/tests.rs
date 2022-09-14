@@ -1,11 +1,11 @@
 mod tests {
+	use sp_core::H256;
+
 	use crate::{
 		hashing::bundled_hash,
 		mock::{get_invalid_proof, get_valid_proof, BundleHasher, ProofVerifier},
+		Proof, Verifier,
 	};
-	use crate::{Proof, Verifier};
-
-	use sp_core::H256;
 
 	#[test]
 	fn bundled_hash_with_leaves() {

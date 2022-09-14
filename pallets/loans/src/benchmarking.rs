@@ -12,12 +12,8 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
-use super::*;
-use crate::loan_type::{BulletLoan, CreditLineWithMaturity};
-use crate::test_utils::initialise_test_pool;
-use crate::types::WriteOffGroup;
-use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet};
-use common_types::{CurrencyId, CustomMetadata, PoolLocator};
+use cfg_primitives::CFG as CURRENCY;
+use cfg_types::{CurrencyId, CustomMetadata, PoolLocator, Rate};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
 	assert_ok,
@@ -25,15 +21,21 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
-use orml_traits::asset_registry::Mutate;
-use orml_traits::MultiCurrency;
+use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
-use runtime_common::{Rate, CFG as CURRENCY};
 use test_utils::{
 	assert_last_event, create as create_test_pool, create_nft_class_if_needed, expect_asset_owner,
 	expect_asset_to_be_burned, get_tranche_id, mint_nft_of,
+};
+
+use super::*;
+use crate::{
+	loan_type::{BulletLoan, CreditLineWithMaturity},
+	test_utils::initialise_test_pool,
+	types::WriteOffGroup,
+	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
 };
 
 pub struct Pallet<T: Config>(LoansPallet<T>);
@@ -321,14 +323,14 @@ where
 			additional: CustomMetadata::default(),
 		},
 	)
-	.unwrap();
+	.expect("Registering Pool asset must work");
 }
 
 benchmarks! {
 	where_clause {
 		where
 		T: pallet_pools::Config<
-			CurrencyId = common_types::CurrencyId,
+			CurrencyId = cfg_types::CurrencyId,
 			Balance = u128,
 		>,
 		<T as pallet_uniques::Config>::CollectionId: From<u64>,

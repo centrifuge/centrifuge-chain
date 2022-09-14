@@ -36,6 +36,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(40_071_000 as Weight) // Standard Error: 0
 			.saturating_add((1_000 as Weight).saturating_mul(z as Weight))
 	}
+
 	fn as_multi_create(s: u32, z: u32) -> Weight {
 		(70_746_000 as Weight) // Standard Error: 13_000
 			.saturating_add((331_000 as Weight).saturating_mul(s as Weight)) // Standard Error: 0
@@ -43,6 +44,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn as_multi_create_store(s: u32, z: u32) -> Weight {
 		(91_427_000 as Weight) // Standard Error: 4_000
 			.saturating_add((237_000 as Weight).saturating_mul(s as Weight)) // Standard Error: 0
@@ -50,6 +52,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn as_multi_approve(s: u32, z: u32) -> Weight {
 		(52_002_000 as Weight) // Standard Error: 2_000
 			.saturating_add((238_000 as Weight).saturating_mul(s as Weight)) // Standard Error: 0
@@ -57,6 +60,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn as_multi_approve_store(s: u32, z: u32) -> Weight {
 		(85_629_000 as Weight) // Standard Error: 4_000
 			.saturating_add((231_000 as Weight).saturating_mul(s as Weight)) // Standard Error: 0
@@ -64,6 +68,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn as_multi_complete(s: u32, z: u32) -> Weight {
 		(102_172_000 as Weight) // Standard Error: 5_000
 			.saturating_add((425_000 as Weight).saturating_mul(s as Weight)) // Standard Error: 0
@@ -71,23 +76,27 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn approve_as_multi_create(s: u32) -> Weight {
 		(77_446_000 as Weight) // Standard Error: 3_000
 			.saturating_add((251_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn approve_as_multi_approve(s: u32) -> Weight {
 		(10_054_000 as Weight) // Standard Error: 83_000
 			.saturating_add((1_407_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn approve_as_multi_complete(_s: u32) -> Weight {
 		(392_034_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn cancel_as_multi(s: u32) -> Weight {
 		(113_720_000 as Weight) // Standard Error: 4_000
 			.saturating_add((295_000 as Weight).saturating_mul(s as Weight))

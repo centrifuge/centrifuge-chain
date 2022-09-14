@@ -14,15 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-	cli::RpcConfig,
-	rpc::{
-		self,
-		anchors::{AnchorApiServer, Anchors},
-		pools::{Pools, PoolsApiServer},
-	},
-};
+use std::{sync::Arc, time::Duration};
 
+use cfg_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
@@ -33,7 +27,6 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
-use runtime_common::{Block, Hash};
 use sc_client_api::ExecutorProvider;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
@@ -43,8 +36,16 @@ use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerH
 use sp_api::ConstructRuntimeApi;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
-use std::{sync::Arc, time::Duration};
 use substrate_prometheus_endpoint::Registry;
+
+use crate::{
+	cli::RpcConfig,
+	rpc::{
+		self,
+		anchors::{AnchorApiServer, Anchors},
+		pools::{Pools, PoolsApiServer},
+	},
+};
 
 // Native Altair executor instance.
 pub struct AltairRuntimeExecutor;

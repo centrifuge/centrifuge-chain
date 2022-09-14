@@ -10,15 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use common_traits::{CurrencyPair, PriceValue};
+use cfg_traits::{CurrencyPair, PriceValue};
 
 use super::*;
 
 impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
-	type PoolId = T::PoolId;
-	type TrancheId = T::TrancheId;
-	type Rate = T::BalanceRatio;
 	type Moment = Moment;
+	type PoolId = T::PoolId;
+	type Rate = T::BalanceRatio;
+	type TrancheId = T::TrancheId;
 
 	fn pool_exists(pool_id: Self::PoolId) -> bool {
 		Pool::<T>::contains_key(pool_id)

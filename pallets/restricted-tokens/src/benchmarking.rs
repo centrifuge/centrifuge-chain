@@ -9,15 +9,16 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use super::*;
-use common_traits::Permissions;
-use common_types::{CurrencyId, PermissionScope, PoolId, PoolRole, Role};
+use cfg_primitives::{PoolId, TrancheId};
+use cfg_traits::Permissions;
+use cfg_types::{CurrencyId, PermissionScope, PoolRole, Role};
 use frame_benchmarking::{account, benchmarks, Zero};
 use frame_support::traits::{fungibles, Get};
 use frame_system::RawOrigin;
 use orml_traits::GetByKey;
-use runtime_common::TrancheId;
 use sp_runtime::traits::StaticLookup;
+
+use super::*;
 
 const CURRENCY: u128 = 1_000_000_000_000_000_000u128;
 

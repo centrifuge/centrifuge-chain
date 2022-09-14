@@ -46,12 +46,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn revoke_keys(n: u32) -> Weight {
 		(13_129_000 as Weight) // Standard Error: 118_000
 			.saturating_add((19_026_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn set_deposit() -> Weight {
 		(22_753_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -67,12 +69,14 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn revoke_keys(n: u32) -> Weight {
 		(13_129_000 as Weight) // Standard Error: 118_000
 			.saturating_add((19_026_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn set_deposit() -> Weight {
 		(22_753_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

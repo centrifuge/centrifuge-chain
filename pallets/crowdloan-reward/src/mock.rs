@@ -22,9 +22,12 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate as pallet_crowdloan_reward;
-use frame_support::traits::Everything;
-use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, PalletId};
+use frame_support::{
+	parameter_types,
+	traits::{Everything, SortedMembers},
+	weights::Weight,
+	PalletId,
+};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{
@@ -32,6 +35,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	Perbill,
 };
+
+use crate as pallet_crowdloan_reward;
 
 type Balance = u64;
 
@@ -60,15 +65,15 @@ parameter_types! {
 
 // Implement balances pallet configuration for mock runtime
 impl pallet_balances::Config for MockRuntime {
-	type MaxLocks = ();
-	type Balance = Balance;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 // Parameterize vesting pallet
@@ -79,25 +84,26 @@ parameter_types! {
 
 // Implement vesting pallet configuration for mock runtime
 impl pallet_vesting::Config for MockRuntime {
-	type Event = Event;
-	type Currency = Balances;
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
+	type Currency = Balances;
+	type Event = Event;
 	type MinVestedTransfer = MinVestedTransfer;
-	const MAX_VESTING_SCHEDULES: u32 = 1;
 	type WeightInfo = ();
+
+	const MAX_VESTING_SCHEDULES: u32 = 1;
 }
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
 	pub const One: u64 = 1;
-	pub const CrowdloanRewardPalletId: PalletId = common_types::ids::CROWDLOAN_REWARD_PALLET_ID;
+	pub const CrowdloanRewardPalletId: PalletId = cfg_types::ids::CROWDLOAN_REWARD_PALLET_ID;
 }
 
 // Implement crowdloan reward pallet configuration for mock runtime
 impl pallet_crowdloan_reward::Config for MockRuntime {
-	type PalletId = CrowdloanRewardPalletId;
-	type Event = Event;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type Event = Event;
+	type PalletId = CrowdloanRewardPalletId;
 	type WeightInfo = ();
 }
 
@@ -117,30 +123,30 @@ parameter_types! {
 
 // Implement frame system pallet configuration for mock runtime
 impl frame_system::Config for MockRuntime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = u64;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 // ----------------------------------------------------------------------------

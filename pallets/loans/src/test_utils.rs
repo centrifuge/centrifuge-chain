@@ -12,33 +12,40 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
-use crate as pallet_loans;
-use crate::{AssetOf, PoolIdOf};
+use cfg_primitives::{Moment, CFG as CURRENCY};
+use cfg_traits::{Permissions, PoolNAV};
+use cfg_types::{CurrencyId, PermissionScope, PoolLocator, PoolRole, Role};
 use codec::Encode;
-use common_traits::{Permissions, PoolNAV};
-use common_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
-use frame_support::sp_runtime::traits::One;
-use frame_support::traits::fungibles::Transfer;
-use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
-use frame_support::traits::{Currency, Get};
-use frame_support::{assert_ok, parameter_types, Blake2_128, BoundedVec, StorageHasher};
+use frame_support::{
+	assert_ok, parameter_types,
+	sp_runtime::traits::One,
+	traits::{
+		fungibles::Transfer,
+		tokens::nonfungibles::{Create, Inspect, Mutate},
+		Currency, Get,
+	},
+	Blake2_128, BoundedVec, StorageHasher,
+};
 use frame_system::RawOrigin;
-use pallet_pools::TrancheLoc;
-use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
-use pallet_pools::{TrancheInput, TrancheMetadata, TrancheType};
-use runtime_common::CFG as CURRENCY;
+use pallet_pools::{
+	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheLoc, TrancheMetadata,
+	TrancheType,
+};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,
 };
 use sp_std::vec;
 
+use crate as pallet_loans;
+use crate::{AssetOf, PoolIdOf};
+
 type TrancheId = [u8; 16];
 type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
 
 pub(crate) fn set_role<T: pallet_loans::Config>(
 	scope: PermissionScope<
-		<T::Pool as common_traits::PoolInspect<T::AccountId, T::CurrencyId>>::PoolId,
+		<T::Pool as cfg_traits::PoolInspect<T::AccountId, T::CurrencyId>>::PoolId,
 		<T as pallet_loans::Config>::CurrencyId,
 	>,
 	who: T::AccountId,
@@ -284,7 +291,7 @@ where
 	let events = frame_system::Pallet::<T>::events();
 	let system_event = generic_event.into();
 	// compare to the last event record
-	let frame_system::EventRecord { event, .. } = &events[events.len() - 1];
+	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(1)];
 	assert_eq!(event, &system_event);
 }
 

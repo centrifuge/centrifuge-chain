@@ -13,24 +13,22 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common_traits::{
+use cfg_traits::{
 	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
 };
-use common_types::{FulfillmentWithPrice, InvestmentAccount, TotalOrder};
-use frame_support::pallet_prelude::*;
+use cfg_types::{FulfillmentWithPrice, InvestmentAccount, TotalOrder};
 use frame_support::{
 	error::BadOrigin,
+	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 };
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::{AccountIdConversion, CheckedSub};
+pub use pallet::*;
 use sp_runtime::{
-	traits::{CheckedAdd, One, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{cmp::min, convert::TryInto};
-
-pub use pallet::*;
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -148,10 +146,11 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use codec::HasCompact;
 	use frame_support::PalletId;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
+
+	use super::*;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -1032,9 +1031,9 @@ where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
+	type Amount = T::Amount;
 	type Error = DispatchError;
 	type InvestmentId = T::InvestmentId;
-	type Amount = T::Amount;
 
 	fn update_investment(
 		who: &T::AccountId,
@@ -1081,9 +1080,9 @@ where
 		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	type Error = DispatchError;
+	type Fulfillment = FulfillmentWithPrice<T::BalanceRatio>;
 	type InvestmentId = T::InvestmentId;
 	type Orders = TotalOrder<T::Amount>;
-	type Fulfillment = FulfillmentWithPrice<T::BalanceRatio>;
 
 	fn invest_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
 		let total_orders = ActiveInvestOrder::<T>::try_mutate(

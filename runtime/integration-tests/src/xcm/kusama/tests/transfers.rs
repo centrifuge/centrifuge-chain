@@ -22,24 +22,29 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use altair_runtime::{Balances, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use cfg_primitives::{constants::currency_decimals, parachains, Balance};
+use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
 use frame_support::assert_ok;
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::VersionedMultiLocation;
+use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::{
+	xcm::general_key,
+	xcm_fees::{default_per_second, ksm_per_second},
+};
+use sp_runtime::DispatchError::BadOrigin;
+use xcm::{
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	VersionedMultiLocation,
+};
 use xcm_emulator::TestExt;
 
-use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use sp_runtime::DispatchError::BadOrigin;
-
-use crate::xcm::kusama::setup::{
-	air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId, ALICE,
-	BOB, PARA_ID_SIBLING,
+use crate::xcm::kusama::{
+	setup::{
+		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
+		PARA_ID_SIBLING,
+	},
+	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 };
-use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
-use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
-use common_types::XcmMetadata;
-use runtime_common::xcm::general_key;
-use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance};
 
 #[test]
 fn transfer_air_to_sibling() {
@@ -503,16 +508,16 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 #[test]
 fn test_total_fee() {
 	assert_eq!(air_fee(), 9269600000000000);
-	assert_eq!(fee(decimals::AUSD), 9269600000);
-	assert_eq!(fee(decimals::KSM), 9269600000);
+	assert_eq!(fee(currency_decimals::AUSD), 9269600000);
+	assert_eq!(fee(currency_decimals::KSM), 9269600000);
 }
 
 fn air_fee() -> Balance {
-	fee(decimals::NATIVE)
+	fee(currency_decimals::NATIVE)
 }
 
 fn ausd_fee() -> Balance {
-	fee(decimals::AUSD)
+	fee(currency_decimals::AUSD)
 }
 
 fn fee(decimals: u32) -> Balance {

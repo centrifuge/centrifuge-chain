@@ -53,16 +53,16 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
+use cfg_primitives::Moment;
+use cfg_traits::InterestAccrual;
+use cfg_types::Adjustment;
 use codec::{Decode, Encode};
-use common_traits::InterestAccrual;
-use common_types::{Adjustment, Moment};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One};
-use sp_runtime::ArithmeticError;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub},
-	DispatchError, FixedPointNumber, FixedPointOperand,
+	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
 pub mod migration;
@@ -110,9 +110,10 @@ impl Default for Release {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::pallet_prelude::*;
+
 	use super::*;
 	use crate::weights::WeightInfo;
-	use frame_support::pallet_prelude::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]

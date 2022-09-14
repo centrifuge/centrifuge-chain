@@ -1,4 +1,3 @@
-use crate::{self as pallet_fees, *};
 use frame_support::{
 	parameter_types,
 	traits::{EitherOfDiverse, Everything, FindAuthor, SortedMembers},
@@ -10,6 +9,8 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate::{self as pallet_fees, *};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -35,30 +36,30 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = u64;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 pub struct AuthorGiven;
@@ -73,10 +74,10 @@ impl FindAuthor<u64> for AuthorGiven {
 }
 
 impl pallet_authorship::Config for Test {
+	type EventHandler = ();
+	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
 	type UncleGenerations = ();
-	type FilterUncle = ();
-	type EventHandler = ();
 }
 
 parameter_types! {
@@ -84,22 +85,22 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Test {
-	type Currency = Balances;
 	type ApproveOrigin = EnsureSignedBy<Admin, u64>;
-	type RejectOrigin = EnsureSignedBy<Admin, u64>;
-	type Event = ();
-	type OnSlash = Treasury;
-	type ProposalBond = ();
-	type ProposalBondMinimum = ();
-	type ProposalBondMaximum = ();
-	type SpendPeriod = ();
 	type Burn = ();
-	type PalletId = TreasuryPalletId;
 	type BurnDestination = ();
-	type WeightInfo = ();
-	type SpendFunds = ();
+	type Currency = Balances;
+	type Event = ();
 	type MaxApprovals = ();
+	type OnSlash = Treasury;
+	type PalletId = TreasuryPalletId;
+	type ProposalBond = ();
+	type ProposalBondMaximum = ();
+	type ProposalBondMinimum = ();
+	type RejectOrigin = EnsureSignedBy<Admin, u64>;
+	type SpendFunds = ();
 	type SpendOrigin = EnsureSignedBy<Admin, u64>;
+	type SpendPeriod = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -107,15 +108,15 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -130,12 +131,12 @@ impl SortedMembers<u64> for Admin {
 }
 
 impl Config for Test {
-	type FeeKey = u8;
 	type Currency = Balances;
-	type Treasury = Treasury;
+	type DefaultFeeValue = DefaultFeeValue;
 	type Event = ();
 	type FeeChangeOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
-	type DefaultFeeValue = DefaultFeeValue;
+	type FeeKey = u8;
+	type Treasury = Treasury;
 	type WeightInfo = ();
 }
 

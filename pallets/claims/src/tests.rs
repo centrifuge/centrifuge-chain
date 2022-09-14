@@ -20,15 +20,12 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate::{mock::*, *};
-
 use frame_support::{assert_noop, assert_ok};
-
+use pallet_balances::Error as BalancesError;
 use sp_core::H256;
-
 use sp_runtime::traits::{BadOrigin, Hash};
 
-use pallet_balances::Error as BalancesError;
+use crate::{mock::*, *};
 
 // ----------------------------------------------------------------------------
 // Test unit cases
