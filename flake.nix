@@ -121,7 +121,7 @@
           # Docker image package doesn't work on Darwin Archs
           packages.dockerImage = pkgs.dockerTools.buildLayeredImage {
             name = "centrifugeio/${name}";
-            tag = "${version}-nix-do-not-use"; # todo remove suffix once verified
+            tag = "release-${version}-nix-do-not-use"; # todo remove prefix & suffix once verified
             # This uses the date of the last commit as the image creation date.
             created = builtins.substring 0 8 inputs.self.lastModifiedDate;
 
@@ -144,7 +144,7 @@
           };
 
           packages.dockerImageFastRuntime = packages.dockerImage.overrideAttrs (base: {
-            tag = "test-${version}-nix-do-not-use"; # todo remove suffix once verified
+            tag = "release-test-${version}-nix-do-not-use"; # todo remove prefix & suffix once verified
             contents = [
                 pkgs.busybox
                 packages.fastRuntime
