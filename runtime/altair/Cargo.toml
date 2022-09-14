@@ -1,6 +1,6 @@
 [package]
 name = "altair-runtime"
-version = "0.10.19"
+version = "0.10.20"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -66,6 +66,7 @@ frame-system = { git = "https://github.com/paritytech/substrate",  default-featu
 frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true , branch = "polkadot-v0.9.26" }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.26" }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
+frame-try-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
 pallet-authority-discovery = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 pallet-authorship = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 pallet-babe = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
@@ -254,6 +255,14 @@ runtime-benchmarks = [
     "pallet-interest-accrual/runtime-benchmarks",
     "runtime-common/runtime-benchmarks",
 ]
+
+try-runtime = [
+    "frame-executive/try-runtime",
+    "frame-try-runtime",
+    "frame-system/try-runtime",
+    "pallet-anchors/try-runtime",
+]
+
 
 # A feature that should be enabled when the runtime should be build for on-chain
 # deployment. This will disable stuff that shouldn't be part of the on-chain wasm
