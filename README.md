@@ -50,7 +50,7 @@ The Substrate runtime makes use of various custom pallets that are found in the 
 - [**restricted-tokens**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/restricted-tokens) ([docs](https://reference.centrifuge.io/pallet_restricted_tokens/index.html)): Transferring tokens and setting balances. It is wrapping `orml-tokens` with the addition of checking for permissions.
 
 ## Developing
-Instructions for building, testing and developing Centrifuge Chain can be found in [`docs/DEVELOPING.md`](docs/DEVELOPING.md).
+Instructions for building, testing, and developing Centrifuge Chain can be found in [`docs/DEVELOPING.md`](docs/DEVELOPING.md).
 
 ## License
 This codebase is licensed under [GNU Lesser General Public License v3.0](https://github.com/centrifuge/centrifuge-chain/blob/parachain/LICENSE).
