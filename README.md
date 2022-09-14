@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/centrifuge/centrifuge-chain">
-    <img alt="Centrifuge" src="/docs/images/banner.png">
+    <img alt="Centrifuge" src="/docs/images/banner.svg">
   </a>
   <h2 align="center">Centrifuge Chain</h2>
 
@@ -15,7 +15,7 @@
 Centrifuge is the infrastructure that facilitates the decentralized financing of real-world assets natively on-chain, creating a fully transparent market which allows borrowers and lenders to transact without unnecessary intermediaries. Asset pools are fully collateralized, liquidity providers have legal recourse, and the protocol is asset-class agnostic with pools for assets spanning mortgages, invoices, microlending and consumer finance. Ultimately, the protocol aims to lower the cost of borrowing for businesses around the world, while providing DeFi users with a stable source of collateralized yield that is uncorrelated to the volatile crypto markets. By bringing the entire structured credit market on-chain across securitization, tokenization, privacy, governance, and liquidity integrations, Centrifuge is building a more transparent, affordable, and limitless financial system.
 
 ## Building blocks
-The Substrate runtime makes use of various custom pallets that are found in the crates folder.
+On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallets/) framework, Centrifuge Chain is composed of custom pallets which can be found inside the `pallets` folder. The following list gives a brief overview, and links to the corresponding documentation.
 
 - [**pools**](https://github.com/centrifuge/centrifuge-chain/tree/parachain/pallets/pools) ([docs](https://reference.centrifuge.io/pallet_pools/index.html)): Creating and managing investment pools. It is bundling loans, slicing pools into tranches and controlling investment epochs.
 
