@@ -1,4 +1,5 @@
-use common_types::{CurrencyId, Moment};
+use cfg_types::CurrencyId;
+use cfg_primitives::Moment;
 use frame_support::{
 	parameter_types,
 	traits::{Hooks, SortedMembers},
@@ -108,11 +109,11 @@ type PoolId = u64;
 
 pub struct PermissionsMock {}
 
-impl common_traits::Permissions<AccountId> for PermissionsMock {
+impl cfg_traits::Permissions<AccountId> for PermissionsMock {
 	type Error = sp_runtime::DispatchError;
 	type Ok = ();
-	type Role = common_types::Role;
-	type Scope = common_types::PermissionScope<PoolId, CurrencyId>;
+	type Role = cfg_types::Role;
+	type Scope = cfg_types::PermissionScope<PoolId, CurrencyId>;
 
 	fn has(_scope: Self::Scope, _who: AccountId, _role: Self::Role) -> bool {
 		true
