@@ -1,9 +1,9 @@
 use super::*;
 
 pub mod fix_evict_date {
-	use super::*;
-
 	use frame_support::{log, traits::Get, weights::Weight};
+
+	use super::*;
 
 	pub const HARDCODED_EVICTED_DATE: u32 = 19200;
 
@@ -42,10 +42,13 @@ pub mod fix_evict_date {
 #[cfg(test)]
 #[cfg(feature = "try-runtime")]
 mod test {
-	use super::*;
-	use crate::mock::{new_test_ext, Origin, Test};
-	use crate::{self as pallet_anchors};
 	use frame_support::assert_ok;
+
+	use super::*;
+	use crate::{
+		mock::{new_test_ext, Origin, Test},
+		{self as pallet_anchors},
+	};
 
 	#[test]
 	fn evict_anchors_working_after_migration() {
