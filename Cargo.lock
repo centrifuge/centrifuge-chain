@@ -86,8 +86,9 @@ dependencies = [
 name = "altair-runtime"
 version = "0.10.20"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -879,8 +880,9 @@ version = "0.10.20"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
+ "cfg-primitives",
+ "cfg-types",
  "clap",
- "common-types",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
  "cumulus-client-consensus-common",
@@ -900,7 +902,6 @@ dependencies = [
  "jsonrpsee",
  "log",
  "node-inspect",
- "node-primitives",
  "pallet-anchors",
  "pallet-im-online",
  "pallet-loans",
@@ -975,9 +976,10 @@ dependencies = [
 name = "centrifuge-runtime"
 version = "0.10.12"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -1096,6 +1098,57 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "cfg-primitives"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-collective",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "cfg-traits"
+version = "0.1.0"
+dependencies = [
+ "cfg-primitives",
+ "frame-support",
+ "impl-trait-for-tuples",
+ "orml-asset-registry",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "cfg-types"
+version = "2.0.0"
+dependencies = [
+ "bitflags",
+ "cfg-primitives",
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "orml-asset-registry",
+ "parity-scale-codec",
+ "polkadot-parachain",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
 
 [[package]]
 name = "cfg_aliases"
@@ -1273,37 +1326,6 @@ dependencies = [
  "strum 0.23.0",
  "strum_macros 0.23.1",
  "unicode-width",
-]
-
-[[package]]
-name = "common-traits"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "impl-trait-for-tuples",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "common-types"
-version = "2.0.0"
-dependencies = [
- "bitflags",
- "common-traits",
- "frame-support",
- "frame-system",
- "orml-asset-registry",
- "parity-scale-codec",
- "polkadot-parachain",
- "scale-info",
- "serde",
- "sp-runtime",
- "sp-std",
- "xcm",
 ]
 
 [[package]]
@@ -2091,19 +2113,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "curve25519-dalek-ng"
-version = "4.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c359b7249347e46fb28804470d071c921156ad62b3eef5d34e2ba867533dec8"
-dependencies = [
- "byteorder",
- "digest 0.9.0",
- "rand_core 0.6.3",
- "subtle-ng",
- "zeroize",
-]
-
-[[package]]
 name = "data-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2166,9 +2175,10 @@ dependencies = [
 name = "development-runtime"
 version = "0.10.4"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -4880,15 +4890,6 @@ dependencies = [
 
 [[package]]
 name = "memmap2"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "723e3ebdcdc5c023db1df315364573789f8857c11b631a2fdfad7c00f5c046b4"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "memmap2"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95af15f345b17af2efc8ead6080fb8bc376f8cec1b35277b935637595fe77498"
@@ -4940,18 +4941,6 @@ dependencies = [
  "byteorder",
  "keccak",
  "rand_core 0.5.1",
- "zeroize",
-]
-
-[[package]]
-name = "merlin"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58c38e2799fc0978b65dfff8023ec7843e2330bb462f19198840b34b6582397d"
-dependencies = [
- "byteorder",
- "keccak",
- "rand_core 0.6.3",
  "zeroize",
 ]
 
@@ -5553,7 +5542,7 @@ dependencies = [
 name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
- "common-traits",
+ "cfg-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5748,36 +5737,35 @@ dependencies = [
 name = "pallet-bridge"
 version = "2.0.0"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
  "pallet-bridge-mapping",
- "pallet-fees",
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
 ]
 
 [[package]]
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "frame-support",
  "frame-system",
  "pallet-anchors",
@@ -5786,7 +5774,6 @@ dependencies = [
  "pallet-nft",
  "pallet-timestamp",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -5815,11 +5802,10 @@ dependencies = [
 name = "pallet-claims"
 version = "2.0.0"
 dependencies = [
- "common-types",
- "frame-benchmarking",
+ "cfg-primitives",
+ "cfg-types",
  "frame-support",
  "frame-system",
- "node-primitives",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
@@ -5886,44 +5872,35 @@ dependencies = [
 name = "pallet-crowdloan-claim"
 version = "0.1.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "getrandom 0.2.7",
  "hex",
- "lazy_static",
- "log",
  "pallet-balances",
  "pallet-crowdloan-reward",
  "pallet-vesting",
  "parity-scale-codec",
  "proofs",
- "rand_core 0.6.3",
  "scale-info",
- "schnorrkel 0.10.2",
  "serde",
  "sp-core",
  "sp-io",
- "sp-keyring",
  "sp-runtime",
  "sp-std",
- "sp-trie",
 ]
 
 [[package]]
 name = "pallet-crowdloan-reward"
 version = "0.1.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "log",
  "pallet-balances",
- "pallet-indices",
  "pallet-vesting",
  "parity-scale-codec",
  "scale-info",
@@ -5995,7 +5972,7 @@ dependencies = [
 name = "pallet-fees"
 version = "2.0.0"
 dependencies = [
- "common-traits",
+ "cfg-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6104,8 +6081,9 @@ name = "pallet-interest-accrual"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6124,8 +6102,8 @@ dependencies = [
 name = "pallet-investments"
 version = "1.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6168,8 +6146,9 @@ dependencies = [
 name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6184,7 +6163,6 @@ dependencies = [
  "pallet-uniques",
  "parachain-info",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -6192,6 +6170,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -6285,9 +6264,10 @@ dependencies = [
 name = "pallet-nft"
 version = "2.0.0"
 dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "chainbridge",
- "common-traits",
- "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6297,20 +6277,19 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
 ]
 
 [[package]]
 name = "pallet-nft-sales"
 version = "2.0.0"
 dependencies = [
- "common-types",
+ "cfg-primitives",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6319,7 +6298,6 @@ dependencies = [
  "pallet-balances",
  "pallet-uniques",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -6366,8 +6344,8 @@ name = "pallet-permissions"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "common-traits",
- "common-types",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6382,8 +6360,9 @@ dependencies = [
 name = "pallet-pools"
 version = "3.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6399,7 +6378,6 @@ dependencies = [
  "polkadot-parachain",
  "rand 0.8.5",
  "rev_slice",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-arithmetic",
@@ -6474,8 +6452,9 @@ dependencies = [
 name = "pallet-restricted-tokens"
 version = "0.1.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6484,7 +6463,6 @@ dependencies = [
  "pallet-balances",
  "pallet-permissions",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "serde",
  "sp-io",
@@ -6790,9 +6768,9 @@ dependencies = [
 
 [[package]]
 name = "parity-db"
-version = "0.3.16"
+version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bb474d0ed0836e185cb998a6b140ed1073d1fbf27d690ecf9ede8030289382c"
+checksum = "2c8fdb726a43661fa54b43e7114e6b88b2289cae388eb3ad766d9d1754d83fce"
 dependencies = [
  "blake2-rfc",
  "crc32fast",
@@ -6801,8 +6779,8 @@ dependencies = [
  "libc",
  "log",
  "lz4",
- "memmap2 0.2.3",
- "parking_lot 0.11.2",
+ "memmap2",
+ "parking_lot 0.12.1",
  "rand 0.8.5",
  "snap",
 ]
@@ -7354,7 +7332,7 @@ dependencies = [
  "futures-timer",
  "kvdb",
  "lru 0.7.8",
- "merlin 2.0.1",
+ "merlin",
  "parity-scale-codec",
  "polkadot-node-jaeger",
  "polkadot-node-primitives",
@@ -7363,7 +7341,7 @@ dependencies = [
  "polkadot-overseer",
  "polkadot-primitives",
  "sc-keystore",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "sp-application-crypto",
  "sp-consensus",
  "sp-consensus-slots",
@@ -7663,7 +7641,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-primitives",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "serde",
  "sp-application-crypto",
  "sp-consensus-babe",
@@ -8873,8 +8851,9 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "frame-support",
  "frame-system",
  "node-primitives",
@@ -8906,8 +8885,9 @@ version = "0.1.0"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "cumulus-primitives-core",
  "development-runtime",
  "frame-benchmarking",
@@ -9197,7 +9177,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26#e8a7d161f39db70cb27fdad6c6e215cf493ebc3b"
 dependencies = [
  "impl-trait-for-tuples",
- "memmap2 0.5.7",
+ "memmap2",
  "parity-scale-codec",
  "sc-chain-spec-derive",
  "sc-network",
@@ -9373,7 +9353,7 @@ dependencies = [
  "fork-tree",
  "futures 0.3.24",
  "log",
- "merlin 2.0.1",
+ "merlin",
  "num-bigint",
  "num-rational 0.2.4",
  "num-traits",
@@ -9387,7 +9367,7 @@ dependencies = [
  "sc-consensus-slots",
  "sc-keystore",
  "sc-telemetry",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "serde",
  "sp-api",
  "sp-application-crypto",
@@ -10210,27 +10190,11 @@ dependencies = [
  "arrayvec 0.5.2",
  "curve25519-dalek 2.1.3",
  "getrandom 0.1.16",
- "merlin 2.0.1",
+ "merlin",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "sha2 0.8.2",
  "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "schnorrkel"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "844b7645371e6ecdf61ff246ba1958c29e802881a749ae3fb1993675d210d28d"
-dependencies = [
- "arrayref",
- "arrayvec 0.7.2",
- "curve25519-dalek-ng",
- "merlin 3.0.0",
- "rand_core 0.6.3",
- "sha2 0.9.9",
- "subtle-ng",
  "zeroize",
 ]
 
@@ -10769,7 +10733,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26#e8a7d161f39db70cb27fdad6c6e215cf493ebc3b"
 dependencies = [
  "async-trait",
- "merlin 2.0.1",
+ "merlin",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -10807,7 +10771,7 @@ source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26#e8
 dependencies = [
  "parity-scale-codec",
  "scale-info",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "sp-core",
  "sp-runtime",
  "sp-std",
@@ -10832,7 +10796,7 @@ dependencies = [
  "lazy_static",
  "libsecp256k1",
  "log",
- "merlin 2.0.1",
+ "merlin",
  "num-traits",
  "parity-scale-codec",
  "parity-util-mem",
@@ -10841,7 +10805,7 @@ dependencies = [
  "rand 0.7.3",
  "regex",
  "scale-info",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "secp256k1",
  "secrecy",
  "serde",
@@ -10989,10 +10953,10 @@ source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26#e8
 dependencies = [
  "async-trait",
  "futures 0.3.24",
- "merlin 2.0.1",
+ "merlin",
  "parity-scale-codec",
  "parking_lot 0.12.1",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "serde",
  "sp-core",
  "sp-externalities",
@@ -11458,7 +11422,7 @@ checksum = "49eee6965196b32f882dd2ee85a92b1dbead41b04e53907f269de3b0dc04733c"
 dependencies = [
  "hmac 0.11.0",
  "pbkdf2 0.8.0",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "sha2 0.9.9",
  "zeroize",
 ]
@@ -11643,12 +11607,6 @@ name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
-
-[[package]]
-name = "subtle-ng"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
 name = "syn"
@@ -12152,9 +12110,9 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.3",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
@@ -12229,14 +12187,6 @@ name = "unicode-xid"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "957e51f3646910546462e67d5f7599b9e4fb8acdd304b087a6494730f9eebf04"
-
-[[package]]
-name = "unique-assets"
-version = "1.0.0"
-source = "git+https://github.com/centrifuge/unique-assets?branch=polkadot-v0.9.26#98a35e95ce5aabd374e5c72509f8696430744a28"
-dependencies = [
- "frame-support",
-]
 
 [[package]]
 name = "universal-hash"

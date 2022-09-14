@@ -12,20 +12,22 @@
 
 // NOTE: Taken mostly from paritytech-substrate
 
-use crate::chain::centrifuge;
-use crate::chain::centrifuge::PARA_ID;
-use crate::chain::relay;
-use crate::pools::utils::env::TestEnv;
+use std::collections::HashMap;
+
+use cfg_primitives::Index;
 use fudge::primitives::Chain;
 use node_primitives::{AccountId as RelayAccountId, Index as RelayIndex};
-use runtime_common::Index;
 pub use sp_core::sr25519;
 use sp_core::{
 	sr25519::{Pair, Public, Signature},
 	Pair as PairT,
 };
 use sp_runtime::AccountId32;
-use std::collections::HashMap;
+
+use crate::{
+	chain::{centrifuge, centrifuge::PARA_ID, relay},
+	pools::utils::env::TestEnv,
+};
 
 /// Struct that takes care of handling nonces for accounts
 pub struct NonceManager {
@@ -59,7 +61,7 @@ impl NonceManager {
 				who.clone().to_account_id().into(),
 			),
 			Chain::Para(id) => match id {
-				_ if id == PARA_ID => nonce::<centrifuge::Runtime, centrifuge::AccountId, centrifuge::Index>(
+				_ if id == PARA_ID => nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
 					who.clone().to_account_id().into()
 				),
 				_ => unreachable!("Currently no nonces for chains differing from Relay and centrifuge are supported. Para ID {}", id)
@@ -101,10 +103,10 @@ impl NonceManager {
 /// Retrieves a nonce from the centrifuge state
 ///
 /// **NOTE: Usually one should use the TestEnv::nonce() api**
-fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
+fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 	env.centrifuge
 		.with_state(|| {
-			nonce::<centrifuge::Runtime, centrifuge::AccountId, centrifuge::Index>(
+			nonce::<centrifuge::Runtime, cfg_primitives::AccountId, cfg_primitives::Index>(
 				who.clone().to_account_id().into(),
 			)
 		})
@@ -459,8 +461,9 @@ impl From<Keyring> for crate::chain::relay::Origin {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use sp_core::{sr25519::Pair, Pair as PairT};
+
+	use super::*;
 
 	#[test]
 	fn keyring_works() {

@@ -18,22 +18,25 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
-use frame_support::scale_info::TypeInfo;
-use frame_support::Parameter;
-use frame_support::RuntimeDebug;
-use impl_trait_for_tuples::impl_for_tuples;
-use sp_runtime::traits::{
-	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
-	MaybeSerializeDeserialize, Member, Zero,
+use frame_support::{
+	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
+	scale_info::TypeInfo,
+	Parameter, RuntimeDebug,
 };
-use sp_runtime::DispatchError;
-use sp_std::fmt::Debug;
-use sp_std::hash::Hash;
-use sp_std::str::FromStr;
+use impl_trait_for_tuples::impl_for_tuples;
+use sp_runtime::{
+	traits::{
+		AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+		MaybeSerializeDeserialize, Member, Zero,
+	},
+	DispatchError,
+};
+use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
 
-pub type Moment = u64;
+//#[cfg(test)]
+pub mod mocks;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -90,11 +93,6 @@ pub trait Reward {
 		who: Self::ParachainAccountId,
 		contribution: Self::ContributionAmount,
 	) -> DispatchResultWithPostInfo;
-}
-
-/// A trait used to convert a type to BigEndian format
-pub trait BigEndian<T> {
-	fn to_big_endian(&self) -> T;
 }
 
 /// A trait that can be used to fetch the nav and update nav for a given pool
@@ -460,8 +458,7 @@ impl<AccountId, T: InvestmentProperties<AccountId>> InvestmentProperties<Account
 
 pub mod fees {
 	use codec::FullCodec;
-	use frame_support::dispatch::DispatchResult;
-	use frame_support::traits::tokens::Balance;
+	use frame_support::{dispatch::DispatchResult, traits::tokens::Balance};
 	use scale_info::TypeInfo;
 	use sp_runtime::traits::MaybeSerializeDeserialize;
 
@@ -555,11 +552,14 @@ pub mod fees {
 
 	#[cfg(feature = "std")]
 	pub mod test_util {
+		use std::{cell::RefCell, thread::LocalKey};
+
+		use frame_support::{
+			dispatch::DispatchResult,
+			traits::{tokens::Balance, Get},
+		};
+
 		use super::{Fee, FeeKey, Fees};
-		use frame_support::dispatch::DispatchResult;
-		use frame_support::traits::{tokens::Balance, Get};
-		use std::cell::RefCell;
-		use std::thread::LocalKey;
 
 		pub struct FeeState<Author, Balance> {
 			pub author: Author,
@@ -595,10 +595,9 @@ pub mod fees {
 		#[macro_export]
 		macro_rules! impl_mock_fees_state {
 			($name:ident, $account:ty, $balance:ty, $feekey:ty, $initializer:expr) => {
-				use common_traits::fees::test_util::FeesState;
+				use std::{cell::RefCell, thread::LocalKey};
 
-				use std::cell::RefCell;
-				use std::thread::LocalKey;
+				use cfg_traits::fees::test_util::FeesState;
 
 				thread_local! {
 					pub static STATE: RefCell<

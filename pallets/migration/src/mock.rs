@@ -16,13 +16,11 @@
 //! The main components implemented in this module is a mock runtime
 //! and some helper functions.
 
-use crate as pallet_migration_manager;
-
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::sp_runtime::traits::ConvertInto;
 use frame_support::{
 	parameter_types,
 	scale_info::TypeInfo,
+	sp_runtime::traits::ConvertInto,
 	traits::{Contains, InstanceFilter},
 	weights::Weight,
 };
@@ -31,6 +29,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	AccountId32, Perbill,
 };
+
+use crate as pallet_migration_manager;
 
 pub type AccountId = AccountId32;
 pub type Balance = u128;
@@ -96,18 +96,18 @@ impl InstanceFilter<Call> for ProxyType {
 }
 
 impl pallet_proxy::Config for MockRuntime {
-	type Event = Event;
-	type Call = Call;
-	type Currency = Balances;
-	type ProxyType = ProxyType;
-	type ProxyDepositBase = ProxyDepositBase;
-	type ProxyDepositFactor = ProxyDepositFactor;
-	type MaxProxies = MaxProxies;
-	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Self>;
-	type MaxPending = MaxPending;
-	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+	type Call = Call;
+	type CallHasher = BlakeTwo256;
+	type Currency = Balances;
+	type Event = Event;
+	type MaxPending = MaxPending;
+	type MaxProxies = MaxProxies;
+	type ProxyDepositBase = ProxyDepositBase;
+	type ProxyDepositFactor = ProxyDepositFactor;
+	type ProxyType = ProxyType;
+	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Self>;
 }
 
 // Parameterize balances pallet
@@ -118,15 +118,15 @@ parameter_types! {
 
 // Implement balances pallet configuration for mock runtime
 impl pallet_balances::Config for MockRuntime {
-	type MaxLocks = ();
-	type Balance = Balance;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 // Parameterize vesting pallet
@@ -137,12 +137,13 @@ parameter_types! {
 
 // Implement vesting pallet configuration for mock runtime
 impl pallet_vesting::Config for MockRuntime {
-	type Event = Event;
-	type Currency = Balances;
 	type BlockNumberToBalance = ConvertInto;
+	type Currency = Balances;
+	type Event = Event;
 	type MinVestedTransfer = MinVestedTransfer;
-	const MAX_VESTING_SCHEDULES: u32 = 1;
 	type WeightInfo = ();
+
+	const MAX_VESTING_SCHEDULES: u32 = 1;
 }
 
 // Parameterize frame system pallet
@@ -155,30 +156,30 @@ parameter_types! {
 
 // Implement frame system pallet configuration for mock runtime
 impl frame_system::Config for MockRuntime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = AccountId;
 	type BaseCallFilter = BaseFilter;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Index = Index;
-	type Call = Call;
 	type BlockNumber = BlockNumber;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = Index;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 pub const ACCOUNTS: u32 = 100;
 pub const VESTINGS: u32 = 10;
@@ -193,10 +194,10 @@ parameter_types! {
 // Implement the migration manager pallet
 // The actual associated type, which executes the migration can be found in the migration folder
 impl pallet_migration_manager::Config for MockRuntime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxProxies = MigrationMaxProxies;
+	type MigrationMaxVestings = MigrationMaxVestings;
 	type WeightInfo = ();
 }
 

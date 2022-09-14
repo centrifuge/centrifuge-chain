@@ -1,14 +1,17 @@
 #![cfg(feature = "runtime-benchmarks")]
-use super::*;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
-use frame_support::sp_std::vec::Vec;
+use frame_support::{
+	sp_std::vec::Vec,
+	storage,
+	traits::{Currency, Get},
+	BoundedVec,
+};
 use frame_system::RawOrigin;
-
-use frame_support::traits::{Currency, Get};
-use frame_support::{storage, BoundedVec};
 use pallet_proxy::ProxyDefinition;
 use pallet_vesting::VestingInfo;
 use sp_runtime::{traits::Zero, AccountId32};
+
+use super::*;
 
 benchmarks! {
 	finalize{

@@ -20,34 +20,28 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
-
-use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
-
+use cfg_primitives::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
+use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
 };
 use frame_support::{
 	parameter_types,
-	traits::{FindAuthor, SortedMembers},
+	traits::{Everything, FindAuthor, SortedMembers},
 	weights::Weight,
 	ConsensusEngineId, PalletId,
 };
-
 use frame_system::EnsureSignedBy;
 use proofs::Proof;
-use runtime_common::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
-
 use sp_core::{blake2_128, H256};
-
 use sp_io::TestExternalities;
-
-use frame_support::traits::Everything;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, Hash, IdentityLookup},
 };
+
+use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -115,30 +109,30 @@ parameter_types! {
 
 // Implement FRAME system pallet configuration trait for the mock runtime
 impl frame_system::Config for MockRuntime {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = u64;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 // Parameterize FRAME balances pallet
@@ -148,15 +142,15 @@ parameter_types! {
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 pub struct AuthorGiven;
@@ -172,35 +166,35 @@ impl FindAuthor<u64> for AuthorGiven {
 
 // Implement Substrate FRAME authorship pallet for the mock runtime
 impl pallet_authorship::Config for MockRuntime {
+	type EventHandler = ();
+	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
 	type UncleGenerations = ();
-	type FilterUncle = ();
-	type EventHandler = ();
 }
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime
 impl pallet_timestamp::Config for MockRuntime {
+	type MinimumPeriod = ();
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = ();
 	type WeightInfo = ();
 }
 
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: ChainId = 5;
-	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
 impl chainbridge::Config for MockRuntime {
-	type Event = Event;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Proposal = Call;
 	type ChainId = MockChainId;
+	type Event = Event;
 	type PalletId = ChainBridgePalletId;
+	type Proposal = Call;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();
@@ -215,11 +209,11 @@ impl_mock_fees_state!(
 );
 
 impl pallet_anchors::Config for MockRuntime {
-	type WeightInfo = ();
-	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
 	type CommitAnchorFeeKey = ();
-	type PreCommitDepositFeeKey = ();
 	type Currency = Balances;
+	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
+	type PreCommitDepositFeeKey = ();
+	type WeightInfo = ();
 }
 
 // Parameterize NFT pallet
@@ -230,11 +224,11 @@ parameter_types! {
 
 // Implement NFT pallet's configuration trait for the mock runtime
 impl PalletNftConfig for MockRuntime {
-	type Event = Event;
 	type ChainId = ChainId;
-	type ResourceId = ResourceId;
+	type Event = Event;
 	type HashId = MockHashId;
 	type NftProofValidationFee = NftProofValidationFee;
+	type ResourceId = ResourceId;
 	type WeightInfo = MockWeightInfo;
 }
 

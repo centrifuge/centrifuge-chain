@@ -42,18 +42,21 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(p as Weight)))
 	}
+
 	fn execute(b: u32, m: u32) -> Weight {
 		(38_539_000 as Weight) // Standard Error: 0
 			.saturating_add((2_000 as Weight).saturating_mul(b as Weight)) // Standard Error: 1_000
 			.saturating_add((61_000 as Weight).saturating_mul(m as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
+
 	fn propose_execute(b: u32, m: u32) -> Weight {
 		(42_495_000 as Weight) // Standard Error: 0
 			.saturating_add((4_000 as Weight).saturating_mul(b as Weight)) // Standard Error: 1_000
 			.saturating_add((104_000 as Weight).saturating_mul(m as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
+
 	fn propose_proposed(b: u32, m: u32, p: u32) -> Weight {
 		(50_881_000 as Weight) // Standard Error: 0
 			.saturating_add((16_000 as Weight).saturating_mul(b as Weight)) // Standard Error: 4_000
@@ -62,12 +65,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
+
 	fn vote(m: u32) -> Weight {
 		(78_332_000 as Weight) // Standard Error: 5_000
 			.saturating_add((177_000 as Weight).saturating_mul(m as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn close_early_disapproved(m: u32, p: u32) -> Weight {
 		(64_597_000 as Weight) // Standard Error: 4_000
 			.saturating_add((135_000 as Weight).saturating_mul(m as Weight)) // Standard Error: 4_000
@@ -75,6 +80,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn close_early_approved(b: u32, m: u32, p: u32) -> Weight {
 		(66_781_000 as Weight) // Standard Error: 2_000
 			.saturating_add((8_000 as Weight).saturating_mul(b as Weight)) // Standard Error: 19_000
@@ -83,6 +89,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn close_disapproved(m: u32, p: u32) -> Weight {
 		(70_021_000 as Weight) // Standard Error: 32_000
 			.saturating_add((69_000 as Weight).saturating_mul(m as Weight)) // Standard Error: 31_000
@@ -90,6 +97,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn close_approved(b: u32, m: u32, p: u32) -> Weight {
 		(70_618_000 as Weight) // Standard Error: 0
 			.saturating_add((16_000 as Weight).saturating_mul(b as Weight)) // Standard Error: 5_000
@@ -98,6 +106,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn disapprove_proposal(p: u32) -> Weight {
 		(44_283_000 as Weight) // Standard Error: 3_000
 			.saturating_add((484_000 as Weight).saturating_mul(p as Weight))

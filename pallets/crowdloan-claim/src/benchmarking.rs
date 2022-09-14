@@ -1,10 +1,10 @@
 #![cfg(feature = "runtime-benchmarks")]
-use super::*;
 use frame_benchmarking::{account, benchmarks};
-use frame_support::StorageHasher;
-use frame_support::Twox128;
+use frame_support::{StorageHasher, Twox128};
 use frame_system::RawOrigin;
 use sp_runtime::Perbill;
+
+use super::*;
 
 const CONTRIBUTION: u128 = 40000000000000000000;
 

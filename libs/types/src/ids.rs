@@ -12,9 +12,10 @@
 
 //! A module that contains all ids where we should be REALLY careful
 //! when changing them.
-use crate::{InvestmentAccount, PoolLocator};
 use frame_support::PalletId;
 use sp_runtime::TypeId;
+
+use crate::{InvestmentAccount, PoolLocator};
 
 // The TypeId impl we derive pool-accounts from
 impl<PoolId> TypeId for PoolLocator<PoolId> {

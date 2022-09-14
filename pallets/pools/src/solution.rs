@@ -10,10 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::*;
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
+
+use super::*;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum PoolState {

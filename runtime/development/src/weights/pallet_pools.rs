@@ -38,45 +38,53 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
+
 	fn update_no_execution(n: u32) -> Weight {
 		(28_723_000 as Weight) // Standard Error: 19_000
 			.saturating_add((224_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn update_and_execute(n: u32) -> Weight {
 		(47_712_000 as Weight) // Standard Error: 28_000
 			.saturating_add((876_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn execute_scheduled_update(n: u32) -> Weight {
 		(45_860_000 as Weight) // Standard Error: 42_000
 			.saturating_add((1_060_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn set_metadata(n: u32) -> Weight {
 		(35_549_000 as Weight) // Standard Error: 1_000
 			.saturating_add((2_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_max_reserve() -> Weight {
 		(34_621_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn update_invest_order() -> Weight {
 		(101_046_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn update_redeem_order() -> Weight {
 		(102_230_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn collect(n: u32) -> Weight {
 		(69_876_000 as Weight) // Standard Error: 3_000
 			.saturating_add((6_825_000 as Weight).saturating_mul(n as Weight))
@@ -84,6 +92,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
+
 	fn close_epoch_no_orders(n: u32) -> Weight {
 		(47_477_000 as Weight) // Standard Error: 45_000
 			.saturating_add((7_951_000 as Weight).saturating_mul(n as Weight))
@@ -92,6 +101,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn close_epoch_no_execution(n: u32) -> Weight {
 		(57_512_000 as Weight) // Standard Error: 94_000
 			.saturating_add((6_108_000 as Weight).saturating_mul(n as Weight))
@@ -99,6 +109,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn close_epoch_execute(n: u32) -> Weight {
 		(104_371_000 as Weight) // Standard Error: 57_000
 			.saturating_add((9_447_000 as Weight).saturating_mul(n as Weight))
@@ -107,12 +118,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
+
 	fn submit_solution(n: u32) -> Weight {
 		(40_223_000 as Weight) // Standard Error: 56_000
 			.saturating_add((1_661_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn execute_epoch(n: u32) -> Weight {
 		(90_950_000 as Weight) // Standard Error: 38_000
 			.saturating_add((4_210_000 as Weight).saturating_mul(n as Weight))

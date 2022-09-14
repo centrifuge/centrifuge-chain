@@ -11,13 +11,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::mock::*;
-use crate::{NftsBySeller, Price};
-use common_types::CurrencyId;
-use frame_support::dispatch::DispatchError;
-use frame_support::traits::fungibles::Inspect;
-use frame_support::{assert_noop, assert_ok};
-use runtime_common::ItemId;
+use cfg_primitives::ItemId;
+use cfg_types::CurrencyId;
+use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, traits::fungibles::Inspect};
+
+use crate::{mock::*, NftsBySeller, Price};
 
 /// Verify that calling `NftSales::add` specifiying an nft that is not present in the
 /// underlying `pallet_uniques` fails with `nft_sales::Error::<T>::NotFound`.

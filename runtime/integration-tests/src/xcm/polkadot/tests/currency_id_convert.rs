@@ -22,27 +22,33 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use super::register_dot;
-use crate::xcm::polkadot::setup::{
-	acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, CurrencyId, ALICE,
-	BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
-};
-use crate::xcm::polkadot::test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet};
-use centrifuge_runtime::CurrencyIdConvert;
 use centrifuge_runtime::{
-	Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
+	Balances, CurrencyIdConvert, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
 };
-use common_types::XcmMetadata;
+use cfg_primitives::{constants::currency_decimals, parachains, Balance};
+use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use runtime_common::xcm::general_key;
-use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance};
+use runtime_common::{
+	xcm::general_key,
+	xcm_fees::{default_per_second, ksm_per_second},
+};
 use sp_runtime::traits::Convert as C2;
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::VersionedMultiLocation;
+use xcm::{
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	VersionedMultiLocation,
+};
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
+
+use super::register_dot;
+use crate::xcm::polkadot::{
+	setup::{
+		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE, BOB,
+		DOT_ASSET_ID, PARA_ID_SIBLING,
+	},
+	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+};
 
 #[test]
 fn convert_cfg() {

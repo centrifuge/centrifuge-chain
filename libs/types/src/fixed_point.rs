@@ -19,6 +19,8 @@
 //! Copied over from sp_arithmetic
 
 use codec::{CompactAs, Decode, Encode};
+#[cfg(feature = "std")]
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use sp_arithmetic::{
 	helpers_128bit::multiply_by_rational_with_rounding,
 	traits::{
@@ -31,9 +33,6 @@ use sp_std::{
 	ops::{self},
 	prelude::*,
 };
-
-#[cfg(feature = "std")]
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Data type used as intermediate storage in some computations to avoid overflow.
 struct I129 {

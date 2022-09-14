@@ -9,12 +9,13 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use super::*;
-use common_traits::PreConditions;
+use cfg_traits::PreConditions;
 use frame_support::traits::{
 	BalanceStatus, Currency, ExistenceRequirement, LockIdentifier, LockableCurrency,
 	ReservableCurrency, SignedImbalance, WithdrawReasons,
 };
+
+use super::*;
 
 /// Represents the trait `Currency` effects that are called via
 /// the pallet-restricted-tokens.
@@ -67,8 +68,8 @@ pub enum CurrencyEffects<AccountId, Balance> {
 
 impl<T: Config> Currency<T::AccountId> for Pallet<T> {
 	type Balance = T::Balance;
-	type PositiveImbalance = <T::NativeFungible as Currency<T::AccountId>>::PositiveImbalance;
 	type NegativeImbalance = <T::NativeFungible as Currency<T::AccountId>>::NegativeImbalance;
+	type PositiveImbalance = <T::NativeFungible as Currency<T::AccountId>>::PositiveImbalance;
 
 	fn total_balance(who: &T::AccountId) -> Self::Balance {
 		<T::NativeFungible as Currency<T::AccountId>>::total_balance(who)
@@ -284,8 +285,8 @@ impl<T: Config> ReservableCurrency<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> LockableCurrency<T::AccountId> for Pallet<T> {
-	type Moment = <T::NativeFungible as LockableCurrency<T::AccountId>>::Moment;
 	type MaxLocks = <T::NativeFungible as LockableCurrency<T::AccountId>>::MaxLocks;
+	type Moment = <T::NativeFungible as LockableCurrency<T::AccountId>>::Moment;
 
 	fn set_lock(
 		id: LockIdentifier,

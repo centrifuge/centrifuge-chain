@@ -36,25 +36,30 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(0 as Weight) // Standard Error: 0
 			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 	}
+
 	fn remark_with_event(b: u32) -> Weight {
 		(0 as Weight) // Standard Error: 0
 			.saturating_add((3_000 as Weight).saturating_mul(b as Weight))
 	}
+
 	fn set_heap_pages() -> Weight {
 		(23_006_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+
 	fn set_storage(i: u32) -> Weight {
 		(5_831_000 as Weight) // Standard Error: 3_000
 			.saturating_add((1_269_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(i as Weight)))
 	}
+
 	fn kill_storage(i: u32) -> Weight {
 		(802_000 as Weight) // Standard Error: 3_000
 			.saturating_add((1_016_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(i as Weight)))
 	}
+
 	fn kill_prefix(p: u32) -> Weight {
 		(0 as Weight) // Standard Error: 4_000
 			.saturating_add((2_101_000 as Weight).saturating_mul(p as Weight))

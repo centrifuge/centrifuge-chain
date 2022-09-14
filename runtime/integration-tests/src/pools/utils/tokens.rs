@@ -11,9 +11,10 @@
 // GNU General Public License for more details.
 
 //! Time balances and tokens
-use crate::pools::utils::time::secs::SECONDS_PER_YEAR;
-use runtime_common::Rate;
+use cfg_types::Rate;
 use sp_runtime::FixedPointNumber;
+
+use crate::pools::utils::time::secs::SECONDS_PER_YEAR;
 
 pub const DECIMAL_BASE_12: u128 = 1_000_000_000_000;
 pub const DECIMAL_BASE_18: u128 = DECIMAL_BASE_12 * 1_000_000;

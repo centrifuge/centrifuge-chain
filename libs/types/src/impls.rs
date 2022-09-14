@@ -9,10 +9,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use super::*;
 use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
 use frame_system::RawOrigin;
 use sp_std::marker::PhantomData;
+
+use super::*;
 
 type AccountId = u64;
 

@@ -86,6 +86,7 @@
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
+use cfg_traits::Reward;
 use codec::Encode;
 // Runtime, system and frame primitives
 use frame_support::{
@@ -96,21 +97,18 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::ensure_root;
+// Re-export in crate namespace (for runtime construction)
+pub use pallet::*;
 use proofs::{Hasher, Proof, Verifier};
 use sp_core::crypto::AccountId32;
 use sp_runtime::{
-	sp_std::vec,
-	sp_std::vec::Vec,
+	sp_std::{vec, vec::Vec},
 	traits::{AccountIdConversion, Hash, Verify, Zero},
 	MultiSignature,
 };
 
-// Re-export in crate namespace (for runtime construction)
-pub use pallet::*;
-
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
-use common_traits::Reward;
 
 // Mock runtime and unit test cases
 #[cfg(test)]

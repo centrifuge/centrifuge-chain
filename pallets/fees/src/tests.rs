@@ -1,7 +1,8 @@
-use crate::mock::*;
-use common_traits::fees::{Fee, Fees as FeesTrait};
+use cfg_traits::fees::{Fee, Fees as FeesTrait};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::BadOrigin;
+
+use crate::mock::*;
 
 const FEE_KEY: u8 = 1;
 const FEE_VALUE: u64 = 42;

@@ -10,6 +10,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::TrancheToken as TrancheTokenT;
+#[cfg(test)]
+use cfg_types::CurrencyId;
+use cfg_types::{CustomMetadata, XcmMetadata};
+use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
+use orml_traits::asset_registry::AssetMetadata;
+use polkadot_parachain::primitives::Id as ParachainId;
+use rev_slice::{RevSlice, SliceExt};
+use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
+use sp_runtime::WeakBoundedVec;
+use xcm::{
+	latest::MultiLocation,
+	prelude::{GeneralKey, Parachain, X2},
+	VersionedMultiLocation,
+};
+
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
 /// This should be implemented in the runtime to convert from the
@@ -20,21 +36,6 @@
 /// currency, but nothing enforces that. Failure to ensure currency
 /// uniqueness will almost certainly cause some wild bugs.
 use super::*;
-use common_traits::TrancheToken as TrancheTokenT;
-#[cfg(test)]
-use common_types::CurrencyId;
-use common_types::XcmMetadata;
-use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
-use orml_asset_registry::AssetMetadata;
-use polkadot_parachain::primitives::Id as ParachainId;
-use rev_slice::{RevSlice, SliceExt};
-use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
-use sp_runtime::{traits::Zero, FixedPointOperand, WeakBoundedVec};
-use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, Parachain, X2},
-	VersionedMultiLocation,
-};
 
 /// Types alias for EpochExecutionTranche
 #[allow(dead_code)]

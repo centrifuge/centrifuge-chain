@@ -98,26 +98,21 @@ mod weights;
 // Runtime, system and frame primitives
 use frame_support::{
 	dispatch::DispatchResult,
-	ensure,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, Get},
 	weights::Weight,
 	PalletId,
 };
-
 use frame_system::ensure_root;
-
+// Re-export in crate namespace (for runtime construction)
+pub use pallet::*;
 use sp_core::Encode;
-
 use sp_runtime::{
 	sp_std::vec::Vec,
-	traits::{AccountIdConversion, CheckedSub, Hash, SaturatedConversion},
+	traits::{AccountIdConversion, CheckedSub, Hash},
 };
 
 // Re-export weight information in crate namespace
 pub use crate::traits::WeightInfo as PalletWeightInfo;
-
-// Re-export in crate namespace (for runtime construction)
-pub use pallet::*;
 
 // ----------------------------------------------------------------------------
 // Traits and types declaration
@@ -150,9 +145,10 @@ pub mod traits {
 #[frame_support::pallet]
 pub mod pallet {
 
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	// Rad claim pallet type declaration.
 	//
@@ -189,7 +185,7 @@ pub mod pallet {
 		/// This constant is set via [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro when configuring a runtime.
 		#[pallet::constant]
-		type MinimalPayoutAmount: Get<node_primitives::Balance>;
+		type MinimalPayoutAmount: Get<Self::Balance>;
 
 		/// Constant configuration parameter to store the module identifier for the pallet.
 		///
@@ -335,7 +331,7 @@ pub mod pallet {
 
 			// Payout must not be less than the minimum allowed
 			ensure!(
-				payout >= T::MinimalPayoutAmount::get().saturated_into(),
+				payout >= T::MinimalPayoutAmount::get(),
 				Error::<T>::UnderMinPayout
 			);
 

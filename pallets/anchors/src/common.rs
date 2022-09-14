@@ -39,9 +39,10 @@ pub fn generate_child_storage_key(storage_key: &[u8]) -> ChildInfo {
 
 #[cfg(test)]
 mod tests {
-	use crate::common::{generate_child_storage_key, get_days_since_epoch};
 	use codec::Encode;
 	use frame_support::storage::child::ChildInfo;
+
+	use crate::common::{generate_child_storage_key, get_days_since_epoch};
 
 	#[test]
 	fn test_get_days_since_epoch() {

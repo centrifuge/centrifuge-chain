@@ -30,9 +30,11 @@ mod mock;
 mod tests;
 pub mod weights;
 
-use frame_support::traits::{fungible, fungibles};
-use frame_support::traits::{Currency, LockableCurrency, ReservableCurrency};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use frame_support::{
+	dispatch::DispatchResult,
+	pallet_prelude::*,
+	traits::{fungible, fungibles, Currency, LockableCurrency, ReservableCurrency},
+};
 use scale_info::TypeInfo;
 
 pub enum TokenType {
@@ -61,22 +63,29 @@ impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Bala
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
-	use crate::impl_currency::{CurrencyEffects, ReservableCurrencyEffects};
-	use crate::impl_fungible::{
-		FungibleInspectEffects, FungibleInspectHoldEffects, FungibleMutateEffects,
-		FungibleMutateHoldEffects, FungibleTransferEffects,
+	use cfg_traits::PreConditions;
+	use frame_support::{
+		scale_info::TypeInfo,
+		sp_runtime::{
+			traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup},
+			ArithmeticError,
+		},
 	};
-	use crate::impl_fungibles::{
-		FungiblesInspectEffects, FungiblesInspectHoldEffects, FungiblesMutateEffects,
-		FungiblesMutateHoldEffects, FungiblesTransferEffects,
-	};
-	use common_traits::PreConditions;
-	use frame_support::scale_info::TypeInfo;
-	use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup};
-	use frame_support::sp_runtime::ArithmeticError;
 	use frame_system::pallet_prelude::*;
 	use sp_std::cmp::max;
+
+	use super::*;
+	use crate::{
+		impl_currency::{CurrencyEffects, ReservableCurrencyEffects},
+		impl_fungible::{
+			FungibleInspectEffects, FungibleInspectHoldEffects, FungibleMutateEffects,
+			FungibleMutateHoldEffects, FungibleTransferEffects,
+		},
+		impl_fungibles::{
+			FungiblesInspectEffects, FungiblesInspectHoldEffects, FungiblesMutateEffects,
+			FungiblesMutateHoldEffects, FungiblesTransferEffects,
+		},
+	};
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]

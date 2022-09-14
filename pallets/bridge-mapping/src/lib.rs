@@ -25,10 +25,9 @@
 
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_root;
-use sp_runtime::traits::BadOrigin;
-
 // Re-export pallet items so that they can be accessed from the crate namespace.
 pub use pallet::*;
+use sp_runtime::traits::BadOrigin;
 
 #[cfg(test)]
 mod mock;
@@ -42,9 +41,10 @@ pub use weights::*;
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
 	// method.

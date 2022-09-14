@@ -106,8 +106,9 @@ orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-modu
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
 
 # Our pallets and modules
-common-types = { path = "../../libs/common-types", default-features = false }
-common-traits = { path = "../../libs/common-traits", default-features = false }
+cfg-types = { path = "../../libs/types", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
@@ -208,10 +209,11 @@ std = [
     "orml-tokens/std",
     "orml-xtokens/std",
     "orml-asset-registry/std",
+    "cfg-primitives/std",
 ]
 
 runtime-benchmarks = [
-    "common-types/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-session-benchmarking",

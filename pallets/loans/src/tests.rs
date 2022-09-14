@@ -12,40 +12,46 @@
 // GNU General Public License for more details.
 
 //! Unit test cases for Loan pallet
-use super::*;
-use crate as pallet_loans;
-use crate::loan_type::{CreditLine, CreditLineWithMaturity};
-use crate::mock::{
-	Borrower, Event, InterestAccrual, JuniorInvestor, LoanAdmin, Loans, MockRuntime, Origin,
-	SeniorInvestor, Timestamp, Tokens,
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, CFG as USD};
+use cfg_types::{CurrencyId, PoolLocator, Rate};
+use frame_support::{
+	assert_err, assert_ok,
+	traits::{fungibles::Inspect, Hooks},
 };
-use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
-use crate::test_utils::{
-	assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
-	initialise_test_pool, mint_nft,
-};
-use common_types::{CurrencyId, PoolId, PoolLocator};
-use frame_support::traits::{fungibles::Inspect, Hooks};
-use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
-use runtime_common::{Balance, CollectionId, ItemId, Rate, CFG as USD};
-use sp_arithmetic::traits::checked_pow;
-use sp_arithmetic::FixedPointNumber;
-use sp_runtime::traits::{BadOrigin, StaticLookup};
-use sp_runtime::ArithmeticError;
+use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
+use sp_runtime::{
+	traits::{BadOrigin, StaticLookup},
+	ArithmeticError,
+};
+
+use super::*;
+use crate as pallet_loans;
+use crate::{
+	loan_type::{CreditLine, CreditLineWithMaturity},
+	mock::{
+		Borrower, Event as MockEvents, InterestAccrual, JuniorInvestor, LoanAdmin, Loans,
+		MockRuntime, Origin, PoolAdmin, SeniorInvestor, TestExternalitiesBuilder, Timestamp,
+		Tokens,
+	},
+	test_utils::{
+		assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
+		initialise_test_pool, mint_nft,
+	},
+};
 
 // Return last triggered event
-fn last_event() -> Event {
+fn last_event() -> MockEvents {
 	frame_system::Pallet::<MockRuntime>::events()
 		.pop()
 		.map(|item| item.event)
 		.expect("Event expected")
 }
 
-fn fetch_loan_event(event: Event) -> Option<LoanEvent<MockRuntime>> {
+fn fetch_loan_event(event: MockEvents) -> Option<LoanEvent<MockRuntime>> {
 	match event {
-		Event::Loans(loan_event) => Some(loan_event),
+		MockEvents::Loans(loan_event) => Some(loan_event),
 		_ => None,
 	}
 }
@@ -1848,9 +1854,17 @@ macro_rules! repay_too_early {
 }
 
 #[test]
-fn test_repay_too_early() {
+fn test_repay_too_early_bullet() {
 	repay_too_early!(price_bullet_loan);
+}
+
+#[test]
+fn test_repay_too_early_credit_line() {
 	repay_too_early!(price_credit_line_loan);
+}
+
+#[test]
+fn test_repay_too_early_credit_lin_with_maturity() {
 	repay_too_early!(price_credit_line_with_maturity_loan);
 }
 
@@ -1918,7 +1932,11 @@ macro_rules! write_off_overflow {
 }
 
 #[test]
-fn test_write_off_overflow() {
+fn test_write_off_overflow_bullet_loan() {
 	write_off_overflow!(price_bullet_loan);
+}
+
+#[test]
+fn test_write_off_overflow_credit_line() {
 	write_off_overflow!(price_credit_line_with_maturity_loan);
 }

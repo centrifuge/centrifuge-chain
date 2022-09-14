@@ -48,33 +48,41 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn claim_reward_sr25519() -> Weight {
 		(345_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn claim_reward_ecdsa() -> Weight {
 		(462_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
+
 	fn initialize() -> Weight {
 		(50_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
+
 	fn set_lease_start() -> Weight {
 		(28_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_lease_period() -> Weight {
 		(24_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_contributions_root() -> Weight {
 		(26_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_locked_at() -> Weight {
 		(24_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_crowdloan_trie_index() -> Weight {
 		(25_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -87,33 +95,41 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 	}
+
 	fn claim_reward_sr25519() -> Weight {
 		(345_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 	}
+
 	fn claim_reward_ecdsa() -> Weight {
 		(462_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 	}
+
 	fn initialize() -> Weight {
 		(50_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
 	}
+
 	fn set_lease_start() -> Weight {
 		(28_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_lease_period() -> Weight {
 		(24_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_contributions_root() -> Weight {
 		(26_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_locked_at() -> Weight {
 		(24_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+
 	fn set_crowdloan_trie_index() -> Weight {
 		(25_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

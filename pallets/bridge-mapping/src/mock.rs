@@ -11,29 +11,26 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as pallet_bridge_mapping, Config as PalletBridgeMappingConfig};
-
-use common_traits::fees::NoFees;
-
+use cfg_primitives::{Balance, EthAddress};
+use cfg_traits::fees::NoFees;
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
 };
-use frame_support::parameter_types;
-use frame_support::traits::Everything;
-use frame_support::PalletId;
 use frame_support::{
-	traits::{FindAuthor, SortedMembers},
-	ConsensusEngineId,
+	parameter_types,
+	traits::{Everything, FindAuthor, SortedMembers},
+	ConsensusEngineId, PalletId,
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
-use runtime_common::{Balance, EthAddress};
 use sp_core::{blake2_128, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate::{self as pallet_bridge_mapping, Config as PalletBridgeMappingConfig};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -61,30 +58,30 @@ parameter_types! {
 }
 
 impl system::Config for Test {
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = u64;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 parameter_types! {
@@ -92,15 +89,15 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 pub struct AuthorGiven;
@@ -115,16 +112,16 @@ impl FindAuthor<u64> for AuthorGiven {
 }
 
 impl pallet_authorship::Config for Test {
+	type EventHandler = ();
+	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
 	type UncleGenerations = ();
-	type FilterUncle = ();
-	type EventHandler = ();
 }
 
 impl pallet_timestamp::Config for Test {
+	type MinimumPeriod = ();
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = ();
 	type WeightInfo = ();
 }
 
@@ -136,27 +133,27 @@ parameter_types! {
 
 // Implement NFT pallet's configuration trait for the mock runtime
 impl pallet_nft::Config for Test {
-	type Event = Event;
 	type ChainId = ChainId;
-	type ResourceId = ResourceId;
+	type Event = Event;
 	type HashId = MockHashId;
 	type NftProofValidationFee = NftProofValidationFee;
+	type ResourceId = ResourceId;
 	type WeightInfo = ();
 }
 
 impl pallet_anchors::Config for Test {
-	type WeightInfo = ();
-	type Fees = NoFees<Self::AccountId, Balance>;
 	type CommitAnchorFeeKey = ();
-	type PreCommitDepositFeeKey = ();
 	type Currency = Balances;
+	type Fees = NoFees<Self::AccountId, Balance>;
+	type PreCommitDepositFeeKey = ();
+	type WeightInfo = ();
 }
 
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const One: u64 = 1;
 	pub const MockChainId: u8 = 5;
-	pub const ChainBridgePalletId: PalletId = common_types::ids::CHAIN_BRIDGE_PALLET_ID;
+	pub const ChainBridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
@@ -169,11 +166,11 @@ impl SortedMembers<u64> for One {
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
 impl chainbridge::Config for Test {
-	type Event = Event;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Proposal = Call;
 	type ChainId = MockChainId;
+	type Event = Event;
 	type PalletId = ChainBridgePalletId;
+	type Proposal = Call;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();

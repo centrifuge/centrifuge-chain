@@ -12,18 +12,13 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
-use frame_support::{
-	dispatch::DispatchResult,
-	traits::{
-		fungibles::{self, Transfer as FungiblesTransfer},
-		tokens::nonfungibles::{self, Inspect as _, Transfer as _},
-	},
+use frame_support::traits::{
+	fungibles::{self, Transfer as FungiblesTransfer},
+	tokens::nonfungibles::{self, Inspect as _, Transfer as _},
 };
-use frame_system::ensure_signed;
+pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;
-
-pub use pallet::*;
 
 #[cfg(test)]
 mod mock;
@@ -69,12 +64,11 @@ pub struct Price<CurrencyId, Balance> {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::{pallet_prelude::*, transactional, PalletId};
+	use frame_system::{pallet_prelude::*, RawOrigin};
+
 	use super::*;
 	use crate::weights::WeightInfo;
-	use frame_support::pallet_prelude::*;
-	use frame_support::{transactional, PalletId};
-	use frame_system::pallet_prelude::*;
-	use frame_system::RawOrigin;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]

@@ -1,26 +1,38 @@
-use super::*;
-use crate::mock::TrancheToken as TT;
-use crate::mock::{self, *};
-use common_traits::Permissions as PermissionsT;
-use common_types::CurrencyId;
-use frame_support::traits::fungibles;
-use frame_support::{assert_err, assert_noop, assert_ok};
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+//
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+use cfg_traits::Permissions as PermissionsT;
+use cfg_types::{CurrencyId, CustomMetadata, Rate};
+use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
 use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;
-use runtime_common::Rate;
 use sp_core::storage::StateVersion;
-use sp_runtime::traits::{One, Zero};
-use sp_runtime::{Perquintill, TokenError, WeakBoundedVec};
+use sp_runtime::{
+	traits::{One, Zero},
+	Perquintill, TokenError, WeakBoundedVec,
+};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralKey, Parachain, X2},
 	VersionedMultiLocation,
 };
 
+use super::*;
+use crate::mock::{self, TrancheToken as TT, *};
+
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches = Tranches::new::<TT<Test>>(
+		let tranches = Tranches::new::<TT>(
 			0,
 			std::iter::repeat(Tranche {
 				outstanding_redeem_orders: 10,
@@ -122,7 +134,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			..Default::default()
 		};
 		let tranches =
-			Tranches::new::<TT<Test>>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
+			Tranches::new::<TT>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
@@ -221,7 +233,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			..Default::default()
 		};
 		let tranches =
-			Tranches::new::<TT<Test>>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
@@ -334,7 +346,7 @@ fn pool_constraints_pass() {
 			..Default::default()
 		};
 		let tranches =
-			Tranches::new::<TT<Test>>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
@@ -396,11 +408,8 @@ fn pool_constraints_pass() {
 		assert_ok!(Pools::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			crate::calculate_risk_buffers::<u128, runtime_common::Rate>(
-				&vec![3, 1],
-				&vec![One::one(), One::one()]
-			)
-			.unwrap(),
+			crate::calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
+				.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
 		assert_eq!(
@@ -2973,7 +2982,7 @@ fn create_tranche_token_metadata() {
 			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 
 		assert_eq!(
-			orml_asset_registry::Pallet::<Test>::metadata(&tranche_currency).unwrap(),
+			<Test as Config>::AssetRegistry::metadata(&tranche_currency).unwrap(),
 			AssetMetadata {
 				decimals: 18,
 				name: "SuperToken".into(),
@@ -2981,13 +2990,13 @@ fn create_tranche_token_metadata() {
 				existential_deposit: 0,
 				location: Some(VersionedMultiLocation::V1(MultiLocation {
 					parents: 1,
-					interior: X2(Parachain(ParachainId::get()), GeneralKey(tranche_id)),
+					interior: X2(Parachain(MockParachainId::get()), GeneralKey(tranche_id)),
 				})),
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
-					xcm: common_types::XcmMetadata {
+					xcm: cfg_types::XcmMetadata {
 						fee_per_second: None,
 					},
 				},

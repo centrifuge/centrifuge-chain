@@ -17,6 +17,15 @@
 // Module imports
 // ----------------------------------------------------------------------------
 
+use cfg_primitives::constants::{CFG, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
+use codec::Encode;
+use frame_support::{
+	assert_err, assert_noop, assert_ok,
+	traits::{LockableCurrency, WithdrawReasons},
+};
+use sp_core::{blake2_256, H256};
+use sp_runtime::DispatchError;
+
 use crate::{
 	self as pallet_bridge,
 	mock::{
@@ -26,19 +35,6 @@ use crate::{
 	},
 	Error,
 };
-
-use codec::Encode;
-
-use frame_support::{
-	assert_err, assert_noop, assert_ok,
-	traits::{LockableCurrency, WithdrawReasons},
-};
-
-use runtime_common::{CFG, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
-
-use sp_core::{blake2_256, H256};
-
-use sp_runtime::DispatchError;
 
 // ----------------------------------------------------------------------------
 // Test cases

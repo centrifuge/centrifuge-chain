@@ -23,26 +23,24 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_claims, Config};
-
-use node_primitives::Balance;
-
-use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, PalletId};
-
+use cfg_primitives::Balance;
+use frame_support::{
+	parameter_types,
+	traits::{Everything, SortedMembers},
+	weights::Weight,
+	PalletId,
+};
 use frame_system::EnsureSignedBy;
-
+pub use pallet_balances as balances;
 use sp_core::H256;
 use sp_io::TestExternalities;
-
-use crate::traits::WeightInfo;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 	transaction_validity::TransactionPriority,
 };
 
-use frame_support::traits::Everything;
-pub use pallet_balances as balances;
+use crate::{self as pallet_claims, traits::WeightInfo, Config};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -109,30 +107,30 @@ parameter_types! {
 
 // Implement FRAME system pallet configuration trait for the mock runtime
 impl frame_system::Config for MockRuntime {
+	type AccountData = balances::AccountData<Balance>;
 	type AccountId = u64;
-	type Call = Call;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Index = u64;
+	type BaseCallFilter = Everything;
+	type BlockHashCount = BlockHashCount;
+	type BlockLength = ();
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
-	type Event = Event;
-	type Origin = Origin;
-	type BlockHashCount = BlockHashCount;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type DbWeight = ();
-	type AccountData = balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 // Parameterize FRAME balances pallet
@@ -142,24 +140,24 @@ parameter_types! {
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type WeightInfo = ();
 }
 
 // Parameterize claims pallet
 parameter_types! {
-	pub const ClaimsPalletId: PalletId = common_types::ids::CLAIMS_PALLET_ID;
+	pub const ClaimsPalletId: PalletId = cfg_types::ids::CLAIMS_PALLET_ID;
 	pub const One: u64 = 1;
 	pub const Longevity: u32 = 64;
 	pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const MinimalPayoutAmount: node_primitives::Balance = 5 * CFG;
+	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
 impl SortedMembers<u64> for One {

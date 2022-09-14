@@ -1,5 +1,5 @@
 [package]
-name = "common-traits"
+name = "cfg-traits"
 authors = ['The Centrifugians Tribe']
 edition = '2021'
 homepage = 'https://centrifuge.io'
@@ -20,6 +20,10 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 
+orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
+
+cfg-primitives = { path = '../primitives', default-features = false }
+
 [features]
 default = ['std']
 std = [
@@ -27,5 +31,7 @@ std = [
     "codec/std",
     "frame-support/std",
     "sp-runtime/std",
-    "sp-std/std"
+    "sp-std/std",
+    "cfg-primitives/std",
+    "orml-asset-registry/std"
 ]
