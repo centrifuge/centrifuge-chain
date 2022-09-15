@@ -4,6 +4,16 @@ Please include a summary of the changes and the related issue. Please also inclu
 
 Fixes # (issue)
 
+## Changes and Descriptions
+
+### Example pools-pallet
+
+EXAMPLE change in the pools pallet EXAMPLE
+
+### Example integration-tests 
+
+EXAMPLE Updated the tests to fit the new pools pallet EXAMPLE
+
 ## Type of change
 
 Please delete options that are not relevant.
