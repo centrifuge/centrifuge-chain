@@ -40,6 +40,7 @@ use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
+use sp_runtime::traits::Extrinsic;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use tokio::runtime::Handle;
 
@@ -357,7 +358,10 @@ pub struct TestEnv {
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
 //       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
-	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()> {
+	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
+	where
+		sp_runtime::generic::Block<Header, Extrinsic>: sp_runtime::traits::Block,
+	{
 		match chain {
 			Chain::Relay => {
 				let latest = self
