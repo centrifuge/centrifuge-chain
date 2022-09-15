@@ -73,7 +73,7 @@ orml-xcm-support = {  git = "https://github.com/open-web3-stack/open-runtime-mod
 orml-xtokens = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.28" }
 
 # Misc
-xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", branch = "master" }
+ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", branch = "master" }
 
 # Local
 cfg-primitives = { path = "../../libs/primitives" }
