@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use sp_arithmetic::{FixedPointNumber, Perquintill};
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup, One},
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 	DispatchResult,
 };
 use sp_std::convert::{TryFrom, TryInto};
@@ -221,6 +221,12 @@ pub const INVESTMENT_0_1: InvestmentId = InvestmentId::PoolTranche {
 	tranche_id: TRANCHE_ID_1,
 };
 
+/// An unknown investment id -> i.e. a not yet created pool
+pub const UNKNOWN_INVESTMENT: InvestmentId = InvestmentId::PoolTranche {
+	pool_id: 1,
+	tranche_id: TRANCHE_ID_0,
+};
+
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build() -> TestExternalities {
@@ -230,6 +236,8 @@ impl TestExternalitiesBuilder {
 
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
+				// Owner holds enough capital to satisfy redemptions
+				(Owner::get(), CurrencyId::AUSD, 100_000_000 * CURRENCY),
 				(InvestorA::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorB::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorC::get(), CurrencyId::AUSD, 100 * CURRENCY),
@@ -294,10 +302,33 @@ pub(crate) fn free_balance_of(who: MockAccountId, currency_id: CurrencyId) -> Ba
 }
 
 /// Invest amount into INVESTMENT_0_0
+///
+/// User accounts are the default Investor{A,B,C}
 pub(crate) fn invest_x_per_investor(amount: Balance) -> DispatchResult {
 	Investments::update_invest_order(Origin::signed(InvestorA::get()), INVESTMENT_0_0, amount)?;
 	Investments::update_invest_order(Origin::signed(InvestorB::get()), INVESTMENT_0_0, amount)?;
 	Investments::update_invest_order(Origin::signed(InvestorC::get()), INVESTMENT_0_0, amount)
+}
+
+/// Redeem amount into INVESTMENT_0_0
+///  
+/// User accounts are the default TrancheHolder{A,B,C}
+pub(crate) fn redeem_x_per_investor(amount: Balance) -> DispatchResult {
+	Investments::update_redeem_order(
+		Origin::signed(TrancheHolderA::get()),
+		INVESTMENT_0_0,
+		amount,
+	)?;
+	Investments::update_redeem_order(
+		Origin::signed(TrancheHolderB::get()),
+		INVESTMENT_0_0,
+		amount,
+	)?;
+	Investments::update_redeem_order(
+		Origin::signed(TrancheHolderC::get()),
+		INVESTMENT_0_0,
+		amount,
+	)
 }
 
 /// Create a Rate type. Where full is the non-decimal value and decimal value us
@@ -312,7 +343,7 @@ pub(crate) fn invest_x_per_investor(amount: Balance) -> DispatchResult {
 /// assert_eq!(rate.into_inner(), 3050000000000000000000000000) // I.e. price is 3,05
 /// ```
 pub(crate) fn price_of(full: Balance, dec_n: Balance, dec_d: Balance) -> Rate {
-	let full = Rate::from_inner(Rate::one().saturating_mul_int(full));
+	let full = Rate::from_inner(Rate::DIV.saturating_mul(full));
 	let decimals = Rate::saturating_from_rational(dec_n, dec_d);
 
 	full.add(decimals)
@@ -338,7 +369,7 @@ pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> Dispa
 /// Redeem 50 * CURRENCY per Investor into INVESTMENT_0_0 and fulfills
 /// the given fulfillment.
 pub(crate) fn redeem_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
-	invest_x_per_investor(50 * CURRENCY)?;
+	redeem_x_per_investor(50 * CURRENCY)?;
 
 	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0);
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)

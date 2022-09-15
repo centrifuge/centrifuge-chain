@@ -12,12 +12,36 @@
 // GNU General Public License for more details.
 
 use cfg_types::CurrencyId;
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 use pallet_investments::Event;
 use sp_arithmetic::Perquintill;
 
 use super::*;
 use crate::mock::*;
+
+#[test]
+fn fails_with_unknown_investment() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		let amount = 50 * CURRENCY;
+
+		assert_noop!(
+			Investments::update_invest_order(
+				Origin::signed(InvestorA::get()),
+				UNKNOWN_INVESTMENT,
+				2 * amount,
+			),
+			Error::<MockRuntime>::UnknownInvestment
+		);
+		assert_noop!(
+			Investments::update_redeem_order(
+				Origin::signed(TrancheHolderA::get()),
+				UNKNOWN_INVESTMENT,
+				2 * amount,
+			),
+			Error::<MockRuntime>::UnknownInvestment
+		);
+	})
+}
 
 #[test]
 fn update_invest_works() {
@@ -201,6 +225,78 @@ fn update_invest_works() {
 				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
 				TotalOrder { amount: 2 * amount }
 			);
+		}
+	})
+}
+
+#[test]
+fn update_invest_fails_when_collect_needed() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		let amount = 50 * CURRENCY;
+
+		// Setup
+		{
+			assert_ok!(invest_fulfill_x(fulfillment_of(
+				Perquintill::one(),
+				price_of(1, 5, 10)
+			)));
+		}
+
+		// During the above setup, we fulfill the
+		// order which subsequently increases the
+		// order counter. If the order counter is
+		// greater than the submitted-at in the users
+		// order storage. Then we must collect first
+		{
+			assert_noop!(
+				Investments::update_invest_order(
+					Origin::signed(InvestorA::get()),
+					INVESTMENT_0_0,
+					amount,
+				),
+				Error::<MockRuntime>::CollectRequired
+			);
+			assert_noop!(
+				Investments::update_invest_order(
+					Origin::signed(InvestorB::get()),
+					INVESTMENT_0_0,
+					amount,
+				),
+				Error::<MockRuntime>::CollectRequired
+			);
+			assert_noop!(
+				Investments::update_invest_order(
+					Origin::signed(InvestorC::get()),
+					INVESTMENT_0_0,
+					amount,
+				),
+				Error::<MockRuntime>::CollectRequired
+			);
+		}
+
+		// Assert that the orderId is increased
+		{
+			assert_eq!(InvestOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
+		}
+
+		// Updating a redeem order is fine, as we have not yet requested
+		// the orders for the redemptions
+		{
+			assert_ok!(Investments::update_redeem_order(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0,
+				amount,
+			));
+			assert_ok!(Investments::update_redeem_order(
+				Origin::signed(TrancheHolderB::get()),
+				INVESTMENT_0_0,
+				amount,
+			));
+			assert_ok!(Investments::update_redeem_order(
+				Origin::signed(TrancheHolderC::get()),
+				INVESTMENT_0_0,
+				amount,
+			));
 		}
 	})
 }
@@ -398,6 +494,78 @@ fn update_redeem_works() {
 }
 
 #[test]
+fn update_redeem_fails_when_collect_needed() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		let amount = 50 * CURRENCY;
+
+		// Setup
+		{
+			assert_ok!(redeem_fulfill_x(fulfillment_of(
+				Perquintill::one(),
+				price_of(1, 5, 10)
+			)));
+		}
+
+		// Assert that the orderId is increased
+		{
+			assert_eq!(RedeemOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
+		}
+
+		// During the above setup, we fulfill the
+		// order which subsequently increases the
+		// order counter. If the order counter is
+		// greater than the submitted-at in the users
+		// order storage. Then we must collect first
+		{
+			assert_noop!(
+				Investments::update_redeem_order(
+					Origin::signed(TrancheHolderA::get()),
+					INVESTMENT_0_0,
+					amount,
+				),
+				Error::<MockRuntime>::CollectRequired
+			);
+			assert_noop!(
+				Investments::update_redeem_order(
+					Origin::signed(TrancheHolderB::get()),
+					INVESTMENT_0_0,
+					amount,
+				),
+				Error::<MockRuntime>::CollectRequired
+			);
+			assert_noop!(
+				Investments::update_redeem_order(
+					Origin::signed(TrancheHolderC::get()),
+					INVESTMENT_0_0,
+					amount,
+				),
+				Error::<MockRuntime>::CollectRequired
+			);
+		}
+
+		// Updating an invest order is fine, as we have not yet requested
+		// the orders for the investments
+		{
+			assert_ok!(Investments::update_invest_order(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0,
+				amount,
+			));
+			assert_ok!(Investments::update_invest_order(
+				Origin::signed(InvestorB::get()),
+				INVESTMENT_0_0,
+				amount,
+			));
+			assert_ok!(Investments::update_invest_order(
+				Origin::signed(InvestorC::get()),
+				INVESTMENT_0_0,
+				amount,
+			));
+		}
+	})
+}
+
+#[test]
 fn fulfillment_everything_works() {}
 
 #[test]
@@ -408,4 +576,7 @@ fn fulfillment_partially_works() {
 }
 
 #[test]
-fn collect_works() {}
+fn collecting_fully_works() {}
+
+#[test]
+fn collecting_over_max_works() {}

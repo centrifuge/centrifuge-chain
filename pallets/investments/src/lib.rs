@@ -1253,16 +1253,18 @@ where
 					.as_ref()
 					.ok_or(Error::<T>::OrderNotInProcessing)?;
 
+				// Define the amount of tokens that are redeemed
+				let redeem_amount = fulfillment.of_amount.mul_floor(orders.amount);
+
 				// The orders for redemptions are denominated on a per
 				// investment basis. Hence, we need to convert it the amount
 				// of payment_currency that is redeemed by multiplying it
 				// with the price per investment unit.
-				let redeem_amount = fulfillment.of_amount.mul_floor(
-					fulfillment
-						.price
-						.checked_mul_int(orders.amount)
-						.ok_or(ArithmeticError::Overflow)?,
-				);
+				let redeem_amount_payment = fulfillment
+					.price
+					.checked_mul_int(redeem_amount)
+					.ok_or(ArithmeticError::Overflow)?;
+
 				let remaining_redeem_amount = orders
 					.amount
 					.checked_sub(&redeem_amount)
@@ -1277,7 +1279,7 @@ where
 					info.payment_currency(),
 					&info.payment_account(),
 					&investment_account,
-					redeem_amount,
+					redeem_amount_payment,
 					false,
 				)?;
 				// The amount of investments the accountant needs to
