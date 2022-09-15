@@ -124,7 +124,7 @@ pub struct Order<Balance, OrderId> {
 	pub submitted_at: OrderId,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct FulfillmentWithPrice<BalanceRatio> {
 	pub of_amount: Perquintill,
 	pub price: BalanceRatio,
