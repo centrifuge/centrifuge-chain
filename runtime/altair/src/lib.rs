@@ -507,6 +507,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
+	type MaxCandidates = MaxCandidates;
+	type MaxVoters = MaxVoters;
 }
 
 parameter_types! {
