@@ -11,7 +11,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::CurrencyId;
 use frame_support::assert_ok;
+use pallet_investments::Event;
+use sp_arithmetic::Perquintill;
 
 use super::*;
 use crate::mock::*;
@@ -19,82 +22,256 @@ use crate::mock::*;
 #[test]
 fn update_invest_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
-		let pool_id = 0;
-		let tranche_id = [0u8; 16];
 		let amount = 50 * CURRENCY;
-		let investment_id = InvestmentId::PoolTranche {
-			pool_id,
-			tranche_id,
-		};
 
-		// Total order is empty
-		// assert total order is well formed
-		assert_eq!(
-			InProcessingInvestOrders::<MockRuntime>::get(investment_id,),
-			None
-		);
-		assert_eq!(
-			ActiveInvestOrders::<MockRuntime>::get(investment_id,),
-			TotalOrder { amount: 0 }
-		);
+		// TotalOrder storage is empty at the beginning
+		{
+			// assert total order is well formed
+			assert_eq!(
+				InProcessingInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+				None
+			);
+			assert_eq!(
+				ClearedInvestOrders::<MockRuntime>::get(INVESTMENT_0_0, 0),
+				None
+			);
+			assert_eq!(
+				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+				TotalOrder { amount: 0 }
+			);
+		}
 
-		// assert the user orders are empty at start
-		assert_eq!(
-			InvestOrders::<MockRuntime>::get(InvestorA::get(), investment_id),
-			None
-		);
-		assert_eq!(
-			InvestOrders::<MockRuntime>::get(InvestorB::get(), investment_id),
-			None
-		);
+		// The user invest order storage is empty at the beginning
+		{
+			// assert the user orders are empty at start
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+				None
+			);
+		}
 
-		assert_ok!(Investments::update_invest_order(
-			Origin::signed(InvestorA::get()),
-			investment_id,
-			amount,
-		));
+		// Updating InvestorA's invest position works correctly
+		// and triggers the right event.
+		// Furthermore, the balance of the internal account of the INVESTMENT_0_0
+		// holds the right balance
+		{
+			assert_ok!(Investments::update_invest_order(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0,
+				2 * amount,
+			));
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				2 * amount
+			);
+			assert_eq!(free_balance_of(InvestorA::get(), CurrencyId::AUSD), 0);
+			assert_eq!(
+				last_event(),
+				Event::InvestOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 0,
+					who: InvestorA::get(),
+					amount: 2 * amount,
+				}
+				.into()
+			);
+		}
 
-		// assert the user order is well formed
-		assert_eq!(
-			InvestOrders::<MockRuntime>::get(InvestorA::get(), investment_id),
-			Some(Order {
+		// The storage of the user order is well formed
+		// The storage of the ActiveInvestOrders is well formed and updated
+		{
+			// assert the user order is well formed
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order {
+					amount: 2 * amount,
+					submitted_at: 0
+				})
+			);
+			// assert total order is well formed
+			assert_eq!(
+				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+				TotalOrder { amount: 2 * amount }
+			);
+		}
+
+		// Reducing the invest position of a user works correctly
+		// - decreasing the stored order amount
+		// - increasing the investors balance by the diff
+		// - decreasing the investment-id's account by the diff
+		{
+			assert_ok!(Investments::update_invest_order(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0,
 				amount,
-				submitted_at: 0
-			})
-		);
+			));
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				amount
+			);
+			assert_eq!(free_balance_of(InvestorA::get(), CurrencyId::AUSD), amount);
+			assert_eq!(
+				last_event(),
+				Event::InvestOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 0,
+					who: InvestorA::get(),
+					amount,
+				}
+				.into()
+			);
+		}
 
-		// assert total order is well formed
-		assert_eq!(
-			ActiveInvestOrders::<MockRuntime>::get(investment_id,),
-			TotalOrder { amount }
-		);
-
-		assert_ok!(Investments::update_invest_order(
-			Origin::signed(InvestorB::get()),
-			investment_id,
-			amount,
-		));
-
-		// assert the user order is well formed
-		assert_eq!(
-			InvestOrders::<MockRuntime>::get(InvestorB::get(), investment_id),
-			Some(Order {
+		// Updating InvestorA's invest position works correctly
+		// and triggers the right event.
+		// Furthermore, the balance of the internal account of the INVESTMENT_0_0
+		// holds the right balance
+		{
+			assert_ok!(Investments::update_invest_order(
+				Origin::signed(InvestorB::get()),
+				INVESTMENT_0_0,
 				amount,
-				submitted_at: 0
-			})
-		);
+			));
+			assert_eq!(
+				last_event(),
+				Event::InvestOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 0,
+					who: InvestorB::get(),
+					amount,
+				}
+				.into()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+				Some(Order {
+					amount,
+					submitted_at: 0
+				})
+			);
+		}
 
-		// assert total order is well formed
-		assert_eq!(
-			ActiveInvestOrders::<MockRuntime>::get(investment_id,),
-			TotalOrder { amount: 2 * amount }
-		);
+		// The storage of the user order is well formed
+		// The storage of the ActiveInvestOrders is well formed and updated
+		{
+			// assert the user order is well formed
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order {
+					amount,
+					submitted_at: 0
+				})
+			);
+			// assert total order is well formed
+			assert_eq!(
+				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+				TotalOrder { amount: 2 * amount }
+			);
+		}
 	})
 }
 
 #[test]
 fn update_redeem_works() {
-	TestExternalitiesBuilder::build().execute_with(|| {})
+	TestExternalitiesBuilder::build().execute_with(|| {
+		/*
+		assert_ok!(invest_fulfill_x(
+			fulfillment_of(Perquintill::one()),
+			price_of(1, 0, 0)
+		));
+		let amount = 50 * CURRENCY;
+
+		// Total order is empty
+		// assert total order is well formed
+		assert_eq!(
+			InProcessingInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+			None
+		);
+		assert_eq!(
+			ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+			TotalOrder { amount: 0 }
+		);
+
+		// assert the user orders are empty at start
+		assert_eq!(
+			InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+			None
+		);
+		assert_eq!(
+			InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+			None
+		);
+		assert_ok!(Investments::update_invest_order(
+			Origin::signed(InvestorA::get()),
+			INVESTMENT_0_0,
+			amount,
+		));
+		assert_eq!(
+			free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+			amount
+		);
+		assert_eq!(
+			last_event(),
+			Event::InvestOrderUpdated {
+				investment_id: INVESTMENT_0_0,
+				submitted_at: 0,
+				who: InvestorA::get(),
+				amount,
+			}
+			.into()
+		);
+		// assert the user order is well formed
+		assert_eq!(
+			InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+			Some(Order {
+				amount,
+				submitted_at: 0
+			})
+		);
+		// assert total order is well formed
+		assert_eq!(
+			ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+			TotalOrder { amount }
+		);
+		assert_ok!(Investments::update_invest_order(
+			Origin::signed(InvestorB::get()),
+			INVESTMENT_0_0,
+			amount,
+		));
+		assert_eq!(
+			last_event(),
+			Event::InvestOrderUpdated {
+				investment_id: INVESTMENT_0_0,
+				submitted_at: 0,
+				who: InvestorB::get(),
+				amount,
+			}
+			.into()
+		);
+		assert_eq!(
+			InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+			Some(Order {
+				amount,
+				submitted_at: 0
+			})
+		);
+
+		// assert total order is well formed
+		assert_eq!(
+			ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0,),
+			TotalOrder { amount: 2 * amount }
+		);
+		assert_eq!(
+			free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+			2 * amount
+		);
+
+		 */
+	})
 }
 
 #[test]

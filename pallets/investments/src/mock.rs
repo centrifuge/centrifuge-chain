@@ -11,10 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use std::ops::Add;
+
 pub use cfg_primitives::CFG as CURRENCY;
 use cfg_primitives::*;
-use cfg_traits::Always;
-use cfg_types::{CurrencyId, Rate};
+use cfg_traits::{Always, OrderManager};
+use cfg_types::{CurrencyId, FulfillmentWithPrice, InvestmentAccount, Rate};
 use codec::{Decode, Encode};
 use frame_support::{
 	parameter_types,
@@ -22,10 +24,15 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::GetByKey;
+use pallet_investments::Event as InvestEvent;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
+use sp_arithmetic::{FixedPointNumber, Perquintill};
 use sp_io::TestExternalities;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup, One},
+	DispatchResult,
+};
 use sp_std::convert::{TryFrom, TryInto};
 
 pub use crate as pallet_investments;
@@ -147,7 +154,7 @@ impl pallet_investments::Config for MockRuntime {
 }
 
 // TODO: This struct should be temporarily needed only
-//       We should add the possibiltiy to use subsets of the
+//       We should add the possibility to use subsets of the
 //       global CurrencyId enum
 #[derive(
 	Copy,
@@ -191,8 +198,29 @@ parameter_types! {
 	pub const InvestorA: MockAccountId = 1;
 	pub const InvestorB: MockAccountId = 2;
 	pub const InvestorC: MockAccountId = 3;
+	pub const TrancheHolderA: MockAccountId = 4;
+	pub const TrancheHolderB: MockAccountId = 5;
+	pub const TrancheHolderC: MockAccountId = 6;
 	pub const Owner: MockAccountId = 100;
 }
+
+/// The pool id we use for tests
+pub const POOL_ID: PoolId = 0;
+/// One tranche id of our test pool
+pub const TRANCHE_ID_0: [u8; 16] = [0u8; 16];
+/// The second tranche id of our test pool
+pub const TRANCHE_ID_1: [u8; 16] = [1u8; 16];
+
+/// The investment-id for investing into pool 0 and tranche 0
+pub const INVESTMENT_0_0: InvestmentId = InvestmentId::PoolTranche {
+	pool_id: POOL_ID,
+	tranche_id: TRANCHE_ID_0,
+};
+/// The investment-id for investing into pool 0 and tranche 1
+pub const INVESTMENT_0_1: InvestmentId = InvestmentId::PoolTranche {
+	pool_id: POOL_ID,
+	tranche_id: TRANCHE_ID_1,
+};
 
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
@@ -206,6 +234,9 @@ impl TestExternalitiesBuilder {
 				(InvestorA::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorB::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorC::get(), CurrencyId::AUSD, 100 * CURRENCY),
+				(TrancheHolderA::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
+				(TrancheHolderB::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
+				(TrancheHolderC::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
 			],
 		}
 		.assimilate_storage(&mut storage)
@@ -215,30 +246,18 @@ impl TestExternalitiesBuilder {
 		accountant_mock::GenesisConfig {
 			infos: vec![
 				(
-					InvestmentId::PoolTranche {
-						pool_id: 0,
-						tranche_id: [0u8; 16],
-					},
+					INVESTMENT_0_0,
 					InvestmentInfo {
 						owner: Owner::get(),
-						id: InvestmentId::PoolTranche {
-							pool_id: 0,
-							tranche_id: [0u8; 16],
-						},
+						id: INVESTMENT_0_0,
 						payment_currency: CurrencyId::AUSD,
 					},
 				),
 				(
-					InvestmentId::PoolTranche {
-						pool_id: 0,
-						tranche_id: [1u8; 16],
-					},
+					INVESTMENT_0_1,
 					InvestmentInfo {
 						owner: Owner::get(),
-						id: InvestmentId::PoolTranche {
-							pool_id: 0,
-							tranche_id: [1u8; 16],
-						},
+						id: INVESTMENT_0_1,
 						payment_currency: CurrencyId::AUSD,
 					},
 				),
@@ -257,13 +276,71 @@ impl TestExternalitiesBuilder {
 	}
 }
 
-pub(crate) fn assert_last_event<E>(generic_event: E)
-where
-	E: Into<<MockRuntime as frame_system::Config>::Event>,
-{
+pub(crate) fn last_event() -> Event {
 	let events = frame_system::Pallet::<MockRuntime>::events();
-	let system_event = generic_event.into();
 	// compare to the last event record
 	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(1)];
-	assert_eq!(event, &system_event);
+	event.clone()
+}
+
+pub(crate) fn investment_account(investment_id: InvestmentId) -> MockAccountId {
+	InvestmentAccount { investment_id }.into_account_truncating()
+}
+
+pub(crate) fn free_balance_of(who: MockAccountId, currency_id: CurrencyId) -> Balance {
+	<orml_tokens::Pallet<MockRuntime> as orml_traits::MultiCurrency<MockAccountId>>::free_balance(
+		currency_id,
+		&who,
+	)
+}
+
+/// Invest amount into INVESTMENT_0_0
+pub(crate) fn invest_x_per_investor(amount: Balance) -> DispatchResult {
+	Investments::update_invest_order(Origin::signed(InvestorA::get()), INVESTMENT_0_0, amount)?;
+	Investments::update_invest_order(Origin::signed(InvestorB::get()), INVESTMENT_0_0, amount)?;
+	Investments::update_invest_order(Origin::signed(InvestorC::get()), INVESTMENT_0_0, amount)
+}
+
+/// Create a Rate type. Where full is the non-decimal value and decimal value us
+/// defined by dec_n/dec_d
+///
+/// # E.g.
+/// ```rust
+/// use cfg_primitives::Balance;
+/// use cfg_types::Rate;
+///
+/// let rate = crate::mock::price_of(3, 5, 100);
+/// assert_eq!(rate.into_inner(), 3050000000000000000000000000) // I.e. price is 3,05
+/// ```
+pub(crate) fn price_of(full: Balance, dec_n: Balance, dec_d: Balance) -> Rate {
+	let full = Rate::from_inner(Rate::one().saturating_mul_int(full));
+	let decimals = Rate::saturating_from_rational(dec_n, dec_d);
+
+	full.add(decimals)
+}
+
+/// Creates a fullfillment of given perc and price
+pub(crate) fn fulfillment_of(perc: Perquintill, price: Rate) -> FulfillmentWithPrice<Rate> {
+	FulfillmentWithPrice {
+		of_amount: perc,
+		price,
+	}
+}
+
+/// Invest 50 * CURRENCY per Investor into INVESTMENT_0_0 and fulfills
+/// the given fulfillment.
+pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+	invest_x_per_investor(50 * CURRENCY)?;
+
+	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Redeem 50 * CURRENCY per Investor into INVESTMENT_0_0 and fulfills
+/// the given fulfillment.
+pub(crate) fn redeem_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+	invest_x_per_investor(50 * CURRENCY)?;
+
+	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0);
+	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
