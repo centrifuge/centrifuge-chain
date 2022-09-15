@@ -1,5 +1,5 @@
-use cfg_types::CurrencyId;
 use cfg_primitives::Moment;
+use cfg_types::CurrencyId;
 use frame_support::{
 	parameter_types,
 	traits::{Hooks, SortedMembers},
