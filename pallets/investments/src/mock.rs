@@ -24,7 +24,6 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::GetByKey;
-use pallet_investments::Event as InvestEvent;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::{FixedPointNumber, Perquintill};
