@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::CurrencyId;
+use cfg_types::{CurrencyId, Rate};
 use frame_support::{assert_noop, assert_ok};
 use pallet_investments::Event;
 use sp_arithmetic::Perquintill;
@@ -568,10 +568,21 @@ fn update_redeem_fails_when_collect_needed() {
 #[test]
 fn fulfillment_flow_for_everything_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
-		// Setup
+		#[allow(non_snake_case)]
+		let PRICE: Rate = price_of(1, 2, 10);
+		#[allow(non_snake_case)]
+		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
+		#[allow(non_snake_case)]
+		let TOTAL_REDEEM_AMOUNT = 3 * SINGLE_REDEEM_AMOUNT;
+		#[allow(non_snake_case)]
+		let SINGLE_INVEST_AMOUNT = 50 * CURRENCY;
+		#[allow(non_snake_case)]
+		let TOTAL_INVEST_AMOUNT = 3 * SINGLE_INVEST_AMOUNT;
+
+		// Setup investments
 		{
-			assert_ok!(redeem_x_per_investor(50 * CURRENCY));
-			assert_ok!(invest_x_per_investor(50 * CURRENCY));
+			assert_ok!(invest_x_per_investor(SINGLE_REDEEM_AMOUNT));
+			assert_ok!(redeem_x_per_investor(SINGLE_INVEST_AMOUNT));
 		}
 
 		// calling orders increases order id and puts orders into
@@ -585,11 +596,11 @@ fn fulfillment_flow_for_everything_works() {
 			);
 			assert_eq!(InvestOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
 			assert_eq! {
-				invest_orders, TotalOrder{ amount: 3 * 50 * CURRENCY}
+				invest_orders, TotalOrder{ amount: TOTAL_INVEST_AMOUNT}
 			};
 			assert_eq! {
 				InProcessingInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
-				Some(TotalOrder { amount: 3 * 50 * CURRENCY})
+				Some(TotalOrder { amount: TOTAL_INVEST_AMOUNT})
 			};
 			assert_eq! {ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0), TotalOrder{amount: 0}};
 			assert_eq! {
@@ -597,7 +608,7 @@ fn fulfillment_flow_for_everything_works() {
 				Event::InvestOrdersInProcessing {
 					investment_id: INVESTMENT_0_0,
 					order_id: 0,
-					total_order: TotalOrder { amount: 3 * 50 * CURRENCY}
+					total_order: TotalOrder { amount: TOTAL_INVEST_AMOUNT}
 				}.into()
 			}
 		}
@@ -606,7 +617,7 @@ fn fulfillment_flow_for_everything_works() {
 		{
 			let fulfillment = FulfillmentWithPrice {
 				of_amount: Perquintill::one(),
-				price: price_of(1, 2, 10),
+				price: PRICE,
 			};
 
 			assert_ok!(Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment));
@@ -637,6 +648,29 @@ fn fulfillment_flow_for_everything_works() {
 			);
 		}
 
+		// checking balances have changed correctly
+		{
+			assert_eq!(
+				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				0
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.expect("Price is larger equal 1")
+					.checked_mul_int(TOTAL_INVEST_AMOUNT)
+					.expect("Unwrapping test checked_mul_int must work")
+					// We need to take into account that the 3 TrancheHolders have submitted redeem orders already
+					.checked_add(TOTAL_REDEEM_AMOUNT)
+					.expect("Unwrapping test checked_add must work")
+			)
+		}
+
 		// calling orders increases order id and puts orders into
 		// processing. Active orders a reset correctly
 		{
@@ -648,11 +682,11 @@ fn fulfillment_flow_for_everything_works() {
 			);
 			assert_eq!(RedeemOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
 			assert_eq! {
-				redeem_orders, TotalOrder{ amount: 3 * 50 * CURRENCY}
+				redeem_orders, TotalOrder{ amount: TOTAL_REDEEM_AMOUNT}
 			};
 			assert_eq! {
 				InProcessingRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
-				Some(TotalOrder { amount: 3 * 50 * CURRENCY})
+				Some(TotalOrder { amount: TOTAL_REDEEM_AMOUNT})
 			};
 			assert_eq! {ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0), TotalOrder{amount: 0}};
 			assert_eq! {
@@ -660,7 +694,7 @@ fn fulfillment_flow_for_everything_works() {
 				Event::RedeemOrdersInProcessing {
 					investment_id: INVESTMENT_0_0,
 					order_id: 0,
-					total_order: TotalOrder { amount: 3 * 50 * CURRENCY}
+					total_order: TotalOrder { amount: TOTAL_REDEEM_AMOUNT}
 				}.into()
 			}
 		}
@@ -669,7 +703,7 @@ fn fulfillment_flow_for_everything_works() {
 		{
 			let fulfillment = FulfillmentWithPrice {
 				of_amount: Perquintill::one(),
-				price: price_of(1, 2, 10),
+				price: PRICE,
 			};
 
 			assert_ok!(Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment));
@@ -697,6 +731,31 @@ fn fulfillment_flow_for_everything_works() {
 			assert_eq!(
 				ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
 				TotalOrder::default()
+			);
+		}
+
+		// checking balances have changed correctly
+		{
+			assert_eq!(
+				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				TOTAL_INVEST_AMOUNT + OWNER_START_BALANCE
+					- PRICE
+						.checked_mul_int(TOTAL_REDEEM_AMOUNT)
+						.expect("Unwrapping test checked_mul_int must work")
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				PRICE
+					.checked_mul_int(TOTAL_REDEEM_AMOUNT)
+					.expect("Unwrapping test checked_mul_int must work")
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.expect("Price is larger equal 1")
+					.checked_mul_int(TOTAL_INVEST_AMOUNT)
+					.expect("Unwrapping test checked_mul_int must work")
 			);
 		}
 	})

@@ -1196,7 +1196,7 @@ where
 				let amount_of_investment_units = fulfillment
 					.price
 					.reciprocal()
-					.ok_or(ArithmeticError::DivisionByZero)?
+					.ok_or(Error::<T>::ZeroPricedInvestment)?
 					.checked_mul_int(invest_amount)
 					.ok_or(ArithmeticError::Overflow)?;
 
@@ -1282,20 +1282,8 @@ where
 					redeem_amount_payment,
 					false,
 				)?;
-				// The amount of investments the accountant needs to
-				// remove in his books is the redeem_amount divide through
-				// the price of the investment.
-				let amount_of_investment_units = fulfillment
-					.price
-					.reciprocal()
-					.ok_or(Error::<T>::ZeroPricedInvestment)?
-					.checked_mul_int(redeem_amount)
-					.ok_or(ArithmeticError::Overflow)?;
-				T::Accountant::withdraw(
-					&investment_account,
-					info.id(),
-					amount_of_investment_units,
-				)?;
+
+				T::Accountant::withdraw(&investment_account, info.id(), redeem_amount)?;
 
 				// The previous OrderId is always 1 away
 				//
