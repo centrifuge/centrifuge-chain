@@ -209,6 +209,8 @@ pub const POOL_ID: PoolId = 0;
 pub const TRANCHE_ID_0: [u8; 16] = [0u8; 16];
 /// The second tranche id of our test pool
 pub const TRANCHE_ID_1: [u8; 16] = [1u8; 16];
+/// The amount the owner of the known investments has at the start
+pub const OWNER_START_BALANCE: u128 = 100_000_000 * CURRENCY;
 
 /// The investment-id for investing into pool 0 and tranche 0
 pub const INVESTMENT_0_0: InvestmentId = InvestmentId::PoolTranche {
@@ -237,7 +239,7 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
 				// Owner holds enough capital to satisfy redemptions
-				(Owner::get(), CurrencyId::AUSD, 100_000_000 * CURRENCY),
+				(Owner::get(), CurrencyId::AUSD, OWNER_START_BALANCE),
 				(InvestorA::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorB::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorC::get(), CurrencyId::AUSD, 100 * CURRENCY),
