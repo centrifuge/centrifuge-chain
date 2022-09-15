@@ -566,7 +566,141 @@ fn update_redeem_fails_when_collect_needed() {
 }
 
 #[test]
-fn fulfillment_everything_works() {}
+fn fulfillment_flow_for_everything_works() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		// Setup
+		{
+			assert_ok!(redeem_x_per_investor(50 * CURRENCY));
+			assert_ok!(invest_x_per_investor(50 * CURRENCY));
+		}
+
+		// calling orders increases order id and puts orders into
+		// processing. Active orders a reset correctly
+		{
+			let invest_orders =
+				Investments::invest_orders(INVESTMENT_0_0).expect("Did not call it twice");
+			assert_noop!(
+				Investments::invest_orders(INVESTMENT_0_0),
+				Error::<MockRuntime>::OrderInProcessing
+			);
+			assert_eq!(InvestOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
+			assert_eq! {
+				invest_orders, TotalOrder{ amount: 3 * 50 * CURRENCY}
+			};
+			assert_eq! {
+				InProcessingInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				Some(TotalOrder { amount: 3 * 50 * CURRENCY})
+			};
+			assert_eq! {ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0), TotalOrder{amount: 0}};
+			assert_eq! {
+				last_event(),
+				Event::InvestOrdersInProcessing {
+					investment_id: INVESTMENT_0_0,
+					order_id: 0,
+					total_order: TotalOrder { amount: 3 * 50 * CURRENCY}
+				}.into()
+			}
+		}
+
+		// Calling fulfillment on investments works
+		{
+			let fulfillment = FulfillmentWithPrice {
+				of_amount: Perquintill::one(),
+				price: price_of(1, 2, 10),
+			};
+
+			assert_ok!(Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment));
+			assert_noop!(
+				Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment),
+				Error::<MockRuntime>::OrderNotInProcessing
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::InvestOrdersCleared {
+					investment_id: INVESTMENT_0_0,
+					order_id: 0,
+					fulfillment
+				}
+				.into()
+			);
+			assert_eq!(
+				InProcessingInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				ClearedInvestOrders::<MockRuntime>::get(INVESTMENT_0_0, 0),
+				Some(fulfillment)
+			);
+			assert_eq!(
+				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder::default()
+			);
+		}
+
+		// calling orders increases order id and puts orders into
+		// processing. Active orders a reset correctly
+		{
+			let redeem_orders =
+				Investments::redeem_orders(INVESTMENT_0_0).expect("Did not call it twice");
+			assert_noop!(
+				Investments::redeem_orders(INVESTMENT_0_0),
+				Error::<MockRuntime>::OrderInProcessing
+			);
+			assert_eq!(RedeemOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
+			assert_eq! {
+				redeem_orders, TotalOrder{ amount: 3 * 50 * CURRENCY}
+			};
+			assert_eq! {
+				InProcessingRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				Some(TotalOrder { amount: 3 * 50 * CURRENCY})
+			};
+			assert_eq! {ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0), TotalOrder{amount: 0}};
+			assert_eq! {
+				last_event(),
+				Event::RedeemOrdersInProcessing {
+					investment_id: INVESTMENT_0_0,
+					order_id: 0,
+					total_order: TotalOrder { amount: 3 * 50 * CURRENCY}
+				}.into()
+			}
+		}
+
+		// Calling fulfillment on redeem orders works
+		{
+			let fulfillment = FulfillmentWithPrice {
+				of_amount: Perquintill::one(),
+				price: price_of(1, 2, 10),
+			};
+
+			assert_ok!(Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment));
+			assert_noop!(
+				Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment),
+				Error::<MockRuntime>::OrderNotInProcessing
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemOrdersCleared {
+					investment_id: INVESTMENT_0_0,
+					order_id: 0,
+					fulfillment
+				}
+				.into()
+			);
+			assert_eq!(
+				InProcessingRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				ClearedRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0, 0),
+				Some(fulfillment)
+			);
+			assert_eq!(
+				ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder::default()
+			);
+		}
+	})
+}
 
 #[test]
 fn fulfillment_partially_works() {
