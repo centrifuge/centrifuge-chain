@@ -1,14 +1,8 @@
 ### Which part of the code is the issue addressing?
 
-* [ ] Archicture 
-* [ ] Adressing a bug
+* [ ] Addressing a bug
 * [ ] Refactoring
-* [ ] pallet_xyz
-* [ ] pallet_xyz
-* [ ] Suggesting a new pallet
-* [ ] Runtime
-* [ ] Cross-Chain
-* [ ] Protocol
+* [ ] Feature
 
 
 ### Description
