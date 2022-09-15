@@ -219,17 +219,16 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn invest_order_id)]
-	pub type InvestOrderId<T: Config> =
+	pub(crate) type InvestOrderId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_order_id)]
-	pub type RedeemOrderId<T: Config> =
+	pub(crate) type RedeemOrderId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn invest_orders)]
-	pub type InvestOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type InvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -239,8 +238,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn redeem_orders)]
-	pub type RedeemOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type RedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -251,27 +249,27 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_invest_order)]
-	pub type ActiveInvestOrders<T: Config> =
+	pub(crate) type ActiveInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_redeem_order)]
-	pub type ActiveRedeemOrders<T: Config> =
+	pub(crate) type ActiveRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_in_processing_invest_order)]
-	pub type InProcessingInvestOrders<T: Config> =
+	pub(crate) type InProcessingInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_in_processing_redeem_order)]
-	pub type InProcessingRedeemOrders<T: Config> =
+	pub(crate) type InProcessingRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn cleared_invest_order)]
-	pub type ClearedInvestOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type ClearedInvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
@@ -282,7 +280,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn cleared_redeem_order)]
-	pub type ClearedRedeemOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type ClearedRedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
@@ -330,26 +328,26 @@ pub mod pallet {
 			who: T::AccountId,
 			amount: T::Amount,
 		},
-		/// Order was fulfilled [investment_id, order_id, FulfillmentWithPrice]
-		InvestOrderCleared {
+		/// TotalOrders of investments were fulfilled [investment_id, order_id, FulfillmentWithPrice]
+		InvestOrdersCleared {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
 		},
-		/// Order was fulfilled [investment_id, order_id, FulfillmentWithPrice]
-		RedeemOrderCleared {
+		/// TotalOrders of redemptions were fulfilled [investment_id, order_id, FulfillmentWithPrice]
+		RedeemOrdersCleared {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
 		},
-		/// Order is in processing state [investment_id, order_id, TotalOrder]
-		InvestOrderInProcessing {
+		/// TotalOrders of investments are in processing state [investment_id, order_id, TotalOrder]
+		InvestOrdersInProcessing {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			total_order: TotalOrder<T::Amount>,
 		},
-		/// Order is in processing state [investment_id, order_id, TotalOrder]
-		RedeemOrderInProcessing {
+		/// TotalOrders of redemptions in processing state [investment_id, order_id, TotalOrder]
+		RedeemOrdersInProcessing {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			total_order: TotalOrder<T::Amount>,
@@ -1108,7 +1106,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::InvestOrderInProcessing {
+		Self::deposit_event(Event::InvestOrdersInProcessing {
 			investment_id,
 			order_id,
 			total_order: total_orders.clone(),
@@ -1155,7 +1153,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::RedeemOrderInProcessing {
+		Self::deposit_event(Event::RedeemOrdersInProcessing {
 			investment_id,
 			order_id,
 			total_order: total_orders.clone(),
@@ -1235,7 +1233,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::InvestOrderCleared {
+		Self::deposit_event(Event::InvestOrdersCleared {
 			investment_id,
 			order_id,
 			fulfillment,
@@ -1332,7 +1330,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::RedeemOrderCleared {
+		Self::deposit_event(Event::RedeemOrdersCleared {
 			investment_id,
 			order_id,
 			fulfillment,
