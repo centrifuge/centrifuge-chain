@@ -47,7 +47,10 @@ impl<AssetId, AccountId, Balance>
 	}
 }
 
-impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
+impl<T: Config> Inspect<T::AccountId> for Pallet<T>
+where
+	T::CurrencyId: MaxEncodedLen
+{
 	type AssetId = T::CurrencyId;
 	type Balance = T::Balance;
 
@@ -132,7 +135,10 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 	CanHold(AssetId, AccountId, Balance, bool),
 }
 
-impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
+impl<T: Config> InspectHold<T::AccountId> for Pallet<T>
+	where
+		T::CurrencyId: MaxEncodedLen
+{
 	fn balance_on_hold(asset: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::InspectHold<T::AccountId>>::balance_on_hold(who)
@@ -175,7 +181,10 @@ pub enum FungiblesMutateEffects<AssetId, AccountId, Balance> {
 	BurnFrom(AssetId, AccountId, Balance),
 }
 
-impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
+impl<T: Config> Mutate<T::AccountId> for Pallet<T>
+	where
+		T::CurrencyId: MaxEncodedLen
+{
 	fn mint_into(
 		asset: Self::AssetId,
 		who: &T::AccountId,
@@ -252,7 +261,10 @@ pub enum FungiblesMutateHoldEffects<AssetId, AccountId, Balance> {
 	TransferHeld(AssetId, AccountId, AccountId, Balance, bool, bool),
 }
 
-impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
+impl<T: Config> MutateHold<T::AccountId> for Pallet<T>
+	where
+		T::CurrencyId: MaxEncodedLen
+{
 	fn hold(asset: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::MutateHold<T::AccountId>>::hold(who, amount)
@@ -348,7 +360,10 @@ pub enum FungiblesTransferEffects<AssetId, AccountId, Balance> {
 	Transfer(AssetId, AccountId, AccountId, Balance, bool),
 }
 
-impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
+impl<T: Config> Transfer<T::AccountId> for Pallet<T>
+	where
+		T::CurrencyId: MaxEncodedLen
+{
 	fn transfer(
 		asset: Self::AssetId,
 		source: &T::AccountId,
