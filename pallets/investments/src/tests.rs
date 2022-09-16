@@ -898,6 +898,297 @@ fn fulfillment_partially_works() {
 					1
 				))
 			);
+			assert_eq!(
+				n_last_event(2),
+				Event::<MockRuntime>::InvestOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 1,
+					who: InvestorA::get(),
+					amount: PERC_INVEST_UNFULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+				}
+				.into()
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorA::get(),
+					processed_orders: vec![0],
+					collection: InvestCollection {
+						payout_investment_invest: PRICE
+							.reciprocal()
+							.unwrap()
+							.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+							.unwrap(),
+						remaining_investment_invest: PERC_INVEST_UNFULFILL
+							.mul_floor(SINGLE_INVEST_AMOUNT)
+					},
+					outcome: CollectOutcome::FullyCollected
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+
+			// Collecting again does NOT change anything
+
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+		}
+
+		// We check the UserOrder flow over correctly when collecting.
+		// InvestorB: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorB::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(2),
+				Event::<MockRuntime>::InvestOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 1,
+					who: InvestorB::get(),
+					amount: PERC_INVEST_UNFULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+				}
+				.into()
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorB::get(),
+					processed_orders: vec![0],
+					collection: InvestCollection {
+						payout_investment_invest: PRICE
+							.reciprocal()
+							.unwrap()
+							.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+							.unwrap(),
+						remaining_investment_invest: PERC_INVEST_UNFULFILL
+							.mul_floor(SINGLE_INVEST_AMOUNT)
+					},
+					outcome: CollectOutcome::FullyCollected
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+
+			// Collecting again does NOT change anything
+
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorB::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+		}
+
+		// Collecting for active session is okay but triggers "warn" events
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorD::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+		}
+
+		// Redemption collects fork fine too.
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				PRICE
+					.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_REDEEM_AMOUNT
+						.checked_sub(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(2),
+				Event::<MockRuntime>::RedeemOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 1,
+					who: TrancheHolderA::get(),
+					amount: PERC_REDEEM_UNFULFILL.mul_floor(SINGLE_REDEEM_AMOUNT)
+				}
+				.into()
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: TrancheHolderA::get(),
+					processed_orders: vec![0],
+					collection: RedeemCollection {
+						payout_investment_redeem: PRICE
+							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+							.unwrap(),
+						remaining_investment_redeem: PERC_REDEEM_UNFULFILL
+							.mul_floor(SINGLE_REDEEM_AMOUNT)
+					},
+					outcome: CollectOutcome::FullyCollected
+				}
+				.into()
+			);
+
+			// Collecting again does NOT change anything
+
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(TrancheHolderA::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0
+				}
+				.into()
+			);
 		}
 	})
 }
