@@ -1118,19 +1118,19 @@ fn fulfillment_partially_works() {
 				))
 			);
 			assert_eq!(
-				n_last_event(2),
-				Event::<MockRuntime>::RedeemOrderUpdated {
-					investment_id: INVESTMENT_0_0,
-					submitted_at: 1,
-					who: TrancheHolderA::get(),
-					amount: PERC_REDEEM_UNFULFILL.mul_floor(SINGLE_REDEEM_AMOUNT)
+				n_last_event(4),
+				Event::<MockRuntime>::InvestCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0
 				}
 				.into()
 			);
 			assert_eq!(
 				n_last_event(1),
-				Event::<MockRuntime>::InvestCollectedWithoutActivePosition {
-					investment_id: INVESTMENT_0_0
+				Event::<MockRuntime>::RedeemOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 1,
+					who: TrancheHolderA::get(),
+					amount: PERC_REDEEM_UNFULFILL.mul_floor(SINGLE_REDEEM_AMOUNT)
 				}
 				.into()
 			);
@@ -1159,18 +1159,16 @@ fn fulfillment_partially_works() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				free_balance_of(TrancheHolderA::get(), INVESTMENT_0_0.into()),
+				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
 				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 					.unwrap()
 			);
 			assert_eq!(
-				InvestOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
 				Some(Order::new(
-					SINGLE_INVEST_AMOUNT
-						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					SINGLE_REDEEM_AMOUNT
+						.checked_sub(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 						.unwrap(),
 					1
 				))
