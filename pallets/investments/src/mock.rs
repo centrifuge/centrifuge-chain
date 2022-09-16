@@ -296,6 +296,13 @@ pub(crate) fn last_event() -> Event {
 	event.clone()
 }
 
+pub(crate) fn n_last_event(n: usize) -> Event {
+	let events = frame_system::Pallet::<MockRuntime>::events();
+	// compare to the last event record
+	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(n + 1)];
+	event.clone()
+}
+
 pub(crate) fn investment_account(investment_id: InvestmentId) -> MockAccountId {
 	InvestmentAccount { investment_id }.into_account_truncating()
 }

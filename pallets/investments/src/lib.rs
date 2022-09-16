@@ -398,14 +398,24 @@ pub mod pallet {
 		/// Signals that a collect of redemptions call was successful but there
 		/// was no order of a user to collect from
 		RedeemCollectedWithoutActivePosition { investment_id: T::InvestmentId },
+		/// A collect call for the investments happened, but the current OrderId
+		/// is not yet cleared
+		InvestCollectedForNonClearedOrderId { investment_id: T::InvestmentId },
+		/// A collect call for the redemptions happened, but the current OrderId
+		/// is not yet cleared
+		RedeemCollectedForNonClearedOrderId { investment_id: T::InvestmentId },
 	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The order has been marked as cleared. It's either active or
+		/// The order has not been marked as cleared. It's either active or
 		/// in processing
 		OrderNotCleared,
+		/// The order a user tried to collect for is still active and
+		/// needs to be put in processing and then be cleared before
+		/// a collect is possible
+		OrderStillActive,
 		/// IvestmentManager does not now given investment
 		UnknownInvestment,
 		/// The user has to many uncollected orders. Before
@@ -528,7 +538,7 @@ where
 					&who,
 					&investment_id,
 					|order| -> Result<OrderId, DispatchError> {
-						let mut order = Pallet::<T>::invest_order_or_default(investment_id, order);
+						let order = Pallet::<T>::invest_order_or_default(investment_id, order);
 						let cur_order_id = InvestOrderId::<T>::get(investment_id);
 
 						// Updating an order is only allowed if it has not yet been submitted
@@ -587,7 +597,7 @@ where
 					&who,
 					&investment_id,
 					|order| -> Result<OrderId, DispatchError> {
-						let mut order = Pallet::<T>::redeem_order_or_default(investment_id, order);
+						let order = Pallet::<T>::redeem_order_or_default(investment_id, order);
 						let cur_order_id = RedeemOrderId::<T>::get(investment_id);
 
 						// Updating an order is only allowed if it has not yet been submitted
@@ -633,11 +643,21 @@ where
 					investment_id,
 				})
 			}
+			err if err == Err(Error::<T>::OrderStillActive.into()) => {
+				Pallet::<T>::empty_collect(Event::<T>::InvestCollectedForNonClearedOrderId {
+					investment_id,
+				})
+			}
 			maybe => maybe?,
 		};
 		let _postinfo_redeem = match Pallet::<T>::do_collect_redeem(who.clone(), investment_id) {
 			err if err == Err(Error::<T>::NoActiveRedeemOrder.into()) => {
-				Pallet::<T>::empty_collect(Event::<T>::InvestCollectedWithoutActivePosition {
+				Pallet::<T>::empty_collect(Event::<T>::RedeemCollectedWithoutActivePosition {
+					investment_id,
+				})
+			}
+			err if err == Err(Error::<T>::OrderStillActive.into()) => {
+				Pallet::<T>::empty_collect(Event::<T>::RedeemCollectedForNonClearedOrderId {
 					investment_id,
 				})
 			}
@@ -681,6 +701,11 @@ where
 							.saturating_add(T::MaxOutstandingCollects::get()),
 						cur_order_id,
 					);
+
+					// The current order is not in processing
+					if order.submitted_at() == cur_order_id {
+						return Err(Error::<T>::OrderStillActive.into());
+					}
 
 					for order_id in order.submitted_at()..last_processed_order_id {
 						let fulfillment =
@@ -727,7 +752,7 @@ where
 									investment_id,
 									submitted_at: last_processed_order_id,
 									who: who.clone(),
-									amount: collection.remaining_investment_invest,
+									amount: order.amount(),
 								});
 							} else {
 								// In this case the user has no active position.
@@ -778,7 +803,7 @@ where
 					let order = maybe_order
 						.as_mut()
 						.ok_or(Error::<T>::NoActiveRedeemOrder)?;
-					let mut collection = RedeemCollection::<T::Amount>::default();
+					let mut collection = RedeemCollection::<T::Amount>::from_order(order);
 					let mut collected = Vec::new();
 					let cur_order_id = InvestOrderId::<T>::get(&investment_id);
 					let last_processed_order_id = min(
@@ -787,6 +812,11 @@ where
 							.saturating_add(T::MaxOutstandingCollects::get()),
 						cur_order_id,
 					);
+
+					// The current order is not in processing
+					if order.submitted_at() == cur_order_id {
+						return Err(Error::<T>::OrderStillActive.into());
+					}
 
 					for order_id in order.submitted_at()..last_processed_order_id {
 						let fulfillment =
@@ -834,7 +864,7 @@ where
 									investment_id,
 									submitted_at: last_processed_order_id,
 									who: who.clone(),
-									amount: collection.remaining_investment_redeem,
+									amount: order.amount(),
 								});
 							} else {
 								// In this case the user has no active position.
