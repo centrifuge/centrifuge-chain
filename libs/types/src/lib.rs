@@ -24,7 +24,10 @@ use scale_info::{build::Fields, Path, Type, TypeInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Zero, Perquintill};
-use sp_std::{cmp::PartialEq, marker::PhantomData};
+use sp_std::{
+	cmp::{Ord, PartialEq, PartialOrd},
+	marker::PhantomData,
+};
 pub use tokens::*;
 
 pub mod fixed_point;
@@ -120,8 +123,52 @@ impl<Balance: Zero> Default for TotalOrder<Balance> {
 /// The order type of the pallet.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Order<Balance, OrderId> {
-	pub amount: Balance,
-	pub submitted_at: OrderId,
+	amount: Balance,
+	submitted_at: OrderId,
+}
+
+impl<Balance: Zero + Copy, OrderId: Copy + Ord + PartialOrd> Order<Balance, OrderId> {
+	/// Crate a new order from given values
+	pub fn new(amount: Balance, submitted_at: OrderId) -> Self {
+		Order {
+			amount,
+			submitted_at,
+		}
+	}
+
+	/// After a collect happened a user order must be resetted
+	/// We set the amount of the order to zero and the submit marker
+	/// to the given value.
+	///
+	/// Callers of this method must ensure to update the order of a
+	/// user again, so that users do not loose funds to the system.
+	pub fn clear_after_collect(&mut self, at: OrderId) {
+		self.amount = Zero::zero();
+		self.submitted_at = at;
+	}
+
+	/// Returns a mutable reference to the underlying amount
+	/// which allows to update it
+	pub fn updatable_amount(&mut self) -> &mut Balance {
+		&mut self.amount
+	}
+
+	/// Updates the submitted. OrderIds must increase in order to be valid.
+	/// In cases where the orderId provided is smaller, the function chooses
+	/// to keep the current id as a timestamp.
+	pub fn update_submitted_at(&mut self, at: OrderId) {
+		self.submitted_at = sp_std::cmp::max(self.submitted_at, at);
+	}
+
+	/// Returns the amount of the order
+	pub fn amount(&self) -> Balance {
+		self.amount
+	}
+
+	/// Returns the amount of the order
+	pub fn submitted_at(&self) -> OrderId {
+		self.submitted_at
+	}
 }
 
 #[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
