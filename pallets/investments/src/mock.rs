@@ -16,7 +16,7 @@ use std::ops::Add;
 pub use cfg_primitives::CFG as CURRENCY;
 use cfg_primitives::*;
 use cfg_traits::{Always, OrderManager};
-use cfg_types::{CurrencyId, FulfillmentWithPrice, InvestmentAccount, Rate};
+use cfg_types::{CurrencyId, FulfillmentWithPrice, InvestmentAccount, Rate, TotalOrder};
 use codec::{Decode, Encode};
 use frame_support::{
 	parameter_types,
@@ -197,9 +197,11 @@ parameter_types! {
 	pub const InvestorA: MockAccountId = 1;
 	pub const InvestorB: MockAccountId = 2;
 	pub const InvestorC: MockAccountId = 3;
-	pub const TrancheHolderA: MockAccountId = 4;
-	pub const TrancheHolderB: MockAccountId = 5;
-	pub const TrancheHolderC: MockAccountId = 6;
+	pub const InvestorD: MockAccountId = 4;
+	pub const TrancheHolderA: MockAccountId = 11;
+	pub const TrancheHolderB: MockAccountId = 12;
+	pub const TrancheHolderC: MockAccountId = 13;
+	pub const TrancheHolderD: MockAccountId = 14;
 	pub const Owner: MockAccountId = 100;
 }
 
@@ -243,9 +245,11 @@ impl TestExternalitiesBuilder {
 				(InvestorA::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorB::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(InvestorC::get(), CurrencyId::AUSD, 100 * CURRENCY),
+				(InvestorD::get(), CurrencyId::AUSD, 100 * CURRENCY),
 				(TrancheHolderA::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
 				(TrancheHolderB::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
 				(TrancheHolderC::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
+				(TrancheHolderD::get(), INVESTMENT_0_0.into(), 100 * CURRENCY),
 			],
 		}
 		.assimilate_storage(&mut storage)
@@ -359,6 +363,24 @@ pub(crate) fn fulfillment_of(perc: Perquintill, price: Rate) -> FulfillmentWithP
 	}
 }
 
+/// Fulfills the given fulfillment for INVESTMENT_0_0 on both invest and redeem side
+pub(crate) fn fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+	fulfill_invest_x(fulfillment.clone())?;
+	fulfill_redeem_x(fulfillment.clone())
+}
+
+/// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side
+pub(crate) fn fulfill_invest_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side
+pub(crate) fn fulfill_redeem_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
+	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
 /// Invest 50 * CURRENCY per Investor into INVESTMENT_0_0 and fulfills
 /// the given fulfillment.
 pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
@@ -368,11 +390,67 @@ pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> Dispa
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
-/// Redeem 50 * CURRENCY per Investor into INVESTMENT_0_0 and fulfills
+/// Invest given amount per Investor into INVESTMENT_0_0 and fulfills
+/// the given fulfillment.
+pub(crate) fn invest_x_fulfill_x(
+	invest_per_investor: Balance,
+	fulfillment: FulfillmentWithPrice<Rate>,
+) -> DispatchResult {
+	invest_x_per_investor(invest_per_investor)?;
+
+	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Invest given amount per Investor into INVESTMENT_0_0, run the given closure and fulfills
+/// the given fulfillment.
+pub(crate) fn invest_x_runner_fulfill_x<F>(
+	invest_per_investor: Balance,
+	fulfillment: FulfillmentWithPrice<Rate>,
+	runner: F,
+) -> DispatchResult
+where
+	F: FnOnce(TotalOrder<Balance>) -> DispatchResult,
+{
+	invest_x_per_investor(invest_per_investor)?;
+	let invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	runner(invest_orders)?;
+	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Redeem 50 * CURRENCY per TrancheHolder into INVESTMENT_0_0 and fulfills
 /// the given fulfillment.
 pub(crate) fn redeem_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
 	redeem_x_per_investor(50 * CURRENCY)?;
 
 	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0);
+	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Redeem given amount per TrancheHolder into INVESTMENT_0_0 and fulfills
+/// the given fulfillment.
+pub(crate) fn redeem_x_fulfill_x(
+	redeem_per_investor: Balance,
+	fulfillment: FulfillmentWithPrice<Rate>,
+) -> DispatchResult {
+	redeem_x_per_investor(redeem_per_investor)?;
+
+	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0);
+	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Redeem given amount per TrancheHolder into INVESTMENT_0_0, run the given closure and fulfills
+/// the given fulfillment.
+pub(crate) fn redeem_x_runner_fulfill_x<F>(
+	redeem_per_investor: Balance,
+	fulfillment: FulfillmentWithPrice<Rate>,
+	runner: F,
+) -> DispatchResult
+where
+	F: FnOnce(TotalOrder<Balance>) -> DispatchResult,
+{
+	redeem_x_per_investor(redeem_per_investor)?;
+	let redeem_orders = Investments::redeem_orders(INVESTMENT_0_0)?;
+	runner(redeem_orders)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }

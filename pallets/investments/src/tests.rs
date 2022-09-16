@@ -14,7 +14,7 @@
 use cfg_types::{CurrencyId, Rate};
 use frame_support::{assert_noop, assert_ok};
 use pallet_investments::Event;
-use sp_arithmetic::Perquintill;
+use sp_arithmetic::{traits::Saturating, Perquintill};
 
 use super::*;
 use crate::mock::*;
@@ -111,10 +111,7 @@ fn update_invest_works() {
 			// assert the user order is well formed
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
-				Some(Order {
-					amount: 2 * amount,
-					submitted_at: 0
-				})
+				Some(Order::new(2 * amount, 0))
 			);
 			// assert total order is well formed
 			assert_eq!(
@@ -202,10 +199,7 @@ fn update_invest_works() {
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
-				Some(Order {
-					amount,
-					submitted_at: 0
-				})
+				Some(Order::new(amount, 0))
 			);
 		}
 
@@ -215,10 +209,7 @@ fn update_invest_works() {
 			// assert the user order is well formed
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
-				Some(Order {
-					amount,
-					submitted_at: 0
-				})
+				Some(Order::new(amount, 0))
 			);
 			// assert total order is well formed
 			assert_eq!(
@@ -372,10 +363,7 @@ fn update_redeem_works() {
 			// assert the user order is well formed
 			assert_eq!(
 				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
-				Some(Order {
-					amount: 2 * amount,
-					submitted_at: 0
-				})
+				Some(Order::new(2 * amount, 0))
 			);
 			// assert total order is well formed
 			assert_eq!(
@@ -466,10 +454,7 @@ fn update_redeem_works() {
 			);
 			assert_eq!(
 				RedeemOrders::<MockRuntime>::get(TrancheHolderB::get(), INVESTMENT_0_0),
-				Some(Order {
-					amount,
-					submitted_at: 0
-				})
+				Some(Order::new(amount, 0))
 			);
 		}
 
@@ -479,10 +464,7 @@ fn update_redeem_works() {
 			// assert the user order is well formed
 			assert_eq!(
 				RedeemOrders::<MockRuntime>::get(TrancheHolderB::get(), INVESTMENT_0_0),
-				Some(Order {
-					amount,
-					submitted_at: 0
-				})
+				Some(Order::new(amount, 0))
 			);
 			// assert total order is well formed
 			assert_eq!(
@@ -763,9 +745,161 @@ fn fulfillment_flow_for_everything_works() {
 
 #[test]
 fn fulfillment_partially_works() {
-	// I.e. TotalOrder must overflow
-	//      Collects and orders from users must overflow correctly too
-	//      User can NOT update their orders before collecting
+	// I.e. * TotalOrder must overflow
+	//      * Collects and orders from users must overflow correctly too
+	TestExternalitiesBuilder::build().execute_with(|| {
+		#[allow(non_snake_case)]
+		let PRICE: Rate = price_of(1, 2, 10);
+		#[allow(non_snake_case)]
+		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
+		#[allow(non_snake_case)]
+		let TOTAL_REDEEM_AMOUNT = 3 * SINGLE_REDEEM_AMOUNT;
+		#[allow(non_snake_case)]
+		let SINGLE_INVEST_AMOUNT = 50 * CURRENCY;
+		#[allow(non_snake_case)]
+		let TOTAL_INVEST_AMOUNT = 3 * SINGLE_INVEST_AMOUNT;
+		#[allow(non_snake_case)]
+		let PERC_INVEST_FULFILL = Perquintill::from_rational(20u64, 100u64);
+		#[allow(non_snake_case)]
+		let PERC_INVEST_UNFULFILL = Perquintill::one().saturating_sub(PERC_INVEST_FULFILL);
+		#[allow(non_snake_case)]
+		let INVEST_FULFILLMENT = FulfillmentWithPrice {
+			of_amount: PERC_INVEST_FULFILL,
+			price: PRICE,
+		};
+		#[allow(non_snake_case)]
+		let PERC_REDEEM_FULFILL = Perquintill::from_rational(20u64, 100u64);
+		#[allow(non_snake_case)]
+		let PERC_REDEEM_UNFULFILL = Perquintill::one().saturating_sub(PERC_REDEEM_FULFILL);
+		#[allow(non_snake_case)]
+		let REDEEM_FULFILLMENT = FulfillmentWithPrice {
+			of_amount: PERC_REDEEM_FULFILL,
+			price: PRICE,
+		};
+
+		// Setup investments and redemptions.
+		// We do not thoroughly check the events here, as we
+		// do this already in the fulfillment_flow_for_everything_works()
+		// test. Hence, we call fulfill right away and check the state
+		// afterwards. To check the overflowing of orders works correctly, we submit
+		// orders between getting orders and fulfilling them. Like we would have
+		// when an epoch enters the submit_solution period
+		{
+			assert_ok!(invest_x_runner_fulfill_x(
+				SINGLE_INVEST_AMOUNT,
+				INVEST_FULFILLMENT,
+				|_| Investments::update_invest_order(
+					Origin::signed(InvestorD::get()),
+					INVESTMENT_0_0,
+					SINGLE_INVEST_AMOUNT
+				)
+			));
+			assert_ok!(redeem_x_runner_fulfill_x(
+				SINGLE_REDEEM_AMOUNT,
+				REDEEM_FULFILLMENT,
+				|_| Investments::update_redeem_order(
+					Origin::signed(TrancheHolderD::get()),
+					INVESTMENT_0_0,
+					SINGLE_REDEEM_AMOUNT
+				)
+			));
+		}
+
+		// We now have fulfilled x% of the SINGLE_INVEST_AMOUNT and y% of the SINGLE_REDEEM_AMOUNT
+		// fulfilled. We must check first the correct balances.
+		{
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				TOTAL_INVEST_AMOUNT
+					.checked_sub(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
+					.expect("Unwrapping checked_sub must work")
+					.checked_add(
+						PRICE
+							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+							.expect("Unwrapping checked_mul_int must work")
+					)
+					.expect("Unwrapping checked_add must work")
+					.checked_add(SINGLE_INVEST_AMOUNT)
+					.expect("Unwrapping checked_add must work")
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
+				TOTAL_REDEEM_AMOUNT
+					.checked_sub(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+					.expect("Unwrapping checked_sub must work")
+					.checked_add(
+						PRICE
+							.reciprocal()
+							.expect("Price must not be zero")
+							.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+							.expect("Unwrapping checked_mul_int must work")
+					)
+					.expect("Unwrapping checked_add must work")
+					.checked_add(SINGLE_REDEEM_AMOUNT)
+					.expect("Unwrapping checke_add must work")
+			);
+			assert_eq!(
+				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				OWNER_START_BALANCE
+					.checked_add(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
+					.expect("Unwrapping checked_add must work")
+					.checked_sub(
+						PRICE
+							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+							.expect("Unwrapping checked_mul_int must work")
+					)
+					.expect("Unwrapping checked_sub must work")
+			);
+			assert_eq!(free_balance_of(Owner::get(), INVESTMENT_0_0.into()), 0);
+		}
+
+		// Now we must check the storage elements overflow the orders correctly
+		// We check the TotalOrders flow over correctly
+		{
+			assert_eq!(
+				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder {
+					amount: SINGLE_INVEST_AMOUNT
+						.checked_add(PERC_INVEST_UNFULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
+						.unwrap()
+				}
+			);
+			assert_eq!(
+				ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder {
+					amount: SINGLE_REDEEM_AMOUNT
+						.checked_add(PERC_REDEEM_UNFULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+						.unwrap()
+				}
+			);
+		}
+
+		// We check the UserOrder flow over correctly when collecting.
+		// InvestorA: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+		}
+	})
 }
 
 #[test]
