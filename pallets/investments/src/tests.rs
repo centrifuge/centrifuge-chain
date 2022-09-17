@@ -749,7 +749,7 @@ fn fulfillment_partially_works() {
 	//      * Collects and orders from users must overflow correctly too
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 0, 10);
+		let PRICE: Rate = price_of(1, 20, 10);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -1248,9 +1248,9 @@ fn fulfillment_partially_works() {
 							)
 							.unwrap()
 					)
-					.unwrap() // Need to add this due to rounding...
-				           // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
-				           // 		 we should be able to handle this gracefully
+					.unwrap() + 1 // Need to add this due to rounding...
+				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
+				               // 		 we should be able to handle this gracefully
 			);
 		}
 
@@ -1321,9 +1321,9 @@ fn fulfillment_partially_works() {
 							)
 							.unwrap()
 					)
-					.unwrap() // Need to add this due to rounding...
-				           // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
-				           // 		 we should be able to handle this gracefully
+					.unwrap() + 1 // Need to add this due to rounding...
+				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
+				               // 		 we should be able to handle this gracefully
 			);
 		}
 
@@ -1339,7 +1339,9 @@ fn fulfillment_partially_works() {
 					.reciprocal()
 					.unwrap()
 					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap()
+					.unwrap() - 1 // Need to add this due to rounding...
+				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
+				               // 		 we should be able to handle this gracefully
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorB::get()),
@@ -1351,7 +1353,9 @@ fn fulfillment_partially_works() {
 					.reciprocal()
 					.unwrap()
 					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap()
+					.unwrap() - 1 // Need to add this due to rounding...
+				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
+				               // 		 we should be able to handle this gracefully
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorC::get()),
@@ -1363,7 +1367,9 @@ fn fulfillment_partially_works() {
 					.reciprocal()
 					.unwrap()
 					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap()
+					.unwrap() - 1 // Need to add this due to rounding...
+				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
+				               // 		 we should be able to handle this gracefully
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorD::get()),
