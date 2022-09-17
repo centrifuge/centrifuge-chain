@@ -136,14 +136,14 @@ impl<Balance: Zero + Copy, OrderId: Copy + Ord + PartialOrd> Order<Balance, Orde
 		}
 	}
 
-	/// After a collect happened a user order must be resetted
+	/// After a collect happened a user order must be reseted
 	/// We set the amount of the order to zero and the submit marker
 	/// to the given value.
 	///
 	/// Callers of this method must ensure to update the order of a
 	/// user again, so that users do not loose funds to the system.
-	pub fn clear_after_collect(&mut self, at: OrderId) {
-		self.amount = Zero::zero();
+	pub fn update_after_collect(&mut self, left_amount: Balance, at: OrderId) {
+		self.amount = left_amount;
 		self.submitted_at = at;
 	}
 

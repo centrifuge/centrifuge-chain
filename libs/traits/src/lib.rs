@@ -384,6 +384,9 @@ pub trait InvestmentAccountant<AccountId> {
 	/// owner, payment and denomination currency
 	fn info(id: Self::InvestmentId) -> Result<Self::InvestmentInfo, Self::Error>;
 
+	/// Return the balance of a given user for the given investmnet
+	fn balance(id: Self::InvestmentId, who: &AccountId) -> Self::Amount;
+
 	/// Transfer a given investment from source, to destination
 	fn transfer(
 		id: Self::InvestmentId,

@@ -261,6 +261,10 @@ macro_rules! impl_mock_accountant {
 					__private_STATE.with(|s| s.borrow().info(&id))
 				}
 
+				fn balance(id: Self::InvestmentId, who: &$account_id) -> Self::Amount {
+					Tokens::balance(id.into(), who)
+				}
+
 				fn transfer(
 					id: Self::InvestmentId,
 					source: &$account_id,
