@@ -384,8 +384,8 @@ pub(crate) fn fulfill_invest_x(fulfillment: FulfillmentWithPrice<Rate>) -> Dispa
 
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side
 pub(crate) fn fulfill_redeem_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
-	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
-	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
+	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0)?;
+	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
 /// Invest 50 * CURRENCY per Investor into INVESTMENT_0_0 and fulfills

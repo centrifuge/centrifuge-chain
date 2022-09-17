@@ -43,17 +43,6 @@ mod tests;
 type CurrencyOf<T> =
 	<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 
-/// An enum that describes whether an update of a
-/// user order , i.e. this is a call from the external,
-/// a user and additional tokens should be stored in the pallet for
-/// investing/redeeming or if it was an internal update, i.e.
-/// the pallets logic needs to shift around tokens without the need
-/// for a transfer
-enum Accounting {
-	TransferNeeded,
-	Internal,
-}
-
 /// The outstanding collections for an account
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct InvestCollection<Balance> {
@@ -555,7 +544,6 @@ where
 							info,
 							order,
 							amount,
-							Accounting::TransferNeeded,
 						)?;
 
 						order.update_submitted_at(cur_order_id);
@@ -614,7 +602,6 @@ where
 							info,
 							order,
 							amount,
-							Accounting::TransferNeeded,
 						)?;
 
 						order.update_submitted_at(cur_order_id);
@@ -722,7 +709,10 @@ where
 					// so that if a user has remaining outstanding investments
 					// that are not yet collected, he/she can actually make progress
 					// the next time he/she calls collect
-					order.clear_after_collect(last_processed_order_id);
+					order.update_after_collect(
+						collection.remaining_investment_invest,
+						last_processed_order_id,
+					);
 
 					// Transfer collected amounts from investment and redemption
 					let investment_account =
@@ -734,38 +724,26 @@ where
 						collection.payout_investment_invest,
 					)?;
 
-					ActiveInvestOrders::<T>::try_mutate(
-						&investment_id,
-						|total_order| -> DispatchResult {
-							if collection.remaining_investment_invest > T::Amount::zero() {
-								Self::do_update_invest_order(
-									total_order,
-									&who,
-									investment_id,
-									&info,
-									order,
-									collection.remaining_investment_invest,
-									Accounting::Internal,
-								)?;
+					let remove_user_order = if order.amount() > T::Amount::zero() {
+						Self::deposit_event(Event::InvestOrderUpdated {
+							investment_id,
+							submitted_at: last_processed_order_id,
+							who: who.clone(),
+							amount: order.amount(),
+						});
+						false
+					} else {
+						// In this case the user has no active position.
+						// We remove the order from the system then.
+						// This is also important in cases where all redemptions
+						// where fulfilled before the order reached the current OrderId
+						// counter. Users can in this case now simply submit a new order.
+						true
+					};
 
-								Self::deposit_event(Event::InvestOrderUpdated {
-									investment_id,
-									submitted_at: last_processed_order_id,
-									who: who.clone(),
-									amount: order.amount(),
-								});
-							} else {
-								// In this case the user has no active position.
-								// We remove the order from the system then.
-								// This is also important in cases where all investments
-								// where fulfilled before the order reached the current OrderId
-								// counter. Users can in this case now simply submit a new order.
-								order.clear_after_collect(cur_order_id);
-							}
-
-							Ok(())
-						},
-					)?;
+					if remove_user_order {
+						*maybe_order = None;
+					}
 
 					Ok((collected, collection, last_processed_order_id, cur_order_id))
 				},
@@ -833,7 +811,10 @@ where
 					// so that if a user has remaining outstanding redemptions
 					// that are not yet collected, he/she can actually make progress
 					// the next time he/she calls collect
-					order.clear_after_collect(last_processed_order_id);
+					order.update_after_collect(
+						collection.remaining_investment_redeem,
+						last_processed_order_id,
+					);
 
 					// Transfer collected amounts from investment and redemption
 					let investment_account =
@@ -846,38 +827,27 @@ where
 						false,
 					)?;
 
-					ActiveRedeemOrders::<T>::try_mutate(
-						&investment_id,
-						|total_order| -> DispatchResult {
-							if collection.remaining_investment_redeem > T::Amount::zero() {
-								Self::do_update_redeem_order(
-									total_order,
-									&who,
-									investment_id,
-									&info,
-									order,
-									collection.remaining_investment_redeem,
-									Accounting::Internal,
-								)?;
+					let remove_user_order = if order.amount() > T::Amount::zero() {
+						Self::deposit_event(Event::RedeemOrderUpdated {
+							investment_id,
+							submitted_at: last_processed_order_id,
+							who: who.clone(),
+							amount: order.amount(),
+						});
 
-								Self::deposit_event(Event::RedeemOrderUpdated {
-									investment_id,
-									submitted_at: last_processed_order_id,
-									who: who.clone(),
-									amount: order.amount(),
-								});
-							} else {
-								// In this case the user has no active position.
-								// We remove the order from the system then.
-								// This is also important in cases where all redemptions
-								// where fulfilled before the order reached the current OrderId
-								// counter. Users can in this case now simply submit a new order.
-								order.clear_after_collect(cur_order_id);
-							}
+						false
+					} else {
+						// In this case the user has no active position.
+						// We remove the order from the system then.
+						// This is also important in cases where all redemptions
+						// where fulfilled before the order reached the current OrderId
+						// counter. Users can in this case now simply submit a new order.
+						true
+					};
 
-							Ok(())
-						},
-					)?;
+					if remove_user_order {
+						*maybe_order = None;
+					}
 
 					Ok((collected, collection, last_processed_order_id, cur_order_id))
 				},
@@ -906,7 +876,6 @@ where
 		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
-		accounting: Accounting,
 	) -> DispatchResult {
 		let investment_account = InvestmentAccount { investment_id }.into_account_truncating();
 		let (send, recv, transfer_amount) = Self::update_order_amount(
@@ -917,13 +886,7 @@ where
 			&mut total_order.amount,
 		)?;
 
-		match accounting {
-			Accounting::Internal => Ok(()),
-			Accounting::TransferNeeded => {
-				T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false)
-					.map(|_| ())
-			}
-		}
+		T::Tokens::transfer(info.payment_currency(), send, recv, transfer_amount, false).map(|_| ())
 	}
 
 	pub(crate) fn do_update_redeem_order(
@@ -933,7 +896,6 @@ where
 		info: impl InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>, Id = T::InvestmentId>,
 		order: &mut OrderOf<T>,
 		amount: T::Amount,
-		accounting: Accounting,
 	) -> DispatchResult {
 		let investment_account = InvestmentAccount { investment_id }.into_account_truncating();
 		let (send, recv, transfer_amount) = Self::update_order_amount(
@@ -944,12 +906,7 @@ where
 			&mut total_order.amount,
 		)?;
 
-		match accounting {
-			Accounting::Internal => Ok(()),
-			Accounting::TransferNeeded => {
-				T::Accountant::transfer(info.id(), send, recv, transfer_amount)
-			}
-		}
+		T::Accountant::transfer(info.id(), send, recv, transfer_amount)
 	}
 
 	fn update_order_amount<'a>(
@@ -1264,7 +1221,7 @@ where
 				)?;
 
 				// The amount of investments the accountant needs to
-				// node newly in his books is the amount divide through
+				// note newly in his books is the invest amount divide through
 				// the price of the investment.
 				let amount_of_investment_units = fulfillment
 					.price
