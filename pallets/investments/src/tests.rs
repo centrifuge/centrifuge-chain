@@ -1375,6 +1375,9 @@ fn fulfillment_partially_works() {
 				Origin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
+			// TODO: As you can see for the first three investors the rounding lead to a slight off, the
+			//       reason for this is that this account did receive different fulfillments due to missing the
+			//       first fulfillment.
 			assert_eq!(
 				free_balance_of(InvestorD::get(), INVESTMENT_0_0.into()),
 				PRICE
