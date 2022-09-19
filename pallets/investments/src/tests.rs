@@ -221,6 +221,37 @@ fn update_invest_works() {
 }
 
 #[test]
+fn update_invest_to_zero_removes_order() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		let amount = 50 * CURRENCY;
+
+		assert_ok!(Investments::update_invest_order(
+			Origin::signed(InvestorA::get()),
+			INVESTMENT_0_0,
+			2 * amount,
+		));
+
+		// Storage is set
+		assert_eq!(
+			InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+			Some(Order::new(2 * amount, 0))
+		);
+
+		assert_ok!(Investments::update_invest_order(
+			Origin::signed(InvestorA::get()),
+			INVESTMENT_0_0,
+			0,
+		));
+
+		// Storage is removed
+		assert_eq!(
+			InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+			None
+		);
+	})
+}
+
+#[test]
 fn update_invest_fails_when_collect_needed() {
 	TestExternalitiesBuilder::build().execute_with(|| {
 		let amount = 50 * CURRENCY;
@@ -472,6 +503,37 @@ fn update_redeem_works() {
 				TotalOrder { amount: 2 * amount }
 			);
 		}
+	})
+}
+
+#[test]
+fn update_redeem_to_zero_removes_order() {
+	TestExternalitiesBuilder::build().execute_with(|| {
+		let amount = 50 * CURRENCY;
+
+		assert_ok!(Investments::update_redeem_order(
+			Origin::signed(TrancheHolderA::get()),
+			INVESTMENT_0_0,
+			2 * amount,
+		));
+
+		// Storage is set
+		assert_eq!(
+			RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+			Some(Order::new(2 * amount, 0))
+		);
+
+		assert_ok!(Investments::update_redeem_order(
+			Origin::signed(TrancheHolderA::get()),
+			INVESTMENT_0_0,
+			0,
+		));
+
+		// Storage is removed
+		assert_eq!(
+			RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+			None
+		);
 	})
 }
 
@@ -1982,8 +2044,6 @@ fn collecting_fully_works() {
 
 		// InvestorC
 		{
-			let balance =
-				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into());
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorC::get()),
 				INVESTMENT_0_0
@@ -2149,71 +2209,33 @@ fn collecting_over_max_works() {
 		#[allow(non_snake_case)]
 		let PRICE: Rate = price_of(1, 0, 10);
 		#[allow(non_snake_case)]
-		let SINGLE_REDEEM_AMOUNT_A = 50 * CURRENCY;
+		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
-		let SINGLE_REDEEM_AMOUNT_B = 50 * CURRENCY;
-		#[allow(non_snake_case)]
-		let SINGLE_REDEEM_AMOUNT_C = 50 * CURRENCY;
-		#[allow(non_snake_case)]
-		let TOTAL_REDEEM_AMOUNT = SINGLE_REDEEM_AMOUNT_A + SINGLE_REDEEM_AMOUNT_B + SINGLE_REDEEM_AMOUNT_C;
-		#[allow(non_snake_case)]
-		let SINGLE_INVEST_AMOUNT_A = 50 * CURRENCY;
-		#[allow(non_snake_case)]
-		let SINGLE_INVEST_AMOUNT_B = 50 * CURRENCY;
-		#[allow(non_snake_case)]
-		let SINGLE_INVEST_AMOUNT_C = 50 * CURRENCY;
-		#[allow(non_snake_case)]
-		let TOTAL_INVEST_AMOUNT = SINGLE_INVEST_AMOUNT_A + SINGLE_INVEST_AMOUNT_B + SINGLE_INVEST_AMOUNT_C;
+		let SINGLE_INVEST_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
 		let FULL_FULFILL = FulfillmentWithPrice {
 			of_amount: Perquintill::one(),
 			price: PRICE,
 		};
+		#[allow(non_snake_case)]
+		let PARTIAL_FULFILL = FulfillmentWithPrice {
+			of_amount: Perquintill::from_rational(20u64, 100u64),
+			price: PRICE,
+		};
 
-		// Fulfill everything
+		// Setup
 		{
-			assert_ok!(invest_x_per_fulfill_x(
-				vec![
-					(InvestorA::get(), SINGLE_INVEST_AMOUNT_A),
-					(InvestorB::get(), SINGLE_INVEST_AMOUNT_B),
-					(InvestorC::get(), SINGLE_INVEST_AMOUNT_C)
-				],
-				FULL_FULFILL
-			));
-			assert_ok!(redeem_x_per_fulfill_x(
-				vec![
-					(TrancheHolderA::get(), SINGLE_REDEEM_AMOUNT_A),
-					(TrancheHolderB::get(), SINGLE_REDEEM_AMOUNT_B),
-					(TrancheHolderC::get(), SINGLE_REDEEM_AMOUNT_C)
-				],
-				FULL_FULFILL
-			));
+			assert_ok!(invest_x_per_investor(SINGLE_INVEST_AMOUNT));
+			assert_ok!(redeem_x_per_investor(SINGLE_REDEEM_AMOUNT));
+
+			for _ in 0..MaxOutstandingCollect::get() {
+				assert_ok!(fulfill_x(PARTIAL_FULFILL));
+			}
+
+			assert_ok!(fulfill_x(FULL_FULFILL));
 		}
 
-		// All accumulated orders are still in place and of right amount
-		{
-			assert_eq!(
-				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
-				TotalOrder { amount: 0 }
-			);
-			assert_eq!(
-				ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
-				TotalOrder { amount: 0 }
-			);
-			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(TOTAL_INVEST_AMOUNT)
-					.unwrap()
-			);
-			assert_eq!(
-				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
-				PRICE.checked_mul_int(TOTAL_REDEEM_AMOUNT).unwrap()
-			);
-		}
-
+		// Collecting does only run till MaxOutstandingCollects and triggers right event
 		{
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorA::get()),
@@ -2224,9 +2246,34 @@ fn collecting_over_max_works() {
 				Event::InvestOrdersCollected {
 					investment_id: INVESTMENT_0_0,
 					who: InvestorA::get(),
-					processed_orders: vec![0],
+					processed_orders: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
 					collection: InvestCollection {
-						payout_investment_invest: invest_return(SINGLE_INVEST_AMOUNT_A),
+						payout_investment_invest: 44631290880000000000,
+						remaining_investment_invest: 5368709120000000000
+					},
+					outcome: CollectOutcome::PartiallyCollected,
+				}
+				.into()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					5368709120000000000,
+					MaxOutstandingCollect::get()
+				)),
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				n_last_event(1),
+				Event::InvestOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorA::get(),
+					processed_orders: vec![10],
+					collection: InvestCollection {
+						payout_investment_invest: 5368709120000000000,
 						remaining_investment_invest: 0
 					},
 					outcome: CollectOutcome::FullyCollected
@@ -2235,8 +2282,71 @@ fn collecting_over_max_works() {
 			);
 			assert_eq!(
 				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
-				None,
+				None
 			);
+			assert_eq!(
+				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(SINGLE_INVEST_AMOUNT)
+					.unwrap()
+			)
+		}
+
+		// Collecting does only run till MaxOutstandingCollects and triggers right event
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				n_last_event(0),
+				Event::RedeemOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: TrancheHolderA::get(),
+					processed_orders: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+					collection: RedeemCollection {
+						payout_investment_redeem: 44631290880000000000,
+						remaining_investment_redeem: 5368709120000000000
+					},
+					outcome: CollectOutcome::PartiallyCollected,
+				}
+				.into()
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					5368709120000000000,
+					MaxOutstandingCollect::get()
+				)),
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				n_last_event(0),
+				Event::RedeemOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: TrancheHolderA::get(),
+					processed_orders: vec![10],
+					collection: RedeemCollection {
+						payout_investment_redeem: 5368709120000000000,
+						remaining_investment_redeem: 0
+					},
+					outcome: CollectOutcome::FullyCollected
+				}
+				.into()
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				PRICE.checked_mul_int(SINGLE_REDEEM_AMOUNT).unwrap()
+			)
 		}
 	})
 }
