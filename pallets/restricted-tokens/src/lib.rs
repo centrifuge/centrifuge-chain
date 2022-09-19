@@ -527,7 +527,7 @@ pub mod pallet {
 
 			Self::deposit_event(Event::BalanceSet {
 				currency_id,
-				who: who,
+				who,
 				free: new_free,
 				reserved: new_reserved,
 			});
