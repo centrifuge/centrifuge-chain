@@ -680,10 +680,7 @@ impl<T: Config> Pallet<T> {
 							WriteOffStatus::WrittenOffByAdmin { .. } => true,
 							_ => false,
 						};
-						ensure!(
-							is_written_off_by_admin != true,
-							Error::<T>::WrittenOffByAdmin
-						);
+						ensure!(!is_written_off_by_admin, Error::<T>::WrittenOffByAdmin);
 
 						let maturity_date = active_loan
 							.loan_type
