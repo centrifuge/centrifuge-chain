@@ -48,7 +48,7 @@ pub mod xcm_fees {
 	}
 
 	pub fn dollar(decimals: u32) -> Balance {
-		10u128.saturating_pow(decimals.into())
+		10u128.saturating_pow(decimals)
 	}
 }
 

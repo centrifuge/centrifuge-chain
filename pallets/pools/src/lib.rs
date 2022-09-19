@@ -696,20 +696,11 @@ pub mod pallet {
 			};
 
 			for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
-				let token_name: BoundedVec<u8, T::MaxTokenNameLength> = tranche_input
-					.clone()
-					.metadata
-					.token_name
-					.clone()
-					.try_into()
-					.map_err(|_| Error::<T>::TrancheTokenNameTooLong)?;
+				let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
+					tranche_input.clone().metadata.token_name.clone();
 
-				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> = tranche_input
-					.metadata
-					.token_symbol
-					.clone()
-					.try_into()
-					.map_err(|_| Error::<T>::TrancheSymbolNameTooLong)?;
+				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> =
+					tranche_input.metadata.token_symbol.clone();
 
 				let decimals = match T::AssetRegistry::metadata(&currency) {
 					Some(metadata) => metadata.decimals,
@@ -1221,7 +1212,7 @@ pub mod pallet {
 				let (nav, nav_last_updated) = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
 
 				ensure!(
-					now.saturating_sub(nav_last_updated.into()) <= pool.parameters.max_nav_age,
+					now.saturating_sub(nav_last_updated) <= pool.parameters.max_nav_age,
 					Error::<T>::NAVTooOld
 				);
 

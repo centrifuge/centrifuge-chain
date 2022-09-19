@@ -430,7 +430,7 @@ impl<T: Config> Pallet<T> {
 			h.extend_from_slice(a.as_ref());
 		}
 
-		T::Hashing::hash(&h).into()
+		T::Hashing::hash(&h)
 	}
 
 	/// Returns true if the given origin can update the upload account

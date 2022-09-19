@@ -517,13 +517,10 @@ where
 			self.salt,
 		);
 		self.salt = (
-			(self
-				.salt
+			self.salt
 				.0
 				.checked_add(1)
-				.ok_or(ArithmeticError::Overflow)?)
-			.try_into()
-			.map_err(|_| ArithmeticError::Overflow)?,
+				.ok_or(ArithmeticError::Overflow)?,
 			self.salt.1,
 		);
 		Ok(id)
@@ -981,7 +978,7 @@ where
 						.unwrap_or(u128::MAX)
 						.into(),
 					redeem_starts
-						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)).into())
+						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)))
 						.unwrap_or(u128::MAX)
 						.into(),
 				)
@@ -1419,7 +1416,7 @@ where
 						.unwrap_or(u128::MAX)
 						.into(),
 					redeem_starts
-						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)).into())
+						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)))
 						.unwrap_or(u128::MAX)
 						.into(),
 				)

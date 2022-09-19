@@ -229,7 +229,7 @@ impl<T: Config> Pallet<T> {
 		T::Currency::withdraw(
 			&from,
 			balance,
-			WithdrawReasons::FEE.into(),
+			WithdrawReasons::FEE,
 			ExistenceRequirement::KeepAlive,
 		)
 	}
