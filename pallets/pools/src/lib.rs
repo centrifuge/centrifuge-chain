@@ -1876,7 +1876,7 @@ pub mod pallet {
 					&& outstanding.remaining_redeem_token == Zero::zero();
 			}
 
-			return Ok(outstanding);
+			Ok(outstanding)
 		}
 
 		fn parse_invest_executions(

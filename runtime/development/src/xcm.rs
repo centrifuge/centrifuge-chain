@@ -210,7 +210,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				),
 			)),
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
-			_ => return None,
+			_ => None,
 		}
 	}
 }

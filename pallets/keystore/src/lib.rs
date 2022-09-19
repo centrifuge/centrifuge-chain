@@ -280,26 +280,22 @@ pub mod pallet {
 			<Keys<T>>::try_mutate(
 				account_id.clone(),
 				key_id,
-				|storage_key_opt| -> DispatchResult {
-					match storage_key_opt {
-						Some(storage_key) => {
-							if storage_key.revoked_at.is_some() {
-								return Err(Error::<T>::KeyAlreadyRevoked.into());
-							}
-
-							let block_number = <frame_system::Pallet<T>>::block_number();
-							storage_key.revoked_at = Some(block_number.clone());
-
-							Self::deposit_event(Event::KeyRevoked {
-								owner: account_id,
-								key,
-								block_number,
-							});
-
-							Ok(())
-						}
-						None => return Err(Error::<T>::KeyNotFound.into()),
+				|storage_key| -> DispatchResult {
+					let storage_key = storage_key.as_mut().ok_or(Error::<T>::KeyNotFound)?;
+					if storage_key.revoked_at.is_some() {
+						return Err(Error::<T>::KeyAlreadyRevoked.into());
 					}
+
+					let block_number = <frame_system::Pallet<T>>::block_number();
+					storage_key.revoked_at = Some(block_number.clone());
+
+					Self::deposit_event(Event::KeyRevoked {
+						owner: account_id,
+						key,
+						block_number,
+					});
+
+					Ok(())
 				},
 			)
 		}

@@ -376,7 +376,7 @@ pub fn run() -> Result<()> {
 			let chain_spec = &runner.config().chain_spec;
 
 			with_runtime!(chain_spec, {
-				return runner.async_run(|config| {
+				runner.async_run(|config| {
 					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
 					let task_manager =
 						sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
@@ -384,7 +384,7 @@ pub fn run() -> Result<()> {
 								sc_cli::Error::Service(sc_service::Error::Prometheus(e))
 							})?;
 					Ok((cmd.run::<Block, Executor>(config), task_manager))
-				});
+				})
 			})
 		}
 
@@ -410,11 +410,8 @@ pub fn run() -> Result<()> {
 					BenchmarkCmd::Block(_)
 					| BenchmarkCmd::Storage(_)
 					| BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
-					BenchmarkCmd::Machine(cmd) => {
-						return runner.sync_run(|config| {
-							cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())
-						});
-					}
+					BenchmarkCmd::Machine(cmd) => runner
+						.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
 				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
