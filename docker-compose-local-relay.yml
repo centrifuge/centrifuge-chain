@@ -32,7 +32,7 @@ services:
 
   node_bob:
     container_name: bob
-    image: "parity/polkadot:v0.9.28"
+    image: "parity/polkadot:v0.9.29"
     ports:
       - "30344:30333"
       - "9935:9933"
