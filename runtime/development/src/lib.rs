@@ -1665,7 +1665,7 @@ impl_runtime_apis! {
 				.tranches
 				.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
 				.ok()?;
-			prices.get(index).map(|rate: &Rate| rate.clone())
+			prices.get(index).cloned()
 		}
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
@@ -1689,7 +1689,7 @@ impl_runtime_apis! {
 		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>{
 			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
 			let index: usize = tranche_index.try_into().ok()?;
-			pool.tranches.ids_residual_top().get(index).map(|id| id.clone())
+			pool.tranches.ids_residual_top().get(index).cloned()
 		}
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
