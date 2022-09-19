@@ -28,7 +28,10 @@ use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
 	ArithmeticError, FixedPointNumber,
 };
-use sp_std::{cmp::min, convert::TryInto};
+use sp_std::{
+	cmp::{min, Ordering},
+	convert::TryInto,
+};
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -902,30 +905,32 @@ where
 		new_order: T::Amount,
 		total_orders: &mut T::Amount,
 	) -> Result<(&'a T::AccountId, &'a T::AccountId, T::Amount), DispatchError> {
-		if new_order > *old_order {
-			let transfer_amount = new_order
-				.checked_sub(old_order)
-				.expect("New order larger than old order. qed.");
+		match new_order.cmp(old_order) {
+			Ordering::Greater => {
+				let transfer_amount = new_order
+					.checked_sub(old_order)
+					.expect("New order larger than old order. qed.");
 
-			*total_orders = total_orders
-				.checked_add(&transfer_amount)
-				.ok_or(ArithmeticError::Overflow)?;
+				*total_orders = total_orders
+					.checked_add(&transfer_amount)
+					.ok_or(ArithmeticError::Overflow)?;
 
-			*old_order = new_order;
-			Ok((who, pool, transfer_amount))
-		} else if new_order < *old_order {
-			let transfer_amount = old_order
-				.checked_sub(&new_order)
-				.expect("Old order larger than new order. qed.");
+				*old_order = new_order;
+				Ok((who, pool, transfer_amount))
+			}
+			Ordering::Less => {
+				let transfer_amount = old_order
+					.checked_sub(&new_order)
+					.expect("Old order larger than new order. qed.");
 
-			*total_orders = total_orders
-				.checked_sub(&transfer_amount)
-				.ok_or(ArithmeticError::Underflow)?;
+				*total_orders = total_orders
+					.checked_sub(&transfer_amount)
+					.ok_or(ArithmeticError::Underflow)?;
 
-			*old_order = new_order;
-			Ok((pool, who, transfer_amount))
-		} else {
-			Err(Error::<T>::NoNewOrder.into())
+				*old_order = new_order;
+				Ok((pool, who, transfer_amount))
+			}
+			Ordering::Equal => Err(Error::<T>::NoNewOrder.into()),
 		}
 	}
 

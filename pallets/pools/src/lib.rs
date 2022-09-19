@@ -1823,30 +1823,32 @@ pub mod pallet {
 			new_order: T::Balance,
 			pool_orders: &mut T::Balance,
 		) -> Result<(&'a T::AccountId, &'a T::AccountId, T::Balance), DispatchError> {
-			if new_order > *old_order {
-				let transfer_amount = new_order
-					.checked_sub(old_order)
-					.expect("New order larger than old order. qed.");
+			match new_order.cmp(old_order) {
+				Ordering::Greater => {
+					let transfer_amount = new_order
+						.checked_sub(old_order)
+						.expect("New order larger than old order. qed.");
 
-				*pool_orders = pool_orders
-					.checked_add(&transfer_amount)
-					.ok_or(ArithmeticError::Overflow)?;
+					*pool_orders = pool_orders
+						.checked_add(&transfer_amount)
+						.ok_or(ArithmeticError::Overflow)?;
 
-				*old_order = new_order;
-				Ok((who, pool, transfer_amount))
-			} else if new_order < *old_order {
-				let transfer_amount = old_order
-					.checked_sub(&new_order)
-					.expect("Old order larger than new order. qed.");
+					*old_order = new_order;
+					Ok((who, pool, transfer_amount))
+				}
+				Ordering::Less => {
+					let transfer_amount = old_order
+						.checked_sub(&new_order)
+						.expect("Old order larger than new order. qed.");
 
-				*pool_orders = pool_orders
-					.checked_sub(&transfer_amount)
-					.ok_or(ArithmeticError::Underflow)?;
+					*pool_orders = pool_orders
+						.checked_sub(&transfer_amount)
+						.ok_or(ArithmeticError::Underflow)?;
 
-				*old_order = new_order;
-				Ok((pool, who, transfer_amount))
-			} else {
-				Err(Error::<T>::NoNewOrder.into())
+					*old_order = new_order;
+					Ok((pool, who, transfer_amount))
+				}
+				Ordering::Equal => Err(Error::<T>::NoNewOrder.into()),
 			}
 		}
 
@@ -2140,12 +2142,16 @@ pub mod pallet {
 
 			// Compute the tranche tokens that need to be minted or burned based on the execution
 			let pool_address = PoolLocator { pool_id }.into_account_truncating();
-			if token_invest > token_redeem {
-				let tokens_to_mint = token_invest - token_redeem;
-				T::Tokens::mint_into(tranche.currency, &pool_address, tokens_to_mint)?;
-			} else if token_redeem > token_invest {
-				let tokens_to_burn = token_redeem - token_invest;
-				T::Tokens::burn_from(tranche.currency, &pool_address, tokens_to_burn)?;
+			match token_invest.cmp(&token_redeem) {
+				Ordering::Greater => {
+					let tokens_to_mint = token_invest - token_redeem;
+					T::Tokens::mint_into(tranche.currency, &pool_address, tokens_to_mint)?;
+				}
+				Ordering::Less => {
+					let tokens_to_burn = token_redeem - token_invest;
+					T::Tokens::burn_from(tranche.currency, &pool_address, tokens_to_burn)?;
+				}
+				Ordering::Equal => {}
 			}
 
 			// Insert epoch closing information on invest/redeem fulfillment
