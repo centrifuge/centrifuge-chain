@@ -201,7 +201,7 @@ pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 	Rate::saturating_from_rational(maturity_date - origination_date, seconds_per_year())
 		.checked_mul(&pd)
 		.and_then(|val| val.checked_mul(&lgd))
-		.and_then(|tel| Some(tel.min(One::one())))
+		.map(|tel| tel.min(One::one()))
 }
 
 /// calculates expected cash flow from current debt till maturity at the given rate per second

@@ -200,11 +200,9 @@ impl<T: Config> Pallet<T> {
 				// check if origin is editor
 				let editor = ensure_signed(origin)?;
 				let is_editor = Permission::<T>::get(editor.clone(), scope.clone())
-					.and_then(|roles| {
-						Some(
-							roles.exists(with_role.clone())
-								&& T::Editors::contains(&(editor, Some(with_role), scope, role)),
-						)
+					.map(|roles| {
+						roles.exists(with_role.clone())
+							&& T::Editors::contains(&(editor, Some(with_role), scope, role))
 					})
 					.unwrap_or(false);
 				ensure!(is_editor, Error::<T>::NoEditor);

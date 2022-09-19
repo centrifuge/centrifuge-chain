@@ -190,37 +190,36 @@ impl<Balance> EpochSolution<Balance> {
 		BalanceRatio: Copy + FixedPointNumber,
 		Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	{
-		let risk_buffer_improvement_scores = if state
-			.contains(&UnhealthyState::MinRiskBufferViolated)
-		{
-			let risk_buffers = calculate_risk_buffers(
-				&tranches.supplies_with_fulfillment(solution)?,
-				&tranches.prices(),
-			)?;
+		let risk_buffer_improvement_scores =
+			if state.contains(&UnhealthyState::MinRiskBufferViolated) {
+				let risk_buffers = calculate_risk_buffers(
+					&tranches.supplies_with_fulfillment(solution)?,
+					&tranches.prices(),
+				)?;
 
-			// Score: 1 / (min risk buffer - risk buffer)
-			// A higher score means the distance to the min risk buffer is smaller
-			let non_junior_tranches =
-				tranches
-					.non_residual_tranches()
-					.ok_or(DispatchError::Other(
-						"Corrupted PoolState. Getting NonResidualTranches infailable.",
-					))?;
-			Some(
-				non_junior_tranches
-					.iter()
-					.zip(risk_buffers)
-					.map(|(tranche, risk_buffer)| {
-						tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
-							|div: Perquintill| Some(div.saturating_reciprocal_mul(Balance::one())),
-						)
-					})
-					.collect::<Option<Vec<_>>>()
-					.ok_or(ArithmeticError::Overflow)?,
-			)
-		} else {
-			None
-		};
+				// Score: 1 / (min risk buffer - risk buffer)
+				// A higher score means the distance to the min risk buffer is smaller
+				let non_junior_tranches =
+					tranches
+						.non_residual_tranches()
+						.ok_or(DispatchError::Other(
+							"Corrupted PoolState. Getting NonResidualTranches infailable.",
+						))?;
+				Some(
+					non_junior_tranches
+						.iter()
+						.zip(risk_buffers)
+						.map(|(tranche, risk_buffer)| {
+							tranche.min_risk_buffer.checked_sub(&risk_buffer).map(
+								|div: Perquintill| div.saturating_reciprocal_mul(Balance::one()),
+							)
+						})
+						.collect::<Option<Vec<_>>>()
+						.ok_or(ArithmeticError::Overflow)?,
+				)
+			} else {
+				None
+			};
 
 		let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
 			let mut acc_invest = Balance::zero();
