@@ -562,7 +562,11 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 				Anchors::get_anchor_id_by_index((day - 1) as u64).unwrap_or_default(),
 				H256([0; 32])
 			);
-			assert!(Anchors::get_evicted_anchor_root_by_day((day - 1) as u32).unwrap() != [0; 32]);
+			assert!(
+				Anchors::get_evicted_anchor_root_by_day((day - 1) as u32)
+					.unwrap()
+					.to_vec() != [0; 32]
+			);
 			assert_eq!(
 				Anchors::get_anchor_evict_date(anchors[day - 2]).unwrap_or_default(),
 				0
@@ -649,7 +653,11 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		// verify anchor data has been removed until 520th anchor
 		for i in (2 + FIRST_ONES) as usize..(2 + FIRST_ONES + MAX_LOOP_IN_TX) as usize {
 			assert!(Anchors::get_anchor_by_id(anchors[i as usize - 2]).is_none());
-			assert!(Anchors::get_evicted_anchor_root_by_day(i as u32).unwrap() != [0; 32]);
+			assert!(
+				Anchors::get_evicted_anchor_root_by_day(i as u32)
+					.unwrap()
+					.to_vec() != [0; 32]
+			);
 		}
 
 		assert!(

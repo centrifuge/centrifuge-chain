@@ -21,13 +21,16 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
-	traits::{Currency, ReservableCurrency},
-	RuntimeDebug, StateVersion,
+	traits::{Currency, Get, ReservableCurrency},
+	BoundedVec, RuntimeDebug, StateVersion,
 };
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
-use sp_runtime::{traits::Hash, ArithmeticError};
+use sp_runtime::{
+	traits::{Hash, Header},
+	ArithmeticError,
+};
 use sp_std::vec::Vec;
 pub use weights::*;
 pub mod weights;
@@ -47,6 +50,14 @@ mod benchmarking;
 pub mod migration;
 
 mod common;
+
+pub struct RootHashSize<H>(sp_std::marker::PhantomData<H>);
+
+impl<H: Header> Get<u32> for RootHashSize<H> {
+	fn get() -> u32 {
+		<H::Hashing as sp_core::Hasher>::LENGTH as u32
+	}
+}
 
 type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -94,7 +105,6 @@ pub mod pallet {
 	use frame_support::{pallet_prelude::*, traits::ReservableCurrency};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::Hash;
-	use sp_std::vec::Vec;
 
 	use super::*;
 
@@ -169,7 +179,8 @@ pub mod pallet {
 	/// evicted anchor.
 	#[pallet::storage]
 	#[pallet::getter(fn get_evicted_anchor_root_by_day)]
-	pub(super) type EvictedAnchorRoots<T: Config> = StorageMap<_, Blake2_256, u32, Vec<u8>>;
+	pub(super) type EvictedAnchorRoots<T: Config> =
+		StorageMap<_, Blake2_256, u32, BoundedVec<u8, RootHashSize<T::Header>>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -460,7 +471,11 @@ impl<T: Config> Pallet<T> {
 			// exists before hand to ensure that it doesn't overwrite a root.
 			.map(|(day, key)| {
 				if !<EvictedAnchorRoots<T>>::contains_key(day) {
-					<EvictedAnchorRoots<T>>::insert(day, child::root(&key, StateVersion::V0));
+					let root: BoundedVec<_, _> = child::root(&key, StateVersion::V0)
+						.try_into()
+						.expect("The output hash must use the block hasher");
+
+					<EvictedAnchorRoots<T>>::insert(day, root);
 				}
 				key
 			})
