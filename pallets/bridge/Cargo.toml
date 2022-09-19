@@ -12,34 +12,28 @@ version = '2.0.0'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-# Substrate basic primitives
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 
-# Centrifuge Chain dependencies
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.26" }
-pallet-nft = { path = "../nft", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 
 [dev-dependencies]
-# Testing/mocking dependencies
-pallet-anchors = { path = "../anchors", default-features = true }
-pallet-bridge-mapping = { path = "../bridge-mapping", default-features = true }
-pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
-proofs = { path = "../../libs/proofs", default-features = true }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
-cfg-types = { path = "../../libs/types", default-features = true}
-cfg-primitives= { path = "../../libs/primitives", default-features = true}
-
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+pallet-fees = { path = "../fees"}
+runtime-common = { path = "../../runtime/common" }
+cfg-primitives = { path = "../../libs/primitives" }
+cfg-types = { path = "../../libs/types" }
 
 [features]
 default = ['std']
@@ -49,11 +43,9 @@ std = [
     'scale-info/std',
     'frame-support/std',
     'frame-system/std',
-    'pallet-balances/std',
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
     'chainbridge/std',
-    'pallet-nft/std',
     'cfg-traits/std',
 ]
