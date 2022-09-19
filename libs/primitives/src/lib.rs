@@ -12,6 +12,8 @@
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
+// Allow things like `1 * CFG`
+#![allow(clippy::identity_op)]
 
 mod impls;
 
