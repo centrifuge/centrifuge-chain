@@ -17,7 +17,7 @@
 // Module imports
 // ----------------------------------------------------------------------------
 
-use cfg_primitives::constants::{CFG, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
+use cfg_primitives::constants::CFG;
 use codec::Encode;
 use frame_support::{
 	assert_err, assert_noop, assert_ok,
@@ -29,11 +29,11 @@ use sp_runtime::DispatchError;
 use crate::{
 	self as pallet_bridge,
 	mock::{
-		helpers::*, Balances, Bridge, ChainBridge, Event, MockFeesState, MockRuntime,
-		NativeTokenId, Origin, ProposalLifetime, TestExternalitiesBuilder, ENDOWED_BALANCE,
-		RELAYER_A, RELAYER_B, RELAYER_B_INITIAL_BALANCE, RELAYER_C, TEST_RELAYER_VOTE_THRESHOLD,
+		helpers::*, Balances, Bridge, ChainBridge, Event, MockRuntime, NativeTokenId, Origin,
+		ProposalLifetime, System, TestExternalitiesBuilder, ENDOWED_BALANCE,
+		NATIVE_TOKEN_TRANSFER_FEE, RELAYER_A, RELAYER_B, RELAYER_B_INITIAL_BALANCE, RELAYER_C,
+		TEST_RELAYER_VOTE_THRESHOLD,
 	},
-	Error,
 };
 
 // ----------------------------------------------------------------------------
@@ -63,7 +63,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				Error::<MockRuntime>::InsufficientBalance
+				pallet_balances::Error::<MockRuntime>::InsufficientBalance
 			);
 
 			// Using account with enough balance for fee but not for transfer amount
@@ -77,7 +77,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				Error::<MockRuntime>::InsufficientBalance
+				pallet_balances::Error::<MockRuntime>::InsufficientBalance
 			);
 
 			// Account balance of relayer B should be reverted to original balance
@@ -99,21 +99,12 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				Error::<MockRuntime>::InsufficientBalance
+				pallet_balances::Error::<MockRuntime>::LiquidityRestrictions
 			);
 
 			Balances::remove_lock(*b"testlock", &RELAYER_A);
 			account_current_balance = Balances::free_balance(RELAYER_A);
 			assert_eq!(account_current_balance, ENDOWED_BALANCE);
-
-			// Account balance of relayer A should be tantamount to the initial endowed value
-			account_current_balance = Balances::free_balance(RELAYER_A);
-			assert_eq!(account_current_balance, ENDOWED_BALANCE);
-
-			// Check that all previous transfer_native() calls did not burn any fee.
-			MockFeesState::get().with(|fees| {
-				assert!(fees.borrow().burn_fees.is_empty());
-			});
 
 			// Successful transfer with relayer A account, which has enough funds
 			// for the requested amount plus transfer fees
@@ -132,16 +123,15 @@ fn transfer_native() {
 				recipient,
 			));
 
-			MockFeesState::get().with(|fees| {
-				assert_eq!(fees.borrow().burn_fees.len(), 1);
-				assert_eq!(fees.borrow().burn_fees[0].author, RELAYER_A);
-				assert_eq!(
-					fees.borrow().burn_fees[0].balance,
-					NATIVE_TOKEN_TRANSFER_FEE
-				);
-			});
+			System::assert_has_event(Event::Balances(pallet_balances::Event::Withdraw {
+				who: RELAYER_A,
+				amount: NATIVE_TOKEN_TRANSFER_FEE,
+			}));
 
-			assert_eq!(ENDOWED_BALANCE - amount, Balances::free_balance(RELAYER_A));
+			assert_eq!(
+				ENDOWED_BALANCE - (amount + NATIVE_TOKEN_TRANSFER_FEE),
+				Balances::free_balance(RELAYER_A)
+			);
 		})
 }
 
@@ -351,37 +341,5 @@ fn create_successful_transfer_proposal() {
 				}),
 				Event::ChainBridge(chainbridge::Event::ProposalSucceeded(src_id, prop_id)),
 			]);
-		})
-}
-
-#[test]
-fn modify_native_token_transfer_fees() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let current_fee = Bridge::get_native_token_transfer_fee();
-			assert_eq!(current_fee, NATIVE_TOKEN_TRANSFER_FEE);
-			let new_fee = 3000 * CFG;
-			assert_ok!(Bridge::set_native_token_transfer_fee(
-				Origin::signed(1),
-				new_fee
-			));
-			assert_eq!(new_fee, Bridge::get_native_token_transfer_fee());
-		})
-}
-
-#[test]
-fn modify_nft_token_transfer_fees() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let current_fee = Bridge::get_nft_token_transfer_fee();
-			assert_eq!(current_fee, NFT_TOKEN_TRANSFER_FEE);
-			let new_fee = 3000 * CFG;
-			assert_ok!(Bridge::set_nft_token_transfer_fee(
-				Origin::signed(1),
-				new_fee
-			));
-			assert_eq!(new_fee, Bridge::get_nft_token_transfer_fee());
 		})
 }

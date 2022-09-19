@@ -636,10 +636,11 @@ pub mod fees {
 				author: &Self::AccountId,
 				fee: Fee<Self::Balance, Self::FeeKey>,
 			) -> DispatchResult {
+				let balance = Self::balance(fee);
 				S::get().with(|state| {
 					state.borrow_mut().author_fees.push(FeeState {
 						author: author.clone(),
-						balance: Self::balance(fee),
+						balance,
 					});
 				});
 				Ok(())
@@ -649,10 +650,11 @@ pub mod fees {
 				author: &Self::AccountId,
 				fee: Fee<Self::Balance, Self::FeeKey>,
 			) -> DispatchResult {
+				let balance = Self::balance(fee);
 				S::get().with(|state| {
 					state.borrow_mut().burn_fees.push(FeeState {
 						author: author.clone(),
-						balance: Self::balance(fee),
+						balance,
 					});
 				});
 				Ok(())
@@ -662,11 +664,11 @@ pub mod fees {
 				author: &Self::AccountId,
 				fee: Fee<Self::Balance, Self::FeeKey>,
 			) -> DispatchResult {
-				let value = S::get();
-				value.with(|state| {
+				let balance = Self::balance(fee);
+				S::get().with(|state| {
 					state.borrow_mut().treasury_fees.push(FeeState {
 						author: author.clone(),
-						balance: Self::balance(fee),
+						balance,
 					});
 				});
 				Ok(())
