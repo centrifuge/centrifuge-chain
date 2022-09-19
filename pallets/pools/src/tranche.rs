@@ -109,7 +109,7 @@ where
 	/// * (Residual, NonResidual) => true,
 	/// * (NonResidual, Residual) => false,
 	/// * (NonResidual, NonResidual) =>
-	/// 		interest rate of next tranche must be smaller
+	///         interest rate of next tranche must be smaller
 	///         equal to the interest rate of self.
 	///
 	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
