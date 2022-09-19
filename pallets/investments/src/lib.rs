@@ -538,8 +538,9 @@ where
 				InvestOrders::<T>::try_mutate(
 					&who,
 					&investment_id,
-					|order| -> Result<OrderId, DispatchError> {
-						let order = Pallet::<T>::invest_order_or_default(investment_id, order);
+					|maybe_order| -> Result<OrderId, DispatchError> {
+						let order =
+							Pallet::<T>::invest_order_or_default(investment_id, maybe_order);
 						let cur_order_id = InvestOrderId::<T>::get(investment_id);
 
 						// Updating an order is only allowed if it has not yet been submitted
@@ -560,6 +561,11 @@ where
 
 						order.update_submitted_at(cur_order_id);
 
+						// Remove order from storage if empty
+						if amount == T::Amount::zero() {
+							*maybe_order = None;
+						}
+
 						Ok(cur_order_id)
 					},
 				)
@@ -572,6 +578,7 @@ where
 			who,
 			amount,
 		});
+
 		Ok(())
 	}
 
@@ -596,8 +603,9 @@ where
 				RedeemOrders::<T>::try_mutate(
 					&who,
 					&investment_id,
-					|order| -> Result<OrderId, DispatchError> {
-						let order = Pallet::<T>::redeem_order_or_default(investment_id, order);
+					|maybe_order| -> Result<OrderId, DispatchError> {
+						let order =
+							Pallet::<T>::redeem_order_or_default(investment_id, maybe_order);
 						let cur_order_id = RedeemOrderId::<T>::get(investment_id);
 
 						// Updating an order is only allowed if it has not yet been submitted
@@ -617,6 +625,11 @@ where
 						)?;
 
 						order.update_submitted_at(cur_order_id);
+
+						// Remove order from storage if empty
+						if amount == T::Amount::zero() {
+							*maybe_order = None;
+						}
 
 						Ok(cur_order_id)
 					},
