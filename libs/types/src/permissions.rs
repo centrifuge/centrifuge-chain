@@ -399,12 +399,9 @@ where
 	}
 
 	pub fn contains(&self, tranche: TrancheId) -> bool {
-		self.info
-			.iter()
-			.position(|info| {
-				info.tranche_id == tranche && info.permissioned_till >= Now::now().as_secs().into()
-			})
-			.is_some()
+		self.info.iter().any(|info| {
+			info.tranche_id == tranche && info.permissioned_till >= Now::now().as_secs().into()
+		})
 	}
 
 	pub fn remove(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
