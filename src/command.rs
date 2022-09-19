@@ -328,7 +328,7 @@ pub fn run() -> Result<()> {
 				params.parachain_id.unwrap_or(10001).into(),
 			)?;
 
-			let state_version = Cli::native_runtime_version(&chain_spec).state_version();
+			let state_version = Cli::native_runtime_version(chain_spec).state_version();
 			let block: Block = generate_genesis_block(&**chain_spec, state_version)?;
 
 			let raw_header = block.header().encode();

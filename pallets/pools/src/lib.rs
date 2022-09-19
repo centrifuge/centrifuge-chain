@@ -1350,7 +1350,7 @@ pub mod pallet {
 					})?;
 
 					let existing_state_solution =
-						Self::score_solution(&pool, &epoch, &no_execution_solution)?;
+						Self::score_solution(pool, &epoch, &no_execution_solution)?;
 					epoch.best_submission = Some(existing_state_solution);
 					EpochExecution::<T>::insert(pool_id, epoch);
 
@@ -1387,7 +1387,7 @@ pub mod pallet {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
-				let new_solution = Self::score_solution(&pool, &epoch, &solution)?;
+				let new_solution = Self::score_solution(&pool, epoch, &solution)?;
 				if let Some(ref previous_solution) = epoch.best_submission {
 					ensure!(
 						&new_solution >= previous_solution,
@@ -1541,7 +1541,7 @@ pub mod pallet {
 			let (acc_invest, acc_redeem, risk_buffers) =
 				calculate_solution_parameters::<_, _, T::InterestRate, _, T::CurrencyId>(
 					&epoch.tranches,
-					&solution,
+					solution,
 				)
 				.map_err(|e| {
 					// In case we have an underflow in the calculation, there
@@ -1759,7 +1759,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 		) -> DispatchResult {
-			let mut outstanding = &mut pool
+			let outstanding = &mut pool
 				.tranches
 				.get_mut_tranche(TrancheLoc::Id(tranche_id))
 				.ok_or(Error::<T>::InvalidTrancheId)?
@@ -1771,7 +1771,7 @@ pub mod pallet {
 				&pool_account,
 				&mut order.invest,
 				amount,
-				&mut outstanding,
+				outstanding,
 			)?;
 
 			order.epoch = pool.epoch.current;
@@ -1790,7 +1790,7 @@ pub mod pallet {
 				.tranches
 				.get_mut_tranche(TrancheLoc::Id(tranche_id))
 				.ok_or(Error::<T>::InvalidTrancheId)?;
-			let mut outstanding = &mut tranche.outstanding_redeem_orders;
+			let outstanding = &mut tranche.outstanding_redeem_orders;
 			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
 			let (send, recv, transfer_amount) = Self::update_order_amount(
@@ -1798,7 +1798,7 @@ pub mod pallet {
 				&pool_account,
 				&mut order.redeem,
 				amount,
-				&mut outstanding,
+				outstanding,
 			)?;
 
 			order.epoch = pool.epoch.current;
@@ -2033,10 +2033,10 @@ pub mod pallet {
 			let mut acc_redemptions = T::Balance::zero();
 			for (invest, redeem) in executed_amounts.iter() {
 				acc_investments = acc_investments
-					.checked_add(&invest)
+					.checked_add(invest)
 					.ok_or(ArithmeticError::Overflow)?;
 				acc_redemptions = acc_redemptions
-					.checked_add(&redeem)
+					.checked_add(redeem)
 					.ok_or(ArithmeticError::Overflow)?;
 			}
 			pool.reserve.total = pool

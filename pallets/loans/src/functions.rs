@@ -314,7 +314,7 @@ impl<T: Config> Pallet<T> {
 				}?;
 
 				let interest_rate_with_penalty =
-					Self::rate_with_penalty(&active_loan, &write_off_groups);
+					Self::rate_with_penalty(active_loan, &write_off_groups);
 
 				// transfer collateral nft to owner
 				let (collateral_class_id, instance_id) = collateral.destruct();
@@ -501,7 +501,7 @@ impl<T: Config> Pallet<T> {
 
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 				let interest_rate_with_penalty =
-					Self::rate_with_penalty(&active_loan, &write_off_groups);
+					Self::rate_with_penalty(active_loan, &write_off_groups);
 
 				let old_debt = T::InterestAccrual::previous_debt(
 					interest_rate_with_penalty,
@@ -719,7 +719,7 @@ impl<T: Config> Pallet<T> {
 				};
 
 				let previous_interest_rate =
-					Self::rate_with_penalty(&active_loan, &write_off_groups);
+					Self::rate_with_penalty(active_loan, &write_off_groups);
 
 				let debt = T::InterestAccrual::current_debt(
 					previous_interest_rate,

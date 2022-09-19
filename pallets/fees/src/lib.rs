@@ -227,7 +227,7 @@ impl<T: Config> Pallet<T> {
 		};
 
 		T::Currency::withdraw(
-			&from,
+			from,
 			balance,
 			WithdrawReasons::FEE,
 			ExistenceRequirement::KeepAlive,

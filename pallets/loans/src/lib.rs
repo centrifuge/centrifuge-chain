@@ -702,7 +702,7 @@ pub mod pallet {
 				weight += T::DbWeight::get().reads(2);
 				for loan in active_loans.iter() {
 					weight += T::DbWeight::get().reads_writes(1, 1);
-					let rate = Self::rate_with_penalty(&loan, &write_off_groups);
+					let rate = Self::rate_with_penalty(loan, &write_off_groups);
 					T::InterestAccrual::reference_rate(rate);
 				}
 			}

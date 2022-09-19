@@ -690,8 +690,8 @@ where
 							ClearedInvestOrders::<T>::try_get(investment_id, order_id)
 								.map_err(|_| Error::<T>::OrderNotCleared)?;
 
-						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, &order)?;
-						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
+						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, order)?;
+						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, order)?;
 						collected.push(order_id);
 					}
 
@@ -789,8 +789,8 @@ where
 							ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
 								.map_err(|_| Error::<T>::OrderNotCleared)?;
 
-						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, &order)?;
-						Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment, &order)?;
+						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, order)?;
+						Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment, order)?;
 						collected.push(order_id);
 					}
 
