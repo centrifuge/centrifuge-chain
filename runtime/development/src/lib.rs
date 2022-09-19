@@ -1257,11 +1257,9 @@ impl pallet_restricted_tokens::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		// every currency has a zero existential deposit
-		match currency_id {
-			_ => 0,
-		}
+		0
 	};
 }
 
