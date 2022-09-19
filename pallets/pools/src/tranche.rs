@@ -824,7 +824,7 @@ where
 
 	pub fn orders_as_currency<BalanceRatio>(
 		&self,
-		prices: &Vec<BalanceRatio>,
+		prices: &[BalanceRatio],
 	) -> Result<Vec<(Balance, Balance)>, DispatchError>
 	where
 		BalanceRatio: FixedPointNumber<Inner = Balance>,

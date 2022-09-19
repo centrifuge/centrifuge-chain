@@ -183,7 +183,7 @@ impl<Balance> EpochSolution<Balance> {
 		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
 		reserve: Balance,
 		max_reserve: Balance,
-		state: &Vec<UnhealthyState>,
+		state: &[UnhealthyState],
 	) -> Result<EpochSolution<Balance>, DispatchError>
 	where
 		Weight: Copy + From<u128>,
