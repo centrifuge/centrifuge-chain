@@ -409,6 +409,19 @@ pub(crate) fn invest_x_fulfill_x(
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
+/// Invest given amount per Investor into INVESTMENT_0_0 and fulfills
+/// the given fulfillment.
+pub(crate) fn invest_x_per_fulfill_x(
+	invest_per_investor: Vec<(MockAccountId, Balance)>,
+	fulfillment: FulfillmentWithPrice<Rate>,
+) -> DispatchResult {
+	for (who, amount) in invest_per_investor {
+		Investments::update_invest_order(Origin::signed(who), INVESTMENT_0_0, amount)?;
+	}
+	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
 /// Invest given amount per Investor into INVESTMENT_0_0, run the given closure and fulfills
 /// the given fulfillment.
 pub(crate) fn invest_x_runner_fulfill_x<F>(
@@ -443,6 +456,19 @@ pub(crate) fn redeem_x_fulfill_x(
 	redeem_x_per_investor(redeem_per_investor)?;
 
 	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0);
+	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Invest given amount per Investor into INVESTMENT_0_0 and fulfills
+/// the given fulfillment.
+pub(crate) fn redeem_x_per_fulfill_x(
+	redeem_per_investor: Vec<(MockAccountId, Balance)>,
+	fulfillment: FulfillmentWithPrice<Rate>,
+) -> DispatchResult {
+	for (who, amount) in redeem_per_investor {
+		Investments::update_redeem_order(Origin::signed(who), INVESTMENT_0_0, amount)?;
+	}
+	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
