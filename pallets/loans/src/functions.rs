@@ -396,7 +396,7 @@ impl<T: Config> Pallet<T> {
 				// we already know that that loan is not written off,
 				// means we wont need to have write off groups. so save a DB read and pass empty
 				let old_pv = active_loan
-					.present_value(old_debt, &vec![], active_loan.last_updated)
+					.present_value(old_debt, &[], active_loan.last_updated)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				let new_total_borrowed = active_loan
@@ -428,7 +428,7 @@ impl<T: Config> Pallet<T> {
 				)?;
 
 				let new_pv = active_loan
-					.present_value(new_debt, &vec![], now)
+					.present_value(new_debt, &[], now)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::withdraw(pool_id, owner, amount)?;
