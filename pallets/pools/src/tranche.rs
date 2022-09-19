@@ -584,9 +584,10 @@ where
 		MaxTokenNameLength: Get<u32>,
 		MaxTokenSymbolLength: Get<u32>,
 	{
-		let at_usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		let at_idx = at;
+		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
-			self.tranches.len() <= at_usize,
+			at <= self.tranches.len(),
 			DispatchError::Other(
 				"Must add tranches either in between others or at the end. This should be catched somewhere else."
 			)
@@ -594,7 +595,7 @@ where
 
 		let id = self.next_id()?;
 		let new_tranche = self.create_tranche::<TrancheToken>(
-			at,
+			at_idx,
 			id.clone(),
 			tranche.tranche_type,
 			tranche.seniority,
@@ -607,51 +608,20 @@ where
 					"Top tranche must be a residual one. This should be catched somewhere else"
 				)
 			);
-
-			// NOTE: The std lib actually does allow to insert on a zero index for an empty vec.
-			//       But as we can not be sure, that this is always the case for future rust versions
-			//       better be safe than sorry.
-			if self.tranches.len() == 0 {
-				self.tranches.push(new_tranche);
-				self.ids.push(id);
-			} else {
-				self.tranches.insert(0, new_tranche);
-				self.ids.insert(0, id);
-			}
-		} else if self.tranches.len() == at_usize {
-			ensure!(
-				self.tranches
-					.get(at_usize - 1)
-					.expect(
-						"at is equal to len and is not zero. An element before at must exist. qed."
-					)
-					.tranche_type
-					.valid_next_tranche(&new_tranche.tranche_type),
-				DispatchError::Other(
-					"Invalid next tranche type. This should be catched somewhere else."
-				)
-			);
-
-			self.tranches.push(new_tranche);
-			self.ids.push(id);
 		} else {
 			ensure!(
 				self.tranches
-					.get(at_usize - 1)
-					.expect(
-						"at is equal to len and is not zero. An element before at must exist. qed."
-					)
+					.get(at - 1)
+					.expect("at is <= len and is not zero. An element before at must exist. qed.")
 					.tranche_type
 					.valid_next_tranche(&new_tranche.tranche_type),
 				DispatchError::Other(
 					"Invalid next tranche type. This should be catched somewhere else."
 				)
 			);
-
-			let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
-			self.tranches.insert(at, new_tranche);
-			self.ids.insert(at, id);
 		}
+		self.tranches.insert(at, new_tranche);
+		self.ids.insert(at, id);
 
 		Ok(())
 	}
@@ -659,26 +629,14 @@ where
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
 		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
-			self.tranches.len() < at,
+			at < self.tranches.len(),
 			DispatchError::Other(
 				"Invalid tranche index. Exceeding number of tranches. This should be catched somewhere else."
 			)
 		);
 
-		if at == 0 {
-			// NOTE: The std lib actually does allow to remove on a zero index for an empty vec.
-			//       But as we can not be sure, that this is always the case for future rust versions
-			//       better be safe than sorry.
-			if self.tranches.len() == 0 {
-				// No-op
-			} else {
-				self.tranches.remove(0);
-				self.ids.remove(0);
-			}
-		} else {
-			self.tranches.remove(at);
-			self.ids.remove(at);
-		}
+		self.tranches.remove(at);
+		self.ids.remove(at);
 
 		Ok(())
 	}
