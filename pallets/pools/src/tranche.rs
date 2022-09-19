@@ -424,18 +424,10 @@ where
 	pub fn tranche_id(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheId> {
 		match id {
 			TrancheLoc::Id(id) => Some(id),
-			TrancheLoc::Index(index) => {
-				let index: Option<usize> = index.try_into().ok();
-				if let Some(index) = index {
-					if let Some(id) = self.ids.get(index) {
-						Some(id.clone())
-					} else {
-						None
-					}
-				} else {
-					None
-				}
-			}
+			TrancheLoc::Index(index) => index
+				.try_into()
+				.ok()
+				.and_then(|index: usize| self.ids.get(index).cloned()),
 		}
 	}
 
