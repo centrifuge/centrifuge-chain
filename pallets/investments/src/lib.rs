@@ -662,6 +662,7 @@ where
 		Pallet::<T>::do_collect_redeem(who.clone(), investment_id)
 	}
 
+	#[allow(clippy::type_complexity)]
 	pub(crate) fn do_collect_invest(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
@@ -760,6 +761,7 @@ where
 		Ok(().into())
 	}
 
+	#[allow(clippy::type_complexity)]
 	pub(crate) fn do_collect_redeem(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
@@ -898,6 +900,7 @@ where
 		T::Accountant::transfer(info.id(), send, recv, transfer_amount)
 	}
 
+	#[allow(clippy::type_complexity)]
 	fn update_order_amount<'a>(
 		who: &'a T::AccountId,
 		pool: &'a T::AccountId,

@@ -111,6 +111,7 @@ impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
 ///
 /// Use this macro if you don't actually need the full service, but just the builder in order to
 /// be able to perform chain operations.
+#[allow(clippy::type_complexity)]
 pub fn new_partial<RuntimeApi, Executor, BIQ>(
 	config: &Configuration,
 	build_import_queue: BIQ,
@@ -420,6 +421,7 @@ where
 }
 
 /// Build the import queue for the "altair" runtime.
+#[allow(clippy::type_complexity)]
 pub fn build_altair_import_queue(
 	client: Arc<
 		TFullClient<
@@ -581,6 +583,7 @@ pub async fn start_altair_node(
 }
 
 /// Build the import queue for the "centrifuge" runtime.
+#[allow(clippy::type_complexity)]
 pub fn build_centrifuge_import_queue(
 	client: Arc<
 		TFullClient<
@@ -739,6 +742,7 @@ pub async fn start_centrifuge_node(
 }
 
 /// Build the import queue for the "development" runtime.
+#[allow(clippy::type_complexity)]
 pub fn build_development_import_queue(
 	client: Arc<
 		TFullClient<

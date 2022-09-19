@@ -1816,6 +1816,7 @@ pub mod pallet {
 			T::Tokens::transfer(tranche.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
+		#[allow(clippy::type_complexity)]
 		fn update_order_amount<'a>(
 			who: &'a T::AccountId,
 			pool: &'a T::AccountId,
