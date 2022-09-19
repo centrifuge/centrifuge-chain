@@ -117,24 +117,27 @@ pub struct PoolParameters {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
 {
-	pub tranches: Change<Vec<TrancheUpdate<Rate>>>,
-	pub tranche_metadata: Change<Vec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>>>,
+	pub tranches: Change<BoundedVec<TrancheUpdate<Rate>, MaxTranches>>,
+	pub tranche_metadata:
+		Change<BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>>,
 	pub min_epoch_time: Change<Moment>,
 	pub max_nav_age: Change<Moment>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
 {
-	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
+	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
 	pub scheduled_time: Moment,
 }
 
@@ -330,6 +333,7 @@ pub mod pallet {
 				Self::InterestRate,
 				Self::MaxTokenNameLength,
 				Self::MaxTokenSymbolLength,
+				Self::MaxTranches,
 			>,
 			Moment = Moment,
 		>;
@@ -402,7 +406,7 @@ pub mod pallet {
 
 		/// Max number of Tranches
 		#[pallet::constant]
-		type MaxTranches: Get<u32>;
+		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
 
 		/// The amount that must be reserved to create a pool
 		#[pallet::constant]
@@ -430,7 +434,12 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::PoolId,
-		ScheduledUpdateDetails<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+		ScheduledUpdateDetails<
+			T::InterestRate,
+			T::MaxTokenNameLength,
+			T::MaxTokenSymbolLength,
+			T::MaxTranches,
+		>,
 	>;
 
 	#[pallet::storage]
@@ -780,7 +789,12 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			changes: PoolChanges<
+				T::InterestRate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+				T::MaxTranches,
+			>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -1605,7 +1619,12 @@ pub mod pallet {
 
 		pub(crate) fn do_update_pool(
 			pool_id: &T::PoolId,
-			changes: &PoolChanges<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			changes: &PoolChanges<
+				T::InterestRate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+				T::MaxTranches,
+			>,
 		) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
