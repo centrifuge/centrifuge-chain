@@ -438,8 +438,7 @@ where
 				.ids
 				.iter()
 				.position(|curr_id| curr_id == id)
-				.map(|index| index.try_into().ok())
-				.flatten(),
+				.and_then(|index| index.try_into().ok()),
 		}
 	}
 
