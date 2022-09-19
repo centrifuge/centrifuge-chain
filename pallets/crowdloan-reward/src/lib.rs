@@ -94,7 +94,7 @@ use frame_support::{
 		Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, VestingSchedule,
 		WithdrawReasons,
 	},
-	BoundedVec, PalletId,
+	PalletId,
 };
 use frame_system::ensure_root;
 // Re-export in crate namespace (for runtime construction)
@@ -435,7 +435,7 @@ where
 		let direct_reward = Self::direct_payout_ratio() * contribution;
 		let vested_reward = contribution
 			.checked_sub(&direct_reward)
-			.unwrap_or(Zero::zero());
+			.unwrap_or_else(Zero::zero);
 
 		ensure!(
 			contribution >= T::Currency::minimum_balance(),
@@ -449,7 +449,7 @@ where
 
 		ensure!(
 			pallet_vesting::Pallet::<T>::vesting(&who)
-				.unwrap_or(BoundedVec::default())
+				.unwrap_or_default()
 				.len() < pallet_vesting::MaxVestingSchedulesGet::<T>::get()
 				.try_into()
 				.unwrap_or(0), // This is currently a u32, but in case it changes, we will fail-safe to zero.

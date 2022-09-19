@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::or_fun_call)]
 
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
