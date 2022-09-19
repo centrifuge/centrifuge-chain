@@ -175,7 +175,7 @@ pub mod pallet {
 			let key_deposit = <KeyDeposit<T>>::get();
 
 			for add_key in keys {
-				Self::add_key(account_id.clone(), add_key.clone(), key_deposit.clone())?;
+				Self::add_key(account_id.clone(), add_key.clone(), key_deposit)?;
 			}
 
 			Ok(())
@@ -230,7 +230,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::Currency::reserve(&account_id, key_deposit)?;
 
-			let key_id: KeyId<T::Hash> = (add_key.key.clone(), add_key.purpose.clone());
+			let key_id: KeyId<T::Hash> = (add_key.key, add_key.purpose.clone());
 
 			<Keys<T>>::try_mutate(
 				account_id.clone(),
@@ -252,11 +252,7 @@ pub mod pallet {
 				},
 			)?;
 
-			<LastKeyByPurpose<T>>::insert(
-				account_id.clone(),
-				add_key.purpose.clone(),
-				add_key.key.clone(),
-			);
+			<LastKeyByPurpose<T>>::insert(account_id.clone(), add_key.purpose.clone(), add_key.key);
 
 			Self::deposit_event(Event::KeyAdded {
 				owner: account_id,
@@ -287,7 +283,7 @@ pub mod pallet {
 					}
 
 					let block_number = <frame_system::Pallet<T>>::block_number();
-					storage_key.revoked_at = Some(block_number.clone());
+					storage_key.revoked_at = Some(block_number);
 
 					Self::deposit_event(Event::KeyRevoked {
 						owner: account_id,

@@ -1291,11 +1291,9 @@ where
 					.amount
 					.checked_sub(&redeem_amount)
 					.ok_or(ArithmeticError::Underflow)?;
-				let investment_account = InvestmentAccount {
-					investment_id: investment_id.clone(),
-				}
-				.into_account_truncating();
-				let info = T::Accountant::info(investment_id.clone())?;
+				let investment_account =
+					InvestmentAccount { investment_id }.into_account_truncating();
+				let info = T::Accountant::info(investment_id)?;
 
 				T::Tokens::transfer(
 					info.payment_currency(),
@@ -1328,11 +1326,7 @@ where
 					.checked_sub(1)
 					.ok_or(ArithmeticError::Underflow)?;
 
-				ClearedRedeemOrders::<T>::insert(
-					investment_id.clone(),
-					order_id,
-					fulfillment.clone(),
-				);
+				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
 				ActiveRedeemOrder::<T>::try_mutate(

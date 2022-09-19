@@ -84,7 +84,7 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 			<Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(who, keep_alive)
 		} else {
 			T::PreFungiblesInspect::check(FungiblesInspectEffects::ReducibleBalance(
-				asset.clone(),
+				asset,
 				who.clone(),
 				keep_alive,
 				<T::Fungibles as Inspect<T::AccountId>>::reducible_balance(asset, who, keep_alive),
@@ -146,7 +146,7 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 			<Pallet<T> as fungible::InspectHold<T::AccountId>>::can_hold(who, amount)
 		} else {
 			T::PreFungiblesInspectHold::check(FungiblesInspectHoldEffects::CanHold(
-				asset.clone(),
+				asset,
 				who.clone(),
 				amount,
 				<T::Fungibles as InspectHold<T::AccountId>>::can_hold(asset, who, amount),

@@ -241,9 +241,8 @@ where
 		match &self.tranche_type {
 			TrancheType::Residual => Perquintill::zero(),
 			TrancheType::NonResidual {
-				interest_rate_per_sec: ref _interest_rate_per_sec,
-				ref min_risk_buffer,
-			} => min_risk_buffer.clone(),
+				min_risk_buffer, ..
+			} => *min_risk_buffer,
 		}
 	}
 
@@ -251,9 +250,9 @@ where
 		match &self.tranche_type {
 			TrancheType::Residual => One::one(),
 			TrancheType::NonResidual {
-				ref interest_rate_per_sec,
-				min_risk_buffer: ref _min_risk_buffer,
-			} => interest_rate_per_sec.clone(),
+				interest_rate_per_sec,
+				..
+			} => *interest_rate_per_sec,
 		}
 	}
 
@@ -1443,7 +1442,7 @@ where
 	let tranche_values: Vec<_> = tranche_supplies
 		.iter()
 		.zip(tranche_prices)
-		.map(|(supply, price)| price.checked_mul_int(supply.clone()))
+		.map(|(supply, price)| price.checked_mul_int(*supply))
 		.collect::<Option<Vec<_>>>()
 		.ok_or(ArithmeticError::Overflow)?;
 
@@ -1455,10 +1454,10 @@ where
 		.ok_or(ArithmeticError::Overflow)?;
 
 	// Iterate over the tranches senior => junior.
-	// Buffer of most senior tranche is pool value - senior tranche value.
+	// Buffer of most senior tranche is pool value -y senior tranche value.
 	// Buffer of each subordinate tranche is the buffer of the
 	// previous more senior tranche - this tranche value.
-	let mut remaining_subordinate_value = pool_value.clone();
+	let mut remaining_subordinate_value = pool_value;
 	let mut risk_buffers: Vec<Perquintill> = tranche_values
 		.iter()
 		.rev()

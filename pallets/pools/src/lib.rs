@@ -1259,7 +1259,7 @@ pub mod pallet {
 									redeem_fulfillment: Perquintill::zero(),
 								},
 								(Zero::zero(), Zero::zero()),
-								price.clone(),
+								*price,
 							)
 						},
 					)?;
@@ -1629,10 +1629,10 @@ pub mod pallet {
 							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
 							tranche.accrue(now)?;
 
-							tranche.tranche_type = tranche_update.tranche_type.clone();
+							tranche.tranche_type = tranche_update.tranche_type;
 
 							if let Some(new_seniority) = tranche_update.seniority {
-								tranche.seniority = new_seniority.clone();
+								tranche.seniority = new_seniority;
 							}
 
 							Ok(())
@@ -1663,9 +1663,7 @@ pub mod pallet {
 
 				ScheduledUpdate::<T>::remove(pool_id);
 
-				Self::deposit_event(Event::Updated {
-					pool_id: pool_id.clone(),
-				});
+				Self::deposit_event(Event::Updated { pool_id: *pool_id });
 				Ok(())
 			})
 		}

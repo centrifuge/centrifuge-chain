@@ -174,7 +174,7 @@ pub mod pallet {
 			});
 
 			self.resources.iter().for_each(|i| {
-				let (rid, m) = (i.0.clone(), i.1.clone());
+				let (rid, m) = (i.0, i.1.clone());
 				<chainbridge::Pallet<T>>::register_resource(rid, m.clone()).unwrap_or_default();
 			});
 
