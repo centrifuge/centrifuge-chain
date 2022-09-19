@@ -13,6 +13,7 @@
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
+use sp_std::vec;
 
 use super::*;
 
@@ -46,8 +47,7 @@ impl PoolState {
 	pub fn add_unhealthy(&mut self, add: UnhealthyState) -> &mut Self {
 		match self {
 			PoolState::Healthy => {
-				let mut states = Vec::new();
-				states.push(add);
+				let states = vec![add];
 				*self = PoolState::Unhealthy(states);
 				self
 			}
