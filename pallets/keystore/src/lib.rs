@@ -166,7 +166,7 @@ pub mod pallet {
 		pub fn add_keys(origin: OriginFor<T>, keys: Vec<AddKey<T::Hash>>) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			ensure!(keys.len() > 0, Error::<T>::NoKeys);
+			ensure!(!keys.is_empty(), Error::<T>::NoKeys);
 			ensure!(
 				keys.len() <= T::MaxKeys::get() as usize,
 				Error::<T>::TooManyKeys
@@ -190,7 +190,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			ensure!(keys.len() > 0, Error::<T>::NoKeys);
+			ensure!(!keys.is_empty(), Error::<T>::NoKeys);
 			ensure!(
 				keys.len() <= T::MaxKeys::get() as usize,
 				Error::<T>::TooManyKeys

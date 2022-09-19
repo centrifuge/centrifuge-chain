@@ -75,7 +75,7 @@ impl PoolState {
 			PoolState::Unhealthy(states) => {
 				states.retain(|val| val != &rm);
 
-				if states.len() == 0 {
+				if states.is_empty() {
 					*self = PoolState::Healthy;
 				}
 				self

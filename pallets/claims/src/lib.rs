@@ -475,7 +475,7 @@ impl<T: Config> Pallet<T> {
 
 		// Initial runs might only have trees of single leaves,
 		// in this case leaf_hash is as well root_hash
-		if sorted_hashes.len() == 0 {
+		if sorted_hashes.is_empty() {
 			root_hash = leaf_hash;
 		}
 
