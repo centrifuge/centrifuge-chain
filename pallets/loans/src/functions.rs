@@ -634,7 +634,7 @@ impl<T: Config> Pallet<T> {
 		// ensure we have not exceeded the max number of write off groups
 		let number_of_write_off_groups = PoolWriteOffGroups::<T>::get(pool_id).len();
 		ensure!(
-			number_of_write_off_groups + 1 <= T::MaxWriteOffGroups::get() as usize,
+			number_of_write_off_groups < T::MaxWriteOffGroups::get() as usize,
 			Error::<T>::TooManyWriteOffGroups
 		);
 
