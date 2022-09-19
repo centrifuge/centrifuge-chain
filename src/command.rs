@@ -194,7 +194,7 @@ impl SubstrateCli for RelayChainCli {
 	}
 }
 
-fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<Vec<u8>> {
+fn extract_genesis_wasm(chain_spec: &dyn sc_service::ChainSpec) -> Result<Vec<u8>> {
 	let mut storage = chain_spec.build_storage()?;
 
 	storage
@@ -351,8 +351,10 @@ pub fn run() -> Result<()> {
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 
-			let raw_wasm_blob =
-				extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
+			let raw_wasm_blob = extract_genesis_wasm(
+				cli.load_spec(&params.chain.clone().unwrap_or_default())?
+					.as_ref(),
+			)?;
 			let output_buf = if params.raw {
 				raw_wasm_blob
 			} else {
