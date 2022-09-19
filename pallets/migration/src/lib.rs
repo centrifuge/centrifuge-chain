@@ -354,7 +354,6 @@ pub mod pallet {
 								deposit,
 								len
 							));
-							()
 						});
 			}
 
