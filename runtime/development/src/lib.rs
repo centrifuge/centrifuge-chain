@@ -1207,7 +1207,7 @@ where
 			recv,
 			id,
 			amount: _amount,
-		} = details.clone();
+		} = details;
 
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {

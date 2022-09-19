@@ -503,7 +503,7 @@ pub async fn start_altair_node(
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client.clone()).into_rpc())
+				.merge(Pools::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
@@ -662,7 +662,7 @@ pub async fn start_centrifuge_node(
 		|client, pool, deny_unsafe| {
 			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
-				.merge(Anchors::new(client.clone()).into_rpc())
+				.merge(Anchors::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
@@ -824,7 +824,7 @@ pub async fn start_development_node(
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client.clone()).into_rpc())
+				.merge(Pools::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},

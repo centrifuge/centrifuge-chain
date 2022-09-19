@@ -232,25 +232,21 @@ pub mod pallet {
 
 			let key_id: KeyId<T::Hash> = (add_key.key, add_key.purpose.clone());
 
-			<Keys<T>>::try_mutate(
-				account_id.clone(),
-				key_id.clone(),
-				|key_opt| -> DispatchResult {
-					match key_opt {
-						Some(_) => Err(Error::<T>::KeyAlreadyExists.into()),
-						None => {
-							let _ = key_opt.insert(Key {
-								purpose: add_key.purpose.clone(),
-								key_type: add_key.key_type.clone(),
-								revoked_at: None,
-								deposit: key_deposit,
-							});
+			<Keys<T>>::try_mutate(account_id.clone(), key_id, |key_opt| -> DispatchResult {
+				match key_opt {
+					Some(_) => Err(Error::<T>::KeyAlreadyExists.into()),
+					None => {
+						let _ = key_opt.insert(Key {
+							purpose: add_key.purpose.clone(),
+							key_type: add_key.key_type.clone(),
+							revoked_at: None,
+							deposit: key_deposit,
+						});
 
-							Ok(())
-						}
+						Ok(())
 					}
-				},
-			)?;
+				}
+			})?;
 
 			<LastKeyByPurpose<T>>::insert(account_id.clone(), add_key.purpose.clone(), add_key.key);
 

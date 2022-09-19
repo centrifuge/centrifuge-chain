@@ -659,7 +659,7 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		Pallet::<T>::do_collect_invest(who.clone(), investment_id)?;
-		Pallet::<T>::do_collect_redeem(who.clone(), investment_id)
+		Pallet::<T>::do_collect_redeem(who, investment_id)
 	}
 
 	#[allow(clippy::type_complexity)]
@@ -747,7 +747,7 @@ where
 
 		Self::deposit_event(Event::InvestOrdersCollected {
 			investment_id,
-			who: who.clone(),
+			who,
 			processed_orders: collected_ids,
 			collection,
 			outcome: if last_processed_order_id == cur_order_id {
@@ -846,7 +846,7 @@ where
 
 		Self::deposit_event(Event::RedeemOrdersCollected {
 			investment_id,
-			who: who.clone(),
+			who,
 			processed_orders: collected_ids,
 			collection,
 			outcome: if last_processed_order_id == cur_order_id {

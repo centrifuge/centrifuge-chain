@@ -110,7 +110,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.inspect_epoch_solution(&at, pool_id, solution.clone())
+		api.inspect_epoch_solution(&at, pool_id, solution)
 			.map_err(|e| runtime_error("Unable to query inspection for epoch solution", e))?
 			.ok_or(invalid_params_error("Pool not found or invalid solution"))
 	}
@@ -128,7 +128,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
+		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id))
 			.map_err(|e| runtime_error("Unable to query tranche token price", e))?
 			.ok_or(invalid_params_error("Pool or tranche not found"))
 	}
@@ -194,7 +194,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
+		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id))
 			.map_err(|e| runtime_error("Unable to query tranche currency.", e))?
 			.ok_or(invalid_params_error("Pool or tranche not found."))
 	}

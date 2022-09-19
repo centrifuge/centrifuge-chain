@@ -175,7 +175,7 @@ pub mod pallet {
 
 			self.resources.iter().for_each(|i| {
 				let (rid, m) = (i.0, i.1.clone());
-				<chainbridge::Pallet<T>>::register_resource(rid, m.clone()).unwrap_or_default();
+				<chainbridge::Pallet<T>>::register_resource(rid, m).unwrap_or_default();
 			});
 
 			<chainbridge::Pallet<T>>::set_relayer_threshold(self.threshold).unwrap_or_default();

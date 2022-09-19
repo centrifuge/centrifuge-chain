@@ -251,6 +251,7 @@ pub trait PreConditions<T> {
 
 #[impl_for_tuples(1, 10)]
 #[tuple_types_custom_trait_bound(PreConditions<T, Result = bool>)]
+#[allow(clippy::redundant_clone)]
 impl<T> PreConditions<T> for Tuple
 where
 	T: Clone,

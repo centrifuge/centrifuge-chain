@@ -686,7 +686,6 @@ pub mod pallet {
 			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
 				Some(metadata_value) => {
 					let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
-						.clone()
 						.try_into()
 						.map_err(|_| Error::<T>::BadMetadata)?;
 
@@ -786,7 +785,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					who.clone(),
+					who,
 					Role::PoolRole(PoolRole::PoolAdmin)
 				),
 				BadOrigin
@@ -908,16 +907,14 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					who.clone(),
+					who,
 					Role::PoolRole(PoolRole::PoolAdmin)
 				),
 				BadOrigin
 			);
 
-			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata
-				.clone()
-				.try_into()
-				.map_err(|_| Error::<T>::BadMetadata)?;
+			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
+				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
@@ -947,7 +944,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					who.clone(),
+					who,
 					Role::PoolRole(PoolRole::LiquidityAdmin)
 				),
 				BadOrigin
@@ -1739,7 +1736,7 @@ pub mod pallet {
 				pool_id,
 				tranche_id,
 				end_epoch_id: end_epoch,
-				account: who.clone(),
+				account: who,
 				outstanding_collections: OutstandingCollections {
 					payout_currency_amount: collections.payout_currency_amount,
 					payout_token_amount: collections.payout_token_amount,
