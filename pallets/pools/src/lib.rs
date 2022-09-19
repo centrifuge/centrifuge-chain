@@ -1877,7 +1877,7 @@ pub mod pallet {
 					Self::parse_redeem_executions(&epoch, &mut outstanding)?;
 				}
 
-				epoch_idx = epoch_idx + One::one();
+				epoch_idx += One::one();
 				all_calculated = outstanding.remaining_invest_currency == Zero::zero()
 					&& outstanding.remaining_redeem_token == Zero::zero();
 			}
