@@ -170,14 +170,13 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					who.clone(),
+					who,
 					Role::PoolRole(PoolRole::PoolAdmin)
 				),
 				BadOrigin,
 			);
 
 			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata
-				.clone()
 				.try_into()
 				.map_err(|_| Error::<T>::BadMetadata)?;
 
