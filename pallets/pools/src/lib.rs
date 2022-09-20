@@ -246,6 +246,20 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 type PoolDepositOf<T> =
 	PoolDepositInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
+type ScheduledUpdateDetailsOf<T> = ScheduledUpdateDetails<
+	<T as Config>::InterestRate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::MaxTranches,
+>;
+
+type PoolChangesOf<T> = PoolChanges<
+	<T as Config>::InterestRate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::MaxTranches,
+>;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::PoolUpdateGuard;
@@ -329,12 +343,7 @@ pub mod pallet {
 
 		type UpdateGuard: PoolUpdateGuard<
 			PoolDetails = PoolDetailsOf<Self>,
-			ScheduledUpdateDetails = ScheduledUpdateDetails<
-				Self::InterestRate,
-				Self::MaxTokenNameLength,
-				Self::MaxTokenSymbolLength,
-				Self::MaxTranches,
-			>,
+			ScheduledUpdateDetails = ScheduledUpdateDetailsOf<Self>,
 			Moment = Moment,
 		>;
 
@@ -789,12 +798,7 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges<
-				T::InterestRate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-				T::MaxTranches,
-			>,
+			changes: PoolChangesOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -1619,12 +1623,7 @@ pub mod pallet {
 
 		pub(crate) fn do_update_pool(
 			pool_id: &T::PoolId,
-			changes: &PoolChanges<
-				T::InterestRate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-				T::MaxTranches,
-			>,
+			changes: &PoolChangesOf<T>,
 		) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
