@@ -106,7 +106,7 @@ pub mod pallet {
 		/// This type was initially declared in the bridge pallet but was moved here
 		/// to avoid circular dependencies.
 		#[pallet::constant]
-		type HashId: Get<ResourceId>;
+		type ResourceHashId: Get<ResourceId>;
 
 		/// Additional fee charged for validating NFT proof (when minting a NFT).
 		#[pallet::constant]
@@ -188,14 +188,14 @@ pub mod pallet {
 
 			// Returns a Ethereum-compatible Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
 			let bundled_hash = Self::get_bundled_hash_from_proofs(proofs, deposit_address);
-			Self::deposit_event(Event::<T>::DepositAsset(bundled_hash)); //
+			Self::deposit_event(Event::<T>::DepositAsset(bundled_hash));
 
 			let metadata = bundled_hash.as_ref().to_vec();
 
 			// Burn additional fees from the calling account
 			T::Fees::fee_to_burn(&who, Fee::Key(T::NftProofValidationFeeKey::get()))?;
 
-			let resource_id: ResourceId = T::HashId::get().into();
+			let resource_id: ResourceId = T::ResourceHashId::get().into();
 			<chainbridge::Pallet<T>>::transfer_generic(dest_id.into(), resource_id, metadata)?;
 
 			Ok(().into())

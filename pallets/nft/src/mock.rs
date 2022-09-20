@@ -221,15 +221,15 @@ impl pallet_anchors::Config for MockRuntime {
 
 // Parameterize NFT pallet
 parameter_types! {
-	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+	pub MockResourceHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
 // Implement NFT pallet's configuration trait for the mock runtime
 impl PalletNftConfig for MockRuntime {
 	type ChainId = ChainId;
 	type Event = Event;
-	type HashId = MockHashId;
 	type NftProofValidationFeeKey = ();
+	type ResourceHashId = MockResourceHashId;
 	type WeightInfo = MockWeightInfo;
 }
 
