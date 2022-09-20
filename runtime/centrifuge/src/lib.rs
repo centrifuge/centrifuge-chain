@@ -991,7 +991,8 @@ impl Contains<Call> for BaseCallFilter {
 					unimplemented!()
 				}
 			},
-			Call::XTokens(method) => match method {
+			Call::XTokens(method) => !matches!(
+				method,
 				orml_xtokens::Call::transfer {
 					currency_id: CurrencyId::Tranche(_, _),
 					..
@@ -1005,10 +1006,8 @@ impl Contains<Call> for BaseCallFilter {
 				| orml_xtokens::Call::transfer_multiasset { .. }
 				| orml_xtokens::Call::transfer_multiasset_with_fee { .. }
 				| orml_xtokens::Call::transfer_multiassets { .. }
-				| orml_xtokens::Call::transfer_multicurrencies { .. } => false,
-				// Any other XTokens call is good to go
-				_ => true,
-			},
+				| orml_xtokens::Call::transfer_multicurrencies { .. }
+			),
 			_ => true,
 		}
 	}

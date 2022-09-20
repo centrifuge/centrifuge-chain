@@ -676,10 +676,10 @@ impl<T: Config> Pallet<T> {
 					WriteOffAction::WriteOffToCurrentGroup => {
 						// Loans that were already written off by an admin,
 						// cannot be written off to the current group anymore.
-						let is_written_off_by_admin = match active_loan.write_off_status {
-							WriteOffStatus::WrittenOffByAdmin { .. } => true,
-							_ => false,
-						};
+						let is_written_off_by_admin = matches!(
+							active_loan.write_off_status,
+							WriteOffStatus::WrittenOffByAdmin { .. }
+						);
 						ensure!(!is_written_off_by_admin, Error::<T>::WrittenOffByAdmin);
 
 						let maturity_date = active_loan
