@@ -241,38 +241,6 @@ pub mod pallet {
 	pub(super) type UploadAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	// ------------------------------------------------------------------------
-	// Pallet genesis configuration
-	// ------------------------------------------------------------------------
-
-	// The genesis configuration type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {
-		// nothing to do folks!!!!
-	}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {
-                // nothing to do folks!!!!
-            }
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {
-			// nothing to do folks!!!!
-		}
-	}
-
-	// ----------------------------------------------------------------------------
-	// Pallet lifecycle hooks
-	// ----------------------------------------------------------------------------
-
-	// ------------------------------------------------------------------------
 	// Pallet errors
 	// ------------------------------------------------------------------------
 

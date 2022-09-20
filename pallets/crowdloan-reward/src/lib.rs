@@ -238,35 +238,6 @@ pub mod pallet {
 	pub(super) type VestingStart<T: Config> = StorageValue<_, T::BlockNumber>;
 
 	// ----------------------------------------------------------------------------
-	// Pallet genesis configuration
-	// ----------------------------------------------------------------------------
-
-	/// Pallet genesis configuration type declaration.
-	///
-	/// It allows to build genesis storage.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
-
-	// ----------------------------------------------------------------------------
-	// Pallet lifecycle hooks
-	// ----------------------------------------------------------------------------
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-	// ----------------------------------------------------------------------------
 	// Pallet errors
 	// ----------------------------------------------------------------------------
 

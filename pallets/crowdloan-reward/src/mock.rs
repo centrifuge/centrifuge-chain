@@ -53,7 +53,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Vesting: pallet_vesting::{Pallet, Call, Config<T>, Storage, Event<T>},
-		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Config, Storage, Event<T>},
+		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
