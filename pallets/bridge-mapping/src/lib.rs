@@ -54,7 +54,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_nft::Config {
+	pub trait Config: frame_system::Config {
 		/// A local mapping of a resource id.
 		///
 		/// This associated type represents anything that a resource id might map to.
@@ -64,6 +64,15 @@ pub mod pallet {
 
 		/// Admin is able to set/remove resource mappings.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
+
+		/// Resource id type
+		type ResourceId: Member
+			+ Default
+			+ codec::FullCodec
+			+ Into<[u8; 32]>
+			+ From<[u8; 32]>
+			+ MaybeSerializeDeserialize
+			+ TypeInfo;
 
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;

@@ -20,7 +20,7 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use cfg_primitives::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
+use cfg_primitives::{Balance, CFG};
 use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -68,6 +68,9 @@ pub(crate) const USER_B: u64 = 0x2;
 
 // Initial balance for user A
 pub(crate) const USER_A_INITIAL_BALANCE: Balance = 100 * CFG;
+
+/// Additional fee charged when validating NFT proofs
+pub(crate) const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -205,7 +208,7 @@ impl_mock_fees_state!(
 	<MockRuntime as frame_system::Config>::AccountId,
 	Balance,
 	(),
-	|_key| 0
+	|_key| NFT_PROOF_VALIDATION_FEE
 );
 
 impl pallet_anchors::Config for MockRuntime {
@@ -218,17 +221,15 @@ impl pallet_anchors::Config for MockRuntime {
 
 // Parameterize NFT pallet
 parameter_types! {
-	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
-	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+	pub MockResourceHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
 // Implement NFT pallet's configuration trait for the mock runtime
 impl PalletNftConfig for MockRuntime {
 	type ChainId = ChainId;
 	type Event = Event;
-	type HashId = MockHashId;
-	type NftProofValidationFee = NftProofValidationFee;
-	type ResourceId = ResourceId;
+	type NftProofValidationFeeKey = ();
+	type ResourceHashId = MockResourceHashId;
 	type WeightInfo = MockWeightInfo;
 }
 
