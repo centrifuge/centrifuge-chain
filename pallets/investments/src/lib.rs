@@ -683,19 +683,14 @@ where
 	}
 
 	fn rm_empty(amount: T::Amount, storage_order: &mut Option<OrderOf<T>>, on_not_empty: Event<T>) {
-		let remove_user_order = if amount > T::Amount::zero() {
+		if amount > T::Amount::zero() {
 			Self::deposit_event(on_not_empty);
-			false
 		} else {
 			// In this case the user has no active position.
 			// We remove the order from the system then.
 			// This is also important in cases where all redemptions
 			// where fulfilled before the order reached the current OrderId
 			// counter. Users can in this case now simply submit a new order.
-			true
-		};
-
-		if remove_user_order {
 			*storage_order = None;
 		}
 	}
