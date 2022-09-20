@@ -195,7 +195,7 @@ pub mod pallet {
 			// Burn additional fees from the calling account
 			T::Fees::fee_to_burn(&who, Fee::Key(T::NftProofValidationFeeKey::get()))?;
 
-			let resource_id: ResourceId = T::ResourceHashId::get().into();
+			let resource_id: ResourceId = T::ResourceHashId::get();
 			<chainbridge::Pallet<T>>::transfer_generic(dest_id.into(), resource_id, metadata)?;
 
 			Ok(().into())

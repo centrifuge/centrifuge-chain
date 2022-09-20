@@ -226,11 +226,12 @@ pub mod pallet {
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
 			Rate::<T>::get(interest_rate_per_sec)
-				.ok_or(Error::<T>::NoSuchRate.into())
+				.ok_or(Error::<T>::NoSuchRate)
 				.and_then(|rate| {
 					Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-						.ok_or(Error::<T>::DebtCalculationFailed.into())
+						.ok_or(Error::<T>::DebtCalculationFailed)
 				})
+				.map_err(Into::into)
 		}
 
 		pub fn get_previous_debt(
@@ -250,8 +251,9 @@ pub mod pallet {
 					.accumulated_rate
 					.checked_div(&rate_adjustment)
 					.ok_or(ArithmeticError::Underflow)?;
-				Self::calculate_debt(normalized_debt, past_rate)
-					.ok_or(Error::<T>::DebtCalculationFailed.into())
+				let debt = Self::calculate_debt(normalized_debt, past_rate)
+					.ok_or(Error::<T>::DebtCalculationFailed)?;
+				Ok(debt)
 			} else {
 				Err(Error::<T>::NoSuchRate.into())
 			}

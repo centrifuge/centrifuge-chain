@@ -194,7 +194,7 @@ impl SubstrateCli for RelayChainCli {
 	}
 }
 
-fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<Vec<u8>> {
+fn extract_genesis_wasm(chain_spec: &dyn sc_service::ChainSpec) -> Result<Vec<u8>> {
 	let mut storage = chain_spec.build_storage()?;
 
 	storage
@@ -328,7 +328,7 @@ pub fn run() -> Result<()> {
 				params.parachain_id.unwrap_or(10001).into(),
 			)?;
 
-			let state_version = Cli::native_runtime_version(&chain_spec).state_version();
+			let state_version = Cli::native_runtime_version(chain_spec).state_version();
 			let block: Block = generate_genesis_block(&**chain_spec, state_version)?;
 
 			let raw_header = block.header().encode();
@@ -351,8 +351,10 @@ pub fn run() -> Result<()> {
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 
-			let raw_wasm_blob =
-				extract_genesis_wasm(&cli.load_spec(&params.chain.clone().unwrap_or_default())?)?;
+			let raw_wasm_blob = extract_genesis_wasm(
+				cli.load_spec(&params.chain.clone().unwrap_or_default())?
+					.as_ref(),
+			)?;
 			let output_buf = if params.raw {
 				raw_wasm_blob
 			} else {
@@ -374,7 +376,7 @@ pub fn run() -> Result<()> {
 			let chain_spec = &runner.config().chain_spec;
 
 			with_runtime!(chain_spec, {
-				return runner.async_run(|config| {
+				runner.async_run(|config| {
 					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
 					let task_manager =
 						sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
@@ -382,7 +384,7 @@ pub fn run() -> Result<()> {
 								sc_cli::Error::Service(sc_service::Error::Prometheus(e))
 							})?;
 					Ok((cmd.run::<Block, Executor>(config), task_manager))
-				});
+				})
 			})
 		}
 
@@ -408,11 +410,8 @@ pub fn run() -> Result<()> {
 					BenchmarkCmd::Block(_)
 					| BenchmarkCmd::Storage(_)
 					| BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
-					BenchmarkCmd::Machine(cmd) => {
-						return runner.sync_run(|config| {
-							cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())
-						});
-					}
+					BenchmarkCmd::Machine(cmd) => runner
+						.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
 				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \

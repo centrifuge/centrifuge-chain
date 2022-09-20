@@ -201,7 +201,7 @@ pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 	Rate::saturating_from_rational(maturity_date - origination_date, seconds_per_year())
 		.checked_mul(&pd)
 		.and_then(|val| val.checked_mul(&lgd))
-		.and_then(|tel| Some(tel.min(One::one())))
+		.map(|tel| tel.min(One::one()))
 }
 
 /// calculates expected cash flow from current debt till maturity at the given rate per second
@@ -230,6 +230,10 @@ pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOp
 	d.checked_mul_int(ra_ecf)
 }
 
+// These arguments are all passed from struct fields of the loan
+// types, so this pile of arguments are well-hidden from the main
+// logic of the code.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Balance: FixedPointOperand>(
 	debt: Balance,
 	interest_rate_per_sec: Rate,

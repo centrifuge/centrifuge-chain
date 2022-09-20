@@ -208,7 +208,7 @@ pub mod pallet {
 			instance_id: T::ItemId,
 			price: Price<CurrencyOf<T>, BalanceOf<T>>,
 		) -> DispatchResult {
-			let seller = ensure_signed(origin.clone())?;
+			let seller = ensure_signed(origin)?;
 
 			// Check that the seller is the owner of the nft
 			ensure!(
@@ -226,10 +226,7 @@ pub mod pallet {
 			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &Self::account())?;
 
 			// Put the nft for sale
-			let sale = Sale {
-				seller: seller.clone(),
-				price,
-			};
+			let sale = Sale { seller, price };
 			Self::do_add(class_id, instance_id, sale.clone());
 
 			Self::deposit_event(Event::ForSale {
@@ -256,7 +253,7 @@ pub mod pallet {
 			class_id: T::CollectionId,
 			instance_id: T::ItemId,
 		) -> DispatchResult {
-			let who = ensure_signed(origin.clone())?;
+			let who = ensure_signed(origin)?;
 			let sale = <Sales<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
 			// Ensure that the origin account is the seller of the NFT
@@ -266,7 +263,7 @@ pub mod pallet {
 			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &sale.seller)?;
 
 			// Remove the NFT
-			Self::do_remove(class_id, instance_id, sale.seller.clone());
+			Self::do_remove(class_id, instance_id, sale.seller);
 
 			Self::deposit_event(Event::Removed {
 				class_id,
@@ -320,7 +317,7 @@ pub mod pallet {
 				// Self::origin(),
 				&class_id.into(),
 				&instance_id.into(),
-				&buyer.clone(),
+				&buyer,
 			)?;
 
 			// Remove the NFT from the sales

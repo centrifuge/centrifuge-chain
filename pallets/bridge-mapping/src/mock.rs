@@ -32,7 +32,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage} = 8,
+		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Storage} = 8,
 	}
 );
 

@@ -15,6 +15,8 @@
 //!
 //! This pallet provides functionality of Storing anchors on Chain
 #![cfg_attr(not(feature = "std"), no_std)]
+// This pallet is getting a big refactor soon, so no sense doing clippy cleanups
+#![allow(clippy::all)]
 
 use cfg_traits::fees::{Fee, Fees};
 use codec::{Decode, Encode};

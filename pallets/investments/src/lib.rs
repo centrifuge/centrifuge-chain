@@ -28,7 +28,10 @@ use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
 	ArithmeticError, FixedPointNumber,
 };
-use sp_std::{cmp::min, convert::TryInto};
+use sp_std::{
+	cmp::{min, Ordering},
+	convert::TryInto,
+};
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -656,9 +659,10 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		Pallet::<T>::do_collect_invest(who.clone(), investment_id)?;
-		Pallet::<T>::do_collect_redeem(who.clone(), investment_id)
+		Pallet::<T>::do_collect_redeem(who, investment_id)
 	}
 
+	#[allow(clippy::type_complexity)]
 	pub(crate) fn do_collect_invest(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
@@ -686,8 +690,8 @@ where
 							ClearedInvestOrders::<T>::try_get(investment_id, order_id)
 								.map_err(|_| Error::<T>::OrderNotCleared)?;
 
-						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, &order)?;
-						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, &order)?;
+						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, order)?;
+						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, order)?;
 						collected.push(order_id);
 					}
 
@@ -743,7 +747,7 @@ where
 
 		Self::deposit_event(Event::InvestOrdersCollected {
 			investment_id,
-			who: who.clone(),
+			who,
 			processed_orders: collected_ids,
 			collection,
 			outcome: if last_processed_order_id == cur_order_id {
@@ -757,6 +761,7 @@ where
 		Ok(().into())
 	}
 
+	#[allow(clippy::type_complexity)]
 	pub(crate) fn do_collect_redeem(
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
@@ -784,8 +789,8 @@ where
 							ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
 								.map_err(|_| Error::<T>::OrderNotCleared)?;
 
-						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, &order)?;
-						Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment, &order)?;
+						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, order)?;
+						Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment, order)?;
 						collected.push(order_id);
 					}
 
@@ -841,7 +846,7 @@ where
 
 		Self::deposit_event(Event::RedeemOrdersCollected {
 			investment_id,
-			who: who.clone(),
+			who,
 			processed_orders: collected_ids,
 			collection,
 			outcome: if last_processed_order_id == cur_order_id {
@@ -895,6 +900,7 @@ where
 		T::Accountant::transfer(info.id(), send, recv, transfer_amount)
 	}
 
+	#[allow(clippy::type_complexity)]
 	fn update_order_amount<'a>(
 		who: &'a T::AccountId,
 		pool: &'a T::AccountId,
@@ -902,30 +908,32 @@ where
 		new_order: T::Amount,
 		total_orders: &mut T::Amount,
 	) -> Result<(&'a T::AccountId, &'a T::AccountId, T::Amount), DispatchError> {
-		if new_order > *old_order {
-			let transfer_amount = new_order
-				.checked_sub(old_order)
-				.expect("New order larger than old order. qed.");
+		match new_order.cmp(old_order) {
+			Ordering::Greater => {
+				let transfer_amount = new_order
+					.checked_sub(old_order)
+					.expect("New order larger than old order. qed.");
 
-			*total_orders = total_orders
-				.checked_add(&transfer_amount)
-				.ok_or(ArithmeticError::Overflow)?;
+				*total_orders = total_orders
+					.checked_add(&transfer_amount)
+					.ok_or(ArithmeticError::Overflow)?;
 
-			*old_order = new_order;
-			Ok((who, pool, transfer_amount))
-		} else if new_order < *old_order {
-			let transfer_amount = old_order
-				.checked_sub(&new_order)
-				.expect("Old order larger than new order. qed.");
+				*old_order = new_order;
+				Ok((who, pool, transfer_amount))
+			}
+			Ordering::Less => {
+				let transfer_amount = old_order
+					.checked_sub(&new_order)
+					.expect("Old order larger than new order. qed.");
 
-			*total_orders = total_orders
-				.checked_sub(&transfer_amount)
-				.ok_or(ArithmeticError::Underflow)?;
+				*total_orders = total_orders
+					.checked_sub(&transfer_amount)
+					.ok_or(ArithmeticError::Underflow)?;
 
-			*old_order = new_order;
-			Ok((pool, who, transfer_amount))
-		} else {
-			Err(Error::<T>::NoNewOrder.into())
+				*old_order = new_order;
+				Ok((pool, who, transfer_amount))
+			}
+			Ordering::Equal => Err(Error::<T>::NoNewOrder.into()),
 		}
 	}
 
@@ -1283,11 +1291,9 @@ where
 					.amount
 					.checked_sub(&redeem_amount)
 					.ok_or(ArithmeticError::Underflow)?;
-				let investment_account = InvestmentAccount {
-					investment_id: investment_id.clone(),
-				}
-				.into_account_truncating();
-				let info = T::Accountant::info(investment_id.clone())?;
+				let investment_account =
+					InvestmentAccount { investment_id }.into_account_truncating();
+				let info = T::Accountant::info(investment_id)?;
 
 				T::Tokens::transfer(
 					info.payment_currency(),
@@ -1320,11 +1326,7 @@ where
 					.checked_sub(1)
 					.ok_or(ArithmeticError::Underflow)?;
 
-				ClearedRedeemOrders::<T>::insert(
-					investment_id.clone(),
-					order_id,
-					fulfillment.clone(),
-				);
+				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
 				ActiveRedeemOrder::<T>::try_mutate(

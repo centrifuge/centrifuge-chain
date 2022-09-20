@@ -166,7 +166,7 @@ pub mod pallet {
 		pub fn add_keys(origin: OriginFor<T>, keys: Vec<AddKey<T::Hash>>) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			ensure!(keys.len() > 0, Error::<T>::NoKeys);
+			ensure!(!keys.is_empty(), Error::<T>::NoKeys);
 			ensure!(
 				keys.len() <= T::MaxKeys::get() as usize,
 				Error::<T>::TooManyKeys
@@ -175,7 +175,7 @@ pub mod pallet {
 			let key_deposit = <KeyDeposit<T>>::get();
 
 			for add_key in keys {
-				Self::add_key(account_id.clone(), add_key.clone(), key_deposit.clone())?;
+				Self::add_key(account_id.clone(), add_key.clone(), key_deposit)?;
 			}
 
 			Ok(())
@@ -190,7 +190,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			ensure!(keys.len() > 0, Error::<T>::NoKeys);
+			ensure!(!keys.is_empty(), Error::<T>::NoKeys);
 			ensure!(
 				keys.len() <= T::MaxKeys::get() as usize,
 				Error::<T>::TooManyKeys
@@ -230,33 +230,25 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::Currency::reserve(&account_id, key_deposit)?;
 
-			let key_id: KeyId<T::Hash> = (add_key.key.clone(), add_key.purpose.clone());
+			let key_id: KeyId<T::Hash> = (add_key.key, add_key.purpose.clone());
 
-			<Keys<T>>::try_mutate(
-				account_id.clone(),
-				key_id.clone(),
-				|key_opt| -> DispatchResult {
-					match key_opt {
-						Some(_) => Err(Error::<T>::KeyAlreadyExists.into()),
-						None => {
-							let _ = key_opt.insert(Key {
-								purpose: add_key.purpose.clone(),
-								key_type: add_key.key_type.clone(),
-								revoked_at: None,
-								deposit: key_deposit,
-							});
+			<Keys<T>>::try_mutate(account_id.clone(), key_id, |key_opt| -> DispatchResult {
+				match key_opt {
+					Some(_) => Err(Error::<T>::KeyAlreadyExists.into()),
+					None => {
+						let _ = key_opt.insert(Key {
+							purpose: add_key.purpose.clone(),
+							key_type: add_key.key_type.clone(),
+							revoked_at: None,
+							deposit: key_deposit,
+						});
 
-							Ok(())
-						}
+						Ok(())
 					}
-				},
-			)?;
+				}
+			})?;
 
-			<LastKeyByPurpose<T>>::insert(
-				account_id.clone(),
-				add_key.purpose.clone(),
-				add_key.key.clone(),
-			);
+			<LastKeyByPurpose<T>>::insert(account_id.clone(), add_key.purpose.clone(), add_key.key);
 
 			Self::deposit_event(Event::KeyAdded {
 				owner: account_id,
@@ -280,26 +272,22 @@ pub mod pallet {
 			<Keys<T>>::try_mutate(
 				account_id.clone(),
 				key_id,
-				|storage_key_opt| -> DispatchResult {
-					match storage_key_opt {
-						Some(storage_key) => {
-							if storage_key.revoked_at.is_some() {
-								return Err(Error::<T>::KeyAlreadyRevoked.into());
-							}
-
-							let block_number = <frame_system::Pallet<T>>::block_number();
-							storage_key.revoked_at = Some(block_number.clone());
-
-							Self::deposit_event(Event::KeyRevoked {
-								owner: account_id,
-								key,
-								block_number,
-							});
-
-							Ok(())
-						}
-						None => return Err(Error::<T>::KeyNotFound.into()),
+				|storage_key| -> DispatchResult {
+					let storage_key = storage_key.as_mut().ok_or(Error::<T>::KeyNotFound)?;
+					if storage_key.revoked_at.is_some() {
+						return Err(Error::<T>::KeyAlreadyRevoked.into());
 					}
+
+					let block_number = <frame_system::Pallet<T>>::block_number();
+					storage_key.revoked_at = Some(block_number);
+
+					Self::deposit_event(Event::KeyRevoked {
+						owner: account_id,
+						key,
+						block_number,
+					});
+
+					Ok(())
 				},
 			)
 		}

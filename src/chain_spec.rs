@@ -790,10 +790,7 @@ fn centrifuge_genesis(
 				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
 				(
 					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
-					hex!["50616c6c65744272696467652e7472616e73666572"]
-						.iter()
-						.cloned()
-						.collect(),
+					hex!["50616c6c65744272696467652e7472616e73666572"].to_vec(),
 				),
 			],
 			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
@@ -993,10 +990,7 @@ fn development_genesis(
 				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
 				(
 					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
-					hex!["50616c6c65744272696467652e7472616e73666572"]
-						.iter()
-						.cloned()
-						.collect(),
+					hex!["50616c6c65744272696467652e7472616e73666572"].to_vec(),
 				),
 			],
 			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
