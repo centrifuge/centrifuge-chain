@@ -852,7 +852,8 @@ impl
 				Role::PoolRole(PoolRole::PoolAdmin) => match *role {
 					// PoolAdmins can manage all other admins, but not tranche investors
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => false,
-					_ => true,
+					Role::PoolRole(..) => true,
+					_ => false,
 				},
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
 					// MemberlistAdmins can manage tranche investors
