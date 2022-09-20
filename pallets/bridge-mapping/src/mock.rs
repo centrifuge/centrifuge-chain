@@ -66,6 +66,7 @@ impl system::Config for Test {
 impl pallet_bridge_mapping::Config for Test {
 	type Address = EthAddress;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type ResourceId = [u8; 32];
 	type WeightInfo = ();
 }
 

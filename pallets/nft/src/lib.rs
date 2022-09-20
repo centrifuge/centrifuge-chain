@@ -40,7 +40,7 @@ mod weights;
 // Export crate types and traits
 use cfg_primitives::types::FixedArray;
 use cfg_traits::fees::{Fee, Fees};
-pub use chainbridge::types::ResourceId;
+use chainbridge::types::ResourceId;
 use codec::FullCodec;
 pub use pallet::*;
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};

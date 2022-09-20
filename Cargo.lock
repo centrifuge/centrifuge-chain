@@ -5763,7 +5763,6 @@ dependencies = [
  "cfg-primitives",
  "frame-support",
  "frame-system",
- "pallet-nft",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

@@ -16,7 +16,6 @@ scale-info = { version = "2.0", default-features = false, features = ["derive"] 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
-pallet-nft = { path = "../nft", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
@@ -31,6 +30,5 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'sp-runtime/std',
-    'pallet-nft/std',
 ]
 
