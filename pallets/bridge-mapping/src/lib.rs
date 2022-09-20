@@ -36,6 +36,7 @@ mod mock;
 mod tests;
 
 pub mod weights;
+use pallet_nft::ResourceId;
 pub use weights::*;
 
 #[frame_support::pallet]
@@ -95,14 +96,14 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn addr_of)]
 	pub(super) type ResourceToAddress<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::ResourceId, T::Address>;
+		StorageMap<_, Blake2_128Concat, ResourceId, T::Address>;
 
 	/// Maps a chain-specific address to a resource id. A mapping in [ResourceToAddress] will
 	/// always correspond to a mapping here. Resources and addresses are 1 to 1.
 	#[pallet::storage]
 	#[pallet::getter(fn name_of)]
 	pub(super) type AddressToResource<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::Address, T::ResourceId>;
+		StorageMap<_, Blake2_128Concat, T::Address, ResourceId>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -111,7 +112,7 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set())]
 		pub fn set(
 			origin: OriginFor<T>,
-			rid: T::ResourceId,
+			rid: ResourceId,
 			local_addr: T::Address,
 		) -> DispatchResult {
 			Self::ensure_admin_or_root(origin)?;
@@ -122,7 +123,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove())]
-		pub fn remove(origin: OriginFor<T>, rid: T::ResourceId) -> DispatchResult {
+		pub fn remove(origin: OriginFor<T>, rid: ResourceId) -> DispatchResult {
 			Self::ensure_admin_or_root(origin)?;
 
 			// Call internal
@@ -141,14 +142,14 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Add a new resource mapping in [Names]. Existing entries will be overwritten.
-	pub fn set_resource(rid: T::ResourceId, local_addr: T::Address) {
+	pub fn set_resource(rid: ResourceId, local_addr: T::Address) {
 		// Add the mapping both ways
 		<ResourceToAddress<T>>::insert(rid.clone(), local_addr.clone());
 		<AddressToResource<T>>::insert(local_addr, rid);
 	}
 
 	/// Remove a resource mapping in [Names].
-	pub fn remove_resource(rid: &T::ResourceId) {
+	pub fn remove_resource(rid: &ResourceId) {
 		// If it doesn't exist for some unexpected reason, still allow removal by setting default
 		let address = <ResourceToAddress<T>>::get(rid).unwrap_or_default();
 		// Remove the resource mapping both ways

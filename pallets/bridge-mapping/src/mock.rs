@@ -30,7 +30,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::{self as pallet_bridge_mapping, Config as PalletBridgeMappingConfig};
+use crate::{self as pallet_bridge_mapping};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -127,7 +127,6 @@ impl pallet_timestamp::Config for Test {
 
 // Parameterize NFT pallet
 parameter_types! {
-	pub const NftProofValidationFee: u128 = 100;
 	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
@@ -136,8 +135,7 @@ impl pallet_nft::Config for Test {
 	type ChainId = ChainId;
 	type Event = Event;
 	type HashId = MockHashId;
-	type NftProofValidationFee = NftProofValidationFee;
-	type ResourceId = ResourceId;
+	type NftProofValidationFeeKey = ();
 	type WeightInfo = ();
 }
 
@@ -177,7 +175,7 @@ impl chainbridge::Config for Test {
 }
 
 // Implement Centrifuge Chain bridge mapping pallet configuration trait for the mock runtime
-impl PalletBridgeMappingConfig for Test {
+impl pallet_bridge_mapping::Config for Test {
 	type Address = EthAddress;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type WeightInfo = ();

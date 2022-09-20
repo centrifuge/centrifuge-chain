@@ -1342,15 +1342,14 @@ impl chainbridge::Config for Runtime {
 
 parameter_types! {
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
-	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+	pub const NftProofValidationFeeKey: FeeKey = FeeKey::NftProofValidation;
 }
 
 impl pallet_nft::Config for Runtime {
 	type ChainId = chainbridge::ChainId;
 	type Event = Event;
 	type HashId = HashId;
-	type NftProofValidationFee = NftProofValidationFee;
-	type ResourceId = chainbridge::ResourceId;
+	type NftProofValidationFeeKey = NftProofValidationFeeKey;
 	type WeightInfo = ();
 }
 

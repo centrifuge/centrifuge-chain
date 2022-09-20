@@ -218,9 +218,6 @@ pub mod constants {
 	/// Value for a not specified fee key.
 	pub const DEFAULT_FEE_VALUE: Balance = 1 * CFG;
 
-	/// Additional fee charged when validating NFT proofs
-	pub const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
-
 	/// % of fee addressed to the Treasury. The reminder % will be for the block author.
 	pub const TREASURY_FEE_RATIO: Perbill = Perbill::from_percent(80);
 
