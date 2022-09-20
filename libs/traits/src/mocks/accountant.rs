@@ -20,7 +20,7 @@
 /// * E.g.: `MockAccountant<Tokens: frame_support::traits::tokens::fungibles::{Inspect, Mutate, Transfer}>`
 ///
 /// # Example macro usage:
-/// ```rust
+/// ```ignore
 /// use cfg_traits::impl_mock_accountant;
 /// use cfg_primitives::{PoolId, TrancheId, Balance};
 /// use cfg_types::CurrencyId;
@@ -46,17 +46,18 @@
 ///     AccountId,
 ///     InvestmentId,
 ///     CurrencyId,
-///     Balance,
+///     Balance
 /// );
 ///
 /// // Using the `GenesisConfig`
-/// let storage = GenesisBuild::build_storage(accountant_mock::GenesisConfig {
+/// use accountant_mock::InvestmentInfo;
+/// let storage = GenesisBuild::build_storage(&accountant_mock::GenesisConfig {
 ///			infos: vec![
 /// 			(
 /// 				InvestmentId::Tranche(0, [0;16]),
 /// 				accountant_mock::InvestmentInfo {
 /// 					owner: 1,
-/// 					id: InvestmentId::Tranche(0, [0;16]),
+/// 					id: InvestmentId::Tranches(0, [0;16]),
 /// 					payment_currency:CurrencyId::AUSD
 /// 				}
 /// 			)
