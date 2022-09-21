@@ -631,21 +631,13 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidWriteOffGroup
 		);
 
-		// ensure we have not exceeded the max number of write off groups
-		let number_of_write_off_groups = PoolWriteOffGroups::<T>::get(pool_id).len();
-		ensure!(
-			number_of_write_off_groups < T::MaxWriteOffGroups::get() as usize,
-			Error::<T>::TooManyWriteOffGroups
-		);
-
 		// append new group
-		let index = PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| -> u32 {
-			write_off_groups.push(group);
-			// return the index of the latest write off group
-			(write_off_groups.len() - 1) as u32
-		});
-
-		Ok(index)
+		PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| {
+			write_off_groups
+				.try_push(group)
+				.map(|_| (write_off_groups.len() - 1) as u32)
+				.map_err(|_| Error::<T>::TooManyWriteOffGroups.into())
+		})
 	}
 
 	/// writes off a given unhealthy loan
