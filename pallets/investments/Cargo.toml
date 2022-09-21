@@ -19,22 +19,22 @@ scale-info = { version = "2.0", default-features = false, features = ["derive"] 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false , optional = true , branch = "polkadot-v0.9.26" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
-pallet-permissions = { path = "../../pallets/permissions", default-features = false}
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.26" }
 runtime-common = { path = "../../runtime/common", default-features = true }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true}
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
+cfg-types = { path = "../../libs/types", default-features = true }
 rand = "0.8.5"
 
 
@@ -43,14 +43,14 @@ default = ['std']
 runtime-benchmarks = ['frame-benchmarking']
 std = [
     'codec/std',
+    'scale-info/std',
     'frame-support/std',
     'frame-system/std',
-    'pallet-timestamp/std',
-    'pallet-permissions/std',
     'orml-traits/std',
     'cfg-traits/std',
     'sp-runtime/std',
     'sp-std/std',
-    'cfg-types/std'
+    'cfg-types/std',
+    'cfg-primitives/std'
 ]
 try-runtime = ['frame-support/try-runtime']

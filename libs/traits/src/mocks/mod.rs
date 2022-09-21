@@ -13,4 +13,5 @@
 //! Mocks of traits for usage in pallet-tests.
 //! Also does contain implementations for Substrate based traits for testing
 
+pub mod accountant;
 pub mod orml_asset_registry;

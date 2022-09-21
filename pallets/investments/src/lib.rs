@@ -13,14 +13,16 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use cfg_primitives::OrderId;
 use cfg_traits::{
 	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
 };
-use cfg_types::{FulfillmentWithPrice, InvestmentAccount, TotalOrder};
+use cfg_types::{FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder};
 use frame_support::{
 	error::BadOrigin,
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
+	weights::PostDispatchInfo,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -69,6 +71,20 @@ impl<Balance: Zero> Default for InvestCollection<Balance> {
 	}
 }
 
+impl<Balance: Zero + Copy> InvestCollection<Balance> {
+	/// Create a `InvestCollection` directly from an active invest order of
+	/// a user.
+	/// The field `remaining_investment_invest` is set to the
+	/// amount of the active invest order of the user and will
+	/// be subtracted from upon given fulfillment's
+	pub fn from_order(order: &Order<Balance, OrderId>) -> Self {
+		InvestCollection {
+			payout_investment_invest: Zero::zero(),
+			remaining_investment_invest: order.amount(),
+		}
+	}
+}
+
 /// The outstanding collections for an account
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct RedeemCollection<Balance> {
@@ -90,6 +106,20 @@ impl<Balance: Zero> Default for RedeemCollection<Balance> {
 		RedeemCollection {
 			payout_investment_redeem: Zero::zero(),
 			remaining_investment_redeem: Zero::zero(),
+		}
+	}
+}
+
+impl<Balance: Zero + Copy> RedeemCollection<Balance> {
+	/// Create a `RedeemCollection` directly from an active redeem order of
+	/// a user.
+	/// The field `remaining_investment_redeem` is set to the
+	/// amount of the active redeem order of the user and will
+	/// be subtracted from upon given fulfillment's
+	pub fn from_order(order: &Order<Balance, OrderId>) -> Self {
+		RedeemCollection {
+			payout_investment_redeem: Zero::zero(),
+			remaining_investment_redeem: order.amount(),
 		}
 	}
 }
@@ -123,16 +153,6 @@ pub enum CollectOutcome {
 /// A newtype for Order
 pub type OrderOf<T> = Order<<T as Config>::Amount, OrderId>;
 
-/// The order type of the pallet.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Order<Balance, OrderId> {
-	pub amount: Balance,
-	pub submitted_at: OrderId,
-}
-
-/// Our OrderId in the pallet.
-type OrderId = u64;
-
 /// Defining how the collect logic runs.
 /// CollectType::Closing will ensure, that all unfulfilled investments
 /// are returned to the user account.
@@ -149,8 +169,6 @@ pub enum CollectType {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use codec::HasCompact;
-	use frame_support::PalletId;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber, FixedPointOperand};
 
 	use super::*;
@@ -166,10 +184,7 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The underlying investments one can invest into
-		type InvestmentId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
-
-		/// Maximum number of collects that are permitted in one run.
-		type MaxCollects: Get<u64>;
+		type InvestmentId: Member + Parameter + Copy;
 
 		/// Something that knows how to handle accounting for the given investments
 		/// and provides metadata about them
@@ -201,13 +216,9 @@ pub mod pallet {
 			+ Copy
 			+ FixedPointNumber<Inner = Self::Amount>;
 
-		#[pallet::constant]
-		/// The address if this pallet
-		type PalletId: Get<PalletId>;
-
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
-		type MaxOutstandingCollects: Get<u32>;
+		type MaxOutstandingCollects: Get<u64>;
 
 		/// Something that can handle payments and transfers of
 		/// currencies
@@ -240,17 +251,16 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn invest_order_id)]
-	pub type InvestOrderId<T: Config> =
+	pub(crate) type InvestOrderId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_order_id)]
-	pub type RedeemOrderId<T: Config> =
+	pub(crate) type RedeemOrderId<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, OrderId, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn invest_orders)]
-	pub type InvestOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type InvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -260,8 +270,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn redeem_orders)]
-	pub type RedeemOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type RedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -272,27 +281,27 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_invest_order)]
-	pub type ActiveInvestOrder<T: Config> =
+	pub(crate) type ActiveInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_active_redeem_order)]
-	pub type ActiveRedeemOrder<T: Config> =
+	pub(crate) type ActiveRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_in_processing_invest_order)]
-	pub type InProcessingInvestOrders<T: Config> =
+	pub(crate) type InProcessingInvestOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn acc_in_processing_redeem_order)]
-	pub type InProcessingRedeemOrders<T: Config> =
+	pub(crate) type InProcessingRedeemOrders<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Amount>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn cleared_invest_order)]
-	pub type ClearedInvestOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type ClearedInvestOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
@@ -303,7 +312,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn cleared_redeem_order)]
-	pub type ClearedRedeemOrders<T: Config> = StorageDoubleMap<
+	pub(crate) type ClearedRedeemOrders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::InvestmentId,
@@ -351,38 +360,66 @@ pub mod pallet {
 			who: T::AccountId,
 			amount: T::Amount,
 		},
-		/// Order was fulfilled [investment_id, order_id, FulfillmentWithPrice]
-		InvestOrderCleared {
+		/// TotalOrders of investments were fulfilled [investment_id, order_id, FulfillmentWithPrice]
+		InvestOrdersCleared {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
 		},
-		/// Order was fulfilled [investment_id, order_id, FulfillmentWithPrice]
-		RedeemOrderCleared {
+		/// TotalOrders of redemptions were fulfilled [investment_id, order_id, FulfillmentWithPrice]
+		RedeemOrdersCleared {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
 		},
-		/// Order is in processing state [investment_id, order_id, TotalOrder]
-		InvestOrderInProcessing {
+		/// TotalOrders of investments are in processing state [investment_id, order_id, TotalOrder]
+		InvestOrdersInProcessing {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			total_order: TotalOrder<T::Amount>,
 		},
-		/// Order is in processing state [investment_id, order_id, TotalOrder]
-		RedeemOrderInProcessing {
+		/// TotalOrders of redemptions in processing state [investment_id, order_id, TotalOrder]
+		RedeemOrdersInProcessing {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			total_order: TotalOrder<T::Amount>,
+		},
+		/// Signals that a collect of investments call was successful but there
+		/// was no order of a user to collect from
+		InvestCollectedWithoutActivePosition {
+			who: T::AccountId,
+			investment_id: T::InvestmentId,
+		},
+		/// Signals that a collect of redemptions call was successful but there
+		/// was no order of a user to collect from
+		RedeemCollectedWithoutActivePosition {
+			who: T::AccountId,
+			investment_id: T::InvestmentId,
+		},
+		/// A collect call for the investments happened, but the current OrderId
+		/// is not yet cleared
+		InvestCollectedForNonClearedOrderId {
+			who: T::AccountId,
+			investment_id: T::InvestmentId,
+		},
+		/// A collect call for the redemptions happened, but the current OrderId
+		/// is not yet cleared
+		RedeemCollectedForNonClearedOrderId {
+			who: T::AccountId,
+			investment_id: T::InvestmentId,
 		},
 	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The order has been marked as cleared. It's either active or
+		/// The order has not been marked as cleared. It's either active or
 		/// in processing
 		OrderNotCleared,
+		/// The order a user tried to collect for is still active and
+		/// needs to be put in processing and then be cleared before
+		/// a collect is possible
+		OrderStillActive,
 		/// IvestmentManager does not now given investment
 		UnknownInvestment,
 		/// The user has to many uncollected orders. Before
@@ -462,34 +499,6 @@ pub mod pallet {
 			Self::do_collect_both(who, investment_id)
 		}
 
-		/// Collect the results of a users orders for the given investment.
-		/// The `CollectType` allows users to refund their funds if any
-		/// are not fulfilled or directly append them to the next acitve
-		/// order for this investment.
-		#[pallet::weight(0)]
-		pub fn collect_invest(
-			origin: OriginFor<T>,
-			investment_id: T::InvestmentId,
-		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-
-			Self::do_collect_invest(who, investment_id)
-		}
-
-		/// Collect the results of a users orders for the given investment.
-		/// The `CollectType` allows users to refund their funds if any
-		/// are not fulfilled or directly append them to the next acitve
-		/// order for this investment.
-		#[pallet::weight(0)]
-		pub fn collect_redeem(
-			origin: OriginFor<T>,
-			investment_id: T::InvestmentId,
-		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-
-			Self::do_collect_redeem(who, investment_id)
-		}
-
 		/// Collect the results of another users orders for the given investment.
 		///
 		/// The type of collection will always be `CollectType::Closing`.
@@ -502,34 +511,6 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			Self::do_collect_both(who, investment_id)
-		}
-
-		/// Collect the results of another users orders for the given investment.
-		///
-		/// The type of collection will always be `CollectType::Closing`.
-		#[pallet::weight(0)]
-		pub fn collect_invest_for(
-			origin: OriginFor<T>,
-			who: T::AccountId,
-			investment_id: T::InvestmentId,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-
-			Self::do_collect_invest(who, investment_id)
-		}
-
-		/// Collect the results of another users orders for the given investment.
-		///
-		/// The type of collection will always be `CollectType::Closing`.
-		#[pallet::weight(0)]
-		pub fn collect_redeem_for(
-			origin: OriginFor<T>,
-			who: T::AccountId,
-			investment_id: T::InvestmentId,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-
-			Self::do_collect_redeem(who, investment_id)
 		}
 	}
 }
@@ -554,20 +535,21 @@ where
 		);
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		let cur_order_id = ActiveInvestOrder::<T>::try_mutate(
+		let cur_order_id = ActiveInvestOrders::<T>::try_mutate(
 			&investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
 				InvestOrders::<T>::try_mutate(
 					&who,
 					&investment_id,
-					|order| -> Result<OrderId, DispatchError> {
-						let mut order = Pallet::<T>::invest_order_or_default(investment_id, order);
+					|maybe_order| -> Result<OrderId, DispatchError> {
+						let order =
+							Pallet::<T>::invest_order_or_default(investment_id, maybe_order);
 						let cur_order_id = InvestOrderId::<T>::get(investment_id);
 
 						// Updating an order is only allowed if it has not yet been submitted
 						// to processing
 						ensure!(
-							order.submitted_at == cur_order_id,
+							order.submitted_at() == cur_order_id,
 							Error::<T>::CollectRequired
 						);
 
@@ -580,7 +562,12 @@ where
 							amount,
 						)?;
 
-						order.submitted_at = cur_order_id;
+						order.update_submitted_at(cur_order_id);
+
+						// Remove order from storage if empty
+						if amount == T::Amount::zero() {
+							*maybe_order = None;
+						}
 
 						Ok(cur_order_id)
 					},
@@ -594,6 +581,7 @@ where
 			who,
 			amount,
 		});
+
 		Ok(())
 	}
 
@@ -612,20 +600,21 @@ where
 		);
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		let cur_order_id = ActiveRedeemOrder::<T>::try_mutate(
+		let cur_order_id = ActiveRedeemOrders::<T>::try_mutate(
 			&investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
 				RedeemOrders::<T>::try_mutate(
 					&who,
 					&investment_id,
-					|order| -> Result<OrderId, DispatchError> {
-						let mut order = Pallet::<T>::redeem_order_or_default(investment_id, order);
+					|maybe_order| -> Result<OrderId, DispatchError> {
+						let order =
+							Pallet::<T>::redeem_order_or_default(investment_id, maybe_order);
 						let cur_order_id = RedeemOrderId::<T>::get(investment_id);
 
 						// Updating an order is only allowed if it has not yet been submitted
 						// to processing
 						ensure!(
-							order.submitted_at == cur_order_id,
+							order.submitted_at() == cur_order_id,
 							Error::<T>::CollectRequired
 						);
 
@@ -638,7 +627,12 @@ where
 							amount,
 						)?;
 
-						order.submitted_at = cur_order_id;
+						order.update_submitted_at(cur_order_id);
+
+						// Remove order from storage if empty
+						if amount == T::Amount::zero() {
+							*maybe_order = None;
+						}
 
 						Ok(cur_order_id)
 					},
@@ -658,8 +652,50 @@ where
 		who: T::AccountId,
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
-		Pallet::<T>::do_collect_invest(who.clone(), investment_id)?;
-		Pallet::<T>::do_collect_redeem(who, investment_id)
+		let postinfo_invest = Pallet::<T>::do_collect_invest(who.clone(), investment_id)?;
+		let postinfo_redeem = Pallet::<T>::do_collect_redeem(who.clone(), investment_id)?;
+
+		Ok(Pallet::<T>::merge_postinfos(
+			postinfo_invest,
+			postinfo_redeem,
+		))
+	}
+
+	/// Merges to PostDispatchInfo's into a single one
+	fn merge_postinfos(first: PostDispatchInfo, second: PostDispatchInfo) -> PostDispatchInfo {
+		let combined_weight = match (first.actual_weight, second.actual_weight) {
+			(Some(first_weight), Some(second_weight)) => {
+				Some(first_weight.saturating_add(second_weight))
+			}
+			(None, Some(second_weight)) => Some(second_weight),
+			(Some(first_weight), None) => Some(first_weight),
+			(None, None) => None,
+		};
+
+		let pays_fee = match (first.pays_fee, second.pays_fee) {
+			(Pays::No, Pays::No) => Pays::No,
+			(Pays::No, Pays::Yes) => Pays::Yes,
+			(Pays::Yes, Pays::Yes) => Pays::Yes,
+			(Pays::Yes, Pays::No) => Pays::Yes,
+		};
+
+		PostDispatchInfo {
+			pays_fee,
+			actual_weight: combined_weight,
+		}
+	}
+
+	fn rm_empty(amount: T::Amount, storage_order: &mut Option<OrderOf<T>>, on_not_empty: Event<T>) {
+		if amount > T::Amount::zero() {
+			Self::deposit_event(on_not_empty);
+		} else {
+			// In this case the user has no active position.
+			// We remove the order from the system then.
+			// This is also important in cases where all redemptions
+			// where fulfilled before the order reached the current OrderId
+			// counter. Users can in this case now simply submit a new order.
+			*storage_order = None;
+		}
 	}
 
 	#[allow(clippy::type_complexity)]
@@ -668,97 +704,91 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		let (collected_ids, collection, last_processed_order_id, cur_order_id) =
-			InvestOrders::<T>::try_mutate(
-				&who,
-				&investment_id,
-				|order| -> Result<
-					(Vec<OrderId>, InvestCollection<T::Amount>, OrderId, OrderId),
-					DispatchError,
-				> {
-					let mut order = order.as_mut().ok_or(Error::<T>::NoActiveInvestOrder)?;
-					let mut collection = InvestCollection::<T::Amount>::default();
-					let mut collected = Vec::new();
-					let cur_order_id = InvestOrderId::<T>::get(&investment_id);
-					let last_processed_order_id = min(
-						order.submitted_at.saturating_add(T::MaxCollects::get()),
-						cur_order_id,
-					);
+		InvestOrders::<T>::try_mutate(
+			&who,
+			&investment_id,
+			|maybe_order| -> DispatchResultWithPostInfo {
+				let order = if let Some(order) = maybe_order.as_mut() {
+					order
+				} else {
+					Self::deposit_event(Event::<T>::InvestCollectedWithoutActivePosition {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + Storage::read() + Storage::write()
+					return Ok(().into());
+				};
+				let mut collection = InvestCollection::<T::Amount>::from_order(order);
+				let mut collected_ids = Vec::new();
+				let cur_order_id = InvestOrderId::<T>::get(&investment_id);
+				let last_processed_order_id = min(
+					order
+						.submitted_at()
+						.saturating_add(T::MaxOutstandingCollects::get()),
+					cur_order_id,
+				);
 
-					for order_id in order.submitted_at..last_processed_order_id {
-						let fulfillment =
-							ClearedInvestOrders::<T>::try_get(investment_id, order_id)
-								.map_err(|_| Error::<T>::OrderNotCleared)?;
+				// The current order is not in processing
+				if order.submitted_at() == cur_order_id {
+					Self::deposit_event(Event::<T>::InvestCollectedForNonClearedOrderId {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
+					return Ok(().into());
+				}
 
-						Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment, order)?;
-						Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment, order)?;
-						collected.push(order_id);
-					}
+				for order_id in order.submitted_at()..last_processed_order_id {
+					let fulfillment = ClearedInvestOrders::<T>::try_get(investment_id, order_id)
+						.map_err(|_| Error::<T>::OrderNotCleared)?;
 
-					// We need to set this here, so the order is actually
-					// set correctly and a user can actually
-					// make progress, in case he could only collect
-					// till `order.submitted_at + T::MaxCollects`
-					order.submitted_at = last_processed_order_id;
+					Pallet::<T>::acc_payout_invest(&mut collection, &fulfillment)?;
+					Pallet::<T>::acc_remaining_invest(&mut collection, &fulfillment)?;
+					collected_ids.push(order_id);
+				}
 
-					// Transfer collected amounts from investment and redemption
-					let investment_account =
-						InvestmentAccount { investment_id }.into_account_truncating();
-					T::Accountant::transfer(
-						info.id(),
-						&investment_account,
-						&who,
-						collection.payout_investment_invest,
-					)?;
+				order.update_after_collect(
+					collection.remaining_investment_invest,
+					last_processed_order_id,
+				);
 
-					ActiveInvestOrder::<T>::try_mutate(
-						&investment_id,
-						|total_order| -> DispatchResult {
-							if collection.remaining_investment_invest > T::Amount::zero() {
-								let amount = order
-									.amount
-									.checked_add(&collection.remaining_investment_invest)
-									.ok_or(ArithmeticError::Overflow)?;
+				T::Accountant::transfer(
+					info.id(),
+					&InvestmentAccount { investment_id }.into_account_truncating(),
+					&who,
+					collection.payout_investment_invest,
+				)?;
 
-								Self::do_update_invest_order(
-									total_order,
-									&who,
-									investment_id,
-									&info,
-									order,
-									amount,
-								)?;
+				let amount = order.amount();
+				Self::rm_empty(
+					amount,
+					maybe_order,
+					Event::InvestOrderUpdated {
+						investment_id,
+						submitted_at: last_processed_order_id,
+						who: who.clone(),
+						amount,
+					},
+				);
 
-								Self::deposit_event(Event::InvestOrderUpdated {
-									investment_id,
-									submitted_at: last_processed_order_id,
-									who: who.clone(),
-									amount,
-								});
-							}
+				Self::deposit_event(Event::InvestOrdersCollected {
+					investment_id,
+					who: who.clone(),
+					processed_orders: collected_ids,
+					collection,
+					outcome: if last_processed_order_id == cur_order_id {
+						CollectOutcome::FullyCollected
+					} else {
+						CollectOutcome::PartiallyCollected
+					},
+				});
 
-							Ok(())
-						},
-					)?;
-
-					Ok((collected, collection, last_processed_order_id, cur_order_id))
-				},
-			)?;
-
-		Self::deposit_event(Event::InvestOrdersCollected {
-			investment_id,
-			who,
-			processed_orders: collected_ids,
-			collection,
-			outcome: if last_processed_order_id == cur_order_id {
-				CollectOutcome::FullyCollected
-			} else {
-				CollectOutcome::PartiallyCollected
+				// TODO: Actually weight with amount of collects here
+				Ok(().into())
 			},
-		});
-
-		// TODO: Actually weight this with collected_ids
-		Ok(().into())
+		)
 	}
 
 	#[allow(clippy::type_complexity)]
@@ -767,97 +797,95 @@ where
 		investment_id: T::InvestmentId,
 	) -> DispatchResultWithPostInfo {
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
-		let (collected_ids, collection, last_processed_order_id, cur_order_id) =
-			RedeemOrders::<T>::try_mutate(
-				&who,
-				&investment_id,
-				|order| -> Result<
-					(Vec<OrderId>, RedeemCollection<T::Amount>, OrderId, OrderId),
-					DispatchError,
-				> {
-					let mut order = order.as_mut().ok_or(Error::<T>::NoActiveRedeemOrder)?;
-					let mut collection = RedeemCollection::<T::Amount>::default();
-					let mut collected = Vec::new();
-					let cur_order_id = InvestOrderId::<T>::get(&investment_id);
-					let last_processed_order_id = min(
-						order.submitted_at.saturating_add(T::MaxCollects::get()),
-						cur_order_id,
-					);
+		RedeemOrders::<T>::try_mutate(
+			&who,
+			&investment_id,
+			|maybe_order| -> DispatchResultWithPostInfo {
+				let order = if let Some(order) = maybe_order.as_mut() {
+					order
+				} else {
+					// Trigger event
+					Self::deposit_event(Event::<T>::RedeemCollectedWithoutActivePosition {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + Storage::read() + Storage::write()
+					return Ok(().into());
+				};
+				let mut collection = RedeemCollection::<T::Amount>::from_order(order);
+				let mut collected_ids = Vec::new();
+				let cur_order_id = InvestOrderId::<T>::get(&investment_id);
+				let last_processed_order_id = min(
+					order
+						.submitted_at()
+						.saturating_add(T::MaxOutstandingCollects::get()),
+					cur_order_id,
+				);
 
-					for order_id in order.submitted_at..last_processed_order_id {
-						let fulfillment =
-							ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
-								.map_err(|_| Error::<T>::OrderNotCleared)?;
+				// The current order is not in processing
+				if order.submitted_at() == cur_order_id {
+					Self::deposit_event(Event::<T>::RedeemCollectedForNonClearedOrderId {
+						who: who.clone(),
+						investment_id,
+					});
+					// TODO: Return correct weight
+					//       - Accountant::info() + 2 * Storage::read() + Storage::write()
+					return Ok(().into());
+				}
 
-						Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment, order)?;
-						Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment, order)?;
-						collected.push(order_id);
-					}
+				for order_id in order.submitted_at()..last_processed_order_id {
+					let fulfillment = ClearedRedeemOrders::<T>::try_get(investment_id, order_id)
+						.map_err(|_| Error::<T>::OrderNotCleared)?;
+					Pallet::<T>::acc_payout_redeem(&mut collection, &fulfillment)?;
+					Pallet::<T>::acc_remaining_redeem(&mut collection, &fulfillment)?;
+					collected_ids.push(order_id);
+				}
 
-					// We need to set this here, so the order is actually
-					// set correctly and a user can actually
-					// make progress, in case he could only collect
-					// till `order.submitted_at + T::MaxCollects`
-					order.submitted_at = last_processed_order_id;
+				order.update_after_collect(
+					collection.remaining_investment_redeem,
+					last_processed_order_id,
+				);
 
-					// Transfer collected amounts from investment and redemption
-					let investment_account =
-						InvestmentAccount { investment_id }.into_account_truncating();
-					T::Tokens::transfer(
-						info.payment_currency(),
-						&investment_account,
-						&who,
-						collection.payout_investment_redeem,
-						false,
-					)?;
+				// Transfer collected amounts from investment and redemption
+				let investment_account =
+					InvestmentAccount { investment_id }.into_account_truncating();
+				T::Tokens::transfer(
+					info.payment_currency(),
+					&investment_account,
+					&who,
+					collection.payout_investment_redeem,
+					false,
+				)?;
 
-					ActiveRedeemOrder::<T>::try_mutate(
-						&investment_id,
-						|total_order| -> DispatchResult {
-							if collection.remaining_investment_redeem > T::Amount::zero() {
-								let amount = order
-									.amount
-									.checked_add(&collection.remaining_investment_redeem)
-									.ok_or(ArithmeticError::Overflow)?;
+				let amount = order.amount();
+				Self::rm_empty(
+					amount,
+					maybe_order,
+					Event::RedeemOrderUpdated {
+						investment_id,
+						submitted_at: last_processed_order_id,
+						who: who.clone(),
+						amount,
+					},
+				);
 
-								Self::do_update_redeem_order(
-									total_order,
-									&who,
-									investment_id,
-									&info,
-									order,
-									amount,
-								)?;
+				Self::deposit_event(Event::RedeemOrdersCollected {
+					investment_id,
+					who: who.clone(),
+					processed_orders: collected_ids,
+					collection,
+					outcome: if last_processed_order_id == cur_order_id {
+						CollectOutcome::FullyCollected
+					} else {
+						CollectOutcome::PartiallyCollected
+					},
+				});
 
-								Self::deposit_event(Event::RedeemOrderUpdated {
-									investment_id,
-									submitted_at: last_processed_order_id,
-									who: who.clone(),
-									amount,
-								});
-							}
-							Ok(())
-						},
-					)?;
-
-					Ok((collected, collection, last_processed_order_id, cur_order_id))
-				},
-			)?;
-
-		Self::deposit_event(Event::RedeemOrdersCollected {
-			investment_id,
-			who,
-			processed_orders: collected_ids,
-			collection,
-			outcome: if last_processed_order_id == cur_order_id {
-				CollectOutcome::FullyCollected
-			} else {
-				CollectOutcome::PartiallyCollected
+				// TODO: Actually weight this with collected_ids
+				Ok(().into())
 			},
-		});
-
-		// TODO: Actually weight this with collected_ids
-		Ok(().into())
+		)
 	}
 
 	pub(crate) fn do_update_invest_order(
@@ -872,7 +900,7 @@ where
 		let (send, recv, transfer_amount) = Self::update_order_amount(
 			who,
 			&investment_account,
-			&mut order.amount,
+			order.updatable_amount(),
 			amount,
 			&mut total_order.amount,
 		)?;
@@ -892,7 +920,7 @@ where
 		let (send, recv, transfer_amount) = Self::update_order_amount(
 			who,
 			&investment_account,
-			&mut order.amount,
+			order.updatable_amount(),
 			amount,
 			&mut total_order.amount,
 		)?;
@@ -940,8 +968,8 @@ where
 	pub fn acc_payout_invest(
 		collection: &mut InvestCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
+		let remaining = collection.remaining_investment_invest;
 		collection.payout_investment_invest = collection
 			.payout_investment_invest
 			.checked_add(
@@ -949,7 +977,7 @@ where
 					.price
 					.reciprocal()
 					.ok_or(Error::<T>::ZeroPricedInvestment)?
-					.checked_mul_int(fulfillment.of_amount.mul_floor(order.amount))
+					.checked_mul_int(fulfillment.of_amount.mul_floor(remaining))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;
@@ -960,14 +988,14 @@ where
 	pub fn acc_payout_redeem(
 		collection: &mut RedeemCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
+		let remaining = collection.remaining_investment_redeem;
 		collection.payout_investment_redeem = collection
 			.payout_investment_redeem
 			.checked_add(
 				&fulfillment
 					.price
-					.checked_mul_int(fulfillment.of_amount.mul_floor(order.amount))
+					.checked_mul_int(fulfillment.of_amount.mul_floor(remaining))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;
@@ -978,11 +1006,11 @@ where
 	pub fn acc_remaining_redeem(
 		collection: &mut RedeemCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
+		let remaining = collection.remaining_investment_redeem;
 		collection.remaining_investment_redeem = collection
 			.remaining_investment_redeem
-			.checked_sub(&fulfillment.of_amount.mul_floor(order.amount))
+			.checked_sub(&fulfillment.of_amount.mul_floor(remaining))
 			.ok_or(ArithmeticError::Underflow)?;
 
 		Ok(())
@@ -991,11 +1019,11 @@ where
 	pub fn acc_remaining_invest(
 		collection: &mut InvestCollection<T::Amount>,
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
-		order: &Order<T::Amount, OrderId>,
 	) -> DispatchResult {
+		let remaining = collection.remaining_investment_invest;
 		collection.remaining_investment_invest = collection
 			.remaining_investment_invest
-			.checked_sub(&fulfillment.of_amount.mul_floor(order.amount))
+			.checked_sub(&fulfillment.of_amount.mul_floor(remaining))
 			.ok_or(ArithmeticError::Underflow)?;
 
 		Ok(())
@@ -1006,10 +1034,10 @@ where
 		order: &mut Option<Order<T::Amount, OrderId>>,
 	) -> &mut Order<T::Amount, OrderId> {
 		if order.is_none() {
-			let mut new_order = Some(Order {
-				amount: T::Amount::zero(),
-				submitted_at: InvestOrderId::<T>::get(investment_id),
-			});
+			let mut new_order = Some(Order::new(
+				T::Amount::zero(),
+				InvestOrderId::<T>::get(investment_id),
+			));
 
 			sp_std::mem::swap(order, &mut new_order);
 		}
@@ -1022,10 +1050,10 @@ where
 		order: &mut Option<Order<T::Amount, OrderId>>,
 	) -> &mut Order<T::Amount, OrderId> {
 		if order.is_none() {
-			let mut new_order = Some(Order {
-				amount: T::Amount::zero(),
-				submitted_at: RedeemOrderId::<T>::get(investment_id),
-			});
+			let mut new_order = Some(Order::new(
+				T::Amount::zero(),
+				RedeemOrderId::<T>::get(investment_id),
+			));
 
 			sp_std::mem::swap(order, &mut new_order);
 		}
@@ -1056,7 +1084,7 @@ where
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
 		if let Some(order) = InvestOrders::<T>::get(&who, investment_id) {
-			Ok(order.amount)
+			Ok(order.amount())
 		} else {
 			Ok(Zero::zero())
 		}
@@ -1075,7 +1103,7 @@ where
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
 		if let Some(order) = RedeemOrders::<T>::get(&who, investment_id) {
-			Ok(order.amount)
+			Ok(order.amount())
 		} else {
 			Ok(Zero::zero())
 		}
@@ -1093,7 +1121,7 @@ where
 	type Orders = TotalOrder<T::Amount>;
 
 	fn invest_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-		let total_orders = ActiveInvestOrder::<T>::try_mutate(
+		let total_orders = ActiveInvestOrders::<T>::try_mutate(
 			&investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
 				InProcessingInvestOrders::<T>::try_mutate(
@@ -1130,7 +1158,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::InvestOrderInProcessing {
+		Self::deposit_event(Event::InvestOrdersInProcessing {
 			investment_id,
 			order_id,
 			total_order: total_orders.clone(),
@@ -1140,7 +1168,7 @@ where
 	}
 
 	fn redeem_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-		let total_orders = ActiveRedeemOrder::<T>::try_mutate(
+		let total_orders = ActiveRedeemOrders::<T>::try_mutate(
 			&investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
 				InProcessingRedeemOrders::<T>::try_mutate(
@@ -1177,7 +1205,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::RedeemOrderInProcessing {
+		Self::deposit_event(Event::RedeemOrdersInProcessing {
 			investment_id,
 			order_id,
 			total_order: total_orders.clone(),
@@ -1215,12 +1243,12 @@ where
 				)?;
 
 				// The amount of investments the accountant needs to
-				// node newly in his books is the amount divide through
+				// note newly in his books is the invest amount divide through
 				// the price of the investment.
 				let amount_of_investment_units = fulfillment
 					.price
 					.reciprocal()
-					.ok_or(ArithmeticError::DivisionByZero)?
+					.ok_or(Error::<T>::ZeroPricedInvestment)?
 					.checked_mul_int(invest_amount)
 					.ok_or(ArithmeticError::Overflow)?;
 
@@ -1238,7 +1266,7 @@ where
 				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
-				ActiveInvestOrder::<T>::try_mutate(
+				ActiveInvestOrders::<T>::try_mutate(
 					investment_id,
 					|total_orders| -> DispatchResult {
 						total_orders.amount = total_orders
@@ -1257,7 +1285,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::InvestOrderCleared {
+		Self::deposit_event(Event::InvestOrdersCleared {
 			investment_id,
 			order_id,
 			fulfillment,
@@ -1277,16 +1305,18 @@ where
 					.as_ref()
 					.ok_or(Error::<T>::OrderNotInProcessing)?;
 
+				// Define the amount of tokens that are redeemed
+				let redeem_amount = fulfillment.of_amount.mul_floor(orders.amount);
+
 				// The orders for redemptions are denominated on a per
 				// investment basis. Hence, we need to convert it the amount
 				// of payment_currency that is redeemed by multiplying it
 				// with the price per investment unit.
-				let redeem_amount = fulfillment.of_amount.mul_floor(
-					fulfillment
-						.price
-						.checked_mul_int(orders.amount)
-						.ok_or(ArithmeticError::Overflow)?,
-				);
+				let redeem_amount_payment = fulfillment
+					.price
+					.checked_mul_int(redeem_amount)
+					.ok_or(ArithmeticError::Overflow)?;
+
 				let remaining_redeem_amount = orders
 					.amount
 					.checked_sub(&redeem_amount)
@@ -1299,23 +1329,11 @@ where
 					info.payment_currency(),
 					&info.payment_account(),
 					&investment_account,
-					redeem_amount,
+					redeem_amount_payment,
 					false,
 				)?;
-				// The amount of investments the accountant needs to
-				// remove in his books is the redeem_amount divide through
-				// the price of the investment.
-				let amount_of_investment_units = fulfillment
-					.price
-					.reciprocal()
-					.ok_or(Error::<T>::ZeroPricedInvestment)?
-					.checked_mul_int(redeem_amount)
-					.ok_or(ArithmeticError::Overflow)?;
-				T::Accountant::withdraw(
-					&investment_account,
-					info.id(),
-					amount_of_investment_units,
-				)?;
+
+				T::Accountant::withdraw(&investment_account, info.id(), redeem_amount)?;
 
 				// The previous OrderId is always 1 away
 				//
@@ -1329,7 +1347,7 @@ where
 				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
-				ActiveRedeemOrder::<T>::try_mutate(
+				ActiveRedeemOrders::<T>::try_mutate(
 					investment_id,
 					|total_orders| -> DispatchResult {
 						total_orders.amount = total_orders
@@ -1348,7 +1366,7 @@ where
 			},
 		)?;
 
-		Self::deposit_event(Event::RedeemOrderCleared {
+		Self::deposit_event(Event::RedeemOrdersCleared {
 			investment_id,
 			order_id,
 			fulfillment,

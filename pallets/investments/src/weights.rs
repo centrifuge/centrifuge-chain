@@ -13,3 +13,5 @@
 
 /// Weight functions needed for pallet_investments.
 pub trait WeightInfo {}
+
+impl WeightInfo for () {}

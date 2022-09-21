@@ -39,6 +39,9 @@ pub mod types {
 	/// PoolId type we use.
 	pub type PoolId = u64;
 
+	/// OrderId type we to identify order per epoch.
+	pub type OrderId = u64;
+
 	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
 	pub type EnsureRootOr<O> = EitherOfDiverse<EnsureRoot<AccountId>, O>;
 
