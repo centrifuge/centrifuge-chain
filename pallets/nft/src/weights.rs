@@ -26,6 +26,6 @@ impl WeightInfo for () {
 	}
 
 	fn validate_mint() -> Weight {
-		120_000_000 as Weight
+		Weight::from_ref_time(120_000_000)
 	}
 }
