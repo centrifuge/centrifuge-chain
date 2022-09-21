@@ -59,7 +59,7 @@ members = [
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 serde = { version = "1.0.106", features = ["derive"] }
 futures = { version = "0.3.21", features = ["compat"] }
-jsonrpsee = { version = "0.14.0", features = ["server", "macros"] }
+jsonrpsee = { version = "0.15.1", features = ["server", "macros"] }
 hex-literal = "0.2.1"
 log = "0.4.8"
 serde_json = "1.0"

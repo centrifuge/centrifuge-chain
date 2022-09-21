@@ -355,12 +355,15 @@ pub struct TestEnv {
 	pub events: Arc<Mutex<EventsStorage>>,
 }
 
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, <Runtime as frame_system::Config>::Call, u64, ()>;
+
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
 //       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
 	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
 	where
-		sp_runtime::generic::Block<Header, Extrinsic>: sp_runtime::traits::Block,
+		sp_runtime::generic::Block<Header, UncheckedExtrinsic>: sp_runtime::traits::Block,
 	{
 		match chain {
 			Chain::Relay => {
