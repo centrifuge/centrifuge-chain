@@ -12,6 +12,7 @@
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unit_arg)]
 
 ///! Common-types of the Centrifuge chain.
 use cfg_primitives::types::Balance;

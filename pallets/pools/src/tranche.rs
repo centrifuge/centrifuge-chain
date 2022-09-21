@@ -109,7 +109,7 @@ where
 	/// * (Residual, NonResidual) => true,
 	/// * (NonResidual, Residual) => false,
 	/// * (NonResidual, NonResidual) =>
-	/// 		interest rate of next tranche must be smaller
+	///         interest rate of next tranche must be smaller
 	///         equal to the interest rate of self.
 	///
 	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
@@ -241,9 +241,8 @@ where
 		match &self.tranche_type {
 			TrancheType::Residual => Perquintill::zero(),
 			TrancheType::NonResidual {
-				interest_rate_per_sec: ref _interest_rate_per_sec,
-				ref min_risk_buffer,
-			} => min_risk_buffer.clone(),
+				min_risk_buffer, ..
+			} => *min_risk_buffer,
 		}
 	}
 
@@ -251,9 +250,9 @@ where
 		match &self.tranche_type {
 			TrancheType::Residual => One::one(),
 			TrancheType::NonResidual {
-				ref interest_rate_per_sec,
-				min_risk_buffer: ref _min_risk_buffer,
-			} => interest_rate_per_sec.clone(),
+				interest_rate_per_sec,
+				..
+			} => *interest_rate_per_sec,
 		}
 	}
 
@@ -424,18 +423,10 @@ where
 	pub fn tranche_id(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheId> {
 		match id {
 			TrancheLoc::Id(id) => Some(id),
-			TrancheLoc::Index(index) => {
-				let index: Option<usize> = index.try_into().ok();
-				if let Some(index) = index {
-					if let Some(id) = self.ids.get(index) {
-						Some(id.clone())
-					} else {
-						None
-					}
-				} else {
-					None
-				}
-			}
+			TrancheLoc::Index(index) => index
+				.try_into()
+				.ok()
+				.and_then(|index: usize| self.ids.get(index).cloned()),
 		}
 	}
 
@@ -446,8 +437,7 @@ where
 				.ids
 				.iter()
 				.position(|curr_id| curr_id == id)
-				.map(|index| index.try_into().ok())
-				.flatten(),
+				.and_then(|index| index.try_into().ok()),
 		}
 	}
 
@@ -526,13 +516,10 @@ where
 			self.salt,
 		);
 		self.salt = (
-			(self
-				.salt
+			self.salt
 				.0
 				.checked_add(1)
-				.ok_or(ArithmeticError::Overflow)?)
-			.try_into()
-			.map_err(|_| ArithmeticError::Overflow)?,
+				.ok_or(ArithmeticError::Overflow)?,
 			self.salt.1,
 		);
 		Ok(id)
@@ -593,9 +580,10 @@ where
 		MaxTokenNameLength: Get<u32>,
 		MaxTokenSymbolLength: Get<u32>,
 	{
-		let at_usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		let at_idx = at;
+		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
-			self.tranches.len() <= at_usize,
+			at <= self.tranches.len(),
 			DispatchError::Other(
 				"Must add tranches either in between others or at the end. This should be catched somewhere else."
 			)
@@ -603,7 +591,7 @@ where
 
 		let id = self.next_id()?;
 		let new_tranche = self.create_tranche::<TrancheToken>(
-			at,
+			at_idx,
 			id.clone(),
 			tranche.tranche_type,
 			tranche.seniority,
@@ -616,51 +604,20 @@ where
 					"Top tranche must be a residual one. This should be catched somewhere else"
 				)
 			);
-
-			// NOTE: The std lib actually does allow to insert on a zero index for an empty vec.
-			//       But as we can not be sure, that this is always the case for future rust versions
-			//       better be safe than sorry.
-			if self.tranches.len() == 0 {
-				self.tranches.push(new_tranche);
-				self.ids.push(id);
-			} else {
-				self.tranches.insert(0, new_tranche);
-				self.ids.insert(0, id);
-			}
-		} else if self.tranches.len() == at_usize {
-			ensure!(
-				self.tranches
-					.get(at_usize - 1)
-					.expect(
-						"at is equal to len and is not zero. An element before at must exist. qed."
-					)
-					.tranche_type
-					.valid_next_tranche(&new_tranche.tranche_type),
-				DispatchError::Other(
-					"Invalid next tranche type. This should be catched somewhere else."
-				)
-			);
-
-			self.tranches.push(new_tranche);
-			self.ids.push(id);
 		} else {
 			ensure!(
 				self.tranches
-					.get(at_usize - 1)
-					.expect(
-						"at is equal to len and is not zero. An element before at must exist. qed."
-					)
+					.get(at - 1)
+					.expect("at is <= len and is not zero. An element before at must exist. qed.")
 					.tranche_type
 					.valid_next_tranche(&new_tranche.tranche_type),
 				DispatchError::Other(
 					"Invalid next tranche type. This should be catched somewhere else."
 				)
 			);
-
-			let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
-			self.tranches.insert(at, new_tranche);
-			self.ids.insert(at, id);
 		}
+		self.tranches.insert(at, new_tranche);
+		self.ids.insert(at, id);
 
 		Ok(())
 	}
@@ -668,26 +625,14 @@ where
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
 		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
-			self.tranches.len() < at,
+			at < self.tranches.len(),
 			DispatchError::Other(
 				"Invalid tranche index. Exceeding number of tranches. This should be catched somewhere else."
 			)
 		);
 
-		if at == 0 {
-			// NOTE: The std lib actually does allow to remove on a zero index for an empty vec.
-			//       But as we can not be sure, that this is always the case for future rust versions
-			//       better be safe than sorry.
-			if self.tranches.len() == 0 {
-				// No-op
-			} else {
-				self.tranches.remove(0);
-				self.ids.remove(0);
-			}
-		} else {
-			self.tranches.remove(at);
-			self.ids.remove(at);
-		}
+		self.tranches.remove(at);
+		self.ids.remove(at);
 
 		Ok(())
 	}
@@ -833,7 +778,7 @@ where
 
 	pub fn orders_as_currency<BalanceRatio>(
 		&self,
-		prices: &Vec<BalanceRatio>,
+		prices: &[BalanceRatio],
 	) -> Result<Vec<(Balance, Balance)>, DispatchError>
 	where
 		BalanceRatio: FixedPointNumber<Inner = Balance>,
@@ -1032,7 +977,7 @@ where
 						.unwrap_or(u128::MAX)
 						.into(),
 					redeem_starts
-						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)).into())
+						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)))
 						.unwrap_or(u128::MAX)
 						.into(),
 				)
@@ -1470,7 +1415,7 @@ where
 						.unwrap_or(u128::MAX)
 						.into(),
 					redeem_starts
-						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)).into())
+						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)))
 						.unwrap_or(u128::MAX)
 						.into(),
 				)
@@ -1497,7 +1442,7 @@ where
 	let tranche_values: Vec<_> = tranche_supplies
 		.iter()
 		.zip(tranche_prices)
-		.map(|(supply, price)| price.checked_mul_int(supply.clone()))
+		.map(|(supply, price)| price.checked_mul_int(*supply))
 		.collect::<Option<Vec<_>>>()
 		.ok_or(ArithmeticError::Overflow)?;
 
@@ -1509,10 +1454,10 @@ where
 		.ok_or(ArithmeticError::Overflow)?;
 
 	// Iterate over the tranches senior => junior.
-	// Buffer of most senior tranche is pool value - senior tranche value.
+	// Buffer of most senior tranche is pool value -y senior tranche value.
 	// Buffer of each subordinate tranche is the buffer of the
 	// previous more senior tranche - this tranche value.
-	let mut remaining_subordinate_value = pool_value.clone();
+	let mut remaining_subordinate_value = pool_value;
 	let mut risk_buffers: Vec<Perquintill> = tranche_values
 		.iter()
 		.rev()

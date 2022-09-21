@@ -200,7 +200,7 @@ where
 			LoanType::CreditLineWithMaturity(clm) => clm.max_borrow_amount(debt),
 		}
 		// always fallback to zero max_borrow_amount
-		.unwrap_or(Zero::zero())
+		.unwrap_or_else(Zero::zero)
 	}
 }
 

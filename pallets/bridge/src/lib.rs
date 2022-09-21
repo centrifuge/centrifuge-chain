@@ -174,9 +174,8 @@ pub mod pallet {
 			});
 
 			self.resources.iter().for_each(|i| {
-				let (rid, m) = (i.0.clone(), i.1.clone());
-				<chainbridge::Pallet<T>>::register_resource(rid.into(), m.clone())
-					.unwrap_or_default();
+				let (rid, m) = (i.0, i.1.clone());
+				<chainbridge::Pallet<T>>::register_resource(rid, m).unwrap_or_default();
 			});
 
 			<chainbridge::Pallet<T>>::set_relayer_threshold(self.threshold).unwrap_or_default();
@@ -225,17 +224,12 @@ pub mod pallet {
 			T::Fees::fee_to_burn(&source, Fee::Key(T::NativeTokenTransferFeeKey::get()))?;
 
 			let bridge_id = T::BridgePalletId::get().into_account_truncating();
-			<T as pallet::Config>::Currency::transfer(
-				&source,
-				&bridge_id,
-				amount.into(),
-				AllowDeath,
-			)?;
+			<T as pallet::Config>::Currency::transfer(&source, &bridge_id, amount, AllowDeath)?;
 
 			let resource_id = T::NativeTokenId::get();
 			<chainbridge::Pallet<T>>::transfer_fungible(
 				dest_id,
-				resource_id.into(),
+				resource_id,
 				recipient,
 				// Note: use u128 to restrict balance greater than 128bits
 				U256::from(amount.saturated_into::<u128>()),
@@ -254,7 +248,7 @@ pub mod pallet {
 			_r_id: ResourceId,
 		) -> DispatchResultWithPostInfo {
 			let source = T::BridgeOrigin::ensure_origin(origin)?;
-			<T as pallet::Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
+			<T as pallet::Config>::Currency::transfer(&source, &to, amount, AllowDeath)?;
 
 			Ok(().into())
 		}

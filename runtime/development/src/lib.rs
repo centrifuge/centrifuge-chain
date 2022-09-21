@@ -15,6 +15,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
+// Allow things like `1 * CFG`
+#![allow(clippy::identity_op)]
 
 pub use cfg_primitives::{
 	constants::*,
@@ -946,7 +948,7 @@ impl PoolUpdateGuard for UpdateGuard {
 			return false;
 		}
 
-		return true;
+		true
 	}
 }
 
@@ -1010,20 +1012,17 @@ impl Contains<Call> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
-					return false;
-				}
+				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
 				pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
-					return true;
-				}
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 				pallet_xcm::Call::__Ignore { .. } => {
 					unimplemented!()
 				}
 			},
-			Call::XTokens(method) => match method {
+			Call::XTokens(method) => !matches!(
+				method,
 				orml_xtokens::Call::transfer {
 					currency_id: CurrencyId::Tranche(_, _),
 					..
@@ -1037,10 +1036,8 @@ impl Contains<Call> for BaseCallFilter {
 				| orml_xtokens::Call::transfer_multiasset { .. }
 				| orml_xtokens::Call::transfer_multiasset_with_fee { .. }
 				| orml_xtokens::Call::transfer_multiassets { .. }
-				| orml_xtokens::Call::transfer_multicurrencies { .. } => false,
-				// Any other XTokens call is good to go
-				_ => true,
-			},
+				| orml_xtokens::Call::transfer_multicurrencies { .. }
+			),
 			_ => true,
 		}
 	}
@@ -1177,17 +1174,18 @@ impl
 				Role::PoolRole(PoolRole::PoolAdmin) => match *role {
 					// PoolAdmins can manage all other admins, but not tranche investors
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => false,
-					_ => true,
+					Role::PoolRole(..) => true,
+					_ => false,
 				},
-				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+				Role::PoolRole(PoolRole::MemberListAdmin) => matches!(
+					*role,
 					// MemberlistAdmins can manage tranche investors
-					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
-					_ => false,
-				},
-				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => match *role {
-					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_)) => true,
-					_ => false,
-				},
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _))
+				),
+				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => matches!(
+					*role,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_))
+				),
 				_ => false,
 			}
 		} else {
@@ -1209,7 +1207,7 @@ where
 			recv,
 			id,
 			amount: _amount,
-		} = details.clone();
+		} = details;
 
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
@@ -1256,11 +1254,9 @@ impl pallet_restricted_tokens::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		// every currency has a zero existential deposit
-		match currency_id {
-			_ => 0,
-		}
+		0
 	};
 }
 
@@ -1340,16 +1336,15 @@ impl chainbridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
-	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+	pub ResourceHashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_HASH_ID));
+	pub const NftProofValidationFeeKey: FeeKey = FeeKey::NftProofValidation;
 }
 
 impl pallet_nft::Config for Runtime {
 	type ChainId = chainbridge::ChainId;
 	type Event = Event;
-	type HashId = HashId;
-	type NftProofValidationFee = NftProofValidationFee;
-	type ResourceId = chainbridge::ResourceId;
+	type NftProofValidationFeeKey = NftProofValidationFeeKey;
+	type ResourceHashId = ResourceHashId;
 	type WeightInfo = ();
 }
 
@@ -1667,7 +1662,7 @@ impl_runtime_apis! {
 				.tranches
 				.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
 				.ok()?;
-			prices.get(index).map(|rate: &Rate| rate.clone())
+			prices.get(index).cloned()
 		}
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
@@ -1691,7 +1686,7 @@ impl_runtime_apis! {
 		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>{
 			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
 			let index: usize = tranche_index.try_into().ok()?;
-			pool.tranches.ids_residual_top().get(index).map(|id| id.clone())
+			pool.tranches.ids_residual_top().get(index).cloned()
 		}
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
@@ -1805,7 +1800,7 @@ impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
 			.create_inherent_data()
 			.expect("Could not create the timestamp inherent data");
 
-		inherent_data.check_extrinsics(&block)
+		inherent_data.check_extrinsics(block)
 	}
 }
 

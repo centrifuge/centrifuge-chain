@@ -94,7 +94,7 @@ where
 
 		api.currency(&at, pool_id)
 			.map_err(|e| runtime_error("Unable to query pool currency", e))?
-			.ok_or(invalid_params_error("Pool not found"))
+			.ok_or_else(|| invalid_params_error("Pool not found"))
 	}
 
 	fn inspect_epoch_solution(
@@ -110,9 +110,9 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.inspect_epoch_solution(&at, pool_id, solution.clone())
+		api.inspect_epoch_solution(&at, pool_id, solution)
 			.map_err(|e| runtime_error("Unable to query inspection for epoch solution", e))?
-			.ok_or(invalid_params_error("Pool not found or invalid solution"))
+			.ok_or_else(|| invalid_params_error("Pool not found or invalid solution"))
 	}
 
 	fn tranche_token_price(
@@ -128,9 +128,9 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
+		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id))
 			.map_err(|e| runtime_error("Unable to query tranche token price", e))?
-			.ok_or(invalid_params_error("Pool or tranche not found"))
+			.ok_or_else(|| invalid_params_error("Pool or tranche not found"))
 	}
 
 	fn tranche_token_prices(
@@ -147,7 +147,7 @@ where
 
 		api.tranche_token_prices(&at, pool_id)
 			.map_err(|e| runtime_error("Unable to query tranche token prices.", e))?
-			.ok_or(invalid_params_error("Pool not found."))
+			.ok_or_else(|| invalid_params_error("Pool not found."))
 	}
 
 	fn tranche_ids(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Vec<TrancheId>> {
@@ -160,7 +160,7 @@ where
 
 		api.tranche_ids(&at, pool_id)
 			.map_err(|e| runtime_error("Unable to query tranche ids.", e))?
-			.ok_or(invalid_params_error("Pool not found"))
+			.ok_or_else(|| invalid_params_error("Pool not found"))
 	}
 
 	fn tranche_id(
@@ -178,7 +178,7 @@ where
 
 		api.tranche_id(&at, pool_id, tranche_index)
 			.map_err(|e| runtime_error("Unable to query tranche ids.", e))?
-			.ok_or(invalid_params_error("Pool or tranche not found."))
+			.ok_or_else(|| invalid_params_error("Pool or tranche not found."))
 	}
 
 	fn tranche_currency(
@@ -194,8 +194,8 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
+		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id))
 			.map_err(|e| runtime_error("Unable to query tranche currency.", e))?
-			.ok_or(invalid_params_error("Pool or tranche not found."))
+			.ok_or_else(|| invalid_params_error("Pool or tranche not found."))
 	}
 }

@@ -13,6 +13,7 @@
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
+use sp_std::vec;
 
 use super::*;
 
@@ -46,8 +47,7 @@ impl PoolState {
 	pub fn add_unhealthy(&mut self, add: UnhealthyState) -> &mut Self {
 		match self {
 			PoolState::Healthy => {
-				let mut states = Vec::new();
-				states.push(add);
+				let states = vec![add];
 				*self = PoolState::Unhealthy(states);
 				self
 			}
@@ -75,7 +75,7 @@ impl PoolState {
 			PoolState::Unhealthy(states) => {
 				states.retain(|val| val != &rm);
 
-				if states.len() == 0 {
+				if states.is_empty() {
 					*self = PoolState::Healthy;
 				}
 				self
@@ -183,44 +183,43 @@ impl<Balance> EpochSolution<Balance> {
 		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
 		reserve: Balance,
 		max_reserve: Balance,
-		state: &Vec<UnhealthyState>,
+		state: &[UnhealthyState],
 	) -> Result<EpochSolution<Balance>, DispatchError>
 	where
 		Weight: Copy + From<u128>,
 		BalanceRatio: Copy + FixedPointNumber,
 		Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	{
-		let risk_buffer_improvement_scores = if state
-			.contains(&UnhealthyState::MinRiskBufferViolated)
-		{
-			let risk_buffers = calculate_risk_buffers(
-				&tranches.supplies_with_fulfillment(solution)?,
-				&tranches.prices(),
-			)?;
+		let risk_buffer_improvement_scores =
+			if state.contains(&UnhealthyState::MinRiskBufferViolated) {
+				let risk_buffers = calculate_risk_buffers(
+					&tranches.supplies_with_fulfillment(solution)?,
+					&tranches.prices(),
+				)?;
 
-			// Score: 1 / (min risk buffer - risk buffer)
-			// A higher score means the distance to the min risk buffer is smaller
-			let non_junior_tranches =
-				tranches
-					.non_residual_tranches()
-					.ok_or(DispatchError::Other(
-						"Corrupted PoolState. Getting NonResidualTranches infailable.",
-					))?;
-			Some(
-				non_junior_tranches
-					.iter()
-					.zip(risk_buffers)
-					.map(|(tranche, risk_buffer)| {
-						tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
-							|div: Perquintill| Some(div.saturating_reciprocal_mul(Balance::one())),
-						)
-					})
-					.collect::<Option<Vec<_>>>()
-					.ok_or(ArithmeticError::Overflow)?,
-			)
-		} else {
-			None
-		};
+				// Score: 1 / (min risk buffer - risk buffer)
+				// A higher score means the distance to the min risk buffer is smaller
+				let non_junior_tranches =
+					tranches
+						.non_residual_tranches()
+						.ok_or(DispatchError::Other(
+							"Corrupted PoolState. Getting NonResidualTranches infailable.",
+						))?;
+				Some(
+					non_junior_tranches
+						.iter()
+						.zip(risk_buffers)
+						.map(|(tranche, risk_buffer)| {
+							tranche.min_risk_buffer.checked_sub(&risk_buffer).map(
+								|div: Perquintill| div.saturating_reciprocal_mul(Balance::one()),
+							)
+						})
+						.collect::<Option<Vec<_>>>()
+						.ok_or(ArithmeticError::Overflow)?,
+				)
+			} else {
+				None
+			};
 
 		let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
 			let mut acc_invest = Balance::zero();

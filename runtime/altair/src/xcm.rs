@@ -230,7 +230,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				interior: X1(GeneralKey(key)),
 			} => match &key[..] {
 				parachains::kusama::altair::AIR_KEY => Ok(CurrencyId::Native),
-				_ => Err(location.clone()),
+				_ => Err(location),
 			},
 			MultiLocation {
 				parents: 1,

@@ -47,7 +47,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
-use sp_std::{vec, vec::Vec};
+use sp_std::vec;
 use types::*;
 
 #[cfg(test)]
@@ -228,8 +228,13 @@ pub mod pallet {
 	/// Stores the pool associated with the its write off groups
 	#[pallet::storage]
 	#[pallet::getter(fn pool_writeoff_groups)]
-	pub(crate) type PoolWriteOffGroups<T: Config> =
-		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, Vec<WriteOffGroup<T::Rate>>, ValueQuery>;
+	pub(crate) type PoolWriteOffGroups<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		BoundedVec<WriteOffGroup<T::Rate>, T::MaxWriteOffGroups>,
+		ValueQuery,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -702,7 +707,7 @@ pub mod pallet {
 				weight += T::DbWeight::get().reads(2);
 				for loan in active_loans.iter() {
 					weight += T::DbWeight::get().reads_writes(1, 1);
-					let rate = Self::rate_with_penalty(&loan, &write_off_groups);
+					let rate = Self::rate_with_penalty(loan, &write_off_groups);
 					T::InterestAccrual::reference_rate(rate);
 				}
 			}

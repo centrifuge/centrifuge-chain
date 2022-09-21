@@ -35,4 +35,8 @@ case $TARGET in
 
   lint)
     cargo fmt -- --check
+    ;;
+
+  clippy)
+    cargo clippy
 esac

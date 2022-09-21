@@ -111,6 +111,7 @@ impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
 ///
 /// Use this macro if you don't actually need the full service, but just the builder in order to
 /// be able to perform chain operations.
+#[allow(clippy::type_complexity)]
 pub fn new_partial<RuntimeApi, Executor, BIQ>(
 	config: &Configuration,
 	build_import_queue: BIQ,
@@ -390,9 +391,9 @@ where
 			spawner,
 			parachain_consensus,
 			import_queue,
-			collator_key: collator_key.ok_or(sc_service::error::Error::Other(
-				"Collator Key is None".to_string(),
-			))?,
+			collator_key: collator_key.ok_or_else(|| {
+				sc_service::error::Error::Other("Collator Key is None".to_string())
+			})?,
 			relay_chain_slot_duration,
 		};
 
@@ -420,6 +421,7 @@ where
 }
 
 /// Build the import queue for the "altair" runtime.
+#[allow(clippy::type_complexity)]
 pub fn build_altair_import_queue(
 	client: Arc<
 		TFullClient<
@@ -501,7 +503,7 @@ pub async fn start_altair_node(
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client.clone()).into_rpc())
+				.merge(Pools::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
@@ -581,6 +583,7 @@ pub async fn start_altair_node(
 }
 
 /// Build the import queue for the "centrifuge" runtime.
+#[allow(clippy::type_complexity)]
 pub fn build_centrifuge_import_queue(
 	client: Arc<
 		TFullClient<
@@ -659,7 +662,7 @@ pub async fn start_centrifuge_node(
 		|client, pool, deny_unsafe| {
 			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
-				.merge(Anchors::new(client.clone()).into_rpc())
+				.merge(Anchors::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
@@ -739,6 +742,7 @@ pub async fn start_centrifuge_node(
 }
 
 /// Build the import queue for the "development" runtime.
+#[allow(clippy::type_complexity)]
 pub fn build_development_import_queue(
 	client: Arc<
 		TFullClient<
@@ -820,7 +824,7 @@ pub async fn start_development_node(
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client.clone()).into_rpc())
+				.merge(Pools::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},

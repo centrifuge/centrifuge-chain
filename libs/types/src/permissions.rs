@@ -336,6 +336,7 @@ where
 		}
 	}
 
+	#[allow(clippy::result_unit_err)]
 	pub fn remove(&mut self, delta: Moment) -> Result<(), ()> {
 		if let Some(info) = &self.info {
 			let valid_till = &info.permissioned_till;
@@ -355,6 +356,7 @@ where
 		}
 	}
 
+	#[allow(clippy::result_unit_err)]
 	pub fn insert(&mut self, delta: Moment) -> Result<(), ()> {
 		let validity = self.validity(delta)?;
 
@@ -399,14 +401,12 @@ where
 	}
 
 	pub fn contains(&self, tranche: TrancheId) -> bool {
-		self.info
-			.iter()
-			.position(|info| {
-				info.tranche_id == tranche && info.permissioned_till >= Now::now().as_secs().into()
-			})
-			.is_some()
+		self.info.iter().any(|info| {
+			info.tranche_id == tranche && info.permissioned_till >= Now::now().as_secs().into()
+		})
 	}
 
+	#[allow(clippy::result_unit_err)]
 	pub fn remove(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
 			let valid_till = &self.info[index].permissioned_till;
@@ -424,6 +424,7 @@ where
 		}
 	}
 
+	#[allow(clippy::result_unit_err)]
 	pub fn insert(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
 		let validity = self.validity(delta)?;
 

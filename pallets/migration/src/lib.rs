@@ -4,6 +4,7 @@
 //! stand-alone chain) to a new chain state (possbily a parachain now). This pallet is necessary due
 //! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::type_complexity)]
 
 use codec::{Decode, Encode};
 use frame_support::{dispatch::DispatchResult, ensure, traits::Currency};
@@ -354,7 +355,6 @@ pub mod pallet {
 								deposit,
 								len
 							));
-							()
 						});
 			}
 

@@ -210,7 +210,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				),
 			)),
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
-			_ => return None,
+			_ => None,
 		}
 	}
 }
@@ -230,7 +230,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				interior: X1(GeneralKey(key)),
 			} => match &key[..] {
 				parachains::kusama::altair::AIR_KEY => Ok(CurrencyId::Native),
-				_ => Err(location.clone()),
+				_ => Err(location),
 			},
 			MultiLocation {
 				parents: 1,
@@ -238,12 +238,12 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 			} => match para_id {
 				parachains::kusama::karura::ID => match &key[..] {
 					parachains::kusama::karura::AUSD_KEY => Ok(CurrencyId::AUSD),
-					_ => Err(location.clone()),
+					_ => Err(location),
 				},
 
 				id if id == u32::from(ParachainInfo::get()) => match &key[..] {
 					parachains::kusama::altair::AIR_KEY => Ok(CurrencyId::Native),
-					_ => Err(location.clone()),
+					_ => Err(location),
 				},
 
 				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),

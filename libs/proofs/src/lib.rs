@@ -36,6 +36,10 @@ impl<Hash> Proof<Hash> {
 	pub fn len(&self) -> usize {
 		self.sorted_hashes.len()
 	}
+
+	pub fn is_empty(&self) -> bool {
+		self.sorted_hashes.is_empty()
+	}
 }
 
 pub trait Hasher: Sized {

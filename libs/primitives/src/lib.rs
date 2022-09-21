@@ -12,6 +12,8 @@
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
+// Allow things like `1 * CFG`
+#![allow(clippy::identity_op)]
 
 mod impls;
 
@@ -221,15 +223,12 @@ pub mod constants {
 	/// Value for a not specified fee key.
 	pub const DEFAULT_FEE_VALUE: Balance = 1 * CFG;
 
-	/// Additional fee charged when validating NFT proofs
-	pub const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
-
 	/// % of fee addressed to the Treasury. The reminder % will be for the block author.
 	pub const TREASURY_FEE_RATIO: Perbill = Perbill::from_percent(80);
 
 	// Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
 	/// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
-	pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
+	pub const NFTS_PREFIX: &[u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
 
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG

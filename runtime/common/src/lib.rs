@@ -48,7 +48,7 @@ pub mod xcm_fees {
 	}
 
 	pub fn dollar(decimals: u32) -> Balance {
-		10u128.saturating_pow(decimals.into())
+		10u128.saturating_pow(decimals)
 	}
 }
 
@@ -233,7 +233,7 @@ pub mod xcm {
 		> orml_traits::FixedConversionRateProvider for FixedConversionRateProvider<OrmlAssetRegistry>
 	{
 		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
-			let metadata = OrmlAssetRegistry::metadata_by_location(&location)?;
+			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
 			metadata
 				.additional
 				.xcm

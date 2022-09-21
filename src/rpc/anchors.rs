@@ -58,6 +58,6 @@ where
 		api.get_anchor_by_id(&at, id)
 			.ok()
 			.unwrap()
-			.ok_or(invalid_params_error("Unable to find anchor"))
+			.ok_or_else(|| invalid_params_error("Unable to find anchor"))
 	}
 }

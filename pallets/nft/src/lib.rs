@@ -15,69 +15,6 @@
 //!
 //! This creates an NFT-like pallet by implementing the `Unique`, `Mintable`,
 //! and `Burnable` traits of the `unique_assets` module.
-//!
-//! - [`Config`]
-//! - [`Call`]
-//! - [`Pallet`]
-//!
-//! ## Overview
-//! Other modules in this runtime can access the interface provided
-//! by this module to define user-facing logic to interact with the
-//! runtime NFTs.
-//!
-//! ## Terminology
-//!
-//! ## Usage
-//!
-//! ## Interface
-//!
-//! ### Supported Origins
-//!
-//! Signed origin is valid.
-//!
-//! ### Types
-//!
-//! `AssetInfo` - The data type that is used to describe this type of asset.
-//! `Event` - Associated type for Event enum.
-//! `WeightInfo` - Weight information for extrinsics in this pallet.
-//!
-//! ### Events
-//!
-//! <code>\`Transferred\`</code> Event triggered when the ownership of the asset has been transferred to the account.
-//!
-//! ### Errors
-//! `AssetExists\` - Thrown when there is an attempt to mint a duplicate asset.
-//! `NonexistentAsset\` - Thrown when there is an attempt to transfer a nonexistent asset.
-//! `NotAssetOwner\` - Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
-//! `DocumentNotAnchored` - A given document id does not match a corresponding document in the anchor storage.
-//!
-//! ### Dispatchable Functions
-//!
-//! Callable functions (or extrinsics), also considered as transactions, materialize the
-//! pallet contract. Here's the callable functions implemented in this module:
-//!
-//! [`transfer`] - Transfer NFT
-//! [`validate_mint`] - Validate NFT proofs
-//!
-//! ### Public Functions
-//!
-//! ## Genesis Configuration
-//! The pallet is parameterized and configured via [parameter_types] macro, at the time the runtime is built
-//! by means of the [`construct_runtime`] macro.
-//!
-//! ## Related Pallets
-//! This pallet is tightly coupled to the following pallets:
-//! - Substrate FRAME's [`balances` pallet](https://github.com/paritytech/substrate/tree/master/frame/balances).
-//! - Centrifuge Chain [`bridge` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/bridge).
-//!
-//! ## References
-//! - [Substrate FRAME v2 attribute macros](https://crates.parity.io/frame_support/attr.pallet.html).
-//!
-//! ## Credits
-//! The Centrifugians Tribe <tribe@centrifuge.io>
-//!
-//! ## License
-//! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -105,7 +42,6 @@ use cfg_primitives::types::FixedArray;
 use cfg_traits::fees::{Fee, Fees};
 use chainbridge::types::ResourceId;
 use codec::FullCodec;
-// Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 use sp_core::H256;
@@ -130,7 +66,6 @@ pub mod pallet {
 
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::SaturatedConversion;
 
 	use super::*;
 
@@ -166,29 +101,16 @@ pub mod pallet {
 		/// Chain identifier type
 		type ChainId: Parameter + Member + Debug + Default + FullCodec + Into<u8> + From<u8>;
 
-		/// In order to provide generality, we need some way to associate some action on a source chain
-		/// to some action on a destination chain. This may express tokenX on chain A is equivalent to
-		/// tokenY on chain B, or to simply associate that some action performed on chain A should
-		/// result in some other action occurring on chain B. ResourceId is defined as a 32 byte array
-		/// by ChainSafe.
-		type ResourceId: Member
-			+ Default
-			+ FullCodec
-			+ Into<[u8; 32]>
-			+ From<[u8; 32]>
-			+ MaybeSerializeDeserialize
-			+ TypeInfo;
-
 		/// Resource hash id.
 		///
 		/// This type was initially declared in the bridge pallet but was moved here
 		/// to avoid circular dependencies.
 		#[pallet::constant]
-		type HashId: Get<Self::ResourceId>;
+		type ResourceHashId: Get<ResourceId>;
 
 		/// Additional fee charged for validating NFT proof (when minting a NFT).
 		#[pallet::constant]
-		type NftProofValidationFee: Get<u128>;
+		type NftProofValidationFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: WeightInfo;
@@ -271,12 +193,9 @@ pub mod pallet {
 			let metadata = bundled_hash.as_ref().to_vec();
 
 			// Burn additional fees from the calling account
-			T::Fees::fee_to_burn(
-				&who,
-				Fee::Balance(T::NftProofValidationFee::get().saturated_into()),
-			)?;
+			T::Fees::fee_to_burn(&who, Fee::Key(T::NftProofValidationFeeKey::get()))?;
 
-			let resource_id: ResourceId = T::HashId::get().into();
+			let resource_id: ResourceId = T::ResourceHashId::get();
 			<chainbridge::Pallet<T>>::transfer_generic(dest_id.into(), resource_id, metadata)?;
 
 			Ok(().into())

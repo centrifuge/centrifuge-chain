@@ -54,7 +54,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_nft::Config {
+	pub trait Config: frame_system::Config {
 		/// A local mapping of a resource id.
 		///
 		/// This associated type represents anything that a resource id might map to.
@@ -65,29 +65,17 @@ pub mod pallet {
 		/// Admin is able to set/remove resource mappings.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
+		/// Resource id type
+		type ResourceId: Member
+			+ Default
+			+ codec::FullCodec
+			+ Into<[u8; 32]>
+			+ From<[u8; 32]>
+			+ MaybeSerializeDeserialize
+			+ TypeInfo;
+
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
-	}
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-	// The genesis config type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
 	}
 
 	/// Indicates that assets of a resource can be transferred to another resource.

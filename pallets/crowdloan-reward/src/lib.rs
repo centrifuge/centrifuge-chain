@@ -94,7 +94,7 @@ use frame_support::{
 		Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, VestingSchedule,
 		WithdrawReasons,
 	},
-	BoundedVec, PalletId,
+	PalletId,
 };
 use frame_system::ensure_root;
 // Re-export in crate namespace (for runtime construction)
@@ -236,35 +236,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn vesting_start)]
 	pub(super) type VestingStart<T: Config> = StorageValue<_, T::BlockNumber>;
-
-	// ----------------------------------------------------------------------------
-	// Pallet genesis configuration
-	// ----------------------------------------------------------------------------
-
-	/// Pallet genesis configuration type declaration.
-	///
-	/// It allows to build genesis storage.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
-
-	// ----------------------------------------------------------------------------
-	// Pallet lifecycle hooks
-	// ----------------------------------------------------------------------------
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	// ----------------------------------------------------------------------------
 	// Pallet errors
@@ -435,7 +406,7 @@ where
 		let direct_reward = Self::direct_payout_ratio() * contribution;
 		let vested_reward = contribution
 			.checked_sub(&direct_reward)
-			.unwrap_or(Zero::zero());
+			.unwrap_or_else(Zero::zero);
 
 		ensure!(
 			contribution >= T::Currency::minimum_balance(),
@@ -449,7 +420,7 @@ where
 
 		ensure!(
 			pallet_vesting::Pallet::<T>::vesting(&who)
-				.unwrap_or(BoundedVec::default())
+				.unwrap_or_default()
 				.len() < pallet_vesting::MaxVestingSchedulesGet::<T>::get()
 				.try_into()
 				.unwrap_or(0), // This is currently a u32, but in case it changes, we will fail-safe to zero.
