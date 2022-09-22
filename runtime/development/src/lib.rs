@@ -920,7 +920,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		PoolId,
 	>;
 	type ScheduledUpdateDetails =
-		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
 
 	fn released(
 		pool: &Self::PoolDetails,
@@ -1130,6 +1130,7 @@ impl pallet_loans::Config for Runtime {
 }
 
 parameter_types! {
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxTranches: u32 = 5;
 
 	// How much time should lapse before a tranche investor can be removed

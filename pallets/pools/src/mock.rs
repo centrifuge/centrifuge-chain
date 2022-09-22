@@ -289,6 +289,8 @@ where
 
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
+
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
@@ -369,7 +371,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	type PoolDetails =
 		PoolDetails<CurrencyId, u32, Balance, Rate, MaxSizeMetadata, TrancheWeight, TrancheId, u64>;
 	type ScheduledUpdateDetails =
-		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
 
 	fn released(
 		pool: &Self::PoolDetails,
