@@ -50,7 +50,7 @@ pub(super) type TranchesOf<T> = Tranches<
 	<T as Config>::Balance,
 	<T as Config>::InterestRate,
 	<T as Config>::TrancheWeight,
-	<T as Config>::CurrencyId,
+	<T as Config>::TrancheCurrency,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
 >;
@@ -60,7 +60,7 @@ pub(super) type TrancheOf<T> = Tranche<
 	<T as Config>::Balance,
 	<T as Config>::InterestRate,
 	<T as Config>::TrancheWeight,
-	<T as Config>::CurrencyId,
+	<T as Config>::TrancheCurrency,
 >;
 
 /// Type that indicates the seniority of a tranche
@@ -147,9 +147,6 @@ pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 	pub(super) seniority: Seniority,
 	pub currency: CurrencyId,
 
-	pub(super) outstanding_invest_orders: Balance,
-	pub(super) outstanding_redeem_orders: Balance,
-
 	pub(super) debt: Balance,
 	pub(super) reserve: Balance,
 	pub(super) loss: Balance,
@@ -171,8 +168,6 @@ where
 			tranche_type: TrancheType::Residual,
 			seniority: 1,
 			currency: CurrencyId::Tranche(0, [0u8; 16]),
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
 			loss: Zero::zero(),
@@ -1081,7 +1076,8 @@ where
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight> {
+pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency> {
+	pub(super) currency: TrancheCurrency,
 	pub(super) supply: Balance,
 	pub(super) price: BalanceRatio,
 	pub(super) invest: Balance,
@@ -1093,23 +1089,26 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight> {
-	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>,
+pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency> {
+	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
 }
 
-impl<Balance, BalanceRatio, Weight> EpochExecutionTranches<Balance, BalanceRatio, Weight>
+impl<Balance, BalanceRatio, Weight, TrancheCurrency>
+	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>
 where
 	Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	BalanceRatio: Copy,
 {
-	pub fn new(tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>) -> Self {
+	pub fn new(
+		tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
+	) -> Self {
 		Self { tranches }
 	}
 
 	pub fn non_residual_tranches(
 		&self,
-	) -> Option<&[EpochExecutionTranche<Balance, BalanceRatio, Weight>]> {
+	) -> Option<&[EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>]> {
 		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
 			Some(tail)
 		} else {
@@ -1119,7 +1118,7 @@ where
 
 	pub fn non_residual_tranches_mut(
 		&mut self,
-	) -> Option<&mut [EpochExecutionTranche<Balance, BalanceRatio, Weight>]> {
+	) -> Option<&mut [EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>]> {
 		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
 			Some(tail)
 		} else {
@@ -1129,7 +1128,7 @@ where
 
 	pub fn residual_tranche(
 		&self,
-	) -> Option<&EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+	) -> Option<&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
 		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
 			Some(head)
 		} else {
@@ -1139,7 +1138,7 @@ where
 
 	pub fn residual_tranche_mut(
 		&mut self,
-	) -> Option<&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+	) -> Option<&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
 		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
 			Some(head)
 		} else {
@@ -1151,35 +1150,41 @@ where
 		self.tranches.len()
 	}
 
-	pub fn into_tranches(self) -> Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+	pub fn into_tranches(
+		self,
+	) -> Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
 		self.tranches
 	}
 
 	pub fn non_residual_top_slice(
 		&self,
-	) -> &RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+	) -> &RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
 		self.tranches.rev()
 	}
 
 	pub fn non_residual_top_slice_mut(
 		&mut self,
-	) -> &mut RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+	) -> &mut RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
 		self.tranches.rev_mut()
 	}
 
-	pub fn residual_top_slice(&self) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
+	pub fn residual_top_slice(
+		&self,
+	) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>] {
 		self.tranches.as_slice()
 	}
 
 	pub fn residual_top_slice_mut(
 		&mut self,
-	) -> &mut [EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
+	) -> &mut [EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>] {
 		self.tranches.as_mut_slice()
 	}
 
 	pub fn combine_non_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
+		F: FnMut(
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
+		) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in self.tranches.iter().rev() {
@@ -1192,7 +1197,7 @@ where
 	pub fn combine_mut_non_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
-			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
@@ -1210,7 +1215,7 @@ where
 	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
-			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 			W,
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
@@ -1233,7 +1238,7 @@ where
 	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
-			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 			W,
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
@@ -1251,7 +1256,9 @@ where
 
 	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
+		F: FnMut(
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
+		) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in self.tranches.iter() {
@@ -1264,7 +1271,7 @@ where
 	pub fn combine_mut_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
-			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
@@ -1282,7 +1289,7 @@ where
 	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
-			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 			W,
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
@@ -1305,7 +1312,7 @@ where
 	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
-			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 			W,
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,

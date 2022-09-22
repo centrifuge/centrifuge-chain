@@ -395,7 +395,7 @@ pub struct TrancheSolution {
 }
 
 pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency>(
-	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, Currency>,
 	solution: &[TrancheSolution],
 ) -> Result<(Balance, Balance, Vec<Perquintill>), DispatchError>
 where

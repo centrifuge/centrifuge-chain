@@ -43,7 +43,7 @@ use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Saturating, Zero,
 	},
-	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
+	ArithmeticError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
 pub use tranche::*;
@@ -59,6 +59,40 @@ mod solution;
 mod tests;
 mod tranche;
 pub mod weights;
+
+/// A convenience struct to easily pass around the accumulated orders
+/// for all tranches, which is of sole interest to the pool.
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+struct SummarizedOrders<Balance> {
+	// The accumulated order amounts of all investments
+	acc_invest_orders: Balance,
+	// The accumulated order amounts of all redemptions
+	//
+	// NOTE: Already denominated in the pool_currency!
+	acc_redeem_orders: Balance,
+	// Invest orders per tranche
+	//
+	// NOTE: Sorted from residual-to-non-residual
+	invest_orders: Vec<Balance>,
+	// Redeem orders per tranche
+	//
+	// NOTE: Sorted from residual-to-non-residual
+	redeem_order: Vec<Balance>,
+}
+
+impl<Balance: Zero> SummarizedOrders<Balance> {
+	fn all_are_zero(&self) -> bool {
+		self.invest_orders == Zero::zero() && self.redeem_orders == Zero::zero()
+	}
+
+	fn invest_redeem_residual_top(&self) -> &[(Balance, Balance)] {
+		self.invest_orders
+			.iter()
+			.zip(&self.redeem_order)
+			.collect()
+			.as_ref()
+	}
+}
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
@@ -96,6 +130,43 @@ pub struct ReserveDetails<Balance> {
 	pub total: Balance,
 	/// Current reserve that is available for originations.
 	pub available: Balance,
+}
+
+impl<Balance> ReserveDetails<Balance> {
+	fn deposit_from_epoch<T: Config>(
+		&self,
+		epoch_tranches: &[EpochExecutionTrancheOf<T>],
+		solution: &[TrancheSolution],
+	) -> DispatchResult {
+		let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch_tranches
+			.combine_with_residual_top(solution, |tranche, solution| {
+				Ok((
+					solution.invest_fulfillment.mul_floor(tranche.invest),
+					solution.redeem_fulfillment.mul_floor(tranche.redeem),
+				))
+			})?;
+
+		// Update the total/available reserve for the new total value of the pool
+		let mut acc_investments = T::Balance::zero();
+		let mut acc_redemptions = T::Balance::zero();
+		for (invest, redeem) in executed_amounts.iter() {
+			acc_investments = acc_investments
+				.checked_add(invest)
+				.ok_or(ArithmeticError::Overflow)?;
+			acc_redemptions = acc_redemptions
+				.checked_add(redeem)
+				.ok_or(ArithmeticError::Overflow)?;
+		}
+		pool.reserve.total = pool
+			.reserve
+			.total
+			.checked_add(&acc_investments)
+			.ok_or(ArithmeticError::Overflow)?
+			.checked_sub(&acc_redemptions)
+			.ok_or(ArithmeticError::Underflow)?;
+
+		Ok(())
+	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -185,14 +256,6 @@ where
 	}
 }
 
-/// The result of epoch execution of a given tranch within a pool
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochDetails<BalanceRatio> {
-	pub invest_fulfillment: Perquintill,
-	pub redeem_fulfillment: Perquintill,
-	pub token_price: BalanceRatio,
-}
-
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber> {
@@ -245,8 +308,9 @@ type PoolDepositOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
-	use cfg_types::CustomMetadata;
+	use cfg_primitives::OrderId;
+	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
+	use cfg_types::{CustomMetadata, FulfillmentWithPrice};
 	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
@@ -364,6 +428,13 @@ pub mod pallet {
 		type TrancheCurrency: Into<Self::CurrencyId>
 			+ Clone
 			+ TrancheCurrencyT<Self::PoolId, Self::TrancheId>;
+
+		type Investments: OrderManager<
+			Error = DispatchError,
+			InvestmentId = Self::TrancheCurrency,
+			Orders = cfg_types::Order<Self::Balance, OrderId>,
+			Fulfillment = FulfillmentWithPrice<Self::BalanceRatio>,
+		>;
 
 		type Time: UnixTime;
 
@@ -963,216 +1034,6 @@ pub mod pallet {
 			})
 		}
 
-		/// Update an order to invest tokens in a given tranche.
-		///
-		/// The caller must have the TrancheInvestor role for this
-		/// tranche, and that role must not have expired.
-		///
-		/// If the caller has an investment order for the
-		/// specified tranche in a prior epoch, it must first be
-		/// collected.
-		///
-		/// If the requested amount is greater than the current
-		/// investment order, the balance will be transferred from
-		/// the calling account to the pool. If the requested
-		/// amount is less than the current order, the balance
-		/// willbe transferred from the pool to the calling
-		/// account.
-		#[pallet::weight(T::WeightInfo::update_invest_order())]
-		pub fn update_invest_order(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			new_order: T::Balance,
-		) -> DispatchResult {
-			let account = ensure_signed(origin)?;
-
-			ensure!(
-				EpochExecution::<T>::try_get(pool_id).is_err(),
-				Error::<T>::InSubmissionPeriod
-			);
-
-			let (tranche_id, old_order) = Pool::<T>::try_mutate(
-				pool_id,
-				|pool| -> Result<(T::TrancheId, T::Balance), DispatchError> {
-					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche_id = pool
-						.tranches
-						.tranche_id(tranche_loc)
-						.ok_or(Error::<T>::InvalidTrancheId)?;
-
-					ensure!(
-						T::Permission::has(
-							PermissionScope::Pool(pool_id),
-							account.clone(),
-							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
-						),
-						BadOrigin
-					);
-
-					Order::<T>::try_mutate(
-						tranche_id,
-						&account,
-						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
-							let order = if let Some(order) = active_order {
-								order
-							} else {
-								*active_order = Some(UserOrder::default());
-								active_order.as_mut().expect("UserOrder now Some. qed.")
-							};
-
-							let old_order = order.invest;
-
-							ensure!(
-								order.invest.saturating_add(order.redeem) == Zero::zero()
-									|| order.epoch == pool.epoch.current,
-								Error::<T>::CollectRequired
-							);
-
-							Self::do_update_invest_order(
-								&account, pool, order, new_order, pool_id, tranche_id,
-							)?;
-
-							Ok((tranche_id, old_order))
-						},
-					)
-				},
-			)?;
-
-			Self::deposit_event(Event::InvestOrderUpdated {
-				pool_id,
-				tranche_id,
-				account,
-				old_order,
-				new_order,
-			});
-			Ok(())
-		}
-
-		/// Update an order to redeem tokens in a given tranche.
-		///
-		/// The caller must have the TrancheInvestor role for this
-		/// tranche, and that role must not have expired.
-		///
-		/// If the caller has a redemption order for the
-		/// specified tranche in a prior epoch, it must first
-		/// be collected.
-		///
-		/// If the requested amount is greater than the current
-		/// investment order, the balance will be transferred from
-		/// the calling account to the pool. If the requested
-		/// amount is less than the current order, the balance
-		/// willbe transferred from the pool to the calling
-		/// account.
-		#[pallet::weight(T::WeightInfo::update_redeem_order())]
-		pub fn update_redeem_order(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			new_order: T::Balance,
-		) -> DispatchResult {
-			let account = ensure_signed(origin)?;
-
-			ensure!(
-				EpochExecution::<T>::try_get(pool_id).is_err(),
-				Error::<T>::InSubmissionPeriod
-			);
-
-			let (tranche_id, old_order) = Pool::<T>::try_mutate(
-				pool_id,
-				|pool| -> Result<(T::TrancheId, T::Balance), DispatchError> {
-					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche_id = pool
-						.tranches
-						.tranche_id(tranche_loc)
-						.ok_or(Error::<T>::InvalidTrancheId)?;
-
-					ensure!(
-						T::Permission::has(
-							PermissionScope::Pool(pool_id),
-							account.clone(),
-							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
-						),
-						BadOrigin
-					);
-
-					Order::<T>::try_mutate(
-						tranche_id,
-						&account,
-						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
-							let order = if let Some(order) = active_order {
-								order
-							} else {
-								*active_order = Some(UserOrder::default());
-								active_order.as_mut().expect("UserOrder now Some. qed.")
-							};
-
-							let old_order = order.invest;
-
-							ensure!(
-								order.invest.saturating_add(order.redeem) == Zero::zero()
-									|| order.epoch == pool.epoch.current,
-								Error::<T>::CollectRequired
-							);
-
-							Self::do_update_redeem_order(
-								&account, pool, order, new_order, pool_id, tranche_id,
-							)?;
-
-							Ok((tranche_id, old_order))
-						},
-					)
-				},
-			)?;
-
-			Self::deposit_event(Event::RedeemOrderUpdated {
-				pool_id,
-				tranche_id,
-				account,
-				old_order,
-				new_order,
-			});
-			Ok(())
-		}
-
-		/// Collect the results of an executed invest or redeem order.
-		///
-		/// Iterates through up to `collect_n_epochs` epochs from
-		/// when the caller's order was initiated, and transfers
-		/// the total results of the order execution to the
-		/// caller's account.
-		#[pallet::weight(T::WeightInfo::collect((*collect_n_epochs).into()))]
-		pub fn collect(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			collect_n_epochs: T::EpochId,
-		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-
-			Self::do_collect(who, pool_id, tranche_loc, collect_n_epochs)
-		}
-
-		/// Collect the results of an executed invest or
-		/// redeem order for another account.
-		///
-		/// Iterates through up to `collect_n_epochs` epochs from
-		/// when the caller's order was initiated, and transfers
-		/// the total results of the order execution to the
-		/// caller's account.
-		#[pallet::weight(T::WeightInfo::collect((*collect_n_epochs).into()))]
-		pub fn collect_for(
-			origin: OriginFor<T>,
-			who: T::AccountId,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			collect_n_epochs: T::EpochId,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-
-			Self::do_collect(who, pool_id, tranche_loc, collect_n_epochs)
-		}
-
 		/// Close the current epoch
 		///
 		/// Closing an epoch locks in all invest and redeem
@@ -1243,26 +1104,19 @@ pub mod pallet {
 					epoch_id: submission_period_epoch,
 				});
 
-				if pool.tranches.acc_outstanding_investments()?.is_zero()
-					&& pool.tranches.acc_outstanding_redemptions()?.is_zero()
-				{
+				// Get the orders
+				let orders = Self::summarize_orders(&epoch_tranche_prices)?;
+
+				if orders.all_are_zero() {
 					pool.tranches.combine_with_mut_residual_top(
-						epoch_tranche_prices
-							.iter()
-							.zip(pool.tranches.ids_residual_top()),
-						|tranche, (price, tranche_id)| {
-							Self::update_tranche_for_epoch(
-								pool_id,
-								tranche_id,
-								submission_period_epoch,
-								tranche,
-								TrancheSolution {
-									invest_fulfillment: Perquintill::zero(),
-									redeem_fulfillment: Perquintill::zero(),
-								},
-								(Zero::zero(), Zero::zero()),
-								*price,
-							)
+						&epoch_tranche_prices,
+						|tranche, price| {
+							let zero_fulfillment = FulfillmentWithPrice {
+								of_amount: Perquintill::zero(),
+								price: price,
+							};
+							T::Investments::invest_fulfillment(tranche.currency, zero_fulfillment)?;
+							T::Investments::redeem_fulfillment(tranche.currency, zero_fulfillment)
 						},
 					)?;
 
@@ -1283,21 +1137,16 @@ pub mod pallet {
 				}
 
 				let epoch_tranches = pool.tranches.combine_with_residual_top(
-					epoch_tranche_prices.iter(),
-					|tranche, price| {
-						let supply = tranche
-							.debt
-							.checked_add(&tranche.reserve)
-							.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
-
-						let (invest, redeem) =
-							tranche.order_as_currency::<T::BalanceRatio>(price)?;
-
+					epoch_tranche_prices
+						.iter()
+						.zip(orders.invest_redeem_residual_top()),
+					|tranche, (price, (invest, redeem))| {
 						let epoch_tranche = EpochExecutionTranche {
-							supply,
+							currency: tranche.currency,
+							supply: tranche.balance(),
 							price: *price,
-							invest,
-							redeem,
+							invest: *invest,
+							redeem: *redeem,
 							seniority: tranche.seniority,
 							min_risk_buffer: tranche.min_risk_buffer(),
 							_phantom: Default::default(),
@@ -1324,11 +1173,9 @@ pub mod pallet {
 					})
 				})?;
 
-				let inspection_full_solution =
-					Self::inspect_solution(pool, &epoch, &full_execution_solution);
-				if inspection_full_solution.is_ok()
-					&& inspection_full_solution.expect("is_ok() == true. qed.")
-						== PoolState::Healthy
+				if Self::inspect_solution(pool, &epoch, &full_execution_solution)
+					.map(|state| state == PoolState::Healthy)
+					.unwrap_or(false)
 				{
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted {
@@ -1506,6 +1353,12 @@ pub mod pallet {
 			<frame_system::Pallet<T>>::block_number()
 		}
 
+		fn summarize_orders(
+			prices: &[T::BalanceRatio],
+		) -> Result<SummarizedOrders<T::Balance>, DispatchError> {
+			todo!()
+		}
+
 		/// Scores a solution.
 		///
 		/// This function checks the state a pool would be in when applying a solution
@@ -1670,276 +1523,6 @@ pub mod pallet {
 			})
 		}
 
-		pub(crate) fn do_collect(
-			who: T::AccountId,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			collect_n_epochs: T::EpochId,
-		) -> DispatchResultWithPostInfo {
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-			let tranche_id = pool
-				.tranches
-				.tranche_id(tranche_loc)
-				.ok_or(Error::<T>::InvalidTrancheId)?;
-			let order = Order::<T>::try_get(tranche_id, &who)
-				.map_err(|_| Error::<T>::NoOutstandingOrder)?;
-
-			let end_epoch: T::EpochId = collect_n_epochs
-				.checked_sub(&One::one())
-				.ok_or(Error::<T>::CollectsNoEpochs)?
-				.checked_add(&order.epoch)
-				.ok_or(DispatchError::from(ArithmeticError::Overflow))?;
-
-			ensure!(
-				end_epoch <= pool.epoch.last_executed,
-				Error::<T>::EpochNotExecutedYet
-			);
-
-			let actual_epochs = end_epoch.saturating_sub(order.epoch);
-
-			let collections = Self::calculate_collect(tranche_id, order, end_epoch)?;
-
-			let pool_account = PoolLocator { pool_id }.into_account_truncating();
-			if collections.payout_currency_amount > Zero::zero() {
-				T::Tokens::transfer(
-					pool.currency,
-					&pool_account,
-					&who,
-					collections.payout_currency_amount,
-					false,
-				)?;
-			}
-
-			if collections.payout_token_amount > Zero::zero() {
-				let token = T::TrancheToken::tranche_token(pool_id, tranche_id);
-				T::Tokens::transfer(
-					token,
-					&pool_account,
-					&who,
-					collections.payout_token_amount,
-					false,
-				)?;
-			}
-
-			if collections.remaining_redeem_token != Zero::zero()
-				|| collections.remaining_invest_currency != Zero::zero()
-			{
-				Order::<T>::insert(
-					tranche_id,
-					who.clone(),
-					UserOrder {
-						invest: collections.remaining_invest_currency,
-						redeem: collections.remaining_redeem_token,
-						epoch: pool.epoch.current,
-					},
-				);
-			} else {
-				Order::<T>::remove(tranche_id, who.clone())
-			};
-
-			Self::deposit_event(Event::OrdersCollected {
-				pool_id,
-				tranche_id,
-				end_epoch_id: end_epoch,
-				account: who,
-				outstanding_collections: OutstandingCollections {
-					payout_currency_amount: collections.payout_currency_amount,
-					payout_token_amount: collections.payout_token_amount,
-					remaining_invest_currency: collections.remaining_invest_currency,
-					remaining_redeem_token: collections.remaining_redeem_token,
-				},
-			});
-
-			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
-		}
-
-		pub(crate) fn do_update_invest_order(
-			who: &T::AccountId,
-			pool: &mut PoolDetailsOf<T>,
-			order: &mut UserOrderOf<T>,
-			amount: T::Balance,
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-		) -> DispatchResult {
-			let outstanding = &mut pool
-				.tranches
-				.get_mut_tranche(TrancheLoc::Id(tranche_id))
-				.ok_or(Error::<T>::InvalidTrancheId)?
-				.outstanding_invest_orders;
-			let pool_account = PoolLocator { pool_id }.into_account_truncating();
-
-			let (send, recv, transfer_amount) = Self::update_order_amount(
-				who,
-				&pool_account,
-				&mut order.invest,
-				amount,
-				outstanding,
-			)?;
-
-			order.epoch = pool.epoch.current;
-			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false).map(|_| ())
-		}
-
-		pub(crate) fn do_update_redeem_order(
-			who: &T::AccountId,
-			pool: &mut PoolDetailsOf<T>,
-			order: &mut UserOrderOf<T>,
-			amount: T::Balance,
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-		) -> DispatchResult {
-			let tranche = pool
-				.tranches
-				.get_mut_tranche(TrancheLoc::Id(tranche_id))
-				.ok_or(Error::<T>::InvalidTrancheId)?;
-			let outstanding = &mut tranche.outstanding_redeem_orders;
-			let pool_account = PoolLocator { pool_id }.into_account_truncating();
-
-			let (send, recv, transfer_amount) = Self::update_order_amount(
-				who,
-				&pool_account,
-				&mut order.redeem,
-				amount,
-				outstanding,
-			)?;
-
-			order.epoch = pool.epoch.current;
-			T::Tokens::transfer(tranche.currency, send, recv, transfer_amount, false).map(|_| ())
-		}
-
-		#[allow(clippy::type_complexity)]
-		fn update_order_amount<'a>(
-			who: &'a T::AccountId,
-			pool: &'a T::AccountId,
-			old_order: &mut T::Balance,
-			new_order: T::Balance,
-			pool_orders: &mut T::Balance,
-		) -> Result<(&'a T::AccountId, &'a T::AccountId, T::Balance), DispatchError> {
-			match new_order.cmp(old_order) {
-				Ordering::Greater => {
-					let transfer_amount = new_order
-						.checked_sub(old_order)
-						.expect("New order larger than old order. qed.");
-
-					*pool_orders = pool_orders
-						.checked_add(&transfer_amount)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					*old_order = new_order;
-					Ok((who, pool, transfer_amount))
-				}
-				Ordering::Less => {
-					let transfer_amount = old_order
-						.checked_sub(&new_order)
-						.expect("Old order larger than new order. qed.");
-
-					*pool_orders = pool_orders
-						.checked_sub(&transfer_amount)
-						.ok_or(ArithmeticError::Underflow)?;
-
-					*old_order = new_order;
-					Ok((pool, who, transfer_amount))
-				}
-				Ordering::Equal => Err(Error::<T>::NoNewOrder.into()),
-			}
-		}
-
-		pub(crate) fn calculate_collect(
-			tranche_id: T::TrancheId,
-			order: UserOrder<T::Balance, T::EpochId>,
-			end_epoch: T::EpochId,
-		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
-			let mut epoch_idx = order.epoch;
-			let mut outstanding = OutstandingCollections {
-				payout_currency_amount: Zero::zero(),
-				payout_token_amount: Zero::zero(),
-				remaining_invest_currency: order.invest,
-				remaining_redeem_token: order.redeem,
-			};
-			let mut all_calculated = false;
-
-			while epoch_idx <= end_epoch && !all_calculated {
-				// Note: If this errors out here, the system is in a corrupt state.
-				let epoch = Epoch::<T>::try_get(&tranche_id, epoch_idx)
-					.map_err(|_| Error::<T>::EpochNotExecutedYet)?;
-
-				if outstanding.remaining_invest_currency != Zero::zero() {
-					Self::parse_invest_executions(&epoch, &mut outstanding)?;
-				}
-
-				if outstanding.remaining_redeem_token != Zero::zero() {
-					Self::parse_redeem_executions(&epoch, &mut outstanding)?;
-				}
-
-				epoch_idx += One::one();
-				all_calculated = outstanding.remaining_invest_currency == Zero::zero()
-					&& outstanding.remaining_redeem_token == Zero::zero();
-			}
-
-			Ok(outstanding)
-		}
-
-		fn parse_invest_executions(
-			epoch: &EpochDetails<T::BalanceRatio>,
-			outstanding: &mut OutstandingCollections<T::Balance>,
-		) -> DispatchResult {
-			// Multiply invest fulfilment in this epoch with outstanding order amount to get executed amount
-			// Rounding down in favor of the system
-			let amount = epoch
-				.invest_fulfillment
-				.mul_floor(outstanding.remaining_invest_currency);
-
-			if amount != Zero::zero() {
-				// Divide by the token price to get the payout in tokens
-				let amount_token = epoch
-					.token_price
-					.reciprocal()
-					.and_then(|inv_price| inv_price.checked_mul_int(amount))
-					.ok_or(ArithmeticError::Overflow)?;
-
-				outstanding.payout_token_amount = outstanding
-					.payout_token_amount
-					.checked_add(&amount_token)
-					.ok_or(ArithmeticError::Overflow)?;
-				outstanding.remaining_invest_currency = outstanding
-					.remaining_invest_currency
-					.checked_sub(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
-			}
-
-			Ok(())
-		}
-
-		fn parse_redeem_executions(
-			epoch: &EpochDetails<T::BalanceRatio>,
-			outstanding: &mut OutstandingCollections<T::Balance>,
-		) -> DispatchResult {
-			// Multiply redeem fulfilment in this epoch with outstanding order amount to get executed amount
-			// Rounding down in favor of the system
-			let amount = epoch
-				.redeem_fulfillment
-				.mul_floor(outstanding.remaining_redeem_token);
-
-			if amount != Zero::zero() {
-				// Multiply by the token price to get the payout in currency
-				let amount_currency = epoch
-					.token_price
-					.checked_mul_int(amount)
-					.unwrap_or(Zero::zero());
-
-				outstanding.payout_currency_amount = outstanding
-					.payout_currency_amount
-					.checked_add(&amount_currency)
-					.ok_or(ArithmeticError::Overflow)?;
-				outstanding.remaining_redeem_token = outstanding
-					.remaining_redeem_token
-					.checked_sub(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
-			}
-
-			Ok(())
-		}
-
 		pub fn is_valid_tranche_change(
 			old_tranches: Option<&TranchesOf<T>>,
 			new_tranches: &Vec<TrancheUpdate<T::InterestRate>>,
@@ -2021,58 +1604,26 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
-			let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch
-				.tranches
-				.combine_with_residual_top(solution, |tranche, solution| {
-					Ok((
-						solution.invest_fulfillment.mul_floor(tranche.invest),
-						solution.redeem_fulfillment.mul_floor(tranche.redeem),
-					))
-				})?;
+			pool.reserve.deposit_from_epoch(&epoch.tranches, solution)?;
 
-			// Update the total/available reserve for the new total value of the pool
-			let mut acc_investments = T::Balance::zero();
-			let mut acc_redemptions = T::Balance::zero();
-			for (invest, redeem) in executed_amounts.iter() {
-				acc_investments = acc_investments
-					.checked_add(invest)
-					.ok_or(ArithmeticError::Overflow)?;
-				acc_redemptions = acc_redemptions
-					.checked_add(redeem)
-					.ok_or(ArithmeticError::Overflow)?;
+			for (tranche, solution) in epoch.tranches.residual_top_slice().iter().zip(solution) {
+				T::Investments::invest_fulfillment(
+					tranche.currency,
+					FulfillmentWithPrice {
+						of_amount: solution.invest_fulfillment,
+						price: tranche.price,
+					},
+				)?;
+				T::Investments::redeem_fulfillment(
+					tranche.currency,
+					FulfillmentWithPrice {
+						of_amount: solution.redeem_fulfillment,
+						price: tranche.price,
+					},
+				)?;
 			}
-			pool.reserve.total = pool
-				.reserve
-				.total
-				.checked_add(&acc_investments)
-				.ok_or(ArithmeticError::Overflow)?
-				.checked_sub(&acc_redemptions)
-				.ok_or(ArithmeticError::Underflow)?;
 
 			pool.execute_previous_epoch()?;
-
-			let last_epoch_executed = pool.epoch.last_executed;
-			let ids = pool.tranches.ids_residual_top();
-
-			// Update tranche orders and add epoch solution state
-			pool.tranches.combine_with_mut_residual_top(
-				solution
-					.iter()
-					.zip(executed_amounts.iter())
-					.zip(epoch.tranches.residual_top_slice())
-					.zip(ids),
-				|tranche, (((solution, executed_amounts), epoch_tranche), tranche_id)| {
-					Self::update_tranche_for_epoch(
-						pool_id,
-						tranche_id,
-						last_epoch_executed,
-						tranche,
-						*solution,
-						*executed_amounts,
-						epoch_tranche.price,
-					)
-				},
-			)?;
 
 			let total_assets = pool
 				.reserve
@@ -2101,58 +1652,8 @@ pub mod pallet {
 				tranche_ratios.as_slice(),
 				executed_amounts.as_slice(),
 			)?;
+
 			Self::deposit_event(Event::Rebalanced { pool_id });
-
-			Ok(())
-		}
-
-		/// Prepare tranches for next epoch.
-		///
-		/// This function updates the
-		///  * Invest and redeem orders based on the executed solution
-		fn update_tranche_for_epoch(
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-			submission_period_epoch: T::EpochId,
-			tranche: &mut TrancheOf<T>,
-			solution: TrancheSolution,
-			(currency_invest, _currency_redeem): (T::Balance, T::Balance),
-			price: T::BalanceRatio,
-		) -> DispatchResult {
-			// Update invest/redeem orders for the next epoch based on our execution
-			let token_invest = price
-				.reciprocal()
-				.and_then(|inv_price| inv_price.checked_mul_int(tranche.outstanding_invest_orders))
-				.map(|invest| solution.invest_fulfillment.mul_ceil(invest))
-				.unwrap_or(Zero::zero());
-			let token_redeem = solution
-				.redeem_fulfillment
-				.mul_floor(tranche.outstanding_redeem_orders);
-
-			tranche.outstanding_invest_orders -= currency_invest;
-			tranche.outstanding_redeem_orders -= token_redeem;
-
-			// Compute the tranche tokens that need to be minted or burned based on the execution
-			let pool_address = PoolLocator { pool_id }.into_account_truncating();
-			match token_invest.cmp(&token_redeem) {
-				Ordering::Greater => {
-					let tokens_to_mint = token_invest - token_redeem;
-					T::Tokens::mint_into(tranche.currency, &pool_address, tokens_to_mint)?;
-				}
-				Ordering::Less => {
-					let tokens_to_burn = token_redeem - token_invest;
-					T::Tokens::burn_from(tranche.currency, &pool_address, tokens_to_burn)?;
-				}
-				Ordering::Equal => {}
-			}
-
-			// Insert epoch closing information on invest/redeem fulfillment
-			let epoch = EpochDetails::<T::BalanceRatio> {
-				invest_fulfillment: solution.invest_fulfillment,
-				redeem_fulfillment: solution.redeem_fulfillment,
-				token_price: price,
-			};
-			Epoch::<T>::insert(tranche_id, submission_period_epoch, epoch);
 
 			Ok(())
 		}
