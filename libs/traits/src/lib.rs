@@ -296,6 +296,16 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
 
+/// A trait for converting from a PoolId and a TranchId
+/// into a given Self::Currency
+pub trait TrancheCurrency<PoolId, TrancheId> {
+	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self;
+
+	fn of_pool(&self) -> PoolId;
+
+	fn of_tranche(&self) -> TrancheId;
+}
+
 /// A trait, when implemented allows to invest into
 /// investment classes
 pub trait Investment<AccountId> {

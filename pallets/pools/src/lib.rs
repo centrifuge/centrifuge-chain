@@ -245,7 +245,7 @@ type PoolDepositOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::PoolUpdateGuard;
+	use cfg_traits::{PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
 	use cfg_types::CustomMetadata;
 	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
@@ -360,6 +360,10 @@ pub mod pallet {
 
 		/// A conversion from a tranche ID to a CurrencyId
 		type TrancheToken: TrancheToken<Self::PoolId, Self::TrancheId, Self::CurrencyId>;
+
+		type TrancheCurrency: Into<Self::CurrencyId>
+			+ Clone
+			+ TrancheCurrencyT<Self::PoolId, Self::TrancheId>;
 
 		type Time: UnixTime;
 

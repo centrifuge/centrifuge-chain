@@ -1,4 +1,17 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+//
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use cfg_primitives::types::{PoolId, TrancheId};
+use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -37,10 +50,43 @@ impl Default for CurrencyId {
 
 /// A type that can create a TrancheToken from a PoolId and a TrancheId
 pub struct TrancheToken;
-
 impl cfg_traits::TrancheToken<PoolId, TrancheId, CurrencyId> for TrancheToken {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
 		CurrencyId::Tranche(pool, tranche)
+	}
+}
+
+/// A Currency that is solely used by tranches.
+///
+/// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
+/// in order to be able to have a clear seperation of concern. This enables us
+/// to use the `TrancheCurrency` type seperately where solely this enum variant would be
+/// relevant. Most notably, in the `struct Tranche`.
+pub struct TrancheCurrency {
+	pool_id: PoolId,
+	tranche_id: TrancheId,
+}
+
+impl Into<CurrencyId> for TrancheCurrency {
+	fn into(self) -> CurrencyId {
+		CurrencyId::Tranche(self.pool_id, self.tranche_id)
+	}
+}
+
+impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
+	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
+		Self {
+			pool_id,
+			tranche_id,
+		}
+	}
+
+	fn of_pool(&self) -> PoolId {
+		self.pool_id
+	}
+
+	fn of_tranche(&self) -> TrancheId {
+		self.tranche_id
 	}
 }
 
