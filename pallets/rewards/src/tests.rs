@@ -11,26 +11,27 @@ use sp_runtime::{traits::AccountIdConversion, FixedPointNumber};
 fn epoch_rewards() {
 	pub const REWARD_1: u64 = 100;
 	pub const REWARD_2: u64 = 500;
+	pub const REWARD_3: u64 = 1000;
 
 	new_test_ext().execute_with(|| {
 		NextTotalReward::<Test>::put(REWARD_1);
 
 		assert_eq!(
 			ActiveEpoch::<Test>::get(),
-			Some(EpochDetails {
-				ends_on: EPOCH_INTERVAL,
+			EpochDetails {
+				ends_on: INITIAL_BLOCK + EPOCH_INTERVAL,
 				total_reward: 0,
-			})
+			}
 		);
 
 		mock::finalize_epoch(); // EPOCH 1
 
 		assert_eq!(
 			ActiveEpoch::<Test>::get(),
-			Some(EpochDetails {
-				ends_on: EPOCH_INTERVAL * 2,
+			EpochDetails {
+				ends_on: INITIAL_BLOCK + EPOCH_INTERVAL * 2,
 				total_reward: REWARD_1,
-			})
+			}
 		);
 
 		NextTotalReward::<Test>::put(REWARD_2);
@@ -39,21 +40,32 @@ fn epoch_rewards() {
 
 		assert_eq!(
 			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			REWARD_1
+			0 // There is no stake in the system, so no reward is generated.
 		);
 		assert_eq!(
 			ActiveEpoch::<Test>::get(),
-			Some(EpochDetails {
-				ends_on: EPOCH_INTERVAL * 3,
+			EpochDetails {
+				ends_on: INITIAL_BLOCK + EPOCH_INTERVAL * 3,
 				total_reward: REWARD_2
-			})
+			}
 		);
+
+		assert_ok!(Rewards::stake(Origin::signed(USER_A), 1));
+
+		NextTotalReward::<Test>::put(REWARD_3);
 
 		mock::finalize_epoch(); // EPOCH 3
 
 		assert_eq!(
 			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			REWARD_1 + REWARD_2
+			REWARD_2 // Generated reward because USER_A has added stake
+		);
+
+		mock::finalize_epoch(); // EPOCH 4
+
+		assert_eq!(
+			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
+			REWARD_2 + REWARD_3
 		);
 	});
 }
