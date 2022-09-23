@@ -14,7 +14,7 @@
 #![allow(clippy::or_fun_call)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve};
 use cfg_types::{PermissionScope, PoolLocator, PoolRole, Role};
 use codec::HasCompact;
 use frame_support::{
@@ -77,26 +77,35 @@ struct SummarizedOrders<Balance> {
 	// Redeem orders per tranche
 	//
 	// NOTE: Sorted from residual-to-non-residual
-	redeem_order: Vec<Balance>,
+	redeem_orders: Vec<Balance>,
 }
 
-impl<Balance: Zero> SummarizedOrders<Balance> {
+impl<Balance: Zero + PartialEq + Eq + Copy> SummarizedOrders<Balance> {
 	fn all_are_zero(&self) -> bool {
-		self.invest_orders == Zero::zero() && self.redeem_orders == Zero::zero()
+		self.acc_invest_orders == Zero::zero() && self.acc_redeem_orders == Zero::zero()
 	}
 
-	fn invest_redeem_residual_top(&self) -> &[(Balance, Balance)] {
+	fn invest_redeem_residual_top(&self) -> Vec<(Balance, Balance)> {
 		self.invest_orders
 			.iter()
-			.zip(&self.redeem_order)
-			.collect()
-			.as_ref()
+			.zip(&self.redeem_orders)
+			.map(|(invest, redeem)| (*invest, *redeem))
+			.collect::<Vec<_>>()
 	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
-where
+pub struct PoolDetails<
+	CurrencyId,
+	TrancheCurrency,
+	EpochId,
+	Balance,
+	Rate,
+	MetaSize,
+	Weight,
+	TrancheId,
+	PoolId,
+> where
 	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
@@ -104,7 +113,7 @@ where
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
 	/// List of tranches, ordered junior to senior.
-	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>,
+	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>,
 	/// Details about the parameters of the pool.
 	pub parameters: PoolParameters,
 	/// Metadata that specifies the pool.
@@ -132,23 +141,24 @@ pub struct ReserveDetails<Balance> {
 	pub available: Balance,
 }
 
-impl<Balance> ReserveDetails<Balance> {
-	fn deposit_from_epoch<T: Config>(
-		&self,
-		epoch_tranches: &[EpochExecutionTrancheOf<T>],
+impl<Balance> ReserveDetails<Balance>
+where
+	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
+{
+	fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency>(
+		&mut self,
+		epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		solution: &[TrancheSolution],
-	) -> DispatchResult {
-		let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch_tranches
-			.combine_with_residual_top(solution, |tranche, solution| {
-				Ok((
-					solution.invest_fulfillment.mul_floor(tranche.invest),
-					solution.redeem_fulfillment.mul_floor(tranche.redeem),
-				))
-			})?;
+	) -> DispatchResult
+	where
+		Weight: Copy + From<u128>,
+		BalanceRatio: Copy,
+	{
+		let executed_amounts = epoch_tranches.fulfillment_cash_flows(solution)?;
 
 		// Update the total/available reserve for the new total value of the pool
-		let mut acc_investments = T::Balance::zero();
-		let mut acc_redemptions = T::Balance::zero();
+		let mut acc_investments = Balance::zero();
+		let mut acc_redemptions = Balance::zero();
 		for (invest, redeem) in executed_amounts.iter() {
 			acc_investments = acc_investments
 				.checked_add(invest)
@@ -157,8 +167,7 @@ impl<Balance> ReserveDetails<Balance> {
 				.checked_add(redeem)
 				.ok_or(ArithmeticError::Overflow)?;
 		}
-		pool.reserve.total = pool
-			.reserve
+		self.total = self
 			.total
 			.checked_add(&acc_investments)
 			.ok_or(ArithmeticError::Overflow)?
@@ -209,9 +218,18 @@ where
 	pub scheduled_time: Moment,
 }
 
-impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
-	PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
-where
+impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
+	PoolDetails<
+		CurrencyId,
+		TrancheCurrency,
+		EpochId,
+		Balance,
+		Rate,
+		MetaSize,
+		Weight,
+		TrancheId,
+		PoolId,
+	> where
 	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
@@ -258,12 +276,13 @@ where
 
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber> {
+pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber, TrancheCurrency>
+{
 	epoch: EpochId,
 	nav: Balance,
 	reserve: Balance,
 	max_reserve: Balance,
-	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 	best_submission: Option<EpochSolution<Balance>>,
 	challenge_period_end: Option<BlockNumber>,
 }
@@ -284,33 +303,37 @@ pub struct PoolDepositInfo<AccountId, Balance> {
 	pub deposit: Balance,
 }
 
-// Types to ease function signatures
+/// Type alias to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
+	<T as Config>::TrancheCurrency,
 	<T as Config>::EpochId,
 	<T as Config>::Balance,
-	<T as Config>::InterestRate,
+	<T as Config>::Rate,
 	<T as Config>::MaxSizeMetadata,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
 >;
-type UserOrderOf<T> = UserOrder<<T as Config>::Balance, <T as Config>::EpochId>;
+
+/// Type alias for `struct EpochExecutionInfo`
 type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::Balance,
-	<T as Config>::BalanceRatio,
+	<T as Config>::Rate,
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
+	<T as Config>::TrancheCurrency,
 >;
+
+/// Type alias for `struct PoolDepositInfo`
 type PoolDepositOf<T> =
 	PoolDepositInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_primitives::OrderId;
 	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
-	use cfg_types::{CustomMetadata, FulfillmentWithPrice};
+	use cfg_types::{CustomMetadata, FulfillmentWithPrice, TotalOrder};
 	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
@@ -337,18 +360,12 @@ pub mod pallet {
 			+ Convert<Self::TrancheWeight, Self::Balance>
 			+ From<u128>;
 
-		/// A fixed-point number which represents the value of
-		/// one currency type in terms of another.
-		type BalanceRatio: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
-
-		/// A fixed-point number which represents an
-		/// interest rate.
-		type InterestRate: Member
+		/// A fixed-point number which represents a Self::Balance
+		/// in terms of this fixed-point representation.
+		///
+		/// NOTE: One must be cautious with using One::one() in
+		///       this context.
+		type Rate: Member
 			+ Parameter
 			+ Default
 			+ Copy
@@ -391,7 +408,7 @@ pub mod pallet {
 		type UpdateGuard: PoolUpdateGuard<
 			PoolDetails = PoolDetailsOf<Self>,
 			ScheduledUpdateDetails = ScheduledUpdateDetails<
-				Self::InterestRate,
+				Self::Rate,
 				Self::MaxTokenNameLength,
 				Self::MaxTokenSymbolLength,
 			>,
@@ -422,18 +439,19 @@ pub mod pallet {
 
 		type NAV: PoolNAV<Self::PoolId, Self::Balance>;
 
-		/// A conversion from a tranche ID to a CurrencyId
-		type TrancheToken: TrancheToken<Self::PoolId, Self::TrancheId, Self::CurrencyId>;
-
 		type TrancheCurrency: Into<Self::CurrencyId>
 			+ Clone
-			+ TrancheCurrencyT<Self::PoolId, Self::TrancheId>;
+			+ Copy
+			+ TrancheCurrencyT<Self::PoolId, Self::TrancheId>
+			+ Parameter
+			+ MaxEncodedLen
+			+ TypeInfo;
 
 		type Investments: OrderManager<
 			Error = DispatchError,
 			InvestmentId = Self::TrancheCurrency,
-			Orders = cfg_types::Order<Self::Balance, OrderId>,
-			Fulfillment = FulfillmentWithPrice<Self::BalanceRatio>,
+			Orders = TotalOrder<Self::Balance>,
+			Fulfillment = FulfillmentWithPrice<Self::Rate>,
 		>;
 
 		type Time: UnixTime;
@@ -505,7 +523,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::PoolId,
-		ScheduledUpdateDetails<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+		ScheduledUpdateDetails<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 	>;
 
 	#[pallet::storage]
@@ -517,17 +535,6 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::AccountId,
 		UserOrder<T::Balance, T::EpochId>,
-	>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn epoch)]
-	pub type Epoch<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::TrancheId,
-		Blake2_128Concat,
-		T::EpochId,
-		EpochDetails<T::BalanceRatio>,
 	>;
 
 	#[pallet::storage]
@@ -714,7 +721,7 @@ pub mod pallet {
 			admin: T::AccountId,
 			pool_id: T::PoolId,
 			tranche_inputs: Vec<
-				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+				TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 			>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
@@ -753,11 +760,18 @@ pub mod pallet {
 
 			let now = Self::now();
 
-			let tranches = Tranches::from_input::<
-				T::TrancheToken,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>(pool_id, tranche_inputs.clone(), now)?;
+			let tranches = Tranches::<
+				T::Balance,
+				T::Rate,
+				T::TrancheWeight,
+				T::TrancheCurrency,
+				T::TrancheId,
+				T::PoolId,
+			>::from_input::<T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
+				pool_id,
+				tranche_inputs.clone(),
+				now,
+			)?;
 
 			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
 				Some(metadata_value) => {
@@ -791,7 +805,7 @@ pub mod pallet {
 					token_symbol.to_vec(),
 				);
 
-				T::AssetRegistry::register_asset(Some(tranche.currency), metadata)
+				T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
 					.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 			}
 
@@ -855,7 +869,7 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			changes: PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -1088,7 +1102,7 @@ pub mod pallet {
 
 				let epoch_tranche_prices = pool
 					.tranches
-					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
+					.calculate_prices::<T::Rate, T::Tokens, _>(total_assets, now)?;
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
 				// TODO: This should instead put the pool into an error state
@@ -1105,7 +1119,7 @@ pub mod pallet {
 				});
 
 				// Get the orders
-				let orders = Self::summarize_orders(&epoch_tranche_prices)?;
+				let orders = Self::summarize_orders(&pool.tranches, &epoch_tranche_prices)?;
 
 				if orders.all_are_zero() {
 					pool.tranches.combine_with_mut_residual_top(
@@ -1113,7 +1127,7 @@ pub mod pallet {
 						|tranche, price| {
 							let zero_fulfillment = FulfillmentWithPrice {
 								of_amount: Perquintill::zero(),
-								price: price,
+								price: *price,
 							};
 							T::Investments::invest_fulfillment(tranche.currency, zero_fulfillment)?;
 							T::Investments::redeem_fulfillment(tranche.currency, zero_fulfillment)
@@ -1136,17 +1150,24 @@ pub mod pallet {
 					.into());
 				}
 
-				let epoch_tranches = pool.tranches.combine_with_residual_top(
+				let epoch_tranches: Vec<
+					EpochExecutionTranche<
+						T::Balance,
+						T::Rate,
+						T::TrancheWeight,
+						T::TrancheCurrency,
+					>,
+				> = pool.tranches.combine_with_residual_top(
 					epoch_tranche_prices
 						.iter()
 						.zip(orders.invest_redeem_residual_top()),
 					|tranche, (price, (invest, redeem))| {
 						let epoch_tranche = EpochExecutionTranche {
 							currency: tranche.currency,
-							supply: tranche.balance(),
+							supply: tranche.balance()?,
 							price: *price,
-							invest: *invest,
-							redeem: *redeem,
+							invest: invest,
+							redeem: redeem,
 							seniority: tranche.seniority,
 							min_risk_buffer: tranche.min_risk_buffer(),
 							_phantom: Default::default(),
@@ -1354,9 +1375,43 @@ pub mod pallet {
 		}
 
 		fn summarize_orders(
-			prices: &[T::BalanceRatio],
+			tranches: &TranchesOf<T>,
+			prices: &[T::Rate],
 		) -> Result<SummarizedOrders<T::Balance>, DispatchError> {
-			todo!()
+			let mut acc_invest_orders = T::Balance::zero();
+			let mut acc_redeem_orders = T::Balance::zero();
+			let mut invest_orders = Vec::with_capacity(tranches.num_tranches());
+			let mut redeem_orders = Vec::with_capacity(tranches.num_tranches());
+
+			tranches.combine_with_residual_top(prices, |tranche, price| {
+				let invest_order = T::Investments::invest_orders(tranche.currency)?;
+				acc_invest_orders = acc_invest_orders
+					.checked_add(&invest_order.amount)
+					.ok_or(ArithmeticError::Overflow)?;
+				invest_orders.push(invest_order.amount);
+
+				// Redeem order is denominated in the `TrancheCurrency`. Hence, we need to convert them into `PoolCurrency`
+				// denomination
+				let redeem_order = T::Investments::redeem_orders(tranche.currency)?;
+				let redeem_amount_in_pool_currency = price
+					.reciprocal()
+					.ok_or(ArithmeticError::DivisionByZero)?
+					.checked_mul_int(redeem_order.amount)
+					.ok_or(ArithmeticError::Overflow)?;
+				acc_redeem_orders = acc_redeem_orders
+					.checked_add(&redeem_amount_in_pool_currency)
+					.ok_or(ArithmeticError::Overflow)?;
+				redeem_orders.push(redeem_amount_in_pool_currency);
+
+				Ok(())
+			})?;
+
+			Ok(SummarizedOrders {
+				acc_invest_orders,
+				acc_redeem_orders,
+				invest_orders,
+				redeem_orders,
+			})
 		}
 
 		/// Scores a solution.
@@ -1394,7 +1449,7 @@ pub mod pallet {
 			);
 
 			let (acc_invest, acc_redeem, risk_buffers) =
-				calculate_solution_parameters::<_, _, T::InterestRate, _, T::CurrencyId>(
+				calculate_solution_parameters::<_, _, T::Rate, _, T::TrancheCurrency>(
 					&epoch.tranches,
 					solution,
 				)
@@ -1462,7 +1517,7 @@ pub mod pallet {
 
 		pub(crate) fn do_update_pool(
 			pool_id: &T::PoolId,
-			changes: &PoolChanges<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			changes: &PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 		) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
@@ -1504,7 +1559,7 @@ pub mod pallet {
 						pool.tranches.tranches.iter().zip(metadata.iter())
 					{
 						T::AssetRegistry::update_asset(
-							tranche.currency,
+							tranche.currency.into(),
 							None,
 							Some(updated_metadata.clone().token_name.to_vec()),
 							Some(updated_metadata.clone().token_symbol.to_vec()),
@@ -1525,7 +1580,7 @@ pub mod pallet {
 
 		pub fn is_valid_tranche_change(
 			old_tranches: Option<&TranchesOf<T>>,
-			new_tranches: &Vec<TrancheUpdate<T::InterestRate>>,
+			new_tranches: &Vec<TrancheUpdate<T::Rate>>,
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
 			ensure!(
@@ -1625,13 +1680,14 @@ pub mod pallet {
 
 			pool.execute_previous_epoch()?;
 
+			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
 			let total_assets = pool
 				.reserve
 				.total
 				.checked_add(&epoch.nav)
 				.ok_or(ArithmeticError::Overflow)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
-				executed_amounts.iter(),
+				&executed_amounts,
 				|tranche, (invest, redeem)| {
 					tranche
 						.supply
@@ -1650,7 +1706,7 @@ pub mod pallet {
 				pool.reserve.total,
 				epoch.nav,
 				tranche_ratios.as_slice(),
-				executed_amounts.as_slice(),
+				&executed_amounts,
 			)?;
 
 			Self::deposit_event(Event::Rebalanced { pool_id });

@@ -190,7 +190,6 @@ cfg_traits::mocks::orml_asset_registry::impl_mock_registry! {
 impl pallet_pools::Config for MockRuntime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
-	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -215,6 +214,7 @@ impl pallet_pools::Config for MockRuntime {
 	type PoolCurrency = Everything;
 	type PoolDeposit = ZeroDeposit;
 	type PoolId = PoolId;
+	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheId = [u8; 16];

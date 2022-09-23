@@ -319,7 +319,6 @@ parameter_types! {
 impl Config for Test {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
-	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -344,6 +343,7 @@ impl Config for Test {
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = u64;
+	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheId = TrancheId;

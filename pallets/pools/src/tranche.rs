@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::TrancheToken as TrancheTokenT;
+use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
 use cfg_types::CurrencyId;
 use cfg_types::{CustomMetadata, XcmMetadata};
@@ -41,24 +41,35 @@ use super::*;
 #[allow(dead_code)]
 pub(super) type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
 	<T as Config>::Balance,
-	<T as Config>::BalanceRatio,
+	<T as Config>::Rate,
 	<T as Config>::TrancheWeight,
+	<T as Config>::TrancheCurrency,
+>;
+
+#[allow(dead_code)]
+/// Type alias for EpochExecutionTranches
+pub(super) type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
+	<T as Config>::Balance,
+	<T as Config>::Rate,
+	<T as Config>::TrancheWeight,
+	<T as Config>::TrancheCurrency,
 >;
 
 /// Types alias for Tranches
 pub(super) type TranchesOf<T> = Tranches<
 	<T as Config>::Balance,
-	<T as Config>::InterestRate,
+	<T as Config>::Rate,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
 >;
 
+#[allow(dead_code)]
 /// Types alias for Tranche
 pub(super) type TrancheOf<T> = Tranche<
 	<T as Config>::Balance,
-	<T as Config>::InterestRate,
+	<T as Config>::Rate,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
 >;
@@ -185,23 +196,6 @@ where
 	Balance: FixedPointOperand,
 	Weight: Copy + From<u128>,
 {
-	pub fn order_as_currency<BalanceRatio>(
-		&self,
-		price: &BalanceRatio,
-	) -> Result<(Balance, Balance), DispatchError>
-	where
-		BalanceRatio: FixedPointNumber<Inner = Balance>,
-	{
-		let orders = (
-			self.outstanding_invest_orders,
-			price
-				.checked_mul_int(self.outstanding_redeem_orders)
-				.ok_or(ArithmeticError::Overflow)?,
-		);
-
-		Ok(orders)
-	}
-
 	pub fn balance(&self) -> Result<Balance, DispatchError> {
 		self.debt
 			.checked_add(&self.reserve)
@@ -331,29 +325,28 @@ pub type TrancheIndex = u64;
 pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Tranches<Balance, Rate, Weight, Currency, TrancheId, PoolId> {
-	pub tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
+pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
+	pub tranches: Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>>,
 	ids: Vec<TrancheId>,
 	salt: TrancheSalt<PoolId>,
 }
 
-impl<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>
-	Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>
+impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>
+	Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>
 where
-	CurrencyId: Copy,
+	TrancheCurrency: Copy + TrancheCurrencyT<PoolId, TrancheId>,
 	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	Rate: One + Copy + FixedPointNumber<Inner = Balance>,
 	TrancheId: Clone + From<[u8; 16]> + sp_std::cmp::PartialEq,
 	PoolId: Copy + Encode,
 {
-	pub fn from_input<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
+	pub fn from_input<MaxTokenNameLength, MaxTokenSymbolLength>(
 		pool: PoolId,
 		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 		now: Moment,
 	) -> Result<Self, DispatchError>
 	where
-		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
 		MaxTokenNameLength: Get<u32>,
 		MaxTokenSymbolLength: Get<u32>,
 	{
@@ -367,7 +360,7 @@ where
 		};
 
 		for (index, tranche_input) in tranche_inputs.into_iter().enumerate() {
-			tranches.add::<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
+			tranches.add::<MaxTokenNameLength, MaxTokenSymbolLength>(
 				index.try_into().map_err(|_| ArithmeticError::Overflow)?,
 				tranche_input,
 				now,
@@ -377,13 +370,11 @@ where
 		Ok(tranches)
 	}
 
-	pub fn new<TrancheToken>(
+	#[cfg(test)]
+	pub fn new(
 		pool: PoolId,
-		tranches: Vec<Tranche<Balance, Rate, Weight, CurrencyId>>,
-	) -> Result<Self, DispatchError>
-	where
-		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
-	{
+		tranches: Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>>,
+	) -> Result<Self, DispatchError> {
 		let mut ids = Vec::with_capacity(tranches.len());
 		let mut salt = (0, pool);
 
@@ -392,7 +383,7 @@ where
 				Balance,
 				Rate,
 				Weight,
-				CurrencyId,
+				TrancheCurrency,
 				TrancheId,
 				PoolId,
 			>::id_from_salt(salt));
@@ -411,7 +402,7 @@ where
 		})
 	}
 
-	pub fn tranche_currency(&self, id: TrancheLoc<TrancheId>) -> Option<CurrencyId> {
+	pub fn tranche_currency(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheCurrency> {
 		self.get_tranche(id).map(|tranche| tranche.currency)
 	}
 
@@ -439,7 +430,7 @@ where
 	pub fn get_mut_tranche(
 		&mut self,
 		id: TrancheLoc<TrancheId>,
-	) -> Option<&mut Tranche<Balance, Rate, Weight, CurrencyId>> {
+	) -> Option<&mut Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		match id {
 			TrancheLoc::Index(index) => {
 				let index: Option<usize> = index.try_into().ok();
@@ -468,7 +459,7 @@ where
 	pub fn get_tranche(
 		&self,
 		id: TrancheLoc<TrancheId>,
-	) -> Option<&Tranche<Balance, Rate, Weight, CurrencyId>> {
+	) -> Option<&Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		match id {
 			TrancheLoc::Index(index) => {
 				let index: Option<usize> = index.try_into().ok();
@@ -507,9 +498,10 @@ where
 	///
 	/// -> tranche id = Twox128::hash(salt)
 	fn next_id(&mut self) -> Result<TrancheId, DispatchError> {
-		let id = Tranches::<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>::id_from_salt(
-			self.salt,
-		);
+		let id =
+			Tranches::<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>::id_from_salt(
+				self.salt,
+			);
 		self.salt = (
 			self.salt
 				.0
@@ -520,25 +512,20 @@ where
 		Ok(id)
 	}
 
-	fn create_tranche<TrancheToken>(
+	fn create_tranche(
 		&mut self,
 		index: TrancheIndex,
 		id: TrancheId,
 		tranche_type: TrancheType<Rate>,
 		seniority: Option<Seniority>,
 		now: Moment,
-	) -> Result<Tranche<Balance, Rate, Weight, CurrencyId>, DispatchError>
-	where
-		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
-	{
+	) -> Result<Tranche<Balance, Rate, Weight, TrancheCurrency>, DispatchError> {
 		let tranche = Tranche {
 			tranche_type,
 			// seniority increases as index since the order is from junior to senior
 			seniority: seniority
 				.unwrap_or(index.try_into().map_err(|_| ArithmeticError::Overflow)?),
-			currency: TrancheToken::tranche_token(self.salt.1, id),
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
+			currency: TrancheCurrency::generate(self.salt.1, id),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
 			loss: Zero::zero(),
@@ -549,29 +536,27 @@ where
 		Ok(tranche)
 	}
 
-	pub fn replace<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
+	pub fn replace<MaxTokenNameLength, MaxTokenSymbolLength>(
 		&mut self,
 		at: TrancheIndex,
 		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
 		now: Moment,
 	) -> DispatchResult
 	where
-		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
 		MaxTokenNameLength: Get<u32>,
 		MaxTokenSymbolLength: Get<u32>,
 	{
 		self.remove(at)?;
-		self.add::<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(at, tranche, now)
+		self.add::<MaxTokenNameLength, MaxTokenSymbolLength>(at, tranche, now)
 	}
 
-	pub fn add<TrancheToken, MaxTokenNameLength, MaxTokenSymbolLength>(
+	pub fn add<MaxTokenNameLength, MaxTokenSymbolLength>(
 		&mut self,
 		at: TrancheIndex,
 		tranche: TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
 		now: Moment,
 	) -> DispatchResult
 	where
-		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
 		MaxTokenNameLength: Get<u32>,
 		MaxTokenSymbolLength: Get<u32>,
 	{
@@ -585,7 +570,7 @@ where
 		);
 
 		let id = self.next_id()?;
-		let new_tranche = self.create_tranche::<TrancheToken>(
+		let new_tranche = self.create_tranche(
 			at_idx,
 			id.clone(),
 			tranche.tranche_type,
@@ -640,7 +625,7 @@ where
 
 	pub fn combine_non_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in self.tranches.iter().rev() {
@@ -652,7 +637,7 @@ where
 
 	pub fn combine_mut_non_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+		F: FnMut(&mut Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in self.tranches.iter_mut().rev() {
@@ -668,7 +653,7 @@ where
 		mut f: F,
 	) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
+		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>, W) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
@@ -688,7 +673,10 @@ where
 		mut f: F,
 	) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
+		F: FnMut(
+			&mut Tranche<Balance, Rate, Weight, TrancheCurrency>,
+			W,
+		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
@@ -708,7 +696,7 @@ where
 
 	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in self.tranches.iter() {
@@ -720,7 +708,7 @@ where
 
 	pub fn combine_mut_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+		F: FnMut(&mut Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in self.tranches.iter_mut() {
@@ -736,7 +724,7 @@ where
 		mut f: F,
 	) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
+		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>, W) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
@@ -756,7 +744,10 @@ where
 		mut f: F,
 	) -> Result<Vec<R>, DispatchError>
 	where
-		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
+		F: FnMut(
+			&mut Tranche<Balance, Rate, Weight, TrancheCurrency>,
+			W,
+		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
@@ -771,18 +762,6 @@ where
 		Ok(res)
 	}
 
-	pub fn orders_as_currency<BalanceRatio>(
-		&self,
-		prices: &[BalanceRatio],
-	) -> Result<Vec<(Balance, Balance)>, DispatchError>
-	where
-		BalanceRatio: FixedPointNumber<Inner = Balance>,
-	{
-		self.combine_with_non_residual_top(prices.iter(), |tranche, price| {
-			tranche.order_as_currency(price)
-		})
-	}
-
 	pub fn calculate_prices<BalanceRatio, Tokens, AccountId>(
 		&mut self,
 		total_assets: Balance,
@@ -790,7 +769,8 @@ where
 	) -> Result<Vec<BalanceRatio>, DispatchError>
 	where
 		BalanceRatio: FixedPointNumber<Inner = Balance>,
-		Tokens: Inspect<AccountId, AssetId = CurrencyId, Balance = Balance>,
+		Tokens: Inspect<AccountId, Balance = Balance>,
+		TrancheCurrency: Into<<Tokens as Inspect<AccountId>>::AssetId>,
 	{
 		let mut remaining_assets = total_assets;
 		let pool_is_zero = total_assets == Zero::zero();
@@ -799,7 +779,7 @@ where
 		// such that prices are calculated from most senior to junior
 		// there by all the remaining assets are given to the most junior tranche
 		let mut prices = self.combine_mut_non_residual_top(|tranche| {
-			let total_issuance = Tokens::total_issuance(tranche.currency);
+			let total_issuance = Tokens::total_issuance(tranche.currency.into());
 
 			if pool_is_zero || total_issuance == Zero::zero() {
 				Ok(One::one())
@@ -837,11 +817,13 @@ where
 		self.tranches.len()
 	}
 
-	pub fn into_tranches(self) -> Vec<Tranche<Balance, Rate, Weight, CurrencyId>> {
+	pub fn into_tranches(self) -> Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		self.tranches
 	}
 
-	pub fn non_residual_tranches(&self) -> Option<&[Tranche<Balance, Rate, Weight, CurrencyId>]> {
+	pub fn non_residual_tranches(
+		&self,
+	) -> Option<&[Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
 		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
 			Some(tail)
 		} else {
@@ -851,7 +833,7 @@ where
 
 	pub fn non_residual_tranches_mut(
 		&mut self,
-	) -> Option<&mut [Tranche<Balance, Rate, Weight, CurrencyId>]> {
+	) -> Option<&mut [Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
 		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
 			Some(tail)
 		} else {
@@ -859,7 +841,7 @@ where
 		}
 	}
 
-	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, CurrencyId>> {
+	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
 			Some(head)
 		} else {
@@ -869,7 +851,7 @@ where
 
 	pub fn residual_tranche_mut(
 		&mut self,
-	) -> Option<&mut Tranche<Balance, Rate, Weight, CurrencyId>> {
+	) -> Option<&mut Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
 			Some(head)
 		} else {
@@ -877,21 +859,25 @@ where
 		}
 	}
 
-	pub fn non_residual_top_slice(&self) -> &RevSlice<Tranche<Balance, Rate, Weight, CurrencyId>> {
+	pub fn non_residual_top_slice(
+		&self,
+	) -> &RevSlice<Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		self.tranches.rev()
 	}
 
 	pub fn non_residual_top_slice_mut(
 		&mut self,
-	) -> &mut RevSlice<Tranche<Balance, Rate, Weight, CurrencyId>> {
+	) -> &mut RevSlice<Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		self.tranches.rev_mut()
 	}
 
-	pub fn residual_top_slice(&self) -> &[Tranche<Balance, Rate, Weight, CurrencyId>] {
+	pub fn residual_top_slice(&self) -> &[Tranche<Balance, Rate, Weight, TrancheCurrency>] {
 		self.tranches.as_slice()
 	}
 
-	pub fn residual_top_slice_mut(&mut self) -> &mut [Tranche<Balance, Rate, Weight, CurrencyId>] {
+	pub fn residual_top_slice_mut(
+		&mut self,
+	) -> &mut [Tranche<Balance, Rate, Weight, TrancheCurrency>] {
 		self.tranches.as_mut_slice()
 	}
 
@@ -911,38 +897,6 @@ where
 					acc.checked_add(&tranche.debt)
 						.and_then(|acc| acc.checked_add(&tranche.reserve))
 				})
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn outstanding_investments(&self) -> Vec<Balance> {
-		self.tranches
-			.iter()
-			.map(|tranche| tranche.outstanding_invest_orders)
-			.collect()
-	}
-
-	pub fn acc_outstanding_investments(&self) -> Result<Balance, DispatchError> {
-		self.tranches
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_invest_orders))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn outstanding_redemptions(&self) -> Vec<Balance> {
-		self.tranches
-			.iter()
-			.map(|tranche| tranche.outstanding_redeem_orders)
-			.collect()
-	}
-
-	pub fn acc_outstanding_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.tranches
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_redeem_orders))
 			})
 			.ok_or(ArithmeticError::Overflow.into())
 	}
@@ -1093,6 +1047,7 @@ pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
 }
 
+/// Utility implementations for `EpochExecutionTranches`
 impl<Balance, BalanceRatio, Weight, TrancheCurrency>
 	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>
 where
@@ -1327,74 +1282,58 @@ where
 
 		Ok(res)
 	}
+}
 
+/// Business logic implementations for `EpochExecutionTranches`
+impl<Balance, BalanceRatio, Weight, TrancheCurrency>
+	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>
+where
+	Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
+	Weight: Copy + From<u128>,
+	BalanceRatio: Copy,
+{
 	pub fn prices(&self) -> Vec<BalanceRatio> {
 		self.tranches.iter().map(|tranche| tranche.price).collect()
+	}
+
+	pub fn fulfillment_cash_flows(
+		&self,
+		fulfillments: &[TrancheSolution],
+	) -> Result<Vec<(Balance, Balance)>, DispatchError> {
+		self.combine_with_residual_top(fulfillments, |tranche, solution| {
+			Ok((
+				solution.invest_fulfillment.mul_floor(tranche.invest),
+				solution.redeem_fulfillment.mul_floor(tranche.redeem),
+			))
+		})
+	}
+
+	pub fn acc_fulfillment_cash_flows(
+		&self,
+		fulfillments: &[TrancheSolution],
+	) -> Result<Vec<Balance>, DispatchError> {
+		self.combine_with_residual_top(fulfillments, |tranche, solution| {
+			solution
+				.invest_fulfillment
+				.mul_floor(tranche.invest)
+				.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+				.ok_or(ArithmeticError::Underflow.into())
+		})
 	}
 
 	pub fn supplies_with_fulfillment(
 		&self,
 		fulfillments: &[TrancheSolution],
 	) -> Result<Vec<Balance>, DispatchError> {
-		self.combine_with_residual_top(fulfillments, |tranche, solution| {
-			tranche
-				.supply
-				.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-				.ok_or(ArithmeticError::Overflow)?
-				.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
-				.ok_or(ArithmeticError::Underflow.into())
-		})
-	}
-
-	pub fn acc_supply_with_fulfillment(
-		&self,
-		fulfillments: &[TrancheSolution],
-	) -> Result<Balance, DispatchError> {
-		self.supplies_with_fulfillment(fulfillments)?
-			.iter()
-			.fold(Some(Balance::zero()), |acc, add| {
-				acc.and_then(|sum| sum.checked_add(add))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn supplies(&self) -> Vec<Balance> {
-		self.tranches.iter().map(|tranche| tranche.supply).collect()
-	}
-
-	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
-		self.tranches
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.supply))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn investments(&self) -> Vec<Balance> {
-		self.tranches.iter().map(|tranche| tranche.invest).collect()
-	}
-
-	pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
-		self.tranches
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.invest))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn redemptions(&self) -> Vec<Balance> {
-		self.tranches.iter().map(|tranche| tranche.redeem).collect()
-	}
-
-	pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.tranches
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.redeem))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
+		self.combine_with_residual_top(
+			&self.acc_fulfillment_cash_flows(fulfillments)?,
+			|tranche, tranche_cash_flow| {
+				tranche
+					.supply
+					.checked_add(&tranche_cash_flow)
+					.ok_or(ArithmeticError::Overflow.into())
+			},
+		)
 	}
 
 	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {

@@ -18,7 +18,7 @@ use super::*;
 impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type Moment = Moment;
 	type PoolId = T::PoolId;
-	type Rate = T::BalanceRatio;
+	type Rate = T::Rate;
 	type TrancheId = T::TrancheId;
 
 	fn pool_exists(pool_id: Self::PoolId) -> bool {
@@ -34,7 +34,7 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	fn get_tranche_token_price(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Moment>> {
+	) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
 		let now = Self::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
@@ -49,10 +49,13 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 			.ok()?;
 		let prices = pool
 			.tranches
-			.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
+			.calculate_prices::<T::Rate, T::Tokens, _>(total_assets, now)
 			.ok()?;
 
-		let base = pool.tranches.tranche_currency(TrancheLoc::Id(tranche_id))?;
+		let base = pool
+			.tranches
+			.tranche_currency(TrancheLoc::Id(tranche_id))?
+			.into();
 
 		let price = prices.get(tranche_index).cloned()?;
 

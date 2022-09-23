@@ -859,7 +859,6 @@ parameter_types! {
 impl pallet_pools::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
@@ -884,6 +883,7 @@ impl pallet_pools::Config for Runtime {
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
+	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheId = TrancheId;
