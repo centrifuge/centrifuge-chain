@@ -1331,18 +1331,7 @@ mod upgrade {
 			weight += InterestAccrual::upgrade_to_v1();
 			weight += Loans::reference_active_rates();
 			weight += InterestAccrual::remove_unused_rates();
-			weight += pallet_anchors::migration::fix_evict_date::migrate::<Runtime>();
 			weight
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<(), &'static str> {
-			pallet_anchors::migration::fix_evict_date::pre_migrate::<Runtime>()
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade() -> Result<(), &'static str> {
-			pallet_anchors::migration::fix_evict_date::post_migrate::<Runtime>()
 		}
 	}
 }
