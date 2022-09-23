@@ -45,7 +45,6 @@ sp-authority-discovery = { git = "https://github.com/paritytech/substrate",  def
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate",  default-features = false, branch = "polkadot-v0.9.26" }
 sp-inherents = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
-node-primitives = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 sp-offchain = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 sp-core = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.26" }
@@ -166,7 +165,6 @@ std = [
     "pallet-multisig/std",
     "pallet-identity/std",
     "pallet-scheduler/std",
-    "node-primitives/std",
     "sp-offchain/std",
     "pallet-offences/std",
     "pallet-proxy/std",
