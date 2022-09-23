@@ -114,7 +114,7 @@ impl Default for Release {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*, weights::constants::WEIGHT_PER_MICROS};
 
 	use super::*;
 	use crate::weights::WeightInfo;
@@ -228,9 +228,10 @@ pub mod pallet {
 					})
 			});
 			T::DbWeight::get().reads_writes(2, 1)
-				+ count
-					* (T::DbWeight::get().reads_writes(1, 1)
-						+ T::Weights::calculate_accumulated_rate(bits))
+				+ ((T::DbWeight::get().reads_writes(1, 1)
+					+ T::Weights::calculate_accumulated_rate(bits))
+				.checked_mul(count))
+				.expect("Overflow")
 		}
 
 		fn on_runtime_upgrade() -> Weight {
