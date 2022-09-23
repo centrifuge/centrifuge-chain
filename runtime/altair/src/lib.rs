@@ -1219,7 +1219,7 @@ impl Contains<Call> for BaseCallFilter {
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
-		NodeBlock = node_primitives::Block,
+		NodeBlock = cfg_primitives::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		// basic system stuff
