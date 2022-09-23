@@ -1,11 +1,9 @@
-use crate::mock::*;
-
-use super::*;
-
 use frame_support::{assert_noop, assert_ok};
-
 use sp_arithmetic::fixed_point::FixedU64;
 use sp_runtime::{traits::AccountIdConversion, FixedPointNumber};
+
+use super::*;
+use crate::mock::*;
 
 #[test]
 fn epoch_rewards() {
