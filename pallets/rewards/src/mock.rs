@@ -17,6 +17,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 pub const EPOCH_INTERVAL: u64 = 10;
+pub const INITIAL_BLOCK: u64 = 0;
 
 pub const USER_A: u64 = 1;
 pub const USER_B: u64 = 2;
@@ -97,8 +98,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Balances::make_free_balance_be(&USER_B, USER_INITIAL_BALANCE);
 
 		// Set a correct epoch initial state
-		System::set_block_number(0);
-		Rewards::on_initialize(0);
+		System::set_block_number(INITIAL_BLOCK);
+		Rewards::on_initialize(INITIAL_BLOCK);
 	});
 
 	ext

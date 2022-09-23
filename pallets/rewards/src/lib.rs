@@ -19,7 +19,8 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 
 use sp_runtime::{
-	traits::AccountIdConversion, ArithmeticError, FixedPointNumber, FixedPointOperand, TokenError,
+	traits::{AccountIdConversion, BlockNumberProvider},
+	ArithmeticError, FixedPointNumber, FixedPointOperand, TokenError,
 };
 
 use num_traits::{NumAssignOps, NumOps, Signed};
@@ -29,6 +30,20 @@ use num_traits::{NumAssignOps, NumOps, Signed};
 pub struct EpochDetails<BlockNumber, Balance> {
 	ends_on: BlockNumber,
 	total_reward: Balance,
+}
+
+/// Type used to initialize the first epoch with the correct block number
+pub struct FirstEpochDetails<P>(std::marker::PhantomData<P>);
+impl<P, N, B: Default> Get<EpochDetails<N, B>> for FirstEpochDetails<P>
+where
+	P: BlockNumberProvider<BlockNumber = N>,
+{
+	fn get() -> EpochDetails<N, B> {
+		EpochDetails {
+			ends_on: P::current_block_number(),
+			total_reward: B::default(),
+		}
+	}
 }
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
@@ -91,7 +106,12 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub type ActiveEpoch<T: Config> = StorageValue<_, EpochDetails<T::BlockNumber, BalanceOf<T>>>;
+	pub type ActiveEpoch<T: Config> = StorageValue<
+		_,
+		EpochDetails<T::BlockNumber, BalanceOf<T>>,
+		ValueQuery,
+		FirstEpochDetails<frame_system::Pallet<T>>,
+	>;
 
 	#[pallet::storage]
 	pub type NextTotalReward<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
@@ -123,22 +143,19 @@ pub mod pallet {
 		BalanceOf<T>: FixedPointOperand,
 	{
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
-			let active_epoch = ActiveEpoch::<T>::get().unwrap_or(EpochDetails {
-				ends_on: current_block,
-				total_reward: BalanceOf::<T>::default(),
-			});
+			let active_epoch = ActiveEpoch::<T>::get();
 
 			if active_epoch.ends_on != current_block {
 				return T::DbWeight::get().reads(1);
 			}
 
-			T::Currency::deposit_creating(
-				&T::PalletId::get().into_account_truncating(),
-				active_epoch.total_reward,
-			);
-
 			Group::<T>::mutate(|group| {
 				if group.total_staked > BalanceOf::<T>::default() {
+					T::Currency::deposit_creating(
+						&T::PalletId::get().into_account_truncating(),
+						active_epoch.total_reward,
+					);
+
 					let rate_increment = T::Rate::saturating_from_rational(
 						active_epoch.total_reward,
 						group.total_staked,
