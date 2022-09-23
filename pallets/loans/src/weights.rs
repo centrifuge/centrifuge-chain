@@ -109,7 +109,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 	fn repay_and_close(n: u32) -> Weight {
 		(Weight::from_ref_time(153_832_000)) // Standard Error: 16_000
-			.saturating_add((543_000 as Weight).saturating_mul(n as u64))
+			.saturating_add((Weight::from_ref_time(543_000)).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(8 as u64))
 			.saturating_add(T::DbWeight::get().writes(10 as u64))
 	}

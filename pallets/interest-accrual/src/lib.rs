@@ -114,7 +114,7 @@ impl Default for Release {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, weights::constants::WEIGHT_PER_MICROS};
+	use frame_support::pallet_prelude::*;
 
 	use super::*;
 	use crate::weights::WeightInfo;
