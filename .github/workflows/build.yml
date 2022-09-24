@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain]
+    branches: [main, parachain, 'release-v**']
   pull_request:
 name: Build
 jobs:

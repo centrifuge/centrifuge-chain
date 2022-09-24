@@ -1,8 +1,7 @@
 name: Rustdoc
 on:
   push:
-    branches:
-      - parachain
+    branches: [main, parachain]
 jobs:
   docs:
     runs-on: ubuntu-latest

@@ -32,7 +32,8 @@
           nightly-date = pkgs.lib.strings.removePrefix "nightly-" rustToolChainTOML.toolchain.channel;
           # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
           nightly-sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
-
+          # This is the git short commit of the current version of the program.
+          shortCommit = builtins.substring 0 7 (inputs.self.rev or "dirty");
 
           # This instantiates a new Rust version based on nightly-date.
           nightlyRustPlatform = pkgs.makeRustPlatform {
@@ -49,13 +50,8 @@
           # It is called when the build process calls git. Instead of the real git,
           # it will find this one.
           git-mock =
-            let
-              # This evaluates to the first 7 digits of the git hash of this repo's HEAD
-              # commit, or to "dirty" if there are uncommitted changes.
-              commit-substr = builtins.substring 0 7 (inputs.self.rev or "dirty");
-            in
             pkgs.writeShellScriptBin "git" ''
-              echo ${commit-substr}
+              echo ${shortCommit}
             '';
 
           # srcFilter is used to keep out of the build non-source files,
@@ -86,6 +82,7 @@
           defaultPackage = nightlyRustPlatform.buildRustPackage {
             pname = name;
             inherit version;
+            inherit shortCommit;
 
             # This applies the srcFilter function to the current directory, so
             # we don't include unnecessary files in the package.
@@ -121,7 +118,7 @@
           # Docker image package doesn't work on Darwin Archs
           packages.dockerImage = pkgs.dockerTools.buildLayeredImage {
             name = "centrifugeio/${name}";
-            tag = "${version}-nix-do-not-use"; # todo remove suffix once verified
+            tag = "${version}-${shortCommit}-nix-do-not-use"; # todo remove suffix once verified
             # This uses the date of the last commit as the image creation date.
             created = builtins.substring 0 8 inputs.self.lastModifiedDate;
 
@@ -144,7 +141,7 @@
           };
 
           packages.dockerImageFastRuntime = packages.dockerImage.overrideAttrs (base: {
-            tag = "test-${version}-nix-do-not-use"; # todo remove suffix once verified
+            tag = "test-${version}-${shortCommit}-nix-do-not-use"; # todo remove suffix once verified
             contents = [
                 pkgs.busybox
                 packages.fastRuntime
