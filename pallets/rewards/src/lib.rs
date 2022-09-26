@@ -19,8 +19,8 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::{NumAssignOps, NumOps, Signed};
 use sp_runtime::{
-	traits::{AccountIdConversion, BlockNumberProvider},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, TokenError,
+	traits::{AccountIdConversion, BlockNumberProvider, Zero},
+	FixedPointNumber, FixedPointOperand, TokenError,
 };
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
@@ -32,14 +32,14 @@ pub struct EpochDetails<BlockNumber, Balance> {
 
 /// Type used to initialize the first epoch with the correct block number
 pub struct FirstEpochDetails<P>(std::marker::PhantomData<P>);
-impl<P, N, B: Default> Get<EpochDetails<N, B>> for FirstEpochDetails<P>
+impl<P, N, B: Zero> Get<EpochDetails<N, B>> for FirstEpochDetails<P>
 where
 	P: BlockNumberProvider<BlockNumber = N>,
 {
 	fn get() -> EpochDetails<N, B> {
 		EpochDetails {
 			ends_on: P::current_block_number(),
-			total_reward: B::default(),
+			total_reward: Zero::zero(),
 		}
 	}
 }
@@ -86,7 +86,8 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ NumOps
 			+ NumAssignOps
-			+ Signed;
+			+ Signed
+			+ Zero;
 
 		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TypeInfo
@@ -148,7 +149,7 @@ pub mod pallet {
 			}
 
 			Group::<T>::mutate(|group| {
-				if group.total_staked > BalanceOf::<T>::default() {
+				if group.total_staked > Zero::zero() {
 					T::Currency::deposit_creating(
 						&T::PalletId::get().into_account_truncating(),
 						active_epoch.total_reward,
@@ -181,6 +182,8 @@ pub mod pallet {
 		pub fn stake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			T::Currency::reserve(&who, amount)?;
+
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
 					staked.amount += amount;
@@ -190,7 +193,7 @@ pub mod pallet {
 				group.total_staked += amount;
 			});
 
-			T::Currency::reserve(&who, amount)
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)] //TODO
@@ -223,20 +226,19 @@ pub mod pallet {
 
 			let group = Group::<T>::get();
 
-			let reward: BalanceOf<T> = Staked::<T>::try_mutate(&who, |staked| {
-				let reward: T::SignedBalance = group
+			let reward = Staked::<T>::mutate(&who, |staked| {
+				let gross_reward: T::SignedBalance = group
 					.reward_per_token
 					.saturating_mul_int(staked.amount)
 					.into();
 
-				let rectified_reward = (reward - staked.reward_tally)
-					.try_into()
-					.map_err(|_| DispatchError::Arithmetic(ArithmeticError::Underflow));
+				let reward_tally = staked.reward_tally;
 
-				staked.reward_tally = reward;
+				staked.reward_tally = gross_reward;
 
-				rectified_reward
-			})?;
+				// Logically this should never be less than 0.
+				(gross_reward - reward_tally).try_into().unwrap_or_default()
+			});
 
 			T::Currency::transfer(
 				&T::PalletId::get().into_account_truncating(),
