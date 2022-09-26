@@ -16,7 +16,7 @@ use cfg_primitives::Moment;
 use cfg_traits::Permissions;
 use cfg_types::{PermissionScope, PoolRole, Role};
 use codec::HasCompact;
-use frame_support::{pallet_prelude::*, scale_info::TypeInfo, BoundedVec, transactional};
+use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{

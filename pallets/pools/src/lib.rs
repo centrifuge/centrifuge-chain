@@ -17,7 +17,6 @@
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve};
 use cfg_types::{PermissionScope, PoolLocator, PoolRole, Role};
-use pallet_pools_registry::PoolMutate;
 use codec::HasCompact;
 use frame_support::{
 	dispatch::DispatchResult,
@@ -35,6 +34,7 @@ use orml_traits::{
 	Change,
 };
 pub use pallet::*;
+use pallet_pools_registry::PoolMutate;
 use polkadot_parachain::primitives::Id as ParachainId;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -1562,4 +1562,3 @@ pub mod pallet {
 		}
 	}
 }
-
