@@ -19,7 +19,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::{NumAssignOps, NumOps, Signed};
 use sp_runtime::{
-	traits::{AccountIdConversion, BlockNumberProvider, Zero},
+	traits::{AccountIdConversion, BlockNumberProvider, Saturating, Zero},
 	FixedPointNumber, FixedPointOperand, TokenError,
 };
 
@@ -86,6 +86,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ NumOps
 			+ NumAssignOps
+			+ Saturating
 			+ Signed
 			+ Zero;
 
@@ -207,11 +208,13 @@ pub mod pallet {
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
-					staked.amount -= amount;
-					staked.reward_tally -= group.reward_per_token.saturating_mul_int(amount).into();
+					staked.amount = staked.amount.saturating_sub(amount);
+					staked.reward_tally = staked
+						.reward_tally
+						.saturating_sub(group.reward_per_token.saturating_mul_int(amount).into());
 				});
 
-				group.total_staked -= amount;
+				group.total_staked = group.total_staked.saturating_sub(amount);
 			});
 
 			T::Currency::unreserve(&who, amount);
