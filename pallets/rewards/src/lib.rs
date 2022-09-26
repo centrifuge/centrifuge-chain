@@ -50,6 +50,7 @@ where
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupDetails<Balance, Rate> {
 	total_staked: Balance,
+	deferred_total_staked: Balance,
 	reward_per_token: Rate,
 }
 
@@ -58,6 +59,25 @@ pub struct GroupDetails<Balance, Rate> {
 pub struct StakedDetails<Balance, SignedBalance> {
 	amount: Balance,
 	reward_tally: SignedBalance,
+	deferred_amount: Balance,
+	deferred_reward_tally: SignedBalance,
+	deferred_epoch: u32,
+}
+
+impl<Balance, SignedBalance> StakedDetails<Balance, SignedBalance>
+where
+	Balance: NumAssignOps + Copy + Zero,
+	SignedBalance: NumAssignOps + Copy + Zero,
+{
+	fn try_undeferred(&mut self, current_epoch: u32) {
+		if self.deferred_epoch < current_epoch {
+			self.amount += self.deferred_amount;
+			self.reward_tally += self.deferred_reward_tally;
+			self.deferred_amount = Zero::zero();
+			self.deferred_reward_tally = Zero::zero();
+			self.deferred_epoch = current_epoch;
+		}
+	}
 }
 
 #[frame_support::pallet]
@@ -95,6 +115,7 @@ pub mod pallet {
 		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TypeInfo
 			+ MaxEncodedLen
+			+ Saturating
 			+ Encode
 			+ Decode;
 	}
@@ -164,6 +185,8 @@ pub mod pallet {
 					);
 					group.reward_per_token = group.reward_per_token + rate_increment;
 				}
+				group.total_staked = group.deferred_total_staked;
+				group.deferred_total_staked = Zero::zero();
 			});
 
 			ActiveEpoch::<T>::put(EpochDetails {
@@ -190,8 +213,11 @@ pub mod pallet {
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
-					staked.amount += amount;
-					staked.reward_tally += group.reward_per_token.saturating_mul_int(amount).into();
+					staked.try_undeferred(ActiveEpoch::<T>::get().epoch);
+
+					staked.deferred_amount += amount;
+					staked.deferred_reward_tally +=
+						group.reward_per_token.saturating_mul_int(amount).into();
 				});
 
 				group.total_staked += amount;
@@ -211,13 +237,20 @@ pub mod pallet {
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
-					staked.amount = staked.amount.saturating_sub(amount);
-					staked.reward_tally = staked
-						.reward_tally
-						.saturating_sub(group.reward_per_token.saturating_mul_int(amount).into());
+					deferred_sub(&mut staked.amount, &mut staked.deferred_amount, amount);
+
+					deferred_sub(
+						&mut staked.reward_tally,
+						&mut staked.deferred_reward_tally,
+						group.reward_per_token.saturating_mul_int(amount).into(),
+					);
 				});
 
-				group.total_staked = group.total_staked.saturating_sub(amount);
+				deferred_sub(
+					&mut group.total_staked,
+					&mut group.deferred_total_staked,
+					amount,
+				);
 			});
 
 			T::Currency::unreserve(&who, amount);
@@ -233,6 +266,8 @@ pub mod pallet {
 			let group = Group::<T>::get();
 
 			let reward = Staked::<T>::mutate(&who, |staked| {
+				staked.try_undeferred(ActiveEpoch::<T>::get().epoch);
+
 				let gross_reward: T::SignedBalance = group
 					.reward_per_token
 					.saturating_mul_int(staked.amount)
@@ -253,5 +288,12 @@ pub mod pallet {
 				ExistenceRequirement::KeepAlive,
 			)
 		}
+	}
+
+	/// Substract `amount` from `deferred_value`,
+	/// if `amount` is greather than `deferred_value`, substrat the reminder from `value`.
+	fn deferred_sub<S: Saturating + Copy>(value: &mut S, deferred_value: &mut S, amount: S) {
+		*value = value.saturating_sub(amount.saturating_sub(*deferred_value));
+		*deferred_value = deferred_value.saturating_sub(amount);
 	}
 }
