@@ -19,6 +19,7 @@ fn epoch_rewards() {
 			assert_eq!(
 				ActiveEpoch::<Test>::get(),
 				EpochDetails {
+					epoch: 1,
 					ends_on: INITIAL_BLOCK + EPOCH_INTERVAL,
 					total_reward: 0,
 				}
@@ -32,6 +33,7 @@ fn epoch_rewards() {
 			assert_eq!(
 				ActiveEpoch::<Test>::get(),
 				EpochDetails {
+					epoch: 2,
 					ends_on: INITIAL_BLOCK + EPOCH_INTERVAL * 2,
 					total_reward: REWARD_1,
 				}
@@ -51,6 +53,7 @@ fn epoch_rewards() {
 			assert_eq!(
 				ActiveEpoch::<Test>::get(),
 				EpochDetails {
+					epoch: 3,
 					ends_on: INITIAL_BLOCK + EPOCH_INTERVAL * 3,
 					total_reward: REWARD_2
 				}

@@ -26,6 +26,7 @@ use sp_runtime::{
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct EpochDetails<BlockNumber, Balance> {
+	epoch: u32,
 	ends_on: BlockNumber,
 	total_reward: Balance,
 }
@@ -38,6 +39,7 @@ where
 {
 	fn get() -> EpochDetails<N, B> {
 		EpochDetails {
+			epoch: 0,
 			ends_on: P::current_block_number(),
 			total_reward: Zero::zero(),
 		}
@@ -165,6 +167,7 @@ pub mod pallet {
 			});
 
 			ActiveEpoch::<T>::put(EpochDetails {
+				epoch: active_epoch.epoch + 1,
 				ends_on: current_block + T::BlockPerEpoch::get(),
 				total_reward: NextTotalReward::<T>::get(),
 			});
