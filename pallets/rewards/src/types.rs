@@ -623,6 +623,29 @@ mod staked_test {
 
 		assert_eq!(staked.claim_reward(rpt_4, 4), REWARD);
 	}
+
+	#[test]
+	fn stake_and_reward_emulating_deferring_rewards() {
+		const AMOUNT: u64 = 50;
+		const REWARD: u64 = 100;
+
+		let mut staked = StakedDetails::<u64, i128>::default();
+
+		let rpt_0 = FixedU64::saturating_from_rational(2, 1);
+
+		staked.add_amount(AMOUNT, rpt_0, 0);
+
+		// We not use the AMOUNT as base for the rate, emulating the deferring rewards
+		let rpt_1 = rpt_0 + FixedU64::saturating_from_rational(REWARD, 1);
+
+		assert_eq!(staked.claim_reward(rpt_1, 1), 0);
+
+		// Now we use the AMOUNT as base
+		let rpt_2 = rpt_1 + FixedU64::saturating_from_rational(REWARD, AMOUNT);
+
+		assert_eq!(staked.claim_reward(rpt_2, 2), REWARD);
+	}
+
 	#[test]
 	fn unstake_nothing() {
 		let mut staked = StakedDetails::<u64, i128>::default();
