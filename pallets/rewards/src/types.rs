@@ -56,6 +56,164 @@ where
 	}
 }
 
+/// Type that contains the stake properties of a stake group
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct GroupDetails<Balance, Rate> {
+	total_staked: Balance,
+	deferred_total_staked: Balance,
+	reward_per_token: Rate,
+}
+
+impl<Balance, Rate> GroupDetails<Balance, Rate>
+where
+	Balance: NumAssignOps + Copy + Zero + FixedPointOperand + Unsigned,
+	Rate: FixedPointNumber<Inner = Balance>,
+{
+	pub fn add_amount(&mut self, amount: Balance) {
+		self.deferred_total_staked += amount;
+	}
+
+	pub fn sub_amount(&mut self, amount: Balance) {
+		deferred_sub(
+			&mut self.total_staked,
+			&mut self.deferred_total_staked,
+			amount,
+		);
+	}
+
+	pub fn distribute_reward(&mut self, reward: Balance) -> bool {
+		let should_reward = self.total_staked > Zero::zero();
+
+		if should_reward {
+			let rate_increment = Rate::saturating_from_rational(reward, self.total_staked);
+			self.reward_per_token = self.reward_per_token + rate_increment;
+		}
+
+		self.total_staked += self.deferred_total_staked;
+		self.deferred_total_staked = Zero::zero();
+
+		should_reward
+	}
+
+	pub fn reward_per_token(&self) -> Rate {
+		self.reward_per_token
+	}
+}
+
+/// Type that contains the stake properties of an account
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct StakedDetails<Balance, SignedBalance> {
+	amount: Balance,
+	reward_tally: SignedBalance,
+	deferred_amount: Balance,
+	deferred_reward_tally: SignedBalance,
+	undeferred_epoch: u32,
+}
+
+impl<Balance, SignedBalance> StakedDetails<Balance, SignedBalance>
+where
+	Balance: NumAssignOps + Copy + Zero + FixedPointOperand + Unsigned + Ord,
+	SignedBalance:
+		NumAssignOps + NumOps + Copy + Zero + From<Balance> + TryInto<Balance> + Saturating,
+{
+	fn try_undeferred(&mut self, current_epoch: u32) {
+		if self.undeferred_epoch < current_epoch {
+			self.amount += self.deferred_amount;
+			self.reward_tally += self.deferred_reward_tally;
+			self.deferred_amount = Zero::zero();
+			self.deferred_reward_tally = Zero::zero();
+			self.undeferred_epoch = current_epoch;
+		}
+	}
+
+	/// Add a stake amount for a given supposed *reward per token* and *epoch*
+	pub fn add_amount<Rate: FixedPointNumber>(
+		&mut self,
+		amount: Balance,
+		reward_per_token: Rate,
+		current_epoch: u32,
+	) {
+		self.try_undeferred(current_epoch);
+		self.deferred_amount += amount;
+		self.deferred_reward_tally += reward_per_token.saturating_mul_int(amount).into();
+	}
+
+	/// Remove a stake amount for a supposed *reward per token*.
+	/// The deferred stake will be prioritized for being removed.
+	/// If amount is greater than total amount staked, only the staked amount will be unstaked.
+	pub fn sub_amount<Rate: FixedPointNumber>(&mut self, amount: Balance, reward_per_token: Rate) {
+		self.deferred_reward_tally -= reward_per_token
+			.saturating_mul_int(amount.min(self.deferred_amount))
+			.into();
+
+		self.reward_tally -= reward_per_token
+			.saturating_mul_int((amount - amount.min(self.deferred_amount)).min(self.amount))
+			.into();
+
+		deferred_sub(&mut self.amount, &mut self.deferred_amount, amount);
+	}
+
+	/// Claim a reward for the current staked amount given a supposed *reward per token* and *epoch*.
+	pub fn claim_reward<Rate: FixedPointNumber>(
+		&mut self,
+		reward_per_token: Rate,
+		current_epoch: u32,
+	) -> Balance {
+		self.try_undeferred(current_epoch);
+
+		let gross_reward: SignedBalance = reward_per_token.saturating_mul_int(self.amount).into();
+		let reward_tally = self.reward_tally;
+
+		self.reward_tally = gross_reward;
+
+		// Logically this should never be less than 0.
+		(gross_reward - reward_tally)
+			.try_into()
+			.unwrap_or(Zero::zero())
+	}
+}
+
+/// Substract `amount` from `deferred_value`,
+/// if `amount` is greather than `deferred_value`, substrat the reminder from `value`.
+fn deferred_sub<S: Saturating + Copy + Unsigned>(value: &mut S, deferred_value: &mut S, amount: S) {
+	*value = value.saturating_sub(amount.saturating_sub(*deferred_value));
+	*deferred_value = deferred_value.saturating_sub(amount);
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn test_deferred_sub() {
+		let (mut value, mut deferred_value) = (20, 0);
+		deferred_sub::<u64>(&mut value, &mut deferred_value, 20);
+		assert_eq!((value, deferred_value), (0, 0));
+
+		let (mut value, mut deferred_value) = (10, 10);
+		deferred_sub::<u64>(&mut value, &mut deferred_value, 20);
+		assert_eq!((value, deferred_value), (0, 0));
+
+		let (mut value, mut deferred_value) = (0, 20);
+		deferred_sub::<u64>(&mut value, &mut deferred_value, 20);
+		assert_eq!((value, deferred_value), (0, 0));
+
+		let (mut value, mut deferred_value) = (10, 10);
+		deferred_sub::<u64>(&mut value, &mut deferred_value, 30);
+		assert_eq!((value, deferred_value), (0, 0));
+
+		let (mut value, mut deferred_value) = (10, 10);
+		deferred_sub::<u64>(&mut value, &mut deferred_value, 15);
+		assert_eq!((value, deferred_value), (5, 0));
+
+		let (mut value, mut deferred_value) = (10, 10);
+		deferred_sub::<u64>(&mut value, &mut deferred_value, 5);
+		assert_eq!((value, deferred_value), (10, 5));
+	}
+}
+
 #[cfg(test)]
 mod epoch_test {
 	use super::*;
@@ -99,51 +257,6 @@ mod epoch_test {
 				total_reward: TOTAL_REWARD,
 			}
 		)
-	}
-}
-
-/// Type that contains the stake properties of a stake group
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct GroupDetails<Balance, Rate> {
-	total_staked: Balance,
-	deferred_total_staked: Balance,
-	reward_per_token: Rate,
-}
-
-impl<Balance, Rate> GroupDetails<Balance, Rate>
-where
-	Balance: NumAssignOps + Copy + Zero + FixedPointOperand + Unsigned,
-	Rate: FixedPointNumber<Inner = Balance>,
-{
-	pub fn add_amount(&mut self, amount: Balance) {
-		self.deferred_total_staked += amount;
-	}
-
-	pub fn sub_amount(&mut self, amount: Balance) {
-		deferred_sub(
-			&mut self.total_staked,
-			&mut self.deferred_total_staked,
-			amount,
-		);
-	}
-
-	pub fn distribute_reward(&mut self, reward: Balance) -> bool {
-		let should_reward = self.total_staked > Zero::zero();
-
-		if should_reward {
-			let rate_increment = Rate::saturating_from_rational(reward, self.total_staked);
-			self.reward_per_token = self.reward_per_token + rate_increment;
-		}
-
-		self.total_staked += self.deferred_total_staked;
-		self.deferred_total_staked = Zero::zero();
-
-		should_reward
-	}
-
-	pub fn reward_per_token(&self) -> Rate {
-		self.reward_per_token
 	}
 }
 
@@ -241,6 +354,7 @@ mod group_test {
 		// Always false because it's deferred
 		assert_eq!(group.distribute_reward(100), false);
 
+		// No stake, then no reward
 		assert_eq!(group.distribute_reward(100), false);
 
 		assert_eq!(
@@ -350,80 +464,6 @@ mod group_test {
 				reward_per_token: 0.into()
 			}
 		);
-	}
-}
-
-/// Type that contains the stake properties of an account
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct StakedDetails<Balance, SignedBalance> {
-	amount: Balance,
-	reward_tally: SignedBalance,
-	deferred_amount: Balance,
-	deferred_reward_tally: SignedBalance,
-	undeferred_epoch: u32,
-}
-
-impl<Balance, SignedBalance> StakedDetails<Balance, SignedBalance>
-where
-	Balance: NumAssignOps + Copy + Zero + FixedPointOperand + Unsigned + Ord,
-	SignedBalance:
-		NumAssignOps + NumOps + Copy + Zero + From<Balance> + TryInto<Balance> + Saturating,
-{
-	fn try_undeferred(&mut self, current_epoch: u32) {
-		if self.undeferred_epoch < current_epoch {
-			self.amount += self.deferred_amount;
-			self.reward_tally += self.deferred_reward_tally;
-			self.deferred_amount = Zero::zero();
-			self.deferred_reward_tally = Zero::zero();
-			self.undeferred_epoch = current_epoch;
-		}
-	}
-
-	/// Add a stake amount for a given supposed *reward per token* and *epoch*
-	pub fn add_amount<Rate: FixedPointNumber>(
-		&mut self,
-		amount: Balance,
-		reward_per_token: Rate,
-		current_epoch: u32,
-	) {
-		self.try_undeferred(current_epoch);
-		self.deferred_amount += amount;
-		self.deferred_reward_tally += reward_per_token.saturating_mul_int(amount).into();
-	}
-
-	/// Remove a stake amount for a supposed *reward per token*.
-	/// The deferred stake will be prioritized for being removed.
-	/// If amount is greater than total amount staked, only the staked amount will be unstaked.
-	pub fn sub_amount<Rate: FixedPointNumber>(&mut self, amount: Balance, reward_per_token: Rate) {
-		self.deferred_reward_tally -= reward_per_token
-			.saturating_mul_int(amount.min(self.deferred_amount))
-			.into();
-
-		self.reward_tally -= reward_per_token
-			.saturating_mul_int((amount - amount.min(self.deferred_amount)).min(self.amount))
-			.into();
-
-		deferred_sub(&mut self.amount, &mut self.deferred_amount, amount);
-	}
-
-	/// Claim a reward for the current staked amount given a supposed *reward per token* and *epoch*.
-	pub fn claim_reward<Rate: FixedPointNumber>(
-		&mut self,
-		reward_per_token: Rate,
-		current_epoch: u32,
-	) -> Balance {
-		self.try_undeferred(current_epoch);
-
-		let gross_reward: SignedBalance = reward_per_token.saturating_mul_int(self.amount).into();
-		let reward_tally = self.reward_tally;
-
-		self.reward_tally = gross_reward;
-
-		// Logically this should never be less than 0.
-		(gross_reward - reward_tally)
-			.try_into()
-			.unwrap_or(Zero::zero())
 	}
 }
 
@@ -742,11 +782,4 @@ mod staked_test {
 
 		assert_eq!(staked.claim_reward(rpt_1, 1), REWARD);
 	}
-}
-
-/// Substract `amount` from `deferred_value`,
-/// if `amount` is greather than `deferred_value`, substrat the reminder from `value`.
-fn deferred_sub<S: Saturating + Copy + Unsigned>(value: &mut S, deferred_value: &mut S, amount: S) {
-	*value = value.saturating_sub(amount.saturating_sub(*deferred_value));
-	*deferred_value = deferred_value.saturating_sub(amount);
 }
