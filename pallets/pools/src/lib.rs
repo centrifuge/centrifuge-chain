@@ -1443,14 +1443,14 @@ pub mod pallet {
 
 	impl<T: Config>
 		PoolMutate<
-			T,
 			T::AccountId,
 			T::Balance,
 			T::PoolId,
-			T::Currency,
+			T::CurrencyId,
 			T::InterestRate,
 			T::MaxTokenNameLength,
 			T::MaxTokenSymbolLength,
+			T::MaxTranches,
 		> for Pallet<T>
 	{
 		fn create(

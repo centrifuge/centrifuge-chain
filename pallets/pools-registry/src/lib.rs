@@ -35,13 +35,6 @@ mod mock;
 mod tests;
 pub mod weights;
 
-type PoolChangesOf<T> = PoolChanges<
-	<T as Config>::InterestRate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
-	<T as Config>::MaxTranches,
->;
-
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
 where
@@ -61,17 +54,18 @@ where
 }
 
 pub trait PoolMutate<
-	T: Config,
 	AccountId,
 	Balance,
 	PoolId,
-	Currency,
+	CurrencyId,
 	Rate,
 	MaxTokenNameLength,
 	MaxTokenSymbolLength,
+	MaxTranches,
 > where
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
 {
 	fn create(
 		admin: AccountId,
@@ -80,10 +74,13 @@ pub trait PoolMutate<
 		max_reserve: Balance,
 		metadata: Option<Vec<u8>>,
 		pool_id: PoolId,
-		currency: Currency,
+		currency: CurrencyId,
 	) -> DispatchResult;
 
-	fn update(pool_id: PoolId, changes: PoolChangesOf<T>) -> DispatchResultWithPostInfo;
+	fn update(
+		pool_id: PoolId,
+		changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
+	) -> DispatchResultWithPostInfo;
 }
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
@@ -128,7 +125,6 @@ pub mod pallet {
 			+ FixedPointNumber<Inner = Self::Balance>;
 
 		type ModifyPool: PoolMutate<
-			Self,
 			Self::AccountId,
 			Self::Balance,
 			Self::PoolId,
@@ -136,6 +132,7 @@ pub mod pallet {
 			Self::Rate,
 			Self::MaxTokenNameLength,
 			Self::MaxTokenSymbolLength,
+			Self::MaxTranches,
 		>;
 
 		type CurrencyId: Parameter + Copy;
@@ -290,12 +287,15 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution(T::MaxTranches::get())
-		.max(T::WeightInfo::update_and_execute(T::MaxTranches::get())))]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChangesOf<T>,
+			changes: PoolChanges<
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+				T::MaxTranches,
+			>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
