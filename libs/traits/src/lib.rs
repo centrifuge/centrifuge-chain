@@ -35,9 +35,6 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
 
-// #[cfg(test)]
-pub mod mocks;
-
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview

@@ -62,6 +62,10 @@ impl cfg_traits::TrancheToken<PoolId, TrancheId, CurrencyId> for TrancheToken {
 /// in order to be able to have a clear seperation of concern. This enables us
 /// to use the `TrancheCurrency` type seperately where solely this enum variant would be
 /// relevant. Most notably, in the `struct Tranche`.
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
 	pool_id: PoolId,
 	tranche_id: TrancheId,

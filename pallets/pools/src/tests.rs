@@ -27,7 +27,8 @@ use xcm::{
 };
 
 use super::*;
-use crate::mock::{self, TrancheToken as TT, *};
+
+/*
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
@@ -35,7 +36,6 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let tranches = Tranches::new::<TT>(
 			0,
 			std::iter::repeat(Tranche {
-				outstanding_redeem_orders: 10,
 				..Default::default()
 			})
 			.take(4)
@@ -3004,3 +3004,4 @@ fn create_tranche_token_metadata() {
 		);
 	});
 }
+ */

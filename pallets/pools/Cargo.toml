@@ -35,6 +35,7 @@ orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
+cfg-test-utils = { path = "../../libs/test-utils",default-features = true }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.26" }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true}

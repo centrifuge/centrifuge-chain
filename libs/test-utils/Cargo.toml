@@ -1,37 +1,39 @@
 [package]
-name = "cfg-traits"
-authors = ['The Centrifugians Tribe']
-edition = '2021'
+name = "cfg-test-utils"
+version = "0.1.0"
+edition = "2021"
+authors = ['Centrifuge']
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
 repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '0.1.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
+cfg-traits = { path = '../traits'}
+cfg-primitives = { path = '../primitives'}
+cfg-types = { path = '../types'}
+
 serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
-impl-trait-for-tuples = "0.2.1"
 
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 
-orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
-
-cfg-primitives = { path = '../primitives', default-features = false }
-
 [features]
 default = ['std']
 std = [
-    "serde/std",
-    "codec/std",
-    "frame-support/std",
-    "sp-runtime/std",
-    "sp-std/std",
-    "cfg-primitives/std",
-    "orml-asset-registry/std"
+    'codec/std',
+    'scale-info/std',
+    'sp-std/std',
+    'frame-support/std',
+    'frame-system/std',
+    'cfg-traits/std',
+    'cfg-types/std',
+    'cfg-primitives/std',
+    'sp-runtime/std'
 ]

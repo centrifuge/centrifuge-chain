@@ -46,6 +46,7 @@ members = [
 	"pallets/keystore",
 	"pallets/investments",
 	"libs/traits",
+	"libs/test-utils",
 	"libs/types",
 	"libs/proofs",
 	"libs/primitives",

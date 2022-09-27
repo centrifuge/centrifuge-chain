@@ -1116,15 +1116,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cfg-test-utils"
+version = "0.1.0"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "cfg-traits"
 version = "0.1.0"
 dependencies = [
  "cfg-primitives",
- "cfg-types",
  "frame-support",
  "impl-trait-for-tuples",
  "orml-asset-registry",
- "orml-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6352,6 +6366,7 @@ name = "pallet-pools"
 version = "3.0.0"
 dependencies = [
  "cfg-primitives",
+ "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",

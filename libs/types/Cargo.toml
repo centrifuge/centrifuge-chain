@@ -31,9 +31,6 @@ orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-
 cfg-traits = { path = '../traits', default-features = false }
 cfg-primitives = { path = '../primitives', default-features = false }
 
-[dev-dependencies]
-frame-support = { git = "https://github.com/paritytech/substrate",  default-features = true , branch = "polkadot-v0.9.26" }
-
 [features]
 default = ['std']
 runtime-benchmarks = [
