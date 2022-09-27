@@ -61,7 +61,7 @@ pub struct StakedDetails<Balance, SignedBalance> {
 	reward_tally: SignedBalance,
 	deferred_amount: Balance,
 	deferred_reward_tally: SignedBalance,
-	deferred_epoch: u32,
+	undeferred_epoch: u32,
 }
 
 impl<Balance, SignedBalance> StakedDetails<Balance, SignedBalance>
@@ -70,12 +70,12 @@ where
 	SignedBalance: NumAssignOps + Copy + Zero,
 {
 	fn try_undeferred(&mut self, current_epoch: u32) {
-		if self.deferred_epoch < current_epoch {
+		if self.undeferred_epoch < current_epoch {
 			self.amount += self.deferred_amount;
 			self.reward_tally += self.deferred_reward_tally;
 			self.deferred_amount = Zero::zero();
 			self.deferred_reward_tally = Zero::zero();
-			self.deferred_epoch = current_epoch;
+			self.undeferred_epoch = current_epoch;
 		}
 	}
 }
@@ -220,7 +220,7 @@ pub mod pallet {
 						group.reward_per_token.saturating_mul_int(amount).into();
 				});
 
-				group.total_staked += amount;
+				group.deferred_total_staked += amount;
 			});
 
 			Ok(())
