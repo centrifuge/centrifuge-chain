@@ -6109,6 +6109,7 @@ name = "pallet-investments"
 version = "1.0.0"
 dependencies = [
  "cfg-primitives",
+ "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",

@@ -363,6 +363,28 @@ pub trait OrderManager {
 	/// redeem orders for the given investment class.
 	fn redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
 
+	/// When called the manager return the current
+	/// invest orders for the given investment class.
+	/// Callers of this method can expect that the returned
+	/// orders equal the returned orders from `invest_orders`.
+	///
+	/// **NOTE:** Once this is called, the OrderManager is expected
+	/// to start a new round of orders and return an error if this
+	/// method is to be called again before `invest_fulfillment` is
+	/// called.
+	fn process_invest_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+
+	/// When called the manager return the current
+	/// invest orders for the given investment class.
+	/// Callers of this method can expect that the returned
+	/// orders equal the returned orders from `redeem_orders`.
+	///
+	/// **NOTE:** Once this is called, the OrderManager is expected
+	/// to start a new round of orders and return an error if this
+	/// method is to be called again before `redeem_fulfillment` is
+	/// called.
+	fn process_redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+
 	/// Signals the manager that the previously
 	/// fetch invest orders for a given investment class
 	/// will be fulfilled by fulfillment.

@@ -34,6 +34,7 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 runtime-common = { path = "../../runtime/common", default-features = true }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true}
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
+cfg-test-utils = { path = "../../libs/test-utils",default-features = true }
 cfg-types = { path = "../../libs/types", default-features = true }
 rand = "0.8.5"
 

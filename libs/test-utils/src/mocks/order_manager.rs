@@ -104,11 +104,11 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type InvestOrders<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Balance>, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Balance>>;
 
 	#[pallet::storage]
 	pub type RedeemOrders<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Balance>, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Balance>>;
 
 	impl<T: Config> Pallet<T> {}
 
@@ -121,13 +121,39 @@ pub mod pallet {
 		/// When called the manager return the current
 		/// invest orders for the given investment class.
 		fn invest_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-			Ok(InvestOrders::<T>::get(asset_id))
+			Ok(InvestOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default()))
 		}
 
 		/// When called the manager return the current
 		/// redeem orders for the given investment class.
 		fn redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-			Ok(RedeemOrders::<T>::get(asset_id))
+			Ok(RedeemOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default()))
+		}
+
+		fn process_invest_orders(
+			asset_id: Self::InvestmentId,
+		) -> Result<Self::Orders, Self::Error> {
+			InvestOrders::<T>::try_mutate(&asset_id, |maybe_order| {
+				let order = maybe_order
+					.as_ref()
+					.expect("Processing non-existant invest-orders in testing.")
+					.clone();
+
+				Ok(order)
+			})
+		}
+
+		fn process_redeem_orders(
+			asset_id: Self::InvestmentId,
+		) -> Result<Self::Orders, Self::Error> {
+			RedeemOrders::<T>::try_mutate(&asset_id, |maybe_order| {
+				let order = maybe_order
+					.as_ref()
+					.expect("Processing non-existant redeem-orders in testing.")
+					.clone();
+
+				Ok(order)
+			})
 		}
 
 		/// Signals the manager that the previously
@@ -137,7 +163,8 @@ pub mod pallet {
 			asset_id: Self::InvestmentId,
 			fulfillment: Self::Fulfillment,
 		) -> Result<(), Self::Error> {
-			let orders = InvestOrders::<T>::get(asset_id);
+			let orders = InvestOrders::<T>::get(asset_id)
+				.expect("Fullfilling non-existant invest-orders in testing.");
 
 			// Move tokens to pools
 			let tokens_to_transfer_to_pool = fulfillment.of_amount.mul_floor(orders.amount);
@@ -184,7 +211,8 @@ pub mod pallet {
 			asset_id: Self::InvestmentId,
 			fulfillment: Self::Fulfillment,
 		) -> Result<(), Self::Error> {
-			let orders = RedeemOrders::<T>::get(asset_id);
+			let orders = RedeemOrders::<T>::get(asset_id)
+				.expect("Fullfilling non-existant invest-orders in testing.");
 
 			let tokens_to_burn_from_test_pallet = fulfillment.of_amount.mul_floor(orders.amount);
 			T::Tokens::burn_from(

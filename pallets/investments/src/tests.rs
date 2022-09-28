@@ -633,9 +633,9 @@ fn fulfillment_flow_for_everything_works() {
 		// processing. Active orders a reset correctly
 		{
 			let invest_orders =
-				Investments::invest_orders(INVESTMENT_0_0).expect("Did not call it twice");
+				Investments::process_invest_orders(INVESTMENT_0_0).expect("Did not call it twice");
 			assert_noop!(
-				Investments::invest_orders(INVESTMENT_0_0),
+				Investments::process_invest_orders(INVESTMENT_0_0),
 				Error::<MockRuntime>::OrderInProcessing
 			);
 			assert_eq!(InvestOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
@@ -719,9 +719,9 @@ fn fulfillment_flow_for_everything_works() {
 		// processing. Active orders a reset correctly
 		{
 			let redeem_orders =
-				Investments::redeem_orders(INVESTMENT_0_0).expect("Did not call it twice");
+				Investments::process_redeem_orders(INVESTMENT_0_0).expect("Did not call it twice");
 			assert_noop!(
-				Investments::redeem_orders(INVESTMENT_0_0),
+				Investments::process_redeem_orders(INVESTMENT_0_0),
 				Error::<MockRuntime>::OrderInProcessing
 			);
 			assert_eq!(RedeemOrderId::<MockRuntime>::get(INVESTMENT_0_0), 1);
