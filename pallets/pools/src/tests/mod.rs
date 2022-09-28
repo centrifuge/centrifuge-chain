@@ -10,102 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::Permissions as PermissionsT;
-use cfg_types::{CurrencyId, CustomMetadata, Rate};
-use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
-use orml_traits::asset_registry::AssetMetadata;
-use rand::Rng;
-use sp_core::storage::StateVersion;
-use sp_runtime::{
-	traits::{One, Zero},
-	Perquintill, TokenError, WeakBoundedVec,
-};
-use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, Parachain, X2},
-	VersionedMultiLocation,
-};
-
-use super::*;
+mod mock;
+mod solutions;
+mod utils;
 
 /*
-
-#[test]
-fn core_constraints_currency_available_cant_cover_redemptions() {
-	new_test_ext().execute_with(|| {
-		let tranches = Tranches::new::<TT>(
-			0,
-			std::iter::repeat(Tranche {
-				..Default::default()
-			})
-			.take(4)
-			.collect(),
-		)
-		.unwrap();
-
-		let epoch_tranches = EpochExecutionTranches::new(
-			tranches
-				.residual_top_slice()
-				.iter()
-				.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
-				.map(|(tranche, value)| EpochExecutionTranche {
-					supply: value,
-					price: One::one(),
-					invest: tranche.outstanding_invest_orders,
-					redeem: tranche.outstanding_redeem_orders,
-					..Default::default()
-				})
-				.collect(),
-		);
-
-		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
-			tranches,
-			status: PoolStatus::Open,
-			epoch: EpochState {
-				current: Zero::zero(),
-				last_closed: 0,
-				last_executed: Zero::zero(),
-			},
-			reserve: ReserveDetails {
-				max: 40,
-				available: Zero::zero(),
-				total: 39,
-			},
-			parameters: PoolParameters {
-				min_epoch_time: 0,
-				max_nav_age: 60,
-			},
-			metadata: None,
-		};
-
-		let epoch = EpochExecutionInfo {
-			epoch: Zero::zero(),
-			nav: 0,
-			reserve: pool.reserve.total,
-			max_reserve: pool.reserve.max,
-			tranches: epoch_tranches,
-			best_submission: None,
-			challenge_period_end: None,
-		};
-
-		let full_solution = pool
-			.tranches
-			.residual_top_slice()
-			.iter()
-			.map(|_| TrancheSolution {
-				invest_fulfillment: Perquintill::one(),
-				redeem_fulfillment: Perquintill::one(),
-			})
-			.collect::<Vec<_>>();
-
-		assert_noop!(
-			Pools::inspect_solution(pool, &epoch, &full_solution),
-			Error::<Test>::InsufficientCurrency
-		);
-	});
-}
-
 #[test]
 fn pool_constraints_pool_reserve_above_max_reserve() {
 	new_test_ext().execute_with(|| {

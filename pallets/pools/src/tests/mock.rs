@@ -28,7 +28,6 @@ use frame_support::{
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
@@ -36,7 +35,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::{self as pallet_pools, Config, DispatchResult};
+use crate::{self as pallet_pools, Config, DispatchResult, PoolDetails, ScheduledUpdateDetails};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;

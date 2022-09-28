@@ -13,7 +13,7 @@
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
 use cfg_types::CurrencyId;
-use cfg_types::{CustomMetadata, XcmMetadata};
+use cfg_types::{CustomMetadata, TrancheCurrency, XcmMetadata};
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
 use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;
@@ -168,7 +168,7 @@ pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 }
 
 #[cfg(test)]
-impl<Balance, Rate, Weight> Default for Tranche<Balance, Rate, Weight, CurrencyId>
+impl<Balance, Rate, Weight> Default for Tranche<Balance, Rate, Weight, TrancheCurrency>
 where
 	Balance: One + Zero,
 	Rate: FixedPointNumber<Inner = Balance> + One,
@@ -178,7 +178,7 @@ where
 		Self {
 			tranche_type: TrancheType::Residual,
 			seniority: 1,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			currency: TrancheCurrency::generate(0, [0u8; 16]),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
 			loss: Zero::zero(),
@@ -1029,7 +1029,7 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency> {
 	pub(super) currency: TrancheCurrency,
 	pub(super) supply: Balance,
@@ -1040,6 +1040,28 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>
 	pub(super) seniority: Seniority,
 
 	pub(super) _phantom: PhantomData<Weight>,
+}
+
+#[cfg(test)]
+impl<Balance, Rate, Weight> Default
+	for EpochExecutionTranche<Balance, Rate, Weight, TrancheCurrency>
+where
+	Balance: One + Zero,
+	Rate: FixedPointNumber<Inner = Balance> + One,
+	Balance: FixedPointOperand + One + Zero,
+{
+	fn default() -> Self {
+		Self {
+			currency: TrancheCurrency::generate(0, [0u8; 16]),
+			supply: Zero::zero(),
+			price: Rate::one(),
+			invest: Zero::zero(),
+			redeem: Zero::zero(),
+			min_risk_buffer: Perquintill::zero(),
+			seniority: 0,
+			_phantom: PhantomData::default(),
+		}
+	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
