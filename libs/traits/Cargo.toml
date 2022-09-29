@@ -20,7 +20,7 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.28" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.28" }
 
-orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
+orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.28" }
 
 cfg-primitives = { path = '../primitives', default-features = false }
 
