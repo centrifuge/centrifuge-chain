@@ -18,9 +18,9 @@ use frame_support::{
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
-use num_traits::{NumAssignOps, NumOps, Signed};
+use num_traits::Signed;
 use sp_runtime::{
-	traits::{AccountIdConversion, Saturating, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating},
 	FixedPointNumber, FixedPointOperand, TokenError,
 };
 use types::{EpochDetails, FirstEpochDetails, GroupDetails, StakedDetails};
@@ -51,11 +51,10 @@ pub mod pallet {
 			+ Default
 			+ scale_info::TypeInfo
 			+ MaxEncodedLen
-			+ NumOps
-			+ NumAssignOps
 			+ Saturating
 			+ Signed
-			+ Zero;
+			+ CheckedSub
+			+ CheckedAdd;
 
 		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TypeInfo
@@ -148,11 +147,11 @@ pub mod pallet {
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
-					staked.add_amount(amount, group.reward_per_token());
-				});
+					staked.add_amount(amount, group.reward_per_token())
+				})?;
 
-				group.add_amount(amount);
-			});
+				group.add_amount(amount)
+			})?;
 
 			Ok(())
 		}
@@ -168,11 +167,11 @@ pub mod pallet {
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
-					staked.sub_amount(amount, group.reward_per_token());
-				});
+					staked.sub_amount(amount, group.reward_per_token())
+				})?;
 
-				group.sub_amount(amount);
-			});
+				group.sub_amount(amount)
+			})?;
 
 			T::Currency::unreserve(&who, amount);
 
@@ -187,7 +186,7 @@ pub mod pallet {
 			let group = Group::<T>::get();
 
 			let reward =
-				Staked::<T>::mutate(&who, |staked| staked.claim_reward(group.reward_per_token()));
+				Staked::<T>::mutate(&who, |staked| staked.claim_reward(group.reward_per_token()))?;
 
 			T::Currency::transfer(
 				&T::PalletId::get().into_account_truncating(),

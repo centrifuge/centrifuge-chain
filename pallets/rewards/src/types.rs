@@ -1,9 +1,7 @@
 use frame_support::pallet_prelude::*;
-use num_traits::{NumAssignOps, NumOps};
-use sp_arithmetic::traits::Unsigned;
 use sp_runtime::{
-	traits::{BlockNumberProvider, Saturating, Zero},
-	FixedPointNumber, FixedPointOperand, SaturatedConversion,
+	traits::{BlockNumberProvider, CheckedAdd, CheckedSub, Saturating, Zero},
+	ArithmeticError, FixedPointNumber, FixedPointOperand, SaturatedConversion,
 };
 
 /// Type that contains data related to the epoch
@@ -14,11 +12,15 @@ pub struct EpochDetails<BlockNumber, Balance> {
 	total_reward: Balance,
 }
 
-impl<BlockNumber: NumOps + Copy, Balance: Copy> EpochDetails<BlockNumber, Balance> {
+impl<BlockNumber, Balance> EpochDetails<BlockNumber, Balance>
+where
+	BlockNumber: Copy + Saturating,
+	Balance: Copy,
+{
 	/// Generate the next epoch from current one
 	pub fn next(&self, blocks: BlockNumber, total_reward: Balance) -> Self {
 		EpochDetails {
-			ends_on: self.ends_on + blocks,
+			ends_on: self.ends_on.saturating_add(blocks),
 			total_reward,
 		}
 	}
@@ -58,15 +60,25 @@ pub struct GroupDetails<Balance, Rate> {
 
 impl<Balance, Rate> GroupDetails<Balance, Rate>
 where
-	Balance: NumAssignOps + Copy + Zero + FixedPointOperand + Unsigned,
+	Balance: Zero + FixedPointOperand + CheckedSub + CheckedAdd,
 	Rate: FixedPointNumber<Inner = Balance>,
 {
-	pub fn add_amount(&mut self, amount: Balance) {
-		self.total_staked = self.total_staked.saturating_add(amount);
+	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
+		self.total_staked = self
+			.total_staked
+			.checked_add(&amount)
+			.ok_or(ArithmeticError::Overflow)?;
+
+		Ok(())
 	}
 
-	pub fn sub_amount(&mut self, amount: Balance) {
-		self.total_staked = self.total_staked.saturating_sub(amount);
+	pub fn sub_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
+		self.total_staked = self
+			.total_staked
+			.checked_sub(&amount)
+			.ok_or(ArithmeticError::Underflow)?;
+
+		Ok(())
 	}
 
 	pub fn distribute_reward(&mut self, reward: Balance) -> bool {
@@ -95,35 +107,66 @@ pub struct StakedDetails<Balance, SignedBalance> {
 
 impl<Balance, SignedBalance> StakedDetails<Balance, SignedBalance>
 where
-	Balance: NumAssignOps + Copy + Zero + FixedPointOperand + Unsigned + Ord,
-	SignedBalance:
-		NumAssignOps + NumOps + Copy + Zero + From<Balance> + TryInto<Balance> + Saturating,
+	Balance: FixedPointOperand + CheckedAdd + CheckedSub,
+	SignedBalance: From<Balance> + TryInto<Balance> + Saturating + CheckedAdd + CheckedSub + Copy,
 {
 	/// Add a stake amount for a given supposed *reward per token* and *epoch*
-	pub fn add_amount<Rate: FixedPointNumber>(&mut self, amount: Balance, reward_per_token: Rate) {
-		self.amount = self.amount.saturating_add(amount);
+	pub fn add_amount<Rate: FixedPointNumber>(
+		&mut self,
+		amount: Balance,
+		reward_per_token: Rate,
+	) -> Result<(), ArithmeticError> {
+		self.amount = self
+			.amount
+			.checked_add(&amount)
+			.ok_or(ArithmeticError::Overflow)?;
+
 		self.reward_tally = self
 			.reward_tally
-			.saturating_add(reward_per_token.saturating_mul_int(amount).into());
+			.checked_add(&reward_per_token.saturating_mul_int(amount).into())
+			.ok_or(ArithmeticError::Underflow)?;
+
+		Ok(())
 	}
 
 	/// Remove a stake amount for a supposed *reward per token*.
-	/// If amount is greater than the amount staked, only the staked amount will be unstaked.
-	pub fn sub_amount<Rate: FixedPointNumber>(&mut self, amount: Balance, reward_per_token: Rate) {
-		let amount = self.amount.min(amount);
-		self.amount -= amount;
-		self.reward_tally = self.reward_tally - reward_per_token.saturating_mul_int(amount).into();
+	pub fn sub_amount<Rate: FixedPointNumber>(
+		&mut self,
+		amount: Balance,
+		reward_per_token: Rate,
+	) -> Result<(), ArithmeticError> {
+		self.amount = self
+			.amount
+			.checked_sub(&amount)
+			.ok_or(ArithmeticError::Overflow)?;
+
+		self.reward_tally = self
+			.reward_tally
+			.checked_sub(&reward_per_token.saturating_mul_int(amount).into())
+			.ok_or(ArithmeticError::Underflow)?;
+
+		Ok(())
 	}
 
 	/// Claim a reward for the current staked amount given a supposed *reward per token* and *epoch*.
-	pub fn claim_reward<Rate: FixedPointNumber>(&mut self, reward_per_token: Rate) -> Balance {
-		let gross_reward: SignedBalance = reward_per_token.saturating_mul_int(self.amount).into();
+	pub fn claim_reward<Rate: FixedPointNumber>(
+		&mut self,
+		reward_per_token: Rate,
+	) -> Result<Balance, ArithmeticError> {
+		let gross_reward: SignedBalance = reward_per_token
+			.checked_mul_int(self.amount)
+			.ok_or(ArithmeticError::Overflow)?
+			.into();
+
 		let reward_tally = self.reward_tally;
 
 		self.reward_tally = gross_reward;
 
-		// Logically this should never be less than 0.
-		(gross_reward - reward_tally).saturated_into()
+		let reward = gross_reward
+			.checked_sub(&reward_tally)
+			.ok_or(ArithmeticError::Underflow)?;
+
+		Ok(reward.saturated_into())
 	}
 }
 
@@ -205,7 +248,7 @@ mod group_test {
 			}
 		);
 
-		group.add_amount(AMOUNT_1);
+		group.add_amount(AMOUNT_1).unwrap();
 
 		// Emulates EPOCH 1
 		assert_eq!(group.distribute_reward(REWARD_1), true);
@@ -217,7 +260,7 @@ mod group_test {
 			}
 		);
 
-		group.add_amount(AMOUNT_2);
+		group.add_amount(AMOUNT_2).unwrap();
 
 		// Emulates EPOCH 3
 		assert_eq!(group.distribute_reward(REWARD_2), true);
@@ -247,15 +290,19 @@ mod group_test {
 	}
 
 	#[test]
-	fn unstake_nothing() {
+	fn unstake_err() {
+		const AMOUNT_1: u64 = 100;
+
 		let mut group = GroupDetails::<u64, FixedU64>::default();
 
-		group.sub_amount(100);
+		group.sub_amount(80).unwrap_err();
+		group.add_amount(AMOUNT_1).unwrap();
+		group.sub_amount(120).unwrap_err();
 
 		assert_eq!(
 			group,
 			GroupDetails {
-				total_staked: 0,
+				total_staked: AMOUNT_1,
 				reward_per_token: 0.into()
 			}
 		);
@@ -268,29 +315,13 @@ mod group_test {
 
 		let mut group = GroupDetails::<u64, FixedU64>::default();
 
-		group.add_amount(AMOUNT_1);
-		group.sub_amount(AMOUNT_2);
+		group.add_amount(AMOUNT_1).unwrap();
+		group.sub_amount(AMOUNT_2).unwrap();
 
 		assert_eq!(
 			group,
 			GroupDetails {
 				total_staked: AMOUNT_1 - AMOUNT_2,
-				reward_per_token: 0.into()
-			}
-		);
-	}
-
-	#[test]
-	fn unstake_over_stake_saturating() {
-		let mut group = GroupDetails::<u64, FixedU64>::default();
-
-		group.add_amount(100);
-		group.sub_amount(120);
-
-		assert_eq!(
-			group,
-			GroupDetails {
-				total_staked: 0,
 				reward_per_token: 0.into()
 			}
 		);
@@ -317,8 +348,8 @@ mod staked_test {
 
 		let rpt_0 = *DIRTY_RPT;
 
-		staked.add_amount(AMOUNT_1, rpt_0);
-		staked.add_amount(AMOUNT_2, rpt_0);
+		staked.add_amount(AMOUNT_1, rpt_0).unwrap();
+		staked.add_amount(AMOUNT_2, rpt_0).unwrap();
 
 		assert_eq!(
 			staked,
@@ -340,7 +371,7 @@ mod staked_test {
 
 		let rpt_0 = *DIRTY_RPT;
 
-		staked.add_amount(AMOUNT_1, rpt_0);
+		staked.add_amount(AMOUNT_1, rpt_0).unwrap();
 		assert_eq!(
 			staked,
 			StakedDetails {
@@ -351,7 +382,7 @@ mod staked_test {
 
 		let rpt_1 = rpt_0 + *DIRTY_RPT;
 
-		staked.add_amount(AMOUNT_2, rpt_1);
+		staked.add_amount(AMOUNT_2, rpt_1).unwrap();
 		assert_eq!(
 			staked,
 			StakedDetails {
@@ -367,7 +398,7 @@ mod staked_test {
 	fn no_stake_no_reward() {
 		let mut staked = StakedDetails::<u64, i128>::default();
 
-		assert_eq!(staked.claim_reward(*DIRTY_RPT), 0);
+		assert_eq!(staked.claim_reward(*DIRTY_RPT).unwrap(), 0);
 	}
 
 	#[test]
@@ -376,9 +407,9 @@ mod staked_test {
 
 		let rpt_0 = *DIRTY_RPT;
 
-		staked.add_amount(50, rpt_0);
+		staked.add_amount(50, rpt_0).unwrap();
 
-		assert_eq!(staked.claim_reward(rpt_0), 0);
+		assert_eq!(staked.claim_reward(rpt_0).unwrap(), 0);
 	}
 
 	#[test]
@@ -391,11 +422,11 @@ mod staked_test {
 
 		let rpt_0 = *DIRTY_RPT;
 
-		staked.add_amount(AMOUNT_1, rpt_0);
+		staked.add_amount(AMOUNT_1, rpt_0).unwrap();
 
 		let rpt_1 = rpt_0 + FixedU64::saturating_from_rational(REWARD, AMOUNT_1);
 
-		let reward = staked.claim_reward(rpt_1);
+		let reward = staked.claim_reward(rpt_1).unwrap();
 		assert_eq!(reward, REWARD);
 		assert_eq!(
 			reward,
@@ -409,7 +440,7 @@ mod staked_test {
 			}
 		);
 
-		staked.add_amount(AMOUNT_2, rpt_1);
+		staked.add_amount(AMOUNT_2, rpt_1).unwrap();
 		assert_eq!(
 			staked,
 			StakedDetails {
@@ -420,7 +451,7 @@ mod staked_test {
 			}
 		);
 
-		assert_eq!(staked.claim_reward(rpt_1), 0);
+		assert_eq!(staked.claim_reward(rpt_1).unwrap(), 0);
 	}
 
 	#[test]
@@ -432,13 +463,13 @@ mod staked_test {
 
 		let rpt_0 = *DIRTY_RPT;
 
-		staked.add_amount(AMOUNT, rpt_0);
+		staked.add_amount(AMOUNT, rpt_0).unwrap();
 
 		let rpt_1 = rpt_0 + FixedU64::saturating_from_rational(REWARD, AMOUNT);
 		let rpt_2 = rpt_1 + FixedU64::saturating_from_rational(REWARD, AMOUNT);
 		let rpt_3 = rpt_2 + FixedU64::saturating_from_rational(REWARD, AMOUNT);
 
-		assert_eq!(staked.claim_reward(rpt_3), REWARD * 3);
+		assert_eq!(staked.claim_reward(rpt_3).unwrap(), REWARD * 3);
 
 		assert_eq!(
 			staked,
@@ -450,7 +481,7 @@ mod staked_test {
 
 		let rpt_4 = rpt_3 + FixedU64::saturating_from_rational(REWARD, AMOUNT);
 
-		assert_eq!(staked.claim_reward(rpt_4), REWARD);
+		assert_eq!(staked.claim_reward(rpt_4).unwrap(), REWARD);
 
 		assert_eq!(
 			staked,
@@ -462,18 +493,22 @@ mod staked_test {
 	}
 
 	#[test]
-	fn unstake_nothing() {
+	fn unstake_err() {
+		const AMOUNT_1: u64 = 100;
+
 		let mut staked = StakedDetails::<u64, i128>::default();
 
 		let rpt_0 = *DIRTY_RPT;
 
-		staked.sub_amount(100, rpt_0);
+		staked.sub_amount(80, rpt_0).unwrap_err();
+		staked.add_amount(AMOUNT_1, rpt_0).unwrap();
+		staked.sub_amount(120, rpt_0).unwrap_err();
 
 		assert_eq!(
 			staked,
 			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
+				amount: AMOUNT_1,
+				reward_tally: rpt_0.saturating_mul_int(AMOUNT_1).into(),
 			}
 		);
 	}
@@ -488,12 +523,12 @@ mod staked_test {
 
 		let rpt_0 = *DIRTY_RPT;
 
-		staked.add_amount(AMOUNT_1, rpt_0);
-		staked.sub_amount(AMOUNT_2, rpt_0);
+		staked.add_amount(AMOUNT_1, rpt_0).unwrap();
+		staked.sub_amount(AMOUNT_2, rpt_0).unwrap();
 
 		let rpt_1 = rpt_0 - *DIRTY_RPT;
 
-		staked.sub_amount(AMOUNT_3, rpt_1);
+		staked.sub_amount(AMOUNT_3, rpt_1).unwrap();
 
 		assert_eq!(
 			staked,
@@ -503,36 +538,6 @@ mod staked_test {
 					- rpt_0.saturating_mul_int(AMOUNT_2)
 					- rpt_1.saturating_mul_int(AMOUNT_3))
 				.into(),
-			}
-		);
-	}
-
-	#[test]
-	fn unstake_over_stake_saturating() {
-		let mut staked = StakedDetails::<u64, i128>::default();
-
-		let rpt_0 = *DIRTY_RPT;
-
-		staked.add_amount(100, rpt_0);
-		staked.sub_amount(120, rpt_0);
-
-		assert_eq!(
-			staked,
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
-			}
-		);
-
-		let rpt_1 = rpt_0 - *DIRTY_RPT;
-
-		staked.sub_amount(150, rpt_1);
-
-		assert_eq!(
-			staked,
-			StakedDetails {
-				amount: 0,
-				reward_tally: 0,
 			}
 		);
 	}
