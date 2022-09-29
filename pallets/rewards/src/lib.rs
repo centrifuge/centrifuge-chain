@@ -5,8 +5,8 @@ pub use pallet::*;
 #[cfg(test)]
 mod mock;
 
-//#[cfg(test)]
-//mod tests;
+#[cfg(test)]
+mod tests;
 
 mod types;
 
@@ -193,6 +193,12 @@ pub mod pallet {
 			let reward = Staked::<T>::mutate(&who, |staked| {
 				staked.claim_reward(group.reward_per_token(), ActiveEpoch::<T>::get().epoch())
 			});
+
+			println!(
+				"a: {:?}, b: {:?}",
+				T::Currency::free_balance(&T::PalletId::get().into_account_truncating()),
+				reward
+			);
 
 			T::Currency::transfer(
 				&T::PalletId::get().into_account_truncating(),
