@@ -40,8 +40,7 @@ use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
-use sp_runtime::traits::Extrinsic;
-use sp_runtime::{generic::BlockId, DigestItem, Storage};
+use sp_runtime::{generic::BlockId, traits::Extrinsic, DigestItem, Storage};
 use tokio::runtime::Handle;
 
 use crate::{
