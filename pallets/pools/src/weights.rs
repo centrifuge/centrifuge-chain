@@ -225,16 +225,16 @@ impl WeightInfo for () {
 	}
 
 	fn close_epoch_no_execution(n: u32) -> Weight {
-		(57_042_000) // Standard Error: 78_000
-			.saturating_add((5_813_000).saturating_mul(n as u64))
+		(Weight::from_ref_time(57_042_000)) // Standard Error: 78_000
+			.saturating_add((Weight::from_ref_time(5_813_000)).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 
 	fn close_epoch_execute(n: u32) -> Weight {
-		(103_700_000) // Standard Error: 84_000
-			.saturating_add((9_059_000).saturating_mul(n as u64))
+		(Weight::from_ref_time(103_700_000)) // Standard Error: 84_000
+			.saturating_add((Weight::from_ref_time(9_059_000)).saturating_mul(n as u64))
 			.saturating_add(RocksDbWeight::get().reads(6 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(RocksDbWeight::get().writes(4 as u64))

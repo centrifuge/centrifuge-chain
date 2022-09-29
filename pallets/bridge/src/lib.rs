@@ -101,13 +101,19 @@ pub mod pallet {
 
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.
-		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type BridgeOrigin: EnsureOrigin<
+			<Self as frame_system::Config>::Origin,
+			Success = <Self as frame_system::Config>::AccountId,
+		>;
 
 		/// Entity used to pay fees
-		type Fees: Fees<AccountId = Self::AccountId, Balance = BalanceOf<Self>>;
+		type Fees: Fees<
+			AccountId = <Self as frame_system::Config>::AccountId,
+			Balance = BalanceOf<Self>,
+		>;
 
 		/// Currency as viewed from this pallet
-		type Currency: Currency<Self::AccountId>;
+		type Currency: Currency<<Self as frame_system::Config>::AccountId>;
 
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -133,7 +139,7 @@ pub mod pallet {
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Remark(T::Hash, ResourceId),
+		Remark(<T as frame_system::Config>::Hash, ResourceId),
 	}
 
 	// ------------------------------------------------------------------------
@@ -144,7 +150,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub chains: Vec<u8>,
-		pub relayers: Vec<T::AccountId>,
+		pub relayers: Vec<<T as frame_system::Config>::AccountId>,
 		pub resources: Vec<(ResourceId, Vec<u8>)>,
 		pub threshold: u32,
 	}
@@ -243,7 +249,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn transfer(
 			origin: OriginFor<T>,
-			to: T::AccountId,
+			to: <T as frame_system::Config>::AccountId,
 			amount: BalanceOf<T>,
 			_r_id: ResourceId,
 		) -> DispatchResultWithPostInfo {
@@ -257,7 +263,7 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::remark())]
 		pub fn remark(
 			origin: OriginFor<T>,
-			hash: T::Hash,
+			hash: <T as frame_system::Config>::Hash,
 			r_id: ResourceId,
 		) -> DispatchResultWithPostInfo {
 			T::BridgeOrigin::ensure_origin(origin)?;
