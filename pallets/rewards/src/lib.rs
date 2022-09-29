@@ -8,9 +8,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod types;
+
 //#[cfg(feature = "runtime-benchmarks")]
 //mod benchmarking;
-
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement, ReservableCurrency},
@@ -19,44 +20,10 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::{NumAssignOps, NumOps, Signed};
 use sp_runtime::{
-	traits::{AccountIdConversion, BlockNumberProvider, Saturating, Zero},
+	traits::{AccountIdConversion, Saturating, Zero},
 	FixedPointNumber, FixedPointOperand, TokenError,
 };
-
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct EpochDetails<BlockNumber, Balance> {
-	ends_on: BlockNumber,
-	total_reward: Balance,
-}
-
-/// Type used to initialize the first epoch with the correct block number
-pub struct FirstEpochDetails<P>(std::marker::PhantomData<P>);
-impl<P, N, B: Zero> Get<EpochDetails<N, B>> for FirstEpochDetails<P>
-where
-	P: BlockNumberProvider<BlockNumber = N>,
-{
-	fn get() -> EpochDetails<N, B> {
-		EpochDetails {
-			ends_on: P::current_block_number(),
-			total_reward: Zero::zero(),
-		}
-	}
-}
-
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct GroupDetails<Balance, Rate> {
-	total_staked: Balance,
-	reward_per_token: Rate,
-}
-
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct StakedDetails<Balance, SignedBalance> {
-	amount: Balance,
-	reward_tally: SignedBalance,
-}
+use types::{EpochDetails, FirstEpochDetails, GroupDetails, StakedDetails};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -93,6 +60,7 @@ pub mod pallet {
 		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TypeInfo
 			+ MaxEncodedLen
+			+ Saturating
 			+ Encode
 			+ Decode;
 	}
@@ -145,29 +113,22 @@ pub mod pallet {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let active_epoch = ActiveEpoch::<T>::get();
 
-			if active_epoch.ends_on != current_block {
+			if active_epoch.ends_on() != current_block {
 				return T::DbWeight::get().reads(1);
 			}
 
 			Group::<T>::mutate(|group| {
-				if group.total_staked > Zero::zero() {
+				if group.distribute_reward(active_epoch.total_reward()) {
 					T::Currency::deposit_creating(
 						&T::PalletId::get().into_account_truncating(),
-						active_epoch.total_reward,
+						active_epoch.total_reward(),
 					);
-
-					let rate_increment = T::Rate::saturating_from_rational(
-						active_epoch.total_reward,
-						group.total_staked,
-					);
-					group.reward_per_token = group.reward_per_token + rate_increment;
 				}
 			});
 
-			ActiveEpoch::<T>::put(EpochDetails {
-				ends_on: current_block + T::BlockPerEpoch::get(),
-				total_reward: NextTotalReward::<T>::get(),
-			});
+			ActiveEpoch::<T>::put(
+				active_epoch.next(T::BlockPerEpoch::get(), NextTotalReward::<T>::get()),
+			);
 
 			T::DbWeight::get().reads_writes(2, 2) // + deposit_creating weight // TODO
 		}
@@ -187,11 +148,10 @@ pub mod pallet {
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
-					staked.amount += amount;
-					staked.reward_tally += group.reward_per_token.saturating_mul_int(amount).into();
+					staked.add_amount(amount, group.reward_per_token());
 				});
 
-				group.total_staked += amount;
+				group.add_amount(amount);
 			});
 
 			Ok(())
@@ -208,13 +168,10 @@ pub mod pallet {
 
 			Group::<T>::mutate(|group| {
 				Staked::<T>::mutate(&who, |staked| {
-					staked.amount = staked.amount.saturating_sub(amount);
-					staked.reward_tally = staked
-						.reward_tally
-						.saturating_sub(group.reward_per_token.saturating_mul_int(amount).into());
+					staked.sub_amount(amount, group.reward_per_token());
 				});
 
-				group.total_staked = group.total_staked.saturating_sub(amount);
+				group.sub_amount(amount);
 			});
 
 			T::Currency::unreserve(&who, amount);
@@ -229,19 +186,8 @@ pub mod pallet {
 
 			let group = Group::<T>::get();
 
-			let reward = Staked::<T>::mutate(&who, |staked| {
-				let gross_reward: T::SignedBalance = group
-					.reward_per_token
-					.saturating_mul_int(staked.amount)
-					.into();
-
-				let reward_tally = staked.reward_tally;
-
-				staked.reward_tally = gross_reward;
-
-				// Logically this should never be less than 0.
-				(gross_reward - reward_tally).try_into().unwrap_or_default()
-			});
+			let reward =
+				Staked::<T>::mutate(&who, |staked| staked.claim_reward(group.reward_per_token()));
 
 			T::Currency::transfer(
 				&T::PalletId::get().into_account_truncating(),

@@ -17,6 +17,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 pub const INITIAL_BLOCK: u64 = 23;
 pub const EPOCH_INTERVAL: u64 = 10;
+pub const REWARD_1: u64 = 100;
 
 pub const USER_A: u64 = 1;
 pub const USER_B: u64 = 2;
@@ -96,9 +97,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Balances::make_free_balance_be(&USER_A, USER_INITIAL_BALANCE);
 		Balances::make_free_balance_be(&USER_B, USER_INITIAL_BALANCE);
 
-		// Set a correct epoch initial state
+		// Set a correct ActiveEpoch indirectly
+		System::set_block_number(INITIAL_BLOCK - EPOCH_INTERVAL);
+		pallet_rewards::NextTotalReward::<Test>::put(REWARD_1);
 		System::set_block_number(INITIAL_BLOCK);
 		Rewards::on_initialize(INITIAL_BLOCK);
+		// At this point, our ActiveEpoch has INITIAL_BLOCK and REWARD_1
 	});
 
 	ext

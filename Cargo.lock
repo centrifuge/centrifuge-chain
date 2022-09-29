@@ -6452,6 +6452,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "lazy_static",
  "num-traits",
  "pallet-balances",
  "parity-scale-codec",
