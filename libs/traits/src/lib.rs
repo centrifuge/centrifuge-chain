@@ -696,7 +696,7 @@ pub mod fees {
 	}
 }
 
-mod ops {
+pub mod ops {
 	pub use sp_runtime::{
 		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub},
 		ArithmeticError,
@@ -709,7 +709,15 @@ mod ops {
 		/// `ArithmeticError::Overflow` is returned.
 		///
 		/// ```
-		/// u32::max().ensure_add(1)?
+		/// use cfg_traits::ops::EnsureAdd;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic() -> DispatchResult {
+		///     u32::MAX.ensure_add(&1)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
 		/// ```
 		fn ensure_add(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_add(v).ok_or(ArithmeticError::Overflow)
@@ -723,7 +731,15 @@ mod ops {
 		/// `ArithmeticError::Underflow` is returned.
 		///
 		/// ```
-		/// 0u32.ensure_sub(1)?
+		/// use cfg_traits::ops::EnsureSub;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic() -> DispatchResult {
+		///     0u32.ensure_sub(&1)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Underflow)));
 		/// ```
 		fn ensure_sub(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_sub(v).ok_or(ArithmeticError::Underflow)
@@ -737,7 +753,15 @@ mod ops {
 		/// `ArithmeticError::Overflow` is returned.
 		///
 		/// ```
-		/// u32::max().ensure_mul(2)?
+		/// use cfg_traits::ops::EnsureMul;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic() -> DispatchResult {
+		///     u32::MAX.ensure_mul(&2)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
 		/// ```
 		fn ensure_mul(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_mul(v).ok_or(ArithmeticError::Overflow)
@@ -751,7 +775,15 @@ mod ops {
 		/// `ArithmeticError::DivisionByZero` is returned.
 		///
 		/// ```
-		/// u32::max().ensure_div(0)?
+		/// use cfg_traits::ops::EnsureDiv;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic() -> DispatchResult {
+		///     1.ensure_div(&0)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::DivisionByZero)));
 		/// ```
 		fn ensure_div(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_div(v).ok_or(ArithmeticError::DivisionByZero)
