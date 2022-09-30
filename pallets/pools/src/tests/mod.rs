@@ -10,109 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+mod inspect_solutions;
 mod mock;
-mod solutions;
 mod utils;
 
 /*
-#[test]
-fn pool_constraints_pool_reserve_above_max_reserve() {
-	new_test_ext().execute_with(|| {
-		let tranche_a = Tranche {
-			outstanding_invest_orders: 10,
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
-			..Default::default()
-		};
-		let tranche_b = Tranche {
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [1u8; 16]),
-			..Default::default()
-		};
-		let tranche_c = Tranche {
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [2u8; 16]),
-			..Default::default()
-		};
-		let tranche_d = Tranche {
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [3u8; 16]),
-			..Default::default()
-		};
-		let tranches =
-			Tranches::new::<TT>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
-		let epoch_tranches = EpochExecutionTranches::new(
-			tranches
-				.residual_top_slice()
-				.iter()
-				.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
-				.map(|(tranche, value)| EpochExecutionTranche {
-					supply: value,
-					price: One::one(),
-					invest: tranche.outstanding_invest_orders,
-					redeem: tranche.outstanding_redeem_orders,
-					..Default::default()
-				})
-				.collect(),
-		);
-
-		let pool = &PoolDetails {
-			currency: CurrencyId::AUSD,
-			tranches,
-			status: PoolStatus::Open,
-			epoch: EpochState {
-				current: Zero::zero(),
-				last_closed: 0,
-				last_executed: Zero::zero(),
-			},
-			reserve: ReserveDetails {
-				max: 5,
-				available: Zero::zero(),
-				total: 40,
-			},
-			parameters: PoolParameters {
-				min_epoch_time: 0,
-				max_nav_age: 60,
-			},
-			metadata: None,
-		};
-
-		let epoch = EpochExecutionInfo {
-			epoch: Zero::zero(),
-			nav: 90,
-			reserve: pool.reserve.total,
-			max_reserve: pool.reserve.max,
-			tranches: epoch_tranches,
-			best_submission: None,
-			challenge_period_end: None,
-		};
-
-		let full_solution = pool
-			.tranches
-			.residual_top_slice()
-			.iter()
-			.map(|_| TrancheSolution {
-				invest_fulfillment: Perquintill::one(),
-				redeem_fulfillment: Perquintill::one(),
-			})
-			.collect::<Vec<_>>();
-
-		assert_eq!(
-			Pools::inspect_solution(pool, &epoch, &full_solution),
-			Ok(PoolState::Unhealthy(vec![
-				UnhealthyState::MaxReserveViolated
-			]))
-		);
-
-		let mut details = pool.clone();
-		details.reserve.max = 100;
-		assert_ok!(Pools::inspect_solution(&details, &epoch, &full_solution));
-	});
-}
-
 #[test]
 fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
