@@ -20,44 +20,39 @@ pub mod pallet {
 		pallet_prelude::*,
 		traits::fungibles::{Inspect, Mutate, Transfer},
 	};
-	use sp_runtime::{
-		traits::{AccountIdConversion, AtLeast32BitUnsigned},
-		FixedPointNumber, FixedPointOperand,
-	};
+	use frame_system::pallet_prelude::BlockNumberFor;
+	use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
 
 	use crate::TEST_PALLET_ID;
 
+	type BalanceOf<T> =
+		<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
+	type CurrencyOf<T> =
+		<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
+
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config
+	where
+		<Self::Tokens as Inspect<Self::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<Self::Tokens as Inspect<Self::AccountId>>::AssetId:
+			MaxEncodedLen + MaybeSerializeDeserialize,
+	{
 		type PoolId: Member + Parameter + Default + Copy + MaxEncodedLen;
 
 		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen;
-
-		type Balance: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ AtLeast32BitUnsigned
-			+ MaybeSerializeDeserialize
-			+ From<u64>
-			+ FixedPointOperand;
-
-		type CurrencyId: Member + Parameter + Copy + MaxEncodedLen + MaybeSerializeDeserialize;
 
 		type InvestmentId: Member
 			+ Parameter
 			+ Copy
 			+ MaxEncodedLen
 			+ MaybeSerializeDeserialize
-			+ Into<Self::CurrencyId>
+			+ Into<CurrencyOf<Self>>
 			+ TrancheCurrency<Self::PoolId, Self::TrancheId>;
 
-		type Rate: FixedPointNumber<Inner = Self::Balance>;
+		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>;
 
-		type Tokens: Inspect<Self::AccountId, Balance = Self::Balance, AssetId = Self::CurrencyId>
-			+ Mutate<Self::AccountId>
-			+ Transfer<Self::AccountId>;
+		type Tokens: Inspect<Self::AccountId> + Mutate<Self::AccountId> + Transfer<Self::AccountId>;
 	}
 
 	#[pallet::pallet]
@@ -65,13 +60,23 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub invest_orders: Vec<(T::InvestmentId, T::Balance, T::CurrencyId)>,
-		pub redeem_orders: Vec<(T::InvestmentId, T::Balance, T::CurrencyId)>,
+	pub struct GenesisConfig<T: Config>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	{
+		pub invest_orders: Vec<(T::InvestmentId, BalanceOf<T>, CurrencyOf<T>)>,
+		pub redeem_orders: Vec<(T::InvestmentId, BalanceOf<T>, CurrencyOf<T>)>,
 	}
 
 	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
+	impl<T: Config> Default for GenesisConfig<T>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	{
 		fn default() -> Self {
 			Self {
 				invest_orders: Default::default(),
@@ -81,7 +86,12 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	{
 		fn build(&self) {
 			for (id, amount, payment_currency) in &self.invest_orders {
 				InvestOrders::<T>::insert(*id, TotalOrder { amount: *amount });
@@ -100,23 +110,44 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type PaymentCurrency<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InvestmentId, T::CurrencyId>;
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, CurrencyOf<T>>;
 
 	#[pallet::storage]
 	pub type InvestOrders<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Balance>>;
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<BalanceOf<T>>>;
 
 	#[pallet::storage]
 	pub type RedeemOrders<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<T::Balance>>;
+		StorageMap<_, Blake2_128Concat, T::InvestmentId, TotalOrder<BalanceOf<T>>>;
 
-	impl<T: Config> Pallet<T> {}
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	{
+	}
 
-	impl<T: Config> OrderManager for Pallet<T> {
+	#[pallet::call]
+	impl<T: Config> Pallet<T>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	{
+	}
+
+	impl<T: Config> OrderManager for Pallet<T>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	{
 		type Error = DispatchError;
 		type Fulfillment = FulfillmentWithPrice<T::Rate>;
 		type InvestmentId = T::InvestmentId;
-		type Orders = TotalOrder<T::Balance>;
+		type Orders = TotalOrder<BalanceOf<T>>;
 
 		/// When called the manager return the current
 		/// invest orders for the given investment class.

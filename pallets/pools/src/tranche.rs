@@ -12,8 +12,8 @@
 
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
-use cfg_types::CurrencyId;
-use cfg_types::{CustomMetadata, TrancheCurrency, XcmMetadata};
+use cfg_types::{CurrencyId, TrancheCurrency};
+use cfg_types::{CustomMetadata, XcmMetadata};
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
 use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;

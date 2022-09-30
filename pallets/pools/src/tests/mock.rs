@@ -243,8 +243,6 @@ where
 }
 
 impl cfg_test_utils::mocks::order_manager::Config for Test {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
 	type Rate = Rate;
