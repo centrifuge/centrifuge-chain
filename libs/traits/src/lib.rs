@@ -698,7 +698,7 @@ pub mod fees {
 
 mod ops {
 	pub use sp_runtime::{
-		traits::{CheckedAdd, CheckedSub},
+		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub},
 		ArithmeticError,
 	};
 
@@ -730,6 +730,36 @@ mod ops {
 		}
 	}
 
+	/// Performs multiplication that returns `ArithmeticError::Overflow` instead of
+	/// wrapping around on overflow.
+	pub trait EnsureMul: CheckedMul {
+		/// Multiplies two numbers, checking for overflow. If overflow happens,
+		/// `ArithmeticError::Overflow` is returned.
+		///
+		/// ```
+		/// u32::max().ensure_mul(2)?
+		/// ```
+		fn ensure_mul(&self, v: &Self) -> Result<Self, ArithmeticError> {
+			self.checked_mul(v).ok_or(ArithmeticError::Overflow)
+		}
+	}
+
+	/// Performs division that returns `ArithmeticError::DivisionByZero` instead of
+	/// wrapping around on overflow.
+	pub trait EnsureDiv: CheckedDiv {
+		/// Divides two numbers, checking for overflow. If overflow happens,
+		/// `ArithmeticError::DivisionByZero` is returned.
+		///
+		/// ```
+		/// u32::max().ensure_div(0)?
+		/// ```
+		fn ensure_div(&self, v: &Self) -> Result<Self, ArithmeticError> {
+			self.checked_div(v).ok_or(ArithmeticError::DivisionByZero)
+		}
+	}
+
 	impl<T: CheckedAdd> EnsureAdd for T {}
 	impl<T: CheckedSub> EnsureSub for T {}
+	impl<T: CheckedMul> EnsureMul for T {}
+	impl<T: CheckedDiv> EnsureDiv for T {}
 }
