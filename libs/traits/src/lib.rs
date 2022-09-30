@@ -695,3 +695,41 @@ pub mod fees {
 		}
 	}
 }
+
+mod ops {
+	pub use sp_runtime::{
+		traits::{CheckedAdd, CheckedSub},
+		ArithmeticError,
+	};
+
+	/// Performs addition that returns `ArithmeticError::Overflow` instead of
+	/// wrapping around on overflow.
+	pub trait EnsureAdd: CheckedAdd {
+		/// Adds two numbers, checking for overflow. If overflow happens,
+		/// `ArithmeticError::Overflow` is returned.
+		///
+		/// ```
+		/// u32::max().ensure_add(1)?
+		/// ```
+		fn ensure_add(&self, v: &Self) -> Result<Self, ArithmeticError> {
+			self.checked_add(v).ok_or(ArithmeticError::Overflow)
+		}
+	}
+
+	/// Performs subtraction that returns `ArithmeticError::Underflow` instead of
+	/// wrapping around on underflow.
+	pub trait EnsureSub: CheckedSub {
+		/// Subtracts two numbers, checking for overflow. If overflow happens,
+		/// `ArithmeticError::Underflow` is returned.
+		///
+		/// ```
+		/// 0u32.ensure_sub(1)?
+		/// ```
+		fn ensure_sub(&self, v: &Self) -> Result<Self, ArithmeticError> {
+			self.checked_sub(v).ok_or(ArithmeticError::Underflow)
+		}
+	}
+
+	impl<T: CheckedAdd> EnsureAdd for T {}
+	impl<T: CheckedSub> EnsureSub for T {}
+}
