@@ -49,8 +49,6 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub mod migration;
-
 mod common;
 
 pub struct RootHashSize<H>(sp_std::marker::PhantomData<H>);
