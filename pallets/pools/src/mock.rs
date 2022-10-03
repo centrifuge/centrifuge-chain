@@ -10,7 +10,7 @@ use codec::Encode;
 use frame_support::{
 	parameter_types,
 	sp_std::marker::PhantomData,
-	traits::{Contains, GenesisBuild, Hooks, SortedMembers},
+	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
 	Blake2_128, StorageHasher,
 };
 use frame_system as system;
@@ -290,6 +290,9 @@ where
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
+	/// The index with which this pallet is instantiated in this runtime.
+	pub PoolPalletIndex: u8 = <Pools as PalletInfoAccess>::index() as u8;
+
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
@@ -340,6 +343,7 @@ impl Config for Test {
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = FakeNav;
 	type PalletId = PoolPalletId;
+	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<u64>;
