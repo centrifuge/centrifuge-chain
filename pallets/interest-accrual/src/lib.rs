@@ -498,4 +498,14 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 	fn unreference_rate(interest_rate_per_sec: T::InterestRate) -> Result<(), DispatchError> {
 		Pallet::<T>::unreference_interest_rate(interest_rate_per_sec)
 	}
+
+	fn verify_penalty_rate(
+		interest_rate_per_year: T::InterestRate,
+	) -> Result<T::InterestRate, DispatchError> {
+		Pallet::<T>::validate_rate(interest_rate_per_year)?;
+		let interest_rate_per_sec = interest_rate_per_year
+			.checked_div(&T::InterestRate::saturating_from_integer(SECONDS_PER_YEAR))
+			.ok_or(ArithmeticError::Underflow)?;
+		Ok(interest_rate_per_sec)
+	}
 }

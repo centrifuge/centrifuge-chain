@@ -609,6 +609,10 @@ pub mod pallet {
 
 		/// Appends a new write off group to the Pool
 		///
+		/// `group.penalty_interest_rate_per_year` is a yearly
+		/// rate, in the same format as used for pricing
+		/// loans.
+		///
 		/// Since written off loans keep written off group index,
 		/// we only allow adding new write off groups.
 		/// Overdue days doesn't need to be in the sorted order.
@@ -616,10 +620,25 @@ pub mod pallet {
 		pub fn add_write_off_group(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			group: WriteOffGroup<T::Rate>,
+			group: WriteOffGroupInput<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
+
+			// Convert percentage from a yearly rate to a per-second rate.
+			let WriteOffGroupInput {
+				percentage,
+				overdue_days,
+				penalty_interest_rate_per_year,
+			} = group;
+			let penalty_interest_rate_per_sec =
+				T::InterestAccrual::verify_penalty_rate(penalty_interest_rate_per_year)?;
+			let group = WriteOffGroup {
+				percentage,
+				overdue_days,
+				penalty_interest_rate_per_sec,
+			};
+
 			let write_off_group_index = Self::add_write_off_group_to_pool(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded {
 				pool_id,
@@ -674,16 +693,20 @@ pub mod pallet {
 		/// AdminOrigin can write off a healthy loan as well.
 		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
 		/// Admin can write off loan with any index potentially going up the index or down.
+		///
+		/// `penalty_interest_rate_per_year` is specified in the same format as used for pricing loans.
 		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get()))]
 		pub fn admin_write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			percentage: T::Rate,
-			penalty_interest_rate_per_sec: T::Rate,
+			penalty_interest_rate_per_year: T::Rate,
 		) -> DispatchResultWithPostInfo {
 			// ensure this is a call from risk admin
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
+			let penalty_interest_rate_per_sec =
+				T::InterestAccrual::verify_penalty_rate(penalty_interest_rate_per_year)?;
 
 			// try to write off
 			let (active_count, (.., percentage, penalty_interest_rate_per_sec)) =
