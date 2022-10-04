@@ -240,6 +240,20 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 
 				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
+			MultiLocation {
+				parents: 1,
+				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey(_)),
+			} => match para_id {
+				// Note: Until we have pools on Centrifuge, we don't know the pools pallet index
+				// and can't therefore match specifically on the Tranche tokens' multilocation;
+				// However, we can preemptively assume that any Centrifuge X3-based asset refers
+				// to a Tranche token and explicitly fail its conversion to avoid Tranche tokens
+				// from being transferred through XCM without permission checks. This is fine since
+				// we don't have any other native token represented as an X3 neither do we plan to.
+				id if id == u32::from(ParachainInfo::get()) => Err(location),
+				// Still support X3-based Multilocations native to other chains
+				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
+			},
 			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 		}
 	}
