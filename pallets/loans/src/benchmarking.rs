@@ -269,9 +269,7 @@ fn activate_test_loan_with_rate<T: Config>(
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
-	let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(rate, 5000))
-		.unwrap()
-		.into();
+	let rp: T::Rate = Rate::saturating_from_rational(rate, 5000).into();
 	LoansPallet::<T>::price(
 		RawOrigin::Signed(borrower).into(),
 		pool_id,
@@ -408,8 +406,9 @@ benchmarks! {
 			math::seconds_per_year() * 2,
 		));
 		// interest rate is 5%
-		let interest_rate_per_sec: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
-	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_sec, loan_type)
+		let interest_rate_per_year: T::Rate = Rate::saturating_from_rational(5, 100).into();
+		let interest_rate_per_sec: T::Rate = math::interest_rate_per_sec(interest_rate_per_year).unwrap();
+	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_year, loan_type)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");

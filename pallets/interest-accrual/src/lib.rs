@@ -59,7 +59,7 @@ use cfg_types::Adjustment;
 use codec::{Decode, Encode};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::{checked_pow, One};
+use sp_arithmetic::traits::{checked_pow, One, Zero};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
@@ -73,6 +73,9 @@ pub mod benchmarking;
 
 #[cfg(test)]
 mod mock;
+
+#[cfg(test)]
+mod tests;
 
 pub use pallet::*;
 
@@ -147,6 +150,8 @@ pub mod pallet {
 
 		type Time: UnixTime;
 
+		type MaxRateCount: Get<u32>;
+
 		type Weights: WeightInfo;
 	}
 
@@ -154,6 +159,10 @@ pub mod pallet {
 	#[pallet::getter(fn get_rate)]
 	pub(super) type Rate<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InterestRate, RateDetailsOf<T>, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn rate_count)]
+	pub(super) type RateCount<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn last_updated)]
@@ -176,6 +185,10 @@ pub mod pallet {
 		NoSuchRate,
 		/// Emits when a historic rate was asked for from the future
 		NotInPast,
+		/// Emits when a rate is not within the valid range
+		InvalidRate,
+		/// Emits when adding a new rate would exceed the storage limits
+		TooManyRates,
 	}
 
 	#[pallet::genesis_config]
@@ -336,16 +349,41 @@ pub mod pallet {
 			T::Time::now().as_secs()
 		}
 
-		pub fn reference_interest_rate(interest_rate_per_sec: T::InterestRate) {
+		pub fn reference_yearly_interest_rate(
+			interest_rate_per_year: T::InterestRate,
+		) -> Result<T::InterestRate, DispatchError> {
+			const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+			let interest_rate_per_sec = interest_rate_per_year
+				.checked_div(&T::InterestRate::saturating_from_integer(SECS_PER_YEAR))
+				.ok_or(ArithmeticError::Underflow)?
+				+ One::one();
+
+			if !Rate::<T>::contains_key(interest_rate_per_sec) {
+				Self::validate_rate(interest_rate_per_year)?;
+			}
+
+			Self::reference_interest_rate(interest_rate_per_sec)?;
+			Ok(interest_rate_per_sec)
+		}
+
+		pub fn reference_interest_rate(interest_rate_per_sec: T::InterestRate) -> DispatchResult {
 			Rate::<T>::mutate(interest_rate_per_sec, |rate| {
 				if let Some(rate) = rate {
 					rate.reference_count += 1;
 				} else {
+					let rate_count = RateCount::<T>::get();
+					ensure!(
+						rate_count < T::MaxRateCount::get(),
+						Error::<T>::TooManyRates
+					);
+
 					*rate = Some(RateDetailsOf::<T> {
 						accumulated_rate: One::one(),
 						reference_count: 1,
 					});
+					RateCount::<T>::set(rate_count + 1);
 				}
+				Ok(())
 			})
 		}
 
@@ -385,6 +423,23 @@ pub mod pallet {
 			});
 			T::DbWeight::get().reads_writes(count, count)
 		}
+
+		pub fn count_rates() -> Weight {
+			let count = Rate::<T>::iter_keys().count();
+			RateCount::<T>::set(count as u32);
+			T::DbWeight::get().reads(count as u64) + T::DbWeight::get().writes(1)
+		}
+
+		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
+			let four_decimals = T::InterestRate::saturating_from_integer(10000);
+			ensure!(
+				interest_rate_per_year < One::one()
+					&& interest_rate_per_year > Zero::zero()
+					&& (interest_rate_per_year * four_decimals).frac() == Zero::zero(),
+				Error::<T>::InvalidRate
+			);
+			Ok(())
+		}
 	}
 }
 
@@ -422,7 +477,13 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 		Pallet::<T>::do_renormalize_debt(old_interest_rate, new_interest_rate, normalized_debt)
 	}
 
-	fn reference_rate(interest_rate_per_sec: T::InterestRate) {
+	fn reference_yearly_rate(
+		interest_rate_per_year: T::InterestRate,
+	) -> Result<T::InterestRate, DispatchError> {
+		Pallet::<T>::reference_yearly_interest_rate(interest_rate_per_year)
+	}
+
+	fn reference_rate(interest_rate_per_sec: T::InterestRate) -> Result<(), DispatchError> {
 		Pallet::<T>::reference_interest_rate(interest_rate_per_sec)
 	}
 

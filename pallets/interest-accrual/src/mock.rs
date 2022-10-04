@@ -54,10 +54,15 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxRateCount: u32 = 100;
+}
+
 impl Config for Test {
 	type Balance = Balance;
 	type Event = Event;
 	type InterestRate = Rate;
+	type MaxRateCount = MaxRateCount;
 	type Time = Timestamp;
 	type Weights = ();
 }

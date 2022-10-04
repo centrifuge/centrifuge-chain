@@ -193,14 +193,15 @@ fn price_test_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-	rp: Rate,
+	rpy: Rate,
+	rps: Rate,
 	loan_type: LoanType<Rate, Balance>,
 ) where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
-	let res = Loans::price(Origin::signed(admin), pool_id, loan_id, rp, loan_type);
+	let res = Loans::price(Origin::signed(admin), pool_id, loan_id, rpy, loan_type);
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 	let (got_pool_id, got_loan_id) = match loan_event {
@@ -218,7 +219,7 @@ fn price_test_loan<T>(
 	let active_loan =
 		Loans::get_active_loan(pool_id, loan_id).expect("PricedLoanDetails should be present");
 	assert_eq!(loan.status, LoanStatus::Active);
-	assert_eq!(active_loan.interest_rate_per_sec, rp);
+	assert_eq!(active_loan.interest_rate_per_sec, rps);
 	assert_eq!(active_loan.loan_type, loan_type);
 	assert_eq!(active_loan.max_borrow_amount(0), 100 * USD);
 	assert_eq!(active_loan.write_off_status, WriteOffStatus::None);
@@ -228,7 +229,7 @@ fn price_bullet_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, LoanType<Rate, Balance>)
+) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
@@ -236,16 +237,17 @@ where
 {
 	let loan_type = default_bullet_loan_params();
 	// interest rate is 5%
-	let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
-	(rp, loan_type)
+	let rpy = Rate::saturating_from_rational(5, 100);
+	let rps = math::interest_rate_per_sec(rpy).unwrap();
+	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, loan_type);
+	(rpy, rps, loan_type)
 }
 
 fn price_credit_line_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, LoanType<Rate, Balance>)
+) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
@@ -253,16 +255,17 @@ where
 {
 	let loan_type = default_credit_line_params();
 	// interest rate is 5%
-	let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
-	(rp, loan_type)
+	let rpy = Rate::saturating_from_rational(5, 100);
+	let rps = math::interest_rate_per_sec(rpy).unwrap();
+	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, loan_type);
+	(rpy, rps, loan_type)
 }
 
 fn price_credit_line_with_maturity_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, LoanType<Rate, Balance>)
+) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
@@ -270,9 +273,10 @@ where
 {
 	let loan_type = default_credit_line_with_maturity_params();
 	// interest rate is 5%
-	let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
-	(rp, loan_type)
+	let rpy = Rate::saturating_from_rational(5, 100);
+	let rps = math::interest_rate_per_sec(rpy).unwrap();
+	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, loan_type);
+	(rpy, rps, loan_type)
 }
 
 fn close_test_loan<T>(
@@ -360,7 +364,7 @@ fn test_price_and_reprice_loan() {
 			let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
 			// successful pricing
-			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan.1);
+			let (rate, _, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan.1);
 
 			// princing an active loan must be done only with LoanAdmin permission.
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
@@ -431,7 +435,10 @@ fn test_price_bullet_loan() {
 			));
 			let rp = Zero::zero();
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
+			assert_err!(
+				res,
+				pallet_interest_accrual::Error::<MockRuntime>::InvalidRate
+			);
 		})
 }
 
@@ -485,7 +492,10 @@ fn test_price_credit_line_with_maturity_loan() {
 			));
 			let rp = Zero::zero();
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
+			assert_err!(
+				res,
+				pallet_interest_accrual::Error::<MockRuntime>::InvalidRate
+			);
 		})
 }
 
@@ -510,7 +520,10 @@ fn test_price_credit_line_loan() {
 			));
 			let rp = Zero::zero();
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
+			assert_err!(
+				res,
+				pallet_interest_accrual::Error::<MockRuntime>::InvalidRate
+			);
 		})
 }
 
@@ -565,7 +578,7 @@ macro_rules! test_borrow_loan {
 
 				// successful pricing
 				let loan_id = loan.1;
-				let (rate, loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				let (_, rate, loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50 first
 				Timestamp::set_timestamp(1 * 1000);
@@ -1043,7 +1056,7 @@ macro_rules! test_pool_nav {
 				let loan_id = loan.1;
 
 				// successful pricing
-				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				$price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// present value should still be zero
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
@@ -1405,7 +1418,7 @@ macro_rules! test_write_off_maturity_loan {
 				let loan_id = loan.1;
 
 				// successful pricing
-				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				$price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
@@ -1525,7 +1538,7 @@ macro_rules! test_admin_write_off_loan_type {
 				let loan_id = loan.1;
 
 				// successful pricing
-				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				$price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
@@ -1653,7 +1666,7 @@ macro_rules! test_close_written_off_loan_type {
 				let loan_id = loan.1;
 
 				// successful pricing
-				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				$price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
@@ -1815,7 +1828,7 @@ macro_rules! repay_too_early {
 				let loan_id = loan.1;
 
 				// successful pricing
-				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				$price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow amount
 				let borrow_amount = 100 * USD;
@@ -1886,7 +1899,7 @@ macro_rules! write_off_overflow {
 				let loan_id = loan.1;
 
 				// successful pricing
-				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				$price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 				// after one year
 				// anyone can trigger the call
 				let caller = 42;

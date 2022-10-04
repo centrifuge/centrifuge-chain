@@ -133,14 +133,7 @@ pub fn issue_default_loan(
 		maturity,
 	));
 
-	issue_loan(
-		owner,
-		pool_id,
-		interest_rate_per_sec(rate_from_percent(15))
-			.expect("Essential: Creating rate per sec must not fail."),
-		loan_type,
-		manager,
-	)
+	issue_loan(owner, pool_id, rate_from_percent(15), loan_type, manager)
 }
 
 /// Issues a loan.
@@ -157,7 +150,7 @@ pub fn issue_default_loan(
 pub fn issue_loan(
 	owner: AccountId,
 	pool_id: PoolId,
-	intereset_rate_per_sec: Rate,
+	interest_rate_per_year: Rate,
 	loan_type: LoanType<Rate, Balance>,
 	manager: &mut NftManager,
 ) -> Vec<Call> {
@@ -177,7 +170,7 @@ pub fn issue_loan(
 	calls.push(price_loan_call(
 		pool_id,
 		manager.next_loan_id(pool_id),
-		intereset_rate_per_sec,
+		interest_rate_per_year,
 		loan_type,
 	));
 	calls
@@ -200,13 +193,13 @@ pub fn create_loan_call(pool_id: PoolId, collateral: Asset<CollectionId, ItemId>
 pub fn price_loan_call(
 	pool_id: PoolId,
 	loan_id: LoanId,
-	interest_rate_per_sec: Rate,
+	interest_rate_per_year: Rate,
 	loan_type: LoanType<Rate, Balance>,
 ) -> Call {
 	Call::Loans(LoansCall::price {
 		pool_id,
 		loan_id,
-		interest_rate_per_sec,
+		interest_rate_per_year,
 		loan_type,
 	})
 }

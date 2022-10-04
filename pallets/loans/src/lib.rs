@@ -525,45 +525,51 @@ pub mod pallet {
 		///
 		/// LoanStatus must be in Created or Active state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
+		/// `interset_rate_per_year` is the anual interest rate, in the form 0.XXXX,
+		///     such that an APR of XX.YY% becomes 0.XXYY. Valid values are 0.0001
+		///     through 0.9999, with no more than four significant figures.
 		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
 		pub fn price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			interest_rate_per_sec: T::Rate,
+			interest_rate_per_year: T::Rate,
 			loan_type: LoanType<T::Rate, T::Balance>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
-			let active_count =
-				Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
+			let (active_count, interest_rate_per_sec) = Loan::<T>::try_mutate(
+				pool_id,
+				loan_id,
+				|loan| -> Result<(u32, T::Rate), DispatchError> {
 					let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 					match loan.status {
 						LoanStatus::Created => {
 							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
-							let active_count = Self::price_created_loan(
+							let res = Self::price_created_loan(
 								pool_id,
 								loan_id,
-								interest_rate_per_sec,
+								interest_rate_per_year,
 								loan_type,
 							);
 
 							loan.status = LoanStatus::Active;
-							active_count
+							res
 						}
 						LoanStatus::Active => {
 							Self::ensure_role(pool_id, owner, PoolRole::LoanAdmin)?;
 							Self::price_active_loan(
 								pool_id,
 								loan_id,
-								interest_rate_per_sec,
+								interest_rate_per_year,
 								loan_type,
 							)
 						}
 						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsClosed)?,
 					}
-				})?;
+				},
+			)?;
 
 			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
@@ -708,7 +714,7 @@ pub mod pallet {
 				for loan in active_loans.iter() {
 					weight += T::DbWeight::get().reads_writes(1, 1);
 					let rate = Self::rate_with_penalty(loan, &write_off_groups);
-					T::InterestAccrual::reference_rate(rate);
+					T::InterestAccrual::reference_rate(rate).unwrap();
 				}
 			}
 			weight

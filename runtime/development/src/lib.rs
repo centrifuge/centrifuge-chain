@@ -1295,6 +1295,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	type Event = Event;
 	type InterestRate = Rate;
+	type MaxRateCount = MaxActiveLoansPerPool;
 	type Time = Timestamp;
 	type Weights = ();
 }
