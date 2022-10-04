@@ -84,14 +84,8 @@ frame_support::construct_runtime!(
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
+#[derive(Default)]
 pub struct TestExternalitiesBuilder {}
-
-// Default trait implementation for test externalities builder
-impl Default for TestExternalitiesBuilder {
-	fn default() -> Self {
-		Self {}
-	}
-}
 
 pub const SECONDS: u64 = 1000;
 pub const START_DATE: u64 = 1640995200;

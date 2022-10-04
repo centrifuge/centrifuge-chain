@@ -53,7 +53,7 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
-use cfg_primitives::Moment;
+use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use cfg_traits::InterestAccrual;
 use cfg_types::Adjustment;
 use codec::{Decode, Encode};
@@ -61,7 +61,7 @@ use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub, Saturating},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
@@ -103,6 +103,7 @@ pub struct RateDetails<InterestRate> {
 pub enum Release {
 	V0,
 	V1,
+	V2,
 }
 
 impl Default for Release {
@@ -231,6 +232,18 @@ pub mod pallet {
 					* (T::DbWeight::get().reads_writes(1, 1)
 						+ T::Weights::calculate_accumulated_rate(bits))
 		}
+
+		fn on_runtime_upgrade() -> Weight {
+			let weight = T::DbWeight::get().reads_writes(1, 1);
+			let count_rates_weight = if StorageVersion::<T>::get() == Release::V1 {
+				let count = Rate::<T>::iter_keys().count();
+				RateCount::<T>::set(count as u32);
+				T::DbWeight::get().reads_writes(count as u64, 1)
+			} else {
+				0
+			};
+			weight.saturating_add(count_rates_weight)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -352,11 +365,11 @@ pub mod pallet {
 		pub fn reference_yearly_interest_rate(
 			interest_rate_per_year: T::InterestRate,
 		) -> Result<T::InterestRate, DispatchError> {
-			const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 			let interest_rate_per_sec = interest_rate_per_year
-				.checked_div(&T::InterestRate::saturating_from_integer(SECS_PER_YEAR))
+				.checked_div(&T::InterestRate::saturating_from_integer(SECONDS_PER_YEAR))
 				.ok_or(ArithmeticError::Underflow)?
-				+ One::one();
+				.checked_add(&One::one())
+				.ok_or(ArithmeticError::Overflow)?;
 
 			if !Rate::<T>::contains_key(interest_rate_per_sec) {
 				Self::validate_rate(interest_rate_per_year)?;
@@ -381,7 +394,7 @@ pub mod pallet {
 						accumulated_rate: One::one(),
 						reference_count: 1,
 					});
-					RateCount::<T>::set(rate_count + 1);
+					RateCount::<T>::set(rate_count.checked_add(1).ok_or(Error::<T>::TooManyRates)?);
 				}
 				Ok(())
 			})
@@ -390,7 +403,7 @@ pub mod pallet {
 		pub fn unreference_interest_rate(interest_rate_per_sec: T::InterestRate) -> DispatchResult {
 			Rate::<T>::try_mutate(interest_rate_per_sec, |maybe_rate| {
 				if let Some(rate) = maybe_rate {
-					rate.reference_count -= 1;
+					rate.reference_count = rate.reference_count.saturating_sub(1);
 					if rate.reference_count == 0 {
 						*maybe_rate = None;
 					}
@@ -424,18 +437,13 @@ pub mod pallet {
 			T::DbWeight::get().reads_writes(count, count)
 		}
 
-		pub fn count_rates() -> Weight {
-			let count = Rate::<T>::iter_keys().count();
-			RateCount::<T>::set(count as u32);
-			T::DbWeight::get().reads(count as u64) + T::DbWeight::get().writes(1)
-		}
-
 		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
 			let four_decimals = T::InterestRate::saturating_from_integer(10000);
 			ensure!(
 				interest_rate_per_year < One::one()
 					&& interest_rate_per_year > Zero::zero()
-					&& (interest_rate_per_year * four_decimals).frac() == Zero::zero(),
+					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
+						== Zero::zero(),
 				Error::<T>::InvalidRate
 			);
 			Ok(())

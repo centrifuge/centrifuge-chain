@@ -24,7 +24,7 @@ use crate::{
 #[test]
 fn test_rate_validation() {
 	let max_rate = Rate::saturating_from_rational(9999, 10000);
-	let min_rate = Rate::saturating_from_rational(0001, 10000);
+	let min_rate = Rate::saturating_from_rational(1, 10000);
 	let normal_rate = Rate::saturating_from_rational(5, 100);
 	let too_many_decimals = Rate::saturating_from_rational(55, 100000);
 

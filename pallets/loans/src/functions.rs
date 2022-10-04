@@ -183,7 +183,12 @@ impl<T: Config> Pallet<T> {
 		let count = active_loans.len();
 		ActiveLoans::<T>::insert(pool_id, active_loans);
 
-		Ok((count.try_into().unwrap(), interest_rate_per_sec))
+		Ok((
+			count
+				.try_into()
+				.expect("len is 32-bit in WASM, this cannot panic"),
+			interest_rate_per_sec,
+		))
 	}
 
 	pub(crate) fn price_active_loan(
