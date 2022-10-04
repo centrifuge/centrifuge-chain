@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.13"
+version = "0.10.14"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
