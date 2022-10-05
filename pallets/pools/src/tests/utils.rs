@@ -11,17 +11,15 @@
 // GNU General Public License for more details.
 
 //! Helpers around tests
-use cfg_primitives::{Balance, BlockNumber, EpochId, PoolId, TrancheId, TrancheWeight};
-use cfg_types::{CurrencyId, Rate, TrancheCurrency};
+use cfg_primitives::PoolId;
+use cfg_types::{CurrencyId, Rate};
 use sp_arithmetic::{FixedPointNumber, Perquintill};
 use sp_runtime::{traits::One, BoundedVec};
 
 use super::mock::{MaxTokenNameLength, MaxTokenSymbolLength};
 use crate::{
-	tests::mock::{MaxSizeMetadata, MockAccountId, Origin, Pools},
-	EpochExecutionInfo, EpochExecutionTranche, EpochExecutionTranches, EpochState, PoolDetails,
-	PoolParameters, PoolStatus, ReserveDetails, Tranche, TrancheInput, TrancheMetadata,
-	TrancheSolution, TrancheType, Tranches,
+	tests::mock::{MockAccountId, Origin, Pools},
+	TrancheInput, TrancheMetadata, TrancheType,
 };
 
 /// The default PoolId used in tests
@@ -34,183 +32,6 @@ pub const AUSD_DECIMALS: u128 = 1_000_000_000_000;
 lazy_static::lazy_static! {
 	/// A rate that is created from SECONDS_PER_YEAR.
 	pub static ref SEONDS_PER_YEAR_AS_RATE: Rate = Rate::saturating_from_integer(cfg_primitives::SECONDS_PER_YEAR);
-}
-
-// Typed types with usually a lot of generics
-pub type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
-pub type TTranches = Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId>;
-pub type TEpochTranche = EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
-pub type TEpochTranches = EpochExecutionTranches<Balance, Rate, TrancheWeight, TrancheCurrency>;
-pub type TPoolDetails = PoolDetails<
-	CurrencyId,
-	TrancheCurrency,
-	EpochId,
-	Balance,
-	Rate,
-	MaxSizeMetadata,
-	TrancheWeight,
-	TrancheId,
-	PoolId,
->;
-pub type TEpochExecutionInfo =
-	EpochExecutionInfo<Balance, Rate, EpochId, TrancheWeight, BlockNumber, TrancheCurrency>;
-
-/// Creates a default tranche and allows to run op
-/// for that tranche afterwards.
-///
-/// Returns the operated on tranches.
-pub fn tranches<F>(number: usize, mut op: F) -> TTranches
-where
-	F: FnMut(&mut TTranche),
-{
-	TTranches::new(
-		POOL_ID,
-		std::iter::repeat(TTranche::default())
-			.take(number)
-			.map(|mut tranche| {
-				op(&mut tranche);
-				tranche
-			})
-			.collect(),
-	)
-	.expect("Creating Tranches struct in testing must work. Qed.")
-}
-
-/// Creates epoch tranches in the number of the given tranches.
-/// Allows to run op on the epoch tranche.
-///
-/// Returns operated on EpochTranches
-pub fn epoch_tranches<F>(tranches: &TTranches, mut op: F) -> TEpochTranches
-where
-	F: FnMut(&TTranche, &mut TEpochTranche),
-{
-	TEpochTranches::new(
-		std::iter::repeat(TEpochTranche::default())
-			.take(tranches.num_tranches())
-			.zip(tranches.residual_top_slice())
-			.map(|(mut epoch_tranche, tranche)| {
-				op(tranche, &mut epoch_tranche);
-				epoch_tranche
-			})
-			.collect(),
-	)
-}
-
-/// Creates a default PoolDetails struct in the form of
-///
-/// ```ignore
-/// PoolDetails {
-/// 			currency: CurrencyId::AUSD,
-/// 			tranches,
-/// 			status: PoolStatus::Open,
-/// 			epoch: EpochState {
-/// 				current: Zero::zero(),
-/// 				last_closed: Zero::zero()
-/// 				last_executed: Zero::zero(),
-/// 			},
-/// 			reserve: ReserveDetails {
-/// 				max: Zero::zero(),
-/// 				available: Zero::zero(),
-/// 				total: Zero::zero(),
-/// 			},
-/// 			parameters: PoolParameters {
-/// 				min_epoch_time: Zero::zero(),
-/// 				max_nav_age: Zero::zero(),
-/// 			},
-/// 			metadata: None,
-/// 		};
-/// ```
-///
-/// Allows to run op on the generated PoolDetails
-pub fn pool_details<F>(tranches: &TTranches, mut op: F) -> TPoolDetails
-where
-	F: FnMut(&mut TPoolDetails),
-{
-	let mut details = PoolDetails {
-		currency: CurrencyId::AUSD,
-		tranches: tranches.clone(),
-		status: PoolStatus::Open,
-		epoch: EpochState {
-			current: 0,
-			last_closed: 0,
-			last_executed: 0,
-		},
-		reserve: ReserveDetails {
-			max: 0,
-			available: 0,
-			total: 0,
-		},
-		parameters: PoolParameters {
-			min_epoch_time: 0,
-			max_nav_age: 0,
-		},
-		metadata: None,
-	};
-	op(&mut details);
-	details
-}
-
-/// Creates a default EpochExecutionInfo struct in the form of
-///
-/// ```ignore
-/// EpochExecutionInfo {
-// 		epoch: 0,
-// 		nav: 0,
-// 		reserve: pool.reserve.total,
-// 		max_reserve: pool.reserve.max,
-// 		tranches: epoch_tranches.clone(),
-// 		best_submission: None,
-// 		challenge_period_end: None,
-// 	};
-/// ```
-///
-/// Allows to run op on the generated EpochExecutionInfo
-pub fn epoch_exection_info<F>(
-	epoch_tranches: &TEpochTranches,
-	pool: &TPoolDetails,
-	mut op: F,
-) -> TEpochExecutionInfo
-where
-	F: FnMut(&mut TEpochExecutionInfo),
-{
-	let mut epoch = TEpochExecutionInfo {
-		epoch: 0,
-		nav: 0,
-		reserve: pool.reserve.total,
-		max_reserve: pool.reserve.max,
-		tranches: epoch_tranches.clone(),
-		best_submission: None,
-		challenge_period_end: None,
-	};
-
-	op(&mut epoch);
-	epoch
-}
-
-/// Generates a solution with the right len and of fulfillment of 100%
-pub fn full_solution<R>(len: impl AsRef<[R]>) -> Vec<TrancheSolution> {
-	std::iter::repeat(TrancheSolution {
-		invest_fulfillment: Perquintill::one(),
-		redeem_fulfillment: Perquintill::one(),
-	})
-	.take(len.as_ref().len())
-	.collect()
-}
-
-/// Solution with ops
-///
-/// Generates a solution of given len and allows to run ops on it
-pub fn solution<R, F>(len: impl AsRef<[R]>, mut op: F) -> Vec<TrancheSolution>
-where
-	F: FnMut(&mut TrancheSolution),
-{
-	full_solution(len)
-		.into_iter()
-		.map(|mut sol| {
-			op(&mut sol);
-			sol
-		})
-		.collect()
 }
 
 /// A function that takes an input as percent - e.g. 1582 -> 15,87%, 100 -> 1% -

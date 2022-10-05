@@ -9,12 +9,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-#[cfg(test)]
-use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
+
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::{CustomMetadata, XcmMetadata};
 #[cfg(test)]
-use cfg_types::{Rate, TrancheCurrency};
+use cfg_types::{CurrencyId, TrancheCurrency};
+use cfg_types::{CustomMetadata, XcmMetadata};
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
 use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;
@@ -169,7 +168,12 @@ pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 }
 
 #[cfg(test)]
-impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
+impl<Balance, Rate, Weight> Default for Tranche<Balance, Rate, Weight, TrancheCurrency>
+where
+	Balance: One + Zero,
+	Rate: FixedPointNumber<Inner = Balance> + One,
+	Balance: FixedPointOperand + One + Zero,
+{
 	fn default() -> Self {
 		Self {
 			tranche_type: TrancheType::Residual,
@@ -327,40 +331,6 @@ pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
 	salt: TrancheSalt<PoolId>,
 }
 
-#[cfg(test)]
-impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> {
-	pub fn new(
-		pool: PoolId,
-		tranches: Vec<Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>>,
-	) -> Result<Self, DispatchError> {
-		let mut ids = Vec::with_capacity(tranches.len());
-		let mut salt = (0, pool);
-
-		for (index, _tranche) in tranches.iter().enumerate() {
-			ids.push(Tranches::<
-				Balance,
-				Rate,
-				TrancheWeight,
-				TrancheCurrency,
-				TrancheId,
-				PoolId,
-			>::id_from_salt(salt));
-			salt = (
-				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
-					.try_into()
-					.map_err(|_| ArithmeticError::Overflow)?,
-				pool,
-			);
-		}
-
-		Ok(Self {
-			tranches,
-			ids,
-			salt,
-		})
-	}
-}
-
 impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>
 	Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>
 where
@@ -398,6 +368,38 @@ where
 		}
 
 		Ok(tranches)
+	}
+
+	#[cfg(test)]
+	pub fn new(
+		pool: PoolId,
+		tranches: Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>>,
+	) -> Result<Self, DispatchError> {
+		let mut ids = Vec::with_capacity(tranches.len());
+		let mut salt = (0, pool);
+
+		for (index, _tranche) in tranches.iter().enumerate() {
+			ids.push(Tranches::<
+				Balance,
+				Rate,
+				Weight,
+				TrancheCurrency,
+				TrancheId,
+				PoolId,
+			>::id_from_salt(salt));
+			salt = (
+				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
+					.try_into()
+					.map_err(|_| ArithmeticError::Overflow)?,
+				pool,
+			);
+		}
+
+		Ok(Self {
+			tranches,
+			ids,
+			salt,
+		})
 	}
 
 	pub fn tranche_currency(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheCurrency> {
@@ -1041,7 +1043,13 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>
 }
 
 #[cfg(test)]
-impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
+impl<Balance, Rate, Weight> Default
+	for EpochExecutionTranche<Balance, Rate, Weight, TrancheCurrency>
+where
+	Balance: One + Zero,
+	Rate: FixedPointNumber<Inner = Balance> + One,
+	Balance: FixedPointOperand + One + Zero,
+{
 	fn default() -> Self {
 		Self {
 			currency: TrancheCurrency::generate(0, [0u8; 16]),

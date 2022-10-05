@@ -42,9 +42,6 @@ pub mod types {
 	/// OrderId type we to identify order per epoch.
 	pub type OrderId = u64;
 
-	/// EpochId type we identify epochs with
-	pub type EpochId = u32;
-
 	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
 	pub type EnsureRootOr<O> = EitherOfDiverse<EnsureRoot<AccountId>, O>;
 

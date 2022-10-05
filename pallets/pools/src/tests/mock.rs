@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, BlockNumber, Header, PoolId, TrancheId};
+use cfg_primitives::{Balance, BlockNumber, PoolId, TrancheId};
 pub use cfg_primitives::{Moment, TrancheWeight};
 use cfg_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
 use cfg_types::{
@@ -30,7 +30,10 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup},
+};
 
 use crate::{self as pallet_pools, Config, DispatchResult, PoolDetails, ScheduledUpdateDetails};
 
@@ -84,7 +87,7 @@ impl SortedMembers<u64> for One {
 }
 
 parameter_types! {
-	pub const BlockHashCount: u32 = 250;
+	pub const BlockHashCount: u64 = 250;
 	pub const SS58Prefix: u8 = 42;
 }
 
@@ -94,7 +97,7 @@ impl system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type BlockNumber = BlockNumber;
+	type BlockNumber = u64;
 	type BlockWeights = ();
 	type Call = Call;
 	type DbWeight = ();
