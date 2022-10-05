@@ -2,7 +2,7 @@ version: '3'
 services:
   cc_alice:
     container_name: cc-alice
-    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-parachain-latest}"
+    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-test-main-latest}"
     ports:
       - "30355:30333"
       - "9936:9933"
