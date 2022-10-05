@@ -1,54 +1,8 @@
 use frame_support::pallet_prelude::*;
 use sp_runtime::{
-	traits::{BlockNumberProvider, CheckedAdd, CheckedSub, Saturating, Zero},
+	traits::{CheckedAdd, CheckedSub, Saturating, Zero},
 	ArithmeticError, FixedPointNumber, FixedPointOperand, SaturatedConversion,
 };
-
-/// Type that contains data related to the epoch
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct EpochDetails<BlockNumber, Balance> {
-	ends_on: BlockNumber,
-	total_reward: Balance,
-}
-
-impl<BlockNumber, Balance> EpochDetails<BlockNumber, Balance>
-where
-	BlockNumber: Copy + Saturating,
-	Balance: Copy,
-{
-	/// Generate the next epoch from current one
-	pub fn next(&self, blocks: BlockNumber, total_reward: Balance) -> Self {
-		EpochDetails {
-			ends_on: self.ends_on.saturating_add(blocks),
-			total_reward,
-		}
-	}
-
-	/// Block number when this epoch ends
-	pub fn ends_on(&self) -> BlockNumber {
-		self.ends_on
-	}
-
-	/// Total reward given during this epoch.
-	pub fn total_reward(&self) -> Balance {
-		self.total_reward
-	}
-}
-
-/// Type used to initialize the first epoch with the correct block number
-pub struct FirstEpochDetails<P>(std::marker::PhantomData<P>);
-impl<P, N, B: Zero> Get<EpochDetails<N, B>> for FirstEpochDetails<P>
-where
-	P: BlockNumberProvider<BlockNumber = N>,
-{
-	fn get() -> EpochDetails<N, B> {
-		EpochDetails {
-			ends_on: P::current_block_number(),
-			total_reward: Zero::zero(),
-		}
-	}
-}
 
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
@@ -81,15 +35,19 @@ where
 		Ok(())
 	}
 
-	pub fn distribute_reward(&mut self, reward: Balance) -> bool {
-		if self.total_staked == Zero::zero() {
-			return false;
-		}
+	pub fn distribute_reward(&mut self, reward: Balance) -> Result<(), ArithmeticError> {
+		println!("aasdasd");
+		let rate_increment = Rate::checked_from_rational(reward, self.total_staked)
+			.ok_or(ArithmeticError::DivisionByZero)?;
 
-		let rate_increment = Rate::saturating_from_rational(reward, self.total_staked);
-		self.reward_per_token = self.reward_per_token.saturating_add(rate_increment);
+		println!("bbbbbbb");
 
-		true
+		self.reward_per_token = self
+			.reward_per_token
+			.checked_add(&rate_increment)
+			.ok_or(ArithmeticError::Overflow)?;
+
+		Ok(())
 	}
 
 	pub fn reward_per_token(&self) -> Rate {
@@ -148,9 +106,9 @@ where
 		Ok(())
 	}
 
-	/// Claim a reward for the current staked amount given a supposed *reward per token* and *epoch*.
-	pub fn claim_reward<Rate: FixedPointNumber>(
-		&mut self,
+	/// Compute the reward for the current staked amount given a supposed *reward per token* and *epoch*.
+	pub fn compute_reward<Rate: FixedPointNumber>(
+		&self,
 		reward_per_token: Rate,
 	) -> Result<Balance, ArithmeticError> {
 		let gross_reward: SignedBalance = reward_per_token
@@ -158,68 +116,26 @@ where
 			.ok_or(ArithmeticError::Overflow)?
 			.into();
 
-		let reward_tally = self.reward_tally;
-
-		self.reward_tally = gross_reward;
-
 		let reward = gross_reward
-			.checked_sub(&reward_tally)
+			.checked_sub(&self.reward_tally)
 			.ok_or(ArithmeticError::Underflow)?;
 
 		Ok(reward.saturated_into())
 	}
-}
 
-#[cfg(test)]
-mod epoch_test {
-	use super::*;
+	/// Claim a reward for the current staked amount given a supposed *reward per token* and *epoch*.
+	pub fn claim_reward<Rate: FixedPointNumber>(
+		&mut self,
+		reward_per_token: Rate,
+	) -> Result<Balance, ArithmeticError> {
+		let reward = self.compute_reward(reward_per_token)?;
 
-	struct InitialBlock<const N: u32>;
-	impl<const N: u32> BlockNumberProvider for InitialBlock<N> {
-		type BlockNumber = u32;
+		self.reward_tally = reward_per_token
+			.checked_mul_int(self.amount)
+			.ok_or(ArithmeticError::Overflow)?
+			.into();
 
-		fn current_block_number() -> Self::BlockNumber {
-			N
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn set_block_number(_block: Self::BlockNumber) {
-			unreachable!()
-		}
-	}
-
-	#[test]
-	fn epoch_generation() {
-		const START: u32 = 23;
-		const TOTAL_REWARD: u32 = 100;
-		const EPOCH_BLOCKS: u32 = 10;
-
-		let epoch = FirstEpochDetails::<InitialBlock<START>>::get();
-		assert_eq!(
-			epoch,
-			EpochDetails {
-				ends_on: START,
-				total_reward: 0,
-			}
-		);
-
-		let epoch = epoch.next(EPOCH_BLOCKS, TOTAL_REWARD);
-		assert_eq!(
-			epoch,
-			EpochDetails {
-				ends_on: START + EPOCH_BLOCKS,
-				total_reward: TOTAL_REWARD,
-			}
-		);
-
-		let epoch = epoch.next(EPOCH_BLOCKS, TOTAL_REWARD);
-		assert_eq!(
-			epoch,
-			EpochDetails {
-				ends_on: START + EPOCH_BLOCKS * 2,
-				total_reward: TOTAL_REWARD,
-			}
-		);
+		Ok(reward)
 	}
 }
 
@@ -238,20 +154,9 @@ mod group_test {
 
 		let mut group = GroupDetails::<u64, FixedU64>::default();
 
-		// Emulates EPOCH 0
-		assert_eq!(group.distribute_reward(REWARD_1), false);
-		assert_eq!(
-			group,
-			GroupDetails {
-				total_staked: 0,
-				reward_per_token: 0.into(),
-			}
-		);
-
 		group.add_amount(AMOUNT_1).unwrap();
+		group.distribute_reward(REWARD_1).unwrap();
 
-		// Emulates EPOCH 1
-		assert_eq!(group.distribute_reward(REWARD_1), true);
 		assert_eq!(
 			group,
 			GroupDetails {
@@ -261,9 +166,8 @@ mod group_test {
 		);
 
 		group.add_amount(AMOUNT_2).unwrap();
+		group.distribute_reward(REWARD_2).unwrap();
 
-		// Emulates EPOCH 3
-		assert_eq!(group.distribute_reward(REWARD_2), true);
 		assert_eq!(
 			group,
 			GroupDetails {
@@ -278,7 +182,10 @@ mod group_test {
 	fn no_stake_no_reward() {
 		let mut group = GroupDetails::<u64, FixedU64>::default();
 
-		assert_eq!(group.distribute_reward(100), false);
+		assert_eq!(
+			group.distribute_reward(100),
+			Err(ArithmeticError::DivisionByZero)
+		);
 
 		assert_eq!(
 			group,

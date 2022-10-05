@@ -10,20 +10,25 @@ mod tests;
 
 mod types;
 
-//#[cfg(feature = "runtime-benchmarks")]
-//mod benchmarking;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement, ReservableCurrency},
-	transactional, PalletId,
+	PalletId,
 };
-use frame_system::pallet_prelude::*;
 use num_traits::Signed;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating},
 	FixedPointNumber, FixedPointOperand, TokenError,
 };
-use types::{EpochDetails, FirstEpochDetails, GroupDetails, StakedDetails};
+use types::{GroupDetails, StakedDetails};
+
+pub trait Rewards<AccountId, Balance> {
+	fn distribute_reward(amount: Balance) -> DispatchResult;
+	fn deposit_stake(account_id: &AccountId, amount: Balance) -> DispatchResult;
+	fn withdraw_stake(account_id: &AccountId, amount: Balance) -> DispatchResult;
+	fn compute_reward(account_id: &AccountId) -> Result<Balance, DispatchError>;
+	fn claim_reward(account_id: &AccountId) -> Result<Balance, DispatchError>;
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -38,9 +43,6 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-
-		#[pallet::constant]
-		type BlockPerEpoch: Get<Self::BlockNumber>;
 
 		type Currency: ReservableCurrency<Self::AccountId>;
 
@@ -73,17 +75,6 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub type ActiveEpoch<T: Config> = StorageValue<
-		_,
-		EpochDetails<T::BlockNumber, BalanceOf<T>>,
-		ValueQuery,
-		FirstEpochDetails<frame_system::Pallet<T>>,
-	>;
-
-	#[pallet::storage]
-	pub type NextTotalReward<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
-	#[pallet::storage]
 	pub type Group<T: Config> = StorageValue<_, GroupDetails<BalanceOf<T>, T::Rate>, ValueQuery>;
 
 	#[pallet::storage]
@@ -104,49 +95,23 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T>
+	impl<T: Config> Rewards<T::AccountId, BalanceOf<T>> for Pallet<T>
 	where
 		BalanceOf<T>: FixedPointOperand,
 	{
-		fn on_initialize(current_block: T::BlockNumber) -> Weight {
-			let active_epoch = ActiveEpoch::<T>::get();
+		fn distribute_reward(amount: BalanceOf<T>) -> DispatchResult {
+			Group::<T>::try_mutate(|group| group.distribute_reward(amount))?;
 
-			if active_epoch.ends_on() != current_block {
-				return T::DbWeight::get().reads(1);
-			}
+			T::Currency::deposit_creating(&T::PalletId::get().into_account_truncating(), amount);
 
-			Group::<T>::mutate(|group| {
-				if group.distribute_reward(active_epoch.total_reward()) {
-					T::Currency::deposit_creating(
-						&T::PalletId::get().into_account_truncating(),
-						active_epoch.total_reward(),
-					);
-				}
-			});
-
-			ActiveEpoch::<T>::put(
-				active_epoch.next(T::BlockPerEpoch::get(), NextTotalReward::<T>::get()),
-			);
-
-			T::DbWeight::get().reads_writes(2, 2) // + deposit_creating weight // TODO
+			Ok(())
 		}
-	}
 
-	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		BalanceOf<T>: FixedPointOperand,
-	{
-		#[pallet::weight(10_000)] //TODO
-		#[transactional]
-		pub fn stake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+		fn deposit_stake(account_id: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+			T::Currency::reserve(&account_id, amount)?;
 
-			T::Currency::reserve(&who, amount)?;
-
-			Group::<T>::mutate(|group| {
-				Staked::<T>::mutate(&who, |staked| {
+			Group::<T>::try_mutate(|group| {
+				Staked::<T>::try_mutate(account_id, |staked| {
 					staked.add_amount(amount, group.reward_per_token())
 				})?;
 
@@ -156,44 +121,46 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)] //TODO
-		#[transactional]
-		pub fn unstake(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			if T::Currency::reserved_balance(&who) < amount {
+		fn withdraw_stake(account_id: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+			if T::Currency::reserved_balance(&account_id) < amount {
 				return Err(DispatchError::Token(TokenError::NoFunds));
 			}
 
-			Group::<T>::mutate(|group| {
-				Staked::<T>::mutate(&who, |staked| {
+			Group::<T>::try_mutate(|group| {
+				Staked::<T>::try_mutate(account_id, |staked| {
 					staked.sub_amount(amount, group.reward_per_token())
 				})?;
 
 				group.sub_amount(amount)
 			})?;
 
-			T::Currency::unreserve(&who, amount);
+			T::Currency::unreserve(&account_id, amount);
 
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)] //TODO
-		#[transactional]
-		pub fn claim(origin: OriginFor<T>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
+		fn compute_reward(account_id: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
 			let group = Group::<T>::get();
+			let staked = Staked::<T>::get(account_id);
+			let reward = staked.compute_reward(group.reward_per_token())?;
 
-			let reward =
-				Staked::<T>::mutate(&who, |staked| staked.claim_reward(group.reward_per_token()))?;
+			Ok(reward)
+		}
+
+		fn claim_reward(account_id: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
+			let group = Group::<T>::get();
+			let reward = Staked::<T>::try_mutate(account_id, |staked| {
+				staked.claim_reward(group.reward_per_token())
+			})?;
 
 			T::Currency::transfer(
 				&T::PalletId::get().into_account_truncating(),
-				&who,
+				&account_id,
 				reward,
 				ExistenceRequirement::KeepAlive,
-			)
+			)?;
+
+			Ok(reward)
 		}
 	}
 }
