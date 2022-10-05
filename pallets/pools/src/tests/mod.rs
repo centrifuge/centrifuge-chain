@@ -10,8 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::Permissions as PermissionsT;
-use cfg_types::{CurrencyId, CustomMetadata, Rate};
+use cfg_traits::{Permissions as PermissionsT, TrancheCurrency as TrancheCurrencyT};
+use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheCurrency};
 use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
 use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;
@@ -103,46 +103,37 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		);
 	});
 }
-/*
+
 #[test]
 fn pool_constraints_pool_reserve_above_max_reserve() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			outstanding_invest_orders: 10,
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			currency: TrancheCurrency::generate(0, [0u8; 16]),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [1u8; 16]),
+			currency: TrancheCurrency::generate(0, [1u8; 16]),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [2u8; 16]),
+			currency: TrancheCurrency::generate(0, [2u8; 16]),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [3u8; 16]),
+			currency: TrancheCurrency::generate(0, [3u8; 16]),
 			..Default::default()
 		};
-		let tranches =
-			Tranches::new::<TT>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
+		let tranches = Tranches::new(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
 				.iter()
-				.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
-				.map(|(tranche, value)| EpochExecutionTranche {
+				.zip(vec![(80, 10, 10), (20, 0, 10), (15, 0, 10), (15, 0, 10)]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche, (value, redeem, invest))| EpochExecutionTranche {
 					supply: value,
 					price: One::one(),
-					invest: tranche.outstanding_invest_orders,
-					redeem: tranche.outstanding_redeem_orders,
+					invest,
+					redeem,
 					..Default::default()
 				})
 				.collect(),
@@ -158,9 +149,9 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 				last_executed: Zero::zero(),
 			},
 			reserve: ReserveDetails {
-				max: 5,
+				max: 10,
 				available: Zero::zero(),
-				total: 40,
+				total: 10,
 			},
 			parameters: PoolParameters {
 				min_epoch_time: 0,
@@ -198,10 +189,13 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 
 		let mut details = pool.clone();
 		details.reserve.max = 100;
-		assert_ok!(Pools::inspect_solution(&details, &epoch, &full_solution));
+		assert_eq!(
+			Pools::inspect_solution(&details, &epoch, &full_solution),
+			Ok(PoolState::Healthy)
+		);
 	});
 }
-
+/*
 #[test]
 fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
