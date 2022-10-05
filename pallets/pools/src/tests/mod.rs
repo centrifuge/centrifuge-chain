@@ -195,7 +195,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		);
 	});
 }
-/*
+
 #[test]
 fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
@@ -224,8 +224,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			tranche_type: TrancheType::Residual,
 			..Default::default()
 		};
-		let tranches =
-			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+		let tranches = Tranches::new(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
@@ -235,8 +234,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				.map(|(tranche, value)| EpochExecutionTranche {
 					supply: value,
 					price: One::one(),
-					invest: tranche.outstanding_invest_orders,
-					redeem: tranche.outstanding_redeem_orders,
 					min_risk_buffer: tranche.min_risk_buffer(),
 					..Default::default()
 				})
@@ -292,7 +289,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		assert_eq!(prev_root, frame_support::storage_root(StateVersion::V0))
 	});
 }
-
+/*
 #[test]
 fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
