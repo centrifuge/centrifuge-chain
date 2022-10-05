@@ -27,13 +27,17 @@ use centrifuge_runtime::{
 };
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
+use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::{
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
 };
-use sp_runtime::traits::Convert as C2;
+use sp_runtime::{
+	traits::{ConstU32, Convert as C2},
+	WeakBoundedVec,
+};
 use xcm::{
 	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
 	VersionedMultiLocation,
@@ -78,6 +82,39 @@ fn convert_cfg() {
 		assert_eq!(
 			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
 			Some(cfg_location_canonical)
+		)
+	});
+}
+
+/// Verify that Tranche tokens are not handled by the CurrencyIdConvert
+/// since we don't allow Tranche tokens to be transferable through XCM.
+#[test]
+fn convert_tranche() {
+	// We don't yet know the pools pallet index on the Centrifuge runtime
+	const MOCK_POOLS_PALLET_INDEX: u8 = 42;
+	let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
+	let tranche_id =
+		WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
+	let tranche_multilocation = MultiLocation {
+		parents: 1,
+		interior: X3(
+			Parachain(parachains::polkadot::centrifuge::ID),
+			PalletInstance(MOCK_POOLS_PALLET_INDEX),
+			GeneralKey(tranche_id),
+		),
+	};
+
+	Centrifuge::execute_with(|| {
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation.clone()),
+			Err(tranche_multilocation),
+		);
+	});
+
+	Centrifuge::execute_with(|| {
+		assert_eq!(
+			<CurrencyIdConvert as C2<_, _>>::convert(tranche_currency),
+			None
 		)
 	});
 }

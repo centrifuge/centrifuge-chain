@@ -26,15 +26,14 @@ use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
 use frame_support::{assert_err, assert_noop, assert_ok, dispatch::Dispatchable};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use runtime_common::{
-	xcm::general_key,
-	xcm_fees::{default_per_second, ksm_per_second},
-};
+use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 use xcm::{
-	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
-	v1::MultiAsset,
-	v2::{AssetId, Fungibility, Instruction::WithdrawAsset, Xcm},
+	latest::{
+		AssetId, Fungibility, Junction, Junction::*, Junctions::*, MultiAsset, MultiLocation,
+		NetworkId,
+	},
+	v2::{Instruction::WithdrawAsset, Xcm},
 	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
@@ -47,75 +46,128 @@ use crate::xcm::polkadot::{
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
 };
 
-/// Verify that calls that must be blocked by the BaseCallFilter are indeed blocked.
+/// Verify that calls that would allow for Tranche token to be transferred through XCM
+/// fail because the underlying CurrencyIdConvert doesn't handle Tranche tokens.
 pub mod blocked {
+	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
+	use xcm::{latest::MultiAssets, VersionedMultiAsset, VersionedMultiAssets};
+
 	use super::*;
 
 	#[test]
 	fn xtokens_transfer() {
 		// For now, Tranche tokens are not supported in the XCM config so
 		// we just safe-guard that trying to transfer a tranche token fails.
-		// Once Tranche tokens are supported, we need to tighten this test.
-		Centrifuge::execute_with(|| {
-			assert!(XTokens::transfer(
-				Origin::signed(ALICE.into()),
-				CurrencyId::Tranche(401, [0; 16]),
-				42,
-				Box::new(
-					MultiLocation::new(
-						1,
-						X2(
-							Parachain(PARA_ID_SIBLING),
-							Junction::AccountId32 {
-								network: NetworkId::Any,
-								id: BOB.into(),
-							}
-						)
-					)
-					.into()
-				),
-				8_000_000_000_000,
-			)
-			.is_err());
-		});
-	}
-
-	#[test]
-	fn polkadot_xcm_send() {
 		Centrifuge::execute_with(|| {
 			assert_noop!(
-				Call::dispatch(
-					Call::PolkadotXcm(pallet_xcm::Call::send {
-						dest: Box::new(
-							MultiLocation::new(1, X1(Parachain(PARA_ID_SIBLING))).into()
-						),
-						message: Box::new(xcm::VersionedXcm::V2(Xcm::<Call>(vec![]).into())),
-					}),
-					Origin::signed(ALICE.into())
+				XTokens::transfer(
+					Origin::signed(ALICE.into()),
+					CurrencyId::Tranche(401, [0; 16]),
+					42,
+					Box::new(
+						MultiLocation::new(
+							1,
+							X2(
+								Parachain(PARA_ID_SIBLING),
+								Junction::AccountId32 {
+									network: NetworkId::Any,
+									id: BOB.into(),
+								}
+							)
+						)
+						.into()
+					),
+					8_000_000_000_000,
 				),
-				frame_system::Error::<centrifuge_runtime::Runtime>::CallFiltered
+				orml_xtokens::Error::<altair_runtime::Runtime>::NotCrossChainTransferableCurrency
 			);
 		});
 	}
-}
 
-/// Verify calls that must remain allowed. Sanity check to avoid us
-/// from silently block calls we didn't mean to block.
-pub mod allowed {
-	use super::*;
+	// Verify that trying to transfer Tranche tokens using their MultiLocation representation
+	// also fails.
+	#[test]
+	fn xtokens_transfer_multiasset() {
+		use codec::Encode;
+
+		let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
+		let tranche_id =
+			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
+		let tranche_location = MultiLocation {
+			parents: 1,
+			interior: X3(Parachain(123), PalletInstance(42), GeneralKey(tranche_id)),
+		};
+		let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
+			AssetId::Concrete(tranche_location),
+			Fungibility::Fungible(42),
+		)));
+
+		Centrifuge::execute_with(|| {
+			assert_noop!(
+				XTokens::transfer_multiasset(
+					Origin::signed(ALICE.into()),
+					Box::new(tranche_multi_asset),
+					Box::new(
+						MultiLocation::new(
+							1,
+							X2(
+								Parachain(PARA_ID_SIBLING),
+								Junction::AccountId32 {
+									network: NetworkId::Any,
+									id: BOB.into(),
+								}
+							)
+						)
+						.into()
+					),
+					8_000_000_000_000,
+				),
+				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
+			);
+		});
+	}
 
 	#[test]
-	fn polkadot_xcm_force_xcm_version() {
+	fn xtokens_transfer_multiassets() {
+		use codec::Encode;
+
+		let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
+		let tranche_id =
+			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
+		let tranche_location = MultiLocation {
+			parents: 1,
+			interior: X3(Parachain(123), PalletInstance(42), GeneralKey(tranche_id)),
+		};
+		let tranche_multi_asset = MultiAsset::from((
+			AssetId::Concrete(tranche_location),
+			Fungibility::Fungible(42),
+		));
+
 		Centrifuge::execute_with(|| {
-			assert_ok!(Call::dispatch(
-				Call::PolkadotXcm(pallet_xcm::Call::force_xcm_version {
-					location: Box::new(
-						MultiLocation::new(1, X1(Parachain(PARA_ID_SIBLING))).into()
+			assert_noop!(
+				XTokens::transfer_multiassets(
+					Origin::signed(ALICE.into()),
+					Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
+						tranche_multi_asset
+					]))),
+					0,
+					Box::new(
+						MultiLocation::new(
+							1,
+							X2(
+								Parachain(PARA_ID_SIBLING),
+								Junction::AccountId32 {
+									network: NetworkId::Any,
+									id: BOB.into(),
+								}
+							)
+						)
+						.into()
 					),
-					xcm_version: 2,
-				}),
-				Origin::root(),
-			));
+					8_000_000_000_000,
+				),
+				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
+			);
 		});
 	}
 }

@@ -45,7 +45,7 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
 	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
+	ParachainSystem, PolkadotXcm, PoolPalletIndex, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 
 /// The main XCM config
@@ -246,6 +246,20 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 					_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 				},
 
+				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
+			},
+			MultiLocation {
+				parents: 1,
+				interior: X3(Parachain(para_id), PalletInstance(pallet_index), GeneralKey(_)),
+			} => match para_id {
+				// Fail Centrifuge Pools Tranche tokens to avoid them from being transferred
+				// through XCM without permissions.
+				id if id == u32::from(ParachainInfo::get())
+					&& pallet_index == PoolPalletIndex::get() =>
+				{
+					Err(location)
+				}
+				// Still support X3-based Multilocations native to other chains
 				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
 			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
