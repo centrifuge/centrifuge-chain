@@ -289,7 +289,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		assert_eq!(prev_root, frame_support::storage_root(StateVersion::V0))
 	});
 }
-/*
+
 #[test]
 fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
@@ -298,10 +298,8 @@ fn pool_constraints_pass() {
 				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.2),
 			},
-			outstanding_invest_orders: 100,
-			outstanding_redeem_orders: Zero::zero(),
 			seniority: 3,
-			currency: CurrencyId::Tranche(0, [3u8; 16]),
+			currency: TrancheCurrency::generate(0, [3u8; 16]),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
@@ -309,10 +307,8 @@ fn pool_constraints_pass() {
 				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.1),
 			},
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 30,
 			seniority: 2,
-			currency: CurrencyId::Tranche(0, [2u8; 16]),
+			currency: TrancheCurrency::generate(0, [2u8; 16]),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
@@ -320,36 +316,33 @@ fn pool_constraints_pass() {
 				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.05),
 			},
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			seniority: 1,
-			currency: CurrencyId::Tranche(0, [1u8; 16]),
+			currency: TrancheCurrency::generate(0, [1u8; 16]),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			tranche_type: TrancheType::Residual,
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			seniority: 0,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			currency: TrancheCurrency::generate(0, [0u8; 16]),
 			..Default::default()
 		};
-		let tranches =
-			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+		let tranches = Tranches::new(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
 				.iter()
-				.zip(vec![80, 70, 35, 20])
+				.zip(vec![(80, 0, 100), (70, 0, 30), (35, 0, 0), (20, 0, 0)])
 				.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
-				.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
-					supply: value,
-					price: One::one(),
-					invest: tranche.outstanding_invest_orders,
-					redeem: tranche.outstanding_redeem_orders,
-					seniority: tranche_id.try_into().unwrap(),
-					..Default::default()
-				})
+				.map(
+					|(tranche_id, (tranche, (value, redeem, invest)))| EpochExecutionTranche {
+						supply: value,
+						price: One::one(),
+						invest,
+						redeem,
+						seniority: tranche_id.try_into().unwrap(),
+						..Default::default()
+					},
+				)
 				.collect(),
 		);
 
@@ -413,6 +406,7 @@ fn pool_constraints_pass() {
 	});
 }
 
+/*
 #[test]
 fn epoch() {
 	new_test_ext().execute_with(|| {
