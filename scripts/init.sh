@@ -11,7 +11,7 @@ para_id="${PARA_ID:-2000}"
 base_dir=/tmp/centrifuge-chain
 # Option to use the Docker image to export state & wasm
 docker_onboard="${DOCKER_ONBOARD:-false}"
-cc_docker_image_tag="${PARA_DOCKER_IMAGE_TAG:-test-parachain-latest}"
+cc_docker_image_tag="${PARA_DOCKER_IMAGE_TAG:-test-main-latest}"
 
 case $cmd in
 install-toolchain)
