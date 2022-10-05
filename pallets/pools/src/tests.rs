@@ -22,7 +22,7 @@ use sp_runtime::{
 };
 use xcm::{
 	latest::MultiLocation,
-	prelude::{GeneralKey, Parachain, X2},
+	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
 };
 
@@ -2990,7 +2990,11 @@ fn create_tranche_token_metadata() {
 				existential_deposit: 0,
 				location: Some(VersionedMultiLocation::V1(MultiLocation {
 					parents: 1,
-					interior: X2(Parachain(MockParachainId::get()), GeneralKey(tranche_id)),
+					interior: X3(
+						Parachain(MockParachainId::get()),
+						PalletInstance(PoolPalletIndex::get()),
+						GeneralKey(tranche_id)
+					),
 				})),
 				additional: CustomMetadata {
 					mintable: false,

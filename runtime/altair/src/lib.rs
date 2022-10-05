@@ -32,7 +32,7 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote, UnixTime,
+		PalletInfoAccess, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -1007,6 +1007,9 @@ impl pallet_loans::Config for Runtime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
+	/// The index with which this pallet is instantiated in this runtime.
+	pub PoolPalletIndex: u8 = <Pools as PalletInfoAccess>::index() as u8;
+
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
 		0
 	} else {
@@ -1082,6 +1085,7 @@ impl pallet_pools::Config for Runtime {
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
+	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = PoolCreateOrigin;
