@@ -27,13 +27,12 @@ use xcm::{
 };
 
 use super::*;
-
-/*
+use crate::mock::*;
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches = Tranches::new::<TT>(
+		let tranches = Tranches::new(
 			0,
 			std::iter::repeat(Tranche {
 				..Default::default()
@@ -51,8 +50,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				.map(|(tranche, value)| EpochExecutionTranche {
 					supply: value,
 					price: One::one(),
-					invest: tranche.outstanding_invest_orders,
-					redeem: tranche.outstanding_redeem_orders,
+					redeem: 10,
 					..Default::default()
 				})
 				.collect(),
@@ -100,12 +98,12 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			Pools::inspect_solution(pool, &epoch, &full_solution),
+			Pools::inspect_solution(&pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientCurrency
 		);
 	});
 }
-
+/*
 #[test]
 fn pool_constraints_pool_reserve_above_max_reserve() {
 	new_test_ext().execute_with(|| {
