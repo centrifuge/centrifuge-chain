@@ -42,7 +42,6 @@ pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-f
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
 rand = "0.8.5"
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = true, branch = "polkadot-v0.9.26" }
-lazy_static = "1.4.0"
 
 [features]
 default = ['std']

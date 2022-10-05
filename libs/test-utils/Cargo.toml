@@ -14,7 +14,6 @@ targets = ['x86_64-unknown-linux-gnu']
 cfg-traits = { path = '../traits'}
 cfg-primitives = { path = '../primitives'}
 cfg-types = { path = '../types'}
-pallet-pools = {path = '../../pallets/pools'}
 
 serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
