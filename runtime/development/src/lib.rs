@@ -158,7 +158,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
-	type BaseCallFilter = Everything;
+	type BaseCallFilter = BaseCallFilter;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = RuntimeBlockLength;
@@ -194,6 +194,37 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
+}
+
+/// Base Call Filter
+pub struct BaseCallFilter;
+impl Contains<Call> for BaseCallFilter {
+	fn contains(c: &Call) -> bool {
+		match c {
+			Call::PolkadotXcm(method) => match method {
+				// Block these calls when called by a signed extrinsic.
+				// Root will still be able to execute these.
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::__Ignore { .. } => {
+					unimplemented!()
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+			},
+			_ => true,
+		}
+	}
 }
 
 parameter_types! {
