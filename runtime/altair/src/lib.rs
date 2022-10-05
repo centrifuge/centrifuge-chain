@@ -192,7 +192,6 @@ impl frame_system::Config for Runtime {
 }
 
 /// Base Call Filter
-/// We block any call that could lead for tranche tokens to be transferred through XCM.
 pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(c: &Call) -> bool {
