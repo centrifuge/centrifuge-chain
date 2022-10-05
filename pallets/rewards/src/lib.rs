@@ -30,6 +30,13 @@ pub trait Rewards<AccountId, Balance> {
 	fn claim_reward(account_id: &AccountId) -> Result<Balance, DispatchError>;
 }
 
+pub trait RewardsInspector<AccountId, Balance, SignedBalance, Rate>:
+	Rewards<AccountId, Balance>
+{
+	fn group() -> GroupDetails<Balance, Rate>;
+	fn account(account_id: &AccountId) -> StakedDetails<Balance, SignedBalance>;
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -161,6 +168,20 @@ pub mod pallet {
 			)?;
 
 			Ok(reward)
+		}
+	}
+
+	impl<T: Config> RewardsInspector<T::AccountId, BalanceOf<T>, T::SignedBalance, T::Rate>
+		for Pallet<T>
+	where
+		BalanceOf<T>: FixedPointOperand,
+	{
+		fn group() -> GroupDetails<BalanceOf<T>, T::Rate> {
+			Group::<T>::get()
+		}
+
+		fn account(account_id: &T::AccountId) -> StakedDetails<BalanceOf<T>, T::SignedBalance> {
+			Staked::<T>::get(account_id)
 		}
 	}
 }
