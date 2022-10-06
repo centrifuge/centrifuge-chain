@@ -1553,8 +1553,6 @@ fn triger_challange_period_with_zero_solution() {
 	});
 }
 
-/*
-
 #[test]
 fn min_challenge_time_is_respected() {
 	new_test_ext().execute_with(|| {
@@ -1562,20 +1560,6 @@ fn min_challenge_time_is_respected() {
 		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
-			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
-		)
-		.unwrap();
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
-			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
-		)
-		.unwrap();
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1623,28 +1607,17 @@ fn min_challenge_time_is_respected() {
 		})
 		.unwrap();
 
-		invest_close_and_collect(
+		invest_and_close(
 			0,
 			vec![
-				(
-					junior_investor.clone(),
-					JuniorTrancheId::get(),
-					500 * CURRENCY,
-				),
-				(
-					senior_investor.clone(),
-					SeniorTrancheId::get(),
-					500 * CURRENCY,
-				),
+				(JuniorTrancheId::get(), 500 * CURRENCY),
+				(SeniorTrancheId::get(), 500 * CURRENCY),
 			],
-		)
-		.unwrap();
+		);
 
 		// Attempt to redeem everything
-		assert_ok!(Pools::update_redeem_order(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
+		assert_ok!(Investments::update_redeem_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
@@ -1679,6 +1652,7 @@ fn min_challenge_time_is_respected() {
 	});
 }
 
+/*
 #[test]
 fn only_zero_solution_is_accepted_max_reserve_violated() {
 	new_test_ext().execute_with(|| {
@@ -2436,4 +2410,4 @@ fn create_tranche_token_metadata() {
 		);
 	});
 }
- */
+*/
