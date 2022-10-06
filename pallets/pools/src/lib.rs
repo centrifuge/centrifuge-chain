@@ -1735,18 +1735,15 @@ pub mod pallet {
 					tranche.accrue(now)?;
 
 					let tranche_amount = if tranche.tranche_type != TrancheType::Residual {
-						tranche.ratio.mul_ceil(amount)
+						let max_entitled_amount = tranche.ratio.mul_ceil(amount);
+						sp_std::cmp::min(max_entitled_amount, tranche.debt)
 					} else {
 						remaining_amount
 					};
 
-					let tranche_amount = if tranche_amount > tranche.debt {
-						tranche.debt
-					} else {
-						tranche_amount
-					};
-
-					// NOTE: we ensure this is never underflowing. But better be safe than sorry.
+					// NOTE: This CAN be overflowing for Residual tranches, as we can not anticipate
+					//       the "debt" of a residual tranche. More correctly they do NOT have a debt
+					//       but are rather entitled to the "left-overs".
 					tranche.debt = tranche.debt.saturating_sub(tranche_amount);
 					tranche.reserve = tranche
 						.reserve
@@ -1759,6 +1756,8 @@ pub mod pallet {
 						.checked_sub(&tranche_amount)
 						.ok_or(ArithmeticError::Underflow)?;
 				}
+
+				// TODO: Add a debug log here and/or a debut_assert maybe even an error if remaining_amount != 0 at this point!
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
