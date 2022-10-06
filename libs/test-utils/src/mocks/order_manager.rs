@@ -15,7 +15,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{InvestmentAccountant, InvestmentProperties, OrderManager, TrancheCurrency};
-	use cfg_types::{FulfillmentWithPrice, PoolLocator, TotalOrder};
+	use cfg_types::{FulfillmentWithPrice, TotalOrder};
 	use frame_support::{
 		pallet_prelude::*,
 		traits::fungibles::{Inspect, Mutate, Transfer},

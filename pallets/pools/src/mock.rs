@@ -32,7 +32,6 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
-use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -506,13 +505,6 @@ pub fn test_nav_down(pool_id: u64, amount: Balance) {
 
 pub fn test_nav_update(pool_id: u64, amount: Balance, now: Moment) {
 	FakeNav::update(pool_id, amount, now)
-}
-
-pub fn yield_on_debt(delta: Moment, interest: Rate, debt: Balance) -> Balance {
-	// NOTE: `checked_pow` can return 1 for 0^0 which is fine
-	//       for us, as we simply have the same debt if this happens
-	let total_interest = checked_pow(interest, delta as usize).unwrap();
-	total_interest.checked_mul_int(debt).unwrap()
 }
 
 /// Assumes externalities are available

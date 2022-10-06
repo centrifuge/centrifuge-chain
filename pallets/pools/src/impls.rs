@@ -136,7 +136,7 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error> {
-		let details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
 
 		T::Tokens::burn_from(id.into(), seller, amount).map(|_| ())
 	}

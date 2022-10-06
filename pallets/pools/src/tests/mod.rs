@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{Permissions as PermissionsT, TrancheCurrency as TrancheCurrencyT};
-use cfg_types::{CurrencyId, CustomMetadata, PermissionScope::Currency, Rate, TrancheCurrency};
-use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
+use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheCurrency};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;
 use sp_core::storage::StateVersion;
@@ -47,7 +47,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				.residual_top_slice()
 				.iter()
 				.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
-				.map(|(tranche, value)| EpochExecutionTranche {
+				.map(|(_tranche, value)| EpochExecutionTranche {
 					supply: value,
 					price: One::one(),
 					redeem: 10,
@@ -129,13 +129,15 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 				.residual_top_slice()
 				.iter()
 				.zip(vec![(80, 10, 10), (20, 0, 10), (15, 0, 10), (15, 0, 10)]) // no IntoIterator for arrays, so we use a vec here. Meh.
-				.map(|(tranche, (value, redeem, invest))| EpochExecutionTranche {
-					supply: value,
-					price: One::one(),
-					invest,
-					redeem,
-					..Default::default()
-				})
+				.map(
+					|(_tranche, (value, redeem, invest))| EpochExecutionTranche {
+						supply: value,
+						price: One::one(),
+						invest,
+						redeem,
+						..Default::default()
+					},
+				)
 				.collect(),
 		);
 
@@ -334,7 +336,7 @@ fn pool_constraints_pass() {
 				.zip(vec![(80, 0, 100), (70, 0, 30), (35, 0, 0), (20, 0, 0)])
 				.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
 				.map(
-					|(tranche_id, (tranche, (value, redeem, invest)))| EpochExecutionTranche {
+					|(tranche_id, (_tranche, (value, redeem, invest)))| EpochExecutionTranche {
 						supply: value,
 						price: One::one(),
 						invest,
@@ -619,8 +621,6 @@ fn epoch() {
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = Pools::pool(0).unwrap();
-		let total_value = pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve
-			+ pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve;
 		let senior_price = Pools::get_tranche_token_price(0, SeniorTrancheId::get())
 			.unwrap()
 			.price;
@@ -659,8 +659,6 @@ fn epoch() {
 #[test]
 fn submission_period() {
 	new_test_ext().execute_with(|| {
-		let junior_investor = Origin::signed(0);
-		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
@@ -842,8 +840,6 @@ fn submission_period() {
 #[test]
 fn execute_info_removed_after_epoch_execute() {
 	new_test_ext().execute_with(|| {
-		let junior_investor = Origin::signed(0);
-		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
@@ -934,8 +930,6 @@ fn execute_info_removed_after_epoch_execute() {
 fn pool_updates_should_be_constrained() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 0_u64;
-		let jun_invest_id = 1u64;
-		let junior_investor = Origin::signed(jun_invest_id);
 		let pool_owner_origin = Origin::signed(pool_owner);
 		let pool_id = 0;
 
@@ -1460,8 +1454,6 @@ fn valid_tranche_structure_is_enforced() {
 #[test]
 fn triger_challange_period_with_zero_solution() {
 	new_test_ext().execute_with(|| {
-		let junior_investor = Origin::signed(0);
-		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
@@ -1556,8 +1548,6 @@ fn triger_challange_period_with_zero_solution() {
 #[test]
 fn min_challenge_time_is_respected() {
 	new_test_ext().execute_with(|| {
-		let junior_investor = Origin::signed(0);
-		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
@@ -1655,8 +1645,6 @@ fn min_challenge_time_is_respected() {
 #[test]
 fn only_zero_solution_is_accepted_max_reserve_violated() {
 	new_test_ext().execute_with(|| {
-		let junior_investor = Origin::signed(0);
-		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
@@ -1857,8 +1845,6 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 #[test]
 fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 	new_test_ext().execute_with(|| {
-		let junior_investor = Origin::signed(0);
-		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
