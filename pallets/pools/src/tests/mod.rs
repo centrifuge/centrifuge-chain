@@ -655,7 +655,7 @@ fn epoch() {
 		);
 	});
 }
-/*
+
 #[test]
 fn submission_period() {
 	new_test_ext().execute_with(|| {
@@ -712,16 +712,12 @@ fn submission_period() {
 			10_000 * CURRENCY,
 			None
 		));
-		assert_ok!(Pools::update_invest_order(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
-		assert_ok!(Pools::update_invest_order(
-			senior_investor.clone(),
-			0,
-			TrancheLoc::Id(SeniorTrancheId::get()),
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -737,25 +733,9 @@ fn submission_period() {
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
-		assert_ok!(Pools::collect(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
-			1
-		));
-
-		assert_ok!(Pools::collect(
-			senior_investor.clone(),
-			0,
-			TrancheLoc::Id(SeniorTrancheId::get()),
-			1
-		));
-
 		// Attempt to redeem everything
-		assert_ok!(Pools::update_redeem_order(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
+		assert_ok!(Investments::update_redeem_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
@@ -873,6 +853,7 @@ fn submission_period() {
 	});
 }
 
+/*
 #[test]
 fn execute_info_removed_after_epoch_execute() {
 	new_test_ext().execute_with(|| {
