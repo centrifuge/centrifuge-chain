@@ -2041,7 +2041,6 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 	});
 }
 
-/*
 #[test]
 fn only_usd_as_pool_currency_allowed() {
 	new_test_ext().execute_with(|| {
@@ -2152,6 +2151,7 @@ fn only_usd_as_pool_currency_allowed() {
 	});
 }
 
+/*
 #[test]
 fn creation_takes_deposit() {
 	new_test_ext().execute_with(|| {
