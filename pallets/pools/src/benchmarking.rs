@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_traits::PoolNAV;
-use cfg_types::{CurrencyId, CustomMetadata};
+use cfg_types::{CurrencyId, CustomMetadata, TrancheCurrency};
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
@@ -40,8 +40,8 @@ benchmarks! {
 			  TrancheId = [u8; 16],
 			  Balance = u128,
 			  CurrencyId = CurrencyId,
-			  EpochId = u32,
-		>,
+			  EpochId = u32>
+			+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = u128>,
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
@@ -138,7 +138,7 @@ benchmarks! {
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
 		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), POOL)?;
-		Pallet::<T>::collect(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 1)?;
+		pallet_investments::Pallet::<T>::collect(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 1)?;
 
 		// Submit redemption order so the update isn't immediately executed
 		Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 1)?;
@@ -153,7 +153,7 @@ benchmarks! {
 		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, changes)?;
 
 		// Withdraw redeem order so the update can be executed after that
-		Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 0)?;
+		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 0)?;
 	}: execute_scheduled_update(RawOrigin::Signed(admin), POOL)
 	verify {
 		let pool = get_pool::<T>();
@@ -185,58 +185,6 @@ benchmarks! {
 		assert_eq!(get_pool::<T>().reserve.max, max_reserve);
 	}
 
-	update_invest_order {
-		let admin: T::AccountId = create_admin::<T>(0);
-		prepare_asset_registry::<T>();
-		create_pool::<T>(1, admin.clone())?;
-		let locator = get_tranche_id::<T>(TRANCHE);
-		let amount = MAX_RESERVE / 2;
-		let caller = create_investor::<T>(0, TRANCHE)?;
-		let expected = Some(UserOrder {
-			invest: amount,
-			redeem: 0,
-			epoch: 1,
-		});
-	}: update_invest_order(RawOrigin::Signed(caller.clone()), POOL, tranche_location::<T>(TRANCHE), amount)
-	verify {
-		assert_eq!(Pallet::<T>::order(locator, caller), expected);
-	}
-
-	update_redeem_order {
-		let admin: T::AccountId = create_admin::<T>(0);
-		prepare_asset_registry::<T>();
-		create_pool::<T>(1, admin.clone())?;
-		let amount = MAX_RESERVE / 2;
-		let caller = create_investor::<T>(0, TRANCHE)?;
-		let locator = get_tranche_id::<T>(TRANCHE);
-		let expected = Some(UserOrder {
-			invest: 0,
-			redeem: amount,
-			epoch: 1,
-		});
-	}: update_redeem_order(RawOrigin::Signed(caller.clone()), POOL, tranche_location::<T>(TRANCHE), amount)
-	verify {
-		assert_eq!(Pallet::<T>::order(locator, caller), expected);
-	}
-
-	collect {
-		let n in 1..100;
-		let admin: T::AccountId = create_admin::<T>(0);
-		prepare_asset_registry::<T>();
-		create_pool::<T>(1, admin.clone())?;
-		let amount = MAX_RESERVE / 2;
-		let expected = amount + MINT_AMOUNT;
-		let caller = create_investor::<T>(0, TRANCHE)?;
-		Pallet::<T>::update_invest_order(RawOrigin::Signed(caller.clone()).into(), POOL, tranche_location::<T>(TRANCHE), amount)?;
-		let pool_account = PoolLocator::<T::PoolId> { pool_id: POOL }.into_account_truncating();
-		let currency = CurrencyId::Tranche(POOL, get_tranche_id::<T>(TRANCHE));
-		T::Tokens::mint_into(currency.clone(), &pool_account, MINT_AMOUNT)?;
-		populate_epochs::<T>(n)?;
-	}: collect(RawOrigin::Signed(caller.clone()), POOL, tranche_location::<T>(TRANCHE), n.into())
-	verify {
-		assert_eq!(T::Tokens::balance(currency, &caller), expected);
-	}
-
 	close_epoch_no_orders {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
@@ -261,7 +209,7 @@ benchmarks! {
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
+		pallet_investments::Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
 	verify {
 		assert_eq!(get_pool::<T>().epoch.last_executed, 0);
@@ -278,7 +226,7 @@ benchmarks! {
 		let investment = MAX_RESERVE / 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
+		pallet_investments::Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
 	verify {
 		assert_eq!(get_pool::<T>().epoch.last_executed, 1);
@@ -295,7 +243,7 @@ benchmarks! {
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
+		pallet_investments::Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
 		Pallet::<T>::close_epoch(admin_origin, POOL)?;
 		let default_solution = Pallet::<T>::epoch_targets(POOL).unwrap().best_submission;
@@ -322,7 +270,7 @@ benchmarks! {
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
+		pallet_investments::Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
 		Pallet::<T>::close_epoch(admin_origin, POOL)?;
 		let default_solution = Pallet::<T>::epoch_targets(POOL).unwrap().best_submission;
@@ -595,6 +543,22 @@ fn build_bench_input_tranches<T: Config>(
 	);
 
 	tranches
+}
+
+fn update_invest_order<T: Config + pallet_investments::Config>(
+	investor: T::AccountId,
+	pool_id: T::PoolId,
+	tranche_id: T::TrancheId,
+	amount: T::Balance,
+) {
+}
+
+fn update_redeem_order<T: Config + pallet_investments::Config>(
+	investor: T::AccountId,
+	pool_id: T::PoolId,
+	tranche_id: T::TrancheId,
+	amount: T::Balance,
+) {
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test,);
