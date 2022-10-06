@@ -357,11 +357,11 @@ pub trait OrderManager {
 
 	/// When called the manager return the current
 	/// invest orders for the given investment class.
-	fn invest_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+	fn invest_orders(asset_id: Self::InvestmentId) -> Self::Orders;
 
 	/// When called the manager return the current
 	/// redeem orders for the given investment class.
-	fn redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+	fn redeem_orders(asset_id: Self::InvestmentId) -> Self::Orders;
 
 	/// When called the manager return the current
 	/// invest orders for the given investment class.

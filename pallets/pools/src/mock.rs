@@ -9,11 +9,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
 use cfg_primitives::{Balance, BlockNumber, PoolId, TrancheId};
 pub use cfg_primitives::{Moment, TrancheWeight};
 use cfg_traits::{
-	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT,
 };
 use cfg_types::{
@@ -37,7 +36,7 @@ use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup, Zero},
 };
 
 use crate::{self as pallet_pools, Config, DispatchResult};
@@ -370,18 +369,16 @@ impl PoolUpdateGuard for UpdateGuard {
 			return false;
 		}
 
-		// TODO: Adapt OderManager to provide process and current orders
-		/*
 		// There should be no outstanding redemption orders.
-		let acc_outstanding_redemptions = pool
+		if pool
 			.tranches
-			.acc_outstanding_redemptions()
-			.unwrap_or(Balance::MAX);
-		if acc_outstanding_redemptions != 0u128 {
+			.tranches
+			.iter()
+			.map(|tranche| Investments::redeem_orders(tranche.currency).amount)
+			.any(|redemption| redemption != Zero::zero())
+		{
 			return false;
 		}
-		 */
-
 		return true;
 	}
 }

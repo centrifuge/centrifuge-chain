@@ -930,7 +930,6 @@ fn execute_info_removed_after_epoch_execute() {
 	});
 }
 
-/*
 #[test]
 fn pool_updates_should_be_constrained() {
 	new_test_ext().execute_with(|| {
@@ -957,33 +956,18 @@ fn pool_updates_should_be_constrained() {
 			None
 		));
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(pool_id),
-			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
-		)
-		.unwrap();
-
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
 			Ok(())
 		})
 		.unwrap();
 
-		assert_ok!(Pools::update_invest_order(
-			junior_investor.clone(),
-			pool_id,
-			TrancheLoc::Id(JuniorTrancheId::get()),
-			100_000
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			100 * CURRENCY
 		));
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_ok!(Pools::collect(
-			junior_investor.clone(),
-			pool_id,
-			TrancheLoc::Id(JuniorTrancheId::get()),
-			1
-		));
 
 		let initial_pool = &crate::Pool::<Test>::try_get(pool_id).unwrap();
 		let realistic_min_epoch_time = 24 * 60 * 60; // 24 hours
@@ -1016,11 +1000,9 @@ fn pool_updates_should_be_constrained() {
 			Error::<Test>::PoolParameterBoundViolated
 		);
 
-		assert_ok!(Pools::update_redeem_order(
-			junior_investor.clone(),
-			pool_id,
-			TrancheLoc::Id(JuniorTrancheId::get()),
-			100
+		assert_ok!(Investments::update_redeem_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
+			100 * CURRENCY
 		));
 
 		assert_ok!(Pools::update(
@@ -1036,12 +1018,6 @@ fn pool_updates_should_be_constrained() {
 
 		// Since there's a redemption order, the above update should not have been executed yet
 		let pool = crate::Pool::<Test>::try_get(pool_id).unwrap();
-		assert_eq!(
-			pool.tranches
-				.acc_outstanding_redemptions()
-				.unwrap_or(Balance::MAX),
-			100
-		);
 		assert_eq!(
 			pool.parameters.min_epoch_time,
 			initial_pool.parameters.min_epoch_time
@@ -1067,6 +1043,8 @@ fn pool_updates_should_be_constrained() {
 		assert_eq!(pool.parameters.min_epoch_time, realistic_min_epoch_time);
 	});
 }
+
+/*
 
 #[test]
 fn updating_orders_updates_epoch() {

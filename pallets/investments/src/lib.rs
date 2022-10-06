@@ -1120,12 +1120,12 @@ where
 	type InvestmentId = T::InvestmentId;
 	type Orders = TotalOrder<T::Amount>;
 
-	fn invest_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-		Ok(ActiveInvestOrders::<T>::get(&investment_id))
+	fn invest_orders(investment_id: Self::InvestmentId) -> Self::Orders {
+		ActiveInvestOrders::<T>::get(&investment_id)
 	}
 
-	fn redeem_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
-		Ok(ActiveRedeemOrders::<T>::get(&investment_id))
+	fn redeem_orders(investment_id: Self::InvestmentId) -> Self::Orders {
+		ActiveRedeemOrders::<T>::get(&investment_id)
 	}
 
 	fn process_invest_orders(
