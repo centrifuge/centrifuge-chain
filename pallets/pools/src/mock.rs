@@ -12,7 +12,10 @@
 
 use cfg_primitives::{Balance, BlockNumber, PoolId, TrancheId};
 pub use cfg_primitives::{Moment, TrancheWeight};
-use cfg_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
+use cfg_traits::{
+	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	TrancheCurrency as TrancheCurrencyT,
+};
 use cfg_types::{
 	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider,
 	TrancheCurrency, UNION,
@@ -33,7 +36,7 @@ use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 };
 
 use crate::{self as pallet_pools, Config, DispatchResult};
@@ -243,7 +246,11 @@ where
 	}
 }
 
+parameter_types! {
+	pub const FundsAccount: frame_support::PalletId  = cfg_test_utils::TEST_PALLET_ID;
+}
 impl cfg_test_utils::mocks::order_manager::Config for Test {
+	type FundsAccount = FundsAccount;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
 	type Rate = Rate;
@@ -405,6 +412,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	orml_tokens::GenesisConfig::<Test> {
+		balances: vec![(
+			cfg_test_utils::TEST_PALLET_ID.into_account_truncating(),
+			CurrencyId::AUSD,
+			10 * 1000 * CURRENCY,
+		)],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	orml_tokens::GenesisConfig::<Test> {
 		balances: (0..10)
 			.into_iter()
 			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
@@ -434,6 +451,24 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 				additional: CustomMetadata::default(),
 			},
 		)],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	cfg_test_utils::mocks::order_manager::GenesisConfig::<Test> {
+		invest_orders: vec![
+			(
+				TrancheCurrency::generate(0, JuniorTrancheId::get()),
+				0,
+				CurrencyId::AUSD,
+			),
+			(
+				TrancheCurrency::generate(0, SeniorTrancheId::get()),
+				0,
+				CurrencyId::AUSD,
+			),
+		],
+		..Default::default()
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();

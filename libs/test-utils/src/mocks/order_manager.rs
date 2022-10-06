@@ -19,11 +19,20 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
 		traits::fungibles::{Inspect, Mutate, Transfer},
+		PalletId,
 	};
 	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
 
-	use crate::TEST_PALLET_ID;
+	pub struct OrderManagerAccount;
+
+	impl OrderManagerAccount {
+		pub const LOCAL_ID: PalletId = PalletId(*b"OrdrMngr");
+
+		pub fn get<T: frame_system::Config>() -> T::AccountId {
+			OrderManagerAccount::LOCAL_ID.into_account_truncating()
+		}
+	}
 
 	type BalanceOf<T> =
 		<<T as Config>::Tokens as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
@@ -38,6 +47,8 @@ pub mod pallet {
 		<Self::Tokens as Inspect<Self::AccountId>>::AssetId:
 			MaxEncodedLen + MaybeSerializeDeserialize,
 	{
+		type FundsAccount: Get<PalletId>;
+
 		type PoolId: Member + Parameter + Default + Copy + MaxEncodedLen;
 
 		type TrancheId: Member + Parameter + Default + Copy + MaxEncodedLen;
@@ -127,8 +138,8 @@ pub mod pallet {
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
 	{
+		// TODO: Remove once we are on Substrate:polkadot-v0.9.29
 	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
 	where
@@ -136,6 +147,69 @@ pub mod pallet {
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
 	{
+		// TODO: Remove once we are on Substrate:polkadot-v0.9.29
+	}
+
+	impl<T: Config> Pallet<T>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	{
+		/// **Test Method**
+		///
+		/// Define an `InvestmentId` and this logic will mint the given `amount` into the
+		/// `TEST_PALLET_ID` we intermediately store all tokens for investing.
+		///
+		/// **This mints `PaymentCurrency` tokens**
+		pub fn update_invest_order(
+			investment_id: T::InvestmentId,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			Pallet::<T>::invest_orders(investment_id)?;
+			let mut orders =
+				InvestOrders::<T>::get(&investment_id).unwrap_or(TotalOrder::default());
+			orders.amount += amount;
+			InvestOrders::<T>::insert(&investment_id, orders);
+
+			T::Tokens::transfer(
+				PaymentCurrency::<T>::get(&investment_id)
+					.expect("PaymentCurrency is provided in testing. Qed."),
+				&T::FundsAccount::get().into_account_truncating(),
+				&OrderManagerAccount::get::<T>(),
+				amount,
+				false,
+			)
+			.map(|_| ())
+		}
+
+		/// **Test Method**
+		///
+		/// Define an `InvestmentId` and this logic will mint the given `amount` into the
+		/// `TEST_PALLET_ID` we intermediately store all tokens for investing.
+		///
+		/// **This mints `TrancheToken`s**
+		pub fn update_redeem_order(
+			investment_id: T::InvestmentId,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let mut orders =
+				RedeemOrders::<T>::get(&investment_id).unwrap_or(TotalOrder::default());
+			orders.amount += amount;
+			RedeemOrders::<T>::insert(&investment_id, orders);
+
+			/*
+			T::Tokens::transfer(
+				investment_id.into(),
+				&T::FundsAccount::get().into_account_truncating(),
+				&OrderManagerAccount::get::<T>(),
+				amount,
+				false,
+			)
+			.map(|_| ())
+			 */
+			Ok(())
+		}
 	}
 
 	impl<T: Config> OrderManager for Pallet<T>
@@ -164,27 +238,13 @@ pub mod pallet {
 		fn process_invest_orders(
 			asset_id: Self::InvestmentId,
 		) -> Result<Self::Orders, Self::Error> {
-			InvestOrders::<T>::try_mutate(&asset_id, |maybe_order| {
-				let order = maybe_order
-					.as_ref()
-					.expect("Processing non-existant invest-orders in testing.")
-					.clone();
-
-				Ok(order)
-			})
+			Ok(InvestOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default()))
 		}
 
 		fn process_redeem_orders(
 			asset_id: Self::InvestmentId,
 		) -> Result<Self::Orders, Self::Error> {
-			RedeemOrders::<T>::try_mutate(&asset_id, |maybe_order| {
-				let order = maybe_order
-					.as_ref()
-					.expect("Processing non-existant redeem-orders in testing.")
-					.clone();
-
-				Ok(order)
-			})
+			Ok(RedeemOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default()))
 		}
 
 		/// Signals the manager that the previously
@@ -194,8 +254,8 @@ pub mod pallet {
 			asset_id: Self::InvestmentId,
 			fulfillment: Self::Fulfillment,
 		) -> Result<(), Self::Error> {
-			let orders = InvestOrders::<T>::get(asset_id)
-				.expect("Fullfilling non-existant invest-orders in testing.");
+			let orders = InvestOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default());
+			InvestOrders::<T>::insert(asset_id, TotalOrder::default());
 
 			// Move tokens to pools
 			let tokens_to_transfer_to_pool = fulfillment.of_amount.mul_floor(orders.amount);
@@ -227,7 +287,7 @@ pub mod pallet {
 				.unwrap();
 			T::Tokens::mint_into(
 				asset_id.into(),
-				&TEST_PALLET_ID.into_account_truncating(),
+				&OrderManagerAccount::get::<T>(),
 				tranche_tokens_to_mint,
 			)
 			.expect("Minting must work. Qed.");
@@ -242,13 +302,13 @@ pub mod pallet {
 			asset_id: Self::InvestmentId,
 			fulfillment: Self::Fulfillment,
 		) -> Result<(), Self::Error> {
-			let orders = RedeemOrders::<T>::get(asset_id)
-				.expect("Fullfilling non-existant invest-orders in testing.");
+			let orders = RedeemOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default());
+			RedeemOrders::<T>::insert(asset_id, TotalOrder::default());
 
 			let tokens_to_burn_from_test_pallet = fulfillment.of_amount.mul_floor(orders.amount);
 			T::Tokens::burn_from(
 				asset_id.into(),
-				&TEST_PALLET_ID.into_account_truncating(),
+				&OrderManagerAccount::get::<T>(),
 				tokens_to_burn_from_test_pallet,
 			)
 			.expect("Burning must work. Qed.");

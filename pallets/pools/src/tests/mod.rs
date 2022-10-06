@@ -406,7 +406,6 @@ fn pool_constraints_pass() {
 	});
 }
 
-/*
 #[test]
 fn epoch() {
 	new_test_ext().execute_with(|| {
@@ -471,16 +470,12 @@ fn epoch() {
 				.as_bytes()
 				.to_vec()
 		));
-		assert_ok!(Pools::update_invest_order(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
-		assert_ok!(Pools::update_invest_order(
-			senior_investor.clone(),
-			0,
-			TrancheLoc::Id(SeniorTrancheId::get()),
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -521,34 +516,6 @@ fn epoch() {
 		.unwrap();
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_ok!(Pools::collect(
-			senior_investor.clone(),
-			0,
-			TrancheLoc::Id(SeniorTrancheId::get()),
-			1
-		));
-		assert_ok!(Pools::collect(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
-			1
-		));
-
-		assert_eq!(
-			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, JuniorTrancheId::get()),
-				&0,
-			),
-			500 * CURRENCY,
-		);
-		assert_eq!(
-			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, SeniorTrancheId::get()),
-				&1,
-			),
-			500 * CURRENCY,
-		);
-
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize]
@@ -639,23 +606,18 @@ fn epoch() {
 
 		// Senior investor tries to redeem
 		next_block();
-		assert_ok!(Pools::update_redeem_order(
-			senior_investor.clone(),
-			0,
-			TrancheLoc::Id(SeniorTrancheId::get()),
+		assert_ok!(Investments::update_redeem_order(
+			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			250 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = Pools::pool(0).unwrap();
-		let senior_epoch = Pools::epoch(SeniorTrancheId::get(), pool.epoch.last_executed).unwrap();
+		let senior_price = Pools::get_tranche_token_price(0, SeniorTrancheId::get())
+			.unwrap()
+			.price;
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
-		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize]
-				.outstanding_redeem_orders,
-			0
-		);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
 			0
@@ -668,7 +630,7 @@ fn epoch() {
 				> 250 * CURRENCY
 		);
 		assert_eq!(
-			pool.reserve.total + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
+			pool.reserve.total + senior_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
 		);
 
@@ -682,7 +644,7 @@ fn epoch() {
 		);
 	});
 }
-
+/*
 #[test]
 fn submission_period() {
 	new_test_ext().execute_with(|| {
