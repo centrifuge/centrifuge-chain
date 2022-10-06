@@ -1331,6 +1331,8 @@ mod upgrade {
 			weight += Loans::reference_active_rates();
 			weight += InterestAccrual::remove_unused_rates();
 			weight += pallet_anchors::migration::fix_evict_date::migrate::<Runtime>();
+			weight += pallet_pools::migrations::altair::migrate_epoch_tranches::<Runtime>();
+			weight += pallet_pools::migrations::altair::migrate_tranches::<Runtime>();
 			weight
 		}
 
