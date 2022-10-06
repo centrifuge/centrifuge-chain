@@ -2151,7 +2151,6 @@ fn only_usd_as_pool_currency_allowed() {
 	});
 }
 
-/*
 #[test]
 fn creation_takes_deposit() {
 	new_test_ext().execute_with(|| {
@@ -2328,7 +2327,7 @@ fn create_tranche_token_metadata() {
 			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 
 		assert_eq!(
-			<Test as Config>::AssetRegistry::metadata(&tranche_currency).unwrap(),
+			<Test as Config>::AssetRegistry::metadata(&tranche_currency.into()).unwrap(),
 			AssetMetadata {
 				decimals: 18,
 				name: "SuperToken".into(),
@@ -2350,4 +2349,3 @@ fn create_tranche_token_metadata() {
 		);
 	});
 }
-*/
