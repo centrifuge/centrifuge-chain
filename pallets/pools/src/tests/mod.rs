@@ -1853,7 +1853,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
-/*
+
 #[test]
 fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 	new_test_ext().execute_with(|| {
@@ -1861,20 +1861,6 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
-			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
-		)
-		.unwrap();
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
-			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
-		)
-		.unwrap();
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1922,41 +1908,22 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		})
 		.unwrap();
 
-		invest_close_and_collect(
+		invest_and_close(
 			0,
 			vec![
-				(
-					junior_investor.clone(),
-					JuniorTrancheId::get(),
-					100 * CURRENCY,
-				),
-				(
-					senior_investor.clone(),
-					SeniorTrancheId::get(),
-					100 * CURRENCY,
-				),
+				(JuniorTrancheId::get(), 100 * CURRENCY),
+				(SeniorTrancheId::get(), 100 * CURRENCY),
 			],
-		)
-		.unwrap();
+		);
 
 		// Redeem so that we are exactly at 10 percent risk buffer
-		assert_ok!(Pools::update_redeem_order(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
+		assert_ok!(Investments::update_redeem_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			88_888_888_888_888_888_799
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_ok!(Pools::collect(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Index(0),
-			1
-		));
-		assert_ok!(Pools::update_redeem_order(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
+		assert_ok!(Investments::update_redeem_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			1 * CURRENCY
 		));
 
@@ -2074,6 +2041,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 	});
 }
 
+/*
 #[test]
 fn only_usd_as_pool_currency_allowed() {
 	new_test_ext().execute_with(|| {
