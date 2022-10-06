@@ -12,7 +12,7 @@
 use cfg_primitives::{Balance, BlockNumber, PoolId, TrancheId};
 pub use cfg_primitives::{Moment, TrancheWeight};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	Always, OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT,
 };
 use cfg_types::{
@@ -35,7 +35,7 @@ use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup, Zero},
+	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
 use crate::{self as pallet_pools, Config, DispatchResult};
@@ -61,7 +61,7 @@ frame_support::construct_runtime!(
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
 		ParachainInfo: parachain_info::{Pallet, Storage},
-		Investments: cfg_test_utils::mocks::order_manager::{Pallet, Storage, Config<T>},
+		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -246,16 +246,18 @@ where
 }
 
 parameter_types! {
-	pub const FundsAccount: frame_support::PalletId  = cfg_test_utils::TEST_PALLET_ID;
+	pub const MaxOutstandingCollects: u32 = 10;
 }
-impl cfg_test_utils::mocks::order_manager::Config for Test {
+impl pallet_investments::Config for Test {
 	type Accountant = Pools;
-	type FundsAccount = FundsAccount;
+	type Amount = Balance;
+	type BalanceRatio = Rate;
+	type Event = Event;
 	type InvestmentId = TrancheCurrency;
-	type PoolId = PoolId;
-	type Rate = Rate;
-	type Tokens = OrmlTokens;
-	type TrancheId = TrancheId;
+	type MaxOutstandingCollects = MaxOutstandingCollects;
+	type PreConditions = Always;
+	type Tokens = Tokens;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -403,21 +405,14 @@ pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
 pub const START_DATE: u64 = 1640991600; // 2022.01.01
 pub const SECONDS: u64 = 1000;
 
+pub const DEFAULT_POOL_ID: PoolId = 0;
+pub const DEFAULT_POOL_OWNER: MockAccountId = 10;
+
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
-
-	orml_tokens::GenesisConfig::<Test> {
-		balances: vec![(
-			cfg_test_utils::TEST_PALLET_ID.into_account_truncating(),
-			CurrencyId::AUSD,
-			10 * 1000 * CURRENCY,
-		)],
-	}
-	.assimilate_storage(&mut t)
-	.unwrap();
 
 	orml_tokens::GenesisConfig::<Test> {
 		balances: (0..10)
@@ -460,6 +455,22 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
 		Timestamp::set(Origin::none(), START_DATE).unwrap();
+
+		for account in 0..10u64 {
+			<<Test as Config>::Permission as PermissionsT<u64>>::add(
+				PermissionScope::Pool(DEFAULT_POOL_ID),
+				account,
+				Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			)
+			.unwrap();
+
+			<<Test as Config>::Permission as PermissionsT<u64>>::add(
+				PermissionScope::Pool(DEFAULT_POOL_ID),
+				account,
+				Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			)
+			.unwrap();
+		}
 	});
 	ext
 }
@@ -508,12 +519,26 @@ pub fn test_nav_update(pool_id: u64, amount: Balance, now: Moment) {
 }
 
 /// Assumes externalities are available
-pub fn invest_and_close(pool_id: u64, investments: Vec<(TrancheId, Balance)>) {
-	for (tranche_id, investment) in investments.clone() {
+pub fn invest_close_and_collect(
+	pool_id: u64,
+	investments: Vec<(MockAccountId, TrancheId, Balance)>,
+) {
+	for (account, tranche_id, investment) in investments.clone() {
 		assert_ok!(Investments::update_invest_order(
+			Origin::signed(account),
 			TrancheCurrency::generate(pool_id, tranche_id),
 			investment
 		));
 	}
-	assert_ok!(Pools::close_epoch(Origin::signed(10).clone(), pool_id));
+	assert_ok!(Pools::close_epoch(
+		Origin::signed(DEFAULT_POOL_OWNER).clone(),
+		pool_id
+	));
+
+	for (account, tranche_id, _) in investments {
+		assert_ok!(Investments::collect(
+			Origin::signed(account),
+			TrancheCurrency::generate(pool_id, tranche_id),
+		));
+	}
 }
