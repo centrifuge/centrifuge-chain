@@ -1333,6 +1333,7 @@ mod upgrade {
 			weight += pallet_anchors::migration::fix_evict_date::migrate::<Runtime>();
 			weight += pallet_pools::migrations::altair::migrate_epoch_tranches::<Runtime>();
 			weight += pallet_pools::migrations::altair::migrate_tranches::<Runtime>();
+			weight += pallet_pools::migrations::altair::remove_not_needed_storage::<Runtime>();
 			weight
 		}
 

@@ -528,17 +528,6 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn order)]
-	pub type Order<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::TrancheId,
-		Blake2_128Concat,
-		T::AccountId,
-		UserOrder<T::Balance, T::EpochId>,
-	>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn epoch_targets)]
 	pub type EpochExecution<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfoOf<T>>;

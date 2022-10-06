@@ -324,8 +324,8 @@ pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
 	pub tranches: Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>>,
-	ids: Vec<TrancheId>,
-	salt: TrancheSalt<PoolId>,
+	pub(super) ids: Vec<TrancheId>,
+	pub(super) salt: TrancheSalt<PoolId>,
 }
 
 #[cfg(test)]
@@ -1059,7 +1059,7 @@ impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurr
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency> {
-	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
+	pub(super) tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
 }
 
 /// Utility implementations for `EpochExecutionTranches`
