@@ -23,7 +23,7 @@ use cfg_types::{
 pub use cfg_types::{Rate, TrancheToken};
 use codec::Encode;
 use frame_support::{
-	parameter_types,
+	assert_ok, parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{Contains, GenesisBuild, Hooks, SortedMembers},
 	Blake2_128, StorageHasher,
@@ -519,30 +519,12 @@ pub fn yield_on_debt(delta: Moment, interest: Rate, debt: Balance) -> Balance {
 }
 
 /// Assumes externalities are available
-pub fn invest_close_and_collect(
-	pool_id: u64,
-	investments: Vec<(Origin, TrancheId, Balance)>,
-) -> DispatchResult {
-	// TODO: Fix
-	/*
-	for (who, tranche_id, investment) in investments.clone() {
-		Pools::update_invest_order(who, pool_id, TrancheLoc::Id(tranche_id), investment)?;
+pub fn invest_and_close(pool_id: u64, investments: Vec<(TrancheId, Balance)>) {
+	for (tranche_id, investment) in investments.clone() {
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, tranche_id),
+			investment
+		));
 	}
-
-
-
-	Pools::close_epoch(Origin::signed(10), pool_id).map_err(|e| e.error)?;
-
-	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
-		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.epoch
-		.last_executed;
-
-	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, TrancheLoc::Id(tranche_id), epoch).map_err(|e| e.error)?;
-	}
-
-	 */
-
-	Ok(())
+	assert_ok!(Pools::close_epoch(Origin::signed(10).clone(), 0));
 }
