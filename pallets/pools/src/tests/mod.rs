@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{Permissions as PermissionsT, TrancheCurrency as TrancheCurrencyT};
-use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheCurrency};
+use cfg_types::{CurrencyId, CustomMetadata, PermissionScope::Currency, Rate, TrancheCurrency};
 use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
 use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;
@@ -1652,7 +1652,6 @@ fn min_challenge_time_is_respected() {
 	});
 }
 
-/*
 #[test]
 fn only_zero_solution_is_accepted_max_reserve_violated() {
 	new_test_ext().execute_with(|| {
@@ -1660,20 +1659,6 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		let senior_investor = Origin::signed(1);
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
-			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
-		)
-		.unwrap();
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
-			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
-		)
-		.unwrap();
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1721,35 +1706,22 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		})
 		.unwrap();
 
-		invest_close_and_collect(
+		invest_and_close(
 			0,
 			vec![
-				(
-					junior_investor.clone(),
-					JuniorTrancheId::get(),
-					100 * CURRENCY,
-				),
-				(
-					senior_investor.clone(),
-					SeniorTrancheId::get(),
-					100 * CURRENCY,
-				),
+				(JuniorTrancheId::get(), 100 * CURRENCY),
+				(SeniorTrancheId::get(), 100 * CURRENCY),
 			],
-		)
-		.unwrap();
+		);
 		// Attempt to invest above reserve
-		assert_ok!(Pools::update_invest_order(
-			junior_investor.clone(),
-			0,
-			TrancheLoc::Id(JuniorTrancheId::get()),
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			1 * CURRENCY
 		));
 
 		// Attempt to invest above reserve
-		assert_ok!(Pools::update_invest_order(
-			senior_investor.clone(),
-			0,
-			TrancheLoc::Id(SeniorTrancheId::get()),
+		assert_ok!(Investments::update_invest_order(
+			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			1 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
@@ -1881,7 +1853,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
-
+/*
 #[test]
 fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 	new_test_ext().execute_with(|| {
