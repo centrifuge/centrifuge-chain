@@ -1384,7 +1384,7 @@ pub mod pallet {
 			let mut redeem_orders = Vec::with_capacity(tranches.num_tranches());
 
 			tranches.combine_with_residual_top(prices, |tranche, price| {
-				let invest_order = T::Investments::invest_orders(tranche.currency)?;
+				let invest_order = T::Investments::process_invest_orders(tranche.currency)?;
 				acc_invest_orders = acc_invest_orders
 					.checked_add(&invest_order.amount)
 					.ok_or(ArithmeticError::Overflow)?;
@@ -1392,10 +1392,8 @@ pub mod pallet {
 
 				// Redeem order is denominated in the `TrancheCurrency`. Hence, we need to convert them into `PoolCurrency`
 				// denomination
-				let redeem_order = T::Investments::redeem_orders(tranche.currency)?;
+				let redeem_order = T::Investments::process_redeem_orders(tranche.currency)?;
 				let redeem_amount_in_pool_currency = price
-					.reciprocal()
-					.ok_or(ArithmeticError::DivisionByZero)?
 					.checked_mul_int(redeem_order.amount)
 					.ok_or(ArithmeticError::Overflow)?;
 				acc_redeem_orders = acc_redeem_orders

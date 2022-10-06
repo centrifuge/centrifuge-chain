@@ -14,7 +14,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{OrderManager, TrancheCurrency};
+	use cfg_traits::{InvestmentAccountant, InvestmentProperties, OrderManager, TrancheCurrency};
 	use cfg_types::{FulfillmentWithPrice, PoolLocator, TotalOrder};
 	use frame_support::{
 		pallet_prelude::*,
@@ -46,8 +46,17 @@ pub mod pallet {
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<Self::Tokens as Inspect<Self::AccountId>>::AssetId:
 			MaxEncodedLen + MaybeSerializeDeserialize,
+		<Self::Accountant as InvestmentAccountant<Self::AccountId>>::InvestmentInfo:
+			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
 	{
 		type FundsAccount: Get<PalletId>;
+
+		type Accountant: InvestmentAccountant<
+			Self::AccountId,
+			Amount = BalanceOf<Self>,
+			Error = DispatchError,
+			InvestmentId = Self::InvestmentId,
+		>;
 
 		type PoolId: Member + Parameter + Default + Copy + MaxEncodedLen;
 
@@ -76,9 +85,11 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
-		pub invest_orders: Vec<(T::InvestmentId, BalanceOf<T>, CurrencyOf<T>)>,
-		pub redeem_orders: Vec<(T::InvestmentId, BalanceOf<T>, CurrencyOf<T>)>,
+		pub invest_orders: Vec<(T::InvestmentId, BalanceOf<T>)>,
+		pub redeem_orders: Vec<(T::InvestmentId, BalanceOf<T>)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -87,6 +98,8 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		fn default() -> Self {
 			Self {
@@ -102,26 +115,18 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		fn build(&self) {
-			for (id, amount, payment_currency) in &self.invest_orders {
+			for (id, amount) in &self.invest_orders {
 				InvestOrders::<T>::insert(*id, TotalOrder { amount: *amount });
-				if !PaymentCurrency::<T>::contains_key(id) {
-					PaymentCurrency::<T>::insert(*id, *payment_currency);
-				}
 			}
-			for (id, amount, payment_currency) in &self.redeem_orders {
+			for (id, amount) in &self.redeem_orders {
 				RedeemOrders::<T>::insert(*id, TotalOrder { amount: *amount });
-				if !PaymentCurrency::<T>::contains_key(id) {
-					PaymentCurrency::<T>::insert(*id, *payment_currency);
-				}
 			}
 		}
 	}
-
-	#[pallet::storage]
-	pub type PaymentCurrency<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InvestmentId, CurrencyOf<T>>;
 
 	#[pallet::storage]
 	pub type InvestOrders<T: Config> =
@@ -137,6 +142,8 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		// TODO: Remove once we are on Substrate:polkadot-v0.9.29
 	}
@@ -146,6 +153,8 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		// TODO: Remove once we are on Substrate:polkadot-v0.9.29
 	}
@@ -155,13 +164,12 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		/// **Test Method**
 		///
-		/// Define an `InvestmentId` and this logic will mint the given `amount` into the
-		/// `TEST_PALLET_ID` we intermediately store all tokens for investing.
-		///
-		/// **This mints `PaymentCurrency` tokens**
+		/// Moves funds from the `T::FundsAccount` to the local `OrderManagerAccount`
 		pub fn update_invest_order(
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
@@ -172,9 +180,10 @@ pub mod pallet {
 			orders.amount += amount;
 			InvestOrders::<T>::insert(&investment_id, orders);
 
+			let details = T::Accountant::info(investment_id)?;
+
 			T::Tokens::transfer(
-				PaymentCurrency::<T>::get(&investment_id)
-					.expect("PaymentCurrency is provided in testing. Qed."),
+				details.payment_currency(),
 				&T::FundsAccount::get().into_account_truncating(),
 				&OrderManagerAccount::get::<T>(),
 				amount,
@@ -185,10 +194,9 @@ pub mod pallet {
 
 		/// **Test Method**
 		///
-		/// Define an `InvestmentId` and this logic will mint the given `amount` into the
-		/// `TEST_PALLET_ID` we intermediately store all tokens for investing.
-		///
-		/// **This mints `TrancheToken`s**
+		/// DOES NOT move funds. We assume that all received `TrancheTokens` stay in the
+		/// given `OrderManagerAccount` while testing. Hence, if redeemptions should be
+		/// locked we do not need to move them.
 		pub fn update_redeem_order(
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
@@ -198,16 +206,9 @@ pub mod pallet {
 			orders.amount += amount;
 			RedeemOrders::<T>::insert(&investment_id, orders);
 
-			/*
-			T::Tokens::transfer(
-				investment_id.into(),
-				&T::FundsAccount::get().into_account_truncating(),
-				&OrderManagerAccount::get::<T>(),
-				amount,
-				false,
-			)
-			.map(|_| ())
-			 */
+			// NOTE: TrancheTokens NEVER leave the TEST_PALLET_ID account and hence we can keep them here and
+			//       need no transfer.
+
 			Ok(())
 		}
 	}
@@ -217,6 +218,8 @@ pub mod pallet {
 		<T::Tokens as Inspect<T::AccountId>>::Balance:
 			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 	{
 		type Error = DispatchError;
 		type Fulfillment = FulfillmentWithPrice<T::Rate>;
@@ -259,16 +262,15 @@ pub mod pallet {
 
 			// Move tokens to pools
 			let tokens_to_transfer_to_pool = fulfillment.of_amount.mul_floor(orders.amount);
-			T::Tokens::mint_into(
-				PaymentCurrency::<T>::get(asset_id)
-					.expect("PaymentCurrency is provided in testing. Qed."),
-				&PoolLocator {
-					pool_id: asset_id.of_pool(),
-				}
-				.into_account_truncating(),
+			let details = T::Accountant::info(asset_id)?;
+			T::Tokens::transfer(
+				details.payment_currency(),
+				&OrderManagerAccount::get::<T>(),
+				&details.payment_account(),
 				tokens_to_transfer_to_pool,
+				true,
 			)
-			.expect("Minting must work. Qed.");
+			.expect("Transferring must work. Qed.");
 
 			// Update local order
 			InvestOrders::<T>::insert(
@@ -285,12 +287,12 @@ pub mod pallet {
 				.unwrap()
 				.checked_mul_int(tokens_to_transfer_to_pool)
 				.unwrap();
-			T::Tokens::mint_into(
-				asset_id.into(),
+			T::Accountant::deposit(
 				&OrderManagerAccount::get::<T>(),
+				asset_id,
 				tranche_tokens_to_mint,
 			)
-			.expect("Minting must work. Qed.");
+			.expect("Depositing must work. Qed.");
 
 			Ok(())
 		}
@@ -305,38 +307,36 @@ pub mod pallet {
 			let orders = RedeemOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default());
 			RedeemOrders::<T>::insert(asset_id, TotalOrder::default());
 
-			let tokens_to_burn_from_test_pallet = fulfillment.of_amount.mul_floor(orders.amount);
-			T::Tokens::burn_from(
-				asset_id.into(),
+			let tranche_tokens_to_burn_from_test_pallet =
+				fulfillment.of_amount.mul_floor(orders.amount);
+			T::Accountant::withdraw(
 				&OrderManagerAccount::get::<T>(),
-				tokens_to_burn_from_test_pallet,
+				asset_id,
+				tranche_tokens_to_burn_from_test_pallet,
 			)
-			.expect("Burning must work. Qed.");
+			.expect("Withdrawing must work. Qed.");
 
-			// Update local order
 			// Update local order
 			RedeemOrders::<T>::insert(
 				asset_id,
 				TotalOrder {
-					amount: orders.amount - tokens_to_burn_from_test_pallet,
+					amount: orders.amount - tranche_tokens_to_burn_from_test_pallet,
 				},
 			);
 
-			// Burn payment currency from pool
-			let payment_currency_to_burn = fulfillment
+			let payment_currency_to_move_to_order_manager = fulfillment
 				.price
-				.checked_mul_int(tokens_to_burn_from_test_pallet)
+				.checked_mul_int(tranche_tokens_to_burn_from_test_pallet)
 				.unwrap();
-			T::Tokens::burn_from(
-				PaymentCurrency::<T>::get(asset_id)
-					.expect("PaymentCurrency is provided in testing. Qed."),
-				&PoolLocator {
-					pool_id: asset_id.of_pool(),
-				}
-				.into_account_truncating(),
-				payment_currency_to_burn,
+			let details = T::Accountant::info(asset_id)?;
+			T::Tokens::transfer(
+				details.payment_currency(),
+				&details.payment_account(),
+				&OrderManagerAccount::get::<T>(),
+				payment_currency_to_move_to_order_manager,
+				false,
 			)
-			.expect("Minting must work. Qed.");
+			.expect("Transferring must work. Qed.");
 
 			Ok(())
 		}

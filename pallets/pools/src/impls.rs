@@ -116,6 +116,8 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		dest: &T::AccountId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error> {
+		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+
 		T::Tokens::transfer(id.into(), source, dest, amount, false).map(|_| ())
 	}
 
@@ -124,6 +126,8 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error> {
+		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+
 		T::Tokens::mint_into(id.into(), buyer, amount)
 	}
 
@@ -132,6 +136,8 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		id: Self::InvestmentId,
 		amount: Self::Amount,
 	) -> Result<(), Self::Error> {
+		let details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+
 		T::Tokens::burn_from(id.into(), seller, amount).map(|_| ())
 	}
 }

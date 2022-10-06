@@ -33,6 +33,7 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
+use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -250,6 +251,7 @@ parameter_types! {
 	pub const FundsAccount: frame_support::PalletId  = cfg_test_utils::TEST_PALLET_ID;
 }
 impl cfg_test_utils::mocks::order_manager::Config for Test {
+	type Accountant = Pools;
 	type FundsAccount = FundsAccount;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
@@ -455,24 +457,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
-	cfg_test_utils::mocks::order_manager::GenesisConfig::<Test> {
-		invest_orders: vec![
-			(
-				TrancheCurrency::generate(0, JuniorTrancheId::get()),
-				0,
-				CurrencyId::AUSD,
-			),
-			(
-				TrancheCurrency::generate(0, SeniorTrancheId::get()),
-				0,
-				CurrencyId::AUSD,
-			),
-		],
-		..Default::default()
-	}
-	.assimilate_storage(&mut t)
-	.unwrap();
-
 	let mut ext = sp_io::TestExternalities::new(t);
 
 	ext.execute_with(|| {
@@ -525,6 +509,13 @@ pub fn test_nav_down(pool_id: u64, amount: Balance) {
 
 pub fn test_nav_update(pool_id: u64, amount: Balance, now: Moment) {
 	FakeNav::update(pool_id, amount, now)
+}
+
+pub fn yield_on_debt(delta: Moment, interest: Rate, debt: Balance) -> Balance {
+	// NOTE: `checked_pow` can return 1 for 0^0 which is fine
+	//       for us, as we simply have the same debt if this happens
+	let total_interest = checked_pow(interest, delta as usize).unwrap();
+	total_interest.checked_mul_int(debt).unwrap()
 }
 
 /// Assumes externalities are available

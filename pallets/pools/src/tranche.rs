@@ -806,7 +806,7 @@ where
 			}
 		})?;
 
-		// NOTE: We always pass around data in order NonResidual-to-Residual.
+		// NOTE: We always pass around data in order Residual-to-NonResidual.
 		//       -> So we need to reverse here again.
 		prices.reverse();
 		Ok(prices)
@@ -1323,32 +1323,18 @@ where
 		})
 	}
 
-	pub fn acc_fulfillment_cash_flows(
-		&self,
-		fulfillments: &[TrancheSolution],
-	) -> Result<Vec<Balance>, DispatchError> {
-		self.combine_with_residual_top(fulfillments, |tranche, solution| {
-			solution
-				.invest_fulfillment
-				.mul_floor(tranche.invest)
-				.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
-				.ok_or(ArithmeticError::Underflow.into())
-		})
-	}
-
 	pub fn supplies_with_fulfillment(
 		&self,
 		fulfillments: &[TrancheSolution],
 	) -> Result<Vec<Balance>, DispatchError> {
-		self.combine_with_residual_top(
-			&self.acc_fulfillment_cash_flows(fulfillments)?,
-			|tranche, tranche_cash_flow| {
-				tranche
-					.supply
-					.checked_add(&tranche_cash_flow)
-					.ok_or(ArithmeticError::Overflow.into())
-			},
-		)
+		self.combine_with_residual_top(fulfillments, |tranche, solution| {
+			tranche
+				.supply
+				.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+				.ok_or(ArithmeticError::Underflow.into())
+		})
 	}
 
 	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {

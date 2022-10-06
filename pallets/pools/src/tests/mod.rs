@@ -580,7 +580,8 @@ fn epoch() {
 		assert_eq!(pool.reserve.total, 500 * CURRENCY);
 
 		// Repay (with made up interest) after a month.
-		next_block_after(60 * 60 * 24 * 30);
+		const SECS_PER_MONTH: u64 = 60 * 60 * 24 * 30;
+		next_block_after(SECS_PER_MONTH);
 		test_nav_up(0, 10 * CURRENCY);
 		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
 
@@ -591,18 +592,23 @@ fn epoch() {
 		);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve,
-			500 * CURRENCY
-		); // not yet rebalanced
+			507936737938841306739
+		);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
 			0
 		);
-		assert!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve
-				> 500 * CURRENCY
-		); // there's interest in here now
+		assert_eq!(
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve,
+			502063262061158693261
+		);
 		assert_eq!(pool.reserve.available, 500 * CURRENCY);
 		assert_eq!(pool.reserve.total, 1010 * CURRENCY);
+		assert_eq!(
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve
+				+ pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve,
+			pool.reserve.total,
+		);
 
 		// Senior investor tries to redeem
 		next_block();
@@ -613,34 +619,39 @@ fn epoch() {
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = Pools::pool(0).unwrap();
+		let total_value = pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve
+			+ pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve;
 		let senior_price = Pools::get_tranche_token_price(0, SeniorTrancheId::get())
 			.unwrap()
 			.price;
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
-		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
+		assert_eq!(
+			pool.tranches.residual_tranche().unwrap().reserve,
+			507936737938841306739
+		);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
 			0
 		);
 		assert_eq!(pool.reserve.available, pool.reserve.total);
-		assert!(pool.reserve.total > 750 * CURRENCY);
-		assert!(pool.reserve.total < 800 * CURRENCY);
-		assert!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve
-				> 250 * CURRENCY
+		assert_eq!(pool.reserve.total, 758968368969420653370);
+		assert_eq!(
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve,
+			251031631030579346631
 		);
 		assert_eq!(
 			pool.reserve.total + senior_price.saturating_mul_int(250 * CURRENCY),
-			1010 * CURRENCY
+			1010 * CURRENCY + 1 // TODO: Fix rounding issue with FixedPointNumberExtension
 		);
 
-		assert!(
+		assert_eq!(
 			<Pools as PoolInspect<
 				<Test as frame_system::Config>::AccountId,
 				<Test as Config>::CurrencyId,
 			>>::get_tranche_token_price(0, SeniorTrancheId::get())
 			.unwrap()
-			.price > Rate::one()
+			.price,
+			Rate::from_inner(1004126524122317386524000000)
 		);
 	});
 }
