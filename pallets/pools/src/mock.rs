@@ -519,9 +519,9 @@ pub fn yield_on_debt(delta: Moment, interest: Rate, debt: Balance) -> Balance {
 pub fn invest_and_close(pool_id: u64, investments: Vec<(TrancheId, Balance)>) {
 	for (tranche_id, investment) in investments.clone() {
 		assert_ok!(Investments::update_invest_order(
-			TrancheCurrency::generate(0, tranche_id),
+			TrancheCurrency::generate(pool_id, tranche_id),
 			investment
 		));
 	}
-	assert_ok!(Pools::close_epoch(Origin::signed(10).clone(), 0));
+	assert_ok!(Pools::close_epoch(Origin::signed(10).clone(), pool_id));
 }
