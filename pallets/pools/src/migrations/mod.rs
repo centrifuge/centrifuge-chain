@@ -13,11 +13,26 @@
 //! Migrations of storage concerned with the pallet Pools
 
 pub mod altair {
-	use cfg_primitives::PoolId;
+	use std::marker::PhantomData;
+
+	use cfg_primitives::{Moment, PoolId};
 	use cfg_traits::TrancheCurrency as _;
 	use cfg_types::{CurrencyId as TCurrencyId, TrancheCurrency};
+	use codec::{Decode, Encode};
+	use frame_support::{dispatch::Weight, Blake2_128Concat};
+	use scale_info::TypeInfo;
+	use sp_arithmetic::{FixedPointNumber, FixedPointOperand, Perquintill};
+	use sp_runtime::{
+		traits::{Get, Zero},
+		BoundedVec, RuntimeDebug,
+	};
+	use sp_std::cell::RefCell;
 
-	use crate::*;
+	use crate::{
+		Config, EpochExecutionInfo, EpochExecutionTranche, EpochExecutionTranches, EpochSolution,
+		EpochState, One, Pallet, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
+		Seniority, Tranche, TrancheSalt, TrancheType, Tranches,
+	};
 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 	pub struct OldTranche<Balance, Rate, Weight, CurrencyId> {
@@ -75,7 +90,7 @@ pub mod altair {
 	}
 
 	#[frame_support::storage_alias]
-	type OldPools<T: Config> = StorageMap<
+	type Pool<T: Config> = StorageMap<
 		Pallet<T>,
 		Blake2_128Concat,
 		<T as Config>::PoolId,
@@ -119,7 +134,7 @@ pub mod altair {
 	}
 
 	#[frame_support::storage_alias]
-	type OldEpochExecution<T: Config> = StorageMap<
+	type EpochExecution<T: Config> = StorageMap<
 		Pallet<T>,
 		Blake2_128Concat,
 		<T as Config>::PoolId,
@@ -140,7 +155,7 @@ pub mod altair {
 	}
 
 	#[frame_support::storage_alias]
-	type ToBeClearedEpoch<T: Config> = StorageDoubleMap<
+	type Epoch<T: Config> = StorageDoubleMap<
 		Pallet<T>,
 		Blake2_128Concat,
 		<T as Config>::TrancheId,
@@ -150,7 +165,7 @@ pub mod altair {
 	>;
 
 	#[frame_support::storage_alias]
-	pub type ToBeClearedOrder<T: Config> = StorageDoubleMap<
+	pub type Order<T: Config> = StorageDoubleMap<
 		Pallet<T>,
 		Blake2_128Concat,
 		<T as Config>::TrancheId,
@@ -192,7 +207,7 @@ pub mod altair {
 
 		// Migrate PoolDetails
 		let mut loops = 0u64;
-		Pool::<T>::translate::<
+		crate::Pool::<T>::translate::<
 			OldPoolDetails<
 				T::CurrencyId,
 				T::EpochId,
@@ -273,7 +288,7 @@ pub mod altair {
 
 		// Migrate EpochExecutionInfo
 		let mut loops = 0u64;
-		EpochExecution::<T>::translate::<
+		crate::EpochExecution::<T>::translate::<
 			OldEpochExecutionInfo<
 				T::Balance,
 				T::Rate,
@@ -297,7 +312,7 @@ pub mod altair {
 				challenge_period_end,
 			} = info;
 
-			let details = OldPools::<T>::get(pool_id)
+			let details = Pool::<T>::get(pool_id)
 				.expect("If EpochTranches exists then also pool exists. Qed.");
 
 			let new_tranches = old_tranches
@@ -334,27 +349,66 @@ pub mod altair {
 		let mut weight = 0u64;
 
 		// Remove EpochDetails
-		let loops = ToBeClearedEpoch::<T>::clear(u32::MAX, None).loops;
+		let loops = Epoch::<T>::clear(u32::MAX, None).loops;
 		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
 
 		// Remove Order
-		let loops = ToBeClearedOrder::<T>::clear(u32::MAX, None).loops;
+		let loops = Order::<T>::clear(u32::MAX, None).loops;
 		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
 
 		weight
 	}
 
-	lazy_static::lazy_static! {
-			// TODO: Add counter for pre-migrate and post migrate to verify it ran through
+	thread_local! {
+		static NUM_POOL_DETAILS: RefCell<u32> = RefCell::new(0);
+		static NUM_EPOCH_EXECUTION_INFOS: RefCell<u32> = RefCell::new(0);
 	}
 
 	#[cfg(feature = "try-runtime")]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
+		NUM_POOL_DETAILS.with(|f| *f.borrow_mut() = 0);
+		NUM_EPOCH_EXECUTION_INFOS.with(|f| {
+			*f.borrow_mut() = 0;
+		});
+
+		Pool::<T>::iter_values()
+			.map(|_| {
+				NUM_POOL_DETAILS.with(|f| {
+					*f.borrow_mut() += 1;
+				})
+			})
+			.for_each(|_| {});
+
+		EpochExecution::<T>::iter_values()
+			.map(|_| {
+				NUM_EPOCH_EXECUTION_INFOS.with(|f| {
+					*f.borrow_mut() += 1;
+				})
+			})
+			.for_each(|_| {});
+
 		Ok(())
 	}
 
 	#[cfg(feature = "try-runtime")]
 	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
+		let mut count_pool_details = 0u32;
+		let mut count_epoch_execution_infos = 0u32;
+
+		crate::Pool::<T>::iter_values()
+			.map(|_| count_pool_details += 1)
+			.for_each(|_| {});
+
+		crate::EpochExecution::<T>::iter_values()
+			.map(|_| count_epoch_execution_infos += 1)
+			.for_each(|_| {});
+
+		assert_eq!(count_pool_details, NUM_POOL_DETAILS.with(|f| *f.borrow()));
+		assert_eq!(
+			count_epoch_execution_infos,
+			NUM_EPOCH_EXECUTION_INFOS.with(|f| *f.borrow())
+		);
+
 		Ok(())
 	}
 
@@ -380,7 +434,7 @@ pub mod altair {
 
 				// Setup storage correctly first from old version
 				// We need one pool-details
-				OldPools::<Test>::insert(
+				Pool::<Test>::insert(
 					POOL_ID,
 					OldPoolDetails {
 						currency: TCurrencyId::AUSD,
@@ -439,7 +493,7 @@ pub mod altair {
 					},
 				);
 				// We need one epochExecution Info
-				OldEpochExecution::<Test>::insert(
+				EpochExecution::<Test>::insert(
 					POOL_ID,
 					OldEpochExecutionInfo {
 						epoch: 0,
@@ -473,19 +527,19 @@ pub mod altair {
 					},
 				);
 				// We need two Orders with two different keys
-				ToBeClearedOrder::<Test>::insert(
+				Order::<Test>::insert(
 					TRANCHE_ID_JUNIOR,
 					ACCOUNT_JUNIOR_INVESTOR,
 					UserOrder::default(),
 				);
-				ToBeClearedOrder::<Test>::insert(
+				Order::<Test>::insert(
 					TRANCHE_ID_SENIOR,
 					ACCOUNT_SENIOR_INVESTOR,
 					UserOrder::default(),
 				);
 
 				// We need to Epoch with different keys
-				ToBeClearedEpoch::<Test>::insert(
+				Epoch::<Test>::insert(
 					TRANCHE_ID_JUNIOR,
 					0,
 					OldEpochDetails {
@@ -494,7 +548,7 @@ pub mod altair {
 						token_price: Rate::one(),
 					},
 				);
-				ToBeClearedEpoch::<Test>::insert(
+				Epoch::<Test>::insert(
 					TRANCHE_ID_SENIOR,
 					1,
 					OldEpochDetails {
