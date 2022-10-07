@@ -22,6 +22,8 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		type ClassId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
+
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 
 		type Balance: Member
@@ -57,8 +59,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
-		type ClassId = ();
-		type Origin = ();
+		type ClassId = T::ClassId;
+		type Origin = T::Origin;
 
 		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Moment)> {
 			Some(Self::latest(pool_id))

@@ -33,6 +33,7 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
 orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
+pallet-investments = { path = "../../pallets/investments", default-features = false, optional = true}
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
@@ -50,6 +51,7 @@ default = ['std']
 runtime-benchmarks = [
     'frame-benchmarking',
     'cfg-types/runtime-benchmarks',
+    'pallet-investments/runtime-benchmarks'
 ]
 std = [
     'codec/std',

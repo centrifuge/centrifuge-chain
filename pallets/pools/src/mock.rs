@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::{Balance, BlockNumber, PoolId, TrancheId};
+use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
 pub use cfg_primitives::{EpochId, Moment, TrancheWeight};
 use cfg_traits::{
 	Always, OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
@@ -386,7 +386,8 @@ impl PoolUpdateGuard for UpdateGuard {
 
 impl cfg_test_utils::mocks::nav::Config for Test {
 	type Balance = Balance;
-	type PoolId = u64;
+	type ClassId = CollectionId;
+	type PoolId = PoolId;
 }
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
