@@ -545,30 +545,6 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
 		},
-		/// Fulfilled orders were collected.
-		OrdersCollected {
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-			end_epoch_id: T::EpochId,
-			account: T::AccountId,
-			outstanding_collections: OutstandingCollections<T::Balance>,
-		},
-		/// An invest order was updated.
-		InvestOrderUpdated {
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-			account: T::AccountId,
-			old_order: T::Balance,
-			new_order: T::Balance,
-		},
-		/// A redeem order was updated.
-		RedeemOrderUpdated {
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
-			account: T::AccountId,
-			old_order: T::Balance,
-			new_order: T::Balance,
-		},
 	}
 
 	#[pallet::error]
@@ -606,14 +582,8 @@ pub mod pallet {
 		NoNAV,
 		/// Epoch needs to be executed before you can collect
 		EpochNotExecutedYet,
-		/// There's no outstanding order that could be collected
-		NoOutstandingOrder,
-		/// User needs to collect before a new order can be submitted
-		CollectRequired,
 		/// Adding & removing tranches is not supported
 		CannotAddOrRemoveTranches,
-		/// Indicating that a collect with `collect_n_epchs` == 0 was called
-		CollectsNoEpochs,
 		/// Invalid tranche seniority value
 		/// * seniority MUST be smaller number of tranches
 		/// * MUST be increasing per tranche
@@ -635,8 +605,6 @@ pub mod pallet {
 		FailedToUpdateTrancheMetadata,
 		/// Invalid TrancheId passed. In most cases out-of-bound index
 		InvalidTrancheId,
-		/// Indicates that the new passed order equals the old-order
-		NoNewOrder,
 		/// The requested tranche configuration has too many tranches
 		TooManyTranches,
 		/// Submitted solution is not an improvement
