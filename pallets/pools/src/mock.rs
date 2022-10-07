@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_primitives::{Balance, BlockNumber, PoolId, TrancheId};
-pub use cfg_primitives::{Moment, TrancheWeight};
+pub use cfg_primitives::{EpochId, Moment, TrancheWeight};
 use cfg_traits::{
 	Always, OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT,
@@ -297,7 +297,7 @@ impl Config for Test {
 	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type EpochId = u32;
+	type EpochId = EpochId;
 	type Event = Event;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;

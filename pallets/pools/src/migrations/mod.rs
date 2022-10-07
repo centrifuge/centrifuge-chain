@@ -15,7 +15,7 @@
 pub mod altair {
 	use cfg_primitives::PoolId;
 	use cfg_traits::TrancheCurrency as _;
-	use cfg_types::{CurrencyId, TrancheCurrency};
+	use cfg_types::{CurrencyId as TCurrencyId, TrancheCurrency};
 
 	use crate::*;
 
@@ -186,7 +186,7 @@ pub mod altair {
 		T::TrancheId: From<[u8; 16]> + Into<[u8; 16]>,
 		T::PoolId: From<PoolId> + Into<PoolId>,
 		T::TrancheCurrency: From<TrancheCurrency>,
-		T::CurrencyId: Into<CurrencyId>,
+		T::CurrencyId: Into<TCurrencyId>,
 	{
 		let mut weight = 0u64;
 
@@ -224,7 +224,7 @@ pub mod altair {
 				.into_iter()
 				.map(|old_tranche| {
 					let tranche_id = match old_tranche.currency.into() {
-						CurrencyId::Tranche(_pool_id, tranche_id) => tranche_id,
+						TCurrencyId::Tranche(_pool_id, tranche_id) => tranche_id,
 						_ => unreachable!("All tranches have tranche as currency. Qed."),
 					};
 
@@ -344,8 +344,9 @@ pub mod altair {
 		weight
 	}
 
-	#[cfg(feature = "try-runtime")]
-	use frame_support::ensure; // Not in prelude for try-runtime
+	lazy_static::lazy_static! {
+			// TODO: Add counter for pre-migrate and post migrate to verify it ran through
+	}
 
 	#[cfg(feature = "try-runtime")]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
@@ -365,10 +366,7 @@ pub mod altair {
 		use frame_support::assert_ok;
 
 		use super::*;
-		use crate::{
-			mock::{new_test_ext, MockAccountId, Origin, Test},
-			{self as pallet_pools},
-		};
+		use crate::mock::{new_test_ext, MockAccountId, Test};
 
 		#[test]
 		fn all_three_migrations_are_correct() {
@@ -385,13 +383,13 @@ pub mod altair {
 				OldPools::<Test>::insert(
 					POOL_ID,
 					OldPoolDetails {
-						currency: (),
+						currency: TCurrencyId::AUSD,
 						tranches: OldTranches {
 							tranches: vec![
 								OldTranche {
 									tranche_type: TrancheType::Residual,
 									seniority: 0,
-									currency: CurrencyId::Tranche(POOL_ID, TRANCHE_ID_JUNIOR),
+									currency: TCurrencyId::Tranche(POOL_ID, TRANCHE_ID_JUNIOR),
 									outstanding_invest_orders: 0,
 									outstanding_redeem_orders: 0,
 									debt: 0,
@@ -407,7 +405,7 @@ pub mod altair {
 										min_risk_buffer: Perquintill::zero(),
 									},
 									seniority: 0,
-									currency: CurrencyId::Tranche(POOL_ID, TRANCHE_ID_SENIOR),
+									currency: TCurrencyId::Tranche(POOL_ID, TRANCHE_ID_SENIOR),
 									outstanding_invest_orders: 0,
 									outstanding_redeem_orders: 0,
 									debt: 0,
@@ -506,7 +504,15 @@ pub mod altair {
 					},
 				);
 
+				assert_ok!(pre_migrate::<Test>());
+
 				// Run migrations
+				let _ = migrate_epoch_tranches::<Test>();
+				let _ = migrate_tranches::<Test>();
+				let _ = remove_not_needed_storage::<Test>();
+
+				// Assert post migration
+				assert_ok!(post_migrate::<Test>());
 			})
 		}
 	}
