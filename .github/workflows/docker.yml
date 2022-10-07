@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [main, parachain, 'release-v**']
+    branches: [main, 'release-v**']
   workflow_dispatch:
     inputs:
       docker_tag:
