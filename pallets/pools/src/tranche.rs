@@ -296,16 +296,16 @@ where
 //
 // Given the following tranche structure:
 // ----
-// Tranche-A     -> Index: 0, Id: Twox128::hash(pool_id + 0)
-// Tranche-B     -> Index: 1, Id: Twox128::hash(pool_id + 1)
-// Tranche-C     -> Index: 2, Id: Twox128::hash(pool_id + 2)
+// Tranche-A     -> Index: 0, Id: Blake2_128::hash(pool_id + 0)
+// Tranche-B     -> Index: 1, Id: Blake2_128::hash(pool_id + 1)
+// Tranche-C     -> Index: 2, Id: Blake2_128::hash(pool_id + 2)
 // ----
 //
 // Now replacing Tranche-B with Tranche-D
 // ----
-// Tranche-A     -> Index: 0, Id: Twox128::hash(pool_id + 0)
-// Tranche-D     -> Index: 1, Id: Twox128::hash(pool_id + 3)
-// Tranche-C     -> Index: 2, Id: Twox128::hash(pool_id + 2)
+// Tranche-A     -> Index: 0, Id: Blake2_128::hash(pool_id + 0)
+// Tranche-D     -> Index: 1, Id: Blake2_128::hash(pool_id + 3)
+// Tranche-C     -> Index: 2, Id: Blake2_128::hash(pool_id + 2)
 // ----
 //
 // One can see, that the index of Tranche-B and Tranche-D are equal

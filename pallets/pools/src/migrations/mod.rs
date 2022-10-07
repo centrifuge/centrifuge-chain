@@ -13,6 +13,7 @@
 //! Migrations of storage concerned with the pallet Pools
 
 pub mod altair {
+	use cfg_primitives::PoolId;
 	use cfg_traits::TrancheCurrency as _;
 	use cfg_types::{CurrencyId, TrancheCurrency};
 
@@ -37,9 +38,9 @@ pub mod altair {
 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 	pub struct OldTranches<Balance, Rate, Weight, Currency, TrancheId, PoolId> {
-		pub tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
-		ids: Vec<TrancheId>,
-		salt: TrancheSalt<PoolId>,
+		pub tranches: Vec<OldTranche<Balance, Rate, Weight, Currency>>,
+		pub ids: Vec<TrancheId>,
+		pub salt: TrancheSalt<PoolId>,
 	}
 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -60,7 +61,7 @@ pub mod altair {
 		/// Currency that the pool is denominated in (immutable).
 		pub currency: CurrencyId,
 		/// List of tranches, ordered junior to senior.
-		pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>,
+		pub tranches: OldTranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>,
 		/// Details about the parameters of the pool.
 		pub parameters: PoolParameters,
 		/// Metadata that specifies the pool.
@@ -157,6 +158,28 @@ pub mod altair {
 		<T as frame_system::Config>::AccountId,
 		UserOrder<<T as Config>::Balance, <T as Config>::EpochId>,
 	>;
+
+	/// Per-tranche and per-user order details.
+	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+	pub struct UserOrder<Balance, EpochId> {
+		pub invest: Balance,
+		pub redeem: Balance,
+		pub epoch: EpochId,
+	}
+
+	impl<Balance, EpochId> Default for UserOrder<Balance, EpochId>
+	where
+		Balance: Zero,
+		EpochId: One,
+	{
+		fn default() -> Self {
+			UserOrder {
+				invest: Zero::zero(),
+				redeem: Zero::zero(),
+				epoch: One::one(),
+			}
+		}
+	}
 
 	pub fn migrate_tranches<T: Config>() -> Weight
 	where
@@ -321,7 +344,6 @@ pub mod altair {
 		weight
 	}
 
-	use cfg_primitives::PoolId;
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure; // Not in prelude for try-runtime
 
@@ -338,12 +360,154 @@ pub mod altair {
 	#[cfg(test)]
 	#[cfg(feature = "try-runtime")]
 	mod test {
+		use cfg_primitives::TrancheId;
+		use cfg_types::Rate;
 		use frame_support::assert_ok;
 
 		use super::*;
 		use crate::{
-			mock::{new_test_ext, Origin, Test},
-			{self as pallet_anchors},
+			mock::{new_test_ext, MockAccountId, Origin, Test},
+			{self as pallet_pools},
 		};
+
+		#[test]
+		fn all_three_migrations_are_correct() {
+			new_test_ext().execute_with(|| {
+				const POOL_ID: PoolId = 0;
+				const TRANCHE_ID_JUNIOR: TrancheId = [0u8; 16];
+				const TRANCHE_ID_SENIOR: TrancheId = [1u8; 16];
+
+				const ACCOUNT_JUNIOR_INVESTOR: MockAccountId = 0;
+				const ACCOUNT_SENIOR_INVESTOR: MockAccountId = 1;
+
+				// Setup storage correctly first from old version
+				// We need one pool-details
+				OldPools::<Test>::insert(
+					POOL_ID,
+					OldPoolDetails {
+						currency: (),
+						tranches: OldTranches {
+							tranches: vec![
+								OldTranche {
+									tranche_type: TrancheType::Residual,
+									seniority: 0,
+									currency: CurrencyId::Tranche(POOL_ID, TRANCHE_ID_JUNIOR),
+									outstanding_invest_orders: 0,
+									outstanding_redeem_orders: 0,
+									debt: 0,
+									reserve: 0,
+									loss: 0,
+									ratio: Default::default(),
+									last_updated_interest: 0,
+									_phantom: Default::default(),
+								},
+								OldTranche {
+									tranche_type: TrancheType::NonResidual {
+										interest_rate_per_sec: Rate::one(),
+										min_risk_buffer: Perquintill::zero(),
+									},
+									seniority: 0,
+									currency: CurrencyId::Tranche(POOL_ID, TRANCHE_ID_SENIOR),
+									outstanding_invest_orders: 0,
+									outstanding_redeem_orders: 0,
+									debt: 0,
+									reserve: 0,
+									loss: 0,
+									ratio: Default::default(),
+									last_updated_interest: 0,
+									_phantom: Default::default(),
+								},
+							],
+							ids: vec![TRANCHE_ID_JUNIOR, TRANCHE_ID_SENIOR],
+							salt: (POOL_ID, 2),
+						},
+
+						parameters: PoolParameters {
+							min_epoch_time: 0,
+							max_nav_age: 0,
+						},
+						metadata: None,
+						status: PoolStatus::Open,
+						epoch: EpochState {
+							current: 0,
+							last_closed: 0,
+							last_executed: 0,
+						},
+						reserve: ReserveDetails {
+							max: 0,
+							total: 0,
+							available: 0,
+						},
+					},
+				);
+				// We need one epochExecution Info
+				OldEpochExecution::<Test>::insert(
+					POOL_ID,
+					OldEpochExecutionInfo {
+						epoch: 0,
+						nav: 0,
+						reserve: 0,
+						max_reserve: 0,
+						tranches: OldEpochExecutionTranches {
+							tranches: vec![
+								OldEpochExecutionTranche {
+									supply: 0,
+									price: Rate::one(),
+									invest: 0,
+									redeem: 0,
+									min_risk_buffer: Default::default(),
+									seniority: 0,
+									_phantom: Default::default(),
+								},
+								OldEpochExecutionTranche {
+									supply: 0,
+									price: Rate::one(),
+									invest: 0,
+									redeem: 0,
+									min_risk_buffer: Default::default(),
+									seniority: 0,
+									_phantom: Default::default(),
+								},
+							],
+						},
+						best_submission: None,
+						challenge_period_end: None,
+					},
+				);
+				// We need two Orders with two different keys
+				ToBeClearedOrder::<Test>::insert(
+					TRANCHE_ID_JUNIOR,
+					ACCOUNT_JUNIOR_INVESTOR,
+					UserOrder::default(),
+				);
+				ToBeClearedOrder::<Test>::insert(
+					TRANCHE_ID_SENIOR,
+					ACCOUNT_SENIOR_INVESTOR,
+					UserOrder::default(),
+				);
+
+				// We need to Epoch with different keys
+				ToBeClearedEpoch::<Test>::insert(
+					TRANCHE_ID_JUNIOR,
+					0,
+					OldEpochDetails {
+						invest_fulfillment: Default::default(),
+						redeem_fulfillment: Default::default(),
+						token_price: Rate::one(),
+					},
+				);
+				ToBeClearedEpoch::<Test>::insert(
+					TRANCHE_ID_SENIOR,
+					1,
+					OldEpochDetails {
+						invest_fulfillment: Default::default(),
+						redeem_fulfillment: Default::default(),
+						token_price: Rate::one(),
+					},
+				);
+
+				// Run migrations
+			})
+		}
 	}
 }

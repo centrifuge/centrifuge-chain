@@ -253,28 +253,6 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 	}
 }
 
-/// Per-tranche and per-user order details.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct UserOrder<Balance, EpochId> {
-	pub invest: Balance,
-	pub redeem: Balance,
-	pub epoch: EpochId,
-}
-
-impl<Balance, EpochId> Default for UserOrder<Balance, EpochId>
-where
-	Balance: Zero,
-	EpochId: One,
-{
-	fn default() -> Self {
-		UserOrder {
-			invest: Zero::zero(),
-			redeem: Zero::zero(),
-			epoch: One::one(),
-		}
-	}
-}
-
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber, TrancheCurrency>
@@ -286,15 +264,6 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumbe
 	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 	best_submission: Option<EpochSolution<Balance>>,
 	challenge_period_end: Option<BlockNumber>,
-}
-
-/// The outstanding collections for an account
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct OutstandingCollections<Balance> {
-	pub payout_currency_amount: Balance,
-	pub payout_token_amount: Balance,
-	pub remaining_invest_currency: Balance,
-	pub remaining_redeem_token: Balance,
 }
 
 /// Information about the deposit that has been taken to create a pool
