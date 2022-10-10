@@ -632,7 +632,9 @@ pub mod pallet {
 				penalty_interest_rate_per_year,
 			} = group;
 			let penalty_interest_rate_per_sec =
-				T::InterestAccrual::verify_penalty_rate(penalty_interest_rate_per_year)?;
+				T::InterestAccrual::convert_additive_rate_to_per_sec(
+					penalty_interest_rate_per_year,
+				)?;
 			let group = WriteOffGroup {
 				percentage,
 				overdue_days,
@@ -706,7 +708,9 @@ pub mod pallet {
 			// ensure this is a call from risk admin
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 			let penalty_interest_rate_per_sec =
-				T::InterestAccrual::verify_penalty_rate(penalty_interest_rate_per_year)?;
+				T::InterestAccrual::convert_additive_rate_to_per_sec(
+					penalty_interest_rate_per_year,
+				)?;
 
 			// try to write off
 			let (active_count, (.., percentage, penalty_interest_rate_per_sec)) =

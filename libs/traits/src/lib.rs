@@ -206,8 +206,8 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	/// Indicate that a rate is no longer in use
 	fn unreference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
 
-	/// Verifies a yearly penalty rate and converts it to a per-second penalty rate
-	fn verify_penalty_rate(
+	/// Verifies a yearly additive rate and converts it to a per-second additive rate
+	fn convert_additive_rate_to_per_sec(
 		interset_rate_per_year: InterestRate,
 	) -> Result<InterestRate, DispatchError>;
 }

@@ -499,7 +499,7 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 		Pallet::<T>::unreference_interest_rate(interest_rate_per_sec)
 	}
 
-	fn verify_penalty_rate(
+	fn convert_additive_rate_to_per_sec(
 		interest_rate_per_year: T::InterestRate,
 	) -> Result<T::InterestRate, DispatchError> {
 		Pallet::<T>::validate_rate(interest_rate_per_year)?;
