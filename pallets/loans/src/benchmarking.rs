@@ -34,7 +34,7 @@ use super::*;
 use crate::{
 	loan_type::{BulletLoan, CreditLineWithMaturity},
 	test_utils::initialise_test_pool,
-	types::WriteOffGroup,
+	types::WriteOffGroupInput,
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
 };
 
@@ -269,9 +269,7 @@ fn activate_test_loan_with_rate<T: Config>(
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
-	let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(rate, 5000))
-		.unwrap()
-		.into();
+	let rp: T::Rate = Rate::saturating_from_rational(rate, 5000).into();
 	LoansPallet::<T>::price(
 		RawOrigin::Signed(borrower).into(),
 		pool_id,
@@ -290,9 +288,9 @@ where
 		LoansPallet::<T>::add_write_off_group(
 			RawOrigin::Signed(risk_admin.clone()).into(),
 			pool_id,
-			WriteOffGroup {
+			WriteOffGroupInput {
 				percentage: Rate::saturating_from_rational(group.1, 100).into(),
-				penalty_interest_rate_per_sec: Rate::saturating_from_rational(1, 100).into(),
+				penalty_interest_rate_per_year: Rate::saturating_from_rational(1, 100).into(),
 				overdue_days: group.0,
 			},
 		)
@@ -408,8 +406,9 @@ benchmarks! {
 			math::seconds_per_year() * 2,
 		));
 		// interest rate is 5%
-		let interest_rate_per_sec: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
-	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_sec, loan_type)
+		let interest_rate_per_year: T::Rate = Rate::saturating_from_rational(5, 100).into();
+		let interest_rate_per_sec: T::Rate = math::interest_rate_per_sec(interest_rate_per_year).unwrap();
+	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_year, loan_type)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
@@ -422,10 +421,10 @@ benchmarks! {
 	add_write_off_group {
 		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
-		let write_off_group = WriteOffGroup {
+		let write_off_group = WriteOffGroupInput {
 			// 10%
 			percentage: Rate::saturating_from_rational(10, 100).into(),
-			penalty_interest_rate_per_sec: Rate::saturating_from_rational(1, 100).into(),
+			penalty_interest_rate_per_year: Rate::saturating_from_rational(1, 100).into(),
 			overdue_days: 3
 		};
 	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, write_off_group)
@@ -546,10 +545,10 @@ benchmarks! {
 		let risk_admin = risk_admin::<T>();
 		for i in 0..m {
 			let percentage: T::Rate = Rate::saturating_from_rational(i+1, m).into();
-			let penalty_interest_rate_per_sec = Rate::saturating_from_rational(i+1, m).into();
+			let penalty_interest_rate_per_year = Rate::saturating_from_rational(2*i + 1, 2*m).into();
 			let overdue_days = percentage.checked_mul_int(120).unwrap();
-			let write_off_group = WriteOffGroup {
-				percentage, penalty_interest_rate_per_sec, overdue_days
+			let write_off_group = WriteOffGroupInput {
+				percentage, penalty_interest_rate_per_year, overdue_days
 			};
 			LoansPallet::<T>::add_write_off_group(RawOrigin::Signed(risk_admin.clone()).into(), pool_id, write_off_group).expect("adding write off groups should not fail");
 		}
@@ -565,7 +564,7 @@ benchmarks! {
 	verify {
 		let index = (m-1).into();
 		let percentage = Rate::saturating_from_rational(100, 100).into();
-		let penalty_interest_rate_per_sec = Rate::saturating_from_rational(100, 100).into();
+		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(Rate::saturating_from_rational(2*m - 1, 2*m).into()).expect("Rate should be convertible to per-sec");
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOff{write_off_index: index})
@@ -592,8 +591,9 @@ benchmarks! {
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		let percentage = Rate::saturating_from_rational(100, 100).into();
-		let penalty_interest_rate_per_sec = Rate::saturating_from_rational(1, 100).into();
-	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, loan_id, percentage, penalty_interest_rate_per_sec)
+		let penalty_interest_rate_per_year = Rate::saturating_from_rational(1, 100).into();
+		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-second");
+	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, loan_id, percentage, penalty_interest_rate_per_year)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: None }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
