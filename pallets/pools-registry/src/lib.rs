@@ -282,13 +282,18 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges<
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-				T::MaxTranches,
-			>,
+			changes: PoolChanges,
 		) -> DispatchResultWithPostInfo {
+			/// Make sure the following are true for a valid Pool Update
+			/// 1. Make sure Origin is signed
+			/// 2. Ensure the signed origin is PoolAdmin
+			/// 3. Either no changes in tranches/metadata or changes in both
+			/// 4. Ensure not in Submission Epoch Time
+			/// 5. If no changes, do no_op
+			/// 6. Minimum epoch time has to be between min and max epoch time
+			/// 7. MaxNavAge has to be under the upper bound NavAge
+			/// 8. IsValidTrancheChange?
+
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has(
