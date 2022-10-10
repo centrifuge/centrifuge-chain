@@ -22,7 +22,7 @@ use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 use sp_runtime::WeakBoundedVec;
 use xcm::{
 	latest::MultiLocation,
-	prelude::{GeneralKey, Parachain, X2},
+	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
 };
 
@@ -265,6 +265,7 @@ where
 		&self,
 		decimals: u32,
 		parachain_id: ParachainId,
+		pallet_index: u8,
 		token_name: Vec<u8>,
 		token_symbol: Vec<u8>,
 	) -> AssetMetadata<Balance, CustomMetadata>
@@ -283,7 +284,11 @@ where
 			existential_deposit: Zero::zero(),
 			location: Some(VersionedMultiLocation::V1(MultiLocation {
 				parents: 1,
-				interior: X2(Parachain(parachain_id.into()), GeneralKey(tranche_id)),
+				interior: X3(
+					Parachain(parachain_id.into()),
+					PalletInstance(pallet_index),
+					GeneralKey(tranche_id),
+				),
 			})),
 			additional: CustomMetadata {
 				mintable: false,

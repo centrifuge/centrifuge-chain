@@ -6,6 +6,7 @@ RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-05-09}"
 SRTOOL_VERSION="${SRTOOL_VERSION:-1.62.0}"
 PACKAGE="${PACKAGE:-centrifuge-runtime}" # Need to replicate job for all runtimes
 
+
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
 
@@ -23,6 +24,11 @@ case $TARGET in
   build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
     docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home paritytech/srtool:$SRTOOL_VERSION build
+    ;;
+
+  build-runtime-fast)
+    export RUSTC_VERSION=$RUST_TOOLCHAIN
+    docker run --rm -e PACKAGE=$PACKAGE -e BUILD_OPTS="--features=fast-runtime" -v $PWD:/build -v /tmp/cargo:/cargo-home paritytech/srtool:$SRTOOL_VERSION build
     ;;
 
   tests)

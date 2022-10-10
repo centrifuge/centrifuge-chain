@@ -23,10 +23,7 @@ use cfg_types::{CustomMetadata, FeeKey};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{
-		Currency, EqualPrivilegeOnly, InstanceFilter, LockIdentifier, OnRuntimeUpgrade,
-		U128CurrencyToVote,
-	},
+	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, DispatchClass, Weight,
@@ -58,7 +55,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, Perbill, Permill,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -92,7 +89,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1013,
+	spec_version: 1014,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -108,78 +105,6 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
-	}
-}
-
-/// Custom runtime upgrades
-///
-/// Migration to include collator-selection in a running chain
-
-pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
-
-type BalanceOfCollatorSelection<T> =
-	<<T as pallet_collator_selection::Config>::Currency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
-
-impl<T> IntegrateCollatorSelection<T>
-where
-	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
-	T::AccountId: From<sp_runtime::AccountId32>,
-	T::Keys: From<SessionKeys>,
-{
-	fn to_version() -> u32 {
-		1011
-	}
-
-	fn db_access_weights(reads: Option<u64>, writes: Option<u64>) -> Weight {
-		let mut weight: Weight = 0u32 as Weight;
-
-		if let Some(num_reads) = reads {
-			weight += T::DbWeight::get()
-				.reads(1 as Weight)
-				.saturating_mul(num_reads);
-		}
-
-		if let Some(num_writes) = writes {
-			weight += T::DbWeight::get()
-				.writes(1 as Weight)
-				.saturating_mul(num_writes);
-		}
-
-		weight
-	}
-}
-
-impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
-where
-	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
-	BalanceOfCollatorSelection<T>: From<u128>,
-	T::AccountId: From<sp_runtime::AccountId32>,
-	T::Keys: From<SessionKeys>,
-	<T as frame_system::Config>::AccountId: From<<T as pallet_session::Config>::ValidatorId>,
-{
-	fn on_runtime_upgrade() -> Weight {
-		let mut consumed: Weight = 0;
-
-		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
-			let mut current_validators = <pallet_session::Validators<T>>::get()
-				.into_iter()
-				.map(|who| who.into())
-				.collect::<Vec<_>>();
-
-			current_validators.truncate(T::MaxInvulnerables::get() as usize);
-
-			// SAFETY: The vector is truncate before to ensure the vector fit into the
-			// expected BoundedVec from pallet_collator_selection.
-			let current_validators = current_validators.try_into().unwrap();
-
-			<pallet_collator_selection::Invulnerables<T>>::set(current_validators);
-
-			consumed += Self::db_access_weights(Some(1), Some(1))
-		}
-
-		consumed
 	}
 }
 
@@ -266,6 +191,37 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
+}
+
+/// Base Call Filter
+pub struct BaseCallFilter;
+impl Contains<Call> for BaseCallFilter {
+	fn contains(c: &Call) -> bool {
+		match c {
+			Call::PolkadotXcm(method) => match method {
+				// Block these calls when called by a signed extrinsic.
+				// Root will still be able to execute these.
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::__Ignore { .. } => {
+					unimplemented!()
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+			},
+			_ => true,
+		}
+	}
 }
 
 parameter_types! {
@@ -708,13 +664,13 @@ impl pallet_democracy::Config for Runtime {
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
 	type ExternalDefaultOrigin = AllOfCouncil;
-	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
+	/// A simple-majority can have the next scheduled referendum be a straight majority-carries vote.
+	type ExternalMajorityOrigin = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = HalfOfCouncil;
-	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
+	/// Half of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureRootOr<TwoThirdOfCouncil>;
+	type FastTrackOrigin = EnsureRootOr<HalfOfCouncil>;
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 	type InstantAllowed = InstantAllowed;
 	type InstantOrigin = EnsureRootOr<AllOfCouncil>;
@@ -962,55 +918,6 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 }
 
-/// Base Call Filter
-/// We block any call that could lead for tranche tokens to be transferred through XCM.
-pub struct BaseCallFilter;
-impl Contains<Call> for BaseCallFilter {
-	fn contains(c: &Call) -> bool {
-		match c {
-			Call::PolkadotXcm(method) => match method {
-				// We disable all PolkadotXcm extrinsics that allow users to build XCM messages
-				// from scratch, which could have them transferring Tranche tokens.
-				// To transfer tokens, use XTokens, for which we have specific filters
-				// blocking tranche transfers.
-				// To send a raw XCM message, use orml_xcm, which ensures the origin of
-				// such call to be root or majority of the collective.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::execute { .. }
-				| pallet_xcm::Call::teleport_assets { .. }
-				| pallet_xcm::Call::reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
-				pallet_xcm::Call::force_xcm_version { .. }
-				| pallet_xcm::Call::force_default_xcm_version { .. }
-				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
-				pallet_xcm::Call::__Ignore { .. } => {
-					unimplemented!()
-				}
-			},
-			Call::XTokens(method) => !matches!(
-				method,
-				orml_xtokens::Call::transfer {
-					currency_id: CurrencyId::Tranche(_, _),
-					..
-				}
-				| orml_xtokens::Call::transfer_with_fee {
-					currency_id: CurrencyId::Tranche(_, _),
-					..
-				}
-				// We preemptively disable this as we haven't encountered a use case for it.
-				// Shall some user or use case require it, we will make it more fine-grained.
-				| orml_xtokens::Call::transfer_multiasset { .. }
-				| orml_xtokens::Call::transfer_multiasset_with_fee { .. }
-				| orml_xtokens::Call::transfer_multiassets { .. }
-				| orml_xtokens::Call::transfer_multicurrencies { .. }
-			),
-			_ => true,
-		}
-	}
-}
-
 // Parameterize collator selection pallet
 parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
@@ -1134,7 +1041,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	IntegrateCollatorSelection<Runtime>,
+	(),
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]

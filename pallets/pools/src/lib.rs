@@ -311,6 +311,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// The immutable index of this pallet when instantiated within the
+		/// context of a runtime where it is used.
+		#[pallet::constant]
+		type PalletIndex: Get<u8>;
+
 		type PoolId: Member
 			+ Parameter
 			+ Default
@@ -730,6 +735,7 @@ pub mod pallet {
 				let metadata = tranche.create_asset_metadata(
 					decimals,
 					parachain_id,
+					T::PalletIndex::get(),
 					token_name.to_vec(),
 					token_symbol.to_vec(),
 				);

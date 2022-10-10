@@ -32,7 +32,7 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote, UnixTime,
+		PalletInfoAccess, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -189,6 +189,37 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
+}
+
+/// Base Call Filter
+pub struct BaseCallFilter;
+impl Contains<Call> for BaseCallFilter {
+	fn contains(c: &Call) -> bool {
+		match c {
+			Call::PolkadotXcm(method) => match method {
+				// Block these calls when called by a signed extrinsic.
+				// Root will still be able to execute these.
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::__Ignore { .. } => {
+					unimplemented!()
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+			},
+			_ => true,
+		}
+	}
 }
 
 parameter_types! {
@@ -1007,6 +1038,9 @@ impl pallet_loans::Config for Runtime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
+	/// The index with which this pallet is instantiated in this runtime.
+	pub PoolPalletIndex: u8 = <Pools as PalletInfoAccess>::index() as u8;
+
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
 		0
 	} else {
@@ -1082,6 +1116,7 @@ impl pallet_pools::Config for Runtime {
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
+	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = PoolCreateOrigin;
@@ -1163,55 +1198,6 @@ impl pallet_interest_accrual::Config for Runtime {
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type Time = Timestamp;
 	type Weights = ();
-}
-
-/// Base Call Filter
-/// We block any call that could lead for tranche tokens to be transferred through XCM.
-pub struct BaseCallFilter;
-impl Contains<Call> for BaseCallFilter {
-	fn contains(c: &Call) -> bool {
-		match c {
-			Call::PolkadotXcm(method) => match method {
-				// We disable all PolkadotXcm extrinsics that allow users to build XCM messages
-				// from scratch, which could have them transferring Tranche tokens.
-				// To transfer tokens, use XTokens, for which we have specific filters
-				// blocking tranche transfers.
-				// To send a raw XCM message, use orml_xcm, which ensures the origin of
-				// such call to be root or majority of the collective.
-				pallet_xcm::Call::send { .. }
-				| pallet_xcm::Call::execute { .. }
-				| pallet_xcm::Call::teleport_assets { .. }
-				| pallet_xcm::Call::reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
-				pallet_xcm::Call::force_xcm_version { .. }
-				| pallet_xcm::Call::force_default_xcm_version { .. }
-				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
-				pallet_xcm::Call::__Ignore { .. } => {
-					unimplemented!()
-				}
-			},
-			Call::XTokens(method) => !matches!(
-				method,
-				orml_xtokens::Call::transfer {
-					currency_id: CurrencyId::Tranche(_, _),
-					..
-				}
-				| orml_xtokens::Call::transfer_with_fee {
-					currency_id: CurrencyId::Tranche(_, _),
-					..
-				}
-				// We preemptively disable this as we haven't encountered a use case for it.
-				// Shall some user or use case require it, we will make it more fine-grained.
-				| orml_xtokens::Call::transfer_multiasset { .. }
-				| orml_xtokens::Call::transfer_multiasset_with_fee { .. }
-				| orml_xtokens::Call::transfer_multiassets { .. }
-				| orml_xtokens::Call::transfer_multicurrencies { .. }
-			),
-			_ => true,
-		}
-	}
 }
 
 // Frame Order in this block dictates the index of each one in the metadata

@@ -26,7 +26,7 @@ use cfg_types::{
 };
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, Everything, GenesisBuild, SortedMembers},
+	traits::{AsEnsureOriginWithArg, Everything, GenesisBuild, PalletInfoAccess, SortedMembers},
 	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -152,6 +152,9 @@ impl orml_tokens::Config for MockRuntime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
+	/// The index with which this pallet is instantiated in this runtime.
+	pub PoolPalletIndex: u8 = <Pools as PalletInfoAccess>::index() as u8;
+
 	pub const ChallengeTime: u64 = 0; // disable challenge period
 	pub const MinUpdateDelay: u64 = 0; // no delay
 	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = false;
@@ -209,6 +212,7 @@ impl pallet_pools::Config for MockRuntime {
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
+	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainId;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<u64>;
@@ -318,7 +322,7 @@ parameter_types! {
 }
 impl pallet_permissions::Config for MockRuntime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Editors = frame_support::traits::Everything;
+	type Editors = Everything;
 	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
 	type Role = Role;
