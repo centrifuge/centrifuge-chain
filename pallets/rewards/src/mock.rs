@@ -2,7 +2,6 @@ use frame_support::{
 	traits::{ConstU16, ConstU32, ConstU64, Currency},
 	PalletId,
 };
-use frame_system as system;
 use sp_arithmetic::fixed_point::FixedU64;
 use sp_core::H256;
 use sp_runtime::{
@@ -31,7 +30,7 @@ frame_support::construct_runtime!(
 	}
 );
 
-impl system::Config for Test {
+impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<u64>;
 	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -83,7 +82,7 @@ impl pallet_rewards::Config for Test {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut ext: sp_io::TestExternalities = system::GenesisConfig::default()
+	let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap()
 		.into();

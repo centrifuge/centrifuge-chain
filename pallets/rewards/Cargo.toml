@@ -1,11 +1,12 @@
 [package]
-authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Rewards pallet for runtime"
-edition = "2021"
-license = "LGPL-3.0"
 name = "pallet-rewards"
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/rewards"
 version = "0.1.0"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Rewards pallet"
+edition = "2021"
+homepage = "https://centrifuge.io"
+license = "LGPL-3.0"
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/rewards"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -18,9 +19,6 @@ frame-system = { git = "https://github.com/paritytech/substrate", default-featur
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 num-traits = { version = "0.2", default-features = false }
 
-# optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
-
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
@@ -30,7 +28,6 @@ lazy_static = "1.4"
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["frame-benchmarking"]
 try-runtime = ["frame-support/try-runtime"]
 std = [
     "codec/std",
