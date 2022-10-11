@@ -17,24 +17,22 @@ use frame_support::{
 };
 use num_traits::Signed;
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub},
 	FixedPointNumber, FixedPointOperand, TokenError,
 };
-use types::{GroupDetails, StakedDetails};
+use types::{Group, StakeAccount};
 
-pub trait Rewards<AccountId, Balance> {
-	fn distribute_reward(amount: Balance) -> DispatchResult;
-	fn deposit_stake(account_id: &AccountId, amount: Balance) -> DispatchResult;
-	fn withdraw_stake(account_id: &AccountId, amount: Balance) -> DispatchResult;
-	fn compute_reward(account_id: &AccountId) -> Result<Balance, DispatchError>;
-	fn claim_reward(account_id: &AccountId) -> Result<Balance, DispatchError>;
-}
+pub trait Rewards<AccountId> {
+	type Balance: AtLeast32BitUnsigned + FixedPointOperand;
 
-pub trait RewardsInspector<AccountId, Balance, SignedBalance, Rate>:
-	Rewards<AccountId, Balance>
-{
-	fn group() -> GroupDetails<Balance, Rate>;
-	fn account(account_id: &AccountId) -> StakedDetails<Balance, SignedBalance>;
+	fn distribute_reward(amount: Self::Balance) -> DispatchResult;
+	fn deposit_stake(account_id: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn withdraw_stake(account_id: &AccountId, amount: Self::Balance) -> DispatchResult;
+	fn compute_reward(account_id: &AccountId) -> Result<Self::Balance, DispatchError>;
+	fn claim_reward(account_id: &AccountId) -> Result<Self::Balance, DispatchError>;
+
+	fn group_stake() -> Self::Balance;
+	fn account_stake(account_id: &AccountId) -> Self::Balance;
 }
 
 #[frame_support::pallet]
@@ -60,7 +58,6 @@ pub mod pallet {
 			+ Default
 			+ scale_info::TypeInfo
 			+ MaxEncodedLen
-			+ Saturating
 			+ Signed
 			+ CheckedSub
 			+ CheckedAdd;
@@ -68,7 +65,6 @@ pub mod pallet {
 		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TypeInfo
 			+ MaxEncodedLen
-			+ Saturating
 			+ Encode
 			+ Decode;
 	}
@@ -82,14 +78,14 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub type Group<T: Config> = StorageValue<_, GroupDetails<BalanceOf<T>, T::Rate>, ValueQuery>;
+	pub type Groups<T: Config> = StorageValue<_, Group<BalanceOf<T>, T::Rate>, ValueQuery>;
 
 	#[pallet::storage]
-	pub type Staked<T: Config> = StorageMap<
+	pub type StakeAccounts<T: Config> = StorageMap<
 		_,
 		Blake2_256,
 		T::AccountId,
-		StakedDetails<BalanceOf<T>, T::SignedBalance>,
+		StakeAccount<BalanceOf<T>, T::SignedBalance>,
 		ValueQuery,
 	>;
 
@@ -102,23 +98,25 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {}
 
-	impl<T: Config> Rewards<T::AccountId, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> Rewards<T::AccountId> for Pallet<T>
 	where
 		BalanceOf<T>: FixedPointOperand,
 	{
-		fn distribute_reward(amount: BalanceOf<T>) -> DispatchResult {
-			Group::<T>::try_mutate(|group| group.distribute_reward(amount))?;
+		type Balance = BalanceOf<T>;
+
+		fn distribute_reward(amount: Self::Balance) -> DispatchResult {
+			Groups::<T>::try_mutate(|group| group.distribute_reward(amount))?;
 
 			T::Currency::deposit_creating(&T::PalletId::get().into_account_truncating(), amount);
 
 			Ok(())
 		}
 
-		fn deposit_stake(account_id: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+		fn deposit_stake(account_id: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 			T::Currency::reserve(&account_id, amount)?;
 
-			Group::<T>::try_mutate(|group| {
-				Staked::<T>::try_mutate(account_id, |staked| {
+			Groups::<T>::try_mutate(|group| {
+				StakeAccounts::<T>::try_mutate(account_id, |staked| {
 					staked.add_amount(amount, group.reward_per_token())
 				})?;
 
@@ -128,13 +126,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn withdraw_stake(account_id: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+		fn withdraw_stake(account_id: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 			if T::Currency::reserved_balance(&account_id) < amount {
 				return Err(DispatchError::Token(TokenError::NoFunds));
 			}
 
-			Group::<T>::try_mutate(|group| {
-				Staked::<T>::try_mutate(account_id, |staked| {
+			Groups::<T>::try_mutate(|group| {
+				StakeAccounts::<T>::try_mutate(account_id, |staked| {
 					staked.sub_amount(amount, group.reward_per_token())
 				})?;
 
@@ -146,17 +144,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn compute_reward(account_id: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
-			let group = Group::<T>::get();
-			let staked = Staked::<T>::get(account_id);
+		fn compute_reward(account_id: &T::AccountId) -> Result<Self::Balance, DispatchError> {
+			let group = Groups::<T>::get();
+			let staked = StakeAccounts::<T>::get(account_id);
 			let reward = staked.compute_reward(group.reward_per_token())?;
 
 			Ok(reward)
 		}
 
-		fn claim_reward(account_id: &T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
-			let group = Group::<T>::get();
-			let reward = Staked::<T>::try_mutate(account_id, |staked| {
+		fn claim_reward(account_id: &T::AccountId) -> Result<Self::Balance, DispatchError> {
+			let group = Groups::<T>::get();
+			let reward = StakeAccounts::<T>::try_mutate(account_id, |staked| {
 				staked.claim_reward(group.reward_per_token())
 			})?;
 
@@ -169,19 +167,13 @@ pub mod pallet {
 
 			Ok(reward)
 		}
-	}
 
-	impl<T: Config> RewardsInspector<T::AccountId, BalanceOf<T>, T::SignedBalance, T::Rate>
-		for Pallet<T>
-	where
-		BalanceOf<T>: FixedPointOperand,
-	{
-		fn group() -> GroupDetails<BalanceOf<T>, T::Rate> {
-			Group::<T>::get()
+		fn group_stake() -> Self::Balance {
+			Groups::<T>::get().total_staked()
 		}
 
-		fn account(account_id: &T::AccountId) -> StakedDetails<BalanceOf<T>, T::SignedBalance> {
-			Staked::<T>::get(account_id)
+		fn account_stake(account_id: &T::AccountId) -> Self::Balance {
+			StakeAccounts::<T>::get(account_id).staked()
 		}
 	}
 }
