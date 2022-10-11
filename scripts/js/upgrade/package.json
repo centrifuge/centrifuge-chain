@@ -1,0 +1,17 @@
+{
+  "name": "upgrade",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "execute": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@polkadot/api": "^7.6.1",
+    "@polkadot/util": "^7.6.1",
+    "@polkadot/util-crypto": "^8.3.3"
+  }
+}

@@ -401,7 +401,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const Period: u32 = 6 * HOURS;
+	pub const Period: u32 = prod_or_fast!(6 * HOURS, 1 * MINUTES, "CFG_SESSION_PERIOD");
 	pub const Offset: u32 = 0;
 }
 
