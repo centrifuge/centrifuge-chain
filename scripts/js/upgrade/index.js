@@ -5,6 +5,7 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
 const run = async () => {
+  let exitCode = 0;
   try {
     console.log("Parsing Args ...")
     // 0 & 1 are command context
@@ -44,6 +45,10 @@ const run = async () => {
     console.log("Waiting until Centrifuge Chain is producing blocks")
     await waitUntilEventFound(api, "ExtrinsicSuccess")
 
+    // Wait one extra session
+    await waitUntilEventFound(api, "EmptyTerm")
+    // await waitUntilEventFound(api, "NewSession")
+
     const keyring = new Keyring({ type: "sr25519" });
     const alice = keyring.addFromUri(seeds[0]);
     const bob = keyring.addFromUri(seeds[1]);
@@ -53,7 +58,7 @@ const run = async () => {
     const wasmHash = blake2AsHex(wasm)
     console.log("Applying WASM Blake2 Hash:", wasmHash)
 
-    nonce = Number((await api.query.system.account(alice.address)).nonce);
+    let nonce = Number((await api.query.system.account(alice.address)).nonce);
     const preimageNoted = await notePreimageAuth(api, alice, wasmHash, nonce);
 
     console.log("Continuing with council proposal using", preimageNoted)
@@ -80,33 +85,34 @@ const run = async () => {
     await waitUntilEventFound(api, "UpgradeAuthorized")
 
     console.log("Proceeding to enact upgrade")
-    let nonce = Number((await api.query.system.account(alice.address)).nonce);
+    nonce = Number((await api.query.system.account(alice.address)).nonce);
     await enactUpgrade(api, alice, `0x${wasm.toString('hex')}`, nonce);
 
     console.log("Waiting for ValidationFunctionApplied event")
     await waitUntilEventFound(api, "ValidationFunctionApplied")
 
     console.log("Waiting for 3 NewSession events")
-    await waitUntilEventFound(api, "EmptyTerm")
+    let foundInBlock = await waitUntilEventFound(api, "EmptyTerm")
     // await waitUntilEventFound(api, "NewSession")
 
+    console.log("getting header")
     console.log("First event found, waiting for second event")
-    await waitUntilEventFound(api, "EmptyTerm")
+    foundInBlock = await waitUntilEventFound(api, "EmptyTerm", foundInBlock+1)
     // await waitUntilEventFound(api, "NewSession")
 
     console.log("Second event found, waiting for third event")
-    await waitUntilEventFound(api, "EmptyTerm")
+    await waitUntilEventFound(api, "EmptyTerm", foundInBlock+1)
     // await waitUntilEventFound(api, "NewSession")
 
     console.log("Runtime Upgrade succeeded")
 
-    process.exit(0)
   } catch (error) {
     console.log('error:', error);
-    process.exit(1);
+    exitCode = 1;
   } finally {
     await execCommand('cd ../../../ && ./scripts/init.sh stop-parachain-docker')
     await execCommand('cd ../../../ && ./scripts/init.sh stop-relay-chain')
+    process.exit(exitCode)
   }
 
 };
@@ -121,7 +127,7 @@ async function execCommand(strCommand) {
   }
 }
 
-async function waitUntilEventFound(api, eventName) {
+async function waitUntilEventFound(api, eventName, fromBlock = 0) {
   return new Promise(async (resolve, reject) => {
     let maxCountDown = 30;
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
@@ -134,10 +140,9 @@ async function waitUntilEventFound(api, eventName) {
       const at = await api.at(header.hash);
       const events = await at.query.system.events();
       events.forEach((er) => {
-        console.log("EvName", er.event.method)
-        if (er.event.method === eventName) {
+        if ((er.event.method === eventName) && (Number(header.number) > fromBlock)) {
           unsubscribe()
-          resolve()
+          resolve(Number(header.number))
         }
       })
 
@@ -168,18 +173,7 @@ async function notePreimageAuth(api, alice, wasmFileHash, nonce) {
             console.log("PreimageNoted", preimageNoted);
             resolve(preimageNoted)
           } else if (result.isError) {
-            let error = result.asError;
-            console.log("AsError", error);
-            // if (error.isModule) {
-            //   // for module errors, we have the section indexed, lookup
-            //   const decoded = api.registry.findMetaError(error.asModule);
-            //   const { docs, name, section } = decoded;
-            //
-            //   console.log(`${section}.${name}: ${docs.join(' ')}`);
-            // } else {
-            //   // Other, CannotLookup, BadOrigin, no extra info
-            //   console.log(error.toString());
-            // }
+            console.log("AsError", result.asError);
             console.log(`Transaction Error: ${result.dispatchError}`);
             reject("blabla bad")
           }
