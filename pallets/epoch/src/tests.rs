@@ -1,239 +1,124 @@
-use frame_support::{assert_noop, assert_ok};
-use sp_runtime::ArithmeticError;
-
 use super::*;
-use crate::mock::{Rewards as Pallet, *};
+use crate::mock::*;
 
-const REWARD_1: u64 = 100;
-
-#[test]
-fn reward_to_nothing() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			Pallet::distribute_reward(REWARD_1),
-			ArithmeticError::DivisionByZero
-		);
-	});
-}
+const NEW_ASSOCIATED_DATA: u32 = 5;
 
 #[test]
-fn stake() {
-	const USER_A_STAKED_1: u64 = 5000;
-	const USER_A_STAKED_2: u64 = 1000;
+fn first_default_epoch() {
+	let expected = EpochDetails {
+		ends_on: INITIAL_BLOCK,
+		associated_data: u32::default(),
+	};
 
 	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Pallet::deposit_stake(&USER_A, USER_A_STAKED_1));
 		assert_eq!(
-			Balances::free_balance(&USER_A),
-			USER_INITIAL_BALANCE - USER_A_STAKED_1
+			Epoch1::update_next_associated_data(|associated_data| -> Result<(), ()> {
+				*associated_data = NEW_ASSOCIATED_DATA;
+				Ok(())
+			}),
+			Ok(())
 		);
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 1
-		assert_ok!(Pallet::deposit_stake(&USER_A, USER_A_STAKED_2));
+		assert_eq!(ActiveEpoch::<Test, Instance1>::get(), expected);
 		assert_eq!(
-			Balances::free_balance(&USER_A),
-			USER_INITIAL_BALANCE - (USER_A_STAKED_1 + USER_A_STAKED_2)
+			Epoch1::update_epoch(|epoch| {
+				assert_eq!(epoch, &expected);
+				23
+			}),
+			Some(23)
 		);
 	});
 }
 
 #[test]
-fn stake_insufficient_balance() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			Pallet::deposit_stake(&USER_A, USER_INITIAL_BALANCE + 1),
-			pallet_balances::Error::<Test>::InsufficientBalance
-		);
-	});
-}
-
-#[test]
-fn stake_nothing() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::deposit_stake(&USER_A, 0));
-	});
-}
-
-#[test]
-fn unstake() {
-	const USER_A_STAKED: u64 = 1000;
-	const USER_A_UNSTAKED_1: u64 = 250;
-	const USER_A_UNSTAKED_2: u64 = USER_A_STAKED - USER_A_UNSTAKED_1;
+fn epoch_after_first_default_epoch() {
+	let expected = EpochDetails {
+		ends_on: INITIAL_BLOCK + EPOCH_1_PERIOD,
+		associated_data: NEW_ASSOCIATED_DATA,
+	};
 
 	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Pallet::deposit_stake(&USER_A, USER_A_STAKED));
-		assert_ok!(Pallet::withdraw_stake(&USER_A, USER_A_UNSTAKED_1));
-		let expected_user_balance = USER_INITIAL_BALANCE - USER_A_STAKED + USER_A_UNSTAKED_1;
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_balance);
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 1
-		assert_ok!(Pallet::withdraw_stake(&USER_A, USER_A_UNSTAKED_2));
-		assert_eq!(Balances::free_balance(&USER_A), USER_INITIAL_BALANCE);
-	});
-}
-
-#[test]
-fn unstake_insufficient_balance() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(Pallet::withdraw_stake(&USER_A, 1), TokenError::NoFunds);
-
-		assert_ok!(Pallet::deposit_stake(&USER_A, 1000));
-
-		assert_noop!(Pallet::withdraw_stake(&USER_A, 2000), TokenError::NoFunds);
-	});
-}
-
-#[test]
-fn unstake_nothing() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::withdraw_stake(&USER_A, 0));
-	});
-}
-
-#[test]
-fn claim() {
-	const USER_A_STAKED: u64 = 1000;
-
-	new_test_ext().execute_with(|| {
-		let mut expected_user_balance = USER_INITIAL_BALANCE;
-		// DISTRIBUTION 0
-		assert_ok!(Pallet::deposit_stake(&USER_A, USER_A_STAKED));
-		expected_user_balance -= USER_A_STAKED;
-		assert_ok!(Pallet::claim_reward(&USER_A), 0);
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_balance);
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 1
 		assert_eq!(
-			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			REWARD_1
+			Epoch1::update_next_associated_data(|associated_data| -> Result<(), ()> {
+				*associated_data = NEW_ASSOCIATED_DATA;
+				Ok(())
+			}),
+			Ok(())
 		);
-		assert_ok!(Pallet::compute_reward(&USER_A), REWARD_1);
-		assert_ok!(Pallet::claim_reward(&USER_A), REWARD_1);
-		expected_user_balance += REWARD_1;
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_balance);
+		assert_eq!(Epoch1::update_epoch(|_| ()), Some(()));
+		assert_eq!(ActiveEpoch::<Test, Instance1>::get(), expected);
+
+		mock::advance_in_time(EPOCH_1_PERIOD);
 		assert_eq!(
-			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			0
+			Epoch1::update_epoch(|epoch| {
+				assert_eq!(epoch, &expected);
+			}),
+			Some(())
 		);
-
-		assert_ok!(Pallet::compute_reward(&USER_A), 0);
-		assert_ok!(Pallet::claim_reward(&USER_A), 0);
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_balance);
-		assert_eq!(
-			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			0
-		);
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 2
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-		assert_eq!(
-			Balances::free_balance(&RewardsPalletId::get().into_account_truncating()),
-			REWARD_1 * 2
-		);
-
-		// DISTRIBUTION 3
-		assert_ok!(Pallet::claim_reward(&USER_A), REWARD_1 * 2);
-		expected_user_balance += REWARD_1 * 2;
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_balance);
-		assert_ok!(Pallet::withdraw_stake(&USER_A, USER_A_STAKED));
-		expected_user_balance += USER_A_STAKED;
-		// No more stake in the group
-		assert_noop!(
-			Pallet::distribute_reward(REWARD_1),
-			ArithmeticError::DivisionByZero
-		);
-
-		// DISTRIBUTION 4
-		assert_ok!(Pallet::claim_reward(&USER_A), 0);
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_balance);
 	});
 }
 
 #[test]
-fn claim_nothing() {
-	const USER_A_STAKED: u64 = 1000;
+fn epoch_after_two_epochs() {
+	let expected = EpochDetails {
+		ends_on: INITIAL_BLOCK + EPOCH_1_PERIOD + EPOCH_1_PERIOD,
+		associated_data: NEW_ASSOCIATED_DATA,
+	};
 
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::claim_reward(&USER_A));
-		assert_eq!(Balances::free_balance(&USER_A), USER_INITIAL_BALANCE);
-
-		assert_ok!(Pallet::deposit_stake(&USER_A, USER_A_STAKED));
-		assert_ok!(Pallet::withdraw_stake(&USER_A, USER_A_STAKED));
-
-		assert_noop!(
-			Pallet::distribute_reward(REWARD_1),
-			ArithmeticError::DivisionByZero
+		assert_eq!(
+			Epoch1::update_next_associated_data(|associated_data| -> Result<(), ()> {
+				*associated_data = NEW_ASSOCIATED_DATA;
+				Ok(())
+			}),
+			Ok(())
 		);
+		assert_eq!(Epoch1::update_epoch(|_| ()), Some(()));
 
-		// DISTRIBUTION 2
-		assert_ok!(Pallet::claim_reward(&USER_A));
-		assert_eq!(Balances::free_balance(&USER_A), USER_INITIAL_BALANCE);
+		mock::advance_in_time(EPOCH_1_PERIOD);
+		assert_eq!(Epoch1::update_epoch(|_| ()), Some(()));
+		assert_eq!(ActiveEpoch::<Test, Instance1>::get(), expected);
+
+		mock::advance_in_time(EPOCH_1_PERIOD);
+		assert_eq!(
+			Epoch1::update_epoch(|epoch| {
+				assert_eq!(epoch, &expected);
+			}),
+			Some(())
+		);
 	});
 }
 
 #[test]
-fn several_users_interacting() {
-	const USER_A_STAKED: u64 = 1000;
-	const USER_B_STAKED: u64 = 4000;
-
+fn associated_data_not_updated_if_fails() {
 	new_test_ext().execute_with(|| {
-		let mut expected_user_a_balance = USER_INITIAL_BALANCE;
-		let mut expected_user_b_balance = USER_INITIAL_BALANCE;
-		// DISTRIBUTION 0
-		assert_ok!(Pallet::deposit_stake(&USER_A, USER_A_STAKED));
-		expected_user_a_balance -= USER_A_STAKED;
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_a_balance);
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 1
-		assert_ok!(Pallet::deposit_stake(&USER_B, USER_B_STAKED));
-		expected_user_b_balance -= USER_B_STAKED;
-		assert_ok!(Pallet::claim_reward(&USER_A));
-		expected_user_a_balance += REWARD_1;
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_a_balance);
-		assert_eq!(Balances::free_balance(&USER_B), expected_user_b_balance);
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 2
-		assert_ok!(Pallet::claim_reward(&USER_A));
-		expected_user_a_balance += REWARD_1 * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_ok!(Pallet::claim_reward(&USER_B));
-		expected_user_b_balance += REWARD_1 * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_a_balance);
-		assert_eq!(Balances::free_balance(&USER_B), expected_user_b_balance);
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 3
-		assert_ok!(Pallet::withdraw_stake(&USER_A, USER_A_STAKED));
-		expected_user_a_balance += USER_A_STAKED;
-		assert_ok!(Pallet::distribute_reward(REWARD_1));
-
-		// DISTRIBUTION 4
-		assert_ok!(Pallet::claim_reward(&USER_A));
-		expected_user_a_balance += REWARD_1 * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_ok!(Pallet::claim_reward(&USER_B));
-		expected_user_b_balance +=
-			REWARD_1 * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED) + REWARD_1;
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_a_balance);
-		assert_eq!(Balances::free_balance(&USER_B), expected_user_b_balance);
-		assert_ok!(Pallet::withdraw_stake(&USER_B, USER_B_STAKED));
-		expected_user_b_balance += USER_B_STAKED;
-		// No more stake in the group
-		assert_noop!(
-			Pallet::distribute_reward(REWARD_1),
-			ArithmeticError::DivisionByZero
+		assert_eq!(
+			Epoch1::update_next_associated_data(|associated_data| -> Result<(), ()> {
+				*associated_data = NEW_ASSOCIATED_DATA;
+				Err(())
+			}),
+			Err(())
 		);
+		assert_eq!(Epoch1::update_epoch(|_| ()), Some(()));
 
-		// DISTRIBUTION 5
-		assert_ok!(Pallet::claim_reward(&USER_A));
-		assert_ok!(Pallet::claim_reward(&USER_B));
-		assert_eq!(Balances::free_balance(&USER_A), expected_user_a_balance);
-		assert_eq!(Balances::free_balance(&USER_B), expected_user_b_balance);
+		mock::advance_in_time(EPOCH_1_PERIOD);
+		assert_eq!(
+			Epoch1::update_epoch(|epoch| {
+				assert_eq!(epoch.associated_data, u32::default());
+			}),
+			Some(())
+		);
+	});
+}
+
+#[test]
+fn callback_only_called_when_epoch_changes() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(Epoch1::update_epoch(|_| ()), Some(()));
+
+		mock::advance_in_time(EPOCH_1_PERIOD / 2);
+		assert_eq!(Epoch1::update_epoch(|_| ()), None);
+
+		mock::advance_in_time(EPOCH_1_PERIOD / 2);
+		assert_eq!(Epoch1::update_epoch(|_| ()), Some(()));
 	});
 }

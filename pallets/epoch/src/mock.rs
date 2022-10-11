@@ -1,23 +1,17 @@
-use frame_support::{
-	traits::{ConstU16, ConstU32, ConstU64, Currency},
-	PalletId,
-};
-use frame_system as system;
-use sp_arithmetic::fixed_point::FixedU64;
-use sp_core::H256;
+use frame_support::traits::{ConstU16, ConstU32, ConstU64};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate as pallet_rewards;
+use crate as pallet_epoch;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-pub const USER_A: u64 = 1;
-pub const USER_B: u64 = 2;
-pub const USER_INITIAL_BALANCE: u64 = 100000;
+pub const EPOCH_1_PERIOD: u64 = 10;
+pub const EPOCH_2_PERIOD: u64 = 20;
+pub const INITIAL_BLOCK: u64 = 23;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -26,13 +20,13 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Rewards: pallet_rewards::{Pallet, Storage, Event<T>},
+		Epoch1: pallet_epoch::<Instance1>::{Pallet, Storage, Event<T>},
+		Epoch2: pallet_epoch::<Instance2>::{Pallet, Storage, Event<T>},
 	}
 );
 
-impl system::Config for Test {
-	type AccountData = pallet_balances::AccountData<u64>;
+impl frame_system::Config for Test {
+	type AccountData = ();
 	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = ConstU64<250>;
@@ -42,7 +36,7 @@ impl system::Config for Test {
 	type Call = Call;
 	type DbWeight = ();
 	type Event = Event;
-	type Hash = H256;
+	type Hash = sp_core::H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
 	type Index = u64;
@@ -58,40 +52,31 @@ impl system::Config for Test {
 	type Version = ();
 }
 
-impl pallet_balances::Config for Test {
-	type AccountStore = System;
-	type Balance = u64;
-	type DustRemoval = ();
+impl pallet_epoch::Config<pallet_epoch::Instance1> for Test {
+	type AssociatedType = u32;
+	type BlockPerEpoch = ConstU64<EPOCH_1_PERIOD>;
 	type Event = Event;
-	type ExistentialDeposit = ();
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type WeightInfo = ();
 }
 
-frame_support::parameter_types! {
-	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
-}
-
-impl pallet_rewards::Config for Test {
-	type Currency = Balances;
+impl pallet_epoch::Config<pallet_epoch::Instance2> for Test {
+	type AssociatedType = i64;
+	type BlockPerEpoch = ConstU64<EPOCH_2_PERIOD>;
 	type Event = Event;
-	type PalletId = RewardsPalletId;
-	type Rate = FixedU64;
-	type SignedBalance = i128;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut ext: sp_io::TestExternalities = system::GenesisConfig::default()
+	let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap()
 		.into();
 
 	ext.execute_with(|| {
-		Balances::make_free_balance_be(&USER_A, USER_INITIAL_BALANCE);
-		Balances::make_free_balance_be(&USER_B, USER_INITIAL_BALANCE);
+		System::set_block_number(INITIAL_BLOCK);
 	});
 
 	ext
+}
+
+pub fn advance_in_time(blocks: u64) {
+	System::set_block_number(System::block_number() + blocks);
 }
