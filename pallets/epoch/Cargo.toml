@@ -1,0 +1,37 @@
+[package]
+name = "pallet-epoch"
+version = "0.1.0"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Pallet used to configure events that will be produced perodically"
+edition = "2021"
+homepage = "https://centrifuge.io"
+license = "LGPL-3.0"
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/epoch"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"]}
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+num-traits = { version = "0.2", default-features = false }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+lazy_static = "1.4"
+
+[features]
+default = ["std"]
+try-runtime = ["frame-support/try-runtime"]
+std = [
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-runtime/std",
+]
