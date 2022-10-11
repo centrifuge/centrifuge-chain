@@ -2,7 +2,7 @@
 name = "pallet-epoch"
 version = "0.1.0"
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Pallet used to configure events that will be produced perodically"
+description = "Pallet used to configure events that will be produced periodically"
 edition = "2021"
 homepage = "https://centrifuge.io"
 license = "LGPL-3.0"

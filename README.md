@@ -47,6 +47,8 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 
 - [**restricted-tokens**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/restricted-tokens) ([docs](https://reference.centrifuge.io/pallet_restricted_tokens/index.html)): Transferring tokens and setting balances. It is wrapping `orml-tokens` with the addition of checking for permissions.
 
+- [**epoch**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/epoch) ([docs](https://reference.centrifuge.io/pallet_epoch/index.html)): Utility pallet without extrinsics that handle the concept of epoch and how it changes during the time. Supports different implementations in the same runtime.
+
 ## Developing
 Instructions for building, testing, and developing Centrifuge Chain can be found in [`docs/DEVELOPING.md`](docs/DEVELOPING.md).
 
