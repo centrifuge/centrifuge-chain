@@ -14,22 +14,27 @@ mod mock;
 mod tests;
 
 use frame_support::pallet_prelude::*;
-use sp_runtime::traits::{BlockNumberProvider, CheckedAdd};
+use sp_runtime::traits::{AtLeast32BitUnsigned, BlockNumberProvider, CheckedAdd};
 
 /// Trait to represent the epoch behavior.
-pub trait Epoch<BlockNumber, AssociatedType> {
+pub trait Epoch {
+	/// Associated epoch data type.
+	type AssociatedType: Default;
+
+	/// The block number type used.
+	type BlockNumber: Clone + Ord + Eq + AtLeast32BitUnsigned;
+
 	/// Updates the epoch system with a new current block.
 	/// If the given block is higher than the current finalizing block,
 	/// a new epoch is created, and the callback is called with the finalized epoch.
-	/// This method should be be called in an `on_initialized` hook.
+	/// This method should be be called in an `on_initialize` hook.
 	fn update_epoch<R>(
-		current_block: BlockNumber,
-		finish: impl FnOnce(&EpochDetails<BlockNumber, AssociatedType>) -> R,
+		finish: impl FnOnce(&EpochDetails<Self::BlockNumber, Self::AssociatedType>) -> R,
 	) -> Option<R>;
 
 	/// Updates the associated epoch data for the incoming epoch.
 	fn update_next_associated_data<R, E>(
-		mutate: impl FnOnce(&mut AssociatedType) -> Result<R, E>,
+		mutate: impl FnOnce(&mut Self::AssociatedType) -> Result<R, E>,
 	) -> Result<R, E>;
 }
 
@@ -113,12 +118,16 @@ pub mod pallet {
 
 	// --------------------------
 
-	impl<T: Config<I>, I: 'static> Epoch<T::BlockNumber, T::AssociatedType> for Pallet<T, I> {
+	impl<T: Config<I>, I: 'static> Epoch for Pallet<T, I> {
+		type AssociatedType = T::AssociatedType;
+		type BlockNumber = T::BlockNumber;
+
 		fn update_epoch<R>(
-			current_block: T::BlockNumber,
-			finish: impl FnOnce(&EpochDetails<T::BlockNumber, T::AssociatedType>) -> R,
+			finish: impl FnOnce(&EpochDetails<Self::BlockNumber, Self::AssociatedType>) -> R,
 		) -> Option<R> {
+			let current_block = frame_system::Pallet::<T>::current_block_number();
 			let current_epoch = ActiveEpoch::<T, I>::get();
+
 			if current_epoch.ends_on > current_block {
 				return None;
 			}
@@ -138,7 +147,7 @@ pub mod pallet {
 		}
 
 		fn update_next_associated_data<R, E>(
-			mutate: impl FnOnce(&mut T::AssociatedType) -> Result<R, E>,
+			mutate: impl FnOnce(&mut Self::AssociatedType) -> Result<R, E>,
 		) -> Result<R, E> {
 			NextAssociatedData::<T, I>::try_mutate(mutate)
 		}
