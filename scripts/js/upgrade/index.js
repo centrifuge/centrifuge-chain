@@ -11,16 +11,17 @@ const run = async () => {
     // 0 & 1 are command context
     const endpoint = "ws://0.0.0.0:9946";
     const endpointRelay = "ws://0.0.0.0:9944";
-    const seeds = ["//Alice", "//Bob", "//Charlie"];
+    const ALICE = "//Alice"
+    const BOB = "//Bob"
+    const CHARLIE = "//Charlie"
     const wasmFile = process.argv[2];
     const targetDockerTag = process.argv[3];
-
-    const wsProvider = new WsProvider(endpoint);
-    const wsProviderRelay = new WsProvider(endpointRelay);
+    const chainSpec = process.argv[4] !== undefined ? process.argv[4] : 'centrifuge-local';
 
     console.log("Starting Relay Chain and waiting until is up")
     await execCommand('cd ../../../ && ./scripts/init.sh start-relay-chain')
 
+    const wsProviderRelay = new WsProvider(endpointRelay);
     const apiRelay = await ApiPromise.create({
       provider: wsProviderRelay,
     });
@@ -30,9 +31,10 @@ const run = async () => {
 
     console.log("Starting Centrifuge Chain and waiting until is up")
     process.env.CC_DOCKER_TAG = targetDockerTag
-    process.env.PARA_CHAIN_SPEC = "centrifuge-local" // Make it configurable
+    process.env.PARA_CHAIN_SPEC = chainSpec
     await execCommand('cd ../../../ && ./scripts/init.sh start-parachain-docker')
 
+    const wsProvider = new WsProvider(endpoint);
     const api = await ApiPromise.create({
       provider: wsProvider,
     });
@@ -45,64 +47,58 @@ const run = async () => {
     console.log("Waiting until Centrifuge Chain is producing blocks")
     await waitUntilEventFound(api, "ExtrinsicSuccess")
 
-    // Wait one extra session
-    await waitUntilEventFound(api, "EmptyTerm")
+    // Wait one extra session due to facing random errors when starting to send txs too close to the onboarding step
     // await waitUntilEventFound(api, "NewSession")
+    await waitUntilEventFound(api, "EmptyTerm") //TODO: Change to "NewSession" once we have built a runtime upgrade with a version increment
 
     const keyring = new Keyring({ type: "sr25519" });
-    const alice = keyring.addFromUri(seeds[0]);
-    const bob = keyring.addFromUri(seeds[1]);
-    const charlie = keyring.addFromUri(seeds[2]);
+    const alice = keyring.addFromUri(ALICE);
+    const bob = keyring.addFromUri(BOB);
+    const charlie = keyring.addFromUri(CHARLIE);
 
     const wasm = fs.readFileSync(wasmFile)
     const wasmHash = blake2AsHex(wasm)
     console.log("Applying WASM Blake2 Hash:", wasmHash)
 
-    let nonce = Number((await api.query.system.account(alice.address)).nonce);
+    let nonce = await getNonce(api, alice.address);
     const preimageNoted = await notePreimageAuth(api, alice, wasmHash, nonce);
 
     console.log("Continuing with council proposal using", preimageNoted)
-    nonce = Number((await api.query.system.account(alice.address)).nonce);
+    nonce = await getNonce(api, alice.address);
     const result = await councilProposeDemocracy(api, alice, preimageNoted, nonce)
 
     console.log("Continuing with council vote using", result[0], result[1])
-    nonce = Number((await api.query.system.account(alice.address)).nonce);
+    nonce = await getNonce(api, alice.address);
     await councilVoteProposal(api, alice, result[0], result[1], nonce, false)
-    nonce = Number((await api.query.system.account(bob.address)).nonce);
+    nonce = await getNonce(api, bob.address);
     await councilVoteProposal(api, bob, result[0], result[1], nonce, false)
-    nonce = Number((await api.query.system.account(charlie.address)).nonce);
+    nonce = await getNonce(api, charlie.address);
     await councilVoteProposal(api, charlie, result[0], result[1], nonce, true)
 
     console.log("Continuing to close council vote")
-    nonce = Number((await api.query.system.account(alice.address)).nonce);
+    nonce = await getNonce(api, alice.address);
     const democracyIndex = await councilCloseProposal(api, alice, result[0], result[1], nonce)
 
     console.log("Continuing with democracy vote on ref index", democracyIndex)
-    nonce = Number((await api.query.system.account(alice.address)).nonce);
+    nonce = await getNonce(api, alice.address);
     await voteReferenda(api, alice, democracyIndex, nonce)
 
     console.log("Waiting for referenda to be over and UpgradeAuthorized event is triggered")
     await waitUntilEventFound(api, "UpgradeAuthorized")
 
     console.log("Proceeding to enact upgrade")
-    nonce = Number((await api.query.system.account(alice.address)).nonce);
+    nonce = await getNonce(api, alice.address);
     await enactUpgrade(api, alice, `0x${wasm.toString('hex')}`, nonce);
 
     console.log("Waiting for ValidationFunctionApplied event")
     await waitUntilEventFound(api, "ValidationFunctionApplied")
 
     console.log("Waiting for 3 NewSession events")
-    let foundInBlock = await waitUntilEventFound(api, "EmptyTerm")
-    // await waitUntilEventFound(api, "NewSession")
-
-    console.log("getting header")
-    console.log("First event found, waiting for second event")
-    foundInBlock = await waitUntilEventFound(api, "EmptyTerm", foundInBlock+1)
-    // await waitUntilEventFound(api, "NewSession")
-
-    console.log("Second event found, waiting for third event")
-    await waitUntilEventFound(api, "EmptyTerm", foundInBlock+1)
-    // await waitUntilEventFound(api, "NewSession")
+    let foundInBlock = 0;
+    for (let i = 0; i < 3; i++) {
+      foundInBlock = await waitUntilEventFound(api, "NewSession", foundInBlock+1)
+      console.log(`Session ${i+1}/3`)
+    }
 
     console.log("Runtime Upgrade succeeded")
 
@@ -117,6 +113,10 @@ const run = async () => {
 
 };
 
+async function getNonce(api, address) {
+  return Number((await api.query.system.account(address)).nonce)
+}
+
 async function execCommand(strCommand) {
   try {
     const { stdout, stderr } = await exec(strCommand);
@@ -129,10 +129,10 @@ async function execCommand(strCommand) {
 
 async function waitUntilEventFound(api, eventName, fromBlock = 0) {
   return new Promise(async (resolve, reject) => {
-    let maxCountDown = 30;
+    let maxCountDownBlocks = 30;
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
-      maxCountDown--
-      if (maxCountDown === 0) {
+      maxCountDownBlocks--
+      if (maxCountDownBlocks === 0) {
         unsubscribe()
         reject(`Timeout waiting for event ${eventName}`)
       }
@@ -172,10 +172,18 @@ async function notePreimageAuth(api, alice, wasmFileHash, nonce) {
             })
             console.log("PreimageNoted", preimageNoted);
             resolve(preimageNoted)
+          } else if (result.dispatchError) {
+            if (result.dispatchError.isModule) {
+              // for module errors, we have the section indexed, lookup
+              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+              const { docs, name, section } = decoded;
+              reject(`${section}.${name}: ${docs.join(' ')}`);
+            } else {
+              // Other, CannotLookup, BadOrigin, no extra info
+              reject(result.dispatchError.toString());
+            }
           } else if (result.isError) {
-            console.log("AsError", result.asError);
-            console.log(`Transaction Error: ${result.dispatchError}`);
-            reject("blabla bad")
+            reject(result)
           }
         });
   });
@@ -210,9 +218,18 @@ async function councilProposeDemocracy(api, alice, preimageHash, nonce) {
             })
             console.log("CouncilProposalHashAndIndex", councilProposalHash, councilProposalIndex);
             resolve([councilProposalHash, councilProposalIndex])
+          } else if (result.dispatchError) {
+            if (result.dispatchError.isModule) {
+              // for module errors, we have the section indexed, lookup
+              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+              const { docs, name, section } = decoded;
+              reject(`${section}.${name}: ${docs.join(' ')}`);
+            } else {
+              // Other, CannotLookup, BadOrigin, no extra info
+              reject(result.dispatchError.toString());
+            }
           } else if (result.isError) {
-            console.log(`Transaction Error`);
-            reject("blabla bad")
+            reject(result)
           }
         });
   });
@@ -234,9 +251,18 @@ async function councilVoteProposal(api, account, proposalHash, proposalIndex, no
                 `Transaction included at blockHash ${result.status.asInBlock}`
             );
             resolve()
+          } else if (result.dispatchError) {
+            if (result.dispatchError.isModule) {
+              // for module errors, we have the section indexed, lookup
+              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+              const { docs, name, section } = decoded;
+              reject(`${section}.${name}: ${docs.join(' ')}`);
+            } else {
+              // Other, CannotLookup, BadOrigin, no extra info
+              reject(result.dispatchError.toString());
+            }
           } else if (result.isError) {
-            console.log(`Transaction Error`);
-            reject("blabla bad")
+            reject(result)
           }
         });
   });
@@ -265,9 +291,18 @@ async function councilCloseProposal(api, account, proposalHash, proposalIndex, n
             })
 
             resolve(democracyIndex)
+          } else if (result.dispatchError) {
+            if (result.dispatchError.isModule) {
+              // for module errors, we have the section indexed, lookup
+              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+              const { docs, name, section } = decoded;
+              reject(`${section}.${name}: ${docs.join(' ')}`);
+            } else {
+              // Other, CannotLookup, BadOrigin, no extra info
+              reject(result.dispatchError.toString());
+            }
           } else if (result.isError) {
-            console.log(`Transaction Error`);
-            reject("blabla bad")
+            reject(result)
           }
         });
   });
@@ -297,9 +332,18 @@ async function voteReferenda(api, account, refIndex, nonce) {
                 `Transaction included at blockHash ${result.status.asInBlock}`
             );
             resolve()
+          } else if (result.dispatchError) {
+            if (result.dispatchError.isModule) {
+              // for module errors, we have the section indexed, lookup
+              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+              const { docs, name, section } = decoded;
+              reject(`${section}.${name}: ${docs.join(' ')}`);
+            } else {
+              // Other, CannotLookup, BadOrigin, no extra info
+              reject(result.dispatchError.toString());
+            }
           } else if (result.isError) {
-            console.log(`Transaction Error`);
-            reject("blabla bad")
+            reject(result)
           }
         });
   });
@@ -319,9 +363,18 @@ async function enactUpgrade(api, account, wasmCode, nonce) {
                 `Transaction included at blockHash ${result.status.asInBlock}`
             );
             resolve()
+          } else if (result.dispatchError) {
+            if (result.dispatchError.isModule) {
+              // for module errors, we have the section indexed, lookup
+              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+              const { docs, name, section } = decoded;
+              reject(`${section}.${name}: ${docs.join(' ')}`);
+            } else {
+              // Other, CannotLookup, BadOrigin, no extra info
+              reject(result.dispatchError.toString());
+            }
           } else if (result.isError) {
-            console.log(`Transaction Error`);
-            reject("blabla bad")
+            reject(result)
           }
         });
   });
