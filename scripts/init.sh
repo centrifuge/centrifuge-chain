@@ -20,7 +20,7 @@ install-toolchain)
 
 start-relay-chain)
   echo "Starting local relay chain with Alice and Bob..."
-  docker-compose -f ./docker-compose-local-relay.yml up -d
+  docker-compose -f ./docker-compose-local-relay.yml up --remove-orphans -d
   ;;
 
 stop-relay-chain)
