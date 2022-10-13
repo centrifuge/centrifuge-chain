@@ -751,78 +751,87 @@ pub mod ops {
 	signum_variant_impl!(f32);
 	signum_variant_impl!(f64);
 
-	/// Performs addition that returns `ArithmeticError::Overflow` instead of
-	/// wrapping around on overflow.
-	pub trait EnsureAdd: CheckedAdd {
-		/// Adds two numbers, checking for overflow. If overflow happens,
-		/// `ArithmeticError::Overflow` is returned.
+	/// Performs addition that returns `ArithmeticError` instead of wrapping around on overflow.
+	pub trait EnsureAdd: CheckedAdd + Signum {
+		/// Adds two numbers, checking for overflow.
+		/// If overflow happens, `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureAdd;
 		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_overflow() -> DispatchResult {
 		///     u32::MAX.ensure_add(&1)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
+		/// fn extrinsic_underflow() -> DispatchResult {
+		///     i32::MIN.ensure_add(&-1)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 		/// ```
 		fn ensure_add(&self, v: &Self) -> Result<Self, ArithmeticError> {
-			self.checked_add(v).ok_or(ArithmeticError::Overflow)
+			self.checked_add(v).ok_or_else(|| match v.signum() {
+				-1 => ArithmeticError::Underflow,
+				_ => ArithmeticError::Overflow,
+			})
 		}
 	}
 
-	/// Performs subtraction that returns `ArithmeticError::Underflow` instead of
-	/// wrapping around on underflow.
-	pub trait EnsureSub: CheckedSub {
-		/// Subtracts two numbers, checking for overflow. If overflow happens,
-		/// `ArithmeticError::Underflow` is returned.
+	/// Performs subtraction that returns `ArithmeticError` instead of wrapping around on underflow.
+	pub trait EnsureSub: CheckedSub + Signum {
+		/// Subtracts two numbers, checking for overflow.
+		/// If overflow happens, `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureSub;
 		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_underflow() -> DispatchResult {
 		///     0u32.ensure_sub(&1)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Underflow)));
+		/// fn extrinsic_overflow() -> DispatchResult {
+		///     i32::MAX.ensure_sub(&-1)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 		/// ```
 		fn ensure_sub(&self, v: &Self) -> Result<Self, ArithmeticError> {
-			self.checked_sub(v).ok_or(ArithmeticError::Underflow)
+			self.checked_sub(v).ok_or_else(|| match v.signum() {
+				-1 => ArithmeticError::Overflow,
+				_ => ArithmeticError::Underflow,
+			})
 		}
 	}
 
-	/// Performs multiplication that returns `ArithmeticError::Overflow` or
-	/// `ArithmeticError::Underflow` instead of wrapping around on overflow.
+	/// Performs multiplication that returns `ArithmeticError` instead of wrapping around on overflow.
 	pub trait EnsureMul: CheckedMul + Signum {
 		/// Multiplies two numbers, checking for overflow. If overflow happens,
-		/// `ArithmeticError::Overflow` or `ArithmeticError::Underflow` is returned.
+		/// `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureMul;
 		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_overflow() -> DispatchResult {
 		///     u32::MAX.ensure_mul(&2)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
-		/// ```
-		///
-		/// ```
-		/// use cfg_traits::ops::EnsureMul;
-		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
-		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_underflow() -> DispatchResult {
 		///     i32::MAX.ensure_mul(&-2)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Underflow)));
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 		/// ```
 		fn ensure_mul(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_mul(v)
@@ -833,11 +842,10 @@ pub mod ops {
 		}
 	}
 
-	/// Performs division that returns `ArithmeticError::DivisionByZero` instead of
-	/// wrapping around on overflow.
+	/// Performs division that returns `ArithmeticError` instead of wrapping around on overflow.
 	pub trait EnsureDiv: CheckedDiv {
-		/// Divides two numbers, checking for overflow. If overflow happens,
-		/// `ArithmeticError::DivisionByZero` is returned.
+		/// Divides two numbers, checking for overflow.
+		/// If overflow happens, `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureDiv;
@@ -848,35 +856,41 @@ pub mod ops {
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::DivisionByZero)));
+		/// assert_eq!(extrinsic(), Err(ArithmeticError::DivisionByZero.into()));
 		/// ```
 		fn ensure_div(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_div(v).ok_or(ArithmeticError::DivisionByZero)
 		}
 	}
 
-	impl<T: CheckedAdd> EnsureAdd for T {}
-	impl<T: CheckedSub> EnsureSub for T {}
+	impl<T: CheckedAdd + Signum> EnsureAdd for T {}
+	impl<T: CheckedSub + Signum> EnsureSub for T {}
 	impl<T: CheckedMul + Signum> EnsureMul for T {}
 	impl<T: CheckedDiv> EnsureDiv for T {}
 
-	/// Performs self addition that returns `ArithmeticError::Overflow` instead of
-	/// wrapping around on overflow.
+	/// Performs self addition that returns `ArithmeticError` instead of wrapping around on overflow.
 	pub trait EnsureAddAssign: EnsureAdd {
 		/// Adds two numbers overwriting the left hand one, checking for overflow.
-		/// If overflow happens, `ArithmeticError::Overflow` is returned.
+		/// If overflow happens, `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureAddAssign;
 		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_overflow() -> DispatchResult {
 		///     let mut max = u32::MAX;
 		///     max.ensure_add_assign(&1)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
+		/// fn extrinsic_underflow() -> DispatchResult {
+		///     let mut max = i32::MIN;
+		///     max.ensure_add_assign(&-1)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 		/// ```
 		fn ensure_add_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_add(v)?;
@@ -884,23 +898,29 @@ pub mod ops {
 		}
 	}
 
-	/// Performs self subtraction that returns `ArithmeticError::Underflow` instead of
-	/// wrapping around on underflow.
+	/// Performs self subtraction that returns `ArithmeticError` instead of wrapping around on underflow.
 	pub trait EnsureSubAssign: EnsureSub {
 		/// Subtracts two numbers overwriting the left hand one, checking for overflow.
-		/// If overflow happens, `ArithmeticError::Underflow` is returned.
+		/// If overflow happens, `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureSubAssign;
 		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_underflow() -> DispatchResult {
 		///     let mut zero: u32 = 0;
 		///     zero.ensure_sub_assign(&1)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Underflow)));
+		/// fn extrinsic_overflow() -> DispatchResult {
+		///     let mut zero = i32::MAX;
+		///     zero.ensure_sub_assign(&-1)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 		/// ```
 		fn ensure_sub_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_sub(v)?;
@@ -908,36 +928,29 @@ pub mod ops {
 		}
 	}
 
-	/// Performs self multiplication that returns `ArithmeticError::Overflow` o
-	/// `ArithmeticError::Underflow` instead of wrapping around on overflow.
+	/// Performs self multiplication that returns `ArithmeticError` instead of wrapping around on overflow.
 	pub trait EnsureMulAssign: EnsureMul {
 		/// Multiplies two numbers overwriting the left hand one, checking for overflow.
-		/// If overflow happens, `ArithmeticError::Overflow` or `ArithmeticError::Underflow` is returned.
+		/// If overflow happens, `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureMulAssign;
 		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_overflow() -> DispatchResult {
 		///     let mut max = u32::MAX;
 		///     max.ensure_mul_assign(&2)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
-		/// ```
-		///
-		/// ```
-		/// use cfg_traits::ops::EnsureMulAssign;
-		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
-		///
-		/// fn extrinsic() -> DispatchResult {
+		/// fn extrinsic_underflow() -> DispatchResult {
 		///     let mut max = i32::MAX;
 		///     max.ensure_mul_assign(&-2)?;
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Underflow)));
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 		/// ```
 		fn ensure_mul_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_mul(v)?;
@@ -945,11 +958,10 @@ pub mod ops {
 		}
 	}
 
-	/// Performs self division that returns `ArithmeticError::DivisionByZero` instead of
-	/// wrapping around on overflow.
+	/// Performs self division that returns `ArithmeticError` instead of wrapping around on overflow.
 	pub trait EnsureDivAssign: EnsureDiv {
 		/// Divides two numbers overwriting the left hand one, checking for overflow.
-		/// If overflow happens, `ArithmeticError::DivisionByZero` is returned.
+		/// If overflow happens, `ArithmeticError` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureDivAssign;
