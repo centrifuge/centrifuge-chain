@@ -709,10 +709,47 @@ pub mod fees {
 }
 
 pub mod ops {
-	pub use sp_runtime::{
+	use sp_runtime::{
 		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub},
 		ArithmeticError,
 	};
+
+	pub trait Signum {
+		fn signum(&self) -> i8;
+	}
+
+	macro_rules! signum_variant_impl {
+		($t:ty) => {
+			impl Signum for $t {
+				fn signum(&self) -> i8 {
+					(*self as $t).signum() as i8
+				}
+			}
+		};
+	}
+
+	macro_rules! signum_pos_impl {
+		($t:ty) => {
+			impl Signum for $t {
+				fn signum(&self) -> i8 {
+					1
+				}
+			}
+		};
+	}
+
+	signum_pos_impl!(u8);
+	signum_pos_impl!(u16);
+	signum_pos_impl!(u32);
+	signum_pos_impl!(u64);
+	signum_pos_impl!(u128);
+	signum_variant_impl!(i8);
+	signum_variant_impl!(i16);
+	signum_variant_impl!(i32);
+	signum_variant_impl!(i64);
+	signum_variant_impl!(i128);
+	signum_variant_impl!(f32);
+	signum_variant_impl!(f64);
 
 	/// Performs addition that returns `ArithmeticError::Overflow` instead of
 	/// wrapping around on overflow.
@@ -758,11 +795,11 @@ pub mod ops {
 		}
 	}
 
-	/// Performs multiplication that returns `ArithmeticError::Overflow` instead of
-	/// wrapping around on overflow.
-	pub trait EnsureMul: CheckedMul {
+	/// Performs multiplication that returns `ArithmeticError::Overflow` or
+	/// `ArithmeticError::Underflow` instead of wrapping around on overflow.
+	pub trait EnsureMul: CheckedMul + Signum {
 		/// Multiplies two numbers, checking for overflow. If overflow happens,
-		/// `ArithmeticError::Overflow` is returned.
+		/// `ArithmeticError::Overflow` or `ArithmeticError::Underflow` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureMul;
@@ -775,10 +812,24 @@ pub mod ops {
 		///
 		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
 		/// ```
+		///
+		/// ```
+		/// use cfg_traits::ops::EnsureMul;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic() -> DispatchResult {
+		///     i32::MAX.ensure_mul(&-2)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Underflow)));
+		/// ```
 		fn ensure_mul(&self, v: &Self) -> Result<Self, ArithmeticError> {
-			// TODO: Improve the error checking the case where the multiplication shoul be
-			// Underflow instead.
-			self.checked_mul(v).ok_or(ArithmeticError::Overflow)
+			self.checked_mul(v)
+				.ok_or_else(|| match self.signum() * v.signum() {
+					-1 => ArithmeticError::Underflow,
+					_ => ArithmeticError::Overflow,
+				})
 		}
 	}
 
@@ -806,7 +857,7 @@ pub mod ops {
 
 	impl<T: CheckedAdd> EnsureAdd for T {}
 	impl<T: CheckedSub> EnsureSub for T {}
-	impl<T: CheckedMul> EnsureMul for T {}
+	impl<T: CheckedMul + Signum> EnsureMul for T {}
 	impl<T: CheckedDiv> EnsureDiv for T {}
 
 	/// Performs self addition that returns `ArithmeticError::Overflow` instead of
@@ -857,11 +908,11 @@ pub mod ops {
 		}
 	}
 
-	/// Performs self multiplication that returns `ArithmeticError::Overflow` instead of
-	/// wrapping around on overflow.
+	/// Performs self multiplication that returns `ArithmeticError::Overflow` o
+	/// `ArithmeticError::Underflow` instead of wrapping around on overflow.
 	pub trait EnsureMulAssign: EnsureMul {
 		/// Multiplies two numbers overwriting the left hand one, checking for overflow.
-		/// If overflow happens, `ArithmeticError::Overflow` is returned.
+		/// If overflow happens, `ArithmeticError::Overflow` or `ArithmeticError::Underflow` is returned.
 		///
 		/// ```
 		/// use cfg_traits::ops::EnsureMulAssign;
@@ -874,6 +925,19 @@ pub mod ops {
 		/// }
 		///
 		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Overflow)));
+		/// ```
+		///
+		/// ```
+		/// use cfg_traits::ops::EnsureMulAssign;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic() -> DispatchResult {
+		///     let mut max = i32::MAX;
+		///     max.ensure_mul_assign(&-2)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::Underflow)));
 		/// ```
 		fn ensure_mul_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_mul(v)?;
