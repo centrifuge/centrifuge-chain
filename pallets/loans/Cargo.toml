@@ -50,7 +50,7 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.28" }
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.28" }
 
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = true , branch = "release-v0.9.28" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = true , branch = "release-v0.9.29" }
 
 pallet-pools = { path = "../pools", default-features = true}
 
