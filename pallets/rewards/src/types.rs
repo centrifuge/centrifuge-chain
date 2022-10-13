@@ -4,6 +4,67 @@ use sp_runtime::{
 	ArithmeticError, FixedPointNumber, FixedPointOperand, SaturatedConversion,
 };
 
+/// Type that contains the stake properties of stake class
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct CurrencyInfo<Balance, Rate, GroupId, MaxMovements: Get<u32>> {
+	pub group_id: Option<GroupId>,
+	total_staked: Balance,
+	reward_per_token_tallies: BoundedVec<Rate, MaxMovements>,
+}
+
+impl<Balance, Rate, GroupId, MaxMovements: Get<u32>> Default
+	for CurrencyInfo<Balance, Rate, GroupId, MaxMovements>
+where
+	Balance: Zero,
+	Rate: Zero,
+{
+	fn default() -> Self {
+		Self {
+			group_id: None,
+			total_staked: Zero::zero(),
+			reward_per_token_tallies: BoundedVec::default(),
+		}
+	}
+}
+
+impl<Balance, Rate, GroupId, MaxMovements> CurrencyInfo<Balance, Rate, GroupId, MaxMovements>
+where
+	Balance: Zero + FixedPointOperand + CheckedSub + CheckedAdd,
+	Rate: FixedPointNumber<Inner = Balance>,
+	MaxMovements: Get<u32>,
+{
+	pub fn add_tally(&mut self, rpt_tally: Rate) -> Result<(), ()> {
+		self.reward_per_token_tallies.try_push(rpt_tally)
+	}
+
+	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
+		self.total_staked = self
+			.total_staked
+			.checked_add(&amount)
+			.ok_or(ArithmeticError::Overflow)?;
+
+		Ok(())
+	}
+
+	pub fn sub_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
+		self.total_staked = self
+			.total_staked
+			.checked_sub(&amount)
+			.ok_or(ArithmeticError::Underflow)?;
+
+		Ok(())
+	}
+
+	pub fn total_staked(&self) -> Balance {
+		self.total_staked
+	}
+
+	pub fn rpt_tallies(&self) -> &[Rate] {
+		&self.reward_per_token_tallies
+	}
+}
+
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -17,6 +78,13 @@ where
 	Balance: Zero + FixedPointOperand + CheckedSub + CheckedAdd,
 	Rate: FixedPointNumber<Inner = Balance>,
 {
+	pub fn new(reward_per_token: Rate, total_staked: Balance) -> Self {
+		Self {
+			reward_per_token,
+			total_staked,
+		}
+	}
+
 	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
 		self.total_staked = self
 			.total_staked
@@ -36,11 +104,8 @@ where
 	}
 
 	pub fn distribute_reward(&mut self, reward: Balance) -> Result<(), ArithmeticError> {
-		println!("aasdasd");
 		let rate_increment = Rate::checked_from_rational(reward, self.total_staked)
 			.ok_or(ArithmeticError::DivisionByZero)?;
-
-		println!("bbbbbbb");
 
 		self.reward_per_token = self
 			.reward_per_token
@@ -65,6 +130,7 @@ where
 pub struct StakeAccount<Balance, SignedBalance> {
 	staked: Balance,
 	reward_tally: SignedBalance,
+	currency_version: u32,
 }
 
 impl<Balance, SignedBalance> StakeAccount<Balance, SignedBalance>
@@ -72,6 +138,27 @@ where
 	Balance: FixedPointOperand + CheckedAdd + CheckedSub,
 	SignedBalance: From<Balance> + TryInto<Balance> + CheckedAdd + CheckedSub + Copy,
 {
+	pub fn try_apply_rpt_tallies<Rate: FixedPointNumber>(
+		&mut self,
+		rpt_tallies: &[Rate],
+	) -> Result<(), ArithmeticError> {
+		for i in self.currency_version as usize..rpt_tallies.len() {
+			let currency_reward_tally: SignedBalance = rpt_tallies[i]
+				.checked_mul_int(self.staked)
+				.ok_or(ArithmeticError::Overflow)?
+				.into();
+
+			self.reward_tally = self
+				.reward_tally
+				.checked_sub(&currency_reward_tally)
+				.ok_or(ArithmeticError::Underflow)?;
+
+			self.currency_version = rpt_tallies.len() as u32;
+		}
+
+		Ok(())
+	}
+
 	/// Add a stake amount for a given supposed *reward per token* and *epoch*
 	pub fn add_amount<Rate: FixedPointNumber>(
 		&mut self,
@@ -278,6 +365,7 @@ mod staked_test {
 				reward_tally: (rpt_0.saturating_mul_int(AMOUNT_1)
 					+ rpt_0.saturating_mul_int(AMOUNT_2))
 				.into(),
+				currency_version: 0,
 			}
 		);
 	}
@@ -297,6 +385,7 @@ mod staked_test {
 			StakeAccount {
 				staked: AMOUNT_1,
 				reward_tally: rpt_0.saturating_mul_int(AMOUNT_1).into(),
+				currency_version: 0,
 			}
 		);
 
@@ -310,6 +399,7 @@ mod staked_test {
 				reward_tally: (rpt_0.saturating_mul_int(AMOUNT_1)
 					+ rpt_1.saturating_mul_int(AMOUNT_2))
 				.into(),
+				currency_version: 0,
 			}
 		);
 	}
@@ -357,6 +447,7 @@ mod staked_test {
 			StakeAccount {
 				staked: AMOUNT_1,
 				reward_tally: rpt_1.saturating_mul_int(AMOUNT_1).into(),
+				currency_version: 0,
 			}
 		);
 
@@ -368,6 +459,7 @@ mod staked_test {
 				reward_tally: (rpt_1.saturating_mul_int(AMOUNT_1)
 					+ rpt_1.saturating_mul_int(AMOUNT_2))
 				.into(),
+				currency_version: 0,
 			}
 		);
 
@@ -396,6 +488,7 @@ mod staked_test {
 			StakeAccount {
 				staked: AMOUNT,
 				reward_tally: rpt_3.saturating_mul_int(AMOUNT).into(),
+				currency_version: 0,
 			}
 		);
 
@@ -408,6 +501,7 @@ mod staked_test {
 			StakeAccount {
 				staked: AMOUNT,
 				reward_tally: rpt_4.saturating_mul_int(AMOUNT).into(),
+				currency_version: 0,
 			}
 		);
 	}
@@ -429,6 +523,7 @@ mod staked_test {
 			StakeAccount {
 				staked: AMOUNT_1,
 				reward_tally: rpt_0.saturating_mul_int(AMOUNT_1).into(),
+				currency_version: 0,
 			}
 		);
 	}
@@ -458,6 +553,7 @@ mod staked_test {
 					- rpt_0.saturating_mul_int(AMOUNT_2)
 					- rpt_1.saturating_mul_int(AMOUNT_3))
 				.into(),
+				currency_version: 0,
 			}
 		);
 	}

@@ -18,6 +18,13 @@ pub const USER_A: u64 = 1;
 pub const USER_B: u64 = 2;
 pub const USER_INITIAL_BALANCE: u64 = 100000;
 
+pub const GROUP_A: u8 = 1;
+pub const GROUP_B: u8 = 2;
+
+pub const CURRENCY_A: u32 = 1;
+pub const CURRENCY_B: u32 = 2;
+pub const CURRENCY_C: u32 = 3;
+
 frame_support::construct_runtime!(
 	pub enum Test where
 		Block = Block,
@@ -71,11 +78,17 @@ impl pallet_balances::Config for Test {
 
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
+
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxCurrencyMovements: u32 = 3;
 }
 
 impl pallet_rewards::Config for Test {
 	type Currency = Balances;
+	type CurrencyId = u32;
 	type Event = Event;
+	type GroupId = u8;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
 	type Rate = FixedU64;
 	type SignedBalance = i128;

@@ -18,21 +18,86 @@ use frame_support::{
 use num_traits::Signed;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub},
-	FixedPointNumber, FixedPointOperand, TokenError,
+	ArithmeticError, FixedPointNumber, FixedPointOperand, TokenError,
 };
-use types::{Group, StakeAccount};
+use sp_std::iter::Sum;
+use types::{CurrencyInfo, Group, StakeAccount};
 
 pub trait Rewards<AccountId> {
 	type Balance: AtLeast32BitUnsigned + FixedPointOperand;
 
-	fn distribute_reward(amount: Self::Balance) -> DispatchResult;
-	fn deposit_stake(account_id: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn withdraw_stake(account_id: &AccountId, amount: Self::Balance) -> DispatchResult;
-	fn compute_reward(account_id: &AccountId) -> Result<Self::Balance, DispatchError>;
-	fn claim_reward(account_id: &AccountId) -> Result<Self::Balance, DispatchError>;
+	type GroupId;
 
-	fn group_stake() -> Self::Balance;
-	fn account_stake(account_id: &AccountId) -> Self::Balance;
+	type CurrencyId;
+
+	fn distribute_reward<Rate, It>(reward: Self::Balance, groups: It) -> DispatchResult
+	where
+		Rate: FixedPointNumber,
+		It: IntoIterator<Item = Self::GroupId>,
+		It::IntoIter: Clone,
+	{
+		Self::distribute_reward_with_weights::<Rate, _, _>(
+			reward,
+			groups.into_iter().map(|group_id| (group_id, 1u64)),
+		)
+	}
+
+	fn distribute_reward_with_weights<Rate, Weight, It>(
+		reward: Self::Balance,
+		groups: It,
+	) -> DispatchResult
+	where
+		Rate: FixedPointNumber,
+		Weight: AtLeast32BitUnsigned + Sum + FixedPointOperand,
+		It: IntoIterator<Item = (Self::GroupId, Weight)>,
+		It::IntoIter: Clone,
+	{
+		let groups = groups.into_iter();
+		let total_weight: Weight = groups.clone().map(|(_, weight)| weight).sum();
+
+		groups
+			.map(|(group_id, weight)| {
+				let reward_rate = Rate::checked_from_rational(weight, total_weight)
+					.ok_or(ArithmeticError::DivisionByZero)?;
+
+				Self::reward_group(
+					reward_rate
+						.checked_mul_int(reward)
+						.ok_or(ArithmeticError::Overflow)?,
+					group_id,
+				)
+			})
+			.collect::<DispatchResult>()
+	}
+
+	fn reward_group(reward: Self::Balance, group_id: Self::GroupId) -> DispatchResult;
+
+	fn deposit_stake(
+		account_id: &AccountId,
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+	) -> DispatchResult;
+
+	fn withdraw_stake(
+		account_id: &AccountId,
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+	) -> DispatchResult;
+
+	fn compute_reward(
+		account_id: &AccountId,
+		currency_id: Self::CurrencyId,
+	) -> Result<Self::Balance, DispatchError>;
+
+	fn claim_reward(
+		account_id: &AccountId,
+		currency_id: Self::CurrencyId,
+	) -> Result<Self::Balance, DispatchError>;
+
+	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
+	fn account_stake(account_id: &AccountId, currency_id: Self::CurrencyId) -> Self::Balance;
+
+	fn move_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
 }
 
 #[frame_support::pallet]
@@ -67,6 +132,13 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ Encode
 			+ Decode;
+
+		type GroupId: codec::FullCodec + scale_info::TypeInfo + MaxEncodedLen + Copy;
+
+		type CurrencyId: codec::FullCodec + scale_info::TypeInfo + MaxEncodedLen + Copy;
+
+		#[pallet::constant]
+		type MaxCurrencyMovements: Get<u32> + scale_info::TypeInfo;
 	}
 
 	#[pallet::pallet]
@@ -78,13 +150,25 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub type Groups<T: Config> = StorageValue<_, Group<BalanceOf<T>, T::Rate>, ValueQuery>;
+	pub type Currencies<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::CurrencyId,
+		CurrencyInfo<BalanceOf<T>, T::Rate, T::GroupId, T::MaxCurrencyMovements>,
+		ValueQuery,
+	>;
 
 	#[pallet::storage]
-	pub type StakeAccounts<T: Config> = StorageMap<
+	pub type Groups<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::GroupId, Group<BalanceOf<T>, T::Rate>, ValueQuery>;
+
+	#[pallet::storage]
+	pub type StakeAccounts<T: Config> = StorageDoubleMap<
 		_,
-		Blake2_256,
+		Blake2_128Concat,
 		T::AccountId,
+		Blake2_128Concat,
+		T::CurrencyId,
 		StakeAccount<BalanceOf<T>, T::SignedBalance>,
 		ValueQuery,
 	>;
@@ -96,84 +180,164 @@ pub mod pallet {
 	pub enum Event<T> {}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		// Emits when a currency is used but it has no a related group.
+		CurrencyWithoutGroup,
+
+		// Emits when a currency is moved more than `MaxCurrencyMovements` times.
+		CurrencyMaxMovementsReached,
+	}
 
 	impl<T: Config> Rewards<T::AccountId> for Pallet<T>
 	where
 		BalanceOf<T>: FixedPointOperand,
 	{
 		type Balance = BalanceOf<T>;
+		type CurrencyId = T::CurrencyId;
+		type GroupId = T::GroupId;
 
-		fn distribute_reward(amount: Self::Balance) -> DispatchResult {
-			Groups::<T>::try_mutate(|group| group.distribute_reward(amount))?;
+		fn reward_group(reward: Self::Balance, group_id: Self::GroupId) -> DispatchResult {
+			Groups::<T>::try_mutate(group_id, |group| {
+				group.distribute_reward(reward)?;
 
-			T::Currency::deposit_creating(&T::PalletId::get().into_account_truncating(), amount);
+				T::Currency::deposit_creating(
+					&T::PalletId::get().into_account_truncating(),
+					reward,
+				);
 
-			Ok(())
+				Ok(())
+			})
 		}
 
-		fn deposit_stake(account_id: &T::AccountId, amount: Self::Balance) -> DispatchResult {
-			T::Currency::reserve(&account_id, amount)?;
+		fn deposit_stake(
+			account_id: &T::AccountId,
+			currency_id: Self::CurrencyId,
+			amount: Self::Balance,
+		) -> DispatchResult {
+			Currencies::<T>::try_mutate(currency_id, |currency| {
+				let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 
-			Groups::<T>::try_mutate(|group| {
-				StakeAccounts::<T>::try_mutate(account_id, |staked| {
-					staked.add_amount(amount, group.reward_per_token())
-				})?;
+				Groups::<T>::try_mutate(group_id, |group| {
+					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
+						staked.add_amount(amount, group.reward_per_token())?;
 
-				group.add_amount(amount)
-			})?;
+						group.add_amount(amount)?;
+						currency.add_amount(amount)?;
 
-			Ok(())
+						T::Currency::reserve(&account_id, amount)
+					})
+				})
+			})
 		}
 
-		fn withdraw_stake(account_id: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		fn withdraw_stake(
+			account_id: &T::AccountId,
+			currency_id: Self::CurrencyId,
+			amount: Self::Balance,
+		) -> DispatchResult {
 			if T::Currency::reserved_balance(&account_id) < amount {
-				return Err(DispatchError::Token(TokenError::NoFunds));
+				Err(TokenError::NoFunds)?;
 			}
 
-			Groups::<T>::try_mutate(|group| {
-				StakeAccounts::<T>::try_mutate(account_id, |staked| {
-					staked.sub_amount(amount, group.reward_per_token())
-				})?;
+			Currencies::<T>::try_mutate(currency_id, |currency| {
+				let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 
-				group.sub_amount(amount)
-			})?;
+				Groups::<T>::try_mutate(group_id, |group| {
+					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
+						staked.sub_amount(amount, group.reward_per_token())?;
 
-			T::Currency::unreserve(&account_id, amount);
+						group.sub_amount(amount)?;
+						currency.sub_amount(amount)?;
 
-			Ok(())
+						T::Currency::unreserve(&account_id, amount);
+
+						Ok(())
+					})
+				})
+			})
 		}
 
-		fn compute_reward(account_id: &T::AccountId) -> Result<Self::Balance, DispatchError> {
-			let group = Groups::<T>::get();
-			let staked = StakeAccounts::<T>::get(account_id);
-			let reward = staked.compute_reward(group.reward_per_token())?;
+		fn compute_reward(
+			account_id: &T::AccountId,
+			currency_id: Self::CurrencyId,
+		) -> Result<Self::Balance, DispatchError> {
+			let currency = Currencies::<T>::get(currency_id);
+			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
+			let group = Groups::<T>::get(group_id);
 
-			Ok(reward)
+			StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+				staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
+				let reward = staked.compute_reward(group.reward_per_token())?;
+
+				Ok(reward)
+			})
 		}
 
-		fn claim_reward(account_id: &T::AccountId) -> Result<Self::Balance, DispatchError> {
-			let group = Groups::<T>::get();
-			let reward = StakeAccounts::<T>::try_mutate(account_id, |staked| {
-				staked.claim_reward(group.reward_per_token())
-			})?;
+		fn claim_reward(
+			account_id: &T::AccountId,
+			currency_id: Self::CurrencyId,
+		) -> Result<Self::Balance, DispatchError> {
+			let currency = Currencies::<T>::get(currency_id);
+			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
+			let group = Groups::<T>::get(group_id);
 
-			T::Currency::transfer(
-				&T::PalletId::get().into_account_truncating(),
-				&account_id,
-				reward,
-				ExistenceRequirement::KeepAlive,
-			)?;
+			StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+				staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
+				let reward = staked.claim_reward(group.reward_per_token())?;
 
-			Ok(reward)
+				T::Currency::transfer(
+					&T::PalletId::get().into_account_truncating(),
+					&account_id,
+					reward,
+					ExistenceRequirement::KeepAlive,
+				)?;
+
+				Ok(reward)
+			})
 		}
 
-		fn group_stake() -> Self::Balance {
-			Groups::<T>::get().total_staked()
+		fn group_stake(group_id: Self::GroupId) -> Self::Balance {
+			Groups::<T>::get(group_id).total_staked()
 		}
 
-		fn account_stake(account_id: &T::AccountId) -> Self::Balance {
-			StakeAccounts::<T>::get(account_id).staked()
+		fn account_stake(
+			account_id: &T::AccountId,
+			currency_id: Self::CurrencyId,
+		) -> Self::Balance {
+			StakeAccounts::<T>::get(account_id, currency_id).staked()
+		}
+
+		fn move_currency(
+			currency_id: Self::CurrencyId,
+			next_group_id: Self::GroupId,
+		) -> DispatchResult {
+			Currencies::<T>::try_mutate(currency_id, |currency| {
+				if let Some(prev_group_id) = currency.group_id {
+					Groups::<T>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
+						Groups::<T>::try_mutate(next_group_id, |next_group| {
+							let rpt_tally = next_group
+								.reward_per_token()
+								.checked_sub(&prev_group.reward_per_token())
+								.ok_or(ArithmeticError::Underflow)?;
+
+							currency
+								.add_tally(rpt_tally)
+								.map_err(|_| Error::<T>::CurrencyMaxMovementsReached)?;
+
+							prev_group.sub_amount(currency.total_staked())?;
+							next_group.add_amount(currency.total_staked())?;
+
+							Ok(())
+						})
+					})?;
+				}
+
+				currency.group_id = Some(next_group_id);
+
+				Ok(())
+			})
 		}
 	}
 }
