@@ -120,7 +120,7 @@ Adapt parameters accordingly.
 
 ### Benchmarking pallets
 Pallets are to be benchmarked to find the correct weight for extrinsics. Follow substrate's benchmarking boiler-plate code
-and add pallet benchmark to the runtime. Then run the following script to generate a benchamarked `weights.rs` file for the pallet
+and add pallet benchmark to the runtime. Then run the following script to generate a benchmarked `weights.rs` file for the pallet
 ```shell
 ./scripts/init.sh benchmark <your_pallet> <output generated weight file>(optional)
 ```
