@@ -17,20 +17,21 @@ use frame_support::{
 };
 use num_traits::Signed;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Zero},
 	ArithmeticError, FixedPointNumber, FixedPointOperand, TokenError,
 };
 use sp_std::iter::Sum;
 use types::{CurrencyInfo, Group, StakeAccount};
 
 pub trait Rewards<AccountId> {
-	type Balance: AtLeast32BitUnsigned + FixedPointOperand;
-
+	type Balance: AtLeast32BitUnsigned + FixedPointOperand + Sum;
 	type GroupId;
-
 	type CurrencyId;
 
-	fn distribute_reward<Rate, It>(reward: Self::Balance, groups: It) -> DispatchResult
+	fn distribute_reward<Rate, It>(
+		reward: Self::Balance,
+		groups: It,
+	) -> Result<Self::Balance, DispatchError>
 	where
 		Rate: FixedPointNumber,
 		It: IntoIterator<Item = Self::GroupId>,
@@ -45,7 +46,7 @@ pub trait Rewards<AccountId> {
 	fn distribute_reward_with_weights<Rate, Weight, It>(
 		reward: Self::Balance,
 		groups: It,
-	) -> DispatchResult
+	) -> Result<Self::Balance, DispatchError>
 	where
 		Rate: FixedPointNumber,
 		Weight: AtLeast32BitUnsigned + Sum + FixedPointOperand,
@@ -67,10 +68,13 @@ pub trait Rewards<AccountId> {
 					group_id,
 				)
 			})
-			.collect::<DispatchResult>()
+			.sum::<Result<Self::Balance, DispatchError>>()
 	}
 
-	fn reward_group(reward: Self::Balance, group_id: Self::GroupId) -> DispatchResult;
+	fn reward_group(
+		reward: Self::Balance,
+		group_id: Self::GroupId,
+	) -> Result<Self::Balance, DispatchError>;
 
 	fn deposit_stake(
 		account_id: &AccountId,
@@ -97,7 +101,7 @@ pub trait Rewards<AccountId> {
 	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
 	fn account_stake(account_id: &AccountId, currency_id: Self::CurrencyId) -> Self::Balance;
 
-	fn move_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
+	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
 }
 
 #[frame_support::pallet]
@@ -190,22 +194,29 @@ pub mod pallet {
 
 	impl<T: Config> Rewards<T::AccountId> for Pallet<T>
 	where
-		BalanceOf<T>: FixedPointOperand,
+		BalanceOf<T>: FixedPointOperand + Sum,
 	{
 		type Balance = BalanceOf<T>;
 		type CurrencyId = T::CurrencyId;
 		type GroupId = T::GroupId;
 
-		fn reward_group(reward: Self::Balance, group_id: Self::GroupId) -> DispatchResult {
+		fn reward_group(
+			reward: Self::Balance,
+			group_id: Self::GroupId,
+		) -> Result<Self::Balance, DispatchError> {
 			Groups::<T>::try_mutate(group_id, |group| {
-				group.distribute_reward(reward)?;
+				if group.total_staked() > Self::Balance::zero() {
+					group.distribute_reward(reward)?;
 
-				T::Currency::deposit_creating(
-					&T::PalletId::get().into_account_truncating(),
-					reward,
-				);
+					T::Currency::deposit_creating(
+						&T::PalletId::get().into_account_truncating(),
+						reward,
+					);
 
-				Ok(())
+					return Ok(reward);
+				}
+
+				Ok(Self::Balance::zero())
 			})
 		}
 
@@ -309,7 +320,7 @@ pub mod pallet {
 			StakeAccounts::<T>::get(account_id, currency_id).staked()
 		}
 
-		fn move_currency(
+		fn attach_currency(
 			currency_id: Self::CurrencyId,
 			next_group_id: Self::GroupId,
 		) -> DispatchResult {
