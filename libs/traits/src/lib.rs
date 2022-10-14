@@ -714,9 +714,15 @@ pub mod ops {
 		ArithmeticError,
 	};
 
+	/// Request the signum of a value.
 	pub trait Signum: PartialOrd + Zero {
+		/// Get the signum. If the value is considered negative, it returns -1, otherwise 1.
 		fn signum(&self) -> i8 {
-			(*self < Self::zero()).then_some(-1).unwrap_or(1)
+			if *self < Self::zero() {
+				-1
+			} else {
+				1
+			}
 		}
 	}
 
