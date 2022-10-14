@@ -1,4 +1,52 @@
+// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
+
+//! # Rewards Pallet
+//!
+//! The Balances pallet provides functionality for distributing rewards to different accounts.
+//! The user can stake a curreny amount to claim a proportional reward.
+//!
+//! ## Overview
+//!
+//! The Rewards pallet provides functions for:
+//!
+//! - Distribute (uniformly and with weights) a reward amount to several groups.
+//! - Deposit and withdraw stake associated to a currency.
+//! - Claim the reward given to a staked currency.
+//! - Associate currencies to groups and moving them from one group to another.
+//!
+//! ### Terminology
+//!
+//! - **CurrencyId**: The identification of a token used to make stake/unstake.
+//!   This ID is associated to a group used to reward the stake amount.
+//! - **Reward**: The amount given in native tokens to a proportional amount of currency staked.
+//! - **Group**: A shared resource where the reward is distributed. The accounts with a currency
+//!   associated to a group can deposit/withdraw that currency to claim their proportional reward
+//!   in the native token.
+//! - **StakeAccount**: The account related data used hold the stake of certain currency.
+//! - **Currency movement**: The action on moving a currency from one group to another.
+//!
+//! ### Implementations
+//!
+//! The Rewards pallet provides implementations for the Rewards trait. If these traits provide
+//! the functionality that you need, then you can avoid coupling with the Rewards pallet.
+//!
+//! ### Functionality
+//!
+//! The Rewards pallet is based on this [paper](https://solmaz.io/2019/02/24/scalable-reward-changing/)
+//! and extends that functionality to support different groups and currencies.
+//!
 
 pub use pallet::*;
 
@@ -29,6 +77,8 @@ pub trait Rewards<AccountId> {
 	type GroupId;
 	type CurrencyId;
 
+	/// Distribute uniformly the reward given to the entire list of groups.
+	/// The total rewarded amount will be returned, see [`Rewards::reward_group()`].
 	fn distribute_reward<Rate, It>(
 		reward: Self::Balance,
 		groups: It,
@@ -44,6 +94,9 @@ pub trait Rewards<AccountId> {
 		)
 	}
 
+	/// Distribute the reward given to the entire list of groups.
+	/// Each group will recive a a `weight / total_weight` part of the reward.
+	/// The total rewarded amount will be returned, see [`Rewards::reward_group()`].
 	fn distribute_reward_with_weights<Rate, Weight, It>(
 		reward: Self::Balance,
 		groups: It,
@@ -72,36 +125,56 @@ pub trait Rewards<AccountId> {
 			.sum::<Result<Self::Balance, DispatchError>>()
 	}
 
+	/// Distribute the reward to a group.
+	/// The rewarded amount will be returned.
+	/// Could be cases where the reward given does not match with the returned.
+	/// For example, if the group has no staked amount to reward.
 	fn reward_group(
 		reward: Self::Balance,
 		group_id: Self::GroupId,
 	) -> Result<Self::Balance, DispatchError>;
 
+	/// Deposit a stake amount for a account_id associated to a currency_id.
+	/// The account_id must have enough currency to make the deposit,
+	/// if not, an Err will be returned.
 	fn deposit_stake(
 		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 	) -> DispatchResult;
 
+	/// Withdraw a stake amount for an account_id associated to a currency_id.
+	/// The account_id must have enough currency staked to perform a withdraw,
+	/// if not, an Err will be returned.
 	fn withdraw_stake(
 		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
 		amount: Self::Balance,
 	) -> DispatchResult;
 
+	/// Computes the reward the account_id can receive for a currency_id.
+	/// This action does not modify the account currency balance.
 	fn compute_reward(
 		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
 	) -> Result<Self::Balance, DispatchError>;
 
+	/// Computes the reward the account_id can receive for a currency_id and claim it.
+	/// A reward using the native currency will be sent to the account_id.
 	fn claim_reward(
 		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
 	) -> Result<Self::Balance, DispatchError>;
 
+	/// Retrieve the total staked amount.
 	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
+
+	/// Retrieve the total staked amount of currency in an account.
 	fn account_stake(account_id: &AccountId, currency_id: Self::CurrencyId) -> Self::Balance;
 
+	/// Associate the currency to a group.
+	/// If the currency was previously associated to another group, the associated stake is moved
+	/// to the new group.
 	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
 }
 
@@ -116,11 +189,14 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+		/// Identifier of this pallet used as an acount where stores the reward that is not claimed.
+		/// When you distribute reward, the amount distributed goes here.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
 		type Currency: ReservableCurrency<Self::AccountId>;
 
+		/// Type used to handle a Balance that can have negative values
 		type SignedBalance: From<BalanceOf<Self>>
 			+ codec::FullCodec
 			+ Copy
@@ -131,12 +207,16 @@ pub mod pallet {
 			+ CheckedSub
 			+ CheckedAdd;
 
+		/// Type used to handle rates as fixed points numbers.
 		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + Encode + Decode;
 
+		/// Type used to identify groups.
 		type GroupId: codec::FullCodec + scale_info::TypeInfo + MaxEncodedLen + Copy;
 
+		/// Type used to identify currencies.
 		type CurrencyId: codec::FullCodec + scale_info::TypeInfo + MaxEncodedLen + Copy;
 
+		/// Max number of currency movements. See [`Rewards::attach_currency()`].
 		#[pallet::constant]
 		type MaxCurrencyMovements: Get<u32> + scale_info::TypeInfo;
 	}
@@ -150,7 +230,7 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub type Currencies<T: Config> = StorageMap<
+	pub(super) type Currencies<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::CurrencyId,
@@ -159,11 +239,11 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	pub type Groups<T: Config> =
+	pub(super) type Groups<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::GroupId, Group<BalanceOf<T>, T::Rate>, ValueQuery>;
 
 	#[pallet::storage]
-	pub type StakeAccounts<T: Config> = StorageDoubleMap<
+	pub(super) type StakeAccounts<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
