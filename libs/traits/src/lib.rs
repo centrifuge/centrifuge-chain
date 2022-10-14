@@ -710,17 +710,17 @@ pub mod fees {
 
 pub mod ops {
 	use sp_runtime::{
-		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub},
+		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Zero},
 		ArithmeticError,
 	};
 
-	pub trait Signum: Ord + Default {
+	pub trait Signum: PartialOrd + Zero {
 		fn signum(&self) -> i8 {
-			(*self < Self::default()).then_some(-1).unwrap_or(1)
+			(*self < Self::zero()).then_some(-1).unwrap_or(1)
 		}
 	}
 
-	impl<T: Ord + Default> Signum for T {}
+	impl<T: PartialOrd + Zero> Signum for T {}
 
 	/// Performs addition that returns `ArithmeticError` instead of wrapping around on overflow.
 	pub trait EnsureAdd: CheckedAdd + Signum {
