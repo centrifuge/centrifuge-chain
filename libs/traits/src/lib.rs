@@ -714,14 +714,24 @@ pub mod ops {
 		ArithmeticError,
 	};
 
+	// Numerical Sign
+	#[derive(Clone, Copy, PartialEq)]
+	pub enum NumSign {
+		// A negative value
+		Negative,
+
+		// A positive/zero value
+		Positive,
+	}
+
 	/// Request the signum of a value.
 	pub trait Signum: PartialOrd + Zero {
-		/// Get the signum. If the value is considered negative, it returns -1, otherwise 1.
-		fn signum(&self) -> i8 {
+		/// Get the signum.
+		fn signum(&self) -> NumSign {
 			if *self < Self::zero() {
-				-1
+				NumSign::Negative
 			} else {
-				1
+				NumSign::Positive
 			}
 		}
 	}
@@ -752,8 +762,8 @@ pub mod ops {
 		/// ```
 		fn ensure_add(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_add(v).ok_or_else(|| match v.signum() {
-				-1 => ArithmeticError::Underflow,
-				_ => ArithmeticError::Overflow,
+				NumSign::Negative => ArithmeticError::Underflow,
+				NumSign::Positive => ArithmeticError::Overflow,
 			})
 		}
 	}
@@ -782,8 +792,8 @@ pub mod ops {
 		/// ```
 		fn ensure_sub(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_sub(v).ok_or_else(|| match v.signum() {
-				-1 => ArithmeticError::Overflow,
-				_ => ArithmeticError::Underflow,
+				NumSign::Negative => ArithmeticError::Overflow,
+				NumSign::Positive => ArithmeticError::Underflow,
 			})
 		}
 	}
@@ -812,9 +822,9 @@ pub mod ops {
 		/// ```
 		fn ensure_mul(&self, v: &Self) -> Result<Self, ArithmeticError> {
 			self.checked_mul(v)
-				.ok_or_else(|| match self.signum() * v.signum() {
-					-1 => ArithmeticError::Underflow,
-					_ => ArithmeticError::Overflow,
+				.ok_or_else(|| match self.signum() != v.signum() {
+					true => ArithmeticError::Underflow,
+					false => ArithmeticError::Overflow,
 				})
 		}
 	}
