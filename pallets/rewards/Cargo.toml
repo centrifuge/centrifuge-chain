@@ -19,12 +19,12 @@ frame-system = { git = "https://github.com/paritytech/substrate", default-featur
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 num-traits = { version = "0.2", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 lazy_static = "1.4"
 
 [features]
@@ -36,4 +36,5 @@ std = [
     "frame-system/std",
     "sp-runtime/std",
     "sp-std/std",
+    "cfg-traits/std",
 ]

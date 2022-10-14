@@ -10,6 +10,7 @@ mod tests;
 
 mod types;
 
+use cfg_traits::ops::{EnsureAdd, EnsureSub};
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement, ReservableCurrency},
@@ -121,7 +122,6 @@ pub mod pallet {
 		type Currency: ReservableCurrency<Self::AccountId>;
 
 		type SignedBalance: From<BalanceOf<Self>>
-			+ TryInto<BalanceOf<Self>>
 			+ codec::FullCodec
 			+ Copy
 			+ Default
@@ -131,11 +131,7 @@ pub mod pallet {
 			+ CheckedSub
 			+ CheckedAdd;
 
-		type Rate: FixedPointNumber<Inner = BalanceOf<Self>>
-			+ TypeInfo
-			+ MaxEncodedLen
-			+ Encode
-			+ Decode;
+		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + Encode + Decode;
 
 		type GroupId: codec::FullCodec + scale_info::TypeInfo + MaxEncodedLen + Copy;
 
@@ -194,7 +190,9 @@ pub mod pallet {
 
 	impl<T: Config> Rewards<T::AccountId> for Pallet<T>
 	where
-		BalanceOf<T>: FixedPointOperand + Sum,
+		BalanceOf<T>: FixedPointOperand + Sum + EnsureAdd + EnsureSub + TryFrom<T::SignedBalance>,
+		T::SignedBalance: FixedPointOperand + EnsureAdd + EnsureSub,
+		<T::Rate as FixedPointNumber>::Inner: Signed,
 	{
 		type Balance = BalanceOf<T>;
 		type CurrencyId = T::CurrencyId;
@@ -334,7 +332,7 @@ pub mod pallet {
 								.ok_or(ArithmeticError::Underflow)?;
 
 							currency
-								.add_tally(rpt_tally)
+								.add_rpt_tally(rpt_tally)
 								.map_err(|_| Error::<T>::CurrencyMaxMovementsReached)?;
 
 							prev_group.sub_amount(currency.total_staked())?;

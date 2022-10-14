@@ -6449,6 +6449,7 @@ dependencies = [
 name = "pallet-rewards"
 version = "0.1.0"
 dependencies = [
+ "cfg-traits",
  "frame-support",
  "frame-system",
  "lazy_static",
@@ -6456,7 +6457,6 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
- "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",

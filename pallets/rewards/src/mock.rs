@@ -2,11 +2,11 @@ use frame_support::{
 	traits::{ConstU16, ConstU32, ConstU64, Currency},
 	PalletId,
 };
-use sp_arithmetic::fixed_point::FixedU64;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	FixedI64,
 };
 
 use crate as pallet_rewards;
@@ -90,7 +90,7 @@ impl pallet_rewards::Config for Test {
 	type GroupId = u8;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
-	type Rate = FixedU64;
+	type Rate = FixedI64;
 	type SignedBalance = i128;
 }
 
