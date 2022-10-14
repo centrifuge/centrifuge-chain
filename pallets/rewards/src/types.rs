@@ -66,13 +66,6 @@ where
 	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd,
 	Rate: FixedPointNumber,
 {
-	pub fn new(reward_per_token: Rate, total_staked: Balance) -> Self {
-		Self {
-			reward_per_token,
-			total_staked,
-		}
-	}
-
 	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
 		self.total_staked.ensure_add_assign(&amount)
 	}
