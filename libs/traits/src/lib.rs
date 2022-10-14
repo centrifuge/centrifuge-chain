@@ -714,42 +714,13 @@ pub mod ops {
 		ArithmeticError,
 	};
 
-	pub trait Signum {
-		fn signum(&self) -> i8;
+	pub trait Signum: Ord + Default {
+		fn signum(&self) -> i8 {
+			(*self < Self::default()).then_some(-1).unwrap_or(1)
+		}
 	}
 
-	macro_rules! signum_variant_impl {
-		($t:ty) => {
-			impl Signum for $t {
-				fn signum(&self) -> i8 {
-					(*self as $t).signum() as i8
-				}
-			}
-		};
-	}
-
-	macro_rules! signum_pos_impl {
-		($t:ty) => {
-			impl Signum for $t {
-				fn signum(&self) -> i8 {
-					1
-				}
-			}
-		};
-	}
-
-	signum_pos_impl!(u8);
-	signum_pos_impl!(u16);
-	signum_pos_impl!(u32);
-	signum_pos_impl!(u64);
-	signum_pos_impl!(u128);
-	signum_variant_impl!(i8);
-	signum_variant_impl!(i16);
-	signum_variant_impl!(i32);
-	signum_variant_impl!(i64);
-	signum_variant_impl!(i128);
-	signum_variant_impl!(f32);
-	signum_variant_impl!(f64);
+	impl<T: Ord + Default> Signum for T {}
 
 	/// Performs addition that returns `ArithmeticError` instead of wrapping around on overflow.
 	pub trait EnsureAdd: CheckedAdd + Signum {
@@ -973,7 +944,7 @@ pub mod ops {
 		///     Ok(())
 		/// }
 		///
-		/// assert_eq!(extrinsic(), Err(DispatchError::Arithmetic(ArithmeticError::DivisionByZero)));
+		/// assert_eq!(extrinsic(), Err(ArithmeticError::DivisionByZero.into()));
 		/// ```
 		fn ensure_div_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_div(v)?;
@@ -985,4 +956,38 @@ pub mod ops {
 	impl<T: EnsureSub> EnsureSubAssign for T {}
 	impl<T: EnsureMul> EnsureMulAssign for T {}
 	impl<T: EnsureDiv> EnsureDivAssign for T {}
+
+	#[cfg(test)]
+	mod test {
+		use sp_runtime::{FixedU128, Perbill};
+
+		use super::*;
+
+		// Ensure the following substrate types are implemented automatically for the EnsureOps
+		// family traits
+
+		#[test]
+		fn fixed_point_support() {
+			assert_eq!(
+				FixedU128::from(3).ensure_sub(&FixedU128::from(1)),
+				Ok(FixedU128::from(2))
+			);
+			assert_eq!(
+				FixedU128::from(0).ensure_sub(&FixedU128::from(1)),
+				Err(ArithmeticError::Underflow.into())
+			);
+		}
+
+		#[test]
+		fn per_thing_support() {
+			assert_eq!(
+				Perbill::from_percent(3).ensure_sub(&Perbill::from_percent(1)),
+				Ok(Perbill::from_percent(2))
+			);
+			assert_eq!(
+				Perbill::from_percent(0).ensure_sub(&Perbill::from_percent(1)),
+				Err(ArithmeticError::Underflow.into())
+			);
+		}
+	}
 }
