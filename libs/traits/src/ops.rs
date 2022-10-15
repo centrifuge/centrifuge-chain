@@ -69,20 +69,20 @@ pub trait EnsureAdd: CheckedAdd + Signum {
 	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 	///
 	/// fn extrinsic_overflow() -> DispatchResult {
-	///     u32::MAX.ensure_add(&1)?;
+	///     u32::MAX.ensure_add(1)?;
 	///     Ok(())
 	/// }
 	///
 	/// fn extrinsic_underflow() -> DispatchResult {
-	///     i32::MIN.ensure_add(&-1)?;
+	///     i32::MIN.ensure_add(-1)?;
 	///     Ok(())
 	/// }
 	///
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 	/// ```
-	fn ensure_add(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_add(v).ok_or_else(|| addition_error(v))
+	fn ensure_add(&self, v: Self) -> Result<Self, ArithmeticError> {
+		self.checked_add(&v).ok_or_else(|| addition_error(&v))
 	}
 }
 
@@ -96,20 +96,20 @@ pub trait EnsureSub: CheckedSub + Signum {
 	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 	///
 	/// fn extrinsic_underflow() -> DispatchResult {
-	///     0u32.ensure_sub(&1)?;
+	///     0u32.ensure_sub(1)?;
 	///     Ok(())
 	/// }
 	///
 	/// fn extrinsic_overflow() -> DispatchResult {
-	///     i32::MAX.ensure_sub(&-1)?;
+	///     i32::MAX.ensure_sub(-1)?;
 	///     Ok(())
 	/// }
 	///
 	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// ```
-	fn ensure_sub(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_sub(v).ok_or_else(|| subtraction_error(v))
+	fn ensure_sub(&self, v: Self) -> Result<Self, ArithmeticError> {
+		self.checked_sub(&v).ok_or_else(|| subtraction_error(&v))
 	}
 }
 
@@ -123,21 +123,21 @@ pub trait EnsureMul: CheckedMul + Signum {
 	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
 	///
 	/// fn extrinsic_overflow() -> DispatchResult {
-	///     u32::MAX.ensure_mul(&2)?;
+	///     u32::MAX.ensure_mul(2)?;
 	///     Ok(())
 	/// }
 	///
 	/// fn extrinsic_underflow() -> DispatchResult {
-	///     i32::MAX.ensure_mul(&-2)?;
+	///     i32::MAX.ensure_mul(-2)?;
 	///     Ok(())
 	/// }
 	///
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 	/// ```
-	fn ensure_mul(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_mul(v)
-			.ok_or_else(|| multiplication_error(self, v))
+	fn ensure_mul(&self, v: Self) -> Result<Self, ArithmeticError> {
+		self.checked_mul(&v)
+			.ok_or_else(|| multiplication_error(self, &v))
 	}
 }
 
@@ -151,26 +151,20 @@ pub trait EnsureDiv: CheckedDiv + Signum {
 	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError, FixedI64};
 	///
 	/// fn extrinsic_zero() -> DispatchResult {
-	///     1.ensure_div(&0)?;
+	///     1.ensure_div(0)?;
 	///     Ok(())
 	/// }
 	///
 	/// fn extrinsic_overflow() -> DispatchResult {
-	///     FixedI64::from(i64::MIN).ensure_div(&FixedI64::from(-1))?;
-	///     Ok(())
-	/// }
-	///
-	/// fn c() -> DispatchResult {
-	///     FixedI64::from(i64::MIN).ensure_div(&FixedI64::from(1))?;
+	///     FixedI64::from(i64::MIN).ensure_div(FixedI64::from(-1))?;
 	///     Ok(())
 	/// }
 	///
 	/// assert_eq!(extrinsic_zero(), Err(ArithmeticError::DivisionByZero.into()));
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
-	/// assert_eq!(c(), Ok(()));
 	/// ```
-	fn ensure_div(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_div(v).ok_or_else(|| division_error(self, v))
+	fn ensure_div(&self, v: Self) -> Result<Self, ArithmeticError> {
+		self.checked_div(&v).ok_or_else(|| division_error(self, &v))
 	}
 }
 
@@ -190,20 +184,20 @@ pub trait EnsureAddAssign: EnsureAdd {
 	///
 	/// fn extrinsic_overflow() -> DispatchResult {
 	///     let mut max = u32::MAX;
-	///     max.ensure_add_assign(&1)?;
+	///     max.ensure_add_assign(1)?;
 	///     Ok(())
 	/// }
 	///
 	/// fn extrinsic_underflow() -> DispatchResult {
 	///     let mut max = i32::MIN;
-	///     max.ensure_add_assign(&-1)?;
+	///     max.ensure_add_assign(-1)?;
 	///     Ok(())
 	/// }
 	///
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 	/// ```
-	fn ensure_add_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
+	fn ensure_add_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 		*self = self.ensure_add(v)?;
 		Ok(())
 	}
@@ -220,20 +214,20 @@ pub trait EnsureSubAssign: EnsureSub {
 	///
 	/// fn extrinsic_underflow() -> DispatchResult {
 	///     let mut zero: u32 = 0;
-	///     zero.ensure_sub_assign(&1)?;
+	///     zero.ensure_sub_assign(1)?;
 	///     Ok(())
 	/// }
 	///
 	/// fn extrinsic_overflow() -> DispatchResult {
 	///     let mut zero = i32::MAX;
-	///     zero.ensure_sub_assign(&-1)?;
+	///     zero.ensure_sub_assign(-1)?;
 	///     Ok(())
 	/// }
 	///
 	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// ```
-	fn ensure_sub_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
+	fn ensure_sub_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 		*self = self.ensure_sub(v)?;
 		Ok(())
 	}
@@ -250,20 +244,20 @@ pub trait EnsureMulAssign: EnsureMul {
 	///
 	/// fn extrinsic_overflow() -> DispatchResult {
 	///     let mut max = u32::MAX;
-	///     max.ensure_mul_assign(&2)?;
+	///     max.ensure_mul_assign(2)?;
 	///     Ok(())
 	/// }
 	///
 	/// fn extrinsic_underflow() -> DispatchResult {
 	///     let mut max = i32::MAX;
-	///     max.ensure_mul_assign(&-2)?;
+	///     max.ensure_mul_assign(-2)?;
 	///     Ok(())
 	/// }
 	///
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 	/// ```
-	fn ensure_mul_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
+	fn ensure_mul_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 		*self = self.ensure_mul(v)?;
 		Ok(())
 	}
@@ -276,17 +270,24 @@ pub trait EnsureDivAssign: EnsureDiv {
 	///
 	/// ```
 	/// use cfg_traits::ops::EnsureDivAssign;
-	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError, FixedI64};
 	///
-	/// fn extrinsic() -> DispatchResult {
+	/// fn extrinsic_zero() -> DispatchResult {
 	///     let mut one = 1;
-	///     one.ensure_div_assign(&0)?;
+	///     one.ensure_div_assign(0)?;
 	///     Ok(())
 	/// }
 	///
-	/// assert_eq!(extrinsic(), Err(ArithmeticError::DivisionByZero.into()));
+	/// fn extrinsic_overflow() -> DispatchResult {
+	///     let mut min = FixedI64::from(i64::MIN);
+	///     min.ensure_div_assign(FixedI64::from(-1))?;
+	///     Ok(())
+	/// }
+	///
+	/// assert_eq!(extrinsic_zero(), Err(ArithmeticError::DivisionByZero.into()));
+	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// ```
-	fn ensure_div_assign(&mut self, v: &Self) -> Result<(), ArithmeticError> {
+	fn ensure_div_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 		*self = self.ensure_div(v)?;
 		Ok(())
 	}
@@ -384,33 +385,19 @@ impl<T: FixedPointNumber> EnsureFixedPointNumber for T {}
 
 #[cfg(test)]
 mod test {
-	use sp_runtime::{FixedU128, Perbill};
-
 	use super::*;
-
-	// Ensure the following substrate types are implemented automatically for the EnsureOps
-	// family traits
-
-	#[test]
-	fn fixed_point_support() {
-		assert_eq!(
-			FixedU128::from(3).ensure_sub(&FixedU128::from(1)),
-			Ok(FixedU128::from(2))
-		);
-		assert_eq!(
-			FixedU128::from(0).ensure_sub(&FixedU128::from(1)),
-			Err(ArithmeticError::Underflow.into())
-		);
-	}
 
 	#[test]
 	fn per_thing_support() {
+		// Ensure per thing support is implemented automatically.
+		use sp_runtime::Perbill;
+
 		assert_eq!(
-			Perbill::from_percent(3).ensure_sub(&Perbill::from_percent(1)),
+			Perbill::from_percent(3).ensure_sub(Perbill::from_percent(1)),
 			Ok(Perbill::from_percent(2))
 		);
 		assert_eq!(
-			Perbill::from_percent(0).ensure_sub(&Perbill::from_percent(1)),
+			Perbill::from_percent(0).ensure_sub(Perbill::from_percent(1)),
 			Err(ArithmeticError::Underflow.into())
 		);
 	}
