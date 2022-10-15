@@ -86,7 +86,7 @@ pub mod ensure {
 		/// Subtracts two numbers, checking for overflow.
 		/// If overflow happens, `ArithmeticError` is returned.
 		///
-		/// Similar to [`CheckedAdd::checked_sub()`] but returning an `ArithmeticError` error
+		/// Similar to [`CheckedSub::checked_sub()`] but returning an `ArithmeticError` error
 		///
 		/// ```
 		/// use cfg_traits::ops::ensure::EnsureSub;
@@ -115,7 +115,7 @@ pub mod ensure {
 		/// Multiplies two numbers, checking for overflow. If overflow happens,
 		/// `ArithmeticError` is returned.
 		///
-		/// Similar to [`CheckedAdd::checked_mul()`] but returning an `ArithmeticError` error
+		/// Similar to [`CheckedMul::checked_mul()`] but returning an `ArithmeticError` error
 		///
 		/// ```
 		/// use cfg_traits::ops::ensure::EnsureMul;
@@ -145,7 +145,7 @@ pub mod ensure {
 		/// Divides two numbers, checking for overflow.
 		/// If overflow happens, `ArithmeticError` is returned.
 		///
-		/// Similar to [`CheckedAdd::checked_div()`] but returning an `ArithmeticError` error
+		/// Similar to [`CheckedDiv::checked_div()`] but returning an `ArithmeticError` error
 		///
 		/// ```
 		/// use cfg_traits::ops::ensure::EnsureDiv;
@@ -331,7 +331,7 @@ pub mod ensure {
 				.ok_or_else(|| error::division(n, d))
 		}
 
-		/// Checked multiplication for integer type `N`. Equal to `self * n`.
+		/// Ensure multiplication for integer type `N`. Equal to `self * n`.
 		///
 		/// Returns `ArithmeticError` if the result does not fit in `N`.
 		///
@@ -358,7 +358,7 @@ pub mod ensure {
 				.ok_or_else(|| error::multiplication(self, n))
 		}
 
-		/// Checked division for integer type `N`. Equal to `self / d`.
+		/// Ensure division for integer type `N`. Equal to `self / d`.
 		///
 		/// Returns `ArithmeticError` if the result does not fit in `N` or `d == 0`.
 		///
