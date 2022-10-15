@@ -39,7 +39,7 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 
 - [**keystore**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/keystore) ([docs](https://reference.centrifuge.io/pallet_keystore/index.html)): Linking public keys to accounts. Supporting the operations of the offchain document consensus layer through the Centrifuge POD (Private Offchain Data) Node.
 
-- [**nft**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/nft) ([docs](https://reference.centrifuge.io/pallet_nft/index.html)): Validating a mint request that needs to be transfered through the bridge layer to Ethereum.
+- [**nft**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/nft) ([docs](https://reference.centrifuge.io/pallet_nft/index.html)): Validating a mint request that needs to be transferred through the bridge layer to Ethereum.
 
 - [**nft-sales**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/nft-sales) ([docs](https://reference.centrifuge.io/pallet_nft_sales/index.html)): Providing a place for digital art creators and owners to offer their NFTs for sale and for potential buyers to browse and buy them.
 
