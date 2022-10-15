@@ -24,9 +24,22 @@ pub trait Signum: PartialOrd + Zero + Copy {
 
 impl<T: PartialOrd + Zero + Copy> Signum for T {}
 
-/// Arithmetic operations with safe error handling
+/// Arithmetic operations with safe error handling.
+///
+/// This module provide a more readable arithmetics, turning this:
+///
+/// ```ignore
+/// self.my_value = self.my_value.checked_sub(other_value).ok_or(ArithmeticError::Overflow)?;
+/// ```
+///
+/// into this:
+///
+/// ```ignore
+/// self.my_value.ensure_sub_assign(other_value)?;
+/// ```
+///
 /// The `EnsureOps` family functions follows the same behavior as `CheckedOps` but
-/// returning an [`ArithmeticError`] instead of `None`
+/// returning an [`ArithmeticError`] instead of `None`.
 ///
 /// [`ArithmeticError`]: sp_runtime::ArithmeticError
 pub mod ensure {
@@ -291,7 +304,7 @@ pub mod ensure {
 		///
 		/// Returns `ArithmeticError` if `d == 0` or `n / d` exceeds accuracy.
 		///
-		/// Similar to [`FixedPointNumber::checked_from_rational()`] but returning an ArithmeticError error
+		/// Similar to [`FixedPointNumber::checked_from_rational()`] but returning an `ArithmeticError` error
 		/// ```
 		/// use cfg_traits::ops::ensure::EnsureFixedPointNumber;
 		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError, FixedI64};
@@ -348,7 +361,7 @@ pub mod ensure {
 		///
 		/// Returns `ArithmeticError` if the result does not fit in `N` or `d == 0`.
 		///
-		/// Similar to [`FixedPointNumber::checked_div_int()`] but returning an ArithmeticError error
+		/// Similar to [`FixedPointNumber::checked_div_int()`] but returning an `ArithmeticError` error
 		///
 		/// ```
 		/// use cfg_traits::ops::ensure::EnsureFixedPointNumber;
@@ -374,6 +387,64 @@ pub mod ensure {
 	}
 
 	impl<T: FixedPointNumber> EnsureFixedPointNumber for T {}
+
+	/// Similar to [`TryFrom`] but returning an `ArithmeticError` error.
+	pub trait EnsureFrom<T: Signum>: TryFrom<T> + Signum {
+		/// Performs the conversion returning an `ArithmeticError` if fails.
+		///
+		/// Similar to [`TryFrom::try_from()`] but returning an `ArithmeticError` error
+		/// ```
+		/// use cfg_traits::ops::ensure::EnsureFrom;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic_overflow() -> DispatchResult {
+		///     let byte: u8 = u8::ensure_from(256u16)?;
+		///     Ok(())
+		/// }
+		///
+		/// fn extrinsic_underflow() -> DispatchResult {
+		///     let byte: i8 = i8::ensure_from(-129i16)?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
+		/// ```
+		fn ensure_from(other: T) -> Result<Self, ArithmeticError> {
+			Self::try_from(other).map_err(|_| error::addition(&other))
+		}
+	}
+
+	/// Similar to [`TryInto`] but returning an `ArithmeticError` error.
+	pub trait EnsureInto<T: Signum>: TryInto<T> + Signum {
+		/// Performs the conversion returning an `ArithmeticError` if fails.
+		///
+		/// Similar to [`TryInto::try_into()`] but returning an `ArithmeticError` error
+		///
+		/// ```
+		/// use cfg_traits::ops::ensure::EnsureInto;
+		/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+		///
+		/// fn extrinsic_overflow() -> DispatchResult {
+		///     let byte: u8 = 256u16.ensure_into()?;
+		///     Ok(())
+		/// }
+		///
+		/// fn extrinsic_underflow() -> DispatchResult {
+		///     let byte: i8 = (-129i16).ensure_into()?;
+		///     Ok(())
+		/// }
+		///
+		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
+		/// ```
+		fn ensure_into(self) -> Result<T, ArithmeticError> {
+			self.try_into().map_err(|_| error::addition(&self))
+		}
+	}
+
+	impl<T: TryFrom<S> + Signum, S: Signum> EnsureFrom<S> for T {}
+	impl<T: TryInto<S> + Signum, S: Signum> EnsureInto<S> for T {}
 
 	mod error {
 		use super::{ArithmeticError, NumSign, Signum};
