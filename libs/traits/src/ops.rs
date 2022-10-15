@@ -27,6 +27,38 @@ pub trait Signum: PartialOrd + Zero {
 
 impl<T: PartialOrd + Zero> Signum for T {}
 
+fn addition_error<L: Signum>(l: &L) -> ArithmeticError {
+	match l.signum() {
+		NumSign::Negative => ArithmeticError::Underflow,
+		NumSign::Positive => ArithmeticError::Overflow,
+	}
+}
+
+fn subtraction_error<L: Signum>(l: &L) -> ArithmeticError {
+	match l.signum() {
+		NumSign::Negative => ArithmeticError::Overflow,
+		NumSign::Positive => ArithmeticError::Underflow,
+	}
+}
+
+fn multiplication_error<R: Signum, L: Signum>(r: &R, l: &L) -> ArithmeticError {
+	match r.signum() != l.signum() {
+		true => ArithmeticError::Underflow,
+		false => ArithmeticError::Overflow,
+	}
+}
+
+fn division_error<N: Signum, D: Signum>(n: &N, d: &D) -> ArithmeticError {
+	if d.is_zero() {
+		ArithmeticError::DivisionByZero
+	} else {
+		match n.signum() != d.signum() {
+			true => ArithmeticError::Underflow,
+			false => ArithmeticError::Overflow,
+		}
+	}
+}
+
 /// Performs addition that returns `ArithmeticError` instead of wrapping around on overflow.
 pub trait EnsureAdd: CheckedAdd + Signum {
 	/// Adds two numbers, checking for overflow.
@@ -50,10 +82,7 @@ pub trait EnsureAdd: CheckedAdd + Signum {
 	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 	/// ```
 	fn ensure_add(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_add(v).ok_or_else(|| match v.signum() {
-			NumSign::Negative => ArithmeticError::Underflow,
-			NumSign::Positive => ArithmeticError::Overflow,
-		})
+		self.checked_add(v).ok_or_else(|| addition_error(v))
 	}
 }
 
@@ -80,10 +109,7 @@ pub trait EnsureSub: CheckedSub + Signum {
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// ```
 	fn ensure_sub(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_sub(v).ok_or_else(|| match v.signum() {
-			NumSign::Negative => ArithmeticError::Overflow,
-			NumSign::Positive => ArithmeticError::Underflow,
-		})
+		self.checked_sub(v).ok_or_else(|| subtraction_error(v))
 	}
 }
 
@@ -111,10 +137,7 @@ pub trait EnsureMul: CheckedMul + Signum {
 	/// ```
 	fn ensure_mul(&self, v: &Self) -> Result<Self, ArithmeticError> {
 		self.checked_mul(v)
-			.ok_or_else(|| match self.signum() != v.signum() {
-				true => ArithmeticError::Underflow,
-				false => ArithmeticError::Overflow,
-			})
+			.ok_or_else(|| multiplication_error(self, v))
 	}
 }
 
@@ -147,16 +170,7 @@ pub trait EnsureDiv: CheckedDiv + Signum {
 	/// assert_eq!(c(), Ok(()));
 	/// ```
 	fn ensure_div(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_div(v).ok_or_else(|| {
-			if v.is_zero() {
-				ArithmeticError::DivisionByZero
-			} else {
-				match self.signum() != v.signum() {
-					true => ArithmeticError::Underflow,
-					false => ArithmeticError::Overflow,
-				}
-			}
-		})
+		self.checked_div(v).ok_or_else(|| division_error(self, v))
 	}
 }
 
@@ -309,16 +323,8 @@ pub trait EnsureFixedPointNumber: FixedPointNumber {
 		n: N,
 		d: D,
 	) -> Result<Self, ArithmeticError> {
-		<Self as FixedPointNumber>::checked_from_rational(n, d).ok_or_else(|| {
-			if d.is_zero() {
-				ArithmeticError::DivisionByZero
-			} else {
-				match n.signum() != d.signum() {
-					true => ArithmeticError::Underflow,
-					false => ArithmeticError::Overflow,
-				}
-			}
-		})
+		<Self as FixedPointNumber>::checked_from_rational(n, d)
+			.ok_or_else(|| division_error(&n, &d))
 	}
 
 	/// Checked multiplication for integer type `N`. Equal to `self * n`.
@@ -344,10 +350,7 @@ pub trait EnsureFixedPointNumber: FixedPointNumber {
 	/// ```
 	fn ensure_mul_int<N: FixedPointOperand>(self, n: N) -> Result<N, ArithmeticError> {
 		self.checked_mul_int(n)
-			.ok_or_else(|| match self.signum() != n.signum() {
-				true => ArithmeticError::Underflow,
-				false => ArithmeticError::Overflow,
-			})
+			.ok_or_else(|| multiplication_error(&self, &n))
 	}
 
 	/// Checked division for integer type `N`. Equal to `self / d`.
@@ -372,16 +375,8 @@ pub trait EnsureFixedPointNumber: FixedPointNumber {
 	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 	/// ```
 	fn ensure_div_int<D: FixedPointOperand>(self, d: D) -> Result<D, ArithmeticError> {
-		self.checked_div_int(d).ok_or_else(|| {
-			if d.is_zero() {
-				ArithmeticError::DivisionByZero
-			} else {
-				match self.signum() != d.signum() {
-					true => ArithmeticError::Underflow,
-					false => ArithmeticError::Overflow,
-				}
-			}
-		})
+		self.checked_div_int(d)
+			.ok_or_else(|| division_error(&self, &d))
 	}
 }
 
