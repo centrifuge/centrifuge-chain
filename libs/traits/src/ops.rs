@@ -1,6 +1,6 @@
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Zero},
-	ArithmeticError,
+	ArithmeticError, FixedPointNumber, FixedPointOperand,
 };
 
 // Numerical Sign
@@ -119,30 +119,51 @@ pub trait EnsureMul: CheckedMul + Signum {
 }
 
 /// Performs division that returns `ArithmeticError` instead of wrapping around on overflow.
-pub trait EnsureDiv: CheckedDiv {
+pub trait EnsureDiv: CheckedDiv + Signum {
 	/// Divides two numbers, checking for overflow.
 	/// If overflow happens, `ArithmeticError` is returned.
 	///
 	/// ```
 	/// use cfg_traits::ops::EnsureDiv;
-	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError};
+	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError, FixedI64};
 	///
-	/// fn extrinsic() -> DispatchResult {
+	/// fn extrinsic_zero() -> DispatchResult {
 	///     1.ensure_div(&0)?;
 	///     Ok(())
 	/// }
 	///
-	/// assert_eq!(extrinsic(), Err(ArithmeticError::DivisionByZero.into()));
+	/// fn extrinsic_overflow() -> DispatchResult {
+	///     FixedI64::from(i64::MIN).ensure_div(&FixedI64::from(-1))?;
+	///     Ok(())
+	/// }
+	///
+	/// fn c() -> DispatchResult {
+	///     FixedI64::from(i64::MIN).ensure_div(&FixedI64::from(1))?;
+	///     Ok(())
+	/// }
+	///
+	/// assert_eq!(extrinsic_zero(), Err(ArithmeticError::DivisionByZero.into()));
+	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+	/// assert_eq!(c(), Ok(()));
 	/// ```
 	fn ensure_div(&self, v: &Self) -> Result<Self, ArithmeticError> {
-		self.checked_div(v).ok_or(ArithmeticError::DivisionByZero)
+		self.checked_div(v).ok_or_else(|| {
+			if v.is_zero() {
+				ArithmeticError::DivisionByZero
+			} else {
+				match self.signum() != v.signum() {
+					true => ArithmeticError::Underflow,
+					false => ArithmeticError::Overflow,
+				}
+			}
+		})
 	}
 }
 
 impl<T: CheckedAdd + Signum> EnsureAdd for T {}
 impl<T: CheckedSub + Signum> EnsureSub for T {}
 impl<T: CheckedMul + Signum> EnsureMul for T {}
-impl<T: CheckedDiv> EnsureDiv for T {}
+impl<T: CheckedDiv + Signum> EnsureDiv for T {}
 
 /// Performs self addition that returns `ArithmeticError` instead of wrapping around on overflow.
 pub trait EnsureAddAssign: EnsureAdd {
@@ -261,6 +282,110 @@ impl<T: EnsureAdd> EnsureAddAssign for T {}
 impl<T: EnsureSub> EnsureSubAssign for T {}
 impl<T: EnsureMul> EnsureMulAssign for T {}
 impl<T: EnsureDiv> EnsureDivAssign for T {}
+
+/// Extends `FixedPointNumber with` the Ensure family functions.
+pub trait EnsureFixedPointNumber: FixedPointNumber {
+	/// Creates `self` from a rational number. Equal to `n / d`.
+	///
+	/// Returns `ArithmeticError` if `d == 0` or `n / d` exceeds accuracy.
+	/// ```
+	/// use cfg_traits::ops::EnsureFixedPointNumber;
+	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError, FixedI64};
+	///
+	/// fn extrinsic_zero() -> DispatchResult {
+	///     FixedI64::ensure_from_rational(1, 0)?;
+	///     Ok(())
+	/// }
+	///
+	/// fn extrinsic_underflow() -> DispatchResult {
+	///     FixedI64::ensure_from_rational(i64::MAX, -1)?;
+	///     Ok(())
+	/// }
+	///
+	/// assert_eq!(extrinsic_zero(), Err(ArithmeticError::DivisionByZero.into()));
+	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
+	/// ```
+	fn ensure_from_rational<N: FixedPointOperand, D: FixedPointOperand>(
+		n: N,
+		d: D,
+	) -> Result<Self, ArithmeticError> {
+		<Self as FixedPointNumber>::checked_from_rational(n, d).ok_or_else(|| {
+			if d.is_zero() {
+				ArithmeticError::DivisionByZero
+			} else {
+				match n.signum() != d.signum() {
+					true => ArithmeticError::Underflow,
+					false => ArithmeticError::Overflow,
+				}
+			}
+		})
+	}
+
+	/// Checked multiplication for integer type `N`. Equal to `self * n`.
+	///
+	/// Returns `ArithmeticError` if the result does not fit in `N`.
+	///
+	/// ```
+	/// use cfg_traits::ops::EnsureFixedPointNumber;
+	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError, FixedI64};
+	///
+	/// fn extrinsic_overflow() -> DispatchResult {
+	///     FixedI64::from(i64::MAX).ensure_mul_int(2)?;
+	///     Ok(())
+	/// }
+	///
+	/// fn extrinsic_underflow() -> DispatchResult {
+	///     FixedI64::from(i64::MAX).ensure_mul_int(-2)?;
+	///     Ok(())
+	/// }
+	///
+	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+	/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
+	/// ```
+	fn ensure_mul_int<N: FixedPointOperand>(self, n: N) -> Result<N, ArithmeticError> {
+		self.checked_mul_int(n)
+			.ok_or_else(|| match self.signum() != n.signum() {
+				true => ArithmeticError::Underflow,
+				false => ArithmeticError::Overflow,
+			})
+	}
+
+	/// Checked division for integer type `N`. Equal to `self / d`.
+	///
+	/// Returns `ArithmeticError` if the result does not fit in `N` or `d == 0`.
+	///
+	/// ```
+	/// use cfg_traits::ops::EnsureFixedPointNumber;
+	/// use sp_runtime::{DispatchResult, ArithmeticError, DispatchError, FixedI64};
+	///
+	/// fn extrinsic_zero() -> DispatchResult {
+	///     FixedI64::from(1).ensure_div_int(0)?;
+	///     Ok(())
+	/// }
+	///
+	/// fn extrinsic_overflow() -> DispatchResult {
+	///     FixedI64::from(i64::MIN).ensure_div_int(-1)?;
+	///     Ok(())
+	/// }
+	///
+	/// assert_eq!(extrinsic_zero(), Err(ArithmeticError::DivisionByZero.into()));
+	/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
+	/// ```
+	fn ensure_div_int<D: FixedPointOperand>(self, d: D) -> Result<D, ArithmeticError> {
+		self.checked_div_int(d).ok_or_else(|| {
+			if d.is_zero() {
+				ArithmeticError::DivisionByZero
+			} else {
+				match self.signum() != d.signum() {
+					true => ArithmeticError::Underflow,
+					false => ArithmeticError::Overflow,
+				}
+			}
+		})
+	}
+}
+
+impl<T: FixedPointNumber> EnsureFixedPointNumber for T {}
 
 #[cfg(test)]
 mod test {
