@@ -26,7 +26,7 @@ impl<T: PartialOrd + Zero + Copy> Signum for T {}
 
 /// Arithmetic operations with safe error handling.
 ///
-/// This module provide a more readable arithmetics, turning this:
+/// This module provide a more readable way to do safe arithmetics, turning this:
 ///
 /// ```ignore
 /// self.my_value = self.my_value.checked_sub(other_value).ok_or(ArithmeticError::Overflow)?;
@@ -38,7 +38,9 @@ impl<T: PartialOrd + Zero + Copy> Signum for T {}
 /// self.my_value.ensure_sub_assign(other_value)?;
 /// ```
 ///
-/// The `EnsureOps` family functions follows the same behavior as `CheckedOps` but
+/// And choose the correct [`ArithmeticError`] it should return in case of fail.
+///
+/// The *EnsureOps* family functions follows the same behavior as *CheckedOps* but
 /// returning an [`ArithmeticError`] instead of `None`.
 ///
 /// [`ArithmeticError`]: sp_runtime::ArithmeticError
@@ -75,7 +77,7 @@ pub mod ensure {
 		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 		/// ```
 		fn ensure_add(self, v: Self) -> Result<Self, ArithmeticError> {
-			self.checked_add(&v).ok_or_else(|| error::addition(&v))
+			self.checked_add(&v).ok_or_else(|| error::equivalent(v))
 		}
 	}
 
@@ -104,7 +106,7 @@ pub mod ensure {
 		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 		/// ```
 		fn ensure_sub(self, v: Self) -> Result<Self, ArithmeticError> {
-			self.checked_sub(&v).ok_or_else(|| error::subtraction(&v))
+			self.checked_sub(&v).ok_or_else(|| error::inverse(v))
 		}
 	}
 
@@ -134,7 +136,7 @@ pub mod ensure {
 		/// ```
 		fn ensure_mul(self, v: Self) -> Result<Self, ArithmeticError> {
 			self.checked_mul(&v)
-				.ok_or_else(|| error::multiplication(&self, &v))
+				.ok_or_else(|| error::multiplication(self, v))
 		}
 	}
 
@@ -163,8 +165,7 @@ pub mod ensure {
 		/// assert_eq!(extrinsic_overflow(), Err(ArithmeticError::Overflow.into()));
 		/// ```
 		fn ensure_div(self, v: Self) -> Result<Self, ArithmeticError> {
-			self.checked_div(&v)
-				.ok_or_else(|| error::division(&self, &v))
+			self.checked_div(&v).ok_or_else(|| error::division(self, v))
 		}
 	}
 
@@ -327,7 +328,7 @@ pub mod ensure {
 			d: D,
 		) -> Result<Self, ArithmeticError> {
 			<Self as FixedPointNumber>::checked_from_rational(n, d)
-				.ok_or_else(|| error::division(&n, &d))
+				.ok_or_else(|| error::division(n, d))
 		}
 
 		/// Checked multiplication for integer type `N`. Equal to `self * n`.
@@ -354,7 +355,7 @@ pub mod ensure {
 		/// ```
 		fn ensure_mul_int<N: FixedPointOperand>(self, n: N) -> Result<N, ArithmeticError> {
 			self.checked_mul_int(n)
-				.ok_or_else(|| error::multiplication(&self, &n))
+				.ok_or_else(|| error::multiplication(self, n))
 		}
 
 		/// Checked division for integer type `N`. Equal to `self / d`.
@@ -382,7 +383,7 @@ pub mod ensure {
 		/// ```
 		fn ensure_div_int<D: FixedPointOperand>(self, d: D) -> Result<D, ArithmeticError> {
 			self.checked_div_int(d)
-				.ok_or_else(|| error::division(&self, &d))
+				.ok_or_else(|| error::division(self, d))
 		}
 	}
 
@@ -411,7 +412,7 @@ pub mod ensure {
 		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 		/// ```
 		fn ensure_from(other: T) -> Result<Self, ArithmeticError> {
-			Self::try_from(other).map_err(|_| error::addition(&other))
+			Self::try_from(other).map_err(|_| error::equivalent(other))
 		}
 	}
 
@@ -439,7 +440,7 @@ pub mod ensure {
 		/// assert_eq!(extrinsic_underflow(), Err(ArithmeticError::Underflow.into()));
 		/// ```
 		fn ensure_into(self) -> Result<T, ArithmeticError> {
-			self.try_into().map_err(|_| error::addition(&self))
+			self.try_into().map_err(|_| error::equivalent(self))
 		}
 	}
 
@@ -449,28 +450,28 @@ pub mod ensure {
 	mod error {
 		use super::{ArithmeticError, NumSign, Signum};
 
-		pub fn addition<R: Signum>(r: &R) -> ArithmeticError {
+		pub fn equivalent<R: Signum>(r: R) -> ArithmeticError {
 			match r.signum() {
 				NumSign::Negative => ArithmeticError::Underflow,
 				NumSign::Positive => ArithmeticError::Overflow,
 			}
 		}
 
-		pub fn subtraction<R: Signum>(r: &R) -> ArithmeticError {
+		pub fn inverse<R: Signum>(r: R) -> ArithmeticError {
 			match r.signum() {
 				NumSign::Negative => ArithmeticError::Overflow,
 				NumSign::Positive => ArithmeticError::Underflow,
 			}
 		}
 
-		pub fn multiplication<L: Signum, R: Signum>(l: &L, r: &R) -> ArithmeticError {
+		pub fn multiplication<L: Signum, R: Signum>(l: L, r: R) -> ArithmeticError {
 			match l.signum() != r.signum() {
 				true => ArithmeticError::Underflow,
 				false => ArithmeticError::Overflow,
 			}
 		}
 
-		pub fn division<N: Signum, D: Signum>(n: &N, d: &D) -> ArithmeticError {
+		pub fn division<N: Signum, D: Signum>(n: N, d: D) -> ArithmeticError {
 			if d.is_zero() {
 				ArithmeticError::DivisionByZero
 			} else {
