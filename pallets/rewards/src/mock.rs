@@ -1,7 +1,10 @@
 use frame_support::{
-	traits::{ConstU16, ConstU32, ConstU64, Currency},
+	pallet_prelude::*,
+	traits::{ConstU16, ConstU32, ConstU64},
 	PalletId,
 };
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -16,14 +19,11 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 pub const USER_A: u64 = 1;
 pub const USER_B: u64 = 2;
+
 pub const USER_INITIAL_BALANCE: u64 = 100000;
 
 pub const GROUP_A: u8 = 1;
 pub const GROUP_B: u8 = 2;
-
-pub const CURRENCY_A: u32 = 1;
-pub const CURRENCY_B: u32 = 2;
-pub const CURRENCY_C: u32 = 3;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -32,13 +32,13 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Rewards: pallet_rewards::{Pallet, Storage, Event<T>},
 	}
 );
 
 impl frame_system::Config for Test {
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = ();
 	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = ConstU64<250>;
@@ -64,46 +64,90 @@ impl frame_system::Config for Test {
 	type Version = ();
 }
 
-impl pallet_balances::Config for Test {
-	type AccountStore = System;
+#[derive(
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+	RuntimeDebug,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum CurrencyId {
+	Reward,
+	A,
+	B,
+	C,
+}
+
+orml_traits::parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 { 0 };
+}
+
+frame_support::parameter_types! {}
+
+impl orml_tokens::Config for Test {
+	type Amount = i64;
 	type Balance = u64;
-	type DustRemoval = ();
+	type CurrencyId = CurrencyId;
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type Event = Event;
-	type ExistentialDeposit = ();
+	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = ();
 	type MaxReserves = ();
-	type ReserveIdentifier = ();
+	type OnDust = ();
+	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
 
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
+	pub const RewardCurrency: CurrencyId = CurrencyId::Reward;
 
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 3;
 }
 
 impl pallet_rewards::Config for Test {
-	type Currency = Balances;
-	type CurrencyId = u32;
+	type Balance = u64;
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
 	type Event = Event;
 	type GroupId = u8;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
 	type Rate = FixedI64;
+	type RewardCurrency = RewardCurrency;
 	type SignedBalance = i128;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default()
+	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
-		.unwrap()
-		.into();
+		.unwrap();
 
-	ext.execute_with(|| {
-		Balances::make_free_balance_be(&USER_A, USER_INITIAL_BALANCE);
-		Balances::make_free_balance_be(&USER_B, USER_INITIAL_BALANCE);
-	});
+	let users = [USER_A, USER_B];
+	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C];
 
-	ext
+	orml_tokens::GenesisConfig::<Test> {
+		balances: users
+			.iter()
+			.flat_map(|&user| {
+				currencies
+					.iter()
+					.map(move |&currency| (user, currency, USER_INITIAL_BALANCE))
+			})
+			.collect(),
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
+
+	sp_io::TestExternalities::new(storage)
 }

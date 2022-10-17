@@ -24,8 +24,10 @@ cfg-traits = { path = "../../libs/traits", default-features = false }
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.26" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.26" }
 lazy_static = "1.4"
+serde = "1.0"
 
 [features]
 default = ["std"]

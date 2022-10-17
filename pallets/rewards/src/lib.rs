@@ -61,13 +61,16 @@ mod types;
 use cfg_traits::ops::{EnsureAdd, EnsureSub};
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Currency, ExistenceRequirement, ReservableCurrency},
+	traits::{
+		fungibles::{Mutate, MutateHold, Transfer},
+		tokens::{AssetId, Balance},
+	},
 	PalletId,
 };
 use num_traits::Signed;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Zero},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, TokenError,
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedSub, Zero},
+	ArithmeticError, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::iter::Sum;
 use types::{CurrencyInfo, Group, StakeAccount};
@@ -138,8 +141,8 @@ pub trait Rewards<AccountId> {
 	/// The account_id must have enough currency to make the deposit,
 	/// if not, an Err will be returned.
 	fn deposit_stake(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
 
@@ -147,30 +150,30 @@ pub trait Rewards<AccountId> {
 	/// The account_id must have enough currency staked to perform a withdraw,
 	/// if not, an Err will be returned.
 	fn withdraw_stake(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
 
 	/// Computes the reward the account_id can receive for a currency_id.
 	/// This action does not modify the account currency balance.
 	fn compute_reward(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Computes the reward the account_id can receive for a currency_id and claim it.
 	/// A reward using the native currency will be sent to the account_id.
 	fn claim_reward(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Retrieve the total staked amount.
 	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
 
 	/// Retrieve the total staked amount of currency in an account.
-	fn account_stake(account_id: &AccountId, currency_id: Self::CurrencyId) -> Self::Balance;
+	fn account_stake(currency_id: Self::CurrencyId, account_id: &AccountId) -> Self::Balance;
 
 	/// Associate the currency to a group.
 	/// If the currency was previously associated to another group, the associated stake is moved
@@ -182,9 +185,6 @@ pub trait Rewards<AccountId> {
 pub mod pallet {
 	use super::*;
 
-	pub type BalanceOf<T> =
-		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -194,31 +194,44 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		type Currency: ReservableCurrency<Self::AccountId>;
+		/// Type used to identify currencies.
+		type CurrencyId: AssetId + MaxEncodedLen;
+
+		/// Identifier for the currency used to give the reward.
+		type RewardCurrency: Get<Self::CurrencyId>;
+
+		/// Type used to handle balances.
+		type Balance: Balance
+			+ MaxEncodedLen
+			+ FixedPointOperand
+			+ Sum
+			+ TryFrom<Self::SignedBalance>;
+
+		/// Type used to handle currency transfers and reservations.
+		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
+			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
 		/// Type used to handle a Balance that can have negative values
-		type SignedBalance: From<BalanceOf<Self>>
+		type SignedBalance: From<Self::Balance>
 			+ codec::FullCodec
 			+ Copy
 			+ Default
-			+ scale_info::TypeInfo
+			+ TypeInfo
 			+ MaxEncodedLen
 			+ Signed
-			+ CheckedSub
-			+ CheckedAdd;
+			+ FixedPointOperand
+			+ EnsureAdd
+			+ EnsureSub;
 
 		/// Type used to handle rates as fixed points numbers.
 		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + Encode + Decode;
 
 		/// Type used to identify groups.
-		type GroupId: codec::FullCodec + scale_info::TypeInfo + MaxEncodedLen + Copy;
-
-		/// Type used to identify currencies.
-		type CurrencyId: codec::FullCodec + scale_info::TypeInfo + MaxEncodedLen + Copy;
+		type GroupId: codec::FullCodec + TypeInfo + MaxEncodedLen + Copy;
 
 		/// Max number of currency movements. See [`Rewards::attach_currency()`].
 		#[pallet::constant]
-		type MaxCurrencyMovements: Get<u32> + scale_info::TypeInfo;
+		type MaxCurrencyMovements: Get<u32> + TypeInfo;
 	}
 
 	#[pallet::pallet]
@@ -234,13 +247,13 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::CurrencyId,
-		CurrencyInfo<BalanceOf<T>, T::Rate, T::GroupId, T::MaxCurrencyMovements>,
+		CurrencyInfo<T::Balance, T::Rate, T::GroupId, T::MaxCurrencyMovements>,
 		ValueQuery,
 	>;
 
 	#[pallet::storage]
 	pub(super) type Groups<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::GroupId, Group<BalanceOf<T>, T::Rate>, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, T::GroupId, Group<T::Balance, T::Rate>, ValueQuery>;
 
 	#[pallet::storage]
 	pub(super) type StakeAccounts<T: Config> = StorageDoubleMap<
@@ -249,7 +262,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		T::CurrencyId,
-		StakeAccount<BalanceOf<T>, T::SignedBalance>,
+		StakeAccount<T::Balance, T::SignedBalance>,
 		ValueQuery,
 	>;
 
@@ -270,11 +283,10 @@ pub mod pallet {
 
 	impl<T: Config> Rewards<T::AccountId> for Pallet<T>
 	where
-		BalanceOf<T>: FixedPointOperand + Sum + EnsureAdd + EnsureSub + TryFrom<T::SignedBalance>,
-		T::SignedBalance: FixedPointOperand + EnsureAdd + EnsureSub,
+		T::Balance: EnsureAdd + EnsureSub,
 		<T::Rate as FixedPointNumber>::Inner: Signed,
 	{
-		type Balance = BalanceOf<T>;
+		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
 		type GroupId = T::GroupId;
 
@@ -286,10 +298,11 @@ pub mod pallet {
 				if group.total_staked() > Self::Balance::zero() {
 					group.distribute_reward(reward)?;
 
-					T::Currency::deposit_creating(
+					T::Currency::mint_into(
+						T::RewardCurrency::get(),
 						&T::PalletId::get().into_account_truncating(),
 						reward,
-					);
+					)?;
 
 					return Ok(reward);
 				}
@@ -299,8 +312,8 @@ pub mod pallet {
 		}
 
 		fn deposit_stake(
-			account_id: &T::AccountId,
 			currency_id: Self::CurrencyId,
+			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
 			Currencies::<T>::try_mutate(currency_id, |currency| {
@@ -308,39 +321,37 @@ pub mod pallet {
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+						T::Currency::hold(currency_id, &account_id, amount)?;
+
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						staked.add_amount(amount, group.reward_per_token())?;
 
 						group.add_amount(amount)?;
 						currency.add_amount(amount)?;
 
-						T::Currency::reserve(&account_id, amount)
+						Ok(())
 					})
 				})
 			})
 		}
 
 		fn withdraw_stake(
-			account_id: &T::AccountId,
 			currency_id: Self::CurrencyId,
+			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			if T::Currency::reserved_balance(&account_id) < amount {
-				Err(TokenError::NoFunds)?;
-			}
-
 			Currencies::<T>::try_mutate(currency_id, |currency| {
 				let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+						T::Currency::release(currency_id, &account_id, amount, false)?;
+
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						staked.sub_amount(amount, group.reward_per_token())?;
 
 						group.sub_amount(amount)?;
 						currency.sub_amount(amount)?;
-
-						T::Currency::unreserve(&account_id, amount);
 
 						Ok(())
 					})
@@ -349,8 +360,8 @@ pub mod pallet {
 		}
 
 		fn compute_reward(
-			account_id: &T::AccountId,
 			currency_id: Self::CurrencyId,
+			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
 			let currency = Currencies::<T>::get(currency_id);
 			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
@@ -365,8 +376,8 @@ pub mod pallet {
 		}
 
 		fn claim_reward(
-			account_id: &T::AccountId,
 			currency_id: Self::CurrencyId,
+			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
 			let currency = Currencies::<T>::get(currency_id);
 			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
@@ -377,10 +388,11 @@ pub mod pallet {
 				let reward = staked.claim_reward(group.reward_per_token())?;
 
 				T::Currency::transfer(
+					T::RewardCurrency::get(),
 					&T::PalletId::get().into_account_truncating(),
 					&account_id,
 					reward,
-					ExistenceRequirement::KeepAlive,
+					true,
 				)?;
 
 				Ok(reward)
@@ -392,8 +404,8 @@ pub mod pallet {
 		}
 
 		fn account_stake(
-			account_id: &T::AccountId,
 			currency_id: Self::CurrencyId,
+			account_id: &T::AccountId,
 		) -> Self::Balance {
 			StakeAccounts::<T>::get(account_id, currency_id).staked()
 		}
