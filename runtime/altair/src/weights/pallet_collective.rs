@@ -35,7 +35,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn set_members(m: u32, n: u32, p: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 19_000
 			.saturating_add(Weight::from_ref_time(22_905_000).saturating_mul(m as u64)) // Standard Error: 19_000
-			.saturating_add(Weight::from_ref_time(191_000 ).saturating_mul(n as u64)) // Standard Error: 19_000
+			.saturating_add(Weight::from_ref_time(191_000).saturating_mul(n as u64)) // Standard Error: 19_000
 			.saturating_add(Weight::from_ref_time(30_318_000).saturating_mul(p as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(p as u64)))
