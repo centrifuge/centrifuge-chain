@@ -39,7 +39,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 	fn remark_with_event(b: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 0
-			.saturating_add((3_000 as Weight).saturating_mul(b as u64))
+			.saturating_add(Weight::from_ref_time(3_000).saturating_mul(b as u64))
 	}
 
 	fn set_heap_pages() -> Weight {

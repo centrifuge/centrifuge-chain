@@ -53,15 +53,15 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 	fn claim(_hashes_length: usize) -> Weight {
-		0 as Weight
+		Weight::from_ref_time(0)
 	}
 
 	fn set_upload_account() -> Weight {
-		0 as Weight
+		Weight::from_ref_time(0)
 	}
 
 	fn store_root_hash() -> Weight {
-		0 as Weight
+		Weight::from_ref_time(0)
 	}
 }
 
