@@ -39,20 +39,20 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn add() -> Weight {
 		(Weight::from_ref_time(32_000_000))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(5 as u64))
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
 
 	fn remove() -> Weight {
 		(Weight::from_ref_time(30_000_000))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(4 as u64))
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
 
 	fn buy() -> Weight {
 		(Weight::from_ref_time(50_000_000))
-			.saturating_add(T::DbWeight::get().reads(6 as u64))
-			.saturating_add(T::DbWeight::get().writes(8 as u64))
+			.saturating_add(T::DbWeight::get().reads(6_u64))
+			.saturating_add(T::DbWeight::get().writes(8_u64))
 	}
 }
 
@@ -60,19 +60,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	fn add() -> Weight {
 		(Weight::from_ref_time(32_000_000))
-			.saturating_add(RocksDbWeight::get().reads(3 as u64))
-			.saturating_add(RocksDbWeight::get().writes(5 as u64))
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
 
 	fn remove() -> Weight {
 		(Weight::from_ref_time(30_000_000))
-			.saturating_add(RocksDbWeight::get().reads(3 as u64))
-			.saturating_add(RocksDbWeight::get().writes(4 as u64))
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
 
 	fn buy() -> Weight {
 		(Weight::from_ref_time(50_000_000))
-			.saturating_add(RocksDbWeight::get().reads(6 as u64))
-			.saturating_add(RocksDbWeight::get().writes(8 as u64))
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
+			.saturating_add(RocksDbWeight::get().writes(8_u64))
 	}
 }

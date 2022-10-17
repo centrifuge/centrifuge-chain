@@ -49,84 +49,84 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialise_pool() -> Weight {
 		(Weight::from_ref_time(50_478_000))
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+			.saturating_add(T::DbWeight::get().reads(4_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 
 	fn create() -> Weight {
 		(Weight::from_ref_time(144_395_000))
-			.saturating_add(T::DbWeight::get().reads(9 as u64))
-			.saturating_add(T::DbWeight::get().writes(8 as u64))
+			.saturating_add(T::DbWeight::get().reads(9_u64))
+			.saturating_add(T::DbWeight::get().writes(8_u64))
 	}
 
 	fn price(n: u32) -> Weight {
 		(Weight::from_ref_time(66_095_000)) // Standard Error: 9_000
 			.saturating_add((Weight::from_ref_time(645_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(5 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+			.saturating_add(T::DbWeight::get().reads(5_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 
 	fn add_write_off_group() -> Weight {
 		(Weight::from_ref_time(48_368_000))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 
 	fn initial_borrow(n: u32) -> Weight {
 		(Weight::from_ref_time(520_742_000)) // Standard Error: 48_000
 			.saturating_add((Weight::from_ref_time(800_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(12 as u64))
-			.saturating_add(T::DbWeight::get().writes(6 as u64))
+			.saturating_add(T::DbWeight::get().reads(12_u64))
+			.saturating_add(T::DbWeight::get().writes(6_u64))
 	}
 
 	fn further_borrows(n: u32) -> Weight {
 		(Weight::from_ref_time(1_072_794_000)) // Standard Error: 116_000
 			.saturating_add((Weight::from_ref_time(450_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(12 as u64))
-			.saturating_add(T::DbWeight::get().writes(6 as u64))
+			.saturating_add(T::DbWeight::get().reads(12_u64))
+			.saturating_add(T::DbWeight::get().writes(6_u64))
 	}
 
 	fn repay(n: u32) -> Weight {
 		(Weight::from_ref_time(702_682_000)) // Standard Error: 39_000
 			.saturating_add((Weight::from_ref_time(908_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(12 as u64))
-			.saturating_add(T::DbWeight::get().writes(6 as u64))
+			.saturating_add(T::DbWeight::get().reads(12_u64))
+			.saturating_add(T::DbWeight::get().writes(6_u64))
 	}
 
 	fn write_off(n: u32, _m: u32) -> Weight {
 		(Weight::from_ref_time(611_964_000)) // Standard Error: 62_000
 			.saturating_add((Weight::from_ref_time(1_198_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(7 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+			.saturating_add(T::DbWeight::get().reads(7_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 
 	fn admin_write_off(n: u32) -> Weight {
 		(Weight::from_ref_time(646_130_000)) // Standard Error: 108_000
 			.saturating_add((Weight::from_ref_time(563_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(8 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+			.saturating_add(T::DbWeight::get().reads(8_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 
 	fn repay_and_close(n: u32) -> Weight {
 		(Weight::from_ref_time(153_832_000)) // Standard Error: 16_000
 			.saturating_add((Weight::from_ref_time(543_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(8 as u64))
-			.saturating_add(T::DbWeight::get().writes(10 as u64))
+			.saturating_add(T::DbWeight::get().reads(8_u64))
+			.saturating_add(T::DbWeight::get().writes(10_u64))
 	}
 
 	fn write_off_and_close(n: u32) -> Weight {
 		(Weight::from_ref_time(159_105_000)) // Standard Error: 15_000
 			.saturating_add((Weight::from_ref_time(584_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(9 as u64))
-			.saturating_add(T::DbWeight::get().writes(10 as u64))
+			.saturating_add(T::DbWeight::get().reads(9_u64))
+			.saturating_add(T::DbWeight::get().writes(10_u64))
 	}
 
 	fn update_nav(n: u32) -> Weight {
 		(Weight::from_ref_time(0)) // Standard Error: 1_001_000
 			.saturating_add((Weight::from_ref_time(390_063_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 }
 
@@ -134,83 +134,83 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	fn initialise_pool() -> Weight {
 		(Weight::from_ref_time(50_478_000))
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+			.saturating_add(RocksDbWeight::get().reads(4_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 
 	fn create() -> Weight {
 		(Weight::from_ref_time(144_395_000))
-			.saturating_add(RocksDbWeight::get().reads(9 as u64))
-			.saturating_add(RocksDbWeight::get().writes(8 as u64))
+			.saturating_add(RocksDbWeight::get().reads(9_u64))
+			.saturating_add(RocksDbWeight::get().writes(8_u64))
 	}
 
 	fn price(n: u32) -> Weight {
 		(Weight::from_ref_time(66_095_000)) // Standard Error: 9_000
 			.saturating_add((Weight::from_ref_time(645_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(5 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+			.saturating_add(RocksDbWeight::get().reads(5_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 
 	fn add_write_off_group() -> Weight {
 		(Weight::from_ref_time(48_368_000))
-			.saturating_add(RocksDbWeight::get().reads(3 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 
 	fn initial_borrow(n: u32) -> Weight {
 		(Weight::from_ref_time(520_742_000)) // Standard Error: 48_000
 			.saturating_add((Weight::from_ref_time(800_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(12 as u64))
-			.saturating_add(RocksDbWeight::get().writes(6 as u64))
+			.saturating_add(RocksDbWeight::get().reads(12_u64))
+			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
 
 	fn further_borrows(n: u32) -> Weight {
 		(Weight::from_ref_time(1_072_794_000)) // Standard Error: 116_000
 			.saturating_add((Weight::from_ref_time(450_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(12 as u64))
-			.saturating_add(RocksDbWeight::get().writes(6 as u64))
+			.saturating_add(RocksDbWeight::get().reads(12_u64))
+			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
 
 	fn repay(n: u32) -> Weight {
 		(Weight::from_ref_time(702_682_000)) // Standard Error: 39_000
 			.saturating_add((Weight::from_ref_time(908_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(12 as u64))
-			.saturating_add(RocksDbWeight::get().writes(6 as u64))
+			.saturating_add(RocksDbWeight::get().reads(12_u64))
+			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
 
 	fn write_off(n: u32, _m: u32) -> Weight {
 		(Weight::from_ref_time(611_964_000)) // Standard Error: 62_000
 			.saturating_add((Weight::from_ref_time(1_198_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(7 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+			.saturating_add(RocksDbWeight::get().reads(7_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 
 	fn admin_write_off(n: u32) -> Weight {
 		(Weight::from_ref_time(646_130_000)) // Standard Error: 108_000
 			.saturating_add((Weight::from_ref_time(563_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(8 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+			.saturating_add(RocksDbWeight::get().reads(8_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 
 	fn repay_and_close(n: u32) -> Weight {
 		(Weight::from_ref_time(153_832_000)) // Standard Error: 16_000
 			.saturating_add((Weight::from_ref_time(543_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(8 as u64))
-			.saturating_add(RocksDbWeight::get().writes(10 as u64))
+			.saturating_add(RocksDbWeight::get().reads(8_u64))
+			.saturating_add(RocksDbWeight::get().writes(10_u64))
 	}
 
 	fn write_off_and_close(n: u32) -> Weight {
 		(Weight::from_ref_time(159_105_000)) // Standard Error: 15_000
 			.saturating_add((Weight::from_ref_time(584_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(9 as u64))
-			.saturating_add(RocksDbWeight::get().writes(10 as u64))
+			.saturating_add(RocksDbWeight::get().reads(9_u64))
+			.saturating_add(RocksDbWeight::get().writes(10_u64))
 	}
 
 	fn update_nav(n: u32) -> Weight {
 		(Weight::from_ref_time(0)) // Standard Error: 1_001_000
 			.saturating_add((Weight::from_ref_time(390_063_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(3 as u64))
-			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n as u64)))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 }

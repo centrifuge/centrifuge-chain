@@ -44,25 +44,25 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 	fn set_heap_pages() -> Weight {
 		Weight::from_ref_time(23_006_000)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 
 	fn set_storage(i: u32) -> Weight {
 		Weight::from_ref_time(5_831_000) // Standard Error: 3_000
 			.saturating_add(Weight::from_ref_time(1_269_000).saturating_mul(i as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(i as u64)))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(i as u64)))
 	}
 
 	fn kill_storage(i: u32) -> Weight {
 		Weight::from_ref_time(802_000) // Standard Error: 3_000
 			.saturating_add(Weight::from_ref_time(1_016_000).saturating_mul(i as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(i as u64)))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(i as u64)))
 	}
 
 	fn kill_prefix(p: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 4_000
-			.saturating_add(Weight::from_ref_time(2_101_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(p as u64)))
+			.saturating_add(Weight::from_ref_time(2_101_000).saturating_mul(p_u64))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(p_u64)))
 	}
 }

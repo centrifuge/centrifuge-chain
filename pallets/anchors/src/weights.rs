@@ -41,26 +41,26 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn pre_commit() -> Weight {
 		(Weight::from_ref_time(65_453_000))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 
 	fn commit() -> Weight {
 		(Weight::from_ref_time(104_841_000))
-			.saturating_add(T::DbWeight::get().reads(7 as u64))
-			.saturating_add(T::DbWeight::get().writes(5 as u64))
+			.saturating_add(T::DbWeight::get().reads(7_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
 
 	fn evict_pre_commits() -> Weight {
 		(Weight::from_ref_time(2_764_733_000))
-			.saturating_add(T::DbWeight::get().reads(100 as u64))
-			.saturating_add(T::DbWeight::get().writes(100 as u64))
+			.saturating_add(T::DbWeight::get().reads(100_u64))
+			.saturating_add(T::DbWeight::get().writes(100_u64))
 	}
 
 	fn evict_anchors() -> Weight {
 		(Weight::from_ref_time(12_387_595_000))
-			.saturating_add(T::DbWeight::get().reads(1008 as u64))
-			.saturating_add(T::DbWeight::get().writes(1504 as u64))
+			.saturating_add(T::DbWeight::get().reads(1008_u64))
+			.saturating_add(T::DbWeight::get().writes(1504_u64))
 	}
 }
 
@@ -68,25 +68,25 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	fn pre_commit() -> Weight {
 		(Weight::from_ref_time(65_453_000))
-			.saturating_add(RocksDbWeight::get().reads(3 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 
 	fn commit() -> Weight {
 		(Weight::from_ref_time(104_841_000))
-			.saturating_add(RocksDbWeight::get().reads(7 as u64))
-			.saturating_add(RocksDbWeight::get().writes(5 as u64))
+			.saturating_add(RocksDbWeight::get().reads(7_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
 
 	fn evict_pre_commits() -> Weight {
 		(Weight::from_ref_time(2_764_733_000))
-			.saturating_add(RocksDbWeight::get().reads(100 as u64))
-			.saturating_add(RocksDbWeight::get().writes(100 as u64))
+			.saturating_add(RocksDbWeight::get().reads(100_u64))
+			.saturating_add(RocksDbWeight::get().writes(100_u64))
 	}
 
 	fn evict_anchors() -> Weight {
 		(Weight::from_ref_time(12_387_595_000))
-			.saturating_add(RocksDbWeight::get().reads(1008 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1504 as u64))
+			.saturating_add(RocksDbWeight::get().reads(1008_u64))
+			.saturating_add(RocksDbWeight::get().writes(1504_u64))
 	}
 }
