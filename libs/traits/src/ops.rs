@@ -475,10 +475,7 @@ pub mod ensure {
 			if d.is_zero() {
 				ArithmeticError::DivisionByZero
 			} else {
-				match n.signum() != d.signum() {
-					true => ArithmeticError::Underflow,
-					false => ArithmeticError::Overflow,
-				}
+				multiplication(n, d)
 			}
 		}
 	}
