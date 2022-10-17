@@ -62,7 +62,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 	fn kill_prefix(p: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 4_000
-			.saturating_add(Weight::from_ref_time(2_101_000).saturating_mul(p_u64))
-			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(p_u64)))
+			.saturating_add(Weight::from_ref_time(2_101_000).saturating_mul(p as u64))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(p as u64)))
 	}
 }
