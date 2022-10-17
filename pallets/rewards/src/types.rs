@@ -78,10 +78,7 @@ where
 		let rate_increment = Rate::checked_from_rational(reward, self.total_staked)
 			.ok_or(ArithmeticError::DivisionByZero)?;
 
-		self.reward_per_token = self
-			.reward_per_token
-			.checked_add(&rate_increment)
-			.ok_or(ArithmeticError::Overflow)?;
+		self.reward_per_token.ensure_add_assign(&rate_increment)?;
 
 		Ok(())
 	}
@@ -119,10 +116,8 @@ where
 				.checked_mul_int(SignedBalance::from(self.staked))
 				.ok_or(ArithmeticError::Overflow)?;
 
-			self.reward_tally = self
-				.reward_tally
-				.checked_sub(&currency_reward_tally)
-				.ok_or(ArithmeticError::Underflow)?;
+			self.reward_tally
+				.ensure_sub_assign(&currency_reward_tally)?;
 
 			self.currency_version = rpt_tallies.len() as u32;
 		}

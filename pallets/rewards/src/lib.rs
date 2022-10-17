@@ -69,7 +69,7 @@ use frame_support::{
 };
 use num_traits::Signed;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedSub, Zero},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, Zero},
 	ArithmeticError, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::iter::Sum;
@@ -420,8 +420,7 @@ pub mod pallet {
 						Groups::<T>::try_mutate(next_group_id, |next_group| {
 							let rpt_tally = next_group
 								.reward_per_token()
-								.checked_sub(&prev_group.reward_per_token())
-								.ok_or(ArithmeticError::Underflow)?;
+								.ensure_sub(&prev_group.reward_per_token())?;
 
 							currency
 								.add_rpt_tally(rpt_tally)
