@@ -37,3 +37,4 @@ std = [
     'cfg-primitives/std',
     'sp-runtime/std'
 ]
+runtime-benchmarks = []

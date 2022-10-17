@@ -12,8 +12,10 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
-use cfg_primitives::CFG as CURRENCY;
-use cfg_types::{CurrencyId, CustomMetadata, PoolLocator, Rate};
+use cfg_primitives::{PoolId, TrancheId, CFG as CURRENCY};
+use cfg_traits::{InvestmentAccountant, InvestmentProperties};
+use cfg_types::{CurrencyId, CustomMetadata, PoolLocator, Rate, TrancheCurrency};
+use codec::MaxEncodedLen;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
 	assert_ok,
@@ -25,6 +27,7 @@ use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
+use sp_runtime::traits::MaybeSerializeDeserialize;
 use test_utils::{
 	assert_last_event, create as create_test_pool, create_nft_class_if_needed, expect_asset_owner,
 	expect_asset_to_be_burned, get_tranche_id, mint_nft_of,
@@ -38,7 +41,19 @@ use crate::{
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
 };
 
-pub struct Pallet<T: Config>(LoansPallet<T>);
+type CurrencyOf<T> = <<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<
+	<T as frame_system::Config>::AccountId,
+>>::AssetId;
+
+pub struct Pallet<T: Config>(LoansPallet<T>)
+where
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>;
 
 pub trait Config:
 	LoanConfig<ClassId = <Self as pallet_uniques::Config>::CollectionId>
@@ -48,6 +63,14 @@ pub trait Config:
 	+ ORMLConfig
 	+ TimestampConfig
 	+ InterestAccrualConfig
+	+ cfg_test_utils::mocks::order_manager::Config
+where
+	<<Self as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<Self::AccountId>>::Balance:
+	From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<Self as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<Self::AccountId>>::AssetId:
+	MaxEncodedLen + MaybeSerializeDeserialize,
+	<<Self as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<Self::AccountId>>::InvestmentInfo:
+	InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
 {
 }
 
@@ -58,6 +81,15 @@ fn make_free_cfg_balance<T>(account: T::AccountId)
 where
 	T: Config + pallet_balances::Config,
 	<T as pallet_balances::Config>::Balance: From<u128>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	let min_balance: <T as pallet_balances::Config>::Balance = (100u128 * CURRENCY).into();
 	let _ = BalancePallet::<T>::make_free_balance_be(&account, min_balance);
@@ -70,6 +102,15 @@ fn make_free_token_balance<T>(
 ) where
 	T: Config + ORMLConfig,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	<ORMLPallet<T> as MultiCurrency<T::AccountId>>::deposit(currency_id.into(), account, balance)
 		.expect("should not fail to set new token balance");
@@ -82,6 +123,15 @@ fn check_free_token_balance<T>(
 ) where
 	T: Config + ORMLConfig,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	assert_eq!(
 		ORMLPallet::<T>::balance(currency_id.into(), account),
@@ -96,6 +146,15 @@ fn get_free_token_balance<T>(
 where
 	T: Config + ORMLConfig,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	ORMLPallet::<T>::balance(currency_id.into(), account)
 }
@@ -146,6 +205,16 @@ where
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 	<T as ORMLConfig>::Balance: From<u128>,
 	<T as pallet_uniques::Config>::CollectionId: Default,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u128> + From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::InvestmentId: From<TrancheCurrency>,
 {
 	// create pool
 	let pool_owner = account::<T::AccountId>("owner", 0, 0);
@@ -157,7 +226,7 @@ where
 	make_free_token_balance::<T>(CurrencyId::AUSD, &junior_inv, (500 * CURRENCY).into());
 	let pool_id: PoolIdOf<T> = Default::default();
 	let pool_account = pool_account::<T>(pool_id.into());
-	let pal_pool_id: T::PoolId = pool_id.into();
+	let pal_pool_id: <T as pallet_pools::Config>::PoolId = pool_id.into();
 	create_test_pool::<T>(
 		pool_id.into(),
 		pool_owner.clone(),
@@ -220,6 +289,15 @@ fn create_asset<T: Config + frame_system::Config>(loan_id: T::LoanId) -> (T::Acc
 where
 	<T as pallet_balances::Config>::Balance: From<u128>,
 	<T as pallet_uniques::Config>::CollectionId: From<u64>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	// create asset
 	let loan_owner = borrower::<T>();
@@ -238,6 +316,15 @@ fn activate_test_loan_with_defaults<T: Config>(
 ) where
 	<T as LoanConfig>::Rate: From<Rate>,
 	<T as LoanConfig>::Balance: From<u128>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	// Note: Originally this was 5%. The with_rate version uses 5000
 	// as the denominator, so our numerator is 250
@@ -252,6 +339,15 @@ fn activate_test_loan_with_rate<T: Config>(
 ) where
 	<T as LoanConfig>::Rate: From<Rate>,
 	<T as LoanConfig>::Balance: From<u128>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
 		// advance rate 80%
@@ -269,9 +365,10 @@ fn activate_test_loan_with_rate<T: Config>(
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
-	let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(rate, 5000))
-		.unwrap()
-		.into();
+	let rp: <T as pallet::Config>::Rate =
+		math::interest_rate_per_sec(Rate::saturating_from_rational(rate, 5000))
+			.unwrap()
+			.into();
 	LoansPallet::<T>::price(
 		RawOrigin::Signed(borrower).into(),
 		pool_id,
@@ -285,6 +382,15 @@ fn activate_test_loan_with_rate<T: Config>(
 fn add_test_write_off_groups<T: Config>(pool_id: PoolIdOf<T>, risk_admin: T::AccountId)
 where
 	<T as LoanConfig>::Rate: From<Rate>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	for group in &[(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
 		LoansPallet::<T>::add_write_off_group(
@@ -311,6 +417,15 @@ where
 		Balance = u128,
 		CustomMetadata = CustomMetadata,
 	>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	T::AssetRegistry::register_asset(
 		Some(CurrencyId::AUSD),
@@ -347,6 +462,20 @@ benchmarks! {
 		<T as pallet_pools::Config>::EpochId: From<u32>,
 		<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 		<T as pallet_uniques::Config>::CollectionId: Default,
+		<T as pallet_uniques::Config>::CollectionId: Default,
+		<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+		<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+		<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<
+			T::AccountId,
+		>>::Balance: From<u128> + From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<
+			T::AccountId,
+		>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+			T::AccountId,
+		>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+			<T as cfg_test_utils::mocks::order_manager::Config>::InvestmentId: From<TrancheCurrency>,
+
 	}
 
 	initialise_pool {
@@ -408,7 +537,7 @@ benchmarks! {
 			math::seconds_per_year() * 2,
 		));
 		// interest rate is 5%
-		let interest_rate_per_sec: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
+		let interest_rate_per_sec: <T as pallet::Config>::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_sec, loan_type)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
@@ -545,7 +674,7 @@ benchmarks! {
 		let loan_id = n.into();
 		let risk_admin = risk_admin::<T>();
 		for i in 0..m {
-			let percentage: T::Rate = Rate::saturating_from_rational(i+1, m).into();
+			let percentage: <T as pallet::Config>::Rate = Rate::saturating_from_rational(i+1, m).into();
 			let penalty_interest_rate_per_sec = Rate::saturating_from_rational(i+1, m).into();
 			let overdue_days = percentage.checked_mul_int(120).unwrap();
 			let write_off_group = WriteOffGroup {

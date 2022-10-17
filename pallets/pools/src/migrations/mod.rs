@@ -13,8 +13,6 @@
 //! Migrations of storage concerned with the pallet Pools
 
 pub mod altair {
-	use std::marker::PhantomData;
-
 	use cfg_primitives::{Moment, PoolId};
 	use cfg_traits::TrancheCurrency as _;
 	use cfg_types::{CurrencyId as TCurrencyId, TrancheCurrency};
@@ -26,7 +24,9 @@ pub mod altair {
 		traits::{Get, Zero},
 		BoundedVec, RuntimeDebug,
 	};
+	#[cfg(feature = "try-runtime")]
 	use sp_std::cell::RefCell;
+	use sp_std::{marker::PhantomData, vec::Vec};
 
 	use crate::{
 		Config, EpochExecutionInfo, EpochExecutionTranche, EpochExecutionTranches, EpochSolution,
@@ -345,6 +345,20 @@ pub mod altair {
 		weight
 	}
 
+	pub fn migrate_orders<T: Config>() -> Weight {
+		let weight = 0u64;
+
+		// TODO:
+		// - move user-order to pallet-investments
+		//    - CAUTION: If chain is in EpochExecution, then the pallet-investments need an InProcessing state, else created
+		//               the needed ActiveOrders state
+		// - move funds from pool-account into the respective investment account
+		// - collect will be lost...
+
+		weight
+	}
+
+	/// This function MUST be called AFTER `migrate_orders`
 	pub fn remove_not_needed_storage<T: Config>() -> Weight {
 		let mut weight = 0u64;
 
@@ -358,11 +372,19 @@ pub mod altair {
 
 		weight
 	}
-
+	/*
 	thread_local! {
 		static NUM_POOL_DETAILS: RefCell<u32> = RefCell::new(0);
 		static NUM_EPOCH_EXECUTION_INFOS: RefCell<u32> = RefCell::new(0);
 	}
+	 */
+	#[cfg(feature = "try-runtime")]
+	#[thread_local]
+	static NUM_POOL_DETAILS: RefCell<u32> = RefCell::new(0);
+
+	#[cfg(feature = "try-runtime")]
+	#[thread_local]
+	static NUM_EPOCH_EXECUTION_INFOS: RefCell<u32> = RefCell::new(0);
 
 	#[cfg(feature = "try-runtime")]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {

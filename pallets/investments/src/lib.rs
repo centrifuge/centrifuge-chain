@@ -33,6 +33,7 @@ use sp_runtime::{
 use sp_std::{
 	cmp::{min, Ordering},
 	convert::TryInto,
+	vec::Vec,
 };
 pub mod weights;
 

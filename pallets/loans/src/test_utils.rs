@@ -12,15 +12,16 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
-use cfg_primitives::{Moment, CFG as CURRENCY};
-use cfg_traits::{Permissions, PoolNAV};
-use cfg_types::{CurrencyId, PermissionScope, PoolLocator, PoolRole, Role};
-use codec::Encode;
+use cfg_primitives::{PoolId, TrancheId, CFG as CURRENCY};
+use cfg_test_utils::mocks::order_manager::Pallet as OrderManager;
+use cfg_traits::{InvestmentAccountant, InvestmentProperties, PoolNAV, TrancheCurrency as _};
+use cfg_types::{CurrencyId, TrancheCurrency};
+use codec::{Encode, MaxEncodedLen};
 use frame_support::{
 	assert_ok, parameter_types,
 	sp_runtime::traits::One,
 	traits::{
-		fungibles::Transfer,
+		fungibles::Inspect as FungiblesInspect,
 		tokens::nonfungibles::{Create, Inspect, Mutate},
 		Currency, Get,
 	},
@@ -28,31 +29,17 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use pallet_pools::{
-	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheLoc, TrancheMetadata,
-	TrancheType,
+	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheMetadata, TrancheType,
 };
+use sp_arithmetic::FixedPointOperand;
 use sp_runtime::{
-	traits::{AccountIdConversion, Zero},
+	traits::{MaybeSerializeDeserialize, Zero},
 	Perquintill,
 };
 use sp_std::vec;
 
 use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
-
-type TrancheId = [u8; 16];
-type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
-
-pub(crate) fn set_role<T: pallet_loans::Config>(
-	scope: PermissionScope<
-		<T::Pool as cfg_traits::PoolInspect<T::AccountId, T::CurrencyId>>::PoolId,
-		<T as pallet_loans::Config>::CurrencyId,
-	>,
-	who: T::AccountId,
-	role: Role<TrancheId, Moment>,
-) {
-	PermissionsOf::<T>::add(scope, who, role).expect("adding permissions should not fail");
-}
 
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
@@ -127,21 +114,37 @@ where
 	loan_id
 }
 
+type CurrencyOf<T> =
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as FungiblesInspect<
+		<T as frame_system::Config>::AccountId,
+	>>::AssetId;
+
 pub(crate) fn create<T>(
-	pool_id: T::PoolId,
+	pool_id: <T as pallet_pools::Config>::PoolId,
 	owner: T::AccountId,
-	junior_investor: T::AccountId,
-	senior_investor: T::AccountId,
 	currency_id: CurrencyId,
 ) where
-	T: pallet_pools::Config + frame_system::Config + pallet_loans::Config,
+	T: pallet_pools::Config
+		+ frame_system::Config
+		+ pallet_loans::Config
+		+ cfg_test_utils::mocks::order_manager::Config,
 	<T as pallet_pools::Config>::Balance: From<u128>,
 	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as FungiblesInspect<
+		T::AccountId,
+	>>::Balance: From<u128> + From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as FungiblesInspect<
+		T::AccountId,
+	>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	<T as cfg_test_utils::mocks::order_manager::Config>::InvestmentId: From<TrancheCurrency>,
 {
-	let pool_account = PoolLocator { pool_id }.into_account_truncating();
-
 	let mint_amount = <T as pallet_pools::Config>::PoolDeposit::get() * 2.into();
 	<T as pallet_pools::Config>::Currency::deposit_creating(&owner.clone().into(), mint_amount);
 
@@ -176,33 +179,12 @@ pub(crate) fn create<T>(
 		None
 	));
 
-	set_role::<T>(
-		PermissionScope::Pool(pool_id.into()),
-		junior_investor.clone(),
-		Role::PoolRole(PoolRole::TrancheInvestor(
-			JuniorTrancheId::get().into(),
-			999_999_999u32.into(),
-		)),
-	);
-	set_role::<T>(
-		PermissionScope::Pool(pool_id.into()),
-		senior_investor.clone(),
-		Role::PoolRole(PoolRole::TrancheInvestor(
-			SeniorTrancheId::get().into(),
-			999_999_999u32.into(),
-		)),
-	);
-
-	assert_ok!(PoolPallet::<T>::update_invest_order(
-		RawOrigin::Signed(junior_investor.clone()).into(),
-		pool_id,
-		TrancheLoc::Id(JuniorTrancheId::get().into()),
+	assert_ok!(OrderManager::<T>::update_invest_order(
+		TrancheCurrency::generate(pool_id.into(), JuniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
-	assert_ok!(PoolPallet::<T>::update_invest_order(
-		RawOrigin::Signed(senior_investor.clone()).into(),
-		pool_id,
-		TrancheLoc::Id(SeniorTrancheId::get().into()),
+	assert_ok!(OrderManager::<T>::update_invest_order(
+		TrancheCurrency::generate(pool_id.into(), SeniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
 	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, <T as pallet_loans::Config>::Balance>>::update_nav(
@@ -225,22 +207,6 @@ pub(crate) fn create<T>(
 
 	let pool = PoolStorage::<T>::get(pool_id).unwrap();
 	assert_eq!(pool.reserve.available, (1000 * CURRENCY).into());
-
-	// TODO(ved) do disbursal manually for now
-	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), JuniorTrancheId::get()).into(),
-		&pool_account,
-		&junior_investor,
-		(500 * CURRENCY).into(),
-		false
-	));
-	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), SeniorTrancheId::get()).into(),
-		&pool_account,
-		&senior_investor,
-		(500 * CURRENCY).into(),
-		false
-	));
 }
 
 pub(crate) fn initialise_test_pool<T>(
