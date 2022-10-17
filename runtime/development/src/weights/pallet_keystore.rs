@@ -33,22 +33,22 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn add_keys(n: u32) -> Weight {
-		(26_305_000 as Weight) // Standard Error: 166_000
-			.saturating_add((33_062_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+		Weight::from_ref_time(26_305_000) // Standard Error: 166_000
+			.saturating_add(Weight::from_ref_time(33_062_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
 	}
 
 	fn revoke_keys(n: u32) -> Weight {
-		(12_542_000 as Weight) // Standard Error: 105_000
-			.saturating_add((18_740_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+		Weight::from_ref_time(12_542_000) // Standard Error: 105_000
+			.saturating_add(Weight::from_ref_time(18_740_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
 	}
 
 	fn set_deposit() -> Weight {
-		(20_999_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(20_999_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
