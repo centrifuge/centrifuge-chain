@@ -241,7 +241,7 @@ pub mod pallet {
 				RateCount::<T>::set(count as u32);
 				T::DbWeight::get().reads_writes(count as u64, 1)
 			} else {
-				0
+				Weight::from_ref_time(0)
 			};
 			weight.saturating_add(count_rates_weight)
 		}
