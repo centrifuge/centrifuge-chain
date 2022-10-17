@@ -34,7 +34,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn set() -> Weight {
 		Weight::from_ref_time(17_061_000)
-			.saturating_add(T::DbWeight::get().reads(1 as us64))
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
