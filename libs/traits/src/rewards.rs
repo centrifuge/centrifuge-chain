@@ -84,8 +84,8 @@ pub trait Rewards<AccountId> {
 	/// The account_id must have enough currency to make the deposit,
 	/// if not, an Err will be returned.
 	fn deposit_stake(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
 
@@ -93,30 +93,30 @@ pub trait Rewards<AccountId> {
 	/// The account_id must have enough currency staked to perform a withdraw,
 	/// if not, an Err will be returned.
 	fn withdraw_stake(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
 
 	/// Computes the reward the account_id can receive for a currency_id.
 	/// This action does not modify the account currency balance.
 	fn compute_reward(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Computes the reward the account_id can receive for a currency_id and claim it.
 	/// A reward using the native currency will be sent to the account_id.
 	fn claim_reward(
-		account_id: &AccountId,
 		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Retrieve the total staked amount.
 	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
 
 	/// Retrieve the total staked amount of currency in an account.
-	fn account_stake(account_id: &AccountId, currency_id: Self::CurrencyId) -> Self::Balance;
+	fn account_stake(currency_id: Self::CurrencyId, account_id: &AccountId) -> Self::Balance;
 
 	/// Associate the currency to a group.
 	/// If the currency was previously associated to another group, the associated stake is moved
