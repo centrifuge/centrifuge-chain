@@ -14,8 +14,8 @@
 
 //! # Rewards Pallet
 //!
-//! The Balances pallet provides functionality for distributing rewards to different accounts.
-//! The user can stake a curreny amount to claim a proportional reward.
+//! The Rewards pallet provides functionality for distributing rewards to different accounts with
+//! different currencies. The user can stake an amount to claim a proportional reward.
 //!
 //! ## Overview
 //!
