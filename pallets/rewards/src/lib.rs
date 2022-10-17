@@ -221,13 +221,14 @@ pub mod pallet {
 			+ Signed
 			+ FixedPointOperand
 			+ EnsureAdd
-			+ EnsureSub;
+			+ EnsureSub
+			+ sp_std::fmt::Debug;
 
 		/// Type used to handle rates as fixed points numbers.
 		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + Encode + Decode;
 
 		/// Type used to identify groups.
-		type GroupId: codec::FullCodec + TypeInfo + MaxEncodedLen + Copy;
+		type GroupId: codec::FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq;
 
 		/// Max number of currency movements. See [`Rewards::attach_currency()`].
 		#[pallet::constant]
@@ -276,6 +277,9 @@ pub mod pallet {
 	pub enum Error<T> {
 		// Emits when a currency is used but it has no a related group.
 		CurrencyWithoutGroup,
+
+		// Emits when a currency is attached to the group it is already attached.
+		CurrencyInSameGroup,
 
 		// Emits when a currency is moved more than `MaxCurrencyMovements` times.
 		CurrencyMaxMovementsReached,
@@ -416,6 +420,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			Currencies::<T>::try_mutate(currency_id, |currency| {
 				if let Some(prev_group_id) = currency.group_id {
+					if prev_group_id == next_group_id {
+						Err(Error::<T>::CurrencyInSameGroup)?
+					}
+
 					Groups::<T>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
 						Groups::<T>::try_mutate(next_group_id, |next_group| {
 							let rpt_tally = next_group

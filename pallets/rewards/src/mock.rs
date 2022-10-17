@@ -22,8 +22,8 @@ pub const USER_B: u64 = 2;
 
 pub const USER_INITIAL_BALANCE: u64 = 100000;
 
-pub const GROUP_A: u8 = 1;
-pub const GROUP_B: u8 = 2;
+pub const GROUP_A: u32 = 1;
+pub const GROUP_B: u32 = 2;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -120,7 +120,7 @@ impl pallet_rewards::Config for Test {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type Event = Event;
-	type GroupId = u8;
+	type GroupId = u32;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
 	type Rate = FixedI64;

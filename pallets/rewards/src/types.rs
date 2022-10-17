@@ -117,7 +117,7 @@ where
 				.ok_or(ArithmeticError::Overflow)?;
 
 			self.reward_tally
-				.ensure_sub_assign(&currency_reward_tally)?;
+				.ensure_add_assign(&currency_reward_tally)?;
 
 			self.currency_version = rpt_tallies.len() as u32;
 		}
@@ -293,8 +293,8 @@ mod test {
 		assert_eq!(
 			account.reward_tally,
 			i128::from(RPT_0.saturating_mul_int(AMOUNT as i128))
-				- i128::from((*RPT_1 - *RPT_0).saturating_mul_int(AMOUNT as i128))
-				- i128::from((*RPT_2 - *RPT_1).saturating_mul_int(AMOUNT as i128))
+				+ i128::from((*RPT_1 - *RPT_0).saturating_mul_int(AMOUNT as i128))
+				+ i128::from((*RPT_2 - *RPT_1).saturating_mul_int(AMOUNT as i128))
 		);
 
 		assert_eq!(account.currency_version, rpt_tallies.len() as u32);
@@ -306,9 +306,9 @@ mod test {
 		assert_eq!(
 			account.reward_tally,
 			i128::from(RPT_0.saturating_mul_int(AMOUNT as i128))
-				- i128::from((*RPT_1 - *RPT_0).saturating_mul_int(AMOUNT as i128))
-				- i128::from((*RPT_2 - *RPT_1).saturating_mul_int(AMOUNT as i128))
-				- i128::from((*RPT_3 - *RPT_2).saturating_mul_int(AMOUNT as i128))
+				+ i128::from((*RPT_1 - *RPT_0).saturating_mul_int(AMOUNT as i128))
+				+ i128::from((*RPT_2 - *RPT_1).saturating_mul_int(AMOUNT as i128))
+				+ i128::from((*RPT_3 - *RPT_2).saturating_mul_int(AMOUNT as i128))
 		);
 
 		assert_eq!(account.currency_version, rpt_tallies.len() as u32);

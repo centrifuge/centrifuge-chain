@@ -382,20 +382,159 @@ fn several_users_interacting() {
 fn use_currency_without_group() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			Pallet::deposit_stake(CurrencyId::C, &USER_A, 0),
+			Pallet::deposit_stake(CurrencyId::A, &USER_A, 0),
 			Error::<Test>::CurrencyWithoutGroup
 		);
 		assert_noop!(
-			Pallet::withdraw_stake(CurrencyId::C, &USER_A, 0),
+			Pallet::withdraw_stake(CurrencyId::A, &USER_A, 0),
 			Error::<Test>::CurrencyWithoutGroup
 		);
 		assert_noop!(
-			Pallet::compute_reward(CurrencyId::C, &USER_A),
+			Pallet::compute_reward(CurrencyId::A, &USER_A),
 			Error::<Test>::CurrencyWithoutGroup
 		);
 		assert_noop!(
+			Pallet::claim_reward(CurrencyId::A, &USER_A),
+			Error::<Test>::CurrencyWithoutGroup
+		);
+	});
+}
+
+#[test]
+fn move_currency_same_group_error() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_noop!(
+			Pallet::attach_currency(CurrencyId::A, GROUP_A),
+			Error::<Test>::CurrencyInSameGroup
+		);
+	});
+}
+
+#[test]
+fn move_currency_max_times() {
+	new_test_ext().execute_with(|| {
+		// First attach only attach the currency, does not move it.
+		assert_ok!(Pallet::attach_currency(CurrencyId::A, 0));
+
+		// Waste all correct movements.
+		for i in 0..MaxCurrencyMovements::get() {
+			assert_ok!(Pallet::attach_currency(CurrencyId::A, i + 1));
+		}
+
+		assert_noop!(
+			Pallet::attach_currency(CurrencyId::A, MaxCurrencyMovements::get() + 1),
+			Error::<Test>::CurrencyMaxMovementsReached
+		);
+	});
+}
+
+#[test]
+fn move_currency_one_move() {
+	const STAKE_A: u64 = 2000;
+	const STAKE_B: u64 = 2000;
+	const STAKE_C: u64 = 1000;
+
+	new_test_ext().execute_with(|| {
+		// DISTRIBUTION 0
+		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_A));
+		assert_ok!(Pallet::attach_currency(CurrencyId::C, GROUP_B));
+		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
+		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
+		assert_ok!(Pallet::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
+		assert_ok!(
+			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			REWARD
+		);
+
+		// DISTRIBUTION 1
+		assert_ok!(Pallet::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
+		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
+		assert_ok!(Pallet::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
+		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
+		assert_ok!(
+			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			REWARD
+		);
+
+		// DISTRIBUTION 2
+		assert_ok!(
+			Pallet::claim_reward(CurrencyId::B, &USER_A),
+			REWARD / 4 + 2 * REWARD / 5
+		);
+		assert_ok!(Pallet::withdraw_stake(CurrencyId::B, &USER_A, STAKE_B * 2));
+		assert_ok!(
+			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			REWARD
+		);
+
+		// DISTRIBUTION 3
+		assert_ok!(
+			Pallet::claim_reward(CurrencyId::A, &USER_A),
+			REWARD / 4 + REWARD / 2 + REWARD / 2
+		);
+		assert_ok!(Pallet::claim_reward(CurrencyId::B, &USER_A), 0);
+		assert_ok!(
 			Pallet::claim_reward(CurrencyId::C, &USER_A),
-			Error::<Test>::CurrencyWithoutGroup
+			REWARD / 2 + REWARD / 10 + REWARD / 2
+		);
+	});
+}
+
+/// Makes two movements without account interaction and the another move.
+#[test]
+fn move_currency_several_moves() {
+	const STAKE_A: u64 = 2000;
+	const STAKE_B: u64 = 2000;
+	const STAKE_C: u64 = 1000;
+
+	new_test_ext().execute_with(|| {
+		// DISTRIBUTION 0
+		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_A));
+		assert_ok!(Pallet::attach_currency(CurrencyId::C, GROUP_B));
+		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
+		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
+		assert_ok!(Pallet::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
+		assert_ok!(
+			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			REWARD
+		);
+
+		// DISTRIBUTION 1
+		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
+		assert_ok!(
+			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			REWARD
+		);
+
+		// DISTRIBUTION 2
+		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_A)); // MOVEMENT HERE!!
+		assert_ok!(
+			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			REWARD
+		);
+
+		// DISTRIBUTION 3
+		assert_ok!(
+			Pallet::compute_reward(CurrencyId::B, &USER_A),
+			REWARD / 4 + REWARD / 3 + REWARD / 4
+		);
+		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
+		assert_ok!(
+			Pallet::compute_reward(CurrencyId::B, &USER_A),
+			REWARD / 4 + REWARD / 3 + REWARD / 4
+		);
+
+		// DISTRIBUTION 4
+		assert_ok!(
+			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			REWARD
+		);
+		assert_ok!(
+			Pallet::compute_reward(CurrencyId::B, &USER_A),
+			REWARD / 4 + REWARD / 3 + REWARD / 4 + REWARD / 3
 		);
 	});
 }
