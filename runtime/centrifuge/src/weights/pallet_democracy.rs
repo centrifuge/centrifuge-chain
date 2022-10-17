@@ -113,7 +113,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 	fn cancel_queued(r: u32) -> Weight {
 		Weight::from_ref_time(51_624_000) // Standard Error: 6_000
-			.saturating_add((Weight::from_ref_time(3_278_000).saturating_mul(r as u64))
+			.saturating_add(Weight::from_ref_time(3_278_000).saturating_mul(r as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -186,7 +186,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 	fn unlock_set(r: u32) -> Weight {
 		Weight::from_ref_time(53_543_000) // Standard Error: 3_000
-			.saturating_add((Weight::from_ref_time(365_000).saturating_mul(r as u64))
+			.saturating_add(Weight::from_ref_time(365_000).saturating_mul(r as u64))
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
