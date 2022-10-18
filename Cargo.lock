@@ -6357,7 +6357,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "lazy_static",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
