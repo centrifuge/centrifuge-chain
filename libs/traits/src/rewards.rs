@@ -147,7 +147,7 @@ pub trait AccountRewards<AccountId> {
 }
 
 /// Support for change currencies among groups.
-pub trait CurrencyChange {
+pub trait CurrencyGroupChange {
 	/// Type used to identify the group
 	type GroupId;
 
