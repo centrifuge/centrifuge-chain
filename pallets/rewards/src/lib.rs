@@ -48,8 +48,6 @@
 //! and extends that functionality to support different groups and currencies.
 //!
 
-pub use pallet::*;
-
 #[cfg(test)]
 mod mock;
 
@@ -71,6 +69,7 @@ use frame_support::{
 	PalletId,
 };
 use num_traits::Signed;
+pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
 use types::{CurrencyInfo, Group, StakeAccount};
 
