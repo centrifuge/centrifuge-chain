@@ -1,0 +1,44 @@
+[package]
+name = "pallet-liquidity-rewards"
+version = "0.1.0"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Liquidity Rewards pallet"
+edition = "2021"
+homepage = "https://centrifuge.io"
+license = "LGPL-3.0"
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/liquidity-rewards"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"]}
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
+num-traits = { version = "0.2", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+pallet-rewards = { path = "../rewards", default-features = false }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.26" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.26" }
+lazy_static = "1.4"
+serde = "1.0"
+
+[features]
+default = ["std"]
+try-runtime = ["frame-support/try-runtime"]
+std = [
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "cfg-traits/std",
+    "pallet-rewards/std"
+]
