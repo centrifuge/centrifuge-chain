@@ -12,16 +12,16 @@
 // GNU General Public License for more details.
 
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Zero},
-	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand,
+	traits::Zero, ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
+	FixedPointOperand,
 };
 
-use crate::ops::EnsureAdd;
+use crate::ops::ensure::{EnsureAdd, EnsureFixedPointNumber};
 
 /// Abstraction over a distribution reward groups.
 pub trait GroupRewards<AccountId> {
 	/// Type used as balance for all currencies and reward.
-	type Balance: AtLeast32BitUnsigned + FixedPointOperand;
+	type Balance: FixedPointOperand + Zero;
 
 	/// Type used to identify the group
 	type GroupId: Copy;
@@ -59,8 +59,8 @@ pub trait GroupRewards<AccountId> {
 		groups: It,
 	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
 	where
-		Rate: FixedPointNumber,
-		Weight: AtLeast32BitUnsigned + FixedPointOperand + Zero,
+		Rate: EnsureFixedPointNumber,
+		Weight: FixedPointOperand + EnsureAdd,
 		It: IntoIterator<Item = (Self::GroupId, Weight)>,
 		It::IntoIter: Clone,
 	{
@@ -69,7 +69,7 @@ pub trait GroupRewards<AccountId> {
 			.clone()
 			.filter(|(group_id, _)| !Self::group_stake(*group_id).is_zero())
 			.map(|(_, weight)| weight)
-			.try_fold(Weight::zero(), |a, b| a.ensure_add(&b))?;
+			.try_fold(Weight::zero(), |a, b| a.ensure_add(b))?;
 
 		if total_weight.is_zero() {
 			return Ok(vec![]);
@@ -82,9 +82,7 @@ pub trait GroupRewards<AccountId> {
 					let reward_rate = Rate::checked_from_rational(weight, total_weight)
 						.ok_or(ArithmeticError::DivisionByZero)?;
 
-					let group_reward = reward_rate
-						.checked_mul_int(reward)
-						.ok_or(ArithmeticError::Overflow)?;
+					let group_reward = reward_rate.ensure_mul_int(reward)?;
 
 					Self::reward_group(group_id, group_reward)
 				})();
@@ -105,7 +103,7 @@ pub trait GroupRewards<AccountId> {
 /// Abstraction over a distribution reward system for accounts.
 pub trait AccountRewards<AccountId> {
 	/// Type used as balance for all currencies and reward.
-	type Balance: AtLeast32BitUnsigned + FixedPointOperand;
+	type Balance;
 
 	/// Type used to identify the currency
 	type CurrencyId;
