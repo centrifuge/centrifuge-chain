@@ -1,3 +1,4 @@
+use cfg_traits::rewards::DistributedRewards;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
 use sp_runtime::{ArithmeticError, FixedU128};
 
@@ -128,7 +129,7 @@ fn distribute_to_groups_with_all_weight_zero() {
 		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
 		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
 		assert_ok!(
-			Rewards::distribute_reward_with_weights::<FixedU128, u32, _>(
+			Rewards::distribute_reward_with_weights::<FixedU128, _>(
 				REWARD,
 				[(GROUP_A, 0), (GROUP_B, 0)]
 			),
@@ -146,7 +147,7 @@ fn distribute_to_groups_with_stake_weights() {
 		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
 		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
 		assert_ok!(
-			Rewards::distribute_reward_with_weights::<FixedU128, u32, _>(
+			Rewards::distribute_reward_with_weights::<FixedU128, _>(
 				REWARD,
 				[(GROUP_A, 8), (GROUP_B, 2)]
 			),
@@ -162,7 +163,7 @@ fn distribute_to_groups_with_and_without_stake_weights() {
 		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
 		assert_ok!(
-			Rewards::distribute_reward_with_weights::<FixedU128, u32, _>(
+			Rewards::distribute_reward_with_weights::<FixedU128, _>(
 				REWARD,
 				[(GROUP_A, 1), (GROUP_B, 2)]
 			),

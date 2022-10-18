@@ -206,7 +206,7 @@ pub mod pallet {
 		CurrencyMaxMovementsReached,
 	}
 
-	impl<T: Config> GroupRewards<T::AccountId> for Pallet<T>
+	impl<T: Config> GroupRewards for Pallet<T>
 	where
 		T::Balance: EnsureAdd + EnsureSub,
 	{
