@@ -909,39 +909,6 @@ where
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
-		let n_tranches: u32 = self.tranches.len().try_into().expect("MaxTranches is u32");
-		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
-
-		// The desired order priority is:
-		// - Senior redemptions
-		// - Junior redemptions
-		// - Junior investments
-		// - Senior investments
-		// We ensure this by having a higher base weight for redemptions,
-		// increasing the redemption weights by seniority,
-		// and decreasing the investment weight by seniority.
-		self.tranches
-			.iter()
-			.map(|tranche| {
-				(
-					10u128
-						.checked_pow(
-							n_tranches
-								.checked_sub(tranche.seniority)
-								.unwrap_or(u32::MAX),
-						)
-						.unwrap_or(u128::MAX)
-						.into(),
-					redeem_starts
-						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)))
-						.unwrap_or(u128::MAX)
-						.into(),
-				)
-			})
-			.collect()
-	}
-
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
 		self.tranches
 			.iter()
