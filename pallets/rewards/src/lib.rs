@@ -28,13 +28,13 @@
 //!
 //! ### Terminology
 //!
-//! - **CurrencyId**: The identification of a token used to make stake/unstake.
+//! - **Currency ID**: The identification of a token used to make stake/unstake.
 //!   This ID is associated to a group used to reward the stake amount.
 //! - **Reward**: The amount given in native tokens to a proportional amount of currency staked.
 //! - **Group**: A shared resource where the reward is distributed. The accounts with a currency
 //!   associated to a group can deposit/withdraw that currency to claim their proportional reward
 //!   in the native token.
-//! - **StakeAccount**: The account related data used hold the stake of certain currency.
+//! - **Stake account**: The account related data used to hold the stake of certain currency.
 //! - **Currency movement**: The action on moving a currency from one group to another.
 //!
 //! ### Implementations
@@ -116,7 +116,12 @@ pub mod pallet {
 		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + Encode + Decode;
 
 		/// Type used to identify groups.
-		type GroupId: codec::FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq;
+		type GroupId: codec::FullCodec
+			+ TypeInfo
+			+ MaxEncodedLen
+			+ Copy
+			+ PartialEq
+			+ sp_std::fmt::Debug;
 
 		/// Max number of currency movements. See [`Rewards::attach_currency()`].
 		#[pallet::constant]
@@ -158,8 +163,36 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::event]
-	//#[pallet::generate_deposit(pub(super) fn deposit_event)] // TODO
-	pub enum Event<T> {}
+	#[pallet::generate_deposit(pub(super) fn deposit_event)] // TODO
+	pub enum Event<T: Config> {
+		GroupRewarded {
+			group_id: T::GroupId,
+			amount: T::Balance,
+		},
+		StakeDeposited {
+			group_id: T::GroupId,
+			currency_id: T::CurrencyId,
+			account_id: T::AccountId,
+			amount: T::Balance,
+		},
+		StakeWithdrawn {
+			group_id: T::GroupId,
+			currency_id: T::CurrencyId,
+			account_id: T::AccountId,
+			amount: T::Balance,
+		},
+		RewardClaimed {
+			group_id: T::GroupId,
+			currency_id: T::CurrencyId,
+			account_id: T::AccountId,
+			amount: T::Balance,
+		},
+		CurrencyAttached {
+			currency_id: T::CurrencyId,
+			from: Option<T::GroupId>,
+			to: T::GroupId,
+		},
+	}
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -189,6 +222,11 @@ pub mod pallet {
 					&T::PalletId::get().into_account_truncating(),
 					reward,
 				)?;
+
+				Self::deposit_event(Event::GroupRewarded {
+					group_id,
+					amount: reward,
+				});
 
 				Ok(())
 			})
@@ -224,6 +262,13 @@ pub mod pallet {
 						group.add_amount(amount)?;
 						currency.add_amount(amount)?;
 
+						Self::deposit_event(Event::StakeDeposited {
+							group_id,
+							currency_id,
+							account_id: account_id.clone(),
+							amount,
+						});
+
 						Ok(())
 					})
 				})
@@ -247,6 +292,13 @@ pub mod pallet {
 
 						group.sub_amount(amount)?;
 						currency.sub_amount(amount)?;
+
+						Self::deposit_event(Event::StakeWithdrawn {
+							group_id,
+							currency_id,
+							account_id: account_id.clone(),
+							amount,
+						});
 
 						Ok(())
 					})
@@ -289,6 +341,13 @@ pub mod pallet {
 					reward,
 					true,
 				)?;
+
+				Self::deposit_event(Event::RewardClaimed {
+					group_id,
+					currency_id,
+					account_id: account_id.clone(),
+					amount: reward,
+				});
 
 				Ok(reward)
 			})
@@ -336,6 +395,12 @@ pub mod pallet {
 						})
 					})?;
 				}
+
+				Self::deposit_event(Event::CurrencyAttached {
+					currency_id,
+					from: currency.group_id,
+					to: next_group_id,
+				});
 
 				currency.group_id = Some(next_group_id);
 
