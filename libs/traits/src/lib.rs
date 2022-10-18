@@ -35,7 +35,11 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
 
+/// Traits related to operations.
 pub mod ops;
+
+/// Traits related to rewards.
+pub mod rewards;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
