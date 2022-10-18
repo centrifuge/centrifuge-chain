@@ -11,6 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use sp_arithmetic::traits::Unsigned;
 use sp_runtime::{
 	traits::{One, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand,
@@ -54,7 +55,7 @@ where
 	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
 	where
 		Rate: FixedPointNumber,
-		Rate::Inner: FixedPointOperand + EnsureAdd,
+		Rate::Inner: FixedPointOperand + EnsureAdd + Unsigned,
 		It: IntoIterator<Item = Self::GroupId>,
 		It::IntoIter: Clone,
 	{
@@ -79,7 +80,7 @@ where
 	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
 	where
 		Rate: EnsureFixedPointNumber,
-		Rate::Inner: FixedPointOperand + EnsureAdd,
+		Rate::Inner: FixedPointOperand + EnsureAdd + Unsigned,
 		It: IntoIterator<Item = (Self::GroupId, Rate::Inner)>,
 		It::IntoIter: Clone,
 	{
