@@ -19,7 +19,6 @@ use cfg_traits::{
 };
 use cfg_types::{FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder};
 use frame_support::{
-	error::BadOrigin,
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
 	weights::PostDispatchInfo,
@@ -231,7 +230,7 @@ pub mod pallet {
 		/// given investment
 		type PreConditions: PreConditions<
 			OrderType<Self::AccountId, Self::InvestmentId, Self::Amount>,
-			Result = bool,
+			Result = DispatchResult,
 		>;
 
 		/// The weight information for this pallet extrinsics.
@@ -526,14 +525,11 @@ where
 		investment_id: T::InvestmentId,
 		amount: T::Amount,
 	) -> DispatchResult {
-		ensure!(
-			T::PreConditions::check(OrderType::Investment {
-				who: who.clone(),
-				investment_id,
-				amount
-			}),
-			BadOrigin
-		);
+		T::PreConditions::check(OrderType::Investment {
+			who: who.clone(),
+			investment_id,
+			amount,
+		})?;
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveInvestOrders::<T>::try_mutate(
@@ -591,14 +587,11 @@ where
 		investment_id: T::InvestmentId,
 		amount: T::Amount,
 	) -> DispatchResult {
-		ensure!(
-			T::PreConditions::check(OrderType::Redemption {
-				who: who.clone(),
-				investment_id,
-				amount
-			}),
-			BadOrigin
-		);
+		T::PreConditions::check(OrderType::Redemption {
+			who: who.clone(),
+			investment_id,
+			amount,
+		})?;
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveRedeemOrders::<T>::try_mutate(

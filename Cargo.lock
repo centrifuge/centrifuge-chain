@@ -131,6 +131,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-indices",
  "pallet-interest-accrual",
+ "pallet-investments",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",

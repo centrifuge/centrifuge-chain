@@ -627,6 +627,10 @@ where
 		res
 	}
 
+	pub fn of_pool(&self) -> PoolId {
+		self.salt.1
+	}
+
 	pub fn combine_non_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
