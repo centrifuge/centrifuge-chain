@@ -12,7 +12,7 @@
 use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
 pub use cfg_primitives::{EpochId, Moment, TrancheWeight};
 use cfg_traits::{
-	Always, OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT,
 };
 use cfg_types::{
@@ -258,6 +258,15 @@ impl pallet_investments::Config for Test {
 	type PreConditions = Always;
 	type Tokens = Tokens;
 	type WeightInfo = ();
+}
+
+pub struct Always;
+impl<T> PreConditions<T> for Always {
+	type Result = DispatchResult;
+
+	fn check(_: T) -> Self::Result {
+		Ok(())
+	}
 }
 
 parameter_types! {
