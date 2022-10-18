@@ -15,6 +15,7 @@ use sp_runtime::{
 	traits::Zero, ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 	FixedPointOperand,
 };
+use sp_std::vec::Vec;
 
 use crate::ops::ensure::{EnsureAdd, EnsureFixedPointNumber};
 
@@ -72,7 +73,7 @@ pub trait GroupRewards<AccountId> {
 			.try_fold(Weight::zero(), |a, b| a.ensure_add(b))?;
 
 		if total_weight.is_zero() {
-			return Ok(vec![]);
+			return Ok(Vec::default());
 		}
 
 		Ok(groups
