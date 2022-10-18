@@ -1240,7 +1240,7 @@ impl<
 	type Result = DispatchResult;
 
 	fn check(order: OrderType<AccountId, TrancheCurrency, Balance>) -> Self::Result {
-		let is_whitelisted = match order {
+		let is_tranche_investor = match order {
 			OrderType::Investment {
 				who,
 				investment_id: tranche,
@@ -1267,13 +1267,13 @@ impl<
 			),
 		};
 
-		if is_whitelisted {
+		if is_tranche_investor {
 			Ok(())
 		} else {
 			// TODO: We should adapt the permissions pallets interface to return an error instead of a boolen. This makes the redundant has not role error
 			//       that downstream pallets always need to generate not needed anymore.
 			Err(DispatchError::Other(
-				"Investor not whitelisted for pool in tranche.",
+				"Account does not have the TrancheInvestor permission.",
 			))
 		}
 	}
