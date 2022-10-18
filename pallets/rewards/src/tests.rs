@@ -17,6 +17,13 @@ fn rewards_account() -> u64 {
 	)
 }
 
+fn distribute_to_all_groups() {
+	assert_ok!(
+		Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+		vec![]
+	);
+}
+
 #[test]
 fn distribute_to_nothing() {
 	new_test_ext().execute_with(|| {
@@ -511,20 +518,14 @@ fn move_currency_one_move() {
 		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
 		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
 		assert_ok!(Rewards::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
+		distribute_to_all_groups();
 
 		// DISTRIBUTION 1
 		assert_ok!(Rewards::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
 		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
 		assert_ok!(Rewards::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
 		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
+		distribute_to_all_groups();
 
 		// DISTRIBUTION 2
 		assert_ok!(
@@ -532,10 +533,7 @@ fn move_currency_one_move() {
 			REWARD / 4 + 2 * REWARD / 5
 		);
 		assert_ok!(Rewards::withdraw_stake(CurrencyId::B, &USER_A, STAKE_B * 2));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
+		distribute_to_all_groups();
 
 		// DISTRIBUTION 3
 		assert_ok!(
@@ -565,24 +563,15 @@ fn move_currency_several_moves() {
 		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
 		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
 		assert_ok!(Rewards::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
+		distribute_to_all_groups();
 
 		// DISTRIBUTION 1
 		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
+		distribute_to_all_groups();
 
 		// DISTRIBUTION 2
 		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_A)); // MOVEMENT HERE!!
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
+		distribute_to_all_groups();
 
 		// DISTRIBUTION 3
 		assert_ok!(
@@ -594,12 +583,9 @@ fn move_currency_several_moves() {
 			Rewards::compute_reward(CurrencyId::B, &USER_A),
 			REWARD / 4 + REWARD / 3 + REWARD / 4
 		);
+		distribute_to_all_groups();
 
 		// DISTRIBUTION 4
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
 		assert_ok!(
 			Rewards::compute_reward(CurrencyId::B, &USER_A),
 			REWARD / 4 + REWARD / 3 + REWARD / 4 + REWARD / 3
