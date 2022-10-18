@@ -12,21 +12,36 @@
 // GNU General Public License for more details.
 
 use sp_runtime::{
-	traits::Zero, ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
-	FixedPointOperand,
+	traits::{One, Zero},
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::vec::Vec;
 
 use crate::ops::ensure::{EnsureAdd, EnsureFixedPointNumber};
 
 /// Abstraction over a distribution reward groups.
-pub trait GroupRewards<AccountId> {
+pub trait GroupRewards {
 	/// Type used as balance for all currencies and reward.
-	type Balance: FixedPointOperand + Zero;
+	type Balance;
 
 	/// Type used to identify the group
-	type GroupId: Copy;
+	type GroupId;
 
+	/// Reward a group distributing the reward amount proportionally to all associated accounts.
+	/// This method is called by distribution method only when the group has some stake.
+	fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult;
+
+	/// Retrieve the total staked amount.
+	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
+}
+
+/// Distribution mechanisms over group rewards.
+/// This trait is implemented automatically for all `GroupRewards` with the requested bounds.
+pub trait DistributedRewards: GroupRewards
+where
+	<Self as GroupRewards>::Balance: FixedPointOperand + Zero,
+	<Self as GroupRewards>::GroupId: Clone,
+{
 	/// Distribute uniformly the reward given to the entire list of groups.
 	/// Only groups with stake will be taken for distribution.
 	///
@@ -39,12 +54,15 @@ pub trait GroupRewards<AccountId> {
 	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
 	where
 		Rate: FixedPointNumber,
+		Rate::Inner: FixedPointOperand + EnsureAdd,
 		It: IntoIterator<Item = Self::GroupId>,
 		It::IntoIter: Clone,
 	{
-		Self::distribute_reward_with_weights::<Rate, _, _>(
+		Self::distribute_reward_with_weights::<Rate, _>(
 			reward,
-			groups.into_iter().map(|group_id| (group_id, 1u64)),
+			groups
+				.into_iter()
+				.map(|group_id| (group_id, Rate::Inner::one())),
 		)
 	}
 
@@ -55,29 +73,29 @@ pub trait GroupRewards<AccountId> {
 	/// This method makes several calls to `Rewards::reward_group()` under the hood.
 	/// If one of those calls fail, this method will continue to reward the rest of the groups,
 	/// The failed group errors will be returned.
-	fn distribute_reward_with_weights<Rate, Weight, It>(
+	fn distribute_reward_with_weights<Rate, It>(
 		reward: Self::Balance,
 		groups: It,
 	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
 	where
 		Rate: EnsureFixedPointNumber,
-		Weight: FixedPointOperand + EnsureAdd,
-		It: IntoIterator<Item = (Self::GroupId, Weight)>,
+		Rate::Inner: FixedPointOperand + EnsureAdd,
+		It: IntoIterator<Item = (Self::GroupId, Rate::Inner)>,
 		It::IntoIter: Clone,
 	{
 		let groups = groups.into_iter();
-		let total_weight: Weight = groups
+		let total_weight = groups
 			.clone()
-			.filter(|(group_id, _)| !Self::group_stake(*group_id).is_zero())
+			.filter(|(group_id, _)| !Self::group_stake(group_id.clone()).is_zero())
 			.map(|(_, weight)| weight)
-			.try_fold(Weight::zero(), |a, b| a.ensure_add(b))?;
+			.try_fold(Rate::Inner::zero(), |a, b| a.ensure_add(b))?;
 
 		if total_weight.is_zero() {
 			return Ok(Vec::default());
 		}
 
 		Ok(groups
-			.filter(|(group_id, _)| !Self::group_stake(*group_id).is_zero())
+			.filter(|(group_id, _)| !Self::group_stake(group_id.clone()).is_zero())
 			.map(|(group_id, weight)| {
 				let result = (|| {
 					let reward_rate = Rate::checked_from_rational(weight, total_weight)
@@ -85,20 +103,21 @@ pub trait GroupRewards<AccountId> {
 
 					let group_reward = reward_rate.ensure_mul_int(reward)?;
 
-					Self::reward_group(group_id, group_reward)
+					Self::reward_group(group_id.clone(), group_reward)
 				})();
 				(group_id, result)
 			})
 			.filter_map(|(group_id, result)| result.err().map(|err| (group_id, err)))
 			.collect())
 	}
+}
 
-	/// Reward a group distributing the reward amount proportionally to all associated accounts.
-	/// This method is called by distribution method only when the group has some stake.
-	fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult;
-
-	/// Retrieve the total staked amount.
-	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
+impl<Balance, GroupId, T> DistributedRewards for T
+where
+	Balance: FixedPointOperand + Zero,
+	GroupId: Clone,
+	T: GroupRewards<Balance = Balance, GroupId = GroupId>,
+{
 }
 
 /// Abstraction over a distribution reward system for accounts.
