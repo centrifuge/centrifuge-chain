@@ -2237,6 +2237,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-indices",
  "pallet-interest-accrual",
+ "pallet-investments",
  "pallet-keystore",
  "pallet-loans",
  "pallet-membership",
