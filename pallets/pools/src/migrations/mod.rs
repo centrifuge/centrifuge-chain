@@ -345,19 +345,6 @@ pub mod altair {
 		weight
 	}
 
-	pub fn migrate_orders<T: Config>() -> Weight {
-		let weight = 0u64;
-
-		// TODO:
-		// - move user-order to pallet-investments
-		//    - CAUTION: If chain is in EpochExecution, then the pallet-investments need an InProcessing state, else created
-		//               the needed ActiveOrders state
-		// - move funds from pool-account into the respective investment account
-		// - collect will be lost...
-
-		weight
-	}
-
 	/// This function MUST be called AFTER `migrate_orders`
 	pub fn remove_not_needed_storage<T: Config>() -> Weight {
 		let mut weight = 0u64;
@@ -372,18 +359,11 @@ pub mod altair {
 
 		weight
 	}
-	/*
-	thread_local! {
-		static NUM_POOL_DETAILS: RefCell<u32> = RefCell::new(0);
-		static NUM_EPOCH_EXECUTION_INFOS: RefCell<u32> = RefCell::new(0);
-	}
-	 */
+
 	#[cfg(feature = "try-runtime")]
-	#[thread_local]
 	static NUM_POOL_DETAILS: RefCell<u32> = RefCell::new(0);
 
 	#[cfg(feature = "try-runtime")]
-	#[thread_local]
 	static NUM_EPOCH_EXECUTION_INFOS: RefCell<u32> = RefCell::new(0);
 
 	#[cfg(feature = "try-runtime")]
