@@ -1,4 +1,6 @@
-use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign};
+use cfg_traits::ops::ensure::{
+	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
+};
 use frame_support::pallet_prelude::*;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
@@ -37,11 +39,11 @@ where
 	}
 
 	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_add_assign(&amount)
+		self.total_staked.ensure_add_assign(amount)
 	}
 
 	pub fn sub_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_sub_assign(&amount)
+		self.total_staked.ensure_sub_assign(amount)
 	}
 
 	pub fn total_staked(&self) -> Balance {
@@ -64,23 +66,19 @@ pub struct Group<Balance, Rate> {
 impl<Balance, Rate> Group<Balance, Rate>
 where
 	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd,
-	Rate: FixedPointNumber,
+	Rate: EnsureFixedPointNumber,
 {
 	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_add_assign(&amount)
+		self.total_staked.ensure_add_assign(amount)
 	}
 
 	pub fn sub_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_sub_assign(&amount)
+		self.total_staked.ensure_sub_assign(amount)
 	}
 
 	pub fn distribute_reward(&mut self, reward: Balance) -> Result<(), ArithmeticError> {
-		let rate_increment = Rate::checked_from_rational(reward, self.total_staked)
-			.ok_or(ArithmeticError::DivisionByZero)?;
-
-		self.reward_per_token.ensure_add_assign(&rate_increment)?;
-
-		Ok(())
+		let rate_increment = Rate::ensure_from_rational(reward, self.total_staked)?;
+		self.reward_per_token.ensure_add_assign(rate_increment)
 	}
 
 	pub fn reward_per_token(&self) -> Rate {
@@ -112,12 +110,10 @@ where
 		rpt_tallies: &[Rate],
 	) -> Result<(), ArithmeticError> {
 		for i in self.currency_version as usize..rpt_tallies.len() {
-			let currency_reward_tally = rpt_tallies[i]
-				.checked_mul_int(SignedBalance::from(self.staked))
-				.ok_or(ArithmeticError::Overflow)?;
+			let currency_reward_tally =
+				rpt_tallies[i].ensure_mul_int(SignedBalance::from(self.staked))?;
 
-			self.reward_tally
-				.ensure_add_assign(&currency_reward_tally)?;
+			self.reward_tally.ensure_add_assign(currency_reward_tally)?;
 
 			self.currency_version = rpt_tallies.len() as u32;
 		}
@@ -131,13 +127,9 @@ where
 		amount: Balance,
 		reward_per_token: Rate,
 	) -> Result<(), ArithmeticError> {
-		self.staked.ensure_add_assign(&amount)?;
-		self.reward_tally.ensure_add_assign(
-			&reward_per_token
-				.checked_mul_int(amount)
-				.ok_or(ArithmeticError::Overflow)?
-				.into(),
-		)
+		self.staked.ensure_add_assign(amount)?;
+		self.reward_tally
+			.ensure_add_assign(reward_per_token.ensure_mul_int(amount)?.into())
 	}
 
 	/// Remove a stake amount for a supposed *reward per token*.
@@ -146,13 +138,9 @@ where
 		amount: Balance,
 		reward_per_token: Rate,
 	) -> Result<(), ArithmeticError> {
-		self.staked.ensure_sub_assign(&amount)?;
-		self.reward_tally.ensure_sub_assign(
-			&reward_per_token
-				.checked_mul_int(amount)
-				.ok_or(ArithmeticError::Overflow)?
-				.into(),
-		)
+		self.staked.ensure_sub_assign(amount)?;
+		self.reward_tally
+			.ensure_sub_assign(reward_per_token.ensure_mul_int(amount)?.into())
 	}
 
 	/// Compute the reward for the current staked amount given a supposed *reward per token* and *epoch*.
@@ -160,14 +148,9 @@ where
 		&self,
 		reward_per_token: Rate,
 	) -> Result<Balance, ArithmeticError> {
-		let gross_reward: SignedBalance = reward_per_token
-			.checked_mul_int(self.staked)
-			.ok_or(ArithmeticError::Overflow)?
-			.into();
+		let gross_reward: SignedBalance = reward_per_token.ensure_mul_int(self.staked)?.into();
 
-		let reward = gross_reward.ensure_sub(&self.reward_tally)?;
-
-		Ok(Balance::try_from(reward).map_err(|_| ArithmeticError::Overflow)?)
+		gross_reward.ensure_sub(self.reward_tally)?.ensure_into()
 	}
 
 	/// Claim a reward for the current staked amount given a supposed *reward per token* and *epoch*.
@@ -177,10 +160,7 @@ where
 	) -> Result<Balance, ArithmeticError> {
 		let reward = self.compute_reward(reward_per_token)?;
 
-		self.reward_tally = reward_per_token
-			.checked_mul_int(self.staked)
-			.ok_or(ArithmeticError::Overflow)?
-			.into();
+		self.reward_tally = reward_per_token.ensure_mul_int(self.staked)?.into();
 
 		Ok(reward)
 	}

@@ -59,7 +59,7 @@ mod tests;
 mod types;
 
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureSub},
+	ops::ensure::{EnsureAdd, EnsureSub},
 	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
 };
 use frame_support::{
@@ -176,7 +176,6 @@ pub mod pallet {
 	impl<T: Config> GroupRewards<T::AccountId> for Pallet<T>
 	where
 		T::Balance: EnsureAdd + EnsureSub,
-		<T::Rate as FixedPointNumber>::Inner: Signed,
 	{
 		type Balance = T::Balance;
 		type GroupId = T::GroupId;
@@ -203,7 +202,6 @@ pub mod pallet {
 	impl<T: Config> AccountRewards<T::AccountId> for Pallet<T>
 	where
 		T::Balance: EnsureAdd + EnsureSub,
-		<T::Rate as FixedPointNumber>::Inner: Signed,
 	{
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
@@ -304,7 +302,10 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> CurrencyGroupChange for Pallet<T> {
+	impl<T: Config> CurrencyGroupChange for Pallet<T>
+	where
+		<T::Rate as FixedPointNumber>::Inner: Signed,
+	{
 		type CurrencyId = T::CurrencyId;
 		type GroupId = T::GroupId;
 
@@ -322,7 +323,7 @@ pub mod pallet {
 						Groups::<T>::try_mutate(next_group_id, |next_group| {
 							let rpt_tally = next_group
 								.reward_per_token()
-								.ensure_sub(&prev_group.reward_per_token())?;
+								.ensure_sub(prev_group.reward_per_token())?;
 
 							currency
 								.add_rpt_tally(rpt_tally)
