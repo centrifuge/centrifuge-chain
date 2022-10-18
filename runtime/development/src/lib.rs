@@ -979,6 +979,18 @@ impl PoolUpdateGuard for UpdateGuard {
 		}
 
 		let pool_id = pool.tranches.of_pool();
+
+		// We do not allow releasing updates during epoch
+		// closing.
+		//
+		// This is needed as:
+		// - investment side starts new order round with zero orders at epoch_closing
+		// - the pool might only fulfill x < 100% of redemptions
+		//         -> not all redemptions would be fulfilled after epoch_execution
+		if Pools::epoch_targets(pool_id).is_some() {
+			return false;
+		}
+
 		// There should be no outstanding redemption orders.
 		let acc_outstanding_redemptions = pool
 			.tranches
