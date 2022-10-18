@@ -58,7 +58,10 @@ mod tests;
 
 mod types;
 
-use cfg_traits::ops::{EnsureAdd, EnsureSub};
+use cfg_traits::{
+	ops::{EnsureAdd, EnsureSub},
+	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
+};
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
@@ -68,132 +71,8 @@ use frame_support::{
 	PalletId,
 };
 use num_traits::Signed;
-use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, Zero},
-	ArithmeticError, FixedPointNumber, FixedPointOperand,
-};
+use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
 use types::{CurrencyInfo, Group, StakeAccount};
-
-pub trait Rewards<AccountId> {
-	type Balance: AtLeast32BitUnsigned + FixedPointOperand;
-	type GroupId: Copy;
-	type CurrencyId;
-
-	/// Distribute uniformly the reward given to the entire list of groups.
-	/// Only groups with stake will be taken for distribution.
-	///
-	/// This method makes several calls to `Rewards::reward_group()` under the hood.
-	/// If one of those calls fail, this method will continue to reward the rest of the groups,
-	/// The failed group errors will be returned.
-	fn distribute_reward<Rate, It>(
-		reward: Self::Balance,
-		groups: It,
-	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
-	where
-		Rate: FixedPointNumber,
-		It: IntoIterator<Item = Self::GroupId>,
-		It::IntoIter: Clone,
-	{
-		Self::distribute_reward_with_weights::<Rate, _, _>(
-			reward,
-			groups.into_iter().map(|group_id| (group_id, 1u64)),
-		)
-	}
-
-	/// Distribute the reward given to the entire list of groups.
-	/// Only groups with stake will be taken for distribution.
-	/// Each group will recive a `weight / total_weight` part of the reward.
-	///
-	/// This method makes several calls to `Rewards::reward_group()` under the hood.
-	/// If one of those calls fail, this method will continue to reward the rest of the groups,
-	/// The failed group errors will be returned.
-	fn distribute_reward_with_weights<Rate, Weight, It>(
-		reward: Self::Balance,
-		groups: It,
-	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
-	where
-		Rate: FixedPointNumber,
-		Weight: AtLeast32BitUnsigned + FixedPointOperand + Zero,
-		It: IntoIterator<Item = (Self::GroupId, Weight)>,
-		It::IntoIter: Clone,
-	{
-		let groups = groups.into_iter();
-		let total_weight: Weight = groups
-			.clone()
-			.filter(|(group_id, _)| !Self::group_stake(*group_id).is_zero())
-			.map(|(_, weight)| weight)
-			.try_fold(Weight::zero(), |a, b| a.ensure_add(&b))?;
-
-		if total_weight.is_zero() {
-			return Ok(vec![]);
-		}
-
-		Ok(groups
-			.filter(|(group_id, _)| !Self::group_stake(*group_id).is_zero())
-			.map(|(group_id, weight)| {
-				let result = (|| {
-					let reward_rate = Rate::checked_from_rational(weight, total_weight)
-						.ok_or(ArithmeticError::DivisionByZero)?;
-
-					let group_reward = reward_rate
-						.checked_mul_int(reward)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					Self::reward_group(group_id, group_reward)
-				})();
-				(group_id, result)
-			})
-			.filter_map(|(group_id, result)| result.err().map(|err| (group_id, err)))
-			.collect())
-	}
-
-	/// Reward a group distributing the reward amount proportionally to all associated accounts.
-	/// This method is called by distribution method only when the group has some stake.
-	fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult;
-
-	/// Deposit a stake amount for a account_id associated to a currency_id.
-	/// The account_id must have enough currency to make the deposit,
-	/// if not, an Err will be returned.
-	fn deposit_stake(
-		currency_id: Self::CurrencyId,
-		account_id: &AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult;
-
-	/// Withdraw a stake amount for an account_id associated to a currency_id.
-	/// The account_id must have enough currency staked to perform a withdraw,
-	/// if not, an Err will be returned.
-	fn withdraw_stake(
-		currency_id: Self::CurrencyId,
-		account_id: &AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult;
-
-	/// Computes the reward the account_id can receive for a currency_id.
-	/// This action does not modify the account currency balance.
-	fn compute_reward(
-		currency_id: Self::CurrencyId,
-		account_id: &AccountId,
-	) -> Result<Self::Balance, DispatchError>;
-
-	/// Computes the reward the account_id can receive for a currency_id and claim it.
-	/// A reward using the native currency will be sent to the account_id.
-	fn claim_reward(
-		currency_id: Self::CurrencyId,
-		account_id: &AccountId,
-	) -> Result<Self::Balance, DispatchError>;
-
-	/// Retrieve the total staked amount.
-	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
-
-	/// Retrieve the total staked amount of currency in an account.
-	fn account_stake(currency_id: Self::CurrencyId, account_id: &AccountId) -> Self::Balance;
-
-	/// Associate the currency to a group.
-	/// If the currency was previously associated to another group, the associated stake is moved
-	/// to the new group.
-	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -294,13 +173,12 @@ pub mod pallet {
 		CurrencyMaxMovementsReached,
 	}
 
-	impl<T: Config> Rewards<T::AccountId> for Pallet<T>
+	impl<T: Config> GroupRewards<T::AccountId> for Pallet<T>
 	where
 		T::Balance: EnsureAdd + EnsureSub,
 		<T::Rate as FixedPointNumber>::Inner: Signed,
 	{
 		type Balance = T::Balance;
-		type CurrencyId = T::CurrencyId;
 		type GroupId = T::GroupId;
 
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
@@ -316,6 +194,19 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+
+		fn group_stake(group_id: Self::GroupId) -> Self::Balance {
+			Groups::<T>::get(group_id).total_staked()
+		}
+	}
+
+	impl<T: Config> AccountRewards<T::AccountId> for Pallet<T>
+	where
+		T::Balance: EnsureAdd + EnsureSub,
+		<T::Rate as FixedPointNumber>::Inner: Signed,
+	{
+		type Balance = T::Balance;
+		type CurrencyId = T::CurrencyId;
 
 		fn deposit_stake(
 			currency_id: Self::CurrencyId,
@@ -405,16 +296,17 @@ pub mod pallet {
 			})
 		}
 
-		fn group_stake(group_id: Self::GroupId) -> Self::Balance {
-			Groups::<T>::get(group_id).total_staked()
-		}
-
 		fn account_stake(
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Self::Balance {
 			StakeAccounts::<T>::get(account_id, currency_id).staked()
 		}
+	}
+
+	impl<T: Config> CurrencyGroupChange for Pallet<T> {
+		type CurrencyId = T::CurrencyId;
+		type GroupId = T::GroupId;
 
 		fn attach_currency(
 			currency_id: Self::CurrencyId,

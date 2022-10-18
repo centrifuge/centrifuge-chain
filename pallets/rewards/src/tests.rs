@@ -1,8 +1,8 @@
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
-use sp_runtime::FixedU128;
+use sp_runtime::{ArithmeticError, FixedU128};
 
 use super::*;
-use crate::mock::{Rewards as Pallet, *};
+use crate::mock::*;
 
 const REWARD: u64 = 100;
 
@@ -21,7 +21,7 @@ fn rewards_account() -> u64 {
 fn distribute_to_nothing() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, []),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, []),
 			vec![]
 		);
 		assert_eq!(rewards_account(), 0);
@@ -31,7 +31,7 @@ fn distribute_to_nothing() {
 #[test]
 fn distribute_zero_to_nothing() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::distribute_reward::<FixedU128, _>(0, []), vec![]);
+		assert_ok!(Rewards::distribute_reward::<FixedU128, _>(0, []), vec![]);
 		assert_eq!(rewards_account(), 0);
 	});
 }
@@ -40,7 +40,7 @@ fn distribute_zero_to_nothing() {
 fn distribute_zero_to_group_without_stake() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(0, [GROUP_A]),
+			Rewards::distribute_reward::<FixedU128, _>(0, [GROUP_A]),
 			vec![]
 		);
 		assert_eq!(rewards_account(), 0);
@@ -50,10 +50,10 @@ fn distribute_zero_to_group_without_stake() {
 #[test]
 fn distribute_zero_to_group_with_stake() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(0, [GROUP_A]),
+			Rewards::distribute_reward::<FixedU128, _>(0, [GROUP_A]),
 			vec![]
 		);
 		assert_eq!(rewards_account(), 0);
@@ -63,9 +63,9 @@ fn distribute_zero_to_group_with_stake() {
 #[test]
 fn distribute_to_group_without_stake() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]),
 			vec![]
 		);
 		assert_eq!(rewards_account(), 0);
@@ -75,10 +75,10 @@ fn distribute_to_group_without_stake() {
 #[test]
 fn distribute_to_group_with_stake() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]),
 			vec![]
 		);
 		assert_eq!(rewards_account(), REWARD);
@@ -88,12 +88,12 @@ fn distribute_to_group_with_stake() {
 #[test]
 fn distribute_to_groups_with_stake() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, 1));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 		assert_eq!(rewards_account(), REWARD);
@@ -103,10 +103,10 @@ fn distribute_to_groups_with_stake() {
 #[test]
 fn distribute_to_groups_with_and_without_stake() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 		assert_eq!(rewards_account(), REWARD);
@@ -116,12 +116,12 @@ fn distribute_to_groups_with_and_without_stake() {
 #[test]
 fn distribute_to_groups_with_all_weight_zero() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, 1));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
 		assert_ok!(
-			Pallet::distribute_reward_with_weights::<FixedU128, u32, _>(
+			Rewards::distribute_reward_with_weights::<FixedU128, u32, _>(
 				REWARD,
 				[(GROUP_A, 0), (GROUP_B, 0)]
 			),
@@ -134,12 +134,12 @@ fn distribute_to_groups_with_all_weight_zero() {
 #[test]
 fn distribute_to_groups_with_stake_weights() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, 1));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
 		assert_ok!(
-			Pallet::distribute_reward_with_weights::<FixedU128, u32, _>(
+			Rewards::distribute_reward_with_weights::<FixedU128, u32, _>(
 				REWARD,
 				[(GROUP_A, 8), (GROUP_B, 2)]
 			),
@@ -152,10 +152,10 @@ fn distribute_to_groups_with_stake_weights() {
 #[test]
 fn distribute_to_groups_with_and_without_stake_weights() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
 		assert_ok!(
-			Pallet::distribute_reward_with_weights::<FixedU128, u32, _>(
+			Rewards::distribute_reward_with_weights::<FixedU128, u32, _>(
 				REWARD,
 				[(GROUP_A, 1), (GROUP_B, 2)]
 			),
@@ -172,8 +172,8 @@ fn stake() {
 
 	new_test_ext().execute_with(|| {
 		// DISTRIBUTION 0
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::deposit_stake(
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(
 			CurrencyId::A,
 			&USER_A,
 			USER_A_STAKED_1
@@ -182,10 +182,13 @@ fn stake() {
 			free_balance(CurrencyId::A, &USER_A),
 			USER_INITIAL_BALANCE - USER_A_STAKED_1
 		);
-		assert_ok!(Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]));
+		assert_ok!(Rewards::distribute_reward::<FixedU128, _>(
+			REWARD,
+			[GROUP_A]
+		));
 
 		// DISTRIBUTION 1
-		assert_ok!(Pallet::deposit_stake(
+		assert_ok!(Rewards::deposit_stake(
 			CurrencyId::A,
 			&USER_A,
 			USER_A_STAKED_2
@@ -200,9 +203,9 @@ fn stake() {
 #[test]
 fn stake_insufficient_balance() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 		assert_noop!(
-			Pallet::deposit_stake(CurrencyId::A, &USER_A, USER_INITIAL_BALANCE + 1),
+			Rewards::deposit_stake(CurrencyId::A, &USER_A, USER_INITIAL_BALANCE + 1),
 			orml_tokens::Error::<Test>::BalanceTooLow
 		);
 	});
@@ -211,8 +214,8 @@ fn stake_insufficient_balance() {
 #[test]
 fn stake_nothing() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 0));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 0));
 	});
 }
 
@@ -224,9 +227,13 @@ fn unstake() {
 
 	new_test_ext().execute_with(|| {
 		// DISTRIBUTION 0
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, USER_A_STAKED));
-		assert_ok!(Pallet::withdraw_stake(
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(
+			CurrencyId::A,
+			&USER_A,
+			USER_A_STAKED
+		));
+		assert_ok!(Rewards::withdraw_stake(
 			CurrencyId::A,
 			&USER_A,
 			USER_A_UNSTAKED_1
@@ -235,10 +242,13 @@ fn unstake() {
 			free_balance(CurrencyId::A, &USER_A),
 			USER_INITIAL_BALANCE - USER_A_STAKED + USER_A_UNSTAKED_1
 		);
-		assert_ok!(Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]));
+		assert_ok!(Rewards::distribute_reward::<FixedU128, _>(
+			REWARD,
+			[GROUP_A]
+		));
 
 		// DISTRIBUTION 1
-		assert_ok!(Pallet::withdraw_stake(
+		assert_ok!(Rewards::withdraw_stake(
 			CurrencyId::A,
 			&USER_A,
 			USER_A_UNSTAKED_2
@@ -250,16 +260,16 @@ fn unstake() {
 #[test]
 fn unstake_insufficient_balance() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 		assert_noop!(
-			Pallet::withdraw_stake(CurrencyId::A, &USER_A, 1),
+			Rewards::withdraw_stake(CurrencyId::A, &USER_A, 1),
 			orml_tokens::Error::<Test>::BalanceTooLow
 		);
 
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, 1000));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1000));
 
 		assert_noop!(
-			Pallet::withdraw_stake(CurrencyId::A, &USER_A, 2000),
+			Rewards::withdraw_stake(CurrencyId::A, &USER_A, 2000),
 			orml_tokens::Error::<Test>::BalanceTooLow
 		);
 	});
@@ -268,8 +278,8 @@ fn unstake_insufficient_balance() {
 #[test]
 fn unstake_nothing() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::withdraw_stake(CurrencyId::A, &USER_A, 0));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::withdraw_stake(CurrencyId::A, &USER_A, 0));
 	});
 }
 
@@ -279,36 +289,40 @@ fn claim() {
 
 	new_test_ext().execute_with(|| {
 		// DISTRIBUTION 0
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 		let mut expected_user_balance = USER_INITIAL_BALANCE;
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, USER_A_STAKED));
+		assert_ok!(Rewards::deposit_stake(
+			CurrencyId::A,
+			&USER_A,
+			USER_A_STAKED
+		));
 		expected_user_balance -= USER_A_STAKED;
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A), 0);
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A), 0);
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), expected_user_balance);
-		assert_ok!(Pallet::reward_group(GROUP_A, REWARD));
+		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
 
 		// DISTRIBUTION 1
 		assert_eq!(rewards_account(), REWARD);
-		assert_ok!(Pallet::compute_reward(CurrencyId::A, &USER_A), REWARD);
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A), REWARD);
+		assert_ok!(Rewards::compute_reward(CurrencyId::A, &USER_A), REWARD);
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A), REWARD);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD);
 		assert_eq!(rewards_account(), 0);
 
-		assert_ok!(Pallet::compute_reward(CurrencyId::A, &USER_A), 0);
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A), 0);
+		assert_ok!(Rewards::compute_reward(CurrencyId::A, &USER_A), 0);
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A), 0);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD);
 		assert_eq!(rewards_account(), 0);
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), expected_user_balance);
-		assert_ok!(Pallet::reward_group(GROUP_A, REWARD));
+		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
 
 		// DISTRIBUTION 2
-		assert_ok!(Pallet::reward_group(GROUP_A, REWARD));
+		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
 		assert_eq!(rewards_account(), REWARD * 2);
 
 		// DISTRIBUTION 3
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A), REWARD * 2);
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A), REWARD * 2);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD * 3);
-		assert_ok!(Pallet::withdraw_stake(
+		assert_ok!(Rewards::withdraw_stake(
 			CurrencyId::A,
 			&USER_A,
 			USER_A_STAKED
@@ -317,12 +331,12 @@ fn claim() {
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), expected_user_balance);
 		// No more stake in the group
 		assert_noop!(
-			Pallet::reward_group(GROUP_A, REWARD),
+			Rewards::reward_group(GROUP_A, REWARD),
 			ArithmeticError::DivisionByZero
 		);
 
 		// DISTRIBUTION 4
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A), 0);
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A), 0);
 	});
 }
 
@@ -331,19 +345,23 @@ fn claim_nothing() {
 	const USER_A_STAKED: u64 = 1000;
 
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A));
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A));
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
 
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, USER_A_STAKED));
-		assert_ok!(Pallet::withdraw_stake(
+		assert_ok!(Rewards::deposit_stake(
 			CurrencyId::A,
 			&USER_A,
 			USER_A_STAKED
 		));
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A));
+		assert_ok!(Rewards::withdraw_stake(
+			CurrencyId::A,
+			&USER_A,
+			USER_A_STAKED
+		));
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A));
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
 	});
@@ -356,53 +374,61 @@ fn several_users_interacting() {
 
 	new_test_ext().execute_with(|| {
 		// DISTRIBUTION 0
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 		let mut user_a_balance = USER_INITIAL_BALANCE;
 		let mut user_b_balance = USER_INITIAL_BALANCE;
 		let mut user_a_reward = 0;
 		let mut user_b_reward = 0;
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, USER_A_STAKED));
+		assert_ok!(Rewards::deposit_stake(
+			CurrencyId::A,
+			&USER_A,
+			USER_A_STAKED
+		));
 		user_a_balance -= USER_A_STAKED;
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), user_a_balance);
-		assert_ok!(Pallet::reward_group(GROUP_A, REWARD));
+		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
 
 		// DISTRIBUTION 1
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_B, USER_B_STAKED));
+		assert_ok!(Rewards::deposit_stake(
+			CurrencyId::A,
+			&USER_B,
+			USER_B_STAKED
+		));
 		user_b_balance -= USER_B_STAKED;
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A));
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A));
 		user_a_reward += REWARD;
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), user_a_balance);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), user_a_reward);
 		assert_eq!(free_balance(CurrencyId::A, &USER_B), user_b_balance);
-		assert_ok!(Pallet::reward_group(GROUP_A, REWARD));
+		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
 
 		// DISTRIBUTION 2
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A));
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A));
 		user_a_reward += REWARD * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_B));
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_B));
 		user_b_reward += REWARD * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), user_a_reward);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_B), user_b_reward);
-		assert_ok!(Pallet::reward_group(GROUP_A, REWARD));
+		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
 
 		// DISTRIBUTION 3
-		assert_ok!(Pallet::withdraw_stake(
+		assert_ok!(Rewards::withdraw_stake(
 			CurrencyId::A,
 			&USER_A,
 			USER_A_STAKED
 		));
 		user_a_balance += USER_A_STAKED;
 		assert_eq!(free_balance(CurrencyId::A, &USER_A), user_a_balance);
-		assert_ok!(Pallet::reward_group(GROUP_A, REWARD));
+		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
 
 		// DISTRIBUTION 4
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A));
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A));
 		user_a_reward += REWARD * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_B));
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_B));
 		user_b_reward += REWARD * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED) + REWARD;
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), user_a_reward);
 		assert_eq!(free_balance(CurrencyId::Reward, &USER_B), user_b_reward);
-		assert_ok!(Pallet::withdraw_stake(
+		assert_ok!(Rewards::withdraw_stake(
 			CurrencyId::A,
 			&USER_B,
 			USER_B_STAKED
@@ -411,12 +437,12 @@ fn several_users_interacting() {
 		assert_eq!(free_balance(CurrencyId::A, &USER_B), user_b_balance);
 		// No more stake in the group
 		assert_noop!(
-			Pallet::reward_group(GROUP_A, REWARD),
+			Rewards::reward_group(GROUP_A, REWARD),
 			ArithmeticError::DivisionByZero
 		);
 
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_A), 0);
-		assert_ok!(Pallet::claim_reward(CurrencyId::A, &USER_B), 0);
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_A), 0);
+		assert_ok!(Rewards::claim_reward(CurrencyId::A, &USER_B), 0);
 	});
 }
 
@@ -424,19 +450,19 @@ fn several_users_interacting() {
 fn use_currency_without_group() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			Pallet::deposit_stake(CurrencyId::A, &USER_A, 0),
+			Rewards::deposit_stake(CurrencyId::A, &USER_A, 0),
 			Error::<Test>::CurrencyWithoutGroup
 		);
 		assert_noop!(
-			Pallet::withdraw_stake(CurrencyId::A, &USER_A, 0),
+			Rewards::withdraw_stake(CurrencyId::A, &USER_A, 0),
 			Error::<Test>::CurrencyWithoutGroup
 		);
 		assert_noop!(
-			Pallet::compute_reward(CurrencyId::A, &USER_A),
+			Rewards::compute_reward(CurrencyId::A, &USER_A),
 			Error::<Test>::CurrencyWithoutGroup
 		);
 		assert_noop!(
-			Pallet::claim_reward(CurrencyId::A, &USER_A),
+			Rewards::claim_reward(CurrencyId::A, &USER_A),
 			Error::<Test>::CurrencyWithoutGroup
 		);
 	});
@@ -445,9 +471,9 @@ fn use_currency_without_group() {
 #[test]
 fn move_currency_same_group_error() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
 		assert_noop!(
-			Pallet::attach_currency(CurrencyId::A, GROUP_A),
+			Rewards::attach_currency(CurrencyId::A, GROUP_A),
 			Error::<Test>::CurrencyInSameGroup
 		);
 	});
@@ -457,15 +483,15 @@ fn move_currency_same_group_error() {
 fn move_currency_max_times() {
 	new_test_ext().execute_with(|| {
 		// First attach only attach the currency, does not move it.
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, 0));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, 0));
 
 		// Waste all correct movements.
 		for i in 0..MaxCurrencyMovements::get() {
-			assert_ok!(Pallet::attach_currency(CurrencyId::A, i + 1));
+			assert_ok!(Rewards::attach_currency(CurrencyId::A, i + 1));
 		}
 
 		assert_noop!(
-			Pallet::attach_currency(CurrencyId::A, MaxCurrencyMovements::get() + 1),
+			Rewards::attach_currency(CurrencyId::A, MaxCurrencyMovements::get() + 1),
 			Error::<Test>::CurrencyMaxMovementsReached
 		);
 	});
@@ -479,46 +505,46 @@ fn move_currency_one_move() {
 
 	new_test_ext().execute_with(|| {
 		// DISTRIBUTION 0
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_A));
-		assert_ok!(Pallet::attach_currency(CurrencyId::C, GROUP_B));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::C, GROUP_B));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 
 		// DISTRIBUTION 1
-		assert_ok!(Pallet::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
-		assert_ok!(Pallet::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
-		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
+		assert_ok!(Rewards::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
+		assert_ok!(Rewards::compute_reward(CurrencyId::B, &USER_A), REWARD / 4);
+		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 
 		// DISTRIBUTION 2
 		assert_ok!(
-			Pallet::claim_reward(CurrencyId::B, &USER_A),
+			Rewards::claim_reward(CurrencyId::B, &USER_A),
 			REWARD / 4 + 2 * REWARD / 5
 		);
-		assert_ok!(Pallet::withdraw_stake(CurrencyId::B, &USER_A, STAKE_B * 2));
+		assert_ok!(Rewards::withdraw_stake(CurrencyId::B, &USER_A, STAKE_B * 2));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 
 		// DISTRIBUTION 3
 		assert_ok!(
-			Pallet::claim_reward(CurrencyId::A, &USER_A),
+			Rewards::claim_reward(CurrencyId::A, &USER_A),
 			REWARD / 4 + REWARD / 2 + REWARD / 2
 		);
-		assert_ok!(Pallet::claim_reward(CurrencyId::B, &USER_A), 0);
+		assert_ok!(Rewards::claim_reward(CurrencyId::B, &USER_A), 0);
 		assert_ok!(
-			Pallet::claim_reward(CurrencyId::C, &USER_A),
+			Rewards::claim_reward(CurrencyId::C, &USER_A),
 			REWARD / 2 + REWARD / 10 + REWARD / 2
 		);
 	});
@@ -533,49 +559,49 @@ fn move_currency_several_moves() {
 
 	new_test_ext().execute_with(|| {
 		// DISTRIBUTION 0
-		assert_ok!(Pallet::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_A));
-		assert_ok!(Pallet::attach_currency(CurrencyId::C, GROUP_B));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
-		assert_ok!(Pallet::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
+		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_A));
+		assert_ok!(Rewards::attach_currency(CurrencyId::C, GROUP_B));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, STAKE_A));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, STAKE_B));
+		assert_ok!(Rewards::deposit_stake(CurrencyId::C, &USER_A, STAKE_C));
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 
 		// DISTRIBUTION 1
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 
 		// DISTRIBUTION 2
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_A)); // MOVEMENT HERE!!
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_A)); // MOVEMENT HERE!!
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 
 		// DISTRIBUTION 3
 		assert_ok!(
-			Pallet::compute_reward(CurrencyId::B, &USER_A),
+			Rewards::compute_reward(CurrencyId::B, &USER_A),
 			REWARD / 4 + REWARD / 3 + REWARD / 4
 		);
-		assert_ok!(Pallet::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
+		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B)); // MOVEMENT HERE!!
 		assert_ok!(
-			Pallet::compute_reward(CurrencyId::B, &USER_A),
+			Rewards::compute_reward(CurrencyId::B, &USER_A),
 			REWARD / 4 + REWARD / 3 + REWARD / 4
 		);
 
 		// DISTRIBUTION 4
 		assert_ok!(
-			Pallet::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
 			vec![]
 		);
 		assert_ok!(
-			Pallet::compute_reward(CurrencyId::B, &USER_A),
+			Rewards::compute_reward(CurrencyId::B, &USER_A),
 			REWARD / 4 + REWARD / 3 + REWARD / 4 + REWARD / 3
 		);
 	});
