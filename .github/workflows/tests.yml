@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain]
+    branches: [main, 'release-v**']
   pull_request:
 name: Tests
 jobs:

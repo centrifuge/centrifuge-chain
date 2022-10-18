@@ -525,45 +525,51 @@ pub mod pallet {
 		///
 		/// LoanStatus must be in Created or Active state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
+		/// `interset_rate_per_year` is the anual interest rate, in the form 0.XXXX,
+		///     such that an APR of XX.YY% becomes 0.XXYY. Valid values are 0.0001
+		///     through 0.9999, with no more than four significant figures.
 		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
 		pub fn price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			interest_rate_per_sec: T::Rate,
+			interest_rate_per_year: T::Rate,
 			loan_type: LoanType<T::Rate, T::Balance>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
-			let active_count =
-				Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
+			let (active_count, interest_rate_per_sec) = Loan::<T>::try_mutate(
+				pool_id,
+				loan_id,
+				|loan| -> Result<(u32, T::Rate), DispatchError> {
 					let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 					match loan.status {
 						LoanStatus::Created => {
 							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
-							let active_count = Self::price_created_loan(
+							let res = Self::price_created_loan(
 								pool_id,
 								loan_id,
-								interest_rate_per_sec,
+								interest_rate_per_year,
 								loan_type,
 							);
 
 							loan.status = LoanStatus::Active;
-							active_count
+							res
 						}
 						LoanStatus::Active => {
 							Self::ensure_role(pool_id, owner, PoolRole::LoanAdmin)?;
 							Self::price_active_loan(
 								pool_id,
 								loan_id,
-								interest_rate_per_sec,
+								interest_rate_per_year,
 								loan_type,
 							)
 						}
 						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsClosed)?,
 					}
-				})?;
+				},
+			)?;
 
 			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
@@ -603,6 +609,10 @@ pub mod pallet {
 
 		/// Appends a new write off group to the Pool
 		///
+		/// `group.penalty_interest_rate_per_year` is a yearly
+		/// rate, in the same format as used for pricing
+		/// loans.
+		///
 		/// Since written off loans keep written off group index,
 		/// we only allow adding new write off groups.
 		/// Overdue days doesn't need to be in the sorted order.
@@ -610,10 +620,27 @@ pub mod pallet {
 		pub fn add_write_off_group(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			group: WriteOffGroup<T::Rate>,
+			group: WriteOffGroupInput<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
+
+			// Convert percentage from a yearly rate to a per-second rate.
+			let WriteOffGroupInput {
+				percentage,
+				overdue_days,
+				penalty_interest_rate_per_year,
+			} = group;
+			let penalty_interest_rate_per_sec =
+				T::InterestAccrual::convert_additive_rate_to_per_sec(
+					penalty_interest_rate_per_year,
+				)?;
+			let group = WriteOffGroup {
+				percentage,
+				overdue_days,
+				penalty_interest_rate_per_sec,
+			};
+
 			let write_off_group_index = Self::add_write_off_group_to_pool(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded {
 				pool_id,
@@ -668,16 +695,22 @@ pub mod pallet {
 		/// AdminOrigin can write off a healthy loan as well.
 		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
 		/// Admin can write off loan with any index potentially going up the index or down.
+		///
+		/// `penalty_interest_rate_per_year` is specified in the same format as used for pricing loans.
 		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get()))]
 		pub fn admin_write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			percentage: T::Rate,
-			penalty_interest_rate_per_sec: T::Rate,
+			penalty_interest_rate_per_year: T::Rate,
 		) -> DispatchResultWithPostInfo {
 			// ensure this is a call from risk admin
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
+			let penalty_interest_rate_per_sec =
+				T::InterestAccrual::convert_additive_rate_to_per_sec(
+					penalty_interest_rate_per_year,
+				)?;
 
 			// try to write off
 			let (active_count, (.., percentage, penalty_interest_rate_per_sec)) =
@@ -708,7 +741,7 @@ pub mod pallet {
 				for loan in active_loans.iter() {
 					weight += T::DbWeight::get().reads_writes(1, 1);
 					let rate = Self::rate_with_penalty(loan, &write_off_groups);
-					T::InterestAccrual::reference_rate(rate);
+					T::InterestAccrual::reference_rate(rate).unwrap();
 				}
 			}
 			weight

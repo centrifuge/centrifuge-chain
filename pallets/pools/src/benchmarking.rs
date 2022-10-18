@@ -348,8 +348,7 @@ fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
 }
 
-fn get_scheduled_update<T: Config<PoolId = u64>>(
-) -> ScheduledUpdateDetails<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength> {
+fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetailsOf<T> {
 	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
 }
 
@@ -426,14 +425,18 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 }
 
 fn build_update_tranche_metadata<T: Config>(
-) -> Vec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
+) -> BoundedVec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>, T::MaxTranches> {
 	vec![TrancheMetadata {
 		token_name: BoundedVec::default(),
 		token_symbol: BoundedVec::default(),
 	}]
+	.try_into()
+	.expect("T::MaxTranches > 0")
 }
 
-fn build_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheUpdate<T::Rate>> {
+fn build_update_tranches<T: Config>(
+	num_tranches: u32,
+) -> BoundedVec<TrancheUpdate<T::Rate>, T::MaxTranches> {
 	let mut tranches = build_bench_update_tranches::<T>(num_tranches);
 
 	for tranche in &mut tranches {
@@ -454,7 +457,9 @@ fn build_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheUpdate<T::R
 	tranches
 }
 
-fn build_bench_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheUpdate<T::Rate>> {
+fn build_bench_update_tranches<T: Config>(
+	num_tranches: u32,
+) -> BoundedVec<TrancheUpdate<T::Rate>, T::MaxTranches> {
 	let senior_interest_rate =
 		T::Rate::saturating_from_rational(5, 100) / T::Rate::saturating_from_integer(SECS_PER_YEAR);
 	let mut tranches: Vec<_> = (1..num_tranches)
@@ -476,7 +481,7 @@ fn build_bench_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheUpdat
 		},
 	);
 
-	tranches
+	tranches.try_into().expect("num_tranches <= T::MaxTranches")
 }
 
 fn build_bench_input_tranches<T: Config>(

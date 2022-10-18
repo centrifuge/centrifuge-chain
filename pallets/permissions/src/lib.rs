@@ -120,8 +120,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = Self::ensure_admin_or_editor(origin, with_role, scope.clone(), role.clone())?;
 
-			Pallet::<T>::do_add(scope.clone(), to.clone(), role.clone())
-				.map(|_| Self::deposit_event(Event::<T>::Added { to, scope, role }))?;
+			Pallet::<T>::do_add(scope, to, role)?;
 
 			match who {
 				Who::Editor => Ok(Some(T::WeightInfo::add_as_editor()).into()),
@@ -139,8 +138,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = Self::ensure_admin_or_editor(origin, with_role, scope.clone(), role.clone())?;
 
-			Pallet::<T>::do_remove(scope.clone(), from.clone(), role.clone())
-				.map(|_| Self::deposit_event(Event::<T>::Removed { from, scope, role }))?;
+			Pallet::<T>::do_remove(scope, from, role)?;
 
 			match who {
 				Who::Editor => Ok(Some(T::WeightInfo::remove_as_editor()).into()),
@@ -215,7 +213,7 @@ impl<T: Config> Pallet<T> {
 		T::AdminOrigin::ensure_origin(origin).map_or(Err(Error::<T>::NoEditor.into()), |_| Ok(()))
 	}
 
-	fn do_add(scope: T::Scope, who: T::AccountId, role: T::Role) -> Result<(), DispatchError> {
+	fn do_add(scope: T::Scope, to: T::AccountId, role: T::Role) -> DispatchResult {
 		PermissionCount::<T>::try_mutate(scope.clone(), |perm_count| {
 			let num_permissions = perm_count.map_or(1, |count| count + 1);
 			if num_permissions > T::MaxRolesPerScope::get() {
@@ -223,22 +221,29 @@ impl<T: Config> Pallet<T> {
 			}
 			*perm_count = Some(num_permissions);
 
-			Permission::<T>::try_mutate(who.clone(), scope.clone(), |maybe_roles| {
-				let mut roles = maybe_roles.take().unwrap_or_default();
-				if roles.exists(role.clone()) {
-					Err(Error::<T>::RoleAlreadyGiven.into())
-				} else {
-					roles
-						.add(role.clone())
-						.map_err(|_| Error::<T>::WrongParameters)?;
-					*maybe_roles = Some(roles);
-					Ok(())
-				}
-			})
-		})
+			Permission::<T>::try_mutate(
+				to.clone(),
+				scope.clone(),
+				|maybe_roles| -> DispatchResult {
+					let mut roles = maybe_roles.take().unwrap_or_default();
+					if roles.exists(role.clone()) {
+						Err(Error::<T>::RoleAlreadyGiven.into())
+					} else {
+						roles
+							.add(role.clone())
+							.map_err(|_| Error::<T>::WrongParameters)?;
+						*maybe_roles = Some(roles);
+						Ok(())
+					}
+				},
+			)
+		})?;
+
+		Self::deposit_event(Event::<T>::Added { to, scope, role });
+		Ok(())
 	}
 
-	fn do_remove(scope: T::Scope, who: T::AccountId, role: T::Role) -> Result<(), DispatchError> {
+	fn do_remove(scope: T::Scope, from: T::AccountId, role: T::Role) -> DispatchResult {
 		PermissionCount::<T>::try_mutate(scope.clone(), |perm_count| {
 			let num_permissions = perm_count.map_or(0, |count| count - 1);
 			if num_permissions == 0 {
@@ -247,21 +252,30 @@ impl<T: Config> Pallet<T> {
 				*perm_count = Some(num_permissions);
 			}
 
-			Permission::<T>::try_mutate(who.clone(), scope.clone(), |maybe_roles| {
-				let mut roles = maybe_roles.take().ok_or(Error::<T>::NoRoles)?;
-				if roles.exists(role.clone()) {
-					roles.rm(role).map_err(|_| Error::<T>::WrongParameters)?;
-					if roles.empty() {
-						*maybe_roles = None
+			Permission::<T>::try_mutate(
+				from.clone(),
+				scope.clone(),
+				|maybe_roles| -> DispatchResult {
+					let mut roles = maybe_roles.take().ok_or(Error::<T>::NoRoles)?;
+					if roles.exists(role.clone()) {
+						roles
+							.rm(role.clone())
+							.map_err(|_| Error::<T>::WrongParameters)?;
+						if roles.empty() {
+							*maybe_roles = None
+						} else {
+							*maybe_roles = Some(roles)
+						}
+						Ok(())
 					} else {
-						*maybe_roles = Some(roles)
+						Err(Error::<T>::RoleNotGiven.into())
 					}
-					Ok(())
-				} else {
-					Err(Error::<T>::RoleNotGiven.into())
-				}
-			})
-		})
+				},
+			)
+		})?;
+
+		Self::deposit_event(Event::<T>::Removed { from, scope, role });
+		Ok(())
 	}
 }
 

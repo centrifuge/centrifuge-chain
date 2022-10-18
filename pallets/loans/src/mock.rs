@@ -26,7 +26,7 @@ use cfg_types::{
 };
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, Everything, GenesisBuild, SortedMembers},
+	traits::{AsEnsureOriginWithArg, Everything, GenesisBuild, PalletInfoAccess, SortedMembers},
 	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -166,6 +166,9 @@ impl cfg_test_utils::mocks::order_manager::Config for MockRuntime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
+	/// The index with which this pallet is instantiated in this runtime.
+	pub PoolPalletIndex: u8 = <Pools as PalletInfoAccess>::index() as u8;
+
 	pub const ChallengeTime: u64 = 0; // disable challenge period
 	pub const MinUpdateDelay: u64 = 0; // no delay
 	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = false;
@@ -222,6 +225,7 @@ impl pallet_pools::Config for MockRuntime {
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
+	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainId;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<u64>;
@@ -253,7 +257,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		PoolId,
 	>;
 	type ScheduledUpdateDetails =
-		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>;
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
 
 	fn released(
 		_pool: &Self::PoolDetails,
@@ -317,12 +321,15 @@ impl pallet_interest_accrual::Config for MockRuntime {
 	type Balance = Balance;
 	type Event = Event;
 	type InterestRate = Rate;
+	type MaxRateCount = MaxActiveLoansPerPool;
 	type Time = Timestamp;
 	type Weights = ();
 }
 
 parameter_types! {
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxTranches: u8 = 5;
+
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
 
@@ -330,7 +337,7 @@ parameter_types! {
 }
 impl pallet_permissions::Config for MockRuntime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Editors = frame_support::traits::Everything;
+	type Editors = Everything;
 	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
 	type Role = Role;

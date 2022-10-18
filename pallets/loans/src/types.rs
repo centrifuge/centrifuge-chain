@@ -67,6 +67,20 @@ pub struct WriteOffGroup<Rate> {
 	pub(crate) penalty_interest_rate_per_sec: Rate,
 }
 
+/// The data structure as input for creating a write-off group
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct WriteOffGroupInput<Rate> {
+	/// percentage of outstanding debt we are going to write off on a loan
+	pub(crate) percentage: Rate,
+
+	/// number in days after the maturity has passed at which this write off group is valid
+	pub(crate) overdue_days: u64,
+
+	/// additional interest that accrues on the written off loan as penalty
+	pub(crate) penalty_interest_rate_per_year: Rate,
+}
+
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

@@ -199,24 +199,27 @@ pub struct PoolParameters {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
 {
-	pub tranches: Change<Vec<TrancheUpdate<Rate>>>,
-	pub tranche_metadata: Change<Vec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>>>,
+	pub tranches: Change<BoundedVec<TrancheUpdate<Rate>, MaxTranches>>,
+	pub tranche_metadata:
+		Change<BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>>,
 	pub min_epoch_time: Change<Moment>,
 	pub max_nav_age: Change<Moment>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
 {
-	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
+	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
 	pub scheduled_time: Moment,
 }
 
@@ -301,6 +304,20 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 type PoolDepositOf<T> =
 	PoolDepositInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
+type ScheduledUpdateDetailsOf<T> = ScheduledUpdateDetails<
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::MaxTranches,
+>;
+
+type PoolChangesOf<T> = PoolChanges<
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::MaxTranches,
+>;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
@@ -346,6 +363,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// The immutable index of this pallet when instantiated within the
+		/// context of a runtime where it is used.
+		#[pallet::constant]
+		type PalletIndex: Get<u8>;
+
 		type PoolId: Member
 			+ Parameter
 			+ Default
@@ -378,11 +400,7 @@ pub mod pallet {
 
 		type UpdateGuard: PoolUpdateGuard<
 			PoolDetails = PoolDetailsOf<Self>,
-			ScheduledUpdateDetails = ScheduledUpdateDetails<
-				Self::Rate,
-				Self::MaxTokenNameLength,
-				Self::MaxTokenSymbolLength,
-			>,
+			ScheduledUpdateDetails = ScheduledUpdateDetailsOf<Self>,
 			Moment = Moment,
 		>;
 
@@ -466,7 +484,7 @@ pub mod pallet {
 
 		/// Max number of Tranches
 		#[pallet::constant]
-		type MaxTranches: Get<u32>;
+		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
 
 		/// The amount that must be reserved to create a pool
 		#[pallet::constant]
@@ -490,12 +508,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn scheduled_update)]
-	pub type ScheduledUpdate<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		ScheduledUpdateDetails<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
-	>;
+	pub type ScheduledUpdate<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, ScheduledUpdateDetailsOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn epoch_targets)]
@@ -729,6 +743,7 @@ pub mod pallet {
 				let metadata = tranche.create_asset_metadata(
 					decimals,
 					parachain_id,
+					T::PalletIndex::get(),
 					token_name.to_vec(),
 					token_symbol.to_vec(),
 				);
@@ -797,7 +812,7 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			changes: PoolChangesOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -1443,7 +1458,7 @@ pub mod pallet {
 
 		pub(crate) fn do_update_pool(
 			pool_id: &T::PoolId,
-			changes: &PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			changes: &PoolChangesOf<T>,
 		) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;

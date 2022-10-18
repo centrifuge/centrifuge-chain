@@ -388,24 +388,26 @@ pub mod altair {
 
 	#[cfg(feature = "try-runtime")]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
-		NUM_POOL_DETAILS.with(|f| *f.borrow_mut() = 0);
-		NUM_EPOCH_EXECUTION_INFOS.with(|f| {
-			*f.borrow_mut() = 0;
-		});
+		{
+			let mut mut_ref = NUM_POOL_DETAILS.borrow_mut();
+			*mut_ref = 0;
+		}
+		{
+			let mut mut_ref = NUM_EPOCH_EXECUTION_INFOS.borrow_mut();
+			*mut_ref = 0;
+		}
 
 		Pool::<T>::iter_values()
 			.map(|_| {
-				NUM_POOL_DETAILS.with(|f| {
-					*f.borrow_mut() += 1;
-				})
+				let mut mut_ref = NUM_POOL_DETAILS.borrow_mut();
+				*mut_ref = *mut_ref + 1;
 			})
 			.for_each(|_| {});
 
 		EpochExecution::<T>::iter_values()
 			.map(|_| {
-				NUM_EPOCH_EXECUTION_INFOS.with(|f| {
-					*f.borrow_mut() += 1;
-				})
+				let mut mut_ref = NUM_EPOCH_EXECUTION_INFOS.borrow_mut();
+				*mut_ref = *mut_ref + 1;
 			})
 			.for_each(|_| {});
 
@@ -425,10 +427,10 @@ pub mod altair {
 			.map(|_| count_epoch_execution_infos += 1)
 			.for_each(|_| {});
 
-		assert_eq!(count_pool_details, NUM_POOL_DETAILS.with(|f| *f.borrow()));
+		assert_eq!(count_pool_details, *NUM_POOL_DETAILS.borrow());
 		assert_eq!(
 			count_epoch_execution_infos,
-			NUM_EPOCH_EXECUTION_INFOS.with(|f| *f.borrow())
+			*NUM_EPOCH_EXECUTION_INFOS.borrow()
 		);
 
 		Ok(())
