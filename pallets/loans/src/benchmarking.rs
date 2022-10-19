@@ -36,8 +36,7 @@ use test_utils::{
 use super::*;
 use crate::{
 	loan_type::{BulletLoan, CreditLineWithMaturity},
-	mock::FundsAccount,
-	test_utils::initialise_test_pool,
+	test_utils::{initialise_test_pool, FundsAccount},
 	types::WriteOffGroupInput,
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
 };

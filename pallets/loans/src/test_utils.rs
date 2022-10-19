@@ -25,7 +25,7 @@ use frame_support::{
 		tokens::nonfungibles::{Create, Inspect, Mutate},
 		Currency, Get,
 	},
-	Blake2_128, BoundedVec, StorageHasher,
+	Blake2_128, BoundedVec, PalletId, StorageHasher,
 };
 use frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
@@ -51,6 +51,7 @@ fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 parameter_types! {
 	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
 	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+	pub const FundsAccount: PalletId = cfg_test_utils::TEST_PALLET_ID;
 }
 
 pub(crate) fn create_nft_class<T>(

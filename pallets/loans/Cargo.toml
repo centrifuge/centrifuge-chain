@@ -59,7 +59,7 @@ default = ['std']
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
-    "pallet-uniques/runtime-benchmarks",
+    "pallet-uniques",
     "orml-tokens/runtime-benchmarks",
     "orml-traits",
     "pallet-timestamp/runtime-benchmarks",

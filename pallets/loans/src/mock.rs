@@ -40,7 +40,7 @@ use sp_runtime::{
 };
 
 use crate as pallet_loans;
-use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
+use crate::test_utils::{FundsAccount, JuniorTrancheId, SeniorTrancheId};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -150,9 +150,6 @@ impl orml_tokens::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const FundsAccount: PalletId = cfg_test_utils::TEST_PALLET_ID;
-}
 impl cfg_test_utils::mocks::order_manager::Config for MockRuntime {
 	type Accountant = Pools;
 	type FundsAccount = FundsAccount;
