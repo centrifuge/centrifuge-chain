@@ -1,4 +1,8 @@
-use sp_runtime::traits::Zero;
+use sp_arithmetic::{
+	fixed_point::{FixedI128, FixedI64, FixedU128, FixedU64},
+	traits::Zero,
+	FixedPointNumber, FixedPointOperand,
+};
 
 /// Numerical Sign
 #[derive(Clone, Copy, PartialEq)]
@@ -23,6 +27,27 @@ pub trait Signum: PartialOrd + Zero + Copy {
 }
 
 impl<T: PartialOrd + Zero + Copy> Signum for T {}
+
+/// Get the `FixedPointNumber` version of a number.
+trait IntoFixedPoint<T: FixedPointNumber>: FixedPointOperand {
+	/// Converts a number into its FixedPointNumber version.
+	fn into_fixed_point(self) -> T;
+}
+
+macro_rules! into_fixed_point_impl {
+	($operand:ty, $fixed_point:ty) => {
+		impl IntoFixedPoint<$fixed_point> for $operand {
+			fn into_fixed_point(self) -> $fixed_point {
+				<$fixed_point>::from_inner(self)
+			}
+		}
+	};
+}
+
+into_fixed_point_impl!(i64, FixedI64);
+into_fixed_point_impl!(u64, FixedU64);
+into_fixed_point_impl!(i128, FixedI128);
+into_fixed_point_impl!(u128, FixedU128);
 
 /// Arithmetic operations with safe error handling.
 ///
@@ -299,7 +324,7 @@ pub mod ensure {
 	impl<T: EnsureMul> EnsureMulAssign for T {}
 	impl<T: EnsureDiv> EnsureDivAssign for T {}
 
-	/// Extends `FixedPointNumber with` the Ensure family functions.
+	/// Extends [`FixedPointNumber`] with the Ensure family functions.
 	pub trait EnsureFixedPointNumber: FixedPointNumber {
 		/// Creates `self` from a rational number. Equal to `n / d`.
 		///
