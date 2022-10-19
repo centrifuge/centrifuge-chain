@@ -57,6 +57,7 @@ members = [
 
 [dependencies]
 # third-party dependencies
+getrandom = { version = "0.2", features = ["js"] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 serde = { version = "1.0.119", features = ["derive"] }
 futures = { version = "0.3.21", features = ["compat"] }
