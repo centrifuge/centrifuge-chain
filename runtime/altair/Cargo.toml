@@ -17,7 +17,7 @@ integer-sqrt = { version = "0.1.2" }
 safe-mix = { version = "1.0", default-features = false }
 smallvec = "1.6.1"
 static_assertions = "1.1.0"
-hex-literal = { version = "0.2.1", optional = true }
+hex-literal = { version = "0.3.4", optional = true }
 rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.119", optional = true }
 
@@ -213,6 +213,7 @@ std = [
     "xcm-executor/std",
     "xcm/std",
     "getrandom/std",
+    "pallet-crowdloan-claim/std",
 ]
 runtime-benchmarks = [
     "cfg-types/runtime-benchmarks",

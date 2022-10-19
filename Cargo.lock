@@ -105,7 +105,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "getrandom 0.2.7",
- "hex-literal 0.2.2",
+ "hex-literal 0.3.4",
  "integer-sqrt",
  "orml-asset-registry",
  "orml-tokens",
