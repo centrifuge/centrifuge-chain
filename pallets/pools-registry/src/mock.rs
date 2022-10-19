@@ -98,13 +98,6 @@ impl<T: Config + pallet_pools_registry::Config>
 		T::MaxTranches,
 	> for ModifyPoolMock<T>
 {
-	//				admin,
-	// 				depositor,
-	// 				pool_id,
-	// 				tranche_inputs,
-	// 				currency,
-	// 				max_reserve,
-	// 				metadata,
 	fn create(
 		_admin: T::AccountId,
 		_depositor: T::AccountId,

@@ -187,6 +187,13 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// A pool was created.
+		Created {
+			pool_id: T::PoolId,
+			admin: T::AccountId,
+		},
+		/// A pool was updated.
+		Updated { pool_id: T::PoolId },
 		/// Pool metadata was set.
 		MetadataSet {
 			pool_id: T::PoolId,
@@ -253,15 +260,21 @@ pub mod pallet {
 			// admin as our depositor.
 			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
 
-			T::ModifyPool::create(
-				admin,
+			match T::ModifyPool::create(
+				admin.clone(),
 				depositor,
 				pool_id,
 				tranche_inputs,
 				currency,
 				max_reserve,
 				metadata,
-			)
+			) {
+				Ok(_) => {
+					Self::deposit_event(Event::Created { pool_id, admin });
+					Ok(())
+				}
+				Err(e) => Err(e),
+			}
 		}
 
 		/// Update per-pool configuration settings.
@@ -308,7 +321,13 @@ pub mod pallet {
 				BadOrigin
 			);
 
-			T::ModifyPool::update(pool_id, changes)
+			match T::ModifyPool::update(pool_id, changes) {
+				Ok(res) => {
+					Self::deposit_event(Event::Updated { pool_id });
+					Ok(res)
+				}
+				Err(e) => Err(e),
+			}
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.

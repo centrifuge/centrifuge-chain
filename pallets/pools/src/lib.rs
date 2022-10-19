@@ -512,13 +512,6 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A pool was created.
-		Created {
-			pool_id: T::PoolId,
-			admin: T::AccountId,
-		},
-		/// A pool was updated.
-		Updated { pool_id: T::PoolId },
 		/// The tranches were rebalanced.
 		Rebalanced { pool_id: T::PoolId },
 		/// The max reserve was updated.
@@ -1240,8 +1233,6 @@ pub mod pallet {
 				}
 
 				ScheduledUpdate::<T>::remove(pool_id);
-
-				Self::deposit_event(Event::Updated { pool_id: *pool_id });
 				Ok(())
 			})
 		}
@@ -1598,7 +1589,6 @@ pub mod pallet {
 				Role::PoolRole(PoolRole::PoolAdmin),
 			)?;
 
-			Self::deposit_event(Event::Created { pool_id, admin });
 			Ok(())
 		}
 
