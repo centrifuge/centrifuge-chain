@@ -10,6 +10,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # third-party dependencies
+getrandom = { version = "0.2", default-features = false, features = ["js"] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 integer-sqrt = { version = "0.1.2" }
@@ -211,6 +212,7 @@ std = [
     "xcm-builder/std",
     "xcm-executor/std",
     "xcm/std",
+    "getrandom/std",
 ]
 runtime-benchmarks = [
     "cfg-types/runtime-benchmarks",

@@ -27,10 +27,6 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 
 # optional dependencies for benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.29" }
-schnorrkel = { version = "0.10.2", features = ["u64_backend"], default-features = false, optional = true }
-getrandom = { version = "0.2", default-features = false, optional = true }
-rand_core = { version = "0.6.2", default-features = false, optional = true}
-
 
 # Local dependencies
 cfg-traits = { path= '../../libs/traits', default_features = false }
@@ -43,7 +39,6 @@ sp-keyring = { git = "https://github.com/paritytech/substrate", default-features
 pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = true }
 hex = { version="0.4.3", default_features = true }
-
 
 
 [features]
