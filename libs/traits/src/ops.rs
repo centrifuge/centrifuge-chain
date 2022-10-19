@@ -1,4 +1,8 @@
-use sp_runtime::traits::Zero;
+use sp_arithmetic::{
+	fixed_point::{FixedI128, FixedI64, FixedU128, FixedU64},
+	traits::Zero,
+	FixedPointNumber, FixedPointOperand,
+};
 
 /// Numerical Sign
 #[derive(Clone, Copy, PartialEq)]
@@ -23,6 +27,35 @@ pub trait Signum: PartialOrd + Zero + Copy {
 }
 
 impl<T: PartialOrd + Zero + Copy> Signum for T {}
+
+/// Get the `FixedPointNumber` type of a number.
+/// It allows to specify only the number in trait bounds.
+///
+/// ```
+/// use cfg_traits::ops::GetFixedPointNumber;
+/// use sp_arithmetic::FixedPointNumber;
+///
+/// fn divide_by_100<T: GetFixedPointNumber + >(value: T) -> Option<T::FixedPointNumber> {
+///     T::FixedPointNumber::checked_from_rational(value, 100)
+/// }
+/// ```
+pub trait GetFixedPointNumber: FixedPointOperand {
+	/// Type to be convert to
+	type FixedPointNumber: FixedPointNumber;
+}
+
+macro_rules! get_fixed_point_impl {
+	($operand:ty, $fixed_point:ty) => {
+		impl GetFixedPointNumber for $operand {
+			type FixedPointNumber = $fixed_point;
+		}
+	};
+}
+
+get_fixed_point_impl!(i64, FixedI64);
+get_fixed_point_impl!(u64, FixedU64);
+get_fixed_point_impl!(i128, FixedI128);
+get_fixed_point_impl!(u128, FixedU128);
 
 /// Arithmetic operations with safe error handling.
 ///
@@ -299,7 +332,7 @@ pub mod ensure {
 	impl<T: EnsureMul> EnsureMulAssign for T {}
 	impl<T: EnsureDiv> EnsureDivAssign for T {}
 
-	/// Extends `FixedPointNumber with` the Ensure family functions.
+	/// Extends [`FixedPointNumber`] with the Ensure family functions.
 	pub trait EnsureFixedPointNumber: FixedPointNumber {
 		/// Creates `self` from a rational number. Equal to `n / d`.
 		///
