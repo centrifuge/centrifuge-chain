@@ -31,7 +31,7 @@ proofs = { path = "../../libs/proofs", default-features = false }
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.29" }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-primitives = { path = '../../libs/primitives', default-features = false }
-cfg-types = { path = "../../libs/types", default-features = true}
+cfg-types = { path = "../../libs/types", default-features = false }
 
 [dev-dependencies]
 # Testing and mocking dependencies

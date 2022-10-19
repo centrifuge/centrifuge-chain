@@ -37,12 +37,12 @@ cfg-traits = { path= '../../libs/traits', default_features = false }
 proofs = { path= '../../libs/proofs', default_features = false }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
-sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.29" }
+sp-trie = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.29" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.29" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
-pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = false }
-hex = { version="0.4.3", default_features = false }
+pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = true }
+hex = { version="0.4.3", default_features = true }
 
 
 

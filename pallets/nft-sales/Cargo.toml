@@ -29,14 +29,14 @@ cfg-primitives = { path = "../../libs/primitives", default-features = false, opt
 
 [dev-dependencies]
 # Substrate crates & pallets
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
-pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
+pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = true, branch = "polkadot-v0.9.29" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = true, branch = "polkadot-v0.9.29" }
 
 # Orml crates
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.29" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.29" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.29" }
 
 # Local crates
 cfg-primitives = { path = "../../libs/primitives", default-features = true }
