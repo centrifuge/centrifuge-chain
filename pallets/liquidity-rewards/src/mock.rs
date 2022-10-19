@@ -122,12 +122,17 @@ impl pallet_rewards::Config for Test {
 	type SignedBalance = i128;
 }
 
+frame_support::parameter_types! {
+	pub const MaxChangesPerEpoch: Option<u32> = Some(3);
+}
+
 impl pallet_liquidity_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<u64>;
 	type Balance = u64;
 	type CurrencyId = CurrencyId;
 	type Event = Event;
 	type GroupId = u32;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type Rewards = pallet_rewards::Pallet<Test>;
 	type Weight = u32;
 }
