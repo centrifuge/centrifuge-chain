@@ -369,6 +369,16 @@ fn pool_constraints_pass() {
 			metadata: None,
 		};
 
+		assert_eq!(
+			epoch_tranches.calculate_weights(),
+			vec![
+				(10_000.into(), 100_000.into()),
+				(1000.into(), 1_000_000.into()),
+				(100.into(), 10_000_000.into()),
+				(10.into(), 100_000_000.into())
+			]
+		);
+
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 145,
@@ -395,15 +405,6 @@ fn pool_constraints_pass() {
 			crate::calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
 				.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
-		);
-		assert_eq!(
-			pool.tranches.calculate_weights(),
-			vec![
-				(10_000.into(), 100_000.into()),
-				(1000.into(), 1_000_000.into()),
-				(100.into(), 10_000_000.into()),
-				(10.into(), 100_000_000.into())
-			]
 		);
 	});
 }
