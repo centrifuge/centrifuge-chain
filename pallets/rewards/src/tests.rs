@@ -1,6 +1,6 @@
 use cfg_traits::rewards::DistributedRewards;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
-use sp_runtime::{ArithmeticError, FixedU128};
+use sp_runtime::ArithmeticError;
 
 use super::*;
 use crate::mock::*;
@@ -20,157 +20,9 @@ fn rewards_account() -> u64 {
 
 fn distribute_to_all_groups() {
 	assert_ok!(
-		Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
+		Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]),
 		vec![]
 	);
-}
-
-#[test]
-fn distribute_to_nothing() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, []),
-			vec![]
-		);
-		assert_eq!(rewards_account(), 0);
-	});
-}
-
-#[test]
-fn distribute_zero_to_nothing() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::distribute_reward::<FixedU128, _>(0, []), vec![]);
-		assert_eq!(rewards_account(), 0);
-	});
-}
-
-#[test]
-fn distribute_zero_to_group_without_stake() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(0, [GROUP_A]),
-			vec![]
-		);
-		assert_eq!(rewards_account(), 0);
-	});
-}
-
-#[test]
-fn distribute_zero_to_group_with_stake() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(0, [GROUP_A]),
-			vec![]
-		);
-		assert_eq!(rewards_account(), 0);
-	});
-}
-
-#[test]
-fn distribute_to_group_without_stake() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]),
-			vec![]
-		);
-		assert_eq!(rewards_account(), 0);
-	});
-}
-
-#[test]
-fn distribute_to_group_with_stake() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A]),
-			vec![]
-		);
-		assert_eq!(rewards_account(), REWARD);
-	});
-}
-
-#[test]
-fn distribute_to_groups_with_stake() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
-		assert_eq!(rewards_account(), REWARD);
-	});
-}
-
-#[test]
-fn distribute_to_groups_with_and_without_stake() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(
-			Rewards::distribute_reward::<FixedU128, _>(REWARD, [GROUP_A, GROUP_B]),
-			vec![]
-		);
-		assert_eq!(rewards_account(), REWARD);
-	});
-}
-
-#[test]
-fn distribute_to_groups_with_all_weight_zero() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
-		assert_ok!(
-			Rewards::distribute_reward_with_weights::<FixedU128, _>(
-				REWARD,
-				[(GROUP_A, 0), (GROUP_B, 0)]
-			),
-			vec![]
-		);
-		assert_eq!(rewards_account(), 0);
-	});
-}
-
-#[test]
-fn distribute_to_groups_with_stake_weights() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::B, &USER_A, 1));
-		assert_ok!(
-			Rewards::distribute_reward_with_weights::<FixedU128, _>(
-				REWARD,
-				[(GROUP_A, 8), (GROUP_B, 2)]
-			),
-			vec![]
-		);
-		assert_eq!(rewards_account(), REWARD);
-	});
-}
-
-#[test]
-fn distribute_to_groups_with_and_without_stake_weights() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(CurrencyId::A, &USER_A, 1));
-		assert_ok!(
-			Rewards::distribute_reward_with_weights::<FixedU128, _>(
-				REWARD,
-				[(GROUP_A, 1), (GROUP_B, 2)]
-			),
-			vec![]
-		);
-		assert_eq!(rewards_account(), REWARD);
-	});
 }
 
 #[test]
@@ -190,10 +42,7 @@ fn stake() {
 			free_balance(CurrencyId::A, &USER_A),
 			USER_INITIAL_BALANCE - USER_A_STAKED_1
 		);
-		assert_ok!(Rewards::distribute_reward::<FixedU128, _>(
-			REWARD,
-			[GROUP_A]
-		));
+		assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
 
 		// DISTRIBUTION 1
 		assert_ok!(Rewards::deposit_stake(
@@ -250,10 +99,7 @@ fn unstake() {
 			free_balance(CurrencyId::A, &USER_A),
 			USER_INITIAL_BALANCE - USER_A_STAKED + USER_A_UNSTAKED_1
 		);
-		assert_ok!(Rewards::distribute_reward::<FixedU128, _>(
-			REWARD,
-			[GROUP_A]
-		));
+		assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
 
 		// DISTRIBUTION 1
 		assert_ok!(Rewards::withdraw_stake(
