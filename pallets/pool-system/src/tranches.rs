@@ -1502,7 +1502,7 @@ where
 
 #[cfg(test)]
 pub mod test {
-	use common_types::{PoolId, TrancheId};
+	use cfg_primitives::{PoolId, TrancheId};
 
 	use super::*;
 
@@ -1519,7 +1519,7 @@ pub mod test {
 	const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 	const DEFAULT_POOL_ID: PoolId = 0;
-	const DEFAULT_TIME_NOW: Moment = 0;
+	const _DEFAULT_TIME_NOW: Moment = 0;
 
 	struct TrancheTokenImpl;
 
