@@ -28,6 +28,8 @@ use frame_support::{
 	Blake2_128, BoundedVec, StorageHasher,
 };
 use frame_system::RawOrigin;
+#[cfg(feature = "runtime-benchmarks")]
+use pallet_pools::TrancheLoc;
 use pallet_pools::{
 	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheMetadata, TrancheType,
 };

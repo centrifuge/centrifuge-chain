@@ -27,7 +27,7 @@ use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
-use sp_runtime::traits::MaybeSerializeDeserialize;
+use sp_runtime::traits::{AccountIdConversion, MaybeSerializeDeserialize};
 use test_utils::{
 	assert_last_event, create as create_test_pool, create_nft_class_if_needed, expect_asset_owner,
 	expect_asset_to_be_burned, get_tranche_id, mint_nft_of,
@@ -36,6 +36,7 @@ use test_utils::{
 use super::*;
 use crate::{
 	loan_type::{BulletLoan, CreditLineWithMaturity},
+	mock::FundsAccount,
 	test_utils::initialise_test_pool,
 	types::WriteOffGroupInput,
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
@@ -165,15 +166,6 @@ fn whitelist_acc<T: frame_system::Config>(acc: &T::AccountId) {
 	);
 }
 
-// return white listed senior and junior tranche investors
-fn investors<T: frame_system::Config>() -> (T::AccountId, T::AccountId) {
-	let senior_investor = account::<T::AccountId>("senior", 0, 0);
-	let junior_investor = account::<T::AccountId>("junior", 0, 0);
-	whitelist_acc::<T>(&senior_investor);
-	whitelist_acc::<T>(&junior_investor);
-	(senior_investor, junior_investor)
-}
-
 fn risk_admin<T: frame_system::Config>() -> T::AccountId {
 	let risk_admin = account::<T::AccountId>("risk_admin", 0, 0);
 	whitelist_acc::<T>(&risk_admin);
@@ -219,21 +211,15 @@ where
 	// create pool
 	let pool_owner = account::<T::AccountId>("owner", 0, 0);
 	make_free_cfg_balance::<T>(pool_owner.clone());
-	let (senior_inv, junior_inv) = investors::<T>();
-	make_free_cfg_balance::<T>(senior_inv.clone());
-	make_free_cfg_balance::<T>(junior_inv.clone());
-	make_free_token_balance::<T>(CurrencyId::AUSD, &senior_inv, (500 * CURRENCY).into());
-	make_free_token_balance::<T>(CurrencyId::AUSD, &junior_inv, (500 * CURRENCY).into());
+	make_free_token_balance::<T>(
+		CurrencyId::AUSD,
+		&FundsAccount::get().into_account_truncating(),
+		(1000 * CURRENCY).into(),
+	);
 	let pool_id: PoolIdOf<T> = Default::default();
 	let pool_account = pool_account::<T>(pool_id.into());
 	let pal_pool_id: <T as pallet_pools::Config>::PoolId = pool_id.into();
-	create_test_pool::<T>(
-		pool_id.into(),
-		pool_owner.clone(),
-		junior_inv,
-		senior_inv,
-		CurrencyId::AUSD,
-	);
+	create_test_pool::<T>(pool_id.into(), pool_owner.clone(), CurrencyId::AUSD);
 	let tranche_id = get_tranche_id::<T>(pool_id.into(), 0);
 	make_free_token_balance::<T>(
 		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
