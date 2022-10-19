@@ -195,7 +195,7 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		// Emits when a currency is used but it has no a related group.
+		// Emits when a currency is used but it does not have a group associated to.
 		CurrencyWithoutGroup,
 
 		// Emits when a currency is attached to the group it is already attached.
