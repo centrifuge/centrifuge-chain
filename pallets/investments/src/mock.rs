@@ -15,7 +15,7 @@ use std::ops::Add;
 
 pub use cfg_primitives::CFG as CURRENCY;
 use cfg_primitives::*;
-use cfg_traits::{Always, OrderManager};
+use cfg_traits::{OrderManager, PreConditions};
 use cfg_types::{CurrencyId, FulfillmentWithPrice, InvestmentAccount, Rate, TotalOrder};
 use codec::{Decode, Encode};
 use frame_support::{
@@ -150,6 +150,15 @@ impl pallet_investments::Config for MockRuntime {
 	type PreConditions = Always;
 	type Tokens = OrmlTokens;
 	type WeightInfo = ();
+}
+
+pub struct Always;
+impl<T> PreConditions<T> for Always {
+	type Result = DispatchResult;
+
+	fn check(_: T) -> Self::Result {
+		Ok(())
+	}
 }
 
 // TODO: This struct should be temporarily needed only
