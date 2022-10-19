@@ -13,6 +13,9 @@
 //! Test utilities that can be used accross multiple pallets.
 //! Providing all sorts of mock implementations for traits the pallets
 //! need and which can be used for mock environments
+
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use frame_support::PalletId;
 
 pub mod mocks;

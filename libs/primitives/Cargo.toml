@@ -37,7 +37,6 @@ std = [
     'sp-core/std',
     'frame-support/std',
     'sp-runtime/std',
-    'sp-runtime/std',
     'frame-system/std',
     'pallet-collective/std',
     'sp-consensus-aura/std'

@@ -11,9 +11,9 @@ repository = 'https://github.com/centrifuge/centrifuge-chain'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-cfg-traits = { path = '../traits'}
-cfg-primitives = { path = '../primitives'}
-cfg-types = { path = '../types'}
+cfg-traits = { path = '../traits', default-features = false }
+cfg-primitives = { path = '../primitives', default-features = false }
+cfg-types = { path = '../types', default-features = false }
 
 serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
@@ -24,17 +24,28 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
 
+# Optional dependencies
+frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.26" }
+
 [features]
 default = ['std']
 std = [
-    'codec/std',
-    'scale-info/std',
-    'sp-std/std',
-    'frame-support/std',
-    'frame-system/std',
     'cfg-traits/std',
     'cfg-types/std',
     'cfg-primitives/std',
-    'sp-runtime/std'
+    'codec/std',
+    'scale-info/std',
+    'frame-support/std',
+    'frame-system/std',
+    'sp-runtime/std',
+    'sp-std/std'
 ]
-runtime-benchmarks = []
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
+    "cfg-primitives/runtime-benchmarks",
+    "cfg-traits/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks"
+]

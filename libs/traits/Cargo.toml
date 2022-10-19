@@ -27,6 +27,7 @@ cfg-primitives = { path = '../primitives', default-features = false }
 
 [features]
 default = ['std']
+runtime-benchmarks = []
 std = [
     "serde/std",
     "codec/std",

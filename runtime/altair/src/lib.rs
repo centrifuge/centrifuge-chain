@@ -1609,7 +1609,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
 			list_benchmark!(list, extra, pallet_balances, Balances);
-			// TODO: Not working as benches expect everbody to be whitelisted to register
+			// TODO: Not working as benches expect everybody to be whitelisted to register
 			//       as collator. But our runtimes restrict this. A PR to the cumulus
 			//       benches is needed or benchmarks allow some kind of pre-setup logic
 			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
@@ -1680,7 +1680,7 @@ impl_runtime_apis! {
 			type Anchors = Anchor;
 
 			// Note: Only add working benches here. Commenting out will still
-			//       result in the runtime_benchmarks.sh script trying to
+			//       result in the runtime_benchmarks.sh script trying to run
 			//       the benches for the given pallet.
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
