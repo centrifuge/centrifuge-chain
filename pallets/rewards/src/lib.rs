@@ -81,7 +81,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// Identifier of this pallet used as an acount where stores the reward that is not claimed.
+		/// Identifier of this pallet used as an account where stores the reward that is not claimed.
 		/// When you distribute reward, the amount distributed goes here.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
