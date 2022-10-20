@@ -1621,6 +1621,8 @@ pub mod test {
 	}
 
 	mod tranche {
+		use sp_runtime::{traits::Bounded, FixedU128};
+
 		use super::*;
 
 		#[test]
@@ -1717,7 +1719,16 @@ pub mod test {
 		}
 
 		#[test]
-		fn tranches_accrue_overflows_safely() {}
+		fn tranches_accrue_overflows_safely() {
+			let mut tranche = non_residual(3, Some(10), None);
+
+			tranche.debt = Balance::max_value() - 10;
+
+			assert_eq!(
+				tranche.accrue(SECS_PER_YEAR),
+				Err(ArithmeticError::Overflow.into())
+			)
+		}
 	}
 
 	mod tranches {
