@@ -350,9 +350,6 @@ pub mod pallet {
 
 		/// A fixed-point number which represents a Self::Balance
 		/// in terms of this fixed-point representation.
-		///
-		/// NOTE: One must be cautious with using One::one() in
-		///       this context.
 		type Rate: Member
 			+ Parameter
 			+ Default
