@@ -261,6 +261,7 @@ try-runtime = [
     "frame-try-runtime",
     "frame-system/try-runtime",
     "pallet-anchors/try-runtime",
+    "frame-support/try-runtime",
 ]
 
 

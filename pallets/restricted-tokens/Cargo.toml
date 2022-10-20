@@ -29,7 +29,7 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
 pallet-permissions = { path = "../permissions", default-features = false, optional = true }
 cfg-types = { path = "../../libs/types", default-features = false, optional = true }
-cfg-primitives = { path = "../../libs/primitives", default-features = false, optional = true }
+cfg-primitives = { path = "../../libs/primitives", default-features = false, optional = false }
 
 [dev-dependencies]
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.29" }
@@ -47,7 +47,6 @@ runtime-benchmarks = [
     'orml-tokens',
     'orml-traits',
     'pallet-permissions',
-    'cfg-primitives',
     'cfg-types'
 ]
 std = [
