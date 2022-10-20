@@ -324,7 +324,7 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 /// A trait, when implemented allows to invest into
 /// investment classes
 pub trait Investment<AccountId> {
-	type Error;
+	type Error: Debug;
 	type InvestmentId;
 	type Amount;
 

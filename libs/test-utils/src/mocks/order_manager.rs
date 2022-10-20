@@ -14,7 +14,9 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::{InvestmentAccountant, InvestmentProperties, OrderManager, TrancheCurrency};
+	use cfg_traits::{
+		Investment, InvestmentAccountant, InvestmentProperties, OrderManager, TrancheCurrency,
+	};
 	use cfg_types::{FulfillmentWithPrice, TotalOrder};
 	use frame_support::{
 		pallet_prelude::*,
@@ -209,6 +211,53 @@ pub mod pallet {
 			//       need no transfer.
 
 			Ok(())
+		}
+	}
+
+	impl<T: Config> Investment<T::AccountId> for Pallet<T>
+	where
+		<T::Tokens as Inspect<T::AccountId>>::Balance:
+			From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Tokens as Inspect<T::AccountId>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
+		<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+			InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+	{
+		type Amount = BalanceOf<T>;
+		type Error = DispatchError;
+		type InvestmentId = T::InvestmentId;
+
+		fn update_investment(
+			_: &T::AccountId,
+			investment_id: Self::InvestmentId,
+			amount: Self::Amount,
+		) -> Result<(), Self::Error> {
+			Self::update_invest_order(investment_id, amount)
+		}
+
+		fn investment(
+			_: &T::AccountId,
+			investment_id: Self::InvestmentId,
+		) -> Result<Self::Amount, Self::Error> {
+			Ok(InvestOrders::<T>::get(investment_id)
+				.unwrap_or(TotalOrder::default())
+				.amount)
+		}
+
+		fn update_redemption(
+			_: &T::AccountId,
+			investment_id: Self::InvestmentId,
+			amount: Self::Amount,
+		) -> Result<(), Self::Error> {
+			Self::update_redeem_order(investment_id, amount)
+		}
+
+		fn redemption(
+			_: &T::AccountId,
+			investment_id: Self::InvestmentId,
+		) -> Result<Self::Amount, Self::Error> {
+			Ok(RedeemOrders::<T>::get(investment_id)
+				.unwrap_or(TotalOrder::default())
+				.amount)
 		}
 	}
 

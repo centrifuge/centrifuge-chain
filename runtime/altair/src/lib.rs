@@ -1674,7 +1674,9 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			use pallet_loans::benchmarking::Pallet as LoansPallet;
-			impl pallet_loans::benchmarking::Config for Runtime {}
+			impl pallet_loans::benchmarking::Config for Runtime {
+				type IM = Investments;
+			}
 
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;

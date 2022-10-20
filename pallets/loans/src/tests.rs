@@ -33,8 +33,8 @@ use crate as pallet_loans;
 use crate::{
 	loan_type::{CreditLine, CreditLineWithMaturity},
 	mock::{
-		Borrower, Event as MockEvents, InterestAccrual, LoanAdmin, Loans, MockRuntime, Origin,
-		PoolAdmin, TestExternalitiesBuilder, Timestamp, Tokens,
+		Borrower, Event as MockEvents, InterestAccrual, LoanAdmin, Loans, MockRuntime,
+		OrderManager, Origin, PoolAdmin, TestExternalitiesBuilder, Timestamp, Tokens,
 	},
 	test_utils::{
 		assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
@@ -100,7 +100,7 @@ where
 {
 	let pool_admin = PoolAdmin::get();
 
-	create::<T>(pool_id, pool_admin, CurrencyId::AUSD);
+	create::<T, OrderManager>(pool_id, pool_admin, CurrencyId::AUSD);
 	// add borrower role and price admin role
 	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
@@ -1354,7 +1354,7 @@ fn test_add_write_off_groups() {
 			let pool_admin = PoolAdmin::get();
 			let risk_admin: u64 = LoanAdmin::get();
 			let pool_id = 0;
-			create::<MockRuntime>(pool_id, pool_admin, CurrencyId::AUSD);
+			create::<MockRuntime, OrderManager>(pool_id, pool_admin, CurrencyId::AUSD);
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
 			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(

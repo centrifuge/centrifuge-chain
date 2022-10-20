@@ -12,16 +12,14 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
-use cfg_primitives::{PoolId, TrancheId, CFG as CURRENCY};
-use cfg_test_utils::mocks::order_manager::Pallet as OrderManager;
-use cfg_traits::{InvestmentAccountant, InvestmentProperties, PoolNAV, TrancheCurrency as _};
+use cfg_primitives::CFG as CURRENCY;
+use cfg_traits::{Investment, PoolNAV, TrancheCurrency as _};
 use cfg_types::{CurrencyId, TrancheCurrency};
-use codec::{Encode, MaxEncodedLen};
+use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
 	sp_runtime::traits::One,
 	traits::{
-		fungibles::Inspect as FungiblesInspect,
 		tokens::nonfungibles::{Create, Inspect, Mutate},
 		Currency, Get,
 	},
@@ -33,9 +31,8 @@ use pallet_pools::TrancheLoc;
 use pallet_pools::{
 	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheMetadata, TrancheType,
 };
-use sp_arithmetic::FixedPointOperand;
 use sp_runtime::{
-	traits::{MaybeSerializeDeserialize, Zero},
+	traits::{AccountIdConversion, Zero},
 	Perquintill,
 };
 use sp_std::vec;
@@ -117,36 +114,18 @@ where
 	loan_id
 }
 
-type CurrencyOf<T> =
-	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as FungiblesInspect<
-		<T as frame_system::Config>::AccountId,
-	>>::AssetId;
-
-pub(crate) fn create<T>(
+pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 	pool_id: <T as pallet_pools::Config>::PoolId,
 	owner: T::AccountId,
 	currency_id: CurrencyId,
 ) where
-	T: pallet_pools::Config
-		+ frame_system::Config
-		+ pallet_loans::Config
-		+ cfg_test_utils::mocks::order_manager::Config,
+	T: pallet_pools::Config + frame_system::Config + pallet_loans::Config,
 	<T as pallet_pools::Config>::Balance: From<u128>,
 	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
-	<T as cfg_test_utils::mocks::order_manager::Config>::PoolId: From<PoolId>,
-	<T as cfg_test_utils::mocks::order_manager::Config>::TrancheId: From<TrancheId>,
-	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as FungiblesInspect<
-		T::AccountId,
-	>>::Balance: From<u128> + From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
-	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as FungiblesInspect<
-		T::AccountId,
-	>>::AssetId: MaxEncodedLen + MaybeSerializeDeserialize,
-	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
-		T::AccountId,
-	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
-	<T as cfg_test_utils::mocks::order_manager::Config>::InvestmentId: From<TrancheCurrency>,
+	<OM as Investment<T::AccountId>>::Amount: From<u128>,
+	<OM as Investment<T::AccountId>>::InvestmentId: From<TrancheCurrency>,
 {
 	let mint_amount = <T as pallet_pools::Config>::PoolDeposit::get() * 2.into();
 	<T as pallet_pools::Config>::Currency::deposit_creating(&owner.clone().into(), mint_amount);
@@ -182,11 +161,13 @@ pub(crate) fn create<T>(
 		None
 	));
 
-	assert_ok!(OrderManager::<T>::update_invest_order(
+	assert_ok!(OM::update_investment(
+		&FundsAccount::get().into_account_truncating(),
 		TrancheCurrency::generate(pool_id.into(), JuniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
-	assert_ok!(OrderManager::<T>::update_invest_order(
+	assert_ok!(OM::update_investment(
+		&FundsAccount::get().into_account_truncating(),
 		TrancheCurrency::generate(pool_id.into(), SeniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
