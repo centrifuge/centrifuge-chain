@@ -583,6 +583,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type InitializeMembers = Council;
 	type KickedMember = ();
 	type LoserCandidate = ();
+	type MaxCandidates = MaxCandidates;
+	type MaxVoters = MaxVoters;
 	type PalletId = ElectionsPhragmenModuleId;
 	/// How long each seat is kept. This defines the next block number at which an election
 	/// round will happen. If set to zero, no elections are ever triggered and the module will
@@ -593,8 +595,6 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
-	type MaxCandidates = MaxCandidates;
-	type MaxVoters = MaxVoters;
 }
 
 parameter_types! {
