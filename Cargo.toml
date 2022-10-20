@@ -64,7 +64,6 @@ members = [
 clap = { version = "3.1", features = [ "derive" ] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 futures = { version = "0.3.21", features = ["compat"] }
-getrandom = { version = "0.2", default-features = false, features = ["js"] }
 hex-literal = "0.2.1"
 jsonrpsee = { version = "0.15.1", features = ["server", "macros"] }
 log = "0.4.8"
@@ -187,7 +186,6 @@ std = [
 	"sc-service/rocksdb",
 	"substrate-build-script-utils",
 	"sp-consensus-babe/std",
-	"getrandom/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
