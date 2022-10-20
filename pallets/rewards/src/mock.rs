@@ -31,9 +31,9 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Rewards: pallet_rewards::{Pallet, Storage, Event<T>},
+		System: frame_system,
+		Tokens: orml_tokens,
+		Rewards: pallet_rewards,
 	}
 );
 
@@ -88,8 +88,6 @@ pub enum CurrencyId {
 orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 { 0 };
 }
-
-frame_support::parameter_types! {}
 
 impl orml_tokens::Config for Test {
 	type Amount = i64;
