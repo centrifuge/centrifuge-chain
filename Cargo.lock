@@ -6446,6 +6446,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-rewards"
+version = "0.1.0"
+dependencies = [
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "lazy_static",
+ "num-traits",
+ "orml-tokens",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-scheduler"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26#1cca061ede75a4c693a3b71bd1b61d7275fe29e4"
