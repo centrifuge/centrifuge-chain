@@ -15,6 +15,9 @@
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod tests;
+
 pub use cfg_traits::{
 	ops::ensure::EnsureAdd,
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},

@@ -1,9 +1,9 @@
 use frame_support::{
 	pallet_prelude::*,
-	traits::{ConstU16, ConstU32, ConstU64},
+	traits::{ConstU16, ConstU32, ConstU64, SortedMembers},
 	PalletId,
 };
-use frame_system::EnsureRoot;
+use frame_system::EnsureSignedBy;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
@@ -17,6 +17,14 @@ use crate as pallet_liquidity_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+pub const ADMIN: u64 = 1;
+pub const USER_A: u64 = 2;
+
+pub const USER_INITIAL_BALANCE: u64 = 100000;
+
+pub const GROUP_A: u32 = 1;
+pub const GROUP_B: u32 = 2;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -124,10 +132,17 @@ impl pallet_rewards::Config for Test {
 
 frame_support::parameter_types! {
 	pub const MaxChangesPerEpoch: Option<u32> = Some(3);
+	pub const Admin: u64 = ADMIN;
+}
+
+impl SortedMembers<u64> for Admin {
+	fn sorted_members() -> Vec<u64> {
+		vec![ADMIN]
+	}
 }
 
 impl pallet_liquidity_rewards::Config for Test {
-	type AdminOrigin = EnsureRoot<u64>;
+	type AdminOrigin = EnsureSignedBy<Admin, u64>;
 	type Balance = u64;
 	type CurrencyId = CurrencyId;
 	type Event = Event;
@@ -138,9 +153,25 @@ impl pallet_liquidity_rewards::Config for Test {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let storage = frame_system::GenesisConfig::default()
+	let mut storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
+
+	let users = [USER_A];
+	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C];
+
+	orml_tokens::GenesisConfig::<Test> {
+		balances: users
+			.iter()
+			.flat_map(|&user| {
+				currencies
+					.iter()
+					.map(move |&currency| (user, currency, USER_INITIAL_BALANCE))
+			})
+			.collect(),
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 
 	sp_io::TestExternalities::new(storage)
 }
