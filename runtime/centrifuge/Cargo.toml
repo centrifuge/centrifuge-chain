@@ -97,7 +97,7 @@ pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-fea
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 
-#orml pallets
+# Orml pallets
 orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.29" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.29" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.29" }
@@ -164,28 +164,21 @@ std = [
     "pallet-identity/std",
     "pallet-im-online/std",
     "pallet-indices/std",
-#    "pallet-interest-accrual/std",
-#    "pallet-loans/std",
     "pallet-membership/std",
     "pallet-migration-manager/std",
     "pallet-multisig/std",
-#    "pallet-nft-sales/std",
     "pallet-offences/std",
-#    "pallet-permissions/std",
-#    "pallet-pools/std",
     "pallet-preimage/std",
     "pallet-proxy/std",
     "pallet-randomness-collective-flip/std",
     "pallet-restricted-tokens/std",
     "pallet-scheduler/std",
     "pallet-session/std",
-#    "pallet-society/std",
     "pallet-staking/std",
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",
     "pallet-treasury/std",
-#    "pallet-uniques/std",
     "pallet-utility/std",
     "cumulus-pallet-aura-ext/std",
     "cumulus-pallet-dmp-queue/std",
@@ -222,7 +215,6 @@ std = [
     "orml-xcm/std",
     "orml-xcm-support/std",
     "chainbridge/std",
-
     "cfg-types/std",
     "cfg-traits/std",
     "cfg-primitives/std",
