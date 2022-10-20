@@ -5974,6 +5974,7 @@ name = "pallet-crowdloan-claim"
 version = "0.1.0"
 dependencies = [
  "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

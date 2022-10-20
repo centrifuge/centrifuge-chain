@@ -1602,7 +1602,7 @@ impl_runtime_apis! {
 			let weight = Executive::try_runtime_upgrade().unwrap();
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
-		fn execute_block_no_check(block: Block) -> Weight {
+		fn execute_block(block: Block, state_root_check: bool, try_state: TryStateSelect) -> Weight;
 			Executive::execute_block_no_check(block)
 		}
 	}

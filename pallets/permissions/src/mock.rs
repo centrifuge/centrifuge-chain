@@ -19,6 +19,7 @@ use frame_support::{
 		testing::{Header, H256},
 		traits::{BlakeTwo256, IdentityLookup},
 	},
+	weights::Weight,
 	traits::{Contains, EitherOfDiverse, Everything, SortedMembers},
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
@@ -246,7 +247,7 @@ frame_support::construct_runtime!(
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(1024);
+	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024));
 }
 
 // Implement frame system configuration for the mock runtime
