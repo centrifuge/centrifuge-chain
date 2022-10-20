@@ -15,38 +15,51 @@
 #[cfg(test)]
 mod mock;
 
-pub use cfg_traits::rewards::{
-	AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards,
+pub use cfg_traits::{
+	ops::ensure::EnsureAdd,
+	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
 };
+pub use frame_support::storage::transactional;
 use frame_support::{
 	pallet_prelude::*,
 	traits::tokens::{AssetId, Balance},
 };
 use frame_system::pallet_prelude::*;
+use num_traits::sign::Unsigned;
 pub use pallet::*;
-use sp_runtime::{traits::BlockNumberProvider, FixedPointOperand, FixedU128};
+use sp_runtime::{traits::BlockNumberProvider, ArithmeticError, FixedPointOperand};
 
 /// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Epoch<BlockNumber, Balance> {
 	ends_on: BlockNumber,
-	duration: BlockNumber,
 	reward_to_distribute: Balance,
 }
 
+impl<BlockNumber: EnsureAdd, Balance> Epoch<BlockNumber, Balance> {
+	fn next(
+		self,
+		duration: BlockNumber,
+		reward_to_distribute: Balance,
+	) -> Result<Self, ArithmeticError> {
+		Ok(Self {
+			ends_on: self.ends_on.ensure_add(duration)?,
+			reward_to_distribute,
+		})
+	}
+}
+
 /// Type used to initialize the first epoch with the correct block number
-pub struct FirstEpoch<P>(std::marker::PhantomData<P>);
+pub struct FirstEpoch<Provider>(sp_std::marker::PhantomData<Provider>);
 impl<Provider, BlockNumber, Balance> Get<Epoch<BlockNumber, Balance>> for FirstEpoch<Provider>
 where
 	Provider: BlockNumberProvider<BlockNumber = BlockNumber>,
-	BlockNumber: Default,
 	Balance: Default,
 {
 	fn get() -> Epoch<BlockNumber, Balance> {
 		Epoch {
 			ends_on: Provider::current_block_number(),
-			duration: BlockNumber::default(),
 			reward_to_distribute: Balance::default(),
 		}
 	}
@@ -73,7 +86,7 @@ pub mod pallet {
 		type GroupId: Parameter + MaxEncodedLen;
 
 		/// Type used to handle group weights.
-		type Weight: Parameter + MaxEncodedLen;
+		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
 		/// The reward system used.
 		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = Self::GroupId>
@@ -93,7 +106,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub(super) type GroupWeights<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::GroupId, T::Weight, OptionQuery, GetDefault>;
+		StorageMap<_, Blake2_128Concat, T::GroupId, T::Weight, ValueQuery>;
 
 	#[pallet::storage]
 	pub(super) type ActiveEpoch<T: Config> = StorageValue<
@@ -142,32 +155,41 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let epoch = ActiveEpoch::<T>::get();
+			let mut func_weight = T::DbWeight::get().reads(1);
 
 			if epoch.ends_on > current_block {
-				return T::DbWeight::get().reads(1);
+				return func_weight;
 			}
 
-			T::Rewards::distribute_reward_with_weights::<FixedU128, _>(
-				epoch.reward_to_distribute,
-				GroupWeights::iter().collect::<Vec<_>>(),
-			);
+			transactional::with_storage_layer(|| -> DispatchResult {
+				T::Rewards::distribute_reward_with_weights(
+					epoch.reward_to_distribute,
+					GroupWeights::<T>::iter().collect::<Vec<(T::GroupId, T::Weight)>>(),
+				)?;
+				// func_weight += T::WeightInfo::distribute_reward_with_weights(groups);
 
-			/*
-			Group::<T>::mutate(|group| {
-				if group.distribute_reward(active_epoch.total_reward()) {
-					T::Currency::deposit_creating(
-						&T::PalletId::get().into_account_truncating(),
-						active_epoch.total_reward(),
-					);
+				for (group_id, weight) in WeightChanges::<T>::iter() {
+					GroupWeights::<T>::insert(group_id, weight);
+					func_weight += T::DbWeight::get().reads_writes(1, 1);
 				}
-			});
 
-			ActiveEpoch::<T>::put(
-				active_epoch.next(T::BlockPerEpoch::get(), NextTotalReward::<T>::get()),
-			);
-			*/
+				for (currency_id, group_id) in CurrencyChanges::<T>::iter() {
+					T::Rewards::attach_currency(currency_id, group_id)?;
+					func_weight += T::DbWeight::get().reads(1);
+					// func_weight += T::WeightInfo::attach_currency();
+				}
 
-			0 // TODO
+				ActiveEpoch::<T>::put(epoch.next(
+					NextEpochDuration::<T>::get(),
+					NextDistributedReward::<T>::get(),
+				)?);
+				func_weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(1);
+
+				Ok(())
+			})
+			.ok();
+
+			func_weight
 		}
 	}
 
