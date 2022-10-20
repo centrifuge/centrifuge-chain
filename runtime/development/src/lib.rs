@@ -228,8 +228,8 @@ impl Contains<Call> for BaseCallFilter {
 }
 
 parameter_types! {
-	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
-	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
@@ -593,6 +593,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
+	type MaxCandidates = MaxCandidates;
+	type MaxVoters = MaxVoters;
 }
 
 parameter_types! {
@@ -1447,7 +1449,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 }
 
 parameter_types! {
-	pub UnitWeightCost: Weight = 100_000_000;
+	pub UnitWeightCost: u64 = 100_000_000;
 	pub const MaxInstructions: u32 = 100;
 }
 
