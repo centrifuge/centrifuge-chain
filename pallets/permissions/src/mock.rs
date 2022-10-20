@@ -19,8 +19,8 @@ use frame_support::{
 		testing::{Header, H256},
 		traits::{BlakeTwo256, IdentityLookup},
 	},
-	weights::Weight,
 	traits::{Contains, EitherOfDiverse, Everything, SortedMembers},
+	weights::Weight,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use pallet_permissions::Properties;

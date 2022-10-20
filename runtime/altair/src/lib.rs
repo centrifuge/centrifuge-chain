@@ -1533,7 +1533,7 @@ impl_runtime_apis! {
 
 		fn dispatch_benchmark(
 				config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
 
@@ -1557,6 +1557,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			use pallet_loans::benchmarking::Pallet as LoansPallet;
+
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
@@ -1602,8 +1603,8 @@ impl_runtime_apis! {
 			let weight = Executive::try_runtime_upgrade().unwrap();
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
-		fn execute_block(block: Block, state_root_check: bool, try_state: TryStateSelect) -> Weight;
-			Executive::execute_block_no_check(block)
+		fn execute_block(block: Block, state_root_check: bool, select: frame_try_runtime::TryStateSelect) -> Weight {
+			Executive::try_execute_block(block, state_root_check, select).unwrap()
 		}
 	}
 }

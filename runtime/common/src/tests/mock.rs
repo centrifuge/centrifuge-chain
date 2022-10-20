@@ -1,5 +1,5 @@
 use cfg_primitives::AccountId;
-use frame_support::{parameter_types, traits::FindAuthor, weights::DispatchClass, PalletId};
+use frame_support::{parameter_types, traits::FindAuthor, weights::{DispatchClass, Weight}, PalletId};
 use frame_system::limits;
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -30,12 +30,12 @@ frame_support::construct_runtime!(
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub BlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
-		.base_block(10)
+		.base_block(Weight::from_ref_time(10))
 		.for_class(DispatchClass::all(), |weight| {
-			weight.base_extrinsic = 100;
+			weight.base_extrinsic = Weight::from_ref_time(100);
 		})
 		.for_class(DispatchClass::non_mandatory(), |weight| {
-			weight.max_total = Some(1024);
+			weight.max_total = Some(Weight::from_ref_time(1024));
 		})
 		.build_or_panic();
 	pub BlockLength: limits::BlockLength = limits::BlockLength::max(2 * 1024);

@@ -26,8 +26,8 @@
 use frame_support::{
 	parameter_types,
 	traits::{Everything, GenesisBuild, SortedMembers},
-	PalletId,
 	weights::Weight,
+	PalletId,
 };
 use frame_system::EnsureSignedBy;
 use sp_core::H256;

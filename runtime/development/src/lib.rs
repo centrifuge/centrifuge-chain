@@ -1691,7 +1691,7 @@ impl_runtime_apis! {
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn dispatch_benchmark(
 				config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
 
@@ -1715,6 +1715,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			 use pallet_loans::benchmarking::Pallet as LoansPallet;
+
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
@@ -1737,6 +1738,7 @@ impl_runtime_apis! {
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
+
 		}
 
 		fn benchmark_metadata(extra: bool) -> (
