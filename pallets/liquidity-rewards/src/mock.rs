@@ -149,8 +149,10 @@ impl pallet_liquidity_rewards::Config for Test {
 	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type Rewards = pallet_rewards::Pallet<Test>;
-	type Weight = u32;
+	type Weight = u64;
 }
+
+//TODO: reward mock
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

@@ -406,5 +406,11 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+
+		fn currency_group(
+			currency_id: Self::CurrencyId,
+		) -> Result<Option<Self::GroupId>, DispatchResult> {
+			Ok(Currencies::<T>::get(currency_id).group_id)
+		}
 	}
 }

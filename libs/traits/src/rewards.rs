@@ -172,6 +172,11 @@ pub trait CurrencyGroupChange {
 	/// If the currency was previously associated to another group, the associated stake is moved
 	/// to the new group.
 	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
+
+	/// Returns the associated group of a currency.
+	fn currency_group(
+		currency_id: Self::CurrencyId,
+	) -> Result<Option<Self::GroupId>, DispatchResult>;
 }
 
 #[cfg(test)]

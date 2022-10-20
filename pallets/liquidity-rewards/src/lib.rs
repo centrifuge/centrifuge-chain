@@ -171,14 +171,14 @@ pub mod pallet {
 				)?;
 				// func_weight += T::WeightInfo::distribute_reward_with_weights(groups);
 
-				for (group_id, weight) in WeightChanges::<T>::iter() {
+				for (group_id, weight) in WeightChanges::<T>::drain() {
 					GroupWeights::<T>::insert(group_id, weight);
 					func_weight += T::DbWeight::get().reads_writes(1, 1);
 				}
 
-				for (currency_id, group_id) in CurrencyChanges::<T>::iter() {
+				for (currency_id, group_id) in CurrencyChanges::<T>::drain() {
 					T::Rewards::attach_currency(currency_id, group_id)?;
-					func_weight += T::DbWeight::get().reads(1);
+					func_weight += T::DbWeight::get().reads_writes(1, 1);
 					// func_weight += T::WeightInfo::attach_currency();
 				}
 
@@ -225,17 +225,6 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)] // TODO
-		pub fn set_group_weight(
-			origin: OriginFor<T>,
-			group_id: T::GroupId,
-			weight: T::Weight,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-			WeightChanges::<T>::insert(group_id, weight);
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)] // TODO
 		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			NextDistributedReward::<T>::set(balance);
@@ -246,6 +235,17 @@ pub mod pallet {
 		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			NextEpochDuration::<T>::set(blocks);
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)] // TODO
+		pub fn set_group_weight(
+			origin: OriginFor<T>,
+			group_id: T::GroupId,
+			weight: T::Weight,
+		) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+			WeightChanges::<T>::insert(group_id, weight);
 			Ok(())
 		}
 
