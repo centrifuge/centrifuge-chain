@@ -1,5 +1,10 @@
 use cfg_primitives::AccountId;
-use frame_support::{parameter_types, traits::FindAuthor, weights::{DispatchClass, Weight}, PalletId};
+use frame_support::{
+	parameter_types,
+	traits::FindAuthor,
+	weights::{DispatchClass, Weight},
+	PalletId,
+};
 use frame_system::limits;
 use sp_core::H256;
 use sp_io::TestExternalities;

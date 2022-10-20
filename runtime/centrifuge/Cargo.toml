@@ -142,6 +142,7 @@ std = [
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
+    "frame-try-runtime/std",
     "orml-asset-registry/std",
     "orml-tokens/std",
     "orml-xtokens/std",
