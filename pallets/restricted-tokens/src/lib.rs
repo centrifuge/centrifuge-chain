@@ -21,6 +21,7 @@ pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+
 mod impl_currency;
 mod impl_fungible;
 mod impl_fungibles;
