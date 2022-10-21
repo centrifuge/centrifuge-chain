@@ -73,7 +73,7 @@ std = [
     'orml-asset-registry/std',
     'xcm/std',
 ]
-try-runtime = ['std','frame-support/try-runtime', "lazy_static"]
+try-runtime = ['frame-support/try-runtime', "lazy_static/spin_no_std"]
 test-benchmarks = [
     'frame-support/try-runtime',
 ]

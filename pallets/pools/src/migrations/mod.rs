@@ -25,7 +25,7 @@ pub mod altair {
 		BoundedVec, RuntimeDebug,
 	};
 	#[cfg(feature = "try-runtime")]
-	use sp_std::sync::{Arc, Mutex};
+	use sp_std::sync::Arc;
 	use sp_std::{marker::PhantomData, vec::Vec};
 
 	use crate::{
@@ -362,39 +362,31 @@ pub mod altair {
 
 	#[cfg(feature = "try-runtime")]
 	lazy_static::lazy_static! {
-		pub static ref NUM_POOL_DETAILS: Arc<Mutex<u32>> = Arc::new(Mutex::new(0));
-		pub static ref NUM_EPOCH_EXECUTION_INFOS: Arc<Mutex<u32>> = Arc::new(Mutex::new(0));
+		pub static ref NUM_POOL_DETAILS: Arc<u32> = Arc::new(0);
+		pub static ref NUM_EPOCH_EXECUTION_INFOS:  Arc<u32> = Arc::new(0);
 	}
 
 	#[cfg(feature = "try-runtime")]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
-		{
-			let mut mut_ref = NUM_POOL_DETAILS
-				.lock()
-				.expect("Can not be poisoned under sane conditions. Qed.");
+		unsafe {
+			let mut_ref = &mut *(NUM_POOL_DETAILS.as_ref() as *const u32 as *mut u32);
 			*mut_ref = 0;
 		}
-		{
-			let mut mut_ref = NUM_EPOCH_EXECUTION_INFOS
-				.lock()
-				.expect("Can not be poisoned under sane conditions. Qed.");
+		unsafe {
+			let mut_ref = &mut *(NUM_EPOCH_EXECUTION_INFOS.as_ref() as *const u32 as *mut u32);
 			*mut_ref = 0;
 		}
 
 		Pool::<T>::iter_values()
-			.map(|_| {
-				let mut mut_ref = NUM_POOL_DETAILS
-					.lock()
-					.expect("Can not be poisoned under sane conditions. Qed.");
+			.map(|_| unsafe {
+				let mut_ref = &mut *(NUM_POOL_DETAILS.as_ref() as *const u32 as *mut u32);
 				*mut_ref = *mut_ref + 1;
 			})
 			.for_each(|_| {});
 
 		EpochExecution::<T>::iter_values()
-			.map(|_| {
-				let mut mut_ref = NUM_EPOCH_EXECUTION_INFOS
-					.lock()
-					.expect("Can not be poisoned under sane conditions. Qed.");
+			.map(|_| unsafe {
+				let mut_ref = &mut *(NUM_EPOCH_EXECUTION_INFOS.as_ref() as *const u32 as *mut u32);
 				*mut_ref = *mut_ref + 1;
 			})
 			.for_each(|_| {});
@@ -415,17 +407,10 @@ pub mod altair {
 			.map(|_| count_epoch_execution_infos += 1)
 			.for_each(|_| {});
 
-		assert_eq!(
-			count_pool_details,
-			*NUM_POOL_DETAILS
-				.lock()
-				.expect("Can not be poisoned under sane conditions. Qed.")
-		);
+		assert_eq!(count_pool_details, *NUM_POOL_DETAILS.as_ref());
 		assert_eq!(
 			count_epoch_execution_infos,
-			*NUM_EPOCH_EXECUTION_INFOS
-				.lock()
-				.expect("Can not be poisoned under sane conditions. Qed.")
+			*NUM_EPOCH_EXECUTION_INFOS.as_ref()
 		);
 
 		Ok(())
