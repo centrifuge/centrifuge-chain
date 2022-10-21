@@ -1531,9 +1531,13 @@ pub mod test {
 	}
 
 	fn residual(id: u8) -> TTranche {
+		residual_base(id, 0)
+	}
+
+	fn residual_base(id: u8, seniority: Seniority) -> TTranche {
 		TTranche {
 			tranche_type: TrancheType::Residual,
-			seniority: 0,
+			seniority: seniority,
 			currency: CurrencyId::Tranche(DEFAULT_POOL_ID, [id; 16]),
 			outstanding_invest_orders: 0,
 			outstanding_redeem_orders: 0,
@@ -1545,11 +1549,19 @@ pub mod test {
 			_phantom: PhantomData,
 		}
 	}
-
 	fn non_residual(
 		id: u8,
 		interest_rate_in_perc: Option<u32>,
 		buffer_in_perc: Option<u64>,
+	) -> TTranche {
+		non_residual_base(id, interest_rate_in_perc, buffer_in_perc, 0)
+	}
+
+	fn non_residual_base(
+		id: u8,
+		interest_rate_in_perc: Option<u32>,
+		buffer_in_perc: Option<u64>,
+		seniority: Seniority,
 	) -> TTranche {
 		let interest_rate_per_sec = if let Some(rate) = interest_rate_in_perc {
 			Rate::saturating_from_rational(rate, 100) / Rate::saturating_from_integer(SECS_PER_YEAR)
@@ -1569,7 +1581,7 @@ pub mod test {
 				interest_rate_per_sec,
 				min_risk_buffer,
 			},
-			seniority: 0,
+			seniority: seniority,
 			currency: CurrencyId::Tranche(DEFAULT_POOL_ID, [id; 16]),
 			outstanding_invest_orders: 0,
 			outstanding_redeem_orders: 0,
@@ -1594,8 +1606,20 @@ pub mod test {
 		.unwrap()
 	}
 
+	fn default_tranches_with_seniority() -> TTranches {
+		TTranches::new::<TrancheTokenImpl>(
+			DEFAULT_POOL_ID,
+			vec![
+				residual_base(0, 0),
+				non_residual_base(1, Some(10), Some(10), 1),
+				non_residual_base(2, Some(5), Some(25), 2),
+			],
+		)
+		.unwrap()
+	}
+
 	fn default_epoch_tranches() -> EpochExecutionTranches<Balance, BalanceRatio, Weight> {
-		let epoch_tranches = default_tranches()
+		let epoch_tranches = default_tranches_with_seniority()
 			.into_tranches()
 			.into_iter()
 			.map(|tranche| EpochExecutionTranche {
@@ -1775,7 +1799,13 @@ pub mod test {
 	mod epoch_execution_tranche {
 		use super::*;
 
-		fn epoch_execution_tranche_reverse_works() {}
+		#[test]
+		fn epoch_execution_tranche_reverse_works() {
+			assert_eq!(
+				default_epoch_tranches().non_residual_top_slice()[0].seniority,
+				2
+			)
+		}
 
 		fn epoch_execution_tranche_reverse_slice_panics_on_out_of_bounds() {}
 	}
