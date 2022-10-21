@@ -1510,6 +1510,7 @@ pub mod test {
 	//       this dependecy in our pallets, we generate the types manually here.
 	//       Not sure, if we should rather allow dev-dependency to runtime-common.
 	type Balance = u128;
+	type BalanceRatio = Rate;
 	type Rate = sp_arithmetic::FixedU128;
 	type Weight = u128;
 	type TTrancheType = TrancheType<Rate>;
@@ -1593,6 +1594,25 @@ pub mod test {
 		.unwrap()
 	}
 
+	fn default_epoch_tranches() -> EpochExecutionTranches<Balance, BalanceRatio, Weight> {
+		let epoch_tranches = default_tranches()
+			.into_tranches()
+			.into_iter()
+			.map(|tranche| EpochExecutionTranche {
+				supply: tranche
+					.reserve
+					.checked_add(tranche.debt)
+					.expect("Test EpochExecutionTranche supply calc overflow"),
+				price: One::one(),
+				invest: tranche.outstanding_invest_orders,
+				redeem: tranche.outstanding_redeem_orders,
+				seniority: tranche.seniority,
+				..Default::default()
+			})
+			.collect();
+		EpochExecutionTranches::new(epoch_tranches)
+	}
+
 	mod tranche_type {
 		use super::*;
 
@@ -1621,7 +1641,6 @@ pub mod test {
 	}
 
 	mod tranche {
-		use sp_runtime::{traits::Bounded, FixedU128};
 
 		use super::*;
 
