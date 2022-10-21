@@ -13,8 +13,8 @@
 
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::{
-	traits::{One, Zero},
-	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand,
+	traits::Zero, ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
+	FixedPointOperand, FixedU128,
 };
 use sp_std::vec::Vec;
 
@@ -49,21 +49,17 @@ where
 	/// This method makes several calls to `Rewards::reward_group()` under the hood.
 	/// If one of those calls fail, this method will continue to reward the rest of the groups,
 	/// The failed group errors will be returned.
-	fn distribute_reward<Rate, It>(
+	fn distribute_reward<It>(
 		reward: Self::Balance,
 		groups: It,
 	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
 	where
-		Rate: FixedPointNumber,
-		Rate::Inner: FixedPointOperand + EnsureAdd + Unsigned,
 		It: IntoIterator<Item = Self::GroupId>,
 		It::IntoIter: Clone,
 	{
-		Self::distribute_reward_with_weights::<Rate, _>(
+		Self::distribute_reward_with_weights(
 			reward,
-			groups
-				.into_iter()
-				.map(|group_id| (group_id, Rate::Inner::one())),
+			groups.into_iter().map(|group_id| (group_id, 1u64)),
 		)
 	}
 
@@ -74,14 +70,13 @@ where
 	/// This method makes several calls to `Rewards::reward_group()` under the hood.
 	/// If one of those calls fail, this method will continue to reward the rest of the groups,
 	/// The failed group errors will be returned.
-	fn distribute_reward_with_weights<Rate, It>(
+	fn distribute_reward_with_weights<Weight, It>(
 		reward: Self::Balance,
 		groups: It,
 	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
 	where
-		Rate: EnsureFixedPointNumber,
-		Rate::Inner: FixedPointOperand + EnsureAdd + Unsigned,
-		It: IntoIterator<Item = (Self::GroupId, Rate::Inner)>,
+		Weight: FixedPointOperand + EnsureAdd + Unsigned,
+		It: IntoIterator<Item = (Self::GroupId, Weight)>,
 		It::IntoIter: Clone,
 	{
 		let groups = groups.into_iter();
@@ -89,7 +84,7 @@ where
 			.clone()
 			.filter(|(group_id, _)| !Self::group_stake(group_id.clone()).is_zero())
 			.map(|(_, weight)| weight)
-			.try_fold(Rate::Inner::zero(), |a, b| a.ensure_add(b))?;
+			.try_fold(Weight::zero(), |a, b| a.ensure_add(b))?;
 
 		if total_weight.is_zero() {
 			return Ok(Vec::default());
@@ -99,7 +94,7 @@ where
 			.filter(|(group_id, _)| !Self::group_stake(group_id.clone()).is_zero())
 			.map(|(group_id, weight)| {
 				let result = (|| {
-					let reward_rate = Rate::checked_from_rational(weight, total_weight)
+					let reward_rate = FixedU128::checked_from_rational(weight, total_weight)
 						.ok_or(ArithmeticError::DivisionByZero)?;
 
 					let group_reward = reward_rate.ensure_mul_int(reward)?;
@@ -177,4 +172,113 @@ pub trait CurrencyGroupChange {
 	/// If the currency was previously associated to another group, the associated stake is moved
 	/// to the new group.
 	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
+}
+
+#[cfg(test)]
+mod test {
+	use std::{cell::RefCell, collections::BTreeMap};
+
+	use frame_support::assert_ok;
+
+	use super::*;
+
+	const REWARD: u64 = 200;
+
+	thread_local! {
+		pub static REWARDS_PER_GROUP: RefCell<BTreeMap<u32, u64>> = RefCell::default();
+	}
+
+	struct GroupRewardsMock;
+	impl GroupRewards for GroupRewardsMock {
+		type Balance = u64;
+		type GroupId = u32;
+
+		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
+			match group_id {
+				1 => Err(ArithmeticError::DivisionByZero.into()),
+				_ => {
+					REWARDS_PER_GROUP.with(|rewards_per_group| {
+						rewards_per_group.borrow_mut().insert(group_id, reward);
+					});
+					Ok(())
+				}
+			}
+		}
+
+		fn group_stake(group_id: Self::GroupId) -> Self::Balance {
+			match group_id {
+				0 => 0,
+				n => n as u64,
+			}
+		}
+	}
+
+	fn init_groups() {
+		REWARDS_PER_GROUP.with(|rewards_per_group| {
+			for i in 0..4 {
+				rewards_per_group.borrow_mut().insert(i, 0);
+			}
+		});
+	}
+
+	fn check_reward(expected: impl IntoIterator<Item = u64>) {
+		REWARDS_PER_GROUP.with(|rewards_per_group| {
+			assert_eq!(
+				rewards_per_group
+					.borrow()
+					.values()
+					.cloned()
+					.collect::<Vec<_>>(),
+				expected.into_iter().collect::<Vec<_>>()
+			)
+		});
+	}
+
+	#[test]
+	fn distribute_zero() {
+		init_groups();
+
+		assert_ok!(
+			GroupRewardsMock::distribute_reward(0, [0, 1, 2, 3]),
+			vec![(1, ArithmeticError::DivisionByZero.into())]
+		);
+
+		check_reward([0, 0, 0, 0]);
+	}
+
+	#[test]
+	fn distribute_to_nothing() {
+		init_groups();
+
+		assert_ok!(GroupRewardsMock::distribute_reward(REWARD, []), vec![]);
+
+		check_reward([0, 0, 0, 0]);
+	}
+
+	#[test]
+	fn distribute() {
+		init_groups();
+
+		assert_ok!(
+			GroupRewardsMock::distribute_reward(REWARD, [0, 1, 2, 3]),
+			vec![(1, ArithmeticError::DivisionByZero.into())]
+		);
+
+		check_reward([0, 0, REWARD / 3, REWARD / 3]);
+	}
+
+	#[test]
+	fn distribute_with_weights() {
+		init_groups();
+
+		assert_ok!(
+			GroupRewardsMock::distribute_reward_with_weights(
+				REWARD,
+				[(0, 10u32), (1, 20u32), (2, 30u32), (3, 40u32)]
+			),
+			vec![(1, ArithmeticError::DivisionByZero.into())]
+		);
+
+		check_reward([0, 0, 30 * REWARD / 90, 40 * REWARD / 90]);
+	}
 }
