@@ -121,6 +121,10 @@ impl<T: Config + pallet_pools_registry::Config>
 	) -> DispatchResultWithPostInfo {
 		todo!()
 	}
+
+	fn execute_update(pool_id: T::PoolId) -> DispatchResultWithPostInfo {
+		todo!()
+	}
 }
 
 impl Config for Test {
