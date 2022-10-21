@@ -2511,13 +2511,8 @@ fn fulfillment_of_zero_works() {
 #[test]
 fn collecting_fully_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
-		// TODO: This is fine for now, but it breaks the system as soon as the price is
-		//        non-zero. Once: https://github.com/centrifuge/centrifuge-chain/issues/931
-		//        is merged, we must adapt this to a non zero price and adapt rounding behaviour
-		//
-		//        ALSO: This is a blocker for merging this into pools. BUT not for the tests to be merged
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 0, 10);
+		let PRICE: Rate = price_of(1, 288, 334);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT_A = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -2585,7 +2580,13 @@ fn collecting_fully_works() {
 		}
 
 		// Checking now that collect does nothing and user order is still correct
-		let invest_return = |amount| PRICE.reciprocal().unwrap().checked_mul_int(amount).unwrap();
+		let invest_return = |amount| {
+			PRICE
+				.reciprocal_floor()
+				.unwrap()
+				.checked_mul_int_floor(amount)
+				.unwrap()
+		};
 
 		// InvestorA
 		{
@@ -2786,7 +2787,7 @@ fn collecting_fully_works() {
 				INVESTMENT_0_0
 			));
 			assert_eq!(
-				n_last_event(4),
+				n_last_event(3),
 				Event::InvestCollectedWithoutActivePosition {
 					investment_id: INVESTMENT_0_0,
 					who: TrancheHolderC::get()
@@ -2822,13 +2823,8 @@ fn collecting_fully_works() {
 #[test]
 fn collecting_over_max_works() {
 	TestExternalitiesBuilder::build().execute_with(|| {
-		// TODO: This is fine for now, but it breaks the system as soon as the price is
-		//        non-zero. Once: https://github.com/centrifuge/centrifuge-chain/issues/931
-		//        is merged, we must adapt this to a non zero price and adapt rounding behaviour
-		//
-		//        ALSO: This is a blocker for merging this into pools. BUT not for the tests to be merged
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 0, 10);
+		let PRICE: Rate = price_of(1, 288, 335);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -2869,7 +2865,7 @@ fn collecting_over_max_works() {
 					who: InvestorA::get(),
 					processed_orders: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
 					collection: InvestCollection {
-						payout_investment_invest: 44631290880000000000,
+						payout_investment_invest: 23999169253290529690,
 						remaining_investment_invest: 5368709120000000000
 					},
 					outcome: CollectOutcome::PartiallyCollected,
@@ -2894,7 +2890,7 @@ fn collecting_over_max_works() {
 					who: InvestorA::get(),
 					processed_orders: vec![10],
 					collection: InvestCollection {
-						payout_investment_invest: 5368709120000000000,
+						payout_investment_invest: 2886866059711075441,
 						remaining_investment_invest: 0
 					},
 					outcome: CollectOutcome::FullyCollected
@@ -2907,11 +2903,7 @@ fn collecting_over_max_works() {
 			);
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap()
+				26886035313001605131
 			)
 		}
 
@@ -2928,7 +2920,7 @@ fn collecting_over_max_works() {
 					who: TrancheHolderA::get(),
 					processed_orders: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
 					collection: RedeemCollection {
-						payout_investment_redeem: 44631290880000000000,
+						payout_investment_redeem: 83000878263402985070,
 						remaining_investment_redeem: 5368709120000000000
 					},
 					outcome: CollectOutcome::PartiallyCollected,
@@ -2953,7 +2945,7 @@ fn collecting_over_max_works() {
 					who: TrancheHolderA::get(),
 					processed_orders: vec![10],
 					collection: RedeemCollection {
-						payout_investment_redeem: 5368709120000000000,
+						payout_investment_redeem: 9984196363462686567,
 						remaining_investment_redeem: 0
 					},
 					outcome: CollectOutcome::FullyCollected
@@ -2966,7 +2958,7 @@ fn collecting_over_max_works() {
 			);
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
-				PRICE.checked_mul_int(SINGLE_REDEEM_AMOUNT).unwrap()
+				92985074626865671637
 			)
 		}
 	})
