@@ -105,7 +105,7 @@ where
 {
 	/// Compares tranches with the following schema:
 	///
-	/// * (Residual, Residual) => true
+	/// * (Residual, Residual) => false
 	/// * (Residual, NonResidual) => true,
 	/// * (NonResidual, Residual) => false,
 	/// * (NonResidual, NonResidual) =>
@@ -114,7 +114,7 @@ where
 	///
 	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
 		match (self, next) {
-			(TrancheType::Residual, TrancheType::Residual) => true,
+			(TrancheType::Residual, TrancheType::Residual) => false,
 			(TrancheType::Residual, TrancheType::NonResidual { .. }) => true,
 			(TrancheType::NonResidual { .. }, TrancheType::Residual) => false,
 			(
