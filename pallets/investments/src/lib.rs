@@ -17,7 +17,9 @@ use cfg_primitives::OrderId;
 use cfg_traits::{
 	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
 };
-use cfg_types::{FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder};
+use cfg_types::{
+	FixedPointNumberExtension, FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder,
+};
 use frame_support::{
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
@@ -214,7 +216,8 @@ pub mod pallet {
 			+ Parameter
 			+ Default
 			+ Copy
-			+ FixedPointNumber<Inner = Self::Amount>;
+			+ FixedPointNumber<Inner = Self::Amount>
+			+ FixedPointNumberExtension;
 
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
@@ -994,9 +997,9 @@ where
 			.checked_add(
 				&fulfillment
 					.price
-					.reciprocal()
+					.reciprocal_floor()
 					.ok_or(Error::<T>::ZeroPricedInvestment)?
-					.checked_mul_int(fulfillment.of_amount.mul_floor(remaining))
+					.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;
@@ -1014,7 +1017,7 @@ where
 			.checked_add(
 				&fulfillment
 					.price
-					.checked_mul_int(fulfillment.of_amount.mul_floor(remaining))
+					.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;

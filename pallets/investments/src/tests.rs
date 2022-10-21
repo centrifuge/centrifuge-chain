@@ -806,12 +806,12 @@ fn fulfillment_flow_for_everything_works() {
 }
 
 #[test]
-fn fulfillment_partially_works() {
+fn fulfillment_partially_works_low_price() {
 	// I.e. * TotalOrder must overflow
 	//      * Collects and orders from users must overflow correctly too
 	TestExternalitiesBuilder::build().execute_with(|| {
 		#[allow(non_snake_case)]
-		let PRICE: Rate = price_of(1, 20, 10);
+		let PRICE: Rate = price_of(1, 288, 334);
 		#[allow(non_snake_case)]
 		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
 		#[allow(non_snake_case)]
@@ -937,7 +937,7 @@ fn fulfillment_partially_works() {
 		}
 
 		// We check the UserOrder flow over correctly when collecting.
-		// InvestorA: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
+		// InvestorA: - should have 20% of SINGLE_INVEST_AMOUNT fulfilled
 		{
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorA::get()),
@@ -946,9 +946,9 @@ fn fulfillment_partially_works() {
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
 				PRICE
-					.reciprocal()
+					.reciprocal_floor()
 					.unwrap()
-					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
 					.unwrap()
 			);
 			assert_eq!(
@@ -978,9 +978,11 @@ fn fulfillment_partially_works() {
 					processed_orders: vec![0],
 					collection: InvestCollection {
 						payout_investment_invest: PRICE
-							.reciprocal()
+							.reciprocal_floor()
 							.unwrap()
-							.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+							.checked_mul_int_floor(
+								PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+							)
 							.unwrap(),
 						remaining_investment_invest: PERC_INVEST_UNFULFILL
 							.mul_floor(SINGLE_INVEST_AMOUNT)
@@ -1007,9 +1009,9 @@ fn fulfillment_partially_works() {
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
 				PRICE
-					.reciprocal()
+					.reciprocal_floor()
 					.unwrap()
-					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
 					.unwrap()
 			);
 			assert_eq!(
@@ -1049,9 +1051,9 @@ fn fulfillment_partially_works() {
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
 				PRICE
-					.reciprocal()
+					.reciprocal_floor()
 					.unwrap()
-					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
 					.unwrap()
 			);
 			assert_eq!(
@@ -1081,9 +1083,11 @@ fn fulfillment_partially_works() {
 					processed_orders: vec![0],
 					collection: InvestCollection {
 						payout_investment_invest: PRICE
-							.reciprocal()
+							.reciprocal_floor()
 							.unwrap()
-							.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+							.checked_mul_int_floor(
+								PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+							)
 							.unwrap(),
 						remaining_investment_invest: PERC_INVEST_UNFULFILL
 							.mul_floor(SINGLE_INVEST_AMOUNT)
@@ -1110,9 +1114,9 @@ fn fulfillment_partially_works() {
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
 				PRICE
-					.reciprocal()
+					.reciprocal_floor()
 					.unwrap()
-					.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
 					.unwrap()
 			);
 			assert_eq!(
@@ -1166,7 +1170,7 @@ fn fulfillment_partially_works() {
 			);
 		}
 
-		// Redemption collects fork fine too.
+		// Redemption collects work fine too.
 		{
 			assert_ok!(Investments::collect(
 				Origin::signed(TrancheHolderA::get()),
@@ -1175,7 +1179,7 @@ fn fulfillment_partially_works() {
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
 				PRICE
-					.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 					.unwrap()
 			);
 			assert_eq!(
@@ -1213,7 +1217,9 @@ fn fulfillment_partially_works() {
 					processed_orders: vec![0],
 					collection: RedeemCollection {
 						payout_investment_redeem: PRICE
-							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+							.checked_mul_int_floor(
+								PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT)
+							)
 							.unwrap(),
 						remaining_investment_redeem: PERC_REDEEM_UNFULFILL
 							.mul_floor(SINGLE_REDEEM_AMOUNT)
@@ -1232,7 +1238,7 @@ fn fulfillment_partially_works() {
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
 				PRICE
-					.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
 					.unwrap()
 			);
 			assert_eq!(
@@ -1281,49 +1287,11 @@ fn fulfillment_partially_works() {
 		{
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
-				PERC_INVEST_UNFULFILL
-					.mul_floor(TOTAL_INVEST_AMOUNT)
-					.checked_add(SINGLE_INVEST_AMOUNT)
-					.unwrap()
-					.checked_add(
-						PRICE
-							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
-							.unwrap()
-					)
-					.unwrap()
-					.checked_sub(
-						PRICE
-							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
-							.unwrap()
-					)
-					.unwrap()
+				207245508982035928145
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
-				PERC_REDEEM_UNFULFILL
-					.mul_floor(TOTAL_REDEEM_AMOUNT)
-					.checked_add(SINGLE_REDEEM_AMOUNT)
-					.unwrap()
-					.checked_add(
-						PRICE
-							.reciprocal()
-							.unwrap()
-							.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
-							.unwrap()
-					)
-					.unwrap()
-					.checked_sub(
-						PRICE
-							.reciprocal()
-							.unwrap()
-							.checked_mul_int(
-								2 * PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
-							)
-							.unwrap()
-					)
-					.unwrap() + 1 // Need to add this due to rounding...
-				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
-				               // 		 we should be able to handle this gracefully
+				175369774919614147912
 			);
 		}
 
@@ -1339,8 +1307,8 @@ fn fulfillment_partially_works() {
 				of_amount: perc_fulfill,
 				price: PRICE,
 			};
-
-			for _ in 0..4 {
+			let rounds = 4;
+			for _ in 0..rounds {
 				fulfill_x(fulfillment).expect("Fulfilling must work.");
 			}
 
@@ -1349,7 +1317,7 @@ fn fulfillment_partially_works() {
 				of_amount: Perquintill::one(),
 				price: PRICE,
 			})
-			.expect("Fulfilling must work")
+			.expect("Fulfilling must work");
 		}
 
 		// Active Orders MUST be empty right now
@@ -1380,23 +1348,7 @@ fn fulfillment_partially_works() {
 			);
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(4 * SINGLE_INVEST_AMOUNT)
-					.unwrap()
-					.checked_sub(
-						PRICE
-							.reciprocal()
-							.unwrap()
-							.checked_mul_int(
-								2 * PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
-							)
-							.unwrap()
-					)
-					.unwrap() + 1 // Need to add this due to rounding...
-				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
-				               // 		 we should be able to handle this gracefully
+				96655948553054662380
 			);
 		}
 
@@ -1408,13 +1360,7 @@ fn fulfillment_partially_works() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap() - 1 // Need to add this due to rounding...
-				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
-				               // 		 we should be able to handle this gracefully
+				26848874598070739546
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorB::get()),
@@ -1422,13 +1368,7 @@ fn fulfillment_partially_works() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap() - 1 // Need to add this due to rounding...
-				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
-				               // 		 we should be able to handle this gracefully
+				26848874598070739546
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorC::get()),
@@ -1436,28 +1376,19 @@ fn fulfillment_partially_works() {
 			));
 			assert_eq!(
 				free_balance_of(InvestorC::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap() - 1 // Need to add this due to rounding...
-				               // TODO: Once https://github.com/centrifuge/centrifuge-chain/issues/931 is merged
-				               // 		 we should be able to handle this gracefully
+				26848874598070739546
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
-			// TODO: As you can see for the first three investors the rounding lead to a slight off, the
-			//       reason for this is that this account did receive different fulfillments due to missing the
-			//       first fulfillment.
+			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
+			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       We already floor round for everybody, but there is nothing we can do
+			//       about this.
 			assert_eq!(
 				free_balance_of(InvestorD::get(), INVESTMENT_0_0.into()),
-				PRICE
-					.reciprocal()
-					.unwrap()
-					.checked_mul_int(SINGLE_INVEST_AMOUNT)
-					.unwrap()
+				26848874598070739547
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(TrancheHolderA::get()),
@@ -1465,7 +1396,7 @@ fn fulfillment_partially_works() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
-				PRICE.checked_mul_int(SINGLE_REDEEM_AMOUNT).unwrap()
+				93113772455089820355
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(TrancheHolderB::get()),
@@ -1473,7 +1404,7 @@ fn fulfillment_partially_works() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD),
-				PRICE.checked_mul_int(SINGLE_REDEEM_AMOUNT).unwrap()
+				93113772455089820355
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(TrancheHolderC::get()),
@@ -1481,15 +1412,705 @@ fn fulfillment_partially_works() {
 			));
 			assert_eq!(
 				free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD),
-				PRICE.checked_mul_int(SINGLE_REDEEM_AMOUNT).unwrap()
+				93113772455089820355
 			);
 			assert_ok!(Investments::collect(
 				Origin::signed(TrancheHolderD::get()),
 				INVESTMENT_0_0
 			));
+			// NOTE: TrancheHolderD gets MINIMALLY more, as he had different fulfillments
+			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       We already floor round for everybody, but there is nothing we can do
+			//       about this.
 			assert_eq!(
 				free_balance_of(TrancheHolderD::get(), CurrencyId::AUSD),
-				PRICE.checked_mul_int(SINGLE_REDEEM_AMOUNT).unwrap()
+				93113772455089820358
+			);
+
+			// UserOrders are empty
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorC::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorD::get(), INVESTMENT_0_0),
+				None
+			);
+
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(InvestorC::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(InvestorD::get(), INVESTMENT_0_0),
+				None
+			);
+
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderB::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderC::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderD::get(), INVESTMENT_0_0),
+				None
+			);
+
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(TrancheHolderB::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(TrancheHolderC::get(), INVESTMENT_0_0),
+				None
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(TrancheHolderD::get(), INVESTMENT_0_0),
+				None
+			);
+		}
+	})
+}
+
+#[test]
+fn fulfillment_partially_works_high_price() {
+	// I.e. * TotalOrder must overflow
+	//      * Collects and orders from users must overflow correctly too
+	TestExternalitiesBuilder::build().execute_with(|| {
+		#[allow(non_snake_case)]
+		let PRICE: Rate = price_of(1, 288, 335);
+		#[allow(non_snake_case)]
+		let SINGLE_REDEEM_AMOUNT = 50 * CURRENCY;
+		#[allow(non_snake_case)]
+		let TOTAL_REDEEM_AMOUNT = 3 * SINGLE_REDEEM_AMOUNT;
+		#[allow(non_snake_case)]
+		let SINGLE_INVEST_AMOUNT = 50 * CURRENCY;
+		#[allow(non_snake_case)]
+		let TOTAL_INVEST_AMOUNT = 3 * SINGLE_INVEST_AMOUNT;
+		#[allow(non_snake_case)]
+		let PERC_INVEST_FULFILL = Perquintill::from_rational(20u64, 100u64);
+		#[allow(non_snake_case)]
+		let PERC_INVEST_UNFULFILL = Perquintill::one().saturating_sub(PERC_INVEST_FULFILL);
+		#[allow(non_snake_case)]
+		let INVEST_FULFILLMENT = FulfillmentWithPrice {
+			of_amount: PERC_INVEST_FULFILL,
+			price: PRICE,
+		};
+		#[allow(non_snake_case)]
+		let PERC_REDEEM_FULFILL = Perquintill::from_rational(20u64, 100u64);
+		#[allow(non_snake_case)]
+		let PERC_REDEEM_UNFULFILL = Perquintill::one().saturating_sub(PERC_REDEEM_FULFILL);
+		#[allow(non_snake_case)]
+		let REDEEM_FULFILLMENT = FulfillmentWithPrice {
+			of_amount: PERC_REDEEM_FULFILL,
+			price: PRICE,
+		};
+
+		// Setup investments and redemptions.
+		// We do not thoroughly check the events here, as we
+		// do this already in the fulfillment_flow_for_everything_works()
+		// test. Hence, we call fulfill right away and check the state
+		// afterwards. To check the overflowing of orders works correctly, we submit
+		// orders between getting orders and fulfilling them. Like we would have
+		// when an epoch enters the submit_solution period
+		{
+			assert_ok!(invest_x_runner_fulfill_x(
+				SINGLE_INVEST_AMOUNT,
+				INVEST_FULFILLMENT,
+				|_| Investments::update_invest_order(
+					Origin::signed(InvestorD::get()),
+					INVESTMENT_0_0,
+					SINGLE_INVEST_AMOUNT
+				)
+			));
+			assert_ok!(redeem_x_runner_fulfill_x(
+				SINGLE_REDEEM_AMOUNT,
+				REDEEM_FULFILLMENT,
+				|_| Investments::update_redeem_order(
+					Origin::signed(TrancheHolderD::get()),
+					INVESTMENT_0_0,
+					SINGLE_REDEEM_AMOUNT
+				)
+			));
+		}
+
+		// We now have fulfilled x% of the SINGLE_INVEST_AMOUNT and y% of the SINGLE_REDEEM_AMOUNT
+		// fulfilled. We must check first the correct balances.
+		{
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				TOTAL_INVEST_AMOUNT
+					.checked_sub(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
+					.expect("Unwrapping checked_sub must work")
+					.checked_add(
+						PRICE
+							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+							.expect("Unwrapping checked_mul_int must work")
+					)
+					.expect("Unwrapping checked_add must work")
+					.checked_add(SINGLE_INVEST_AMOUNT)
+					.expect("Unwrapping checked_add must work")
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
+				TOTAL_REDEEM_AMOUNT
+					.checked_sub(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+					.expect("Unwrapping checked_sub must work")
+					.checked_add(
+						PRICE
+							.reciprocal()
+							.expect("Price must not be zero")
+							.checked_mul_int(PERC_INVEST_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+							.expect("Unwrapping checked_mul_int must work")
+					)
+					.expect("Unwrapping checked_add must work")
+					.checked_add(SINGLE_REDEEM_AMOUNT)
+					.expect("Unwrapping checke_add must work")
+			);
+			assert_eq!(
+				free_balance_of(Owner::get(), CurrencyId::AUSD),
+				OWNER_START_BALANCE
+					.checked_add(PERC_INVEST_FULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
+					.expect("Unwrapping checked_add must work")
+					.checked_sub(
+						PRICE
+							.checked_mul_int(PERC_REDEEM_FULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+							.expect("Unwrapping checked_mul_int must work")
+					)
+					.expect("Unwrapping checked_sub must work")
+			);
+			assert_eq!(free_balance_of(Owner::get(), INVESTMENT_0_0.into()), 0);
+		}
+
+		// Now we must check the storage elements overflow the orders correctly
+		// We check the TotalOrders flow over correctly
+		{
+			assert_eq!(
+				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder {
+					amount: SINGLE_INVEST_AMOUNT
+						.checked_add(PERC_INVEST_UNFULFILL.mul_floor(TOTAL_INVEST_AMOUNT))
+						.unwrap()
+				}
+			);
+			assert_eq!(
+				ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder {
+					amount: SINGLE_REDEEM_AMOUNT
+						.checked_add(PERC_REDEEM_UNFULFILL.mul_floor(TOTAL_REDEEM_AMOUNT))
+						.unwrap()
+				}
+			);
+		}
+
+		// We check the UserOrder flow over correctly when collecting.
+		// InvestorA: - should have 20% of SINGLE_INVEST_AMOUNT fulfilled
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal_floor()
+					.unwrap()
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(2),
+				Event::<MockRuntime>::InvestOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 1,
+					who: InvestorA::get(),
+					amount: PERC_INVEST_UNFULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+				}
+				.into()
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorA::get(),
+					processed_orders: vec![0],
+					collection: InvestCollection {
+						payout_investment_invest: PRICE
+							.reciprocal_floor()
+							.unwrap()
+							.checked_mul_int_floor(
+								PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+							)
+							.unwrap(),
+						remaining_investment_invest: PERC_INVEST_UNFULFILL
+							.mul_floor(SINGLE_INVEST_AMOUNT)
+					},
+					outcome: CollectOutcome::FullyCollected
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorA::get()
+				}
+				.into()
+			);
+
+			// Collecting again does NOT change anything
+
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal_floor()
+					.unwrap()
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorA::get()
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorA::get()
+				}
+				.into()
+			);
+		}
+
+		// We check the UserOrder flow over correctly when collecting.
+		// InvestorB: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorB::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal_floor()
+					.unwrap()
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(2),
+				Event::<MockRuntime>::InvestOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 1,
+					who: InvestorB::get(),
+					amount: PERC_INVEST_UNFULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+				}
+				.into()
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorB::get(),
+					processed_orders: vec![0],
+					collection: InvestCollection {
+						payout_investment_invest: PRICE
+							.reciprocal_floor()
+							.unwrap()
+							.checked_mul_int_floor(
+								PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT)
+							)
+							.unwrap(),
+						remaining_investment_invest: PERC_INVEST_UNFULFILL
+							.mul_floor(SINGLE_INVEST_AMOUNT)
+					},
+					outcome: CollectOutcome::FullyCollected
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorB::get()
+				}
+				.into()
+			);
+
+			// Collecting again does NOT change anything
+
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorB::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
+				PRICE
+					.reciprocal_floor()
+					.unwrap()
+					.checked_mul_int_floor(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				InvestOrders::<MockRuntime>::get(InvestorB::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_INVEST_AMOUNT
+						.checked_sub(PERC_INVEST_FULFILL.mul_floor(SINGLE_INVEST_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorB::get()
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorB::get()
+				}
+				.into()
+			);
+		}
+
+		// Collecting for active session is okay but triggers "warn" events
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorD::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorD::get()
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0,
+					who: InvestorD::get()
+				}
+				.into()
+			);
+		}
+
+		// Redemption collects work fine too.
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				PRICE
+					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_REDEEM_AMOUNT
+						.checked_sub(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(4),
+				Event::<MockRuntime>::InvestCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0,
+					who: TrancheHolderA::get()
+				}
+				.into()
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::RedeemOrderUpdated {
+					investment_id: INVESTMENT_0_0,
+					submitted_at: 1,
+					who: TrancheHolderA::get(),
+					amount: PERC_REDEEM_UNFULFILL.mul_floor(SINGLE_REDEEM_AMOUNT)
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemOrdersCollected {
+					investment_id: INVESTMENT_0_0,
+					who: TrancheHolderA::get(),
+					processed_orders: vec![0],
+					collection: RedeemCollection {
+						payout_investment_redeem: PRICE
+							.checked_mul_int_floor(
+								PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT)
+							)
+							.unwrap(),
+						remaining_investment_redeem: PERC_REDEEM_UNFULFILL
+							.mul_floor(SINGLE_REDEEM_AMOUNT)
+					},
+					outcome: CollectOutcome::FullyCollected
+				}
+				.into()
+			);
+
+			// Collecting again does NOT change anything
+
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				PRICE
+					.checked_mul_int_floor(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+					.unwrap()
+			);
+			assert_eq!(
+				RedeemOrders::<MockRuntime>::get(TrancheHolderA::get(), INVESTMENT_0_0),
+				Some(Order::new(
+					SINGLE_REDEEM_AMOUNT
+						.checked_sub(PERC_REDEEM_FULFILL.mul_floor(SINGLE_REDEEM_AMOUNT))
+						.unwrap(),
+					1
+				))
+			);
+			assert_eq!(
+				n_last_event(1),
+				Event::<MockRuntime>::InvestCollectedWithoutActivePosition {
+					investment_id: INVESTMENT_0_0,
+					who: TrancheHolderA::get()
+				}
+				.into()
+			);
+			assert_eq!(
+				last_event(),
+				Event::<MockRuntime>::RedeemCollectedForNonClearedOrderId {
+					investment_id: INVESTMENT_0_0,
+					who: TrancheHolderA::get()
+				}
+				.into()
+			);
+		}
+
+		// State check at this point.
+		// - 20% where fulfilled for OrderId 0, with a price of PRICE
+		//     - Invest amount was: 4 * SINGLE_INVEST_AMOUNT
+		//     - Redeem amount was: 4 * SINGLE_REDEEM_AMOUNT
+		// - OrderId = 1 -> OrderManager has requested and fulfilled one set of orders
+		// - ActiveInvestOrders = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT
+		// - ActiveRedeemOrders = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT
+		// - Balance of investment account
+		//     - AUSD = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT
+		//                  + PERC_REDEEM_FULFILL * TOTAL_REDEEM_AMOUNT * PRICE
+		//                  - PERC_REDEEM_FULFILL * SINGLE_REDEEM_AMOUNT * PRICE
+		//     - InvestmentId = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT
+		// 		                  + PERC_INVEST_FULFILL * TOTAL_INVEST_AMOUNT * 1/PRICE
+		// 		                  - 2 * PERC_INVEST_FULFILL * SINGLE_INVEST_AMOUNT * 1/PRICE
+		//
+		// Only checking balances of investment account here:
+		{
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				207194029850746268657
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
+				175377207062600321028
+			);
+		}
+
+		// Over a loop we partially fulfill all orders
+		// Investors{A..C} have all PERC_INVEST_FULFILL of their initial amounts fulfilled
+		// InvestorD has nothing fulfilled yet
+		// TrancheHolder{A..C} have all PERC_REDEEM_FULFILL of their initial amounts fulfilled
+		// TrancheHolderD has nothing fulfilled yet
+		{
+			// Over 4 rounds we fulfill PERC_FULFIL_ALL
+			let perc_fulfill = Perquintill::from_rational(25u64, 100u64);
+			let fulfillment = FulfillmentWithPrice {
+				of_amount: perc_fulfill,
+				price: PRICE,
+			};
+			let rounds = 4;
+			for _ in 0..rounds {
+				fulfill_x(fulfillment).expect("Fulfilling must work.");
+			}
+
+			// Fulfill everything at the 5th run
+			fulfill_x(FulfillmentWithPrice {
+				of_amount: Perquintill::one(),
+				price: PRICE,
+			})
+			.expect("Fulfilling must work");
+		}
+
+		// Active Orders MUST be empty right now
+		{
+			assert_eq!(
+				ActiveInvestOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder { amount: 0 }
+			);
+			assert_eq!(
+				ActiveRedeemOrders::<MockRuntime>::get(INVESTMENT_0_0),
+				TotalOrder { amount: 0 }
+			);
+		}
+
+		// We check balances again now for investment account:
+		{
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
+				353343283582089552240
+			);
+			assert_eq!(
+				free_balance_of(investment_account(INVESTMENT_0_0), INVESTMENT_0_0.into()),
+				96789727126805778492
+			);
+		}
+
+		// Now we collect for every user until FullyCollected and no more outstanding
+		{
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
+				26886035313001605134
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorB::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
+				26886035313001605134
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorC::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(InvestorC::get(), INVESTMENT_0_0.into()),
+				26886035313001605134
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(InvestorD::get()),
+				INVESTMENT_0_0
+			));
+			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
+			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       We already floor round for everybody, but there is nothing we can do
+			//       about this.
+			assert_eq!(
+				free_balance_of(InvestorD::get(), INVESTMENT_0_0.into()),
+				26886035313001605135
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderA::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
+				92985074626865671639
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderB::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD),
+				92985074626865671639
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderC::get()),
+				INVESTMENT_0_0
+			));
+			assert_eq!(
+				free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD),
+				92985074626865671639
+			);
+			assert_ok!(Investments::collect(
+				Origin::signed(TrancheHolderD::get()),
+				INVESTMENT_0_0
+			));
+			// NOTE: TrancheHolderD gets MINIMALLY less, as he had different fulfillments
+			//       compared to the others. I.e. the first fullfillment not part of his.
+			//       We already floor round for everybody, but there is nothing we can do
+			//       about this.
+			assert_eq!(
+				free_balance_of(TrancheHolderD::get(), CurrencyId::AUSD),
+				92985074626865671638
 			);
 
 			// UserOrders are empty
