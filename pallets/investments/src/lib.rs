@@ -455,7 +455,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(0)]
+		#[pallet::weight(80_000_000)]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -474,7 +474,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(0)]
+		#[pallet::weight(80_000_000)]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -485,11 +485,10 @@ pub mod pallet {
 			Pallet::<T>::do_update_redemption(who, investment_id, amount)
 		}
 
-		/// Collect the results of a users orders for the given investment.
-		/// The `CollectType` allows users to refund their funds if any
-		/// are not fulfilled or directly append them to the next acitve
+		/// Collect the results of a users orders (both invest and redeem) for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
-		#[pallet::weight(0)]
+		#[pallet::weight(80_000_000)]
 		pub fn collect(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -499,10 +498,36 @@ pub mod pallet {
 			Self::do_collect_both(who, investment_id)
 		}
 
-		/// Collect the results of another users orders for the given investment.
-		///
-		/// The type of collection will always be `CollectType::Closing`.
-		#[pallet::weight(0)]
+		/// Collect the results of a users invest orders for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
+		/// order for this investment.
+		#[pallet::weight(80_000_000)]
+		pub fn collect_investments(
+			origin: OriginFor<T>,
+			investment_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			Self::do_collect_invest(who, investment_id)
+		}
+
+		/// Collect the results of a users redeem orders for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
+		/// order for this investment.
+		#[pallet::weight(80_000_000)]
+		pub fn collect_redeem(
+			origin: OriginFor<T>,
+			investment_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			Self::do_collect_redeem(who, investment_id)
+		}
+
+		/// Collect the results of another users orders (both invest and redeem) for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
+		/// order for this investment.
+		#[pallet::weight(80_000_000)]
 		pub fn collect_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,
