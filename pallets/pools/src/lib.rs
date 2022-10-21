@@ -1526,56 +1526,30 @@ pub mod pallet {
 				Error::<T>::TooManyTranches
 			);
 
-			// At least one tranche must exist, and the first (most junior) tranche must have an
-			// interest rate of 0, indicating that it receives all remaining equity
-			ensure!(
-				match new_tranches.first() {
-					None => false,
-					Some(tranche_input) => {
-						tranche_input.tranche_type == TrancheType::Residual
-					}
-				},
-				Error::<T>::InvalidJuniorTranche
-			);
-
-			// All but the most junior tranche should have min risk buffers and interest rates
-			let (_residual_tranche, non_residual_tranche) = new_tranches
-				.split_first()
+			let mut tranche_iter = new_tranches.iter();
+			let mut prev_tranche = tranche_iter
+				.next()
 				.ok_or(Error::<T>::InvalidJuniorTranche)?;
-
-			// Currently we only allow a single junior tranche per pool
-			// This is subject to change in the future
-			ensure!(
-				match non_residual_tranche.iter().next() {
-					None => true,
-					Some(next_tranche) => {
-						next_tranche.tranche_type != TrancheType::Residual
-					}
-				},
-				Error::<T>::InvalidTrancheStructure
-			);
-
-			let mut prev_tranche_type = &TrancheType::Residual;
-			let mut prev_seniority = &None;
 			let max_seniority = new_tranches
 				.len()
 				.try_into()
 				.expect("MaxTranches is u32. qed.");
 
-			for tranche_input in new_tranches.iter() {
+			for tranche_input in tranche_iter {
 				ensure!(
-					prev_tranche_type.valid_next_tranche(&tranche_input.tranche_type),
+					prev_tranche
+						.tranche_type
+						.valid_next_tranche(&tranche_input.tranche_type),
 					Error::<T>::InvalidTrancheStructure
 				);
 
 				ensure!(
-					prev_seniority <= &tranche_input.seniority
+					prev_tranche.seniority <= tranche_input.seniority
 						&& tranche_input.seniority <= Some(max_seniority),
 					Error::<T>::InvalidTrancheSeniority
 				);
 
-				prev_tranche_type = &tranche_input.tranche_type;
-				prev_seniority = &tranche_input.seniority;
+				prev_tranche = tranche_input;
 			}
 
 			// In case we are not setting up a new pool (i.e. a tranche setup already exists) we check

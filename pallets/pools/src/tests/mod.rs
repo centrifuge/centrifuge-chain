@@ -1405,7 +1405,7 @@ fn valid_tranche_structure_is_enforced() {
 				10_000 * CURRENCY,
 				None
 			),
-			Error::<Test>::InvalidJuniorTranche
+			Error::<Test>::InvalidTrancheStructure
 		);
 
 		assert_noop!(
