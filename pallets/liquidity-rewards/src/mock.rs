@@ -32,10 +32,10 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Rewards: pallet_rewards::{Pallet, Storage, Event<T>},
-		Liquidity: pallet_liquidity_rewards::{Pallet, Storage, Event<T>},
+		System: frame_system,
+		Tokens: orml_tokens,
+		Rewards: pallet_rewards,
+		Liquidity: pallet_liquidity_rewards,
 	}
 );
 
@@ -141,6 +141,8 @@ impl SortedMembers<u64> for Admin {
 	}
 }
 
+pub type MockRewards = cfg_traits::rewards::mock::MockRewards<u64, u32, CurrencyId, u64>;
+
 impl pallet_liquidity_rewards::Config for Test {
 	type AdminOrigin = EnsureSignedBy<Admin, u64>;
 	type Balance = u64;
@@ -148,11 +150,9 @@ impl pallet_liquidity_rewards::Config for Test {
 	type Event = Event;
 	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
-	type Rewards = pallet_rewards::Pallet<Test>;
+	type Rewards = MockRewards;
 	type Weight = u64;
 }
-
-//TODO: reward mock
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

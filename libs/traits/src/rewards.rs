@@ -179,111 +179,232 @@ pub trait CurrencyGroupChange {
 	) -> Result<Option<Self::GroupId>, DispatchResult>;
 }
 
+#[cfg(feature = "std")]
+pub mod mock {
+	use std::sync::{Mutex, MutexGuard};
+
+	use super::*;
+
+	lazy_static::lazy_static! {
+		static ref MOCK_ACCESS: Mutex<()> = Mutex::new(());
+	}
+
+	/// Use it in any tests you use `MockRewards` to avoid sync issues over the same static state
+	#[must_use = "The guard must be alive until the mock is no longer used"]
+	pub fn lock() -> MutexGuard<'static, ()> {
+		match MOCK_ACCESS.lock() {
+			Ok(guard) => guard,
+			Err(poisoned) => poisoned.into_inner(),
+		}
+	}
+
+	mockall::mock! {
+		pub Rewards<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> {}
+
+		impl<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> GroupRewards
+			for Rewards<Balance, GroupId, CurrencyId, AccountId>
+		{
+			type Balance = Balance;
+			type GroupId = GroupId;
+
+			fn reward_group(
+				group_id: <Self as GroupRewards>::GroupId,
+				reward: <Self as GroupRewards>::Balance
+			) -> DispatchResult;
+			fn group_stake(group_id: <Self as GroupRewards>::GroupId) -> <Self as GroupRewards>::Balance;
+		}
+
+		impl<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> AccountRewards<AccountId>
+			for Rewards<Balance, GroupId, CurrencyId, AccountId>
+		{
+			type Balance = Balance;
+			type CurrencyId = CurrencyId;
+
+			fn deposit_stake(
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
+				account_id: &AccountId,
+				amount: <Self as AccountRewards<AccountId>>::Balance,
+			) -> DispatchResult;
+
+			fn withdraw_stake(
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
+				account_id: &AccountId,
+				amount: <Self as AccountRewards<AccountId>>::Balance,
+			) -> DispatchResult;
+
+			fn compute_reward(
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
+				account_id: &AccountId,
+			) -> Result<<Self as AccountRewards<AccountId>>::Balance, DispatchError>;
+
+			fn claim_reward(
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
+				account_id: &AccountId,
+			) -> Result<<Self as AccountRewards<AccountId>>::Balance, DispatchError>;
+
+			fn account_stake(
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
+				account_id: &AccountId
+			) -> <Self as AccountRewards<AccountId>>::Balance;
+		}
+
+		impl<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> CurrencyGroupChange
+			for Rewards<Balance, GroupId, CurrencyId, AccountId>
+		{
+			type GroupId = GroupId;
+			type CurrencyId = CurrencyId;
+
+			fn attach_currency(
+				currency_id: <Self as CurrencyGroupChange>::CurrencyId,
+				group_id: <Self as CurrencyGroupChange>::GroupId
+			) -> DispatchResult;
+
+			fn currency_group(
+				currency_id: <Self as CurrencyGroupChange>::CurrencyId,
+			) -> Result<Option<<Self as CurrencyGroupChange>::GroupId>, DispatchResult>;
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
-	use std::{cell::RefCell, collections::BTreeMap};
-
 	use frame_support::assert_ok;
 
 	use super::*;
 
-	const REWARD: u64 = 200;
-
-	thread_local! {
-		pub static REWARDS_PER_GROUP: RefCell<BTreeMap<u32, u64>> = RefCell::default();
+	#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+	pub enum GroupId {
+		Empty,
+		Err,
+		A,
+		B,
 	}
 
-	struct GroupRewardsMock;
-	impl GroupRewards for GroupRewardsMock {
-		type Balance = u64;
-		type GroupId = u32;
+	pub type MockDistributionRewards = mock::MockRewards<u64, GroupId, (), ()>;
 
-		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
-			match group_id {
-				1 => Err(ArithmeticError::DivisionByZero.into()),
-				_ => {
-					REWARDS_PER_GROUP.with(|rewards_per_group| {
-						rewards_per_group.borrow_mut().insert(group_id, reward);
-					});
-					Ok(())
-				}
-			}
-		}
-
-		fn group_stake(group_id: Self::GroupId) -> Self::Balance {
-			match group_id {
-				0 => 0,
-				n => n as u64,
-			}
-		}
-	}
-
-	fn init_groups() {
-		REWARDS_PER_GROUP.with(|rewards_per_group| {
-			for i in 0..4 {
-				rewards_per_group.borrow_mut().insert(i, 0);
-			}
-		});
-	}
-
-	fn check_reward(expected: impl IntoIterator<Item = u64>) {
-		REWARDS_PER_GROUP.with(|rewards_per_group| {
-			assert_eq!(
-				rewards_per_group
-					.borrow()
-					.values()
-					.cloned()
-					.collect::<Vec<_>>(),
-				expected.into_iter().collect::<Vec<_>>()
-			)
-		});
-	}
+	const REWARD_ZERO: u64 = 0;
+	const REWARD: u64 = 100;
 
 	#[test]
 	fn distribute_zero() {
-		init_groups();
+		let _m = mock::lock();
+
+		let ctx1 = MockDistributionRewards::group_stake_context();
+		ctx1.expect().times(8).returning(|group_id| match group_id {
+			GroupId::Empty => 0,
+			_ => 100,
+		});
+
+		let ctx2 = MockDistributionRewards::reward_group_context();
+		ctx2.expect()
+			.times(3)
+			.withf(|_, reward| *reward == REWARD_ZERO)
+			.returning(|group_id, _| match group_id {
+				GroupId::Err => Err(ArithmeticError::DivisionByZero.into()),
+				_ => Ok(()),
+			});
 
 		assert_ok!(
-			GroupRewardsMock::distribute_reward(0, [0, 1, 2, 3]),
-			vec![(1, ArithmeticError::DivisionByZero.into())]
+			MockDistributionRewards::distribute_reward(
+				REWARD_ZERO,
+				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
+			),
+			vec![(GroupId::Err, ArithmeticError::DivisionByZero.into())]
 		);
-
-		check_reward([0, 0, 0, 0]);
 	}
 
 	#[test]
 	fn distribute_to_nothing() {
-		init_groups();
+		let _m = mock::lock();
 
-		assert_ok!(GroupRewardsMock::distribute_reward(REWARD, []), vec![]);
+		let ctx1 = MockDistributionRewards::group_stake_context();
+		ctx1.expect().never();
 
-		check_reward([0, 0, 0, 0]);
+		let ctx2 = MockDistributionRewards::reward_group_context();
+		ctx2.expect().never();
+
+		assert_ok!(
+			MockDistributionRewards::distribute_reward(REWARD, []),
+			vec![]
+		);
 	}
 
 	#[test]
 	fn distribute() {
-		init_groups();
+		let _m = mock::lock();
+
+		let ctx1 = MockDistributionRewards::group_stake_context();
+		ctx1.expect().times(8).returning(|group_id| match group_id {
+			GroupId::Empty => 0,
+			_ => 100,
+		});
+
+		let ctx2 = MockDistributionRewards::reward_group_context();
+		ctx2.expect()
+			.times(3)
+			.withf(|group_id, reward| {
+				*reward
+					== match group_id {
+						GroupId::Empty => unreachable!(),
+						GroupId::Err => REWARD / 3,
+						GroupId::A => REWARD / 3,
+						GroupId::B => REWARD / 3,
+					}
+			})
+			.returning(|group_id, _| match group_id {
+				GroupId::Empty => unreachable!(),
+				GroupId::Err => Err(ArithmeticError::DivisionByZero.into()),
+				_ => Ok(()),
+			});
 
 		assert_ok!(
-			GroupRewardsMock::distribute_reward(REWARD, [0, 1, 2, 3]),
-			vec![(1, ArithmeticError::DivisionByZero.into())]
+			MockDistributionRewards::distribute_reward(
+				REWARD,
+				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
+			),
+			vec![(GroupId::Err, ArithmeticError::DivisionByZero.into())]
 		);
-
-		check_reward([0, 0, REWARD / 3, REWARD / 3]);
 	}
 
 	#[test]
 	fn distribute_with_weights() {
-		init_groups();
+		let _m = mock::lock();
+
+		let ctx1 = MockDistributionRewards::group_stake_context();
+		ctx1.expect().times(8).returning(|group_id| match group_id {
+			GroupId::Empty => 0,
+			_ => 100,
+		});
+
+		let ctx2 = MockDistributionRewards::reward_group_context();
+		ctx2.expect()
+			.times(3)
+			.withf(|group_id, reward| {
+				*reward
+					== match group_id {
+						GroupId::Empty => unreachable!(),
+						GroupId::Err => 20 * REWARD / 90,
+						GroupId::A => 30 * REWARD / 90,
+						GroupId::B => 40 * REWARD / 90,
+					}
+			})
+			.returning(|group_id, _| match group_id {
+				GroupId::Empty => unreachable!(),
+				GroupId::Err => Err(ArithmeticError::DivisionByZero.into()),
+				_ => Ok(()),
+			});
 
 		assert_ok!(
-			GroupRewardsMock::distribute_reward_with_weights(
+			MockDistributionRewards::distribute_reward_with_weights(
 				REWARD,
-				[(0, 10u32), (1, 20u32), (2, 30u32), (3, 40u32)]
+				[
+					(GroupId::Empty, 10u32),
+					(GroupId::Err, 20u32),
+					(GroupId::A, 30u32),
+					(GroupId::B, 40u32)
+				]
 			),
-			vec![(1, ArithmeticError::DivisionByZero.into())]
+			vec![(GroupId::Err, ArithmeticError::DivisionByZero.into())]
 		);
-
-		check_reward([0, 0, 30 * REWARD / 90, 40 * REWARD / 90]);
 	}
 }
