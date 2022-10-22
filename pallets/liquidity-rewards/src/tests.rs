@@ -20,7 +20,7 @@ fn check_special_privileges() {
 			BadOrigin
 		);
 		assert_noop!(
-			Liquidity::attach_currency(Origin::signed(USER_A), CurrencyId::A, GROUP_A),
+			Liquidity::attach_currency(Origin::signed(USER_A), CURRENCY_ID_A, GROUP_A),
 			BadOrigin
 		);
 	});
@@ -89,19 +89,19 @@ fn currency_changes() {
 		// EPOCH 0
 		assert_ok!(Liquidity::attach_currency(
 			Origin::signed(ADMIN),
-			CurrencyId::A,
+			CURRENCY_ID_A,
 			GROUP_A
 		));
 		let ctx1 = MockRewards::attach_currency_context();
 		ctx1.expect()
 			.once()
-			.withf(|currency_id, group_id| *currency_id == CurrencyId::A && *group_id == GROUP_A)
+			.withf(|currency_id, group_id| *currency_id == CURRENCY_ID_A && *group_id == GROUP_A)
 			.return_const(Ok(()));
-		assert_eq!(CurrencyChanges::<Test>::get(CurrencyId::A), Some(GROUP_A));
+		assert_eq!(CurrencyChanges::<Test>::get(CURRENCY_ID_A), Some(GROUP_A));
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
-		assert_eq!(CurrencyChanges::<Test>::get(CurrencyId::A), None);
+		assert_eq!(CurrencyChanges::<Test>::get(CURRENCY_ID_A), None);
 	});
 }
 

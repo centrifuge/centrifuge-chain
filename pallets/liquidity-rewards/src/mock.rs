@@ -1,16 +1,9 @@
-use frame_support::{
-	pallet_prelude::*,
-	traits::{ConstU16, ConstU32, ConstU64, SortedMembers},
-	PalletId,
-};
+use frame_support::traits::{ConstU16, ConstU32, ConstU64, SortedMembers};
 use frame_system::EnsureSignedBy;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	FixedI64,
 };
 
 use crate as pallet_liquidity_rewards;
@@ -21,10 +14,10 @@ type Block = frame_system::mocking::MockBlock<Test>;
 pub const ADMIN: u64 = 1;
 pub const USER_A: u64 = 2;
 
-pub const USER_INITIAL_BALANCE: u64 = 100000;
-
 pub const GROUP_A: u32 = 1;
 pub const GROUP_B: u32 = 2;
+
+pub const CURRENCY_ID_A: u8 = 23;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -33,8 +26,6 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
-		Tokens: orml_tokens,
-		Rewards: pallet_rewards,
 		Liquidity: pallet_liquidity_rewards,
 	}
 );
@@ -66,70 +57,6 @@ impl frame_system::Config for Test {
 	type Version = ();
 }
 
-#[derive(
-	Clone,
-	Copy,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
-	RuntimeDebug,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum CurrencyId {
-	Reward,
-	A,
-	B,
-	C,
-}
-
-orml_traits::parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 { 0 };
-}
-
-frame_support::parameter_types! {}
-
-impl orml_tokens::Config for Test {
-	type Amount = i64;
-	type Balance = u64;
-	type CurrencyId = CurrencyId;
-	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = Event;
-	type ExistentialDeposits = ExistentialDeposits;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
-	type ReserveIdentifier = [u8; 8];
-	type WeightInfo = ();
-}
-
-frame_support::parameter_types! {
-	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
-	pub const RewardCurrency: CurrencyId = CurrencyId::Reward;
-
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxCurrencyMovements: u32 = 3;
-}
-
-impl pallet_rewards::Config for Test {
-	type Balance = u64;
-	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type Event = Event;
-	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
-	type PalletId = RewardsPalletId;
-	type Rate = FixedI64;
-	type RewardCurrency = RewardCurrency;
-	type SignedBalance = i128;
-}
-
 frame_support::parameter_types! {
 	pub const MaxChangesPerEpoch: Option<u32> = Some(3);
 	pub const Admin: u64 = ADMIN;
@@ -141,12 +68,12 @@ impl SortedMembers<u64> for Admin {
 	}
 }
 
-pub type MockRewards = cfg_traits::rewards::mock::MockRewards<u64, u32, CurrencyId, u64>;
+pub type MockRewards = cfg_traits::rewards::mock::MockRewards<u64, u32, u8, u64>;
 
 impl pallet_liquidity_rewards::Config for Test {
 	type AdminOrigin = EnsureSignedBy<Admin, u64>;
 	type Balance = u64;
-	type CurrencyId = CurrencyId;
+	type CurrencyId = u8;
 	type Event = Event;
 	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
@@ -155,25 +82,9 @@ impl pallet_liquidity_rewards::Config for Test {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::default()
+	let storage = frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap();
-
-	let users = [USER_A];
-	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C];
-
-	orml_tokens::GenesisConfig::<Test> {
-		balances: users
-			.iter()
-			.flat_map(|&user| {
-				currencies
-					.iter()
-					.map(move |&currency| (user, currency, USER_INITIAL_BALANCE))
-			})
-			.collect(),
-	}
-	.assimilate_storage(&mut storage)
-	.unwrap();
 
 	sp_io::TestExternalities::new(storage)
 }
