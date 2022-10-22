@@ -81,9 +81,10 @@ fn epoch_change() {
 	});
 }
 
-/*
 #[test]
 fn currency_changes() {
+	let _m = cfg_traits::rewards::mock::lock();
+
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		assert_ok!(Liquidity::attach_currency(
@@ -91,13 +92,16 @@ fn currency_changes() {
 			CurrencyId::A,
 			GROUP_A
 		));
+		let ctx1 = MockRewards::attach_currency_context();
+		ctx1.expect()
+			.once()
+			.withf(|currency_id, group_id| *currency_id == CurrencyId::A && *group_id == GROUP_A)
+			.return_const(Ok(()));
 		assert_eq!(CurrencyChanges::<Test>::get(CurrencyId::A), Some(GROUP_A));
-		assert_ok!(Rewards::currency_group(CurrencyId::A), None);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
 		assert_eq!(CurrencyChanges::<Test>::get(CurrencyId::A), None);
-		assert_ok!(Rewards::currency_group(CurrencyId::A), Some(GROUP_A));
 	});
 }
 
@@ -107,120 +111,11 @@ fn weight_changes() {
 	const WEIGHT_2: u64 = 2;
 	const REWARD: u64 = 100;
 
-	new_test_ext().execute_with(|| {
-		// EPOCH 0
-		assert_ok!(Liquidity::set_distributed_reward(
-			Origin::signed(ADMIN),
-			REWARD
-		));
-		Liquidity::on_initialize(0);
-
-		// EPOCH 1
-		assert_ok!(Rewards::attach_currency(CurrencyId::A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(CurrencyId::B, GROUP_B));
-		assert_ok!(Liquidity::stake(Origin::signed(USER_A), CurrencyId::A, 42));
-		assert_ok!(Liquidity::stake(Origin::signed(USER_A), CurrencyId::B, 23));
-		Liquidity::on_initialize(0);
-
-		// EPOCH 2
-		// Initially weights should be 0, so the user is not rewarded
-		assert_ok!(Rewards::compute_reward(CurrencyId::A, &USER_A), 0);
-		assert_ok!(Liquidity::set_group_weight(
-			Origin::signed(ADMIN),
-			GROUP_A,
-			WEIGHT_1
-		));
-		assert_ok!(Liquidity::set_group_weight(
-			Origin::signed(ADMIN),
-			GROUP_B,
-			WEIGHT_2
-		));
-		assert_eq!(WeightChanges::<Test>::get(GROUP_A), Some(WEIGHT_1));
-		Liquidity::on_initialize(0);
-
-		// EPOCH 3
-		// Not yet, the reward with the new weights is applied to the next epoch
-		assert_ok!(Rewards::compute_reward(CurrencyId::A, &USER_A), 0);
-		Liquidity::on_initialize(0);
-
-		// EPOCH 4
-		assert_ok!(
-			Rewards::compute_reward(CurrencyId::A, &USER_A),
-			WEIGHT_1 * REWARD / (WEIGHT_1 + WEIGHT_2)
-		);
-		assert_eq!(WeightChanges::<Test>::get(GROUP_A), None);
-	});
-}
-*/
-
-/*
-#[test]
-fn weight_changes() {
-	const WEIGHT_1: u64 = 1;
-	const WEIGHT_2: u64 = 2;
-	const REWARD: u64 = 100;
-
-	RewardMockActions::group_stake(|_| 100);
-
-	let mut reward = 0;
-	RewardMockActions::group_reward(|_, r| reward = r);
-
-	new_test_ext().execute_with(|| {
-		// EPOCH 0
-		assert_ok!(Liquidity::set_distributed_reward(
-			Origin::signed(ADMIN),
-			REWARD
-		));
-		Liquidity::on_initialize(0);
-
-		// EPOCH 2
-		assert_ok!(Liquidity::set_group_weight(
-			Origin::signed(ADMIN),
-			GROUP_A,
-			WEIGHT_1
-		));
-		assert_ok!(Liquidity::set_group_weight(
-			Origin::signed(ADMIN),
-			GROUP_B,
-			WEIGHT_2
-		));
-		assert_eq!(WeightChanges::<Test>::get(GROUP_A), Some(WEIGHT_1));
-		Liquidity::on_initialize(0);
-
-		// EPOCH 3
-		// Not yet, the reward with the new weights is applied to the next epoch
-		assert_eq!(reward, 0);
-		assert_eq!(WeightChanges::<Test>::get(GROUP_A), None);
-		Liquidity::on_initialize(0);
-
-		// EPOCH 4
-		assert_eq!(reward, WEIGHT_1 * REWARD / (WEIGHT_1 + WEIGHT_2));
-	});
-}
-*/
-
-#[test]
-fn weight_changes() {
-	const WEIGHT_1: u64 = 1;
-	const WEIGHT_2: u64 = 2;
-	const REWARD: u64 = 100;
+	let _m = cfg_traits::rewards::mock::lock();
 
 	let ctx1 = MockRewards::group_stake_context();
 	ctx1.expect().return_const(100u64);
 
-	let ctx2 = MockRewards::reward_group_context();
-	ctx2.expect()
-		.times(2)
-		.withf(|group_id, rewards| {
-			*rewards
-				== match *group_id {
-					GROUP_A => REWARD * WEIGHT_1 / (WEIGHT_1 + WEIGHT_2),
-					GROUP_B => REWARD * WEIGHT_2 / (WEIGHT_1 + WEIGHT_2),
-					_ => unreachable!(),
-				}
-		})
-		.returning(|_, _| Ok(()));
-
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		assert_ok!(Liquidity::set_distributed_reward(
@@ -242,9 +137,23 @@ fn weight_changes() {
 		));
 		assert_eq!(WeightChanges::<Test>::get(GROUP_A), Some(WEIGHT_1));
 		Liquidity::on_initialize(0);
-		// Not yet, the reward with the new weights is applied to the next epoch
+		// The weights were configured but no used in this epoch.
+		// We need one epoch more to apply those weights in the distribution.
 
 		// EPOCH 3
+		let ctx2 = MockRewards::reward_group_context();
+		ctx2.expect()
+			.times(2)
+			.withf(|group_id, rewards| {
+				*rewards
+					== match *group_id {
+						GROUP_A => REWARD * WEIGHT_1 / (WEIGHT_1 + WEIGHT_2),
+						GROUP_B => REWARD * WEIGHT_2 / (WEIGHT_1 + WEIGHT_2),
+						_ => unreachable!(),
+					}
+			})
+			.returning(|_, _| Ok(()));
+
 		assert_eq!(WeightChanges::<Test>::get(GROUP_A), None);
 		Liquidity::on_initialize(0);
 	});
