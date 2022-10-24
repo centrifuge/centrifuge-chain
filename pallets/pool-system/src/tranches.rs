@@ -1796,7 +1796,7 @@ pub mod test {
 		}
 	}
 
-	mod epoch_execution_tranche {
+	mod epoch_execution_tranches {
 		use super::*;
 
 		#[test]
@@ -1807,8 +1807,39 @@ pub mod test {
 			)
 		}
 
-		fn epoch_execution_tranche_reverse_slice_panics_on_out_of_bounds() {}
-	}
+		#[test]
+		#[should_panic]
+		fn epoch_execution_tranche_reverse_slice_panics_on_out_of_bounds() {
+			// 3 elements in default_epoch_tranches
+			let _panic = &default_epoch_tranches().non_residual_top_slice()[3];
+		}
 
-	mod epoch_execution_tranches {}
+		#[test]
+		fn epoch_execution_non_residual_tranches_works() {
+			assert_eq!(
+				default_epoch_tranches()
+					.non_residual_tranches()
+					.unwrap()
+					.iter()
+					.map(|t| t.seniority)
+					.collect::<Vec<_>>(),
+				[1, 2]
+			)
+		}
+
+		#[test]
+		fn epoch_execution_non_residual_tranches_mut_works() {
+			let mut check_vals: Vec<u32> = Vec::new();
+			default_epoch_tranches()
+				.non_residual_tranches_mut()
+				.unwrap()
+				.into_iter()
+				.for_each(|t| {
+					t.seniority += 2;
+					check_vals.push(t.seniority);
+				});
+
+			assert_eq!(check_vals, [3, 4])
+		}
+	}
 }
