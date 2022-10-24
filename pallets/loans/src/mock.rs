@@ -16,8 +16,8 @@
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
 use cfg_primitives::{
-	Balance, CollectionId, ItemId, Moment, PoolId, TrancheId,
-	TrancheWeight, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
+	Balance, CollectionId, ItemId, Moment, PoolId, TrancheId, TrancheWeight,
+	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use cfg_traits::PoolUpdateGuard;
 use cfg_types::{
