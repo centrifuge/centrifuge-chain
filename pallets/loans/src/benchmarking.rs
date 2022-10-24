@@ -25,6 +25,7 @@ use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
+use sp_runtime::traits::CheckedDiv;
 use test_utils::{
 	assert_last_event, create as create_test_pool, create_nft_class_if_needed, expect_asset_owner,
 	expect_asset_to_be_burned, get_tranche_id, mint_nft_of,
@@ -530,7 +531,11 @@ benchmarks! {
 		let risk_admin = risk_admin::<T>();
 		for i in 0..m {
 			let percentage: T::Rate = Rate::saturating_from_rational(i+1, m).into();
-			let penalty_interest_rate_per_year = Rate::saturating_from_rational(2*i + 1, 2*m).into();
+			let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*i + 1) * 10000, 2*m)
+							   .trunc()
+							   .checked_div(&Rate::saturating_from_integer(10000))
+							   .expect("Rate is an integer after `trunc`. div by 10000 is safe")
+							   .into();
 			let overdue_days = percentage.checked_mul_int(120).unwrap();
 			let write_off_group = WriteOffGroupInput {
 				percentage, penalty_interest_rate_per_year, overdue_days
@@ -549,8 +554,12 @@ benchmarks! {
 	verify {
 		let index = (m-1).into();
 		let percentage = Rate::saturating_from_rational(100, 100).into();
-		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(Rate::saturating_from_rational(2*m - 1, 2*m).into()).expect("Rate should be convertible to per-sec");
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
+			   let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*m - 1) * 10000, 2*m)
+					   .trunc()
+					   .checked_div(&Rate::saturating_from_integer(10000))
+					   .expect("Rate is an integer after `trunc`. div by 10000 is safe")
+					   .into();
+			   let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-sec");		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOff{write_off_index: index})
 	}
