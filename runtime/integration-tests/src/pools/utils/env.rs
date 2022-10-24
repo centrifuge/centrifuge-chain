@@ -354,7 +354,8 @@ pub struct TestEnv {
 	pub events: Arc<Mutex<EventsStorage>>,
 }
 
-pub type Block = runtime_common::Block;
+pub type Header = cfg_primitives::Header;
+pub type Block = cfg_primitives::Block;
 pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
 
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
@@ -710,13 +711,14 @@ fn test_env(
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
-		let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
-		assert!(FudgeInherentTimestamp::new(
-			instance,
+		// let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
+		let instance_id = FudgeInherentTimestamp::create_instance(Default::default(), None);
+		assert!(FudgeInherentTimestamp::force_new(
+			instance_id,
 			std::time::Duration::from_secs(6),
 			Some(std::time::Duration::from_millis(START_DATE)),
 		)
-		.is_none());
+		.is_ok());
 
 		let cidp = Box::new(move |parent: H256, ()| {
 			let client = clone_client.clone();
@@ -729,7 +731,7 @@ fn test_env(
 				let uncles =
 					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
 
-				let timestamp = FudgeInherentTimestamp::get_instance(instance)
+				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
 					.expect("Instances is initialized");
 
 				let slot =
@@ -790,18 +792,19 @@ fn test_env(
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
-		let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
-		assert!(FudgeInherentTimestamp::new(
-			instance,
+		let instance_id =
+			FudgeInherentTimestamp::create_instance(sp_std::time::Duration::from_secs(1), None);
+		assert!(FudgeInherentTimestamp::force_new(
+			instance_id,
 			std::time::Duration::from_secs(12),
 			Some(std::time::Duration::from_millis(START_DATE)),
 		)
-		.is_none());
+		.is_ok());
 
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
 			async move {
-				let timestamp = FudgeInherentTimestamp::get_instance(instance)
+				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
 					.expect("Instances is initialized");
 
 				let slot =
