@@ -222,58 +222,63 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
-			let mut func_weight = 0;
-			ActiveEpoch::<T>::try_mutate(|epoch| {
-				func_weight = T::DbWeight::get().reads(1);
+			let epoch = ActiveEpoch::<T>::get();
+			let func_weight = T::DbWeight::get().reads(1);
 
-				if epoch.ends_on > current_block {
-					return Err(DispatchError::Other("Epoch not ready"));
-				}
+			if epoch.ends_on > current_block {
+				return func_weight;
+			}
 
-				transactional::with_storage_layer(|| -> DispatchResult {
-					ActiveEpochData::<T>::try_mutate(|epoch_data| {
-						func_weight = T::DbWeight::get().reads(1);
-
-						T::Rewards::distribute_reward_with_weights(
-							epoch_data.reward,
-							epoch_data
-								.weights
-								.iter()
-								.map(|(k, v)| (k.clone(), v.clone())),
-						)?;
-
-						// func_weight += T::WeightInfo::distribute_reward_with_weights(groups);
-
-						NextEpochChanges::<T>::try_mutate(|changes| {
-							for (currency_id, group_id) in mem::take(&mut changes.currencies) {
-								T::Rewards::attach_currency(currency_id, group_id)?;
-								// func_weight += T::WeightInfo::attach_currency();
-							}
-
-							for (group_id, weight) in mem::take(&mut changes.weights) {
-								epoch_data.weights.try_insert(group_id, weight).ok();
-							}
-
-							epoch_data.reward = changes.reward;
-							epoch.ends_on.ensure_add_assign(changes.duration)?;
-
-							Self::deposit_event(Event::NewEpoch {
-								ends_on: epoch.ends_on,
-								reward: epoch_data.reward,
-							});
-
-							Ok(())
-						})
-					})
-				})?;
-
-				func_weight += T::DbWeight::get().writes(1);
-
-				Ok(())
+			transactional::with_storage_layer(|| {
+				Self::distribute()?;
+				Self::apply_changes()
 			})
 			.ok();
 
 			func_weight
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn distribute() -> DispatchResult {
+			let epoch_data = ActiveEpochData::<T>::get();
+
+			T::Rewards::distribute_reward_with_weights(
+				epoch_data.reward,
+				epoch_data
+					.weights
+					.iter()
+					.map(|(k, v)| (k.clone(), v.clone())),
+			)
+			.map(|_| ())
+		}
+
+		fn apply_changes() -> DispatchResult {
+			NextEpochChanges::<T>::try_mutate(|changes| {
+				for (currency_id, group_id) in mem::take(&mut changes.currencies) {
+					T::Rewards::attach_currency(currency_id, group_id)?;
+					// func_weight += T::WeightInfo::attach_currency();
+				}
+
+				ActiveEpochData::<T>::try_mutate(|epoch_data| {
+					for (group_id, weight) in mem::take(&mut changes.weights) {
+						epoch_data.weights.try_insert(group_id, weight).ok();
+					}
+
+					epoch_data.reward = changes.reward;
+
+					ActiveEpoch::<T>::try_mutate(|epoch| {
+						epoch.ends_on.ensure_add_assign(changes.duration)?;
+
+						Self::deposit_event(Event::NewEpoch {
+							ends_on: epoch.ends_on,
+							reward: epoch_data.reward,
+						});
+
+						Ok(())
+					})
+				})
+			})
 		}
 	}
 
