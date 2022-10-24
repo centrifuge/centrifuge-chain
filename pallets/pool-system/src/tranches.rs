@@ -1809,10 +1809,46 @@ pub mod test {
 		}
 
 		#[test]
+		fn epoch_execution_tranche_reverse_mut_works() {
+			let mut check_vals: Vec<u128> = Vec::new();
+			default_epoch_tranches()
+				.non_residual_top_slice_mut()
+				.into_iter()
+				.for_each(|t| {
+					t.invest = 100 * t.seniority as u128;
+					check_vals.push(t.invest);
+				});
+
+			assert_eq!(check_vals, [200, 100, 0])
+		}
+
+		#[test]
 		#[should_panic]
 		fn epoch_execution_tranche_reverse_slice_panics_on_out_of_bounds() {
 			// 3 elements in default_epoch_tranches
 			let _panic = &default_epoch_tranches().non_residual_top_slice()[3];
+		}
+
+		#[test]
+		fn epoch_execution_residual_top_slice_returns_residual_first() {
+			assert_eq!(
+				default_epoch_tranches().residual_top_slice()[0].seniority,
+				0
+			)
+		}
+
+		#[test]
+		fn epoch_execution_residual_top_mut_works() {
+			let mut check_vals: Vec<u128> = Vec::new();
+			default_epoch_tranches()
+				.residual_top_slice_mut()
+				.into_iter()
+				.for_each(|t| {
+					t.invest = 100 * t.seniority as u128;
+					check_vals.push(t.invest);
+				});
+
+			assert_eq!(check_vals, [0, 100, 200])
 		}
 
 		#[test]
