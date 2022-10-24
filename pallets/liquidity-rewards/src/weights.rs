@@ -8,8 +8,9 @@ pub trait WeightInfo {
 	fn set_epoch_duration() -> Weight;
 	fn set_group_weight() -> Weight;
 	fn set_currency_group() -> Weight;
-	fn distribute() -> Weight;
-	fn apply_changes() -> Weight;
+	fn distribute(groups: u32) -> Weight;
+	fn attach_currency() -> Weight;
+	fn insert_group_weight() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -41,11 +42,15 @@ impl WeightInfo for () {
 		0
 	}
 
-	fn distribute() -> Weight {
+	fn distribute(groups: u32) -> Weight {
 		0
 	}
 
-	fn apply_changes() -> Weight {
+	fn attach_currency() -> Weight {
+		0
+	}
+
+	fn insert_group_weight() -> Weight {
 		0
 	}
 }

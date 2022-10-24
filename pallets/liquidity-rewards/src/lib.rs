@@ -25,7 +25,7 @@
 //!
 //! - Stake/Unstake a currency amount.
 //! - Claim the reward given to a staked currency.
-//! - Admin functions to configure epochs currencies and reward groups.
+//! - Admin methods to configure epochs, currencies and reward groups.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -35,7 +35,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod weights;
+pub mod weights;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 pub use cfg_traits::{
 	ops::ensure::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
@@ -235,74 +239,75 @@ pub mod pallet {
 			}
 
 			transactional::with_storage_layer(|| -> DispatchResult {
-				Self::distribute()?;
-				func_weight += T::WeightInfo::distribute();
+				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
+					ActiveEpochData::<T>::try_mutate(|epoch_data| {
+						func_weight += T::DbWeight::get().reads(2);
 
-				Self::apply_changes()?;
-				func_weight += T::WeightInfo::apply_changes();
+						let groups = Self::distribute(
+							epoch_data.reward,
+							epoch_data
+								.weights
+								.iter()
+								.map(|(k, v)| (k.clone(), v.clone())),
+						)?;
+						func_weight += T::WeightInfo::distribute(groups);
 
-				Ok(())
+						for (currency_id, group_id) in mem::take(&mut changes.currencies) {
+							Self::attach_currency(currency_id, group_id)?;
+							func_weight += T::WeightInfo::attach_currency();
+						}
+
+						for (group_id, weight) in mem::take(&mut changes.weights) {
+							Self::insert_group_weight(&mut epoch_data.weights, group_id, weight);
+							func_weight += T::WeightInfo::insert_group_weight();
+						}
+
+						epoch_data.reward = changes.reward;
+
+						ActiveEpoch::<T>::try_mutate(|epoch| {
+							func_weight += T::DbWeight::get().reads(1);
+							epoch.ends_on.ensure_add_assign(changes.duration)?;
+
+							Self::deposit_event(Event::NewEpoch {
+								ends_on: epoch.ends_on,
+								reward: epoch_data.reward,
+							});
+
+							Ok(())
+						})
+					})
+				})
 			})
 			.ok();
 
+			func_weight += T::DbWeight::get().writes(1);
 			func_weight
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn distribute() -> Result<usize, DispatchError> {
-			let epoch_data = ActiveEpochData::<T>::get();
-
-			T::Rewards::distribute_reward_with_weights(
-				epoch_data.reward,
-				epoch_data
-					.weights
-					.iter()
-					.map(|(k, v)| (k.clone(), v.clone())),
-			)
-			.map(|results| results.len())
+		pub(super) fn distribute(
+			reward: T::Balance,
+			groups: impl Iterator<Item = (T::GroupId, T::Weight)> + Clone,
+		) -> Result<u32, DispatchError> {
+			T::Rewards::distribute_reward_with_weights(reward, groups)
+				.map(|results| results.len() as u32)
 		}
 
-		fn apply_changes() -> DispatchResult {
-			NextEpochChanges::<T>::try_mutate(|changes| {
-				for (currency_id, group_id) in mem::take(&mut changes.currencies) {
-					T::Rewards::attach_currency(currency_id, group_id)?;
-				}
-
-				ActiveEpochData::<T>::try_mutate(|epoch_data| {
-					for (group_id, weight) in mem::take(&mut changes.weights) {
-						epoch_data.weights.try_insert(group_id, weight).ok();
-					}
-
-					epoch_data.reward = changes.reward;
-
-					ActiveEpoch::<T>::try_mutate(|epoch| {
-						epoch.ends_on.ensure_add_assign(changes.duration)?;
-
-						Self::deposit_event(Event::NewEpoch {
-							ends_on: epoch.ends_on,
-							reward: epoch_data.reward,
-						});
-
-						Ok(())
-					})
-				})
-			})
-		}
-
-		/*
-		fn attach_currency(currency_id: T::CurrencyId, group_id: T::GroupId) -> DispatchResult {
+		pub(super) fn attach_currency(
+			currency_id: T::CurrencyId,
+			group_id: T::GroupId,
+		) -> DispatchResult {
 			T::Rewards::attach_currency(currency_id, group_id)
 		}
 
-		fn insert_group_weight(
-			weights: &mut BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
+		pub(super) fn insert_group_weight(
+			weights: &mut BoundedBTreeMap<T::GroupId, T::Weight, T::MaxGroups>,
 			group_id: T::GroupId,
 			weight: T::Weight,
 		) {
 			weights.try_insert(group_id, weight).ok();
 		}
-		*/
 	}
 
 	#[pallet::call]
