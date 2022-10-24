@@ -992,6 +992,17 @@ where
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
 	) -> DispatchResult {
 		let remaining = collection.remaining_investment_invest;
+		// NOTE: The checked_mul_int_floor and reciprocal_floor here ensure that for a given price
+		//       the system side (i.e. the pallet-investments) will always have
+		//       enough balance to satisfy all claims on payouts.
+		//
+		//       Importantly, the Accountant side (i.e. the pool and therefore an issuer)
+		//       will still drain its reserve by the amount without rounding. So we neither favor
+		//       issuer or investor but always the system.
+		//
+		//       TODO: Rounding always means, we might have issuance on tranche-tokens left, that are
+		//             rounding leftovers. This will be of importance, once we remove tranches at some
+		//             point.
 		collection.payout_investment_invest = collection
 			.payout_investment_invest
 			.checked_add(
@@ -1012,6 +1023,17 @@ where
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
 	) -> DispatchResult {
 		let remaining = collection.remaining_investment_redeem;
+		// NOTE: The checked_mul_int_floor here ensures that for a given price
+		//       the system side (i.e. the pallet-investments) will always have
+		//       enough balance to satisfy all claims on payouts.
+		//
+		//       Importantly, the Accountant side (i.e. the pool and therefore an issuer)
+		//       will still drain its reserve by the amount without rounding. So we neither favor
+		//       issuer or investor but always the system.
+		//
+		//       TODO: Rounding always means, we might have issuance on tranche-tokens left, that are
+		//             rounding leftovers. This will be of importance, once we remove tranches at some
+		//             point.
 		collection.payout_investment_redeem = collection
 			.payout_investment_redeem
 			.checked_add(
