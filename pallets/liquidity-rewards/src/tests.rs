@@ -44,16 +44,16 @@ fn distributed_reward_change() {
 			REWARD
 		));
 		assert_eq!(NextEpochChanges::<Test>::get().reward, REWARD);
-		assert_eq!(ActiveEpoch::<Test>::get().reward, 0);
+		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
 		assert_eq!(NextEpochChanges::<Test>::get().reward, REWARD);
-		assert_eq!(ActiveEpoch::<Test>::get().reward, REWARD);
+		assert_eq!(ActiveEpochData::<Test>::get().reward, REWARD);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 2
-		assert_eq!(ActiveEpoch::<Test>::get().reward, REWARD);
+		assert_eq!(ActiveEpochData::<Test>::get().reward, REWARD);
 	});
 }
 
@@ -169,7 +169,7 @@ fn weight_changes() {
 			NextEpochChanges::<Test>::get().weights.get(&GROUP_B),
 			Some(&WEIGHT_2)
 		);
-		assert_eq!(ActiveEpoch::<Test>::get().weights.len(), 0);
+		assert_eq!(ActiveEpochData::<Test>::get().weights.len(), 0);
 		Liquidity::on_initialize(0);
 
 		// The weights were configured but no used in this epoch.
@@ -179,11 +179,11 @@ fn weight_changes() {
 		assert_eq!(NextEpochChanges::<Test>::get().weights.get(&GROUP_A), None);
 		assert_eq!(NextEpochChanges::<Test>::get().weights.get(&GROUP_B), None);
 		assert_eq!(
-			ActiveEpoch::<Test>::get().weights.get(&GROUP_A),
+			ActiveEpochData::<Test>::get().weights.get(&GROUP_A),
 			Some(&WEIGHT_1)
 		);
 		assert_eq!(
-			ActiveEpoch::<Test>::get().weights.get(&GROUP_B),
+			ActiveEpochData::<Test>::get().weights.get(&GROUP_B),
 			Some(&WEIGHT_2)
 		);
 
@@ -257,11 +257,14 @@ fn discard_groups_exceed_max_grups() {
 
 		// EPOCH 1
 		assert_eq!(
-			ActiveEpoch::<Test>::get().weights.len() as u32,
+			ActiveEpochData::<Test>::get().weights.len() as u32,
 			MaxGroups::get()
 		);
 		for i in 0..MaxGroups::get() {
-			assert_eq!(ActiveEpoch::<Test>::get().weights.get(&i), Some(&WEIGHT));
+			assert_eq!(
+				ActiveEpochData::<Test>::get().weights.get(&i),
+				Some(&WEIGHT)
+			);
 		}
 	});
 }
