@@ -19,7 +19,7 @@ mod mock;
 mod tests;
 
 pub use cfg_traits::{
-	ops::ensure::EnsureAdd,
+	ops::ensure::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
 };
 use frame_support::{
@@ -35,42 +35,38 @@ use num_traits::sign::Unsigned;
 pub use pallet::*;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Zero},
-	ArithmeticError, FixedPointOperand,
+	FixedPointOperand,
 };
 use sp_std::mem;
 
 /// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Epoch<BlockNumber, Balance> {
+pub struct Epoch<BlockNumber, Balance, GroupId, Weight, MaxGroups>
+where
+	MaxGroups: Get<u32>,
+	GroupId: Ord,
+{
 	ends_on: BlockNumber,
 	reward_to_distribute: Balance,
-}
-
-impl<BlockNumber: EnsureAdd, Balance> Epoch<BlockNumber, Balance> {
-	fn next(
-		self,
-		duration: BlockNumber,
-		reward_to_distribute: Balance,
-	) -> Result<Self, ArithmeticError> {
-		Ok(Self {
-			ends_on: self.ends_on.ensure_add(duration)?,
-			reward_to_distribute,
-		})
-	}
+	weights: BoundedBTreeMap<GroupId, Weight, MaxGroups>,
 }
 
 /// Type used to initialize the first epoch with the correct block number
 pub struct FirstEpoch<Provider>(sp_std::marker::PhantomData<Provider>);
-impl<Provider, BlockNumber, Balance> Get<Epoch<BlockNumber, Balance>> for FirstEpoch<Provider>
+impl<Provider, BlockNumber, Balance, GroupId, Weight, MaxGroups>
+	Get<Epoch<BlockNumber, Balance, GroupId, Weight, MaxGroups>> for FirstEpoch<Provider>
 where
 	Provider: BlockNumberProvider<BlockNumber = BlockNumber>,
 	Balance: Default,
+	GroupId: Ord,
+	MaxGroups: Get<u32>,
 {
-	fn get() -> Epoch<BlockNumber, Balance> {
+	fn get() -> Epoch<BlockNumber, Balance, GroupId, Weight, MaxGroups> {
 		Epoch {
 			ends_on: Provider::current_block_number(),
 			reward_to_distribute: Balance::default(),
+			weights: BoundedBTreeMap::default(),
 		}
 	}
 }
@@ -103,8 +99,8 @@ where
 		Self {
 			duration: BlockNumber::zero(),
 			reward: Balance::zero(),
-			weights: BoundedBTreeMap::new(),
-			currencies: BoundedBTreeMap::new(),
+			weights: BoundedBTreeMap::default(),
+			currencies: BoundedBTreeMap::default(),
 		}
 	}
 }
@@ -139,11 +135,12 @@ pub mod pallet {
 			+ DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Max groups used by this pallet.
+		/// If this limit is reached, the exceeded groups are either not computed and not stored.
 		#[pallet::constant]
 		type MaxGroups: Get<u32> + TypeInfo;
 
 		/// Max number of changes of the same type enqueued to apply in the next epoch.
-		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::attach_currency()`] with
+		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::set_currency_group()`] with
 		/// the same id.
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo;
@@ -154,13 +151,9 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type GroupWeights<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::GroupId, T::Weight, ValueQuery>;
-
-	#[pallet::storage]
 	pub(super) type ActiveEpoch<T: Config> = StorageValue<
 		_,
-		Epoch<T::BlockNumber, T::Balance>,
+		Epoch<T::BlockNumber, T::Balance, T::GroupId, T::Weight, T::MaxGroups>,
 		ValueQuery,
 		FirstEpoch<frame_system::Pallet<T>>,
 	>;
@@ -185,43 +178,47 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Limit of max calls with same id to [`Pallet::set_group_weight()`] or
+		/// [`Pallet::set_currency_group()`] reached.
 		MaxChangesPerEpochReached,
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
-			let epoch = ActiveEpoch::<T>::get();
-			let mut func_weight = T::DbWeight::get().reads(1);
+			let mut func_weight = 0;
+			ActiveEpoch::<T>::try_mutate(|epoch| {
+				func_weight = T::DbWeight::get().reads(1);
 
-			if epoch.ends_on > current_block {
-				return func_weight;
-			}
+				if epoch.ends_on > current_block {
+					return Err(DispatchError::Other("Epoch not ready"));
+				}
 
-			transactional::with_storage_layer(|| -> DispatchResult {
-				T::Rewards::distribute_reward_with_weights(
-					epoch.reward_to_distribute,
-					GroupWeights::<T>::iter().collect::<Vec<(T::GroupId, T::Weight)>>(),
-				)?;
-				// func_weight += T::WeightInfo::distribute_reward_with_weights(groups);
+				transactional::with_storage_layer(|| -> DispatchResult {
+					T::Rewards::distribute_reward_with_weights(
+						epoch.reward_to_distribute,
+						epoch.weights.iter().map(|(k, v)| (k.clone(), v.clone())),
+					)?;
+					// func_weight += T::WeightInfo::distribute_reward_with_weights(groups);
 
-				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
-					for (group_id, weight) in mem::take(&mut changes.weights) {
-						GroupWeights::<T>::insert(group_id, weight);
-						func_weight += T::DbWeight::get().writes(1);
-					}
+					NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
+						for (currency_id, group_id) in mem::take(&mut changes.currencies) {
+							T::Rewards::attach_currency(currency_id, group_id)?;
+							// func_weight += T::WeightInfo::attach_currency();
+						}
 
-					for (currency_id, group_id) in mem::take(&mut changes.currencies) {
-						T::Rewards::attach_currency(currency_id, group_id)?;
-						// func_weight += T::WeightInfo::attach_currency();
-					}
+						for (group_id, weight) in mem::take(&mut changes.weights) {
+							epoch.weights.try_insert(group_id, weight).ok();
+						}
 
-					ActiveEpoch::<T>::put(epoch.next(changes.duration, changes.reward)?);
-					func_weight += T::DbWeight::get().writes(1);
+						epoch.ends_on.ensure_add_assign(changes.duration)?;
+						epoch.reward_to_distribute = changes.reward;
 
-					Ok(())
+						Ok(())
+					})
 				})?;
-				func_weight += T::DbWeight::get().reads_writes(1, 1);
+
+				func_weight += T::DbWeight::get().writes(1);
 
 				Ok(())
 			})
@@ -291,7 +288,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)] // TODO
-		pub fn attach_currency(
+		pub fn set_currency_group(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
 			group_id: T::GroupId,

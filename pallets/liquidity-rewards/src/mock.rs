@@ -12,12 +12,6 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 pub const ADMIN: u64 = 1;
-pub const USER_A: u64 = 2;
-
-pub const GROUP_A: u32 = 1;
-pub const GROUP_B: u32 = 2;
-
-pub const CURRENCY_ID_A: u8 = 23;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -58,10 +52,10 @@ impl frame_system::Config for Test {
 }
 
 frame_support::parameter_types! {
-	#[derive(scale_info::TypeInfo)]
+	#[derive(scale_info::TypeInfo, Debug, PartialEq)]
 	pub const MaxGroups: u32 = 2;
 
-	#[derive(scale_info::TypeInfo)]
+	#[derive(scale_info::TypeInfo, Debug, PartialEq)]
 	pub const MaxChangesPerEpoch: u32 = 5;
 
 	pub const Admin: u64 = ADMIN;
