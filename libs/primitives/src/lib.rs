@@ -43,7 +43,7 @@ pub mod types {
 	pub type OrderId = u64;
 
 	/// EpochId type we use to identify epochs in our revolving pools
-	pub type EpochId = u32;
+	pub type PoolEpochId = u32;
 
 	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
 	pub type EnsureRootOr<O> = EitherOfDiverse<EnsureRoot<AccountId>, O>;

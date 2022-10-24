@@ -901,7 +901,7 @@ impl pallet_pools::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type EpochId = u32;
+	type EpochId = PoolEpochId;
 	type Event = Event;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;

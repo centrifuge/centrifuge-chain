@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 //! Unit test cases for Loan pallet
-use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, TrancheId, CFG as USD};
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolEpochId, PoolId, TrancheId, CFG as USD};
 use cfg_traits::{InvestmentAccountant, InvestmentProperties};
 use cfg_types::{CurrencyId, PoolLocator, Rate, TrancheCurrency};
 use codec::MaxEncodedLen;
@@ -79,7 +79,7 @@ where
 			Balance = u128,
 			PoolId = PoolId,
 			TrancheId = [u8; 16],
-			EpochId = u32,
+			EpochId = PoolEpochId,
 		> + pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>
 		+ pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>

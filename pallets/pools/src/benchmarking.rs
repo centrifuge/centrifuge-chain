@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
+use cfg_primitives::PoolEpochId;
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, PoolNAV, TrancheCurrency as _};
 use cfg_types::{CurrencyId, CustomMetadata, TrancheCurrency};
 use codec::EncodeLike;
@@ -40,7 +41,7 @@ benchmarks! {
 			  TrancheId = [u8; 16],
 			  Balance = u128,
 			  CurrencyId = CurrencyId,
-			  EpochId = u32>
+			  EpochId = PoolEpochId>
 			+ pallet_investments::Config<InvestmentId = TrancheCurrency, Amount = u128>,
 		<T as pallet_investments::Config>::Tokens: Inspect<T::AccountId, AssetId = CurrencyId, Balance = u128>,
 		<<T as pallet_investments::Config>::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
