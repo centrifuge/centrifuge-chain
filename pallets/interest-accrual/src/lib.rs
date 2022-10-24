@@ -227,11 +227,13 @@ pub mod pallet {
 						rate
 					})
 			});
-			T::DbWeight::get().reads_writes(2, 1)
-				+ ((T::DbWeight::get().reads_writes(1, 1)
-					+ T::Weights::calculate_accumulated_rate(bits))
-				.checked_mul(count))
-				.expect("Overflow")
+
+			let db_weight = T::DbWeight::get().reads_writes(2, 1);
+
+			let db_weight_accumulated = T::DbWeight::get().reads_writes(1, 1)
+				+ T::Weights::calculate_accumulated_rate(bits);
+
+			db_weight + db_weight_db_weight_accumulated.saturating_mul(count)
 		}
 
 		fn on_runtime_upgrade() -> Weight {
