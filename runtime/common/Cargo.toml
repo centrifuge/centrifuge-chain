@@ -84,3 +84,5 @@ runtime-benchmarks = [
 on-chain-release-build = [
     "sp-api/disable-logging",
 ]
+try-runtime = ["frame-support/try-runtime"]
+
