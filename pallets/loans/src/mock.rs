@@ -16,8 +16,8 @@
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
 use cfg_primitives::{
-	Balance, CollectionId, ItemId, Moment, PoolId, TrancheId, TrancheWeight,
-	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
+	Balance, CollectionId, ItemId, Moment, PoolId, TrancheId,
+	TrancheWeight, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use cfg_traits::PoolUpdateGuard;
 use cfg_types::{
@@ -83,7 +83,7 @@ parameter_types! {
 impl frame_system::Config for MockRuntime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
-	type BaseCallFilter = frame_support::traits::Everything;
+	type BaseCallFilter = Everything;
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
 	type BlockNumber = u64;

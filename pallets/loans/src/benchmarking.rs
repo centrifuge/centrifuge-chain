@@ -20,7 +20,6 @@ use frame_support::{
 	traits::{tokens::fungibles::Inspect, Currency, Hooks, IsType},
 };
 use frame_system::RawOrigin;
-use orml_asset_registry::Config as OrmlAssetRegistryConfig;
 use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
 use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
@@ -49,7 +48,6 @@ pub trait Config:
 	+ ORMLConfig
 	+ TimestampConfig
 	+ InterestAccrualConfig
-	+ OrmlAssetRegistryConfig
 {
 }
 
@@ -138,11 +136,6 @@ fn create_and_init_pool<T: Config>(
 	<T as LoanConfig>::ClassId,
 )
 where
-	T: orml_asset_registry::Config<
-		AssetId = CurrencyId,
-		Balance = u128,
-		CustomMetadata = CustomMetadata,
-	>,
 	<T as pallet_balances::Config>::Balance: From<u128>,
 	<T as pallet_uniques::Config>::CollectionId: From<u64>,
 	<T as pallet_pools::Config>::Balance: From<u128>,
@@ -329,12 +322,7 @@ benchmarks! {
 		T: pallet_pools::Config<
 			CurrencyId = cfg_types::CurrencyId,
 			Balance = u128,
-		>
-		+ orml_asset_registry::Config<
-		AssetId = CurrencyId,
-		Balance = u128,
-		CustomMetadata = CustomMetadata,
-	>,
+		>,
 		<T as pallet_uniques::Config>::CollectionId: From<u64>,
 		<T as pallet_balances::Config>::Balance: From<u128>,
 		<T as LoanConfig>::Rate: From<Rate>,
