@@ -154,9 +154,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxActiveLoansPerPool: Get<u32>;
 
-		/// Max number of write-off groups per pool.
+		/// Max number of write-off states per pool.
 		#[pallet::constant]
-		type MaxWriteOffGroups: Get<u32>;
+		type MaxWriteOffStates: Get<u32>;
 
 		/// Source of the current block number
 		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
@@ -228,11 +228,11 @@ pub mod pallet {
 	/// Stores the pool associated with the its write off groups
 	#[pallet::storage]
 	#[pallet::getter(fn pool_writeoff_groups)]
-	pub(crate) type PoolWriteOffGroups<T: Config> = StorageMap<
+	pub(crate) type PoolWriteOffPolicy<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<WriteOffGroup<T::Rate>, T::MaxWriteOffGroups>,
+		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffStates>,
 		ValueQuery,
 	>;
 
@@ -278,18 +278,17 @@ pub mod pallet {
 			nav: T::Balance,
 			update_type: NAVUpdateType,
 		},
-		/// A write-off group was added to a pool.
-		WriteOffGroupAdded {
+		/// The write-off policy for a pool was updated.
+		WriteOffPolicyUpdated {
 			pool_id: PoolIdOf<T>,
-			write_off_group_index: u32,
+			write_off_policy: Vec<WriteOffState>
 		},
-		/// A loan was written off. [pool, loan, percentage, penalty_interest_rate_per_sec, write_off_group_index]
+		/// A loan was written off.
 		WrittenOff {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			percentage: T::Rate,
 			penalty_interest_rate_per_sec: T::Rate,
-			write_off_group_index: Option<u32>,
 		},
 	}
 
@@ -607,22 +606,18 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::update_nav(active_count)).into())
 		}
 
-		/// Appends a new write off group to the Pool
+		/// Update the write-off policy of a Pool
 		///
-		/// `group.penalty_interest_rate_per_year` is a yearly
+		/// `policy.state.penalty_interest_rate_per_year` is a yearly
 		/// rate, in the same format as used for pricing
 		/// loans.
-		///
-		/// Since written off loans keep written off group index,
-		/// we only allow adding new write off groups.
-		/// Overdue days doesn't need to be in the sorted order.
-		#[pallet::weight(<T as Config>::WeightInfo::add_write_off_group())]
-		pub fn add_write_off_group(
+		#[pallet::weight(<T as Config>::WeightInfo::update_write_off_policy())]
+		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			group: WriteOffGroupInput<T::Rate>,
+			policy: Vec<WriteOffStateInput<T::Rate>>,
 		) -> DispatchResult {
-			// ensure sender has the risk admin role in the pool
+			// ensure sender has the loan admin role in the pool
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 
 			// Convert percentage from a yearly rate to a per-second rate.

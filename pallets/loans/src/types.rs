@@ -56,7 +56,7 @@ pub struct NAVDetails<Balance> {
 /// The data structure for storing a specific write off group
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct WriteOffGroup<Rate> {
+pub struct WriteOffState<Rate> {
 	/// percentage of outstanding debt we are going to write off on a loan
 	pub(crate) percentage: Rate,
 
@@ -70,7 +70,7 @@ pub struct WriteOffGroup<Rate> {
 /// The data structure as input for creating a write-off group
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct WriteOffGroupInput<Rate> {
+pub struct WriteOffStateInput<Rate> {
 	/// percentage of outstanding debt we are going to write off on a loan
 	pub(crate) percentage: Rate,
 
@@ -86,15 +86,16 @@ pub struct WriteOffGroupInput<Rate> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffStatus<Rate> {
 	None,
-	WrittenOff {
-		/// write off group index in the vec of write off groups
-		write_off_index: u32,
-	},
-	// an admin can write off an asset to specific percentage and penalty rate
-	WrittenOffByAdmin {
-		/// percentage of outstanding debt we are going to write off on a loan
+	WrittenDownByPolicy {
+		/// percentage of outstanding debt we are going to write down on the loan
 		percentage: Rate,
-		/// additional interest that accrues on the written off loan as penalty
+		/// additional interest that accrues on the written down loan as penalty
+		penalty_interest_rate_per_sec: Rate,
+	},
+	WrittenDownByAdmin {
+		/// percentage of outstanding debt we are going to write down on the loan
+		percentage: Rate,
+		/// additional interest that accrues on the written down loan as penalty
 		penalty_interest_rate_per_sec: Rate,
 	},
 }
@@ -103,7 +104,7 @@ pub enum WriteOffStatus<Rate> {
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffAction<Rate> {
-	WriteOffToCurrentGroup,
+	WriteOffToCurrentState,
 	WriteOffAsAdmin {
 		percentage: Rate,
 		penalty_interest_rate_per_sec: Rate,
