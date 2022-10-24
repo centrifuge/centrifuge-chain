@@ -48,7 +48,7 @@ where
 	GroupId: Ord,
 {
 	ends_on: BlockNumber,
-	reward_to_distribute: Balance,
+	reward: Balance,
 	weights: BoundedBTreeMap<GroupId, Weight, MaxGroups>,
 }
 
@@ -65,7 +65,7 @@ where
 	fn get() -> Epoch<BlockNumber, Balance, GroupId, Weight, MaxGroups> {
 		Epoch {
 			ends_on: Provider::current_block_number(),
-			reward_to_distribute: Balance::default(),
+			reward: Balance::default(),
 			weights: BoundedBTreeMap::default(),
 		}
 	}
@@ -173,8 +173,13 @@ pub mod pallet {
 	>;
 
 	#[pallet::event]
-	//#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		NewEpoch {
+			ends_on: T::BlockNumber,
+			reward: T::Balance,
+		},
+	}
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -196,7 +201,7 @@ pub mod pallet {
 
 				transactional::with_storage_layer(|| -> DispatchResult {
 					T::Rewards::distribute_reward_with_weights(
-						epoch.reward_to_distribute,
+						epoch.reward,
 						epoch.weights.iter().map(|(k, v)| (k.clone(), v.clone())),
 					)?;
 					// func_weight += T::WeightInfo::distribute_reward_with_weights(groups);
@@ -212,13 +217,18 @@ pub mod pallet {
 						}
 
 						epoch.ends_on.ensure_add_assign(changes.duration)?;
-						epoch.reward_to_distribute = changes.reward;
+						epoch.reward = changes.reward;
 
 						Ok(())
 					})
 				})?;
 
 				func_weight += T::DbWeight::get().writes(1);
+
+				Self::deposit_event(Event::NewEpoch {
+					ends_on: epoch.ends_on,
+					reward: epoch.reward,
+				});
 
 				Ok(())
 			})

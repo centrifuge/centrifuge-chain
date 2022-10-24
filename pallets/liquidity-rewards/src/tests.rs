@@ -44,16 +44,16 @@ fn distributed_reward_change() {
 			REWARD
 		));
 		assert_eq!(NextEpochChanges::<Test>::get().reward, REWARD);
-		assert_eq!(ActiveEpoch::<Test>::get().reward_to_distribute, 0);
+		assert_eq!(ActiveEpoch::<Test>::get().reward, 0);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
 		assert_eq!(NextEpochChanges::<Test>::get().reward, REWARD);
-		assert_eq!(ActiveEpoch::<Test>::get().reward_to_distribute, REWARD);
+		assert_eq!(ActiveEpoch::<Test>::get().reward, REWARD);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 2
-		assert_eq!(ActiveEpoch::<Test>::get().reward_to_distribute, REWARD);
+		assert_eq!(ActiveEpoch::<Test>::get().reward, REWARD);
 	});
 }
 
