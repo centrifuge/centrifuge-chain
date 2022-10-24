@@ -1797,6 +1797,7 @@ pub mod test {
 	}
 
 	mod epoch_execution_tranches {
+
 		use super::*;
 
 		#[test]
@@ -1840,6 +1841,44 @@ pub mod test {
 				});
 
 			assert_eq!(check_vals, [3, 4])
+		}
+
+		#[test]
+		fn epoch_execution_residual_tranche_works() {
+			assert_eq!(
+				default_epoch_tranches()
+					.residual_tranche()
+					.unwrap()
+					.seniority,
+				0
+			)
+		}
+
+		#[test]
+		fn epoch_execution_residual_tranche_mut_works() {
+			let mut epoch_tranches = default_epoch_tranches();
+			let mut epoch_tranche = epoch_tranches.residual_tranche_mut().unwrap();
+			epoch_tranche.invest = 200;
+
+			assert_eq!(epoch_tranche.invest, 200)
+		}
+
+		#[test]
+		fn num_tranches_works() {
+			assert_eq!(default_epoch_tranches().num_tranches(), 3)
+		}
+
+		#[test]
+		fn into_tranches_works() {
+			let tranches = default_epoch_tranches().into_tranches();
+			let tranches_check = match tranches.as_slice() {
+				[EpochExecutionTranche { .. }, EpochExecutionTranche { .. }, EpochExecutionTranche { .. }] => {
+					true
+				}
+				_ => false,
+			};
+
+			assert_eq!(tranches_check, true)
 		}
 	}
 }
