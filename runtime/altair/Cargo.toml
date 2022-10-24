@@ -59,13 +59,14 @@ sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-feat
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 
 # frame dependencies
+frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.29" }
 frame-executive = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 frame-support = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 frame-system = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true , branch = "polkadot-v0.9.29" }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.29" }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 frame-try-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 pallet-authority-discovery = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-authorship = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-babe = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
@@ -74,6 +75,7 @@ pallet-collective = { git = "https://github.com/paritytech/substrate",  default-
 pallet-democracy = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
+pallet-identity = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-im-online = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-indices = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-membership = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
@@ -82,21 +84,19 @@ pallet-offences = { git = "https://github.com/paritytech/substrate",  default-fe
 pallet-preimage = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
+pallet-scheduler = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-session = { git = "https://github.com/paritytech/substrate",  default-features = false, features = ["historical"] , branch = "polkadot-v0.9.29" }
+pallet-session-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.29" }
+pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 pallet-staking = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
-pallet-utility = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
-pallet-session-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.29" }
-pallet-identity = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
-pallet-scheduler = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
-pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
-pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
+pallet-utility = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
+pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.29" }
 
 # orml pallets
 orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.29" }
@@ -107,22 +107,22 @@ orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-modu
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.29" }
 
 # our custom pallets
-runtime-common = { path = "../common", default-features = false }
-cfg-types = { path = "../../libs/types", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-types = { path = "../../libs/types", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
-pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
-pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
+pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
+pallet-loans = { path = "../../pallets/loans", default-features = false }
+pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
-pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-pools = { path = "../../pallets/pools", default-features = false }
-pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
+pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
+runtime-common = { path = "../common", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
@@ -226,7 +226,6 @@ runtime-benchmarks = [
     "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
-    "pallet-collective/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-democracy/runtime-benchmarks",
@@ -271,13 +270,10 @@ try-runtime = [
     "orml-xcm/try-runtime",
     "orml-xtokens/try-runtime",
     "pallet-anchors/try-runtime",
-    "pallet-anchors/try-runtime",
     "pallet-aura/try-runtime",
     "pallet-authorship/try-runtime",
     "pallet-balances/try-runtime",
     "pallet-collator-allowlist/try-runtime",
-    "pallet-collator-allowlist/try-runtime",
-    "pallet-collator-selection/try-runtime",
     "pallet-collator-selection/try-runtime",
     "pallet-collective/try-runtime",
     "pallet-crowdloan-claim/try-runtime",
@@ -286,21 +282,13 @@ try-runtime = [
     "pallet-elections-phragmen/try-runtime",
     "pallet-fees/try-runtime",
     "pallet-identity/try-runtime",
-    "pallet-identity/try-runtime",
-    "pallet-interest-accrual/try-runtime",
     "pallet-interest-accrual/try-runtime",
     "pallet-loans/try-runtime",
     "pallet-migration-manager/try-runtime",
-    "pallet-migration-manager/try-runtime",
-    "pallet-multisig/try-runtime",
     "pallet-multisig/try-runtime",
     "pallet-nft-sales/try-runtime",
-    "pallet-nft-sales/try-runtime",
-    "pallet-permissions/try-runtime",
     "pallet-permissions/try-runtime",
     "pallet-pools/try-runtime",
-    "pallet-pools/try-runtime",
-    "pallet-preimage/try-runtime",
     "pallet-preimage/try-runtime",
     "pallet-proxy/try-runtime",
     "pallet-randomness-collective-flip/try-runtime",
