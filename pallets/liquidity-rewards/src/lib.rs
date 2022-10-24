@@ -22,15 +22,22 @@ pub use cfg_traits::{
 	ops::ensure::EnsureAdd,
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
 };
-pub use frame_support::storage::transactional;
 use frame_support::{
 	pallet_prelude::*,
 	traits::tokens::{AssetId, Balance},
 };
+pub use frame_support::{
+	storage::{bounded_btree_map::BoundedBTreeMap, transactional},
+	transactional,
+};
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
-use sp_runtime::{traits::BlockNumberProvider, ArithmeticError, FixedPointOperand};
+use sp_runtime::{
+	traits::{BlockNumberProvider, Zero},
+	ArithmeticError, FixedPointOperand,
+};
+use sp_std::mem;
 
 /// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
@@ -68,6 +75,40 @@ where
 	}
 }
 
+/// Type that contains the stake properties of stake class
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct EpochChanges<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch>
+where
+	MaxChangesPerEpoch: Get<u32>,
+	GroupId: Ord,
+	CurrencyId: Ord,
+{
+	duration: BlockNumber,
+	reward: Balance,
+	weights: BoundedBTreeMap<GroupId, Weight, MaxChangesPerEpoch>,
+	currencies: BoundedBTreeMap<CurrencyId, GroupId, MaxChangesPerEpoch>,
+}
+
+impl<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch> Default
+	for EpochChanges<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch>
+where
+	BlockNumber: Zero,
+	Balance: Zero,
+	MaxChangesPerEpoch: Get<u32>,
+	GroupId: Ord,
+	CurrencyId: Ord,
+{
+	fn default() -> Self {
+		Self {
+			duration: BlockNumber::zero(),
+			reward: Balance::zero(),
+			weights: BoundedBTreeMap::new(),
+			currencies: BoundedBTreeMap::new(),
+		}
+	}
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -83,10 +124,10 @@ pub mod pallet {
 		type Balance: Balance + MaxEncodedLen + FixedPointOperand;
 
 		/// Type used to identify currencies.
-		type CurrencyId: AssetId + MaxEncodedLen + Clone;
+		type CurrencyId: AssetId + MaxEncodedLen + Clone + Ord;
 
 		/// Type used to identify groups.
-		type GroupId: Parameter + MaxEncodedLen;
+		type GroupId: Parameter + MaxEncodedLen + Ord;
 
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
@@ -97,10 +138,15 @@ pub mod pallet {
 			+ CurrencyGroupChange<GroupId = Self::GroupId, CurrencyId = Self::CurrencyId>
 			+ DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
-		/// Max number of changes of the same type enqueued to apply in the next epoch.
-		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::attach_currency()`].
+		/// Max groups used by this pallet.
 		#[pallet::constant]
-		type MaxChangesPerEpoch: Get<Option<u32>>;
+		type MaxGroups: Get<u32> + TypeInfo;
+
+		/// Max number of changes of the same type enqueued to apply in the next epoch.
+		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::attach_currency()`] with
+		/// the same id.
+		#[pallet::constant]
+		type MaxChangesPerEpoch: Get<u32> + TypeInfo;
 	}
 
 	#[pallet::pallet]
@@ -120,31 +166,17 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	pub(super) type NextDistributedReward<T: Config> = StorageValue<_, T::Balance, ValueQuery>;
-
-	#[pallet::storage]
-	pub(super) type NextEpochDuration<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
-
-	#[pallet::storage]
-	pub(super) type WeightChanges<T: Config> = StorageMap<
+	pub(super) type NextEpochChanges<T: Config> = StorageValue<
 		_,
-		Blake2_128Concat,
-		T::GroupId,
-		T::Weight,
-		OptionQuery,
-		GetDefault,
-		T::MaxChangesPerEpoch,
-	>;
-
-	#[pallet::storage]
-	pub(super) type CurrencyChanges<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::CurrencyId,
-		T::GroupId,
-		OptionQuery,
-		GetDefault,
-		T::MaxChangesPerEpoch,
+		EpochChanges<
+			T::BlockNumber,
+			T::Balance,
+			T::GroupId,
+			T::CurrencyId,
+			T::Weight,
+			T::MaxChangesPerEpoch,
+		>,
+		ValueQuery,
 	>;
 
 	#[pallet::event]
@@ -152,7 +184,9 @@ pub mod pallet {
 	pub enum Event<T: Config> {}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		MaxChangesPerEpochReached,
+	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
@@ -171,22 +205,23 @@ pub mod pallet {
 				)?;
 				// func_weight += T::WeightInfo::distribute_reward_with_weights(groups);
 
-				for (group_id, weight) in WeightChanges::<T>::drain() {
-					GroupWeights::<T>::insert(group_id, weight);
-					func_weight += T::DbWeight::get().reads_writes(1, 1);
-				}
+				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
+					for (group_id, weight) in mem::take(&mut changes.weights) {
+						GroupWeights::<T>::insert(group_id, weight);
+						func_weight += T::DbWeight::get().writes(1);
+					}
 
-				for (currency_id, group_id) in CurrencyChanges::<T>::drain() {
-					T::Rewards::attach_currency(currency_id, group_id)?;
-					func_weight += T::DbWeight::get().reads_writes(1, 1);
-					// func_weight += T::WeightInfo::attach_currency();
-				}
+					for (currency_id, group_id) in mem::take(&mut changes.currencies) {
+						T::Rewards::attach_currency(currency_id, group_id)?;
+						// func_weight += T::WeightInfo::attach_currency();
+					}
 
-				ActiveEpoch::<T>::put(epoch.next(
-					NextEpochDuration::<T>::get(),
-					NextDistributedReward::<T>::get(),
-				)?);
-				func_weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(1);
+					ActiveEpoch::<T>::put(epoch.next(changes.duration, changes.reward)?);
+					func_weight += T::DbWeight::get().writes(1);
+
+					Ok(())
+				})?;
+				func_weight += T::DbWeight::get().reads_writes(1, 1);
 
 				Ok(())
 			})
@@ -199,6 +234,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)] // TODO
+		#[transactional]
 		pub fn stake(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -209,6 +245,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)] // TODO
+		#[transactional]
 		pub fn unstake(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -219,6 +256,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)] // TODO
+		#[transactional]
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			T::Rewards::claim_reward(currency_id, &account_id).map(|_| ())
@@ -227,15 +265,13 @@ pub mod pallet {
 		#[pallet::weight(10_000)] // TODO
 		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			NextDistributedReward::<T>::set(balance);
-			Ok(())
+			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.reward = balance))
 		}
 
 		#[pallet::weight(10_000)] // TODO
 		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			NextEpochDuration::<T>::set(blocks);
-			Ok(())
+			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.duration = blocks))
 		}
 
 		#[pallet::weight(10_000)] // TODO
@@ -245,7 +281,12 @@ pub mod pallet {
 			weight: T::Weight,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			WeightChanges::<T>::insert(group_id, weight);
+			NextEpochChanges::<T>::try_mutate(|changes| {
+				changes
+					.weights
+					.try_insert(group_id, weight)
+					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
+			})?;
 			Ok(())
 		}
 
@@ -256,7 +297,12 @@ pub mod pallet {
 			group_id: T::GroupId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			CurrencyChanges::<T>::insert(currency_id, group_id);
+			NextEpochChanges::<T>::try_mutate(|changes| {
+				changes
+					.currencies
+					.try_insert(currency_id, group_id)
+					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
+			})?;
 			Ok(())
 		}
 	}

@@ -92,16 +92,28 @@ fn currency_changes() {
 			CURRENCY_ID_A,
 			GROUP_A
 		));
+		assert_eq!(
+			NextEpochChanges::<Test>::get()
+				.currencies
+				.get(&CURRENCY_ID_A),
+			Some(&GROUP_A)
+		);
+
 		let ctx1 = MockRewards::attach_currency_context();
 		ctx1.expect()
 			.once()
 			.withf(|currency_id, group_id| *currency_id == CURRENCY_ID_A && *group_id == GROUP_A)
 			.return_const(Ok(()));
-		assert_eq!(CurrencyChanges::<Test>::get(CURRENCY_ID_A), Some(GROUP_A));
+
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
-		assert_eq!(CurrencyChanges::<Test>::get(CURRENCY_ID_A), None);
+		assert_eq!(
+			NextEpochChanges::<Test>::get()
+				.currencies
+				.get(&CURRENCY_ID_A),
+			None,
+		);
 	});
 }
 
@@ -135,12 +147,17 @@ fn weight_changes() {
 			GROUP_B,
 			WEIGHT_2
 		));
-		assert_eq!(WeightChanges::<Test>::get(GROUP_A), Some(WEIGHT_1));
+		assert_eq!(
+			NextEpochChanges::<Test>::get().weights.get(&GROUP_A),
+			Some(&WEIGHT_1)
+		);
 		Liquidity::on_initialize(0);
 		// The weights were configured but no used in this epoch.
 		// We need one epoch more to apply those weights in the distribution.
 
 		// EPOCH 3
+		assert_eq!(NextEpochChanges::<Test>::get().weights.get(&GROUP_A), None);
+
 		let ctx2 = MockRewards::reward_group_context();
 		ctx2.expect()
 			.times(2)
@@ -154,7 +171,19 @@ fn weight_changes() {
 			})
 			.returning(|_, _| Ok(()));
 
-		assert_eq!(WeightChanges::<Test>::get(GROUP_A), None);
 		Liquidity::on_initialize(0);
 	});
 }
+
+/*
+#[test]
+fn max_weight_changes() {
+	new_test_ext().execute_with(|| {
+		for i in 0..MaxChangesPerEpoch::get().unwrap() + 100 {
+			assert_ok!(Liquidity::set_group_weight(Origin::signed(ADMIN), i, 100));
+		}
+
+		assert_ok!(Liquidity::set_group_weight(Origin::signed(ADMIN), 23, 100));
+	});
+}
+*/

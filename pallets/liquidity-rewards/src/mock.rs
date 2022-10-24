@@ -58,7 +58,12 @@ impl frame_system::Config for Test {
 }
 
 frame_support::parameter_types! {
-	pub const MaxChangesPerEpoch: Option<u32> = Some(3);
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 2;
+
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxChangesPerEpoch: u32 = 5;
+
 	pub const Admin: u64 = ADMIN;
 }
 
@@ -77,6 +82,7 @@ impl pallet_liquidity_rewards::Config for Test {
 	type Event = Event;
 	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
 	type Rewards = MockRewards;
 	type Weight = u64;
 }
