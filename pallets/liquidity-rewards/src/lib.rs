@@ -10,6 +10,23 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+//
+//! # Rewards Pallet
+//!
+//! The Rewards pallet provides functionality for distributing rewards to
+//! different accounts with different currencies.
+//! The distribution happens when an epoch (a constant time interval) finalizes.
+//! The user can stake an amount during one of more epochs to claim the reward.
+//!
+//! Rewards pallet can be configured with any implementation of [`cfg_traits::rewards`] traits
+//! which gives the reward behavior.
+//!
+//! The Rewards pallet provides functions for:
+//!
+//! - Stake/Unstake a currency amount.
+//! - Claim the reward given to a staked currency.
+//! - Admin functions to configure epochs currencies and reward groups.
+//!
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -240,6 +257,9 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Deposit a stake amount associated to a currency for the origin's account.
+		/// The account must have enough currency to make the deposit,
+		/// if not, an Err will be returned.
 		#[pallet::weight(10_000)] // TODO
 		#[transactional]
 		pub fn stake(
@@ -251,6 +271,9 @@ pub mod pallet {
 			T::Rewards::deposit_stake(currency_id, &account_id, amount)
 		}
 
+		/// Withdraw a stake amount associated to a currency for the origin's account.
+		/// The account must have enough currency staked to make the withdraw,
+		/// if not, an Err will be returned.
 		#[pallet::weight(10_000)] // TODO
 		#[transactional]
 		pub fn unstake(
@@ -262,6 +285,8 @@ pub mod pallet {
 			T::Rewards::withdraw_stake(currency_id, &account_id, amount)
 		}
 
+		/// Claims the reward the associated to a currency.
+		/// The reward will be transferred to the origin's account.
 		#[pallet::weight(10_000)] // TODO
 		#[transactional]
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
@@ -269,18 +294,24 @@ pub mod pallet {
 			T::Rewards::claim_reward(currency_id, &account_id).map(|_| ())
 		}
 
+		/// Admin method to set the reward amount used for the next epochs.
+		/// Current epoch is not affected by this call.
 		#[pallet::weight(10_000)] // TODO
 		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.reward = balance))
 		}
 
+		/// Admin method to set the duration used for the next epochs.
+		/// Current epoch is not affected by this call.
 		#[pallet::weight(10_000)] // TODO
 		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.duration = blocks))
 		}
 
+		/// Admin method to set the group weights used for the next epochs.
+		/// Current epoch is not affected by this call.
 		#[pallet::weight(10_000)] // TODO
 		pub fn set_group_weight(
 			origin: OriginFor<T>,
@@ -297,6 +328,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Admin method to set the currency groups used in the next epochs.
+		/// Current epoch is not affected by this call.
 		#[pallet::weight(10_000)] // TODO
 		pub fn set_currency_group(
 			origin: OriginFor<T>,
