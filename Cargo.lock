@@ -1190,7 +1190,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.29#e5ef835c2eb7d2e53167b8376660eb84f68fcc7d"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.29#27fc89690530b528064de9ee437f01dd3420795a"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -12231,7 +12231,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.5",
  "rand 0.8.5",
  "static_assertions",
@@ -12380,7 +12380,7 @@ checksum = "e7141e445af09c8919f1d5f8a20dae0b20c3b57a45dee0d5823c6ed5d237f15a"
 dependencies = [
  "bitflags",
  "chrono",
- "rustc_version 0.4.0",
+ "rustc_version 0.2.3",
 ]
 
 [[package]]
