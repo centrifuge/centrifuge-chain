@@ -35,6 +35,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod weights;
 pub use cfg_traits::{
 	ops::ensure::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
@@ -55,6 +56,7 @@ use sp_runtime::{
 	FixedPointOperand,
 };
 use sp_std::mem;
+use weights::WeightInfo;
 
 /// Type that contains the finish timestamp of an epoch
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
@@ -175,6 +177,9 @@ pub mod pallet {
 		/// the same id.
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo;
+
+		/// Information of runtime weights
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -223,15 +228,20 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let epoch = ActiveEpoch::<T>::get();
-			let func_weight = T::DbWeight::get().reads(1);
+			let mut func_weight = T::DbWeight::get().reads(1);
 
 			if epoch.ends_on > current_block {
 				return func_weight;
 			}
 
-			transactional::with_storage_layer(|| {
+			transactional::with_storage_layer(|| -> DispatchResult {
 				Self::distribute()?;
-				Self::apply_changes()
+				func_weight += T::WeightInfo::distribute();
+
+				Self::apply_changes()?;
+				func_weight += T::WeightInfo::apply_changes();
+
+				Ok(())
 			})
 			.ok();
 
@@ -240,7 +250,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn distribute() -> DispatchResult {
+		fn distribute() -> Result<usize, DispatchError> {
 			let epoch_data = ActiveEpochData::<T>::get();
 
 			T::Rewards::distribute_reward_with_weights(
@@ -250,14 +260,13 @@ pub mod pallet {
 					.iter()
 					.map(|(k, v)| (k.clone(), v.clone())),
 			)
-			.map(|_| ())
+			.map(|results| results.len())
 		}
 
 		fn apply_changes() -> DispatchResult {
 			NextEpochChanges::<T>::try_mutate(|changes| {
 				for (currency_id, group_id) in mem::take(&mut changes.currencies) {
 					T::Rewards::attach_currency(currency_id, group_id)?;
-					// func_weight += T::WeightInfo::attach_currency();
 				}
 
 				ActiveEpochData::<T>::try_mutate(|epoch_data| {
@@ -280,6 +289,20 @@ pub mod pallet {
 				})
 			})
 		}
+
+		/*
+		fn attach_currency(currency_id: T::CurrencyId, group_id: T::GroupId) -> DispatchResult {
+			T::Rewards::attach_currency(currency_id, group_id)
+		}
+
+		fn insert_group_weight(
+			weights: &mut BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
+			group_id: T::GroupId,
+			weight: T::Weight,
+		) {
+			weights.try_insert(group_id, weight).ok();
+		}
+		*/
 	}
 
 	#[pallet::call]
@@ -287,7 +310,7 @@ pub mod pallet {
 		/// Deposit a stake amount associated to a currency for the origin's account.
 		/// The account must have enough currency to make the deposit,
 		/// if not, an Err will be returned.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::WeightInfo::stake())]
 		#[transactional]
 		pub fn stake(
 			origin: OriginFor<T>,
@@ -301,7 +324,7 @@ pub mod pallet {
 		/// Withdraw a stake amount associated to a currency for the origin's account.
 		/// The account must have enough currency staked to make the withdraw,
 		/// if not, an Err will be returned.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::WeightInfo::unstake())]
 		#[transactional]
 		pub fn unstake(
 			origin: OriginFor<T>,
@@ -314,7 +337,7 @@ pub mod pallet {
 
 		/// Claims the reward the associated to a currency.
 		/// The reward will be transferred to the origin's account.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::WeightInfo::claim_reward())]
 		#[transactional]
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
@@ -323,7 +346,7 @@ pub mod pallet {
 
 		/// Admin method to set the reward amount used for the next epochs.
 		/// Current epoch is not affected by this call.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
 		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.reward = balance))
@@ -331,7 +354,7 @@ pub mod pallet {
 
 		/// Admin method to set the duration used for the next epochs.
 		/// Current epoch is not affected by this call.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::WeightInfo::set_epoch_duration())]
 		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.duration = blocks))
@@ -339,7 +362,7 @@ pub mod pallet {
 
 		/// Admin method to set the group weights used for the next epochs.
 		/// Current epoch is not affected by this call.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::WeightInfo::set_group_weight())]
 		pub fn set_group_weight(
 			origin: OriginFor<T>,
 			group_id: T::GroupId,
@@ -357,7 +380,7 @@ pub mod pallet {
 
 		/// Admin method to set the currency groups used in the next epochs.
 		/// Current epoch is not affected by this call.
-		#[pallet::weight(10_000)] // TODO
+		#[pallet::weight(T::WeightInfo::set_currency_group())]
 		pub fn set_currency_group(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
