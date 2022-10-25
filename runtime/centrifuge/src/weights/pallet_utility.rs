@@ -33,25 +33,25 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn batch(c: u32) -> Weight {
-		(67_513_000 as Weight) // Standard Error: 21_000
-			.saturating_add((9_255_000 as Weight).saturating_mul(c as Weight))
+		Weight::from_ref_time(67_513_000) // Standard Error: 21_000
+			.saturating_add(Weight::from_ref_time(9_255_000).saturating_mul(c as u64))
 	}
 
 	fn as_derivative() -> Weight {
-		(12_924_000 as Weight)
+		Weight::from_ref_time(12_924_000)
 	}
 
 	fn batch_all(c: u32) -> Weight {
-		(64_070_000 as Weight) // Standard Error: 18_000
-			.saturating_add((9_663_000 as Weight).saturating_mul(c as Weight))
+		Weight::from_ref_time(64_070_000) // Standard Error: 18_000
+			.saturating_add(Weight::from_ref_time(9_663_000).saturating_mul(c as u64))
 	}
 
 	fn dispatch_as() -> Weight {
-		(29_522_000 as Weight)
+		Weight::from_ref_time(29_522_000)
 	}
 
 	fn force_batch(c: u32) -> Weight {
-		(69_875_000 as Weight) // Standard Error: 13_000
-			.saturating_add((9_252_000 as Weight).saturating_mul(c as Weight))
+		Weight::from_ref_time(69_875_000) // Standard Error: 13_000
+			.saturating_add(Weight::from_ref_time(9_252_000).saturating_mul(c as u64))
 	}
 }

@@ -204,7 +204,7 @@ pub mod constants {
 	pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
-	pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND / 2;
+	pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND.saturating_div(2);
 
 	pub const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
 	pub const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001

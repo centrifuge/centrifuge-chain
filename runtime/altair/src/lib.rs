@@ -226,8 +226,8 @@ impl Contains<Call> for BaseCallFilter {
 }
 
 parameter_types! {
-	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
-	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
@@ -533,6 +533,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type InitializeMembers = Council;
 	type KickedMember = Treasury;
 	type LoserCandidate = Treasury;
+	type MaxCandidates = MaxCandidates;
+	type MaxVoters = MaxVoters;
 	type PalletId = ElectionsPhragmenModuleId;
 	/// How long each seat is kept. This defines the next block number at which an election
 	/// round will happen. If set to zero, no elections are ever triggered and the module will
@@ -822,6 +824,7 @@ parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
+	pub const MaxVoters: u32 = 10 * 1000;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
 	pub const MaxInvulnerables: u32 = 100;
 }
@@ -1649,7 +1652,7 @@ impl_runtime_apis! {
 
 		fn dispatch_benchmark(
 				config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
 
@@ -1720,8 +1723,8 @@ impl_runtime_apis! {
 			let weight = Executive::try_runtime_upgrade().unwrap();
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
-		fn execute_block_no_check(block: Block) -> Weight {
-			Executive::execute_block_no_check(block)
+		fn execute_block(block: Block, state_root_check: bool, select: frame_try_runtime::TryStateSelect) -> Weight {
+			Executive::try_execute_block(block, state_root_check, select).expect("try_execute_block failed")
 		}
 	}
 }

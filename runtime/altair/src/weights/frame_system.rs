@@ -33,36 +33,36 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn remark(b: u32) -> Weight {
-		(0 as Weight) // Standard Error: 0
-			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
+		Weight::from_ref_time(0) // Standard Error: 0
+			.saturating_add(Weight::from_ref_time(1_000).saturating_mul(b as u64))
 	}
 
 	fn remark_with_event(b: u32) -> Weight {
-		(0 as Weight) // Standard Error: 0
-			.saturating_add((3_000 as Weight).saturating_mul(b as Weight))
+		Weight::from_ref_time(0) // Standard Error: 0
+			.saturating_add(Weight::from_ref_time(3_000).saturating_mul(b as u64))
 	}
 
 	fn set_heap_pages() -> Weight {
-		(23_006_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(23_006_000)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 
 	fn set_storage(i: u32) -> Weight {
-		(5_831_000 as Weight) // Standard Error: 3_000
-			.saturating_add((1_269_000 as Weight).saturating_mul(i as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(i as Weight)))
+		Weight::from_ref_time(5_831_000) // Standard Error: 3_000
+			.saturating_add(Weight::from_ref_time(1_269_000).saturating_mul(i as u64))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(i as u64)))
 	}
 
 	fn kill_storage(i: u32) -> Weight {
-		(802_000 as Weight) // Standard Error: 3_000
-			.saturating_add((1_016_000 as Weight).saturating_mul(i as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(i as Weight)))
+		Weight::from_ref_time(802_000) // Standard Error: 3_000
+			.saturating_add(Weight::from_ref_time(1_016_000).saturating_mul(i as u64))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(i as u64)))
 	}
 
 	fn kill_prefix(p: u32) -> Weight {
-		(0 as Weight) // Standard Error: 4_000
-			.saturating_add((2_101_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(p as Weight)))
+		Weight::from_ref_time(0) // Standard Error: 4_000
+			.saturating_add(Weight::from_ref_time(2_101_000).saturating_mul(p as u64))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(p as u64)))
 	}
 }

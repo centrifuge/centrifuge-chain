@@ -41,77 +41,77 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn add_as_admin() -> Weight {
-		(85_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(85_000_000))
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 
 	fn add_as_editor() -> Weight {
-		(106_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(106_000_000))
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 
 	fn remove_as_admin() -> Weight {
-		(90_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(90_000_000))
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 
 	fn remove_as_editor() -> Weight {
-		(109_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(109_000_000))
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 
 	fn purge() -> Weight {
-		(86_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(86_000_000))
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 
 	fn admin_purge() -> Weight {
-		(86_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(86_000_000))
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn add_as_admin() -> Weight {
-		(85_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(85_000_000))
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 
 	fn add_as_editor() -> Weight {
-		(106_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(106_000_000))
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 
 	fn remove_as_admin() -> Weight {
-		(90_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(90_000_000))
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 
 	fn remove_as_editor() -> Weight {
-		(109_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(109_000_000))
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 
 	fn purge() -> Weight {
-		(86_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(86_000_000))
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 
 	fn admin_purge() -> Weight {
-		(86_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(86_000_000))
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }

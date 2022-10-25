@@ -39,45 +39,45 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn add_keys(n: u32) -> Weight {
-		(28_992_000 as Weight) // Standard Error: 129_000
-			.saturating_add((33_508_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+		(Weight::from_ref_time(28_992_000)) // Standard Error: 129_000
+			.saturating_add((Weight::from_ref_time(33_508_000)).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n as u64)))
 	}
 
 	fn revoke_keys(n: u32) -> Weight {
-		(13_129_000 as Weight) // Standard Error: 118_000
-			.saturating_add((19_026_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+		(Weight::from_ref_time(13_129_000)) // Standard Error: 118_000
+			.saturating_add((Weight::from_ref_time(19_026_000)).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n as u64)))
 	}
 
 	fn set_deposit() -> Weight {
-		(22_753_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(22_753_000)).saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn add_keys(n: u32) -> Weight {
-		(28_992_000 as Weight) // Standard Error: 129_000
-			.saturating_add((33_508_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+		(Weight::from_ref_time(28_992_000)) // Standard Error: 129_000
+			.saturating_add((Weight::from_ref_time(33_508_000)).saturating_mul(n as u64))
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n as u64)))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n as u64)))
 	}
 
 	fn revoke_keys(n: u32) -> Weight {
-		(13_129_000 as Weight) // Standard Error: 118_000
-			.saturating_add((19_026_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+		(Weight::from_ref_time(13_129_000)) // Standard Error: 118_000
+			.saturating_add((Weight::from_ref_time(19_026_000)).saturating_mul(n as u64))
+			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n as u64)))
+			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n as u64)))
 	}
 
 	fn set_deposit() -> Weight {
-		(22_753_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(Weight::from_ref_time(22_753_000)).saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }
