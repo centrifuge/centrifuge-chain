@@ -212,6 +212,10 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	#[pallet::storage]
+	pub(super) type AllowedCurrencies<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::CurrencyId, ()>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -223,6 +227,11 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// The given currency is not allowed.
+		/// Only currencies that was previously configured by [`Pallet::set_currency_group()`] are
+		/// allowed.
+		CurrencyNotAllowed,
+
 		/// Limit of max calls with same id to [`Pallet::set_group_weight()`] or
 		/// [`Pallet::set_currency_group()`] reached.
 		MaxChangesPerEpochReached,
@@ -246,10 +255,7 @@ pub mod pallet {
 					ActiveEpochData::<T>::try_mutate(|epoch_data| {
 						groups = T::Rewards::distribute_reward_with_weights(
 							epoch_data.reward,
-							epoch_data
-								.weights
-								.iter()
-								.map(|(k, v)| (k.clone(), v.clone())),
+							epoch_data.weights.iter().map(|(g, w)| (g.clone(), *w)),
 						)
 						.map(|results| results.len() as u32)?;
 
@@ -297,6 +303,9 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+			AllowedCurrencies::<T>::try_get(currency_id)
+				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
+
 			T::Rewards::deposit_stake(currency_id, &account_id, amount)
 		}
 
@@ -311,6 +320,10 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+
+			AllowedCurrencies::<T>::try_get(currency_id)
+				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
+
 			T::Rewards::withdraw_stake(currency_id, &account_id, amount)
 		}
 
@@ -320,6 +333,10 @@ pub mod pallet {
 		#[transactional]
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+
+			AllowedCurrencies::<T>::try_get(currency_id)
+				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
+
 			T::Rewards::claim_reward(currency_id, &account_id).map(|_| ())
 		}
 
@@ -328,7 +345,10 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
 		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.reward = balance))
+
+			NextEpochChanges::<T>::mutate(|changes| changes.reward = balance);
+
+			Ok(())
 		}
 
 		/// Admin method to set the duration used for the next epochs.
@@ -336,7 +356,10 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_epoch_duration())]
 		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			NextEpochChanges::<T>::try_mutate(|changes| Ok(changes.duration = blocks))
+
+			NextEpochChanges::<T>::mutate(|changes| changes.duration = blocks);
+
+			Ok(())
 		}
 
 		/// Admin method to set the group weights used for the next epochs.
@@ -348,17 +371,21 @@ pub mod pallet {
 			weight: T::Weight,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
+
 			NextEpochChanges::<T>::try_mutate(|changes| {
 				changes
 					.weights
 					.try_insert(group_id, weight)
 					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
 			})?;
+
 			Ok(())
 		}
 
-		/// Admin method to set the currency groups used in the next epochs.
+		/// Admin method to set the group used for a currency in the next epochs.
 		/// Current epoch is not affected by this call.
+		///
+		/// This method will do the currency available for using it in stake/unstake/claim calls.
 		#[pallet::weight(T::WeightInfo::set_currency_group())]
 		pub fn set_currency_group(
 			origin: OriginFor<T>,
@@ -366,12 +393,16 @@ pub mod pallet {
 			group_id: T::GroupId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
+
 			NextEpochChanges::<T>::try_mutate(|changes| {
 				changes
 					.currencies
 					.try_insert(currency_id, group_id)
 					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
 			})?;
+
+			AllowedCurrencies::<T>::insert(currency_id, ());
+
 			Ok(())
 		}
 	}

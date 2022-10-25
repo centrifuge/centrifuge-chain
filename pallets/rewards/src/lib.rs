@@ -253,7 +253,7 @@ pub mod pallet {
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
-						T::Currency::hold(currency_id, &account_id, amount)?;
+						T::Currency::hold(currency_id, account_id, amount)?;
 
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						staked.add_amount(amount, group.reward_per_token())?;
@@ -284,7 +284,7 @@ pub mod pallet {
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
-						T::Currency::release(currency_id, &account_id, amount, false)?;
+						T::Currency::release(currency_id, account_id, amount, false)?;
 
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						staked.sub_amount(amount, group.reward_per_token())?;
@@ -336,7 +336,7 @@ pub mod pallet {
 				T::Currency::transfer(
 					T::RewardCurrency::get(),
 					&T::PalletId::get().into_account_truncating(),
-					&account_id,
+					account_id,
 					reward,
 					true,
 				)?;

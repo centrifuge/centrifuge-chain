@@ -43,10 +43,11 @@ pub trait WeightInfo {
 /// Weights for pallet_liquidity_rewards using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn on_initialize(x: u32, _y: u32, z: u32) -> Weight {
-		(31_464_000 as Weight) // Standard Error: 14_000
-			.saturating_add((1_733_000 as Weight).saturating_mul(x as Weight)) // Standard Error: 4_000
-			.saturating_add((9_745_000 as Weight).saturating_mul(z as Weight))
+	fn on_initialize(x: u32, y: u32, z: u32) -> Weight {
+		(32_962_000 as Weight) // Standard Error: 35_000
+			.saturating_add((1_659_000 as Weight).saturating_mul(x as Weight)) // Standard Error: 11_000
+			.saturating_add((6_000 as Weight).saturating_mul(y as Weight)) // Standard Error: 11_000
+			.saturating_add((9_784_000 as Weight).saturating_mul(z as Weight))
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(x as Weight)))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(z as Weight)))
@@ -67,7 +68,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn claim_reward() -> Weight {
-		(23_000_000 as Weight)
+		(22_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -85,7 +86,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn set_group_weight() -> Weight {
-		(5_000_000 as Weight)
+		(6_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -99,10 +100,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn on_initialize(x: u32, _y: u32, z: u32) -> Weight {
-		(31_464_000 as Weight) // Standard Error: 14_000
-			.saturating_add((1_733_000 as Weight).saturating_mul(x as Weight)) // Standard Error: 4_000
-			.saturating_add((9_745_000 as Weight).saturating_mul(z as Weight))
+	fn on_initialize(x: u32, y: u32, z: u32) -> Weight {
+		(32_962_000 as Weight) // Standard Error: 35_000
+			.saturating_add((1_659_000 as Weight).saturating_mul(x as Weight)) // Standard Error: 11_000
+			.saturating_add((6_000 as Weight).saturating_mul(y as Weight)) // Standard Error: 11_000
+			.saturating_add((9_784_000 as Weight).saturating_mul(z as Weight))
 			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
 			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(x as Weight)))
 			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(z as Weight)))
@@ -123,7 +125,7 @@ impl WeightInfo for () {
 	}
 
 	fn claim_reward() -> Weight {
-		(23_000_000 as Weight)
+		(22_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
@@ -141,7 +143,7 @@ impl WeightInfo for () {
 	}
 
 	fn set_group_weight() -> Weight {
-		(5_000_000 as Weight)
+		(6_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
