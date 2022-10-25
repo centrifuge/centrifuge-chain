@@ -142,7 +142,7 @@ benchmarks! {
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
 		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), POOL)?;
-		pallet_investments::Pallet::<T>::collect(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator))?;
+		pallet_investments::Pallet::<T>::collect_investments(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator))?;
 
 		// Submit redemption order so the update isn't immediately executed
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;

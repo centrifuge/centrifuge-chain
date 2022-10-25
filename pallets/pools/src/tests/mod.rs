@@ -505,11 +505,11 @@ fn epoch() {
 		.unwrap();
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_ok!(Investments::collect(
+		assert_ok!(Investments::collect_investments(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));
-		assert_ok!(Investments::collect(
+		assert_ok!(Investments::collect_investments(
 			Origin::signed(1),
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 		));
@@ -715,7 +715,7 @@ fn submission_period() {
 		.unwrap();
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_ok!(Investments::collect(
+		assert_ok!(Investments::collect_investments(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));
@@ -968,7 +968,7 @@ fn pool_updates_should_be_constrained() {
 		));
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_ok!(Investments::collect(
+		assert_ok!(Investments::collect_investments(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));
@@ -1924,7 +1924,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			88_888_888_888_888_888_799
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_ok!(Investments::collect(
+		assert_ok!(Investments::collect_redemptions(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));

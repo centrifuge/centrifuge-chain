@@ -552,7 +552,7 @@ pub fn invest_close_and_collect(
 	));
 
 	for (account, tranche_id, _) in investments {
-		assert_ok!(Investments::collect(
+		assert_ok!(Investments::collect_investments(
 			Origin::signed(account),
 			TrancheCurrency::generate(pool_id, tranche_id),
 		));
