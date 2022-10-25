@@ -101,8 +101,8 @@ pub fn init_loans_for_pool(
 	let loan_class = manager.loan_class_id(pool_id);
 	let collateral_class = manager.collateral_class_id(pool_id);
 	let mut calls = Vec::new();
-	calls.push(create_nft_call(owner.clone(), loan_class));
-	calls.push(create_nft_call(owner, collateral_class));
+	calls.push(create_nft_call(owner.clone()));
+	calls.push(create_nft_call(owner));
 	calls.push(initialise_pool_call(pool_id, loan_class));
 	calls
 }
@@ -224,10 +224,9 @@ pub fn close_loan_call(pool_id: PoolId, loan_id: LoanId) -> Call {
 	Call::Loans(LoansCall::close { pool_id, loan_id })
 }
 
-pub fn create_nft_call(admin: AccountId, collection: CollectionId) -> Call {
+pub fn create_nft_call(admin: AccountId) -> Call {
 	Call::Uniques(UniquesCall::create {
 		admin: Address::Id(admin),
-		collection,
 	})
 }
 

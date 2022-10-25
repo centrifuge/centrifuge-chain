@@ -104,7 +104,13 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// The currency-id of this pallet
-		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen;
 
 		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
 		type PreExtrTransfer: PreConditions<

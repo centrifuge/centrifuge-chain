@@ -40,7 +40,7 @@ use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
-use sp_runtime::{generic::BlockId, DigestItem, Storage};
+use sp_runtime::{generic::BlockId, traits::Extrinsic, DigestItem, Storage};
 use tokio::runtime::Handle;
 
 use crate::{
@@ -354,10 +354,16 @@ pub struct TestEnv {
 	pub events: Arc<Mutex<EventsStorage>>,
 }
 
+pub type Block = runtime_common::Block;
+pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
+
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
 //       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
-	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()> {
+	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
+	where
+		sp_runtime::generic::Block<Header, UncheckedExtrinsic>: sp_runtime::traits::Block,
+	{
 		match chain {
 			Chain::Relay => {
 				let latest = self

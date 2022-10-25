@@ -734,7 +734,7 @@ pub mod pallet {
 	}
 	impl<T: Config> Pallet<T> {
 		pub fn reference_active_rates() -> Weight {
-			let mut weight = 0;
+			let mut weight = Weight::from_ref_time(0);
 			for (pool, active_loans) in ActiveLoans::<T>::iter() {
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool);
 				weight += T::DbWeight::get().reads(2);

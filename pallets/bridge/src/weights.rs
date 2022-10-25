@@ -22,30 +22,30 @@ use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
 	fn receive_nonfungible() -> Weight {
-		195_000_000 as Weight
+		Weight::from_ref_time(195_000_000)
 	}
 
 	fn remark() -> Weight {
-		195_000_000 as Weight
+		Weight::from_ref_time(195_000_000)
 	}
 
 	fn transfer() -> Weight {
-		195_000_000 as Weight
+		Weight::from_ref_time(195_000_000)
 	}
 
 	fn transfer_asset() -> Weight {
-		195_000_000 as Weight
+		Weight::from_ref_time(195_000_000)
 	}
 
 	fn transfer_native() -> Weight {
-		195_000_000 as Weight
+		Weight::from_ref_time(195_000_000)
 	}
 
 	fn set_token_transfer_fee() -> Weight {
-		195_000_000 as Weight
+		Weight::from_ref_time(195_000_000)
 	}
 
 	fn set_nft_transfer_fee() -> Weight {
-		195_000_000 as Weight
+		Weight::from_ref_time(195_000_000)
 	}
 }

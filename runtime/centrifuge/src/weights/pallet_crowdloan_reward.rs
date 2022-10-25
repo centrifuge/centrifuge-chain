@@ -33,18 +33,18 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialize() -> Weight {
-		(30_990_000 as Weight).saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(30_990_000).saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn set_vesting_start() -> Weight {
-		(27_518_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(27_518_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_vesting_period() -> Weight {
-		(27_468_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(27_468_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_direct_payout_ratio() -> Weight {
-		(27_675_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(27_675_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }

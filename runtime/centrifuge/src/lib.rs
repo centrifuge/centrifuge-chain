@@ -621,6 +621,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type InitializeMembers = Council;
 	type KickedMember = Treasury;
 	type LoserCandidate = Treasury;
+	type MaxCandidates = MaxCandidates;
+	type MaxVoters = MaxVoters;
 	type PalletId = ElectionsPhragmenModuleId;
 	/// How long each seat is kept. This defines the next block number at which an election
 	/// round will happen. If set to zero, no elections are ever triggered and the module will
@@ -923,6 +925,7 @@ parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
+	pub const MaxVoters: u32 = 10 * 1000;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
 	pub const MaxInvulnerables: u32 = 100;
 }
