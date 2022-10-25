@@ -1900,13 +1900,15 @@ pub mod test {
 		}
 
 		#[test]
-		fn num_tranches_works() {
+		fn epoch_execution_num_tranches_works() {
 			assert_eq!(default_epoch_tranches().num_tranches(), 3)
 		}
 
 		#[test]
-		fn into_tranches_works() {
+		fn epoch_execution_into_tranches_works() {
 			let tranches = default_epoch_tranches().into_tranches();
+
+			// it would be good to move this to a assert_match! once that's in stable
 			let tranches_check = match tranches.as_slice() {
 				[EpochExecutionTranche { .. }, EpochExecutionTranche { .. }, EpochExecutionTranche { .. }] => {
 					true
@@ -1914,7 +1916,50 @@ pub mod test {
 				_ => false,
 			};
 
-			assert_eq!(tranches_check, true)
+			assert!(tranches_check)
+		}
+
+		#[test]
+		fn epoch_execution_combine_non_residual_top_works() {
+			let new_combined_ee_tranches =
+				default_epoch_tranches().combine_non_residual_top(|t| Ok(t.seniority));
+
+			// it would be good to move this to a assert_match! once that's in stable
+			assert_eq!(new_combined_ee_tranches.unwrap()[..], [2, 1, 0])
+		}
+
+		#[test]
+		fn epoch_execution_combile_mut_non_residual_top_works() {
+			let mut tranches = default_epoch_tranches();
+			let mut order: Vec<u32> = Vec::new();
+			let tranche_mut_res = tranches.combine_mut_non_residual_top(|t| {
+				let old_invest = t.invest;
+				let new_invest = 100 * t.seniority as u128;
+				// check mutation
+				t.invest = new_invest;
+				// to check order processed
+				order.push(t.seniority);
+				// verify collection
+				Ok((t.seniority, old_invest, t.invest))
+			});
+
+			let tranch_invest_vals = tranches
+				.into_tranches()
+				.iter()
+				.map(|t| t.invest)
+				.collect::<Vec<_>>();
+
+			// check for mutated vals in exsiting tranches
+			assert_eq!(tranch_invest_vals, [0, 100, 200]);
+
+			// check order processed
+			assert_eq!(order, [2, 1, 0]);
+
+			// check collection
+			assert_eq!(
+				tranche_mut_res.unwrap(),
+				[(2, 0, 200), (1, 0, 100), (0, 0, 0)]
+			)
 		}
 	}
 }
