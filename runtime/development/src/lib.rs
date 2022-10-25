@@ -448,7 +448,8 @@ impl InstanceFilter<Call> for ProxyType {
 				c,
 				Call::Investments(pallet_investments::Call::update_invest_order{..}) |
 				Call::Investments(pallet_investments::Call::update_redeem_order{..}) |
-				Call::Investments(pallet_investments::Call::collect{..}) |
+				Call::Investments(pallet_investments::Call::collect_investments{..}) |
+				Call::Investments(pallet_investments::Call::collect_redemptions{..}) |
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
