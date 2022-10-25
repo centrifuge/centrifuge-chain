@@ -532,10 +532,10 @@ benchmarks! {
 		for i in 0..m {
 			let percentage: T::Rate = Rate::saturating_from_rational(i+1, m).into();
 			let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*i + 1) * 10000, 2*m)
-							   .trunc()
-							   .checked_div(&Rate::saturating_from_integer(10000))
-							   .expect("Rate is an integer after `trunc`. div by 10000 is safe")
-							   .into();
+				.trunc()
+				.checked_div(&Rate::saturating_from_integer(10000))
+				.expect("Rate is an integer after `trunc`. div by 10000 is safe")
+				.into();
 			let overdue_days = percentage.checked_mul_int(120).unwrap();
 			let write_off_group = WriteOffGroupInput {
 				percentage, penalty_interest_rate_per_year, overdue_days
@@ -554,12 +554,13 @@ benchmarks! {
 	verify {
 		let index = (m-1).into();
 		let percentage = Rate::saturating_from_rational(100, 100).into();
-			   let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*m - 1) * 10000, 2*m)
-					   .trunc()
-					   .checked_div(&Rate::saturating_from_integer(10000))
-					   .expect("Rate is an integer after `trunc`. div by 10000 is safe")
-					   .into();
-			   let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-sec");		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
+		let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*m - 1) * 10000, 2*m)
+			.trunc()
+			.checked_div(&Rate::saturating_from_integer(10000))
+			.expect("Rate is an integer after `trunc`. div by 10000 is safe")
+			.into();
+		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-sec");
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOff{write_off_index: index})
 	}

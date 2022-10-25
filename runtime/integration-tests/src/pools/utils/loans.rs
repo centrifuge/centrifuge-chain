@@ -102,7 +102,7 @@ pub fn init_loans_for_pool(
 	let collateral_class = manager.collateral_class_id(pool_id);
 	let mut calls = Vec::new();
 	calls.push(create_nft_call(owner.clone(), collateral_class));
-	calls.push(create_nft_call(owner, collateral_class));
+	calls.push(create_nft_call(owner, loan_class));
 	calls.push(initialise_pool_call(pool_id, loan_class));
 	calls
 }
