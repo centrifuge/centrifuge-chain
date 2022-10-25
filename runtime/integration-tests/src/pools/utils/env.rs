@@ -716,12 +716,6 @@ fn test_env(
 			std::time::Duration::from_secs(6),
 			Some(std::time::Duration::from_millis(START_DATE)),
 		);
-		assert!(FudgeInherentTimestamp::force_new(
-			instance_id,
-			std::time::Duration::from_secs(6),
-			Some(std::time::Duration::from_millis(START_DATE)),
-		)
-		.is_ok());
 
 		let cidp = Box::new(move |parent: H256, ()| {
 			let client = clone_client.clone();
@@ -799,12 +793,6 @@ fn test_env(
 			std::time::Duration::from_secs(12),
 			Some(std::time::Duration::from_millis(START_DATE)),
 		);
-		assert!(FudgeInherentTimestamp::force_new(
-			instance_id,
-			std::time::Duration::from_secs(12),
-			Some(std::time::Duration::from_millis(START_DATE)),
-		)
-		.is_ok());
 
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
