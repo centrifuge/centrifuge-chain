@@ -1961,5 +1961,19 @@ pub mod test {
 				[(2, 0, 200), (1, 0, 100), (0, 0, 0)]
 			)
 		}
+
+		#[test]
+		fn epoch_execution_combine_with_non_residual_top_works() {
+			let tranches = default_epoch_tranches();
+			let combine_vals = [220, 210, 250];
+
+			let res = tranches
+				.combine_with_non_residual_top(combine_vals, |tranche, other_val| {
+					Ok((tranche.seniority, other_val))
+				})
+				.unwrap();
+
+			assert_eq!(res, [(2, 220), (1, 210), (0, 250)])
+		}
 	}
 }
