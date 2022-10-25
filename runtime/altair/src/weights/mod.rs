@@ -27,7 +27,6 @@ pub mod pallet_permissions;
 pub mod pallet_pools;
 pub mod pallet_preimage;
 pub mod pallet_proxy;
-pub mod pallet_restricted_tokens;
 pub mod pallet_scheduler;
 pub mod pallet_timestamp;
 pub mod pallet_treasury;

@@ -930,7 +930,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesMutateHold = cfg_traits::Always;
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
-	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
+	type WeightInfo = pallet_restricted_tokens::weights::SubstrateWeight<Self>;
 }
 
 parameter_type_with_key! {
@@ -1518,7 +1518,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
-			// list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
