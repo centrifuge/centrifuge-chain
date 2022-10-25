@@ -1943,14 +1943,14 @@ pub mod test {
 				Ok((t.seniority, old_invest, t.invest))
 			});
 
-			let tranch_invest_vals = tranches
+			let tranche_invest_vals = tranches
 				.into_tranches()
 				.iter()
 				.map(|t| t.invest)
 				.collect::<Vec<_>>();
 
 			// check for mutated vals in exsiting tranches
-			assert_eq!(tranch_invest_vals, [0, 100, 200]);
+			assert_eq!(tranche_invest_vals, [0, 100, 200]);
 
 			// check order processed
 			assert_eq!(order, [2, 1, 0]);
@@ -1968,12 +1968,53 @@ pub mod test {
 			let combine_vals = [220, 210, 250];
 
 			let res = tranches
-				.combine_with_non_residual_top(combine_vals, |tranche, other_val| {
-					Ok((tranche.seniority, other_val))
+				.combine_with_non_residual_top(&combine_vals, |tranche, other_val| {
+					Ok((tranche.seniority, *other_val))
 				})
 				.unwrap();
 
 			assert_eq!(res, [(2, 220), (1, 210), (0, 250)])
+		}
+
+		#[test]
+		fn epoch_execution_combine_with_mut_non_residual_top_works() {
+			let mut order: Vec<u32> = Vec::new();
+			let mut tranches = default_epoch_tranches();
+			let new_investment_vals = [220, 210, 250];
+
+			let res = tranches.combine_with_mut_non_residual_top(
+				&new_investment_vals,
+				|t, new_investment| {
+					let old_invest = t.invest;
+					// to verify mutation
+					t.invest += *new_investment as u128;
+					// to verify order processed
+					order.push(t.seniority);
+
+					// verify collection
+					Ok((t.seniority, old_invest, t.invest))
+				},
+			);
+
+			let tranche_invest_vals = tranches
+				.into_tranches()
+				.iter()
+				.map(|t| t.invest)
+				.collect::<Vec<_>>();
+
+			// check mutated epoch_execution_tranches
+			// note -- tranches are stored with residual first,
+			// and combine_with_non_residual_top processes residual first -- reverses tranche order
+			// however given that this is mutating existing EpochExecutionTranches we'd expect the
+			// order to still be non-residual->residual
+			assert_eq!(tranche_invest_vals, [250, 210, 220]);
+
+			// check order processed
+			assert_eq!(order, [2, 1, 0]);
+
+			// check collection
+			// note -- collection done with non-residual first
+			assert_eq!(res.unwrap(), [(2, 0, 220), (1, 0, 210), (0, 0, 250)])
 		}
 	}
 }
