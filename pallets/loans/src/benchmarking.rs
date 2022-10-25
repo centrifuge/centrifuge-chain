@@ -26,7 +26,7 @@ use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::traits::{AccountIdConversion, CheckedDiv};
 use test_utils::{
 	assert_last_event, create as create_test_pool, create_nft_class_if_needed, expect_asset_owner,
 	expect_asset_to_be_burned, get_tranche_id, mint_nft_of,
@@ -90,6 +90,18 @@ where
 	let pool_id: PoolIdOf<T> = Default::default();
 	let pool_account = pool_account::<T>(pool_id.into());
 	let pal_pool_id: <T as pallet_pools::Config>::PoolId = pool_id.into();
+	T::AssetRegistry::register_asset(
+		Some(CurrencyId::AUSD.into()),
+		orml_asset_registry::AssetMetadata {
+			decimals: 18,
+			name: "MOCK AUSD TOKEN".as_bytes().to_vec(),
+			symbol: "MckAUSD".as_bytes().to_vec(),
+			existential_deposit: 0.into(),
+			location: None,
+			additional: CustomMetadata::default(),
+		},
+	)
+	.expect("Registering pool currency must work");
 	create_test_pool::<T, T::IM>(pool_id.into(), pool_owner.clone(), CurrencyId::AUSD);
 	let tranche_id = get_tranche_id::<T>(pool_id.into(), 0);
 	make_free_token_balance::<T>(
@@ -292,28 +304,6 @@ fn pool_account<T: pallet_pools::Config>(pool_id: T::PoolId) -> T::AccountId {
 	PoolLocator { pool_id }.into_account_truncating()
 }
 
-fn prepare_asset_registry<T: Config>()
-where
-	T::AssetRegistry: orml_traits::asset_registry::Mutate<
-		AssetId = CurrencyId,
-		Balance = u128,
-		CustomMetadata = CustomMetadata,
-	>,
-{
-	T::AssetRegistry::register_asset(
-		Some(CurrencyId::AUSD),
-		orml_asset_registry::AssetMetadata {
-			decimals: 18,
-			name: "MOCK TOKEN".as_bytes().to_vec(),
-			symbol: "MOCK".as_bytes().to_vec(),
-			existential_deposit: 0,
-			location: None,
-			additional: CustomMetadata::default(),
-		},
-	)
-	.expect("Registering Pool asset must work");
-}
-
 benchmarks! {
 	where_clause {
 		where
@@ -349,7 +339,6 @@ benchmarks! {
 	}
 
 	create {
-		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, collateral) = create_asset::<T>(1.into());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, collateral)
@@ -369,7 +358,6 @@ benchmarks! {
 
 	price {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -410,7 +398,6 @@ benchmarks! {
 	}
 
 	add_write_off_group {
-		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let write_off_group = WriteOffGroupInput {
 			// 10%
@@ -426,7 +413,6 @@ benchmarks! {
 
 	initial_borrow {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -452,7 +438,6 @@ benchmarks! {
 
 	further_borrows {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -485,7 +470,6 @@ benchmarks! {
 
 	repay {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -523,7 +507,6 @@ benchmarks! {
 	write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..T::MaxWriteOffGroups::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -536,7 +519,11 @@ benchmarks! {
 		let risk_admin = risk_admin::<T>();
 		for i in 0..m {
 			let percentage: <T as pallet::Config>::Rate = Rate::saturating_from_rational(i+1, m).into();
-			let penalty_interest_rate_per_year = Rate::saturating_from_rational(2*i + 1, 2*m).into();
+			let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*i + 1) * 10000, 2*m)
+							   .trunc()
+							   .checked_div(&Rate::saturating_from_integer(10000))
+							   .expect("Rate is an integer after `trunc`. div by 10000 is safe")
+							   .into();
 			let overdue_days = percentage.checked_mul_int(120).unwrap();
 			let write_off_group = WriteOffGroupInput {
 				percentage, penalty_interest_rate_per_year, overdue_days
@@ -555,15 +542,18 @@ benchmarks! {
 	verify {
 		let index = (m-1).into();
 		let percentage = Rate::saturating_from_rational(100, 100).into();
-		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(Rate::saturating_from_rational(2*m - 1, 2*m).into()).expect("Rate should be convertible to per-sec");
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
+			   let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*m - 1) * 10000, 2*m)
+					   .trunc()
+					   .checked_div(&Rate::saturating_from_integer(10000))
+					   .expect("Rate is an integer after `trunc`. div by 10000 is safe")
+					   .into();
+			   let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-sec");		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOff{write_off_index: index})
 	}
 
 	admin_write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -593,7 +583,6 @@ benchmarks! {
 
 	repay_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let mut collateral = None;
 		for idx in 0..n {
@@ -644,7 +633,6 @@ benchmarks! {
 
 	write_off_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let mut collateral = None;
 		for idx in 0..n {
@@ -693,7 +681,6 @@ benchmarks! {
 
 	update_nav {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let amount = (CURRENCY / 4).into();
 		for idx in 0..n {

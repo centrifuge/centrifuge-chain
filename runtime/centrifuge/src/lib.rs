@@ -287,7 +287,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesMutateHold = cfg_traits::Always;
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
-	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
+	type WeightInfo = pallet_restricted_tokens::weights::SubstrateWeight<Self>;
 }
 
 parameter_types! {
