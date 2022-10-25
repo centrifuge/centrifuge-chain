@@ -238,6 +238,7 @@ runtime-benchmarks = [
     "pallet-fees/runtime-benchmarks",
     "pallet-identity/runtime-benchmarks",
     "pallet-interest-accrual/runtime-benchmarks",
+    "pallet-investments/runtime-benchmarks",
     "pallet-loans/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-multisig/runtime-benchmarks",
@@ -257,7 +258,6 @@ runtime-benchmarks = [
     "pallet-vesting/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "runtime-common/runtime-benchmarks",
-    "pallet-investments/runtime-benchmarks"
     "xcm-builder/runtime-benchmarks",
 ]
 
