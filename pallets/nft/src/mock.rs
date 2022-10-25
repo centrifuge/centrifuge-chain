@@ -54,11 +54,11 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 	fn transfer() -> Weight {
-		0 as Weight
+		Weight::from_ref_time(0)
 	}
 
 	fn validate_mint() -> Weight {
-		0 as Weight
+		Weight::from_ref_time(0)
 	}
 }
 

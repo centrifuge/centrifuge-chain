@@ -228,8 +228,8 @@ impl Contains<Call> for BaseCallFilter {
 }
 
 parameter_types! {
-	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
-	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
@@ -583,6 +583,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type InitializeMembers = Council;
 	type KickedMember = ();
 	type LoserCandidate = ();
+	type MaxCandidates = MaxCandidates;
+	type MaxVoters = MaxVoters;
 	type PalletId = ElectionsPhragmenModuleId;
 	/// How long each seat is kept. This defines the next block number at which an election
 	/// round will happen. If set to zero, no elections are ever triggered and the module will
@@ -1064,6 +1066,7 @@ parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
+	pub const MaxVoters: u32 = 10 * 1000;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
 	pub const MaxInvulnerables: u32 = 100;
 }
@@ -1446,7 +1449,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 }
 
 parameter_types! {
-	pub UnitWeightCost: Weight = 100_000_000;
+	pub UnitWeightCost: u64 = 100_000_000;
 	pub const MaxInstructions: u32 = 100;
 }
 
@@ -1688,7 +1691,7 @@ impl_runtime_apis! {
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn dispatch_benchmark(
 				config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
 
@@ -1712,6 +1715,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			 use pallet_loans::benchmarking::Pallet as LoansPallet;
+
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
@@ -1734,6 +1738,7 @@ impl_runtime_apis! {
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
+
 		}
 
 		fn benchmark_metadata(extra: bool) -> (

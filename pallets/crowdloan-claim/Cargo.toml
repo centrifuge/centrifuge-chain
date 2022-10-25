@@ -18,27 +18,28 @@ serde = { version = "1.0.119" }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.29" }
 
 # optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.26" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.29" }
 
 # Local dependencies
 cfg-traits = { path= '../../libs/traits', default_features = false }
+cfg-types = { path = "../../libs/types", default-features = false }
 proofs = { path= '../../libs/proofs', default_features = false }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
-pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.26" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.29" }
+sp-trie = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.29" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.29" }
+pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = true }
 hex = { version="0.4.3", default_features = true }
-cfg-types = { path= '../../libs/types', default_features = true }
-
 
 [features]
 default = ['std']
@@ -52,4 +53,4 @@ std = [
   'cfg-traits/std',
   'proofs/std',
 ]
-
+try-runtime = ["frame-support/try-runtime"]

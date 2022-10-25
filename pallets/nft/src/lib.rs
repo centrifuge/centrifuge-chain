@@ -125,7 +125,7 @@ pub mod pallet {
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		DepositAsset(T::Hash),
+		DepositAsset(<T as frame_system::Config>::Hash),
 	}
 
 	// ------------------------------------------------------------------------
