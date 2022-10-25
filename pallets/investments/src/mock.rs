@@ -19,6 +19,7 @@ use cfg_traits::{OrderManager, PreConditions};
 use cfg_types::{CurrencyId, FulfillmentWithPrice, InvestmentAccount, Rate, TotalOrder};
 use codec::{Decode, Encode};
 use frame_support::{
+	dispatch::DispatchResultWithPostInfo,
 	parameter_types,
 	traits::{GenesisBuild, Nothing},
 	RuntimeDebug,
@@ -495,4 +496,10 @@ where
 	let redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0)?;
 	runner(redeem_orders)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Collect both invest and redemptions
+pub(crate) fn collect_both(who: Origin, investment_id: InvestmentId) -> DispatchResultWithPostInfo {
+	Investments::collect_investments(who.clone(), investment_id)?;
+	Investments::collect_redemptions(who, investment_id)
 }

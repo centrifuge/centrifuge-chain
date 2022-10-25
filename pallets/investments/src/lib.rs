@@ -23,7 +23,6 @@ use cfg_types::{
 use frame_support::{
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
-	weights::PostDispatchInfo,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -488,19 +487,6 @@ pub mod pallet {
 			Pallet::<T>::do_update_redemption(who, investment_id, amount)
 		}
 
-		/// Collect the results of a users orders (both invest and redeem) for the given investment.
-		/// If any amounts are not fulfilled they are directly appended to the next active
-		/// order for this investment.
-		#[pallet::weight(80_000_000)]
-		pub fn collect(
-			origin: OriginFor<T>,
-			investment_id: T::InvestmentId,
-		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-
-			Self::do_collect_both(who, investment_id)
-		}
-
 		/// Collect the results of a users invest orders for the given investment.
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
@@ -518,7 +504,7 @@ pub mod pallet {
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
 		#[pallet::weight(80_000_000)]
-		pub fn collect_redeem(
+		pub fn collect_redemptions(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
 		) -> DispatchResultWithPostInfo {
@@ -527,18 +513,32 @@ pub mod pallet {
 			Self::do_collect_redeem(who, investment_id)
 		}
 
-		/// Collect the results of another users orders (both invest and redeem) for the given investment.
+		/// Collect the results of another users invest orders for the given investment.
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
 		#[pallet::weight(80_000_000)]
-		pub fn collect_for(
+		pub fn collect_investments_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect_both(who, investment_id)
+			Self::do_collect_invest(who, investment_id)
+		}
+
+		/// Collect the results of another users redeem orders for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
+		/// order for this investment.
+		#[pallet::weight(80_000_000)]
+		pub fn collect_redemptions_for(
+			origin: OriginFor<T>,
+			who: T::AccountId,
+			investment_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
+			Self::do_collect_redeem(who, investment_id)
 		}
 	}
 }
@@ -668,43 +668,6 @@ where
 			amount,
 		});
 		Ok(())
-	}
-
-	pub(crate) fn do_collect_both(
-		who: T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> DispatchResultWithPostInfo {
-		let postinfo_invest = Pallet::<T>::do_collect_invest(who.clone(), investment_id)?;
-		let postinfo_redeem = Pallet::<T>::do_collect_redeem(who.clone(), investment_id)?;
-
-		Ok(Pallet::<T>::merge_postinfos(
-			postinfo_invest,
-			postinfo_redeem,
-		))
-	}
-
-	/// Merges to PostDispatchInfo's into a single one
-	fn merge_postinfos(first: PostDispatchInfo, second: PostDispatchInfo) -> PostDispatchInfo {
-		let combined_weight = match (first.actual_weight, second.actual_weight) {
-			(Some(first_weight), Some(second_weight)) => {
-				Some(first_weight.saturating_add(second_weight))
-			}
-			(None, Some(second_weight)) => Some(second_weight),
-			(Some(first_weight), None) => Some(first_weight),
-			(None, None) => None,
-		};
-
-		let pays_fee = match (first.pays_fee, second.pays_fee) {
-			(Pays::No, Pays::No) => Pays::No,
-			(Pays::No, Pays::Yes) => Pays::Yes,
-			(Pays::Yes, Pays::Yes) => Pays::Yes,
-			(Pays::Yes, Pays::No) => Pays::Yes,
-		};
-
-		PostDispatchInfo {
-			pays_fee,
-			actual_weight: combined_weight,
-		}
 	}
 
 	fn rm_empty(amount: T::Amount, storage_order: &mut Option<OrderOf<T>>, on_not_empty: Event<T>) {

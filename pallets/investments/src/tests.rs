@@ -939,7 +939,7 @@ fn fulfillment_partially_works_low_price() {
 		// We check the UserOrder flow over correctly when collecting.
 		// InvestorA: - should have 20% of SINGLE_INVEST_AMOUNT fulfilled
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -1002,7 +1002,7 @@ fn fulfillment_partially_works_low_price() {
 
 			// Collecting again does NOT change anything
 
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -1044,7 +1044,7 @@ fn fulfillment_partially_works_low_price() {
 		// We check the UserOrder flow over correctly when collecting.
 		// InvestorB: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -1107,7 +1107,7 @@ fn fulfillment_partially_works_low_price() {
 
 			// Collecting again does NOT change anything
 
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -1148,7 +1148,7 @@ fn fulfillment_partially_works_low_price() {
 
 		// Collecting for active session is okay but triggers "warn" events
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
@@ -1172,7 +1172,7 @@ fn fulfillment_partially_works_low_price() {
 
 		// Redemption collects work fine too.
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -1231,7 +1231,7 @@ fn fulfillment_partially_works_low_price() {
 
 			// Collecting again does NOT change anything
 
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -1354,7 +1354,7 @@ fn fulfillment_partially_works_low_price() {
 
 		// Now we collect for every user until FullyCollected and no more outstanding
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -1362,7 +1362,7 @@ fn fulfillment_partially_works_low_price() {
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
 				26848874598070739546
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -1370,7 +1370,7 @@ fn fulfillment_partially_works_low_price() {
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
 				26848874598070739546
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
@@ -1378,7 +1378,7 @@ fn fulfillment_partially_works_low_price() {
 				free_balance_of(InvestorC::get(), INVESTMENT_0_0.into()),
 				26848874598070739546
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
@@ -1390,7 +1390,7 @@ fn fulfillment_partially_works_low_price() {
 				free_balance_of(InvestorD::get(), INVESTMENT_0_0.into()),
 				26848874598070739547
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -1398,7 +1398,7 @@ fn fulfillment_partially_works_low_price() {
 				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
 				93113772455089820355
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
@@ -1406,7 +1406,7 @@ fn fulfillment_partially_works_low_price() {
 				free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD),
 				93113772455089820355
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
@@ -1414,7 +1414,7 @@ fn fulfillment_partially_works_low_price() {
 				free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD),
 				93113772455089820355
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderD::get()),
 				INVESTMENT_0_0
 			));
@@ -1633,7 +1633,7 @@ fn fulfillment_partially_works_high_price() {
 		// We check the UserOrder flow over correctly when collecting.
 		// InvestorA: - should have 20% of SINGLE_INVEST_AMOUNT fulfilled
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -1696,7 +1696,7 @@ fn fulfillment_partially_works_high_price() {
 
 			// Collecting again does NOT change anything
 
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -1738,7 +1738,7 @@ fn fulfillment_partially_works_high_price() {
 		// We check the UserOrder flow over correctly when collecting.
 		// InvestorB: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -1801,7 +1801,7 @@ fn fulfillment_partially_works_high_price() {
 
 			// Collecting again does NOT change anything
 
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -1842,7 +1842,7 @@ fn fulfillment_partially_works_high_price() {
 
 		// Collecting for active session is okay but triggers "warn" events
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
@@ -1866,7 +1866,7 @@ fn fulfillment_partially_works_high_price() {
 
 		// Redemption collects work fine too.
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -1925,7 +1925,7 @@ fn fulfillment_partially_works_high_price() {
 
 			// Collecting again does NOT change anything
 
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -2040,7 +2040,7 @@ fn fulfillment_partially_works_high_price() {
 
 		// Now we collect for every user until FullyCollected and no more outstanding
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -2048,7 +2048,7 @@ fn fulfillment_partially_works_high_price() {
 				free_balance_of(InvestorA::get(), INVESTMENT_0_0.into()),
 				26886035313001605134
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -2056,7 +2056,7 @@ fn fulfillment_partially_works_high_price() {
 				free_balance_of(InvestorB::get(), INVESTMENT_0_0.into()),
 				26886035313001605134
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
@@ -2064,7 +2064,7 @@ fn fulfillment_partially_works_high_price() {
 				free_balance_of(InvestorC::get(), INVESTMENT_0_0.into()),
 				26886035313001605134
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
@@ -2076,7 +2076,7 @@ fn fulfillment_partially_works_high_price() {
 				free_balance_of(InvestorD::get(), INVESTMENT_0_0.into()),
 				26886035313001605135
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -2084,7 +2084,7 @@ fn fulfillment_partially_works_high_price() {
 				free_balance_of(TrancheHolderA::get(), CurrencyId::AUSD),
 				92985074626865671639
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
@@ -2092,7 +2092,7 @@ fn fulfillment_partially_works_high_price() {
 				free_balance_of(TrancheHolderB::get(), CurrencyId::AUSD),
 				92985074626865671639
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
@@ -2100,7 +2100,7 @@ fn fulfillment_partially_works_high_price() {
 				free_balance_of(TrancheHolderC::get(), CurrencyId::AUSD),
 				92985074626865671639
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderD::get()),
 				INVESTMENT_0_0
 			));
@@ -2238,7 +2238,7 @@ fn fulfillment_of_zero_works() {
 
 		// InvestorA
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -2283,7 +2283,7 @@ fn fulfillment_of_zero_works() {
 
 		// InvestorB
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -2328,7 +2328,7 @@ fn fulfillment_of_zero_works() {
 
 		// InvestorC
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
@@ -2373,7 +2373,7 @@ fn fulfillment_of_zero_works() {
 
 		// TrancheHolderA
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -2418,7 +2418,7 @@ fn fulfillment_of_zero_works() {
 
 		// TrancheHolderB
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
@@ -2463,7 +2463,7 @@ fn fulfillment_of_zero_works() {
 
 		// TrancheHolderC
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
@@ -2590,7 +2590,7 @@ fn collecting_fully_works() {
 
 		// InvestorA
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -2628,7 +2628,7 @@ fn collecting_fully_works() {
 
 		// InvestorB
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
@@ -2666,7 +2666,7 @@ fn collecting_fully_works() {
 
 		// InvestorC
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
@@ -2706,7 +2706,7 @@ fn collecting_fully_works() {
 
 		// TrancheHolderA
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -2744,7 +2744,7 @@ fn collecting_fully_works() {
 
 		// TrancheHolderB
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
@@ -2782,7 +2782,7 @@ fn collecting_fully_works() {
 
 		// TrancheHolderC
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
@@ -2854,7 +2854,7 @@ fn collecting_over_max_works() {
 
 		// Collecting does only run till MaxOutstandingCollects and triggers right event
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -2879,7 +2879,7 @@ fn collecting_over_max_works() {
 					MaxOutstandingCollect::get()
 				)),
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
@@ -2909,7 +2909,7 @@ fn collecting_over_max_works() {
 
 		// Collecting does only run till MaxOutstandingCollects and triggers right event
 		{
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
@@ -2934,7 +2934,7 @@ fn collecting_over_max_works() {
 					MaxOutstandingCollect::get()
 				)),
 			);
-			assert_ok!(Investments::collect(
+			assert_ok!(collect_both(
 				Origin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
