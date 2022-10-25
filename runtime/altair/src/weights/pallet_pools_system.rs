@@ -11,7 +11,7 @@
 // --chain=altair-dev
 // --steps=50
 // --repeat=20
-// --pallet=pallet_pools
+// --pallet=pallet_pools_system
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
