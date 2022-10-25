@@ -1132,7 +1132,7 @@ impl pallet_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
-	type WeightInfo = weights::pallet_pools_system::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 }
 
 pub struct PoolCurrency;

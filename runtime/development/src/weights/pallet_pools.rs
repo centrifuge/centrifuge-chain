@@ -11,7 +11,7 @@
 // --chain=development-local
 // --steps=50
 // --repeat=20
-// --pallet=pallet_pools_system
+// --pallet=pallet_pools
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
