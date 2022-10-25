@@ -1400,7 +1400,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type MaxGroups = MaxGroups;
 	type Rewards = Rewards;
 	type Weight = u64;
-	type WeightInfo = weights::pallet_liquidity_rewards::SubstrateWeight<Runtime>;
+	type WeightInfo = ();
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
