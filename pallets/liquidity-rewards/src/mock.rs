@@ -1,5 +1,5 @@
-use frame_support::traits::{ConstU16, ConstU32, ConstU64, SortedMembers};
-use frame_system::EnsureSignedBy;
+use frame_support::traits::{ConstU16, ConstU32, ConstU64};
+use frame_system::EnsureRoot;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -10,8 +10,6 @@ use crate as pallet_liquidity_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-
-pub const ADMIN: u64 = 1;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -53,26 +51,18 @@ impl frame_system::Config for Test {
 
 frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo, Debug, PartialEq)]
-	pub const MaxGroups: u32 = 2;
+	pub const MaxGroups: u32 = 20;
 
 	#[derive(scale_info::TypeInfo, Debug, PartialEq)]
-	pub const MaxChangesPerEpoch: u32 = 5;
-
-	pub const Admin: u64 = ADMIN;
+	pub const MaxChangesPerEpoch: u32 = 50;
 }
 
-impl SortedMembers<u64> for Admin {
-	fn sorted_members() -> Vec<u64> {
-		vec![ADMIN]
-	}
-}
-
-pub type MockRewards = cfg_traits::rewards::mock::MockRewards<u64, u32, u8, u64>;
+pub type MockRewards = cfg_traits::rewards::mock::MockRewards<u64, u32, u32, u64>;
 
 impl pallet_liquidity_rewards::Config for Test {
-	type AdminOrigin = EnsureSignedBy<Admin, u64>;
+	type AdminOrigin = EnsureRoot<u64>;
 	type Balance = u64;
-	type CurrencyId = u8;
+	type CurrencyId = u32;
 	type Event = Event;
 	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;

@@ -232,40 +232,40 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let epoch = ActiveEpoch::<T>::get();
-			let mut func_weight = T::DbWeight::get().reads(1);
 
 			if epoch.ends_on > current_block {
-				return func_weight;
+				return T::DbWeight::get().reads(1);
 			}
+
+			let mut groups = 0;
+			let mut weight_changes = 0;
+			let mut currency_changes = 0;
 
 			transactional::with_storage_layer(|| -> DispatchResult {
 				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
 					ActiveEpochData::<T>::try_mutate(|epoch_data| {
-						func_weight += T::DbWeight::get().reads(2);
-
-						let groups = Self::distribute(
+						groups = T::Rewards::distribute_reward_with_weights(
 							epoch_data.reward,
 							epoch_data
 								.weights
 								.iter()
 								.map(|(k, v)| (k.clone(), v.clone())),
-						)?;
-						func_weight += T::WeightInfo::distribute(groups);
-
-						for (currency_id, group_id) in mem::take(&mut changes.currencies) {
-							Self::attach_currency(currency_id, group_id)?;
-							func_weight += T::WeightInfo::attach_currency();
-						}
+						)
+						.map(|results| results.len() as u32)?;
 
 						for (group_id, weight) in mem::take(&mut changes.weights) {
-							Self::insert_group_weight(&mut epoch_data.weights, group_id, weight);
-							func_weight += T::WeightInfo::insert_group_weight();
+							epoch_data.weights.try_insert(group_id, weight).ok();
+							weight_changes += 1;
+						}
+
+						for (currency_id, group_id) in mem::take(&mut changes.currencies) {
+							T::Rewards::attach_currency(currency_id, group_id)?;
+							currency_changes += 1;
 						}
 
 						epoch_data.reward = changes.reward;
 
 						ActiveEpoch::<T>::try_mutate(|epoch| {
-							func_weight += T::DbWeight::get().reads(1);
 							epoch.ends_on.ensure_add_assign(changes.duration)?;
 
 							Self::deposit_event(Event::NewEpoch {
@@ -280,33 +280,7 @@ pub mod pallet {
 			})
 			.ok();
 
-			func_weight += T::DbWeight::get().writes(1);
-			func_weight
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
-		pub(super) fn distribute(
-			reward: T::Balance,
-			groups: impl Iterator<Item = (T::GroupId, T::Weight)> + Clone,
-		) -> Result<u32, DispatchError> {
-			T::Rewards::distribute_reward_with_weights(reward, groups)
-				.map(|results| results.len() as u32)
-		}
-
-		pub(super) fn attach_currency(
-			currency_id: T::CurrencyId,
-			group_id: T::GroupId,
-		) -> DispatchResult {
-			T::Rewards::attach_currency(currency_id, group_id)
-		}
-
-		pub(super) fn insert_group_weight(
-			weights: &mut BoundedBTreeMap<T::GroupId, T::Weight, T::MaxGroups>,
-			group_id: T::GroupId,
-			weight: T::Weight,
-		) {
-			weights.try_insert(group_id, weight).ok();
+			T::WeightInfo::on_initialize(groups, weight_changes, currency_changes)
 		}
 	}
 

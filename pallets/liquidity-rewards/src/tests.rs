@@ -9,7 +9,7 @@ const USER_A: u64 = 2;
 const GROUP_A: u32 = 1;
 const GROUP_B: u32 = 2;
 
-const CURRENCY_ID_A: u8 = 23;
+const CURRENCY_ID_A: u32 = 23;
 
 #[test]
 fn check_special_privileges() {
@@ -39,10 +39,7 @@ fn distributed_reward_change() {
 
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
-		assert_ok!(Liquidity::set_distributed_reward(
-			Origin::signed(ADMIN),
-			REWARD
-		));
+		assert_ok!(Liquidity::set_distributed_reward(Origin::root(), REWARD));
 		assert_eq!(NextEpochChanges::<Test>::get().reward, REWARD);
 		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
 		Liquidity::on_initialize(0);
@@ -67,7 +64,7 @@ fn epoch_change() {
 		System::set_block_number(INITIAL_BLOCK);
 		assert_eq!(ActiveEpoch::<Test>::get().ends_on, INITIAL_BLOCK);
 		assert_ok!(Liquidity::set_epoch_duration(
-			Origin::signed(ADMIN),
+			Origin::root(),
 			EPOCH_DURATION
 		));
 		assert_eq!(NextEpochChanges::<Test>::get().duration, EPOCH_DURATION);
@@ -102,7 +99,7 @@ fn currency_changes() {
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		assert_ok!(Liquidity::set_currency_group(
-			Origin::signed(ADMIN),
+			Origin::root(),
 			CURRENCY_ID_A,
 			GROUP_A
 		));
@@ -144,20 +141,17 @@ fn weight_changes() {
 
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
-		assert_ok!(Liquidity::set_distributed_reward(
-			Origin::signed(ADMIN),
-			REWARD
-		));
+		assert_ok!(Liquidity::set_distributed_reward(Origin::root(), REWARD));
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
 		assert_ok!(Liquidity::set_group_weight(
-			Origin::signed(ADMIN),
+			Origin::root(),
 			GROUP_A,
 			WEIGHT_1
 		));
 		assert_ok!(Liquidity::set_group_weight(
-			Origin::signed(ADMIN),
+			Origin::root(),
 			GROUP_B,
 			WEIGHT_2
 		));
@@ -208,11 +202,11 @@ fn weight_changes() {
 fn max_weight_changes() {
 	new_test_ext().execute_with(|| {
 		for i in 0..MaxChangesPerEpoch::get() {
-			assert_ok!(Liquidity::set_group_weight(Origin::signed(ADMIN), i, 100));
+			assert_ok!(Liquidity::set_group_weight(Origin::root(), i, 100));
 		}
 
 		assert_noop!(
-			Liquidity::set_group_weight(Origin::signed(ADMIN), MaxChangesPerEpoch::get() + 1, 100),
+			Liquidity::set_group_weight(Origin::root(), MaxChangesPerEpoch::get() + 1, 100),
 			Error::<Test>::MaxChangesPerEpochReached
 		);
 	});
@@ -222,19 +216,11 @@ fn max_weight_changes() {
 fn max_currency_changes() {
 	new_test_ext().execute_with(|| {
 		for i in 0..MaxChangesPerEpoch::get() {
-			assert_ok!(Liquidity::set_currency_group(
-				Origin::signed(ADMIN),
-				i as u8,
-				GROUP_B
-			));
+			assert_ok!(Liquidity::set_currency_group(Origin::root(), i, GROUP_B));
 		}
 
 		assert_noop!(
-			Liquidity::set_currency_group(
-				Origin::signed(ADMIN),
-				MaxChangesPerEpoch::get() as u8 + 1,
-				100
-			),
+			Liquidity::set_currency_group(Origin::root(), MaxChangesPerEpoch::get() + 1, 100),
 			Error::<Test>::MaxChangesPerEpochReached
 		);
 	});
@@ -247,11 +233,7 @@ fn discard_groups_exceed_max_grups() {
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		for i in 0..MaxGroups::get() + 1 {
-			assert_ok!(Liquidity::set_group_weight(
-				Origin::signed(ADMIN),
-				i,
-				WEIGHT
-			));
+			assert_ok!(Liquidity::set_group_weight(Origin::root(), i, WEIGHT));
 		}
 		Liquidity::on_initialize(0);
 

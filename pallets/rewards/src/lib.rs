@@ -100,7 +100,7 @@ pub mod pallet {
 			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
 		/// Type used to handle a Balance that can have negative values
-		type SignedBalance: From<Self::Balance>
+		type SignedBalance: TryFrom<Self::Balance>
 			+ codec::FullCodec
 			+ Copy
 			+ Default

@@ -130,6 +130,8 @@ pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
+pallet-rewards = { path = "../../pallets/rewards", default-features = false }
+pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
@@ -175,6 +177,7 @@ std = [
     "pallet-indices/std",
     "pallet-interest-accrual/std",
     "pallet-keystore/std",
+    "pallet-liquidity-rewards/std",
     "pallet-loans/std",
     "pallet-membership/std",
     "pallet-migration-manager/std",
@@ -187,6 +190,7 @@ std = [
     "pallet-proxy/std",
     "pallet-randomness-collective-flip/std",
     "pallet-restricted-tokens/std",
+    "pallet-rewards/std",
     "pallet-scheduler/std",
     "pallet-session/std",
     "pallet-society/std",
@@ -245,6 +249,7 @@ runtime-benchmarks = [
     "pallet-fees/runtime-benchmarks",
     "pallet-interest-accrual/runtime-benchmarks",
     "pallet-keystore/runtime-benchmarks",
+    "pallet-liquidity-rewards/runtime-benchmarks",
     "pallet-loans/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
@@ -287,6 +292,7 @@ try-runtime = [
     "pallet-fees/try-runtime",
     "pallet-identity/try-runtime",
     "pallet-interest-accrual/try-runtime",
+    "pallet-liquidity-rewards/runtime-benchmarks",
     "pallet-loans/try-runtime",
     "pallet-migration-manager/try-runtime",
     "pallet-multisig/try-runtime",
