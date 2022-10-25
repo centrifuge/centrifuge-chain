@@ -711,8 +711,8 @@ fn test_env(
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
-		// let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
-		let instance_id = FudgeInherentTimestamp::create_instance(Default::default(), None);
+
+		let instance_id = FudgeInherentTimestamp::create_instance(std::time::Duration::from_secs(6), Some(std::time::Duration::from_millis(START_DATE)));
 		assert!(FudgeInherentTimestamp::force_new(
 			instance_id,
 			std::time::Duration::from_secs(6),
@@ -792,8 +792,7 @@ fn test_env(
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
-		let instance_id =
-			FudgeInherentTimestamp::create_instance(sp_std::time::Duration::from_secs(1), None);
+		let instance_id = FudgeInherentTimestamp::create_instance(std::time::Duration::from_secs(12), Some(std::time::Duration::from_millis(START_DATE)));
 		assert!(FudgeInherentTimestamp::force_new(
 			instance_id,
 			std::time::Duration::from_secs(12),
