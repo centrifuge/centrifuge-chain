@@ -1789,7 +1789,6 @@ pub mod test {
 	}
 
 	mod epoch_execution_tranches {
-
 		use super::*;
 
 		#[test]
@@ -2029,6 +2028,51 @@ pub mod test {
 					})
 					.unwrap()[..],
 				[0, 100, 200]
+			)
+		}
+
+		#[test]
+		fn epoch_execution_combine_with_residual_top() {
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_residual_top([1, 2, 3], |t, zip_val| {
+						Ok((t.seniority, zip_val))
+					})
+					.unwrap()[..],
+				[(0, 1), (1, 2), (2, 3)]
+			);
+
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_residual_top([1, 2, 3, 4], |t, zip_val| {
+						Ok((t.seniority, zip_val))
+					})
+					.unwrap()[..],
+				[(0, 1), (1, 2), (2, 3)]
+			)
+		}
+
+		#[test]
+		#[should_panic]
+		fn epoch_execution_combine_with_residual_top_panics_if_with_has_less_elements() {
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_residual_top([1, 2], |t, zip_val| { Ok((t.seniority, zip_val)) })
+					.unwrap()[..],
+				[(0, 1), (1, 2), (2, 3)]
+			)
+		}
+
+		#[test]
+		fn epoch_execution_combine_with_mut_residual_top_works() {
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_mut_residual_top([220, 110, 250], |t, zip_val| {
+						t.invest = zip_val as u128;
+						Ok((t.seniority, t.invest))
+					})
+					.unwrap()[..],
+				[(0, 220), (1, 110), (2, 250)]
 			)
 		}
 	}
