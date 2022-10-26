@@ -138,6 +138,8 @@ where
 	}
 }
 
+pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -152,6 +154,9 @@ pub mod pallet {
 		/// Type used to handle balances.
 		type Balance: Balance + MaxEncodedLen + FixedPointOperand;
 
+		/// Domain identification used by this pallet
+		type Domain: TypedGet;
+
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen + Clone + Ord;
 
@@ -163,9 +168,14 @@ pub mod pallet {
 
 		/// The reward system used.
 		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = Self::GroupId>
-			+ AccountRewards<Self::AccountId, Balance = Self::Balance, CurrencyId = Self::CurrencyId>
-			+ CurrencyGroupChange<GroupId = Self::GroupId, CurrencyId = Self::CurrencyId>
-			+ DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
+			+ AccountRewards<
+				Self::AccountId,
+				Balance = Self::Balance,
+				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
+			> + CurrencyGroupChange<
+				GroupId = Self::GroupId,
+				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
+			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Max groups used by this pallet.
 		/// If this limit is reached, the exceeded groups are either not computed and not stored.
@@ -215,10 +225,6 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
-	#[pallet::storage]
-	pub(super) type AllowedCurrencies<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::CurrencyId, ()>;
-
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -238,11 +244,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The given currency is not allowed.
-		/// Only currencies that was previously configured by [`Pallet::set_currency_group()`] are
-		/// allowed.
-		CurrencyNotAllowed,
-
 		/// Limit of max calls with same id to [`Pallet::set_group_weight()`] or
 		/// [`Pallet::set_currency_group()`] reached.
 		MaxChangesPerEpochReached,
@@ -276,7 +277,7 @@ pub mod pallet {
 						}
 
 						for (&currency_id, &group_id) in &changes.currencies {
-							T::Rewards::attach_currency(currency_id, group_id)?;
+							T::Rewards::attach_currency((T::Domain::get(), currency_id), group_id)?;
 							currency_changes += 1;
 						}
 
@@ -317,10 +318,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			AllowedCurrencies::<T>::try_get(currency_id)
-				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
-
-			T::Rewards::deposit_stake(currency_id, &account_id, amount)
+			T::Rewards::deposit_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
 		/// Withdraw a stake amount associated to a currency for the origin's account.
@@ -335,10 +333,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			AllowedCurrencies::<T>::try_get(currency_id)
-				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
-
-			T::Rewards::withdraw_stake(currency_id, &account_id, amount)
+			T::Rewards::withdraw_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
 		/// Claims the reward the associated to a currency.
@@ -348,10 +343,7 @@ pub mod pallet {
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			AllowedCurrencies::<T>::try_get(currency_id)
-				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
-
-			T::Rewards::claim_reward(currency_id, &account_id).map(|_| ())
+			T::Rewards::claim_reward((T::Domain::get(), currency_id), &account_id).map(|_| ())
 		}
 
 		/// Admin method to set the reward amount used for the next epochs.
@@ -407,15 +399,12 @@ pub mod pallet {
 			group_id: T::GroupId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-
 			NextEpochChanges::<T>::try_mutate(|changes| {
 				changes
 					.currencies
 					.try_insert(currency_id, group_id)
 					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
 			})?;
-
-			AllowedCurrencies::<T>::insert(currency_id, ());
 
 			Ok(())
 		}

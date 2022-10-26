@@ -1361,6 +1361,12 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type WeightInfo = weights::pallet_keystore::SubstrateWeight<Runtime>;
 }
 
+#[derive(Clone, Copy, PartialEq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+pub enum RewardDomain {
+	Liquidity,
+	Block,
+}
+
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
@@ -1373,6 +1379,7 @@ impl pallet_rewards::Config for Runtime {
 	type Balance = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
+	type DomainId = RewardDomain;
 	type Event = Event;
 	type GroupId = u32;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
@@ -1388,12 +1395,15 @@ frame_support::parameter_types! {
 
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
+
+	pub const LiquidityDomain: RewardDomain = RewardDomain::Liquidity;
 }
 
 impl pallet_liquidity_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type Domain = LiquidityDomain;
 	type Event = Event;
 	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
