@@ -274,7 +274,7 @@ pub mod altair {
 		});
 		weight += loops * (T::DbWeight::get().write + T::DbWeight::get().read);
 
-		weight
+		Weight::from_ref_time(weight)
 	}
 
 	/// MUST RUN BEFORE `migrate_tranches`
@@ -342,7 +342,7 @@ pub mod altair {
 		});
 		weight += loops * (T::DbWeight::get().write + 2 * T::DbWeight::get().read);
 
-		weight
+		Weight::from_ref_time(weight)
 	}
 
 	/// This function MUST be called AFTER `migrate_orders`
@@ -357,7 +357,7 @@ pub mod altair {
 		let loops = Order::<T>::clear(u32::MAX, None).loops;
 		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
 
-		weight
+		Weight::from_ref_time(weight)
 	}
 
 	#[cfg(feature = "try-runtime")]

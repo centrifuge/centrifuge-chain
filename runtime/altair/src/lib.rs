@@ -1408,7 +1408,7 @@ mod upgrade {
 	pub struct Upgrade;
 	impl OnRuntimeUpgrade for Upgrade {
 		fn on_runtime_upgrade() -> Weight {
-			let mut weight = 0;
+			let mut weight = Weight::from_ref_time(0);
 			weight += pallet_pools::migrations::altair::migrate_epoch_tranches::<Runtime>();
 			weight += pallet_pools::migrations::altair::migrate_tranches::<Runtime>();
 			weight += pallet_pools::migrations::altair::remove_not_needed_storage::<Runtime>();
