@@ -160,6 +160,7 @@ std = [
     "pallet-bridge/std",
     "pallet-claims/std",
     "pallet-collator-allowlist/std",
+    "pallet-collator-selection/std",
     "pallet-collective/std",
     "pallet-crowdloan-claim/std",
     "pallet-crowdloan-reward/std",
