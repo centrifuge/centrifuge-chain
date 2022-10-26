@@ -1093,9 +1093,6 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 0;
 }
 
-#[cfg(feature = "runtime-benchmarks")]
-type PoolCreateOrigin = EnsureSigned<AccountId>;
-
 impl pallet_pools::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
