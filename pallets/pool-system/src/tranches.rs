@@ -2008,5 +2008,28 @@ pub mod test {
 			// note -- collection done with non-residual first
 			assert_eq!(res.unwrap(), [(2, 0, 220), (1, 0, 210), (0, 0, 250)])
 		}
+
+		#[test]
+		fn epoch_execution_combine_residual_top_works() {
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_residual_top(|t| Ok(t.seniority))
+					.unwrap()[..],
+				[0, 1, 2]
+			)
+		}
+
+		#[test]
+		fn epoch_execution_combine_residual_top_mut_works() {
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_mut_residual_top(|t| {
+						t.invest = 100 * t.seniority as u128;
+						Ok(t.invest)
+					})
+					.unwrap()[..],
+				[0, 100, 200]
+			)
+		}
 	}
 }
