@@ -86,6 +86,14 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// Type used to identify domains.
+		type DomainId: TypeInfo
+			+ MaxEncodedLen
+			+ codec::FullCodec
+			+ Copy
+			+ PartialEq
+			+ sp_std::fmt::Debug;
+
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen;
 
@@ -139,7 +147,7 @@ pub mod pallet {
 	pub(super) type Currencies<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
-		T::CurrencyId,
+		(T::DomainId, T::CurrencyId),
 		CurrencyInfo<T::Balance, T::Rate, T::GroupId, T::MaxCurrencyMovements>,
 		ValueQuery,
 	>;
@@ -154,7 +162,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
-		T::CurrencyId,
+		(T::DomainId, T::CurrencyId),
 		StakeAccount<T::Balance, T::SignedBalance>,
 		ValueQuery,
 	>;
@@ -170,23 +178,27 @@ pub mod pallet {
 		},
 		StakeDeposited {
 			group_id: T::GroupId,
+			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
 			amount: T::Balance,
 		},
 		StakeWithdrawn {
 			group_id: T::GroupId,
+			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
 			amount: T::Balance,
 		},
 		RewardClaimed {
 			group_id: T::GroupId,
+			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
 			amount: T::Balance,
 		},
 		CurrencyAttached {
+			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			from: Option<T::GroupId>,
 			to: T::GroupId,
@@ -241,7 +253,7 @@ pub mod pallet {
 		T::Balance: EnsureAdd + EnsureSub,
 	{
 		type Balance = T::Balance;
-		type CurrencyId = T::CurrencyId;
+		type CurrencyId = (T::DomainId, T::CurrencyId);
 
 		fn deposit_stake(
 			currency_id: Self::CurrencyId,
@@ -253,7 +265,7 @@ pub mod pallet {
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
-						T::Currency::hold(currency_id, account_id, amount)?;
+						T::Currency::hold(currency_id.1, account_id, amount)?;
 
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						staked.add_amount(amount, group.reward_per_token())?;
@@ -263,7 +275,8 @@ pub mod pallet {
 
 						Self::deposit_event(Event::StakeDeposited {
 							group_id,
-							currency_id,
+							domain_id: currency_id.0,
+							currency_id: currency_id.1,
 							account_id: account_id.clone(),
 							amount,
 						});
@@ -284,7 +297,7 @@ pub mod pallet {
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
-						T::Currency::release(currency_id, account_id, amount, false)?;
+						T::Currency::release(currency_id.1, account_id, amount, false)?;
 
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						staked.sub_amount(amount, group.reward_per_token())?;
@@ -294,7 +307,8 @@ pub mod pallet {
 
 						Self::deposit_event(Event::StakeWithdrawn {
 							group_id,
-							currency_id,
+							domain_id: currency_id.0,
+							currency_id: currency_id.1,
 							account_id: account_id.clone(),
 							amount,
 						});
@@ -343,7 +357,8 @@ pub mod pallet {
 
 				Self::deposit_event(Event::RewardClaimed {
 					group_id,
-					currency_id,
+					domain_id: currency_id.0,
+					currency_id: currency_id.1,
 					account_id: account_id.clone(),
 					amount: reward,
 				});
@@ -364,7 +379,7 @@ pub mod pallet {
 	where
 		<T::Rate as FixedPointNumber>::Inner: Signed,
 	{
-		type CurrencyId = T::CurrencyId;
+		type CurrencyId = (T::DomainId, T::CurrencyId);
 		type GroupId = T::GroupId;
 
 		fn attach_currency(
@@ -396,7 +411,8 @@ pub mod pallet {
 				}
 
 				Self::deposit_event(Event::CurrencyAttached {
-					currency_id,
+					domain_id: currency_id.0,
+					currency_id: currency_id.1,
 					from: currency.group_id,
 					to: next_group_id,
 				});

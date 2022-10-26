@@ -152,6 +152,9 @@ pub mod pallet {
 		/// Type used to handle balances.
 		type Balance: Balance + MaxEncodedLen + FixedPointOperand;
 
+		/// Type used to identify domains.
+		type DomainId: TypeInfo + MaxEncodedLen + codec::FullCodec + Copy;
+
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen + Clone + Ord;
 
@@ -163,9 +166,14 @@ pub mod pallet {
 
 		/// The reward system used.
 		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = Self::GroupId>
-			+ AccountRewards<Self::AccountId, Balance = Self::Balance, CurrencyId = Self::CurrencyId>
-			+ CurrencyGroupChange<GroupId = Self::GroupId, CurrencyId = Self::CurrencyId>
-			+ DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
+			+ AccountRewards<
+				Self::AccountId,
+				Balance = Self::Balance,
+				CurrencyId = (Self::DomainId, Self::CurrencyId),
+			> + CurrencyGroupChange<
+				GroupId = Self::GroupId,
+				CurrencyId = (Self::DomainId, Self::CurrencyId),
+			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Max groups used by this pallet.
 		/// If this limit is reached, the exceeded groups are either not computed and not stored.
@@ -177,6 +185,10 @@ pub mod pallet {
 		/// the same id.
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
+
+		/// Domain identification used by this pallet
+		#[pallet::constant]
+		type Domain: Get<Self::DomainId>;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
@@ -276,7 +288,7 @@ pub mod pallet {
 						}
 
 						for (&currency_id, &group_id) in &changes.currencies {
-							T::Rewards::attach_currency(currency_id, group_id)?;
+							T::Rewards::attach_currency((T::Domain::get(), currency_id), group_id)?;
 							currency_changes += 1;
 						}
 
@@ -320,7 +332,7 @@ pub mod pallet {
 			AllowedCurrencies::<T>::try_get(currency_id)
 				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
 
-			T::Rewards::deposit_stake(currency_id, &account_id, amount)
+			T::Rewards::deposit_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
 		/// Withdraw a stake amount associated to a currency for the origin's account.
@@ -338,7 +350,7 @@ pub mod pallet {
 			AllowedCurrencies::<T>::try_get(currency_id)
 				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
 
-			T::Rewards::withdraw_stake(currency_id, &account_id, amount)
+			T::Rewards::withdraw_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
 		/// Claims the reward the associated to a currency.
@@ -351,7 +363,7 @@ pub mod pallet {
 			AllowedCurrencies::<T>::try_get(currency_id)
 				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
 
-			T::Rewards::claim_reward(currency_id, &account_id).map(|_| ())
+			T::Rewards::claim_reward((T::Domain::get(), currency_id), &account_id).map(|_| ())
 		}
 
 		/// Admin method to set the reward amount used for the next epochs.
