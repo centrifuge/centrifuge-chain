@@ -291,6 +291,7 @@ try-runtime = [
     "pallet-fees/try-runtime",
     "pallet-identity/try-runtime",
     "pallet-interest-accrual/try-runtime",
+    "pallet-investments/try-runtime",
     "pallet-loans/try-runtime",
     "pallet-migration-manager/try-runtime",
     "pallet-multisig/try-runtime",
