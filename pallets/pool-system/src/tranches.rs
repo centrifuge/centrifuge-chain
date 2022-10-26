@@ -1206,14 +1206,27 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.non_residual_top_slice().iter().zip(with.into_iter());
+		// let tranche_slices = self.non_residual_top_slice().iter().zip(with.into_iter());
+		let mut tranche_slices = self.non_residual_top_slice().iter();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
+		let elem_mismatch_err = Err(DispatchError::Other(
+			"Tranche and iterable element count mismatch",
+		));
+
+		for _ in 0..self.tranches.len() {
+			let r = match (tranche_slices.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => f(tranche, w)?,
+				_ => return elem_mismatch_err,
+			};
+
 			res.push(r);
 		}
 
-		Ok(res)
+		match (tranche_slices.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => elem_mismatch_err,
+		}
 	}
 
 	pub fn combine_with_mut_non_residual_top<R, W, I, F>(
@@ -1955,16 +1968,34 @@ pub mod test {
 
 		#[test]
 		fn epoch_execution_combine_with_non_residual_top_works() {
-			let tranches = default_epoch_tranches();
-			let combine_vals = [220, 210, 250];
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_non_residual_top(&[220, 210, 250], |tranche, other_val| {
+						Ok((tranche.seniority, *other_val))
+					})
+					.unwrap(),
+				[(2, 220), (1, 210), (0, 250)]
+			);
 
-			let res = tranches
-				.combine_with_non_residual_top(&combine_vals, |tranche, other_val| {
-					Ok((tranche.seniority, *other_val))
-				})
-				.unwrap();
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_non_residual_top(&[220, 210], |tranche, other_val| {
+						Ok((tranche.seniority, *other_val))
+					}),
+				Err(DispatchError::Other(
+					"Tranche and iterable element count mismatch"
+				))
+			);
 
-			assert_eq!(res, [(2, 220), (1, 210), (0, 250)])
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_non_residual_top(&[220, 210, 250, 110], |tranche, other_val| {
+						Ok((tranche.seniority, *other_val))
+					}),
+				Err(DispatchError::Other(
+					"Tranche and iterable element count mismatch"
+				))
+			);
 		}
 
 		#[test]
