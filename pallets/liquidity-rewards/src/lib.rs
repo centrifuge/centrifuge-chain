@@ -138,6 +138,8 @@ where
 	}
 }
 
+pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -152,8 +154,8 @@ pub mod pallet {
 		/// Type used to handle balances.
 		type Balance: Balance + MaxEncodedLen + FixedPointOperand;
 
-		/// Type used to identify domains.
-		type DomainId: TypeInfo + MaxEncodedLen + codec::FullCodec + Copy;
+		/// Domain identification used by this pallet
+		type Domain: TypedGet;
 
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen + Clone + Ord;
@@ -169,10 +171,10 @@ pub mod pallet {
 			+ AccountRewards<
 				Self::AccountId,
 				Balance = Self::Balance,
-				CurrencyId = (Self::DomainId, Self::CurrencyId),
+				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
 			> + CurrencyGroupChange<
 				GroupId = Self::GroupId,
-				CurrencyId = (Self::DomainId, Self::CurrencyId),
+				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
 			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Max groups used by this pallet.
@@ -185,10 +187,6 @@ pub mod pallet {
 		/// the same id.
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
-
-		/// Domain identification used by this pallet
-		#[pallet::constant]
-		type Domain: Get<Self::DomainId>;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;

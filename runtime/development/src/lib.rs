@@ -1404,7 +1404,6 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type Domain = LiquidityDomain;
-	type DomainId = RewardDomain;
 	type Event = Event;
 	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
