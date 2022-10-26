@@ -207,6 +207,9 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		// Emits when trying to withdraw more stake than an account has.
+		CanNotWithdraw,
+
 		// Emits when a currency is used but it does not have a group associated to.
 		CurrencyWithoutGroup,
 
@@ -264,11 +267,11 @@ pub mod pallet {
 				let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 
 				Groups::<T>::try_mutate(group_id, |group| {
-					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
 						T::Currency::hold(currency_id.1, account_id, amount)?;
 
-						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
-						staked.add_amount(amount, group.reward_per_token())?;
+						account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+						account.add_amount(amount, group.reward_per_token())?;
 
 						group.add_amount(amount)?;
 						currency.add_amount(amount)?;
@@ -296,11 +299,13 @@ pub mod pallet {
 				let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 
 				Groups::<T>::try_mutate(group_id, |group| {
-					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
-						T::Currency::release(currency_id.1, account_id, amount, false)?;
+					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
+						if account.staked() < amount {
+							Err(Error::<T>::CanNotWithdraw)?;
+						}
 
-						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
-						staked.sub_amount(amount, group.reward_per_token())?;
+						account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+						account.sub_amount(amount, group.reward_per_token())?;
 
 						group.sub_amount(amount)?;
 						currency.sub_amount(amount)?;
@@ -312,6 +317,8 @@ pub mod pallet {
 							account_id: account_id.clone(),
 							amount,
 						});
+
+						T::Currency::release(currency_id.1, account_id, amount, false)?;
 
 						Ok(())
 					})
@@ -327,9 +334,9 @@ pub mod pallet {
 			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 			let group = Groups::<T>::get(group_id);
 
-			StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
-				staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
-				let reward = staked.compute_reward(group.reward_per_token())?;
+			StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
+				account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+				let reward = account.compute_reward(group.reward_per_token())?;
 
 				Ok(reward)
 			})
@@ -343,9 +350,9 @@ pub mod pallet {
 			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 			let group = Groups::<T>::get(group_id);
 
-			StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
-				staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
-				let reward = staked.claim_reward(group.reward_per_token())?;
+			StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
+				account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+				let reward = account.claim_reward(group.reward_per_token())?;
 
 				T::Currency::transfer(
 					T::RewardCurrency::get(),

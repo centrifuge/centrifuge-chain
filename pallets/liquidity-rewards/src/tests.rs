@@ -110,7 +110,9 @@ fn currency_changes() {
 		let ctx = MockRewards::attach_currency_context();
 		ctx.expect()
 			.once()
-			.withf(|currency_id, group_id| *currency_id == CURRENCY_ID_A && *group_id == GROUP_A)
+			.withf(|(domain, currency_id), group_id| {
+				*domain == DOMAIN && *currency_id == CURRENCY_ID_A && *group_id == GROUP_A
+			})
 			.return_const(Ok(()));
 
 		Liquidity::on_initialize(0);
@@ -245,52 +247,5 @@ fn discard_groups_exceed_max_grups() {
 				Some(&WEIGHT)
 			);
 		}
-	});
-}
-
-#[test]
-fn check_invalid_currencies() {
-	let _m = cfg_traits::rewards::mock::lock();
-
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			Liquidity::stake(Origin::signed(USER_A), CURRENCY_ID_A, 23),
-			Error::<Test>::CurrencyNotAllowed
-		);
-		assert_noop!(
-			Liquidity::unstake(Origin::signed(USER_A), CURRENCY_ID_A, 43),
-			Error::<Test>::CurrencyNotAllowed
-		);
-		assert_noop!(
-			Liquidity::claim_reward(Origin::signed(USER_A), CURRENCY_ID_A),
-			Error::<Test>::CurrencyNotAllowed
-		);
-
-		assert_ok!(Liquidity::set_currency_group(
-			Origin::root(),
-			CURRENCY_ID_A,
-			GROUP_A
-		));
-
-		// Now the currency is allowed for usage.
-
-		let ctx = MockRewards::deposit_stake_context();
-		ctx.expect().once().return_const(Ok(()));
-		assert_ok!(Liquidity::stake(Origin::signed(USER_A), CURRENCY_ID_A, 23));
-
-		let ctx = MockRewards::withdraw_stake_context();
-		ctx.expect().once().return_const(Ok(()));
-		assert_ok!(Liquidity::unstake(
-			Origin::signed(USER_A),
-			CURRENCY_ID_A,
-			43
-		));
-
-		let ctx = MockRewards::claim_reward_context();
-		ctx.expect().once().return_const(Ok(0));
-		assert_ok!(Liquidity::claim_reward(
-			Origin::signed(USER_A),
-			CURRENCY_ID_A
-		));
 	});
 }

@@ -44,10 +44,10 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn on_initialize(x: u32, y: u32, z: u32) -> Weight {
-		Weight::from_ref_time(21_368_000) // Standard Error: 19_000
-			.saturating_add(Weight::from_ref_time(1_146_000).saturating_mul(x as u64)) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(115_000).saturating_mul(y as u64)) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(8_907_000).saturating_mul(z as u64))
+		Weight::from_ref_time(27_397_000) // Standard Error: 15_000
+			.saturating_add(Weight::from_ref_time(1_011_000).saturating_mul(x as u64)) // Standard Error: 6_000
+			.saturating_add(Weight::from_ref_time(50_000).saturating_mul(y as u64)) // Standard Error: 6_000
+			.saturating_add(Weight::from_ref_time(8_852_000).saturating_mul(z as u64))
 			.saturating_add(T::DbWeight::get().reads(5 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(x as u64)))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(z as u64)))
@@ -56,20 +56,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn stake() -> Weight {
-		Weight::from_ref_time(26_000_000)
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn unstake() -> Weight {
-		Weight::from_ref_time(25_000_000)
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn claim_reward() -> Weight {
-		Weight::from_ref_time(24_000_000)
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
@@ -92,19 +92,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn set_currency_group() -> Weight {
-		Weight::from_ref_time(7_000_000)
+		Weight::from_ref_time(6_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize(x: u32, y: u32, z: u32) -> Weight {
-		Weight::from_ref_time(21_368_000) // Standard Error: 19_000
-			.saturating_add(Weight::from_ref_time(1_146_000).saturating_mul(x as u64)) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(115_000).saturating_mul(y as u64)) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(8_907_000).saturating_mul(z as u64))
+		Weight::from_ref_time(27_397_000) // Standard Error: 15_000
+			.saturating_add(Weight::from_ref_time(1_011_000).saturating_mul(x as u64)) // Standard Error: 6_000
+			.saturating_add(Weight::from_ref_time(50_000).saturating_mul(y as u64)) // Standard Error: 6_000
+			.saturating_add(Weight::from_ref_time(8_852_000).saturating_mul(z as u64))
 			.saturating_add(RocksDbWeight::get().reads(5 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(x as u64)))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(z as u64)))
@@ -113,20 +113,20 @@ impl WeightInfo for () {
 	}
 
 	fn stake() -> Weight {
-		Weight::from_ref_time(26_000_000)
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 
 	fn unstake() -> Weight {
-		Weight::from_ref_time(25_000_000)
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 
 	fn claim_reward() -> Weight {
-		Weight::from_ref_time(24_000_000)
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+		Weight::from_ref_time(21_000_000)
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 
@@ -149,8 +149,8 @@ impl WeightInfo for () {
 	}
 
 	fn set_currency_group() -> Weight {
-		Weight::from_ref_time(7_000_000)
+		Weight::from_ref_time(6_000_000)
 			.saturating_add(RocksDbWeight::get().reads(1 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 }

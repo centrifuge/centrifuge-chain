@@ -225,10 +225,6 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
-	#[pallet::storage]
-	pub(super) type AllowedCurrencies<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::CurrencyId, ()>;
-
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -248,11 +244,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The given currency is not allowed.
-		/// Only currencies that was previously configured by [`Pallet::set_currency_group()`] are
-		/// allowed.
-		CurrencyNotAllowed,
-
 		/// Limit of max calls with same id to [`Pallet::set_group_weight()`] or
 		/// [`Pallet::set_currency_group()`] reached.
 		MaxChangesPerEpochReached,
@@ -327,9 +318,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			AllowedCurrencies::<T>::try_get(currency_id)
-				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
-
 			T::Rewards::deposit_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
@@ -345,9 +333,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			AllowedCurrencies::<T>::try_get(currency_id)
-				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
-
 			T::Rewards::withdraw_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
@@ -357,9 +342,6 @@ pub mod pallet {
 		#[transactional]
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-
-			AllowedCurrencies::<T>::try_get(currency_id)
-				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
 
 			T::Rewards::claim_reward((T::Domain::get(), currency_id), &account_id).map(|_| ())
 		}
@@ -417,15 +399,12 @@ pub mod pallet {
 			group_id: T::GroupId,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-
 			NextEpochChanges::<T>::try_mutate(|changes| {
 				changes
 					.currencies
 					.try_insert(currency_id, group_id)
 					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
 			})?;
-
-			AllowedCurrencies::<T>::insert(currency_id, ());
 
 			Ok(())
 		}
