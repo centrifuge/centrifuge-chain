@@ -65,43 +65,42 @@ use weights::WeightInfo;
 /// Type that contains the finish timestamp of an epoch
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Epoch<BlockNumber> {
-	ends_on: BlockNumber,
-}
+pub struct EpochTimestamp<BlockNumber>(BlockNumber);
 
-pub struct FirstEpoch<Provider>(sp_std::marker::PhantomData<Provider>);
-impl<Provider, BlockNumber> Get<Epoch<BlockNumber>> for FirstEpoch<Provider>
+pub struct FirstEpochTimestamp<Provider>(sp_std::marker::PhantomData<Provider>);
+impl<Provider, BlockNumber> Get<EpochTimestamp<BlockNumber>> for FirstEpochTimestamp<Provider>
 where
 	Provider: BlockNumberProvider<BlockNumber = BlockNumber>,
 {
-	fn get() -> Epoch<BlockNumber> {
-		Epoch {
-			ends_on: Provider::current_block_number(),
-		}
+	fn get() -> EpochTimestamp<BlockNumber> {
+		EpochTimestamp(Provider::current_block_number())
 	}
 }
 
 /// Type that contains the associated data of an epoch
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct EpochData<Balance, GroupId, Weight, MaxGroups>
+pub struct EpochData<BlockNumber, Balance, GroupId, Weight, MaxGroups>
 where
 	MaxGroups: Get<u32>,
 	GroupId: Ord,
 {
+	duration: BlockNumber,
 	reward: Balance,
 	weights: BoundedBTreeMap<GroupId, Weight, MaxGroups>,
 }
 
-impl<Balance, GroupId, Weight, MaxChangesPerEpoch> Default
-	for EpochData<Balance, GroupId, Weight, MaxChangesPerEpoch>
+impl<BlockNumber, Balance, GroupId, Weight, MaxChangesPerEpoch> Default
+	for EpochData<BlockNumber, Balance, GroupId, Weight, MaxChangesPerEpoch>
 where
+	BlockNumber: Zero,
 	Balance: Zero,
 	MaxChangesPerEpoch: Get<u32>,
 	GroupId: Ord,
 {
 	fn default() -> Self {
 		Self {
+			duration: BlockNumber::zero(),
 			reward: Balance::zero(),
 			weights: BoundedBTreeMap::default(),
 		}
@@ -109,16 +108,15 @@ where
 }
 
 /// Type that contains the stake properties of stake class
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(test, derive(PartialEq))]
+#[derive(PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 pub struct EpochChanges<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch>
 where
 	MaxChangesPerEpoch: Get<u32>,
 	GroupId: Ord,
 	CurrencyId: Ord,
 {
-	duration: BlockNumber,
-	reward: Balance,
+	duration: Option<BlockNumber>,
+	reward: Option<Balance>,
 	weights: BoundedBTreeMap<GroupId, Weight, MaxChangesPerEpoch>,
 	currencies: BoundedBTreeMap<CurrencyId, GroupId, MaxChangesPerEpoch>,
 }
@@ -126,16 +124,14 @@ where
 impl<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch> Default
 	for EpochChanges<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch>
 where
-	BlockNumber: Zero,
-	Balance: Zero,
 	MaxChangesPerEpoch: Get<u32>,
 	GroupId: Ord,
 	CurrencyId: Ord,
 {
 	fn default() -> Self {
 		Self {
-			duration: BlockNumber::zero(),
-			reward: Balance::zero(),
+			duration: None,
+			reward: None,
 			weights: BoundedBTreeMap::default(),
 			currencies: BoundedBTreeMap::default(),
 		}
@@ -160,7 +156,7 @@ pub mod pallet {
 		type CurrencyId: AssetId + MaxEncodedLen + Clone + Ord;
 
 		/// Type used to identify groups.
-		type GroupId: Parameter + MaxEncodedLen + Ord;
+		type GroupId: Parameter + MaxEncodedLen + Ord + Copy;
 
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
@@ -180,7 +176,7 @@ pub mod pallet {
 		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::set_currency_group()`] with
 		/// the same id.
 		#[pallet::constant]
-		type MaxChangesPerEpoch: Get<u32> + TypeInfo;
+		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
@@ -191,12 +187,19 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type ActiveEpoch<T: Config> =
-		StorageValue<_, Epoch<T::BlockNumber>, ValueQuery, FirstEpoch<frame_system::Pallet<T>>>;
+	pub(super) type EndOfEpoch<T: Config> = StorageValue<
+		_,
+		EpochTimestamp<T::BlockNumber>,
+		ValueQuery,
+		FirstEpochTimestamp<frame_system::Pallet<T>>,
+	>;
 
 	#[pallet::storage]
-	pub(super) type ActiveEpochData<T: Config> =
-		StorageValue<_, EpochData<T::Balance, T::GroupId, T::Weight, T::MaxGroups>, ValueQuery>;
+	pub(super) type ActiveEpochData<T: Config> = StorageValue<
+		_,
+		EpochData<T::BlockNumber, T::Balance, T::GroupId, T::Weight, T::MaxGroups>,
+		ValueQuery,
+	>;
 
 	#[pallet::storage]
 	pub(super) type NextEpochChanges<T: Config> = StorageValue<
@@ -222,6 +225,14 @@ pub mod pallet {
 		NewEpoch {
 			ends_on: T::BlockNumber,
 			reward: T::Balance,
+			last_changes: EpochChanges<
+				T::BlockNumber,
+				T::Balance,
+				T::GroupId,
+				T::CurrencyId,
+				T::Weight,
+				T::MaxChangesPerEpoch,
+			>,
 		},
 	}
 
@@ -240,9 +251,9 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
-			let epoch = ActiveEpoch::<T>::get();
+			let ends_on = EndOfEpoch::<T>::get().0;
 
-			if epoch.ends_on > current_block {
+			if ends_on > current_block {
 				return T::DbWeight::get().reads(1);
 			}
 
@@ -255,32 +266,34 @@ pub mod pallet {
 					ActiveEpochData::<T>::try_mutate(|epoch_data| {
 						groups = T::Rewards::distribute_reward_with_weights(
 							epoch_data.reward,
-							epoch_data.weights.iter().map(|(g, w)| (g.clone(), *w)),
+							epoch_data.weights.iter().map(|(g, w)| (*g, *w)),
 						)
 						.map(|results| results.len() as u32)?;
 
-						for (group_id, weight) in mem::take(&mut changes.weights) {
+						for (&group_id, &weight) in &changes.weights {
 							epoch_data.weights.try_insert(group_id, weight).ok();
 							weight_changes += 1;
 						}
 
-						for (currency_id, group_id) in mem::take(&mut changes.currencies) {
+						for (&currency_id, &group_id) in &changes.currencies {
 							T::Rewards::attach_currency(currency_id, group_id)?;
 							currency_changes += 1;
 						}
 
-						epoch_data.reward = changes.reward;
+						epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
+						epoch_data.duration = changes.duration.unwrap_or(epoch_data.duration);
 
-						ActiveEpoch::<T>::try_mutate(|epoch| {
-							epoch.ends_on.ensure_add_assign(changes.duration)?;
+						let ends_on = ends_on.ensure_add(epoch_data.duration)?;
 
-							Self::deposit_event(Event::NewEpoch {
-								ends_on: epoch.ends_on,
-								reward: epoch_data.reward,
-							});
+						EndOfEpoch::<T>::set(EpochTimestamp(ends_on));
 
-							Ok(())
-						})
+						Self::deposit_event(Event::NewEpoch {
+							ends_on: ends_on,
+							reward: epoch_data.reward,
+							last_changes: mem::take(changes),
+						});
+
+						Ok(())
 					})
 				})
 			})
@@ -303,6 +316,7 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+
 			AllowedCurrencies::<T>::try_get(currency_id)
 				.map_err(|_| Error::<T>::CurrencyNotAllowed)?;
 
@@ -346,7 +360,7 @@ pub mod pallet {
 		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::mutate(|changes| changes.reward = balance);
+			NextEpochChanges::<T>::mutate(|changes| changes.reward = Some(balance));
 
 			Ok(())
 		}
@@ -357,7 +371,7 @@ pub mod pallet {
 		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::mutate(|changes| changes.duration = blocks);
+			NextEpochChanges::<T>::mutate(|changes| changes.duration = Some(blocks));
 
 			Ok(())
 		}

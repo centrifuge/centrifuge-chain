@@ -50,10 +50,10 @@ impl frame_system::Config for Test {
 }
 
 frame_support::parameter_types! {
-	#[derive(scale_info::TypeInfo, Debug, PartialEq)]
+	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 20;
 
-	#[derive(scale_info::TypeInfo, Debug, PartialEq)]
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
 }
 

@@ -40,12 +40,12 @@ fn distributed_reward_change() {
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		assert_ok!(Liquidity::set_distributed_reward(Origin::root(), REWARD));
-		assert_eq!(NextEpochChanges::<Test>::get().reward, REWARD);
+		assert_eq!(NextEpochChanges::<Test>::get().reward, Some(REWARD));
 		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
-		assert_eq!(NextEpochChanges::<Test>::get().reward, REWARD);
+		assert_eq!(NextEpochChanges::<Test>::get().reward, None);
 		assert_eq!(ActiveEpochData::<Test>::get().reward, REWARD);
 		Liquidity::on_initialize(0);
 
@@ -62,31 +62,28 @@ fn epoch_change() {
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		System::set_block_number(INITIAL_BLOCK);
-		assert_eq!(ActiveEpoch::<Test>::get().ends_on, INITIAL_BLOCK);
+		assert_eq!(EndOfEpoch::<Test>::get().0, INITIAL_BLOCK);
 		assert_ok!(Liquidity::set_epoch_duration(
 			Origin::root(),
 			EPOCH_DURATION
 		));
-		assert_eq!(NextEpochChanges::<Test>::get().duration, EPOCH_DURATION);
+		assert_eq!(
+			NextEpochChanges::<Test>::get().duration,
+			Some(EPOCH_DURATION)
+		);
 		Liquidity::on_initialize(INITIAL_BLOCK);
 
 		// EPOCH 1
-		assert_eq!(
-			ActiveEpoch::<Test>::get().ends_on,
-			INITIAL_BLOCK + EPOCH_DURATION
-		);
-		assert_eq!(NextEpochChanges::<Test>::get().duration, EPOCH_DURATION);
+		assert_eq!(EndOfEpoch::<Test>::get().0, INITIAL_BLOCK + EPOCH_DURATION);
+		assert_eq!(NextEpochChanges::<Test>::get().duration, None);
 		Liquidity::on_initialize(INITIAL_BLOCK + EPOCH_DURATION / 2);
 
-		assert_eq!(
-			ActiveEpoch::<Test>::get().ends_on,
-			INITIAL_BLOCK + EPOCH_DURATION
-		);
+		assert_eq!(EndOfEpoch::<Test>::get().0, INITIAL_BLOCK + EPOCH_DURATION);
 		Liquidity::on_initialize(INITIAL_BLOCK + EPOCH_DURATION);
 
 		// EPOCH 2
 		assert_eq!(
-			ActiveEpoch::<Test>::get().ends_on,
+			EndOfEpoch::<Test>::get().0,
 			INITIAL_BLOCK + EPOCH_DURATION + EPOCH_DURATION
 		);
 	});
