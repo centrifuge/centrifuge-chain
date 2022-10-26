@@ -1206,7 +1206,6 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// let tranche_slices = self.non_residual_top_slice().iter().zip(with.into_iter());
 		let mut tranche_slices = self.non_residual_top_slice().iter();
 		let mut with_iter = with.into_iter();
 
@@ -1241,18 +1240,29 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self
-			.non_residual_top_slice_mut()
-			.iter_mut()
-			.zip(with.into_iter());
+		// we're going to have a mutable borrow later, grabbing len now
+		let tranches_count = self.tranches.len();
+		let mut res = Vec::with_capacity(tranches_count);
+		let mut tranche_slices = self.non_residual_top_slice_mut().iter_mut();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
+		let elem_mismatch_err = Err(DispatchError::Other(
+			"Tranche and iterable element count mismatch",
+		));
+
+		for _ in 0..tranches_count {
+			let r = match (tranche_slices.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => f(tranche, w)?,
+				_ => return elem_mismatch_err,
+			};
+
 			res.push(r);
 		}
 
-		Ok(res)
+		match (tranche_slices.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => elem_mismatch_err,
+		}
 	}
 
 	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
@@ -1933,7 +1943,7 @@ pub mod test {
 		}
 
 		#[test]
-		fn epoch_execution_combile_mut_non_residual_top_works() {
+		fn epoch_execution_combine_mut_non_residual_top_works() {
 			let mut tranches = default_epoch_tranches();
 			let mut order: Vec<u32> = Vec::new();
 			let tranche_mut_res = tranches.combine_mut_non_residual_top(|t| {
@@ -2036,7 +2046,39 @@ pub mod test {
 
 			// check collection
 			// note -- collection done with non-residual first
-			assert_eq!(res.unwrap(), [(2, 0, 220), (1, 0, 210), (0, 0, 250)])
+			assert_eq!(res.unwrap(), [(2, 0, 220), (1, 0, 210), (0, 0, 250)]);
+
+			// Error if len w/ > tranches count
+			assert_eq!(
+				default_epoch_tranches().combine_with_mut_non_residual_top(
+					&[220, 210, 250, 252],
+					|t, new_investment| {
+						let old_invest = t.invest;
+						t.invest += *new_investment as u128;
+						order.push(t.seniority);
+						Ok((t.seniority, old_invest, t.invest))
+					},
+				),
+				Err(DispatchError::Other(
+					"Tranche and iterable element count mismatch",
+				))
+			);
+
+			// Error if len w/ < tranches count
+			assert_eq!(
+				default_epoch_tranches().combine_with_mut_non_residual_top(
+					&[220, 210],
+					|t, new_investment| {
+						let old_invest = t.invest;
+						t.invest += *new_investment as u128;
+						order.push(t.seniority);
+						Ok((t.seniority, old_invest, t.invest))
+					},
+				),
+				Err(DispatchError::Other(
+					"Tranche and iterable element count mismatch",
+				))
+			)
 		}
 
 		#[test]
