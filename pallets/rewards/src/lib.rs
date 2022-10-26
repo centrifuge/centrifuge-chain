@@ -86,6 +86,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// Type used to identify domains.
+		type DomainId: TypeInfo + MaxEncodedLen + codec::FullCodec + Copy;
+
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen;
 
@@ -112,7 +115,7 @@ pub mod pallet {
 			+ EnsureSub;
 
 		/// Type used to handle rates as fixed points numbers.
-		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + Encode + Decode;
+		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + codec::FullCodec;
 
 		/// Type used to identify groups.
 		type GroupId: codec::FullCodec
@@ -136,8 +139,10 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub(super) type Currencies<T: Config> = StorageMap<
+	pub(super) type Currencies<T: Config> = StorageDoubleMap<
 		_,
+		Blake2_128Concat,
+		T::DomainId,
 		Blake2_128Concat,
 		T::CurrencyId,
 		CurrencyInfo<T::Balance, T::Rate, T::GroupId, T::MaxCurrencyMovements>,
@@ -149,12 +154,13 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, T::GroupId, Group<T::Balance, T::Rate>, ValueQuery>;
 
 	#[pallet::storage]
-	pub(super) type StakeAccounts<T: Config> = StorageDoubleMap<
+	pub(super) type StakeAccounts<T: Config> = StorageNMap<
 		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		T::CurrencyId,
+		(
+			NMapKey<Blake2_128Concat, T::AccountId>,
+			NMapKey<Blake2_128Concat, T::DomainId>,
+			NMapKey<Blake2_128Concat, T::CurrencyId>,
+		),
 		StakeAccount<T::Balance, T::SignedBalance>,
 		ValueQuery,
 	>;
@@ -242,17 +248,19 @@ pub mod pallet {
 	{
 		type Balance = T::Balance;
 		type CurrencyId = T::CurrencyId;
+		type DomainId = T::DomainId;
 
 		fn deposit_stake(
+			domain_id: Self::DomainId,
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			Currencies::<T>::try_mutate(currency_id, |currency| {
+			Currencies::<T>::try_mutate(domain_id, currency_id, |currency| {
 				let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 
 				Groups::<T>::try_mutate(group_id, |group| {
-					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+					StakeAccounts::<T>::try_mutate((account_id, domain_id, currency_id), |staked| {
 						T::Currency::hold(currency_id, account_id, amount)?;
 
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
@@ -275,15 +283,16 @@ pub mod pallet {
 		}
 
 		fn withdraw_stake(
+			domain_id: Self::DomainId,
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			Currencies::<T>::try_mutate(currency_id, |currency| {
+			Currencies::<T>::try_mutate(domain_id, currency_id, |currency| {
 				let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 
 				Groups::<T>::try_mutate(group_id, |group| {
-					StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+					StakeAccounts::<T>::try_mutate((account_id, domain_id, currency_id), |staked| {
 						T::Currency::release(currency_id, account_id, amount, false)?;
 
 						staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
@@ -306,14 +315,15 @@ pub mod pallet {
 		}
 
 		fn compute_reward(
+			domain_id: Self::DomainId,
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let currency = Currencies::<T>::get(currency_id);
+			let currency = Currencies::<T>::get(domain_id, currency_id);
 			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 			let group = Groups::<T>::get(group_id);
 
-			StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+			StakeAccounts::<T>::try_mutate((account_id, domain_id, currency_id), |staked| {
 				staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 				let reward = staked.compute_reward(group.reward_per_token())?;
 
@@ -322,14 +332,15 @@ pub mod pallet {
 		}
 
 		fn claim_reward(
+			domain_id: Self::DomainId,
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let currency = Currencies::<T>::get(currency_id);
+			let currency = Currencies::<T>::get(domain_id, currency_id);
 			let group_id = currency.group_id.ok_or(Error::<T>::CurrencyWithoutGroup)?;
 			let group = Groups::<T>::get(group_id);
 
-			StakeAccounts::<T>::try_mutate(account_id, currency_id, |staked| {
+			StakeAccounts::<T>::try_mutate((account_id, domain_id, currency_id), |staked| {
 				staked.try_apply_rpt_tallies(currency.rpt_tallies())?;
 				let reward = staked.claim_reward(group.reward_per_token())?;
 
@@ -353,10 +364,11 @@ pub mod pallet {
 		}
 
 		fn account_stake(
+			domain_id: Self::DomainId,
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Self::Balance {
-			StakeAccounts::<T>::get(account_id, currency_id).staked()
+			StakeAccounts::<T>::get((account_id, domain_id, currency_id)).staked()
 		}
 	}
 
@@ -365,13 +377,15 @@ pub mod pallet {
 		<T::Rate as FixedPointNumber>::Inner: Signed,
 	{
 		type CurrencyId = T::CurrencyId;
+		type DomainId = T::DomainId;
 		type GroupId = T::GroupId;
 
 		fn attach_currency(
+			domain_id: Self::DomainId,
 			currency_id: Self::CurrencyId,
 			next_group_id: Self::GroupId,
 		) -> DispatchResult {
-			Currencies::<T>::try_mutate(currency_id, |currency| {
+			Currencies::<T>::try_mutate(domain_id, currency_id, |currency| {
 				if let Some(prev_group_id) = currency.group_id {
 					if prev_group_id == next_group_id {
 						Err(Error::<T>::CurrencyInSameGroup)?
@@ -408,9 +422,10 @@ pub mod pallet {
 		}
 
 		fn currency_group(
+			domain_id: Self::DomainId,
 			currency_id: Self::CurrencyId,
 		) -> Result<Option<Self::GroupId>, DispatchResult> {
-			Ok(Currencies::<T>::get(currency_id).group_id)
+			Ok(Currencies::<T>::get(domain_id, currency_id).group_id)
 		}
 	}
 }

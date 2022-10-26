@@ -124,10 +124,14 @@ pub trait AccountRewards<AccountId> {
 	/// Type used to identify the currency
 	type CurrencyId;
 
+	/// Type used to identify the domain
+	type DomainId;
+
 	/// Deposit a stake amount for a account_id associated to a currency_id.
 	/// The account_id must have enough currency to make the deposit,
 	/// if not, an Err will be returned.
 	fn deposit_stake(
+		domain_id: Self::DomainId,
 		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 		amount: Self::Balance,
@@ -137,6 +141,7 @@ pub trait AccountRewards<AccountId> {
 	/// The account_id must have enough currency staked to perform a withdraw,
 	/// if not, an Err will be returned.
 	fn withdraw_stake(
+		domain_id: Self::DomainId,
 		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 		amount: Self::Balance,
@@ -145,6 +150,7 @@ pub trait AccountRewards<AccountId> {
 	/// Computes the reward the account_id can receive for a currency_id.
 	/// This action does not modify the account currency balance.
 	fn compute_reward(
+		domain_id: Self::DomainId,
 		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
@@ -152,12 +158,17 @@ pub trait AccountRewards<AccountId> {
 	/// Computes the reward the account_id can receive for a currency_id and claim it.
 	/// A reward using the native currency will be sent to the account_id.
 	fn claim_reward(
+		domain_id: Self::DomainId,
 		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Retrieve the total staked amount of currency in an account.
-	fn account_stake(currency_id: Self::CurrencyId, account_id: &AccountId) -> Self::Balance;
+	fn account_stake(
+		domain_id: Self::DomainId,
+		currency_id: Self::CurrencyId,
+		account_id: &AccountId,
+	) -> Self::Balance;
 }
 
 /// Support for change currencies among groups.
@@ -168,13 +179,21 @@ pub trait CurrencyGroupChange {
 	/// Type used to identify the currency
 	type CurrencyId;
 
+	/// Type used to identify the currency
+	type DomainId;
+
 	/// Associate the currency to a group.
 	/// If the currency was previously associated to another group, the associated stake is moved
 	/// to the new group.
-	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
+	fn attach_currency(
+		domain_id: Self::DomainId,
+		currency_id: Self::CurrencyId,
+		group_id: Self::GroupId,
+	) -> DispatchResult;
 
 	/// Returns the associated group of a currency.
 	fn currency_group(
+		domain_id: Self::DomainId,
 		currency_id: Self::CurrencyId,
 	) -> Result<Option<Self::GroupId>, DispatchResult>;
 }
@@ -199,10 +218,15 @@ pub mod mock {
 	}
 
 	mockall::mock! {
-		pub Rewards<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> {}
+		pub Rewards<Balance: 'static, GroupId: 'static, DomainId: 'static, CurrencyId: 'static, AccountId: 'static> {}
 
-		impl<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> GroupRewards
-			for Rewards<Balance, GroupId, CurrencyId, AccountId>
+		impl<
+			Balance: 'static,
+			GroupId: 'static,
+			DomainId: 'static,
+			CurrencyId: 'static,
+			AccountId: 'static
+		> GroupRewards for Rewards<Balance, GroupId, DomainId, CurrencyId, AccountId>
 		{
 			type Balance = Balance;
 			type GroupId = GroupId;
@@ -214,52 +238,71 @@ pub mod mock {
 			fn group_stake(group_id: <Self as GroupRewards>::GroupId) -> <Self as GroupRewards>::Balance;
 		}
 
-		impl<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> AccountRewards<AccountId>
-			for Rewards<Balance, GroupId, CurrencyId, AccountId>
+		impl<
+			Balance: 'static,
+			GroupId: 'static,
+			DomainId: 'static,
+			CurrencyId: 'static,
+			AccountId: 'static
+		> AccountRewards<AccountId> for Rewards<Balance, GroupId, DomainId, CurrencyId, AccountId>
 		{
 			type Balance = Balance;
 			type CurrencyId = CurrencyId;
+			type DomainId = DomainId;
 
 			fn deposit_stake(
+				domain_id: <Self as AccountRewards<AccountId>>::DomainId,
 				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 				amount: <Self as AccountRewards<AccountId>>::Balance,
 			) -> DispatchResult;
 
 			fn withdraw_stake(
+				domain_id: <Self as AccountRewards<AccountId>>::DomainId,
 				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 				amount: <Self as AccountRewards<AccountId>>::Balance,
 			) -> DispatchResult;
 
 			fn compute_reward(
+				domain_id: <Self as AccountRewards<AccountId>>::DomainId,
 				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 			) -> Result<<Self as AccountRewards<AccountId>>::Balance, DispatchError>;
 
 			fn claim_reward(
+				domain_id: <Self as AccountRewards<AccountId>>::DomainId,
 				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 			) -> Result<<Self as AccountRewards<AccountId>>::Balance, DispatchError>;
 
 			fn account_stake(
+				domain_id: <Self as AccountRewards<AccountId>>::DomainId,
 				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId
 			) -> <Self as AccountRewards<AccountId>>::Balance;
 		}
 
-		impl<Balance: 'static, GroupId: 'static, CurrencyId: 'static, AccountId: 'static> CurrencyGroupChange
-			for Rewards<Balance, GroupId, CurrencyId, AccountId>
+		impl<
+			Balance: 'static,
+			GroupId: 'static,
+			DomainId: 'static,
+			CurrencyId: 'static,
+			AccountId: 'static
+		> CurrencyGroupChange for Rewards<Balance, GroupId, DomainId, CurrencyId, AccountId>
 		{
 			type GroupId = GroupId;
 			type CurrencyId = CurrencyId;
+			type DomainId = DomainId;
 
 			fn attach_currency(
+				domain_id: <Self as CurrencyGroupChange>::DomainId,
 				currency_id: <Self as CurrencyGroupChange>::CurrencyId,
 				group_id: <Self as CurrencyGroupChange>::GroupId
 			) -> DispatchResult;
 
 			fn currency_group(
+				domain_id: <Self as CurrencyGroupChange>::DomainId,
 				currency_id: <Self as CurrencyGroupChange>::CurrencyId,
 			) -> Result<Option<<Self as CurrencyGroupChange>::GroupId>, DispatchResult>;
 		}
