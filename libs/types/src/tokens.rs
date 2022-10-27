@@ -35,6 +35,14 @@ impl Default for CurrencyId {
 	}
 }
 
+// A way to generate different currencies from a number.
+// Can be used in tests/benchmarks to generate different currencies.
+impl From<u32> for CurrencyId {
+	fn from(value: u32) -> Self {
+		CurrencyId::ForeignAsset(value)
+	}
+}
+
 /// A type that can create a TrancheToken from a PoolId and a TrancheId
 pub struct TrancheToken;
 

@@ -47,6 +47,7 @@ members = [
 	"pallets/nft-sales",
 	"pallets/permissions",
 	"pallets/rewards",
+	"pallets/liquidity-rewards",
 	"libs/traits",
 	"libs/types",
 	"libs/proofs",
