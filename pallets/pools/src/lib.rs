@@ -17,6 +17,7 @@
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve};
 use cfg_types::{PermissionScope, PoolLocator, PoolRole, Role};
+use pallet_pools_registry::PoolMutate;
 use codec::HasCompact;
 use frame_support::{
 	dispatch::DispatchResult,
@@ -1453,4 +1454,112 @@ pub mod pallet {
 			Ok(())
 		}
 	}
+
+	impl PoolMutate for Pallet<T> {
+		fn create(
+			tranche_inputs: Vec<
+				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+			>,
+			max_reserve: T::Balance,
+			metadata: Option<Vec<u8>>,
+		) -> DispatchResult {
+			Self::is_valid_tranche_change(
+				None,
+				&tranche_inputs
+					.iter()
+					.map(|t| TrancheUpdate {
+						tranche_type: t.tranche_type,
+						seniority: t.seniority,
+					})
+					.collect(),
+			)?;
+
+			let now = Self::now();
+
+			let tranches = Tranches::from_input::<
+				T::TrancheToken,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>(pool_id, tranche_inputs.clone(), now)?;
+
+			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
+				Some(metadata_value) => {
+					let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
+						.try_into()
+						.map_err(|_| Error::<T>::BadMetadata)?;
+
+					Some(checked)
+				}
+				None => None,
+			};
+
+			for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
+				let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
+					tranche_input.clone().metadata.token_name.clone();
+
+				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> =
+					tranche_input.metadata.token_symbol.clone();
+
+				let decimals = match T::AssetRegistry::metadata(&currency) {
+					Some(metadata) => metadata.decimals,
+					None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
+				};
+
+				let parachain_id = T::ParachainId::get();
+
+				let metadata = tranche.create_asset_metadata(
+					decimals,
+					parachain_id,
+					token_name.to_vec(),
+					token_symbol.to_vec(),
+				);
+
+				T::AssetRegistry::register_asset(Some(tranche.currency), metadata)
+					.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
+			}
+
+			Pool::<T>::insert(
+				pool_id,
+				PoolDetails {
+					currency,
+					tranches,
+					status: PoolStatus::Open,
+					epoch: EpochState {
+						current: One::one(),
+						last_closed: now,
+						last_executed: Zero::zero(),
+					},
+					parameters: PoolParameters {
+						min_epoch_time: sp_std::cmp::min(
+							sp_std::cmp::max(
+								T::DefaultMinEpochTime::get(),
+								T::MinEpochTimeLowerBound::get(),
+							),
+							T::MinEpochTimeUpperBound::get(),
+						),
+						max_nav_age: sp_std::cmp::min(
+							T::DefaultMaxNAVAge::get(),
+							T::MaxNAVAgeUpperBound::get(),
+						),
+					},
+					reserve: ReserveDetails {
+						max: max_reserve,
+						available: Zero::zero(),
+						total: Zero::zero(),
+					},
+					metadata: checked_metadata,
+				},
+			);
+
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				admin.clone(),
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)?;
+
+			Self::deposit_event(Event::Created { pool_id, admin });
+			Ok(())
+		}
+	}
 }
+
