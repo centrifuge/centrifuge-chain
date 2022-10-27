@@ -80,6 +80,8 @@ pub trait PoolMutate<
 		pool_id: PoolId,
 		changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
 	) -> DispatchResultWithPostInfo;
+
+	// fn execute_update() -> DispatchWithPostInfo;
 }
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;

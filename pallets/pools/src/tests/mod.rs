@@ -470,15 +470,13 @@ fn epoch() {
 
 		assert_ok!(Pools::update(
 			0,
-			PoolChanges::MinEpochTime(Change::NewValue(30 * 60)),
+			PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(30 * 60),
+				max_nav_age: Change::NewValue(0),
+				tranche_metadata: Change::NoChange,
+			}
 		));
-
-		assert_ok!(Pools::update(
-			0,
-			PoolChanges::MaxNavAge(Change::NewValue(0)),
-		));
-
-		assert_ok!(Pools::update(0, PoolChanges::Tranches(Change::NoChange),));
 
 		assert_eq!(
 			<Pools as PoolInspect<
@@ -980,7 +978,6 @@ fn pool_updates_should_be_constrained() {
 
 		assert_err!(
 			Pools::update(
-				pool_owner_origin.clone(),
 				pool_id,
 				PoolChanges {
 					tranches: Change::NoChange,
@@ -995,7 +992,12 @@ fn pool_updates_should_be_constrained() {
 			Pools::update(
 				pool_owner_origin.clone(),
 				pool_id,
-				PoolChanges::MaxNavAge(Change::NewValue(7 * 24 * 60 * 60))
+				PoolChanges {
+					tranches: Change::NoChange,
+					min_epoch_time: Change::NewValue(realistic_min_epoch_time),
+					max_nav_age: Change::NewValue(7 * 24 * 60 * 60),
+					tranche_metadata: Change::NoChange,
+				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
@@ -1009,7 +1011,12 @@ fn pool_updates_should_be_constrained() {
 		assert_ok!(Pools::update(
 			pool_owner_origin.clone(),
 			pool_id,
-			PoolChanges::MinEpochTime(Change::NewValue(realistic_min_epoch_time))
+			PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(realistic_min_epoch_time),
+				max_nav_age: Change::NewValue(realistic_max_nav_age),
+				tranche_metadata: Change::NoChange,
+			}
 		));
 
 		// Since there's a redemption order, the above update should not have been executed yet
