@@ -617,40 +617,6 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Executed a scheduled update to the pool.
-		///
-		/// This checks if the scheduled time is in the past
-		/// and, if required, if there are no outstanding
-		/// redeem orders. If both apply, then the scheduled
-		/// changes are applied.
-		#[pallet::weight(T::WeightInfo::execute_scheduled_update(T::MaxTranches::get()))]
-		pub fn execute_scheduled_update(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-
-			let update = ScheduledUpdate::<T>::try_get(pool_id)
-				.map_err(|_| Error::<T>::NoScheduledUpdate)?;
-
-			ensure!(
-				Self::now() >= update.scheduled_time,
-				Error::<T>::ScheduledTimeHasNotPassed
-			);
-
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-
-			ensure!(
-				T::UpdateGuard::released(&pool, &update, Self::now()),
-				Error::<T>::UpdatePrerequesitesNotFulfilled
-			);
-
-			Self::do_update_pool(&pool_id, &update.changes)?;
-
-			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-			Ok(Some(T::WeightInfo::execute_scheduled_update(num_tranches)).into())
-		}
-
 		/// Sets the maximum reserve for a pool
 		///
 		/// The caller must have the `LiquidityAdmin` role in
@@ -1147,66 +1113,274 @@ pub mod pallet {
 			Ok(state)
 		}
 
-		pub(crate) fn do_update_pool(
-			pool_id: &T::PoolId,
-			changes: &PoolChangesOf<T>,
+		pub(crate) fn do_collect(
+			who: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_loc: TrancheLoc<T::TrancheId>,
+			collect_n_epochs: T::EpochId,
+		) -> DispatchResultWithPostInfo {
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			let tranche_id = pool
+				.tranches
+				.tranche_id(tranche_loc)
+				.ok_or(Error::<T>::InvalidTrancheId)?;
+			let order = Order::<T>::try_get(tranche_id, &who)
+				.map_err(|_| Error::<T>::NoOutstandingOrder)?;
+
+			let end_epoch: T::EpochId = collect_n_epochs
+				.checked_sub(&One::one())
+				.ok_or(Error::<T>::CollectsNoEpochs)?
+				.checked_add(&order.epoch)
+				.ok_or(DispatchError::from(ArithmeticError::Overflow))?;
+
+			ensure!(
+				end_epoch <= pool.epoch.last_executed,
+				Error::<T>::EpochNotExecutedYet
+			);
+
+			let actual_epochs = end_epoch.saturating_sub(order.epoch);
+
+			let collections = Self::calculate_collect(tranche_id, order, end_epoch)?;
+
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
+			if collections.payout_currency_amount > Zero::zero() {
+				T::Tokens::transfer(
+					pool.currency,
+					&pool_account,
+					&who,
+					collections.payout_currency_amount,
+					false,
+				)?;
+			}
+
+			if collections.payout_token_amount > Zero::zero() {
+				let token = T::TrancheToken::tranche_token(pool_id, tranche_id);
+				T::Tokens::transfer(
+					token,
+					&pool_account,
+					&who,
+					collections.payout_token_amount,
+					false,
+				)?;
+			}
+
+			if collections.remaining_redeem_token != Zero::zero()
+				|| collections.remaining_invest_currency != Zero::zero()
+			{
+				Order::<T>::insert(
+					tranche_id,
+					who.clone(),
+					UserOrder {
+						invest: collections.remaining_invest_currency,
+						redeem: collections.remaining_redeem_token,
+						epoch: pool.epoch.current,
+					},
+				);
+			} else {
+				Order::<T>::remove(tranche_id, who.clone())
+			};
+
+			Self::deposit_event(Event::OrdersCollected {
+				pool_id,
+				tranche_id,
+				end_epoch_id: end_epoch,
+				account: who,
+				outstanding_collections: OutstandingCollections {
+					payout_currency_amount: collections.payout_currency_amount,
+					payout_token_amount: collections.payout_token_amount,
+					remaining_invest_currency: collections.remaining_invest_currency,
+					remaining_redeem_token: collections.remaining_redeem_token,
+				},
+			});
+
+			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
+		}
+
+		pub(crate) fn do_update_invest_order(
+			who: &T::AccountId,
+			pool: &mut PoolDetailsOf<T>,
+			order: &mut UserOrderOf<T>,
+			amount: T::Balance,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 		) -> DispatchResult {
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+			let outstanding = &mut pool
+				.tranches
+				.get_mut_tranche(TrancheLoc::Id(tranche_id))
+				.ok_or(Error::<T>::InvalidTrancheId)?
+				.outstanding_invest_orders;
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
-				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
-					pool.parameters.min_epoch_time = min_epoch_time;
+			let (send, recv, transfer_amount) = Self::update_order_amount(
+				who,
+				&pool_account,
+				&mut order.invest,
+				amount,
+				outstanding,
+			)?;
+
+			order.epoch = pool.epoch.current;
+			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false).map(|_| ())
+		}
+
+		pub(crate) fn do_update_redeem_order(
+			who: &T::AccountId,
+			pool: &mut PoolDetailsOf<T>,
+			order: &mut UserOrderOf<T>,
+			amount: T::Balance,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+		) -> DispatchResult {
+			let tranche = pool
+				.tranches
+				.get_mut_tranche(TrancheLoc::Id(tranche_id))
+				.ok_or(Error::<T>::InvalidTrancheId)?;
+			let outstanding = &mut tranche.outstanding_redeem_orders;
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
+
+			let (send, recv, transfer_amount) = Self::update_order_amount(
+				who,
+				&pool_account,
+				&mut order.redeem,
+				amount,
+				outstanding,
+			)?;
+
+			order.epoch = pool.epoch.current;
+			T::Tokens::transfer(tranche.currency, send, recv, transfer_amount, false).map(|_| ())
+		}
+
+		#[allow(clippy::type_complexity)]
+		fn update_order_amount<'a>(
+			who: &'a T::AccountId,
+			pool: &'a T::AccountId,
+			old_order: &mut T::Balance,
+			new_order: T::Balance,
+			pool_orders: &mut T::Balance,
+		) -> Result<(&'a T::AccountId, &'a T::AccountId, T::Balance), DispatchError> {
+			match new_order.cmp(old_order) {
+				Ordering::Greater => {
+					let transfer_amount = new_order
+						.checked_sub(old_order)
+						.expect("New order larger than old order. qed.");
+
+					*pool_orders = pool_orders
+						.checked_add(&transfer_amount)
+						.ok_or(ArithmeticError::Overflow)?;
+
+					*old_order = new_order;
+					Ok((who, pool, transfer_amount))
+				}
+				Ordering::Less => {
+					let transfer_amount = old_order
+						.checked_sub(&new_order)
+						.expect("Old order larger than new order. qed.");
+
+					*pool_orders = pool_orders
+						.checked_sub(&transfer_amount)
+						.ok_or(ArithmeticError::Underflow)?;
+
+					*old_order = new_order;
+					Ok((pool, who, transfer_amount))
+				}
+				Ordering::Equal => Err(Error::<T>::NoNewOrder.into()),
+			}
+		}
+
+		pub(crate) fn calculate_collect(
+			tranche_id: T::TrancheId,
+			order: UserOrder<T::Balance, T::EpochId>,
+			end_epoch: T::EpochId,
+		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
+			let mut epoch_idx = order.epoch;
+			let mut outstanding = OutstandingCollections {
+				payout_currency_amount: Zero::zero(),
+				payout_token_amount: Zero::zero(),
+				remaining_invest_currency: order.invest,
+				remaining_redeem_token: order.redeem,
+			};
+			let mut all_calculated = false;
+
+			while epoch_idx <= end_epoch && !all_calculated {
+				// Note: If this errors out here, the system is in a corrupt state.
+				let epoch = Epoch::<T>::try_get(&tranche_id, epoch_idx)
+					.map_err(|_| Error::<T>::EpochNotExecutedYet)?;
+
+				if outstanding.remaining_invest_currency != Zero::zero() {
+					Self::parse_invest_executions(&epoch, &mut outstanding)?;
 				}
 
-				if let Change::NewValue(max_nav_age) = changes.max_nav_age {
-					pool.parameters.max_nav_age = max_nav_age;
+				if outstanding.remaining_redeem_token != Zero::zero() {
+					Self::parse_redeem_executions(&epoch, &mut outstanding)?;
 				}
 
-				if let Change::NewValue(tranches) = &changes.tranches {
-					let now = Self::now();
+				epoch_idx += One::one();
+				all_calculated = outstanding.remaining_invest_currency == Zero::zero()
+					&& outstanding.remaining_redeem_token == Zero::zero();
+			}
 
-					pool.tranches.combine_with_mut_residual_top(
-						tranches.iter(),
-						|tranche, tranche_update| {
-							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
-							tranche.accrue(now)?;
+			Ok(outstanding)
+		}
 
-							tranche.tranche_type = tranche_update.tranche_type;
+		fn parse_invest_executions(
+			epoch: &EpochDetails<T::BalanceRatio>,
+			outstanding: &mut OutstandingCollections<T::Balance>,
+		) -> DispatchResult {
+			// Multiply invest fulfilment in this epoch with outstanding order amount to get executed amount
+			// Rounding down in favor of the system
+			let amount = epoch
+				.invest_fulfillment
+				.mul_floor(outstanding.remaining_invest_currency);
 
-							if let Some(new_seniority) = tranche_update.seniority {
-								tranche.seniority = new_seniority;
-							}
+			if amount != Zero::zero() {
+				// Divide by the token price to get the payout in tokens
+				let amount_token = epoch
+					.token_price
+					.reciprocal()
+					.and_then(|inv_price| inv_price.checked_mul_int(amount))
+					.ok_or(ArithmeticError::Overflow)?;
 
-							Ok(())
-						},
-					)?;
-				}
+				outstanding.payout_token_amount = outstanding
+					.payout_token_amount
+					.checked_add(&amount_token)
+					.ok_or(ArithmeticError::Overflow)?;
+				outstanding.remaining_invest_currency = outstanding
+					.remaining_invest_currency
+					.checked_sub(&amount)
+					.ok_or(ArithmeticError::Overflow)?;
+			}
 
-				//
-				// The case when Metadata AND the tranche changed, we don't allow for an or.
-				// Both have to be changed (for now)
-				//
-				if let Change::NewValue(metadata) = &changes.tranche_metadata {
-					for (tranche, updated_metadata) in
-						pool.tranches.tranches.iter().zip(metadata.iter())
-					{
-						T::AssetRegistry::update_asset(
-							tranche.currency,
-							None,
-							Some(updated_metadata.clone().token_name.to_vec()),
-							Some(updated_metadata.clone().token_symbol.to_vec()),
-							None,
-							None,
-							None,
-						)
-						.map_err(|_| Error::<T>::FailedToUpdateTrancheMetadata)?;
-					}
-				}
+			Ok(())
+		}
 
-				ScheduledUpdate::<T>::remove(pool_id);
+		fn parse_redeem_executions(
+			epoch: &EpochDetails<T::BalanceRatio>,
+			outstanding: &mut OutstandingCollections<T::Balance>,
+		) -> DispatchResult {
+			// Multiply redeem fulfilment in this epoch with outstanding order amount to get executed amount
+			// Rounding down in favor of the system
+			let amount = epoch
+				.redeem_fulfillment
+				.mul_floor(outstanding.remaining_redeem_token);
 
-				Ok(())
-			})
+			if amount != Zero::zero() {
+				// Multiply by the token price to get the payout in currency
+				let amount_currency = epoch
+					.token_price
+					.checked_mul_int(amount)
+					.unwrap_or(Zero::zero());
+
+				outstanding.payout_currency_amount = outstanding
+					.payout_currency_amount
+					.checked_add(&amount_currency)
+					.ok_or(ArithmeticError::Overflow)?;
+				outstanding.remaining_redeem_token = outstanding
+					.remaining_redeem_token
+					.checked_sub(&amount)
+					.ok_or(ArithmeticError::Overflow)?;
+			}
+
+			Ok(())
 		}
 
 		pub fn is_valid_tranche_change(
@@ -1366,6 +1540,68 @@ pub mod pallet {
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });
+				Ok(())
+			})
+		}
+
+		pub(crate) fn do_update_pool(
+			pool_id: &T::PoolId,
+			changes: &PoolChangesOf<T>,
+		) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
+					pool.parameters.min_epoch_time = min_epoch_time;
+				}
+
+				if let Change::NewValue(max_nav_age) = changes.max_nav_age {
+					pool.parameters.max_nav_age = max_nav_age;
+				}
+
+				if let Change::NewValue(tranches) = &changes.tranches {
+					let now = Self::now();
+
+					pool.tranches.combine_with_mut_residual_top(
+						tranches.iter(),
+						|tranche, tranche_update| {
+							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
+							tranche.accrue(now)?;
+
+							tranche.tranche_type = tranche_update.tranche_type;
+
+							if let Some(new_seniority) = tranche_update.seniority {
+								tranche.seniority = new_seniority;
+							}
+
+							Ok(())
+						},
+					)?;
+				}
+
+				//
+				// The case when Metadata AND the tranche changed, we don't allow for an or.
+				// Both have to be changed (for now)
+				//
+				if let Change::NewValue(metadata) = &changes.tranche_metadata {
+					for (tranche, updated_metadata) in
+						pool.tranches.tranches.iter().zip(metadata.iter())
+					{
+						T::AssetRegistry::update_asset(
+							tranche.currency,
+							None,
+							Some(updated_metadata.clone().token_name.to_vec()),
+							Some(updated_metadata.clone().token_symbol.to_vec()),
+							None,
+							None,
+							None,
+						)
+						.map_err(|_| Error::<T>::FailedToUpdateTrancheMetadata)?;
+					}
+				}
+
+				ScheduledUpdate::<T>::remove(pool_id);
+
 				Ok(())
 			})
 		}
@@ -1631,6 +1867,28 @@ pub mod pallet {
 
 				Ok(Some(T::WeightInfo::update_no_execution(num_tranches)).into())
 			}
+		}
+
+		fn execute_update(pool_id: T::PoolId) -> DispatchResultWithPostInfo {
+			let update = ScheduledUpdate::<T>::try_get(pool_id)
+				.map_err(|_| Error::<T>::NoScheduledUpdate)?;
+
+			ensure!(
+				Self::now() >= update.scheduled_time,
+				Error::<T>::ScheduledTimeHasNotPassed
+			);
+
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
+			ensure!(
+				T::UpdateGuard::released(&pool, &update, Self::now()),
+				Error::<T>::UpdatePrerequesitesNotFulfilled
+			);
+
+			Self::do_update_pool(&pool_id, &update.changes)?;
+
+			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
+			Ok(Some(T::WeightInfo::execute_update(num_tranches)).into())
 		}
 	}
 }

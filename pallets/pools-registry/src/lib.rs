@@ -81,7 +81,7 @@ pub trait PoolMutate<
 		changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
 	) -> DispatchResultWithPostInfo;
 
-	// fn execute_update() -> DispatchWithPostInfo;
+	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
@@ -324,6 +324,28 @@ pub mod pallet {
 			);
 
 			match T::ModifyPool::update(pool_id, changes) {
+				Ok(res) => {
+					Self::deposit_event(Event::Updated { pool_id });
+					Ok(res)
+				}
+				Err(e) => Err(e),
+			}
+		}
+
+		/// Executed a scheduled update to the pool.
+		///
+		/// This checks if the scheduled time is in the past
+		/// and, if required, if there are no outstanding
+		/// redeem orders. If both apply, then the scheduled
+		/// changes are applied.
+		#[pallet::weight(T::WeightInfo::execute_update(T::MaxTranches::get()))]
+		pub fn execute_update(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
+			match T::ModifyPool::execute_update(pool_id) {
 				Ok(res) => {
 					Self::deposit_event(Event::Updated { pool_id });
 					Ok(res)

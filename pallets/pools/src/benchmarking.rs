@@ -123,49 +123,48 @@ benchmarks! {
 	// 	assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
 	// 	assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	// }
->>>>>>> 0cccfea0 (Adjusting benchmarking and tests)
-
-	execute_scheduled_update {
-		let admin: T::AccountId = create_admin::<T>(0);
-		let n in 1..T::MaxTranches::get();
-		let tranches = build_update_tranches::<T>(n);
-		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
-
-		let pool = get_pool::<T>();
-		let default_min_epoch_time = pool.parameters.min_epoch_time;
-		let default_max_nav_age = pool.parameters.max_nav_age;
-
-		// Invest so we can redeem later
-		let investor = create_investor::<T>(0, TRANCHE)?;
-		let locator = get_tranche_id::<T>(TRANCHE);
-		pallet_investments::Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 100)?;
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		unrestrict_epoch_close::<T>();
-		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), POOL)?;
-		pallet_investments::Pallet::<T>::collect_investments(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator))?;
-
-		// Submit redemption order so the update isn't immediately executed
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
-
-		let changes = PoolChanges {
-			tranches: Change::NewValue(build_update_tranches::<T>(n)),
-			min_epoch_time: Change::NewValue(SECS_PER_DAY),
-			max_nav_age: Change::NewValue(SECS_PER_HOUR),
-			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
-		};
-
-		Pallet::<T>::update(POOL, changes)?;
-
-		// Withdraw redeem order so the update can be executed after that
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 0)?;
-	}: execute_scheduled_update(RawOrigin::Signed(admin), POOL)
-	verify {
-		let pool = get_pool::<T>();
-		assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
-	}
+	// execute_update {
+	// 	let admin: T::AccountId = create_admin::<T>(0);
+	// 	let n in 1..T::MaxTranches::get();
+	// 	let tranches = build_update_tranches::<T>(n);
+	// 	prepare_asset_registry::<T>();
+	// 	create_pool::<T>(n, admin.clone())?;
+	//
+	// 	let pool = get_pool::<T>();
+	// 	let default_min_epoch_time = pool.parameters.min_epoch_time;
+	// 	let default_max_nav_age = pool.parameters.max_nav_age;
+	//
+	// 	// Invest so we can redeem later
+	// 	let investor = create_investor::<T>(0, TRANCHE)?;
+	// 	let locator = get_tranche_id::<T>(TRANCHE);
+	// 	Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 100)?;
+	// 	T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
+	// 	unrestrict_epoch_close::<T>();
+	// 	Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), POOL)?;
+	// 	Pallet::<T>::collect(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 1)?;
+	//
+	// 	// Submit redemption order so the update isn't immediately executed
+	// 	Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 1)?;
+	//
+	// 	let changes = PoolChanges {
+	// 		tranches: Change::NewValue(build_update_tranches::<T>(n)),
+	// 		min_epoch_time: Change::NewValue(SECS_PER_DAY),
+	// 		max_nav_age: Change::NewValue(SECS_PER_HOUR),
+	// 		tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
+	// 	};
+	//
+	// 	Pallet::<T>::update(POOL, changes)?;
+	//
+	// 	// Withdraw redeem order so the update can be executed after that
+	// 	Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 0)?;
+	// }: execute_update(RawOrigin::Signed(admin), POOL)
+	// verify {
+	// 	let pool = get_pool::<T>();
+	// 	assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+	// 	assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
+	// 	assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
+	// }
+>>>>>>> 08eae54e (Update weights and benchmarks)
 
 	set_max_reserve {
 		let admin: T::AccountId = create_admin::<T>(0);

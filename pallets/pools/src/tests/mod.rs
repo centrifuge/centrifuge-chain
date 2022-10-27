@@ -1027,7 +1027,7 @@ fn pool_updates_should_be_constrained() {
 		);
 
 		assert_err!(
-			Pools::execute_scheduled_update(pool_owner_origin.clone(), pool_id),
+			Pools::execute_update(pool_owner_origin.clone(), pool_id),
 			Error::<Test>::UpdatePrerequesitesNotFulfilled
 		);
 
@@ -1036,10 +1036,7 @@ fn pool_updates_should_be_constrained() {
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), pool_id));
 
 		// Now it works since the epoch was executed and the redemption order was fulfilled
-		assert_ok!(Pools::execute_scheduled_update(
-			pool_owner_origin.clone(),
-			pool_id
-		));
+		assert_ok!(Pools::execute_update(pool_owner_origin.clone(), pool_id));
 
 		// And the parameter should be updated now
 		let pool = crate::Pool::<Test>::try_get(pool_id).unwrap();
