@@ -139,7 +139,6 @@ impl Config for Test {
 	type MaxTokenNameLength = ();
 	type MaxTokenSymbolLength = ();
 	type MaxTranches = ();
-	type Metadata = ();
 	type ModifyPool = ModifyPoolMock<Self>;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;

@@ -315,15 +315,15 @@ fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 	});
 }
 
-fn assert_input_tranches_match<T: Config>(
-	chain: &[TrancheOf<T>],
-	target: &[TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
-) {
-	assert_eq!(chain.len(), target.len());
-	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.tranche_type);
-	}
-}
+// fn assert_input_tranches_match<T: Config>(
+// 	chain: &[TrancheOf<T>],
+// 	target: &[TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
+// ) {
+// 	assert_eq!(chain.len(), target.len());
+// 	for (chain, target) in chain.iter().zip(target.iter()) {
+// 		assert_eq!(chain.tranche_type, target.tranche_type);
+// 	}
+// }
 
 fn assert_update_tranches_match<T: Config>(
 	chain: &[TrancheOf<T>],
@@ -339,9 +339,14 @@ fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
 }
 
-fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetailsOf<T> {
-	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
-}
+// fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<
+// 	T::InterestRate,
+// 	T::MaxTokenNameLength,
+// 	T::MaxTokenSymbolLength,
+// 	T::MaxTranches,
+// > {
+// 	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
+// }
 
 fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
 	get_pool::<T>()

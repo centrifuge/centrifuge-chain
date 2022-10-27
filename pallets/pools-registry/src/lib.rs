@@ -137,16 +137,6 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Copy;
 
-		type Metadata: Eq
-			+ PartialEq
-			+ Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaxEncodedLen
-			+ core::fmt::Debug;
-
 		type TrancheId: Member
 			+ Parameter
 			+ Default

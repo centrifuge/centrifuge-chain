@@ -32,10 +32,10 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
-use pallet_pools::TrancheLoc;
 use pallet_pools::{
 	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType,
 };
+use pallet_pools_registry::PoolMutate;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,
@@ -137,7 +137,7 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
-		RawOrigin::Signed(owner.clone()).into(),
+		owner.clone(),
 		owner.clone(),
 		pool_id,
 		vec![

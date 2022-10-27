@@ -14,12 +14,15 @@
 
 use cfg_primitives::{AccountId, Balance, Moment, PoolId, TrancheId};
 use cfg_traits::Permissions as PermissionsT;
-use cfg_types::{CurrencyId, PermissionScope, PoolRole, Rate, Role};
+use cfg_types::{
+	CurrencyId, PermissionScope, PoolRole, Rate, Role, TrancheInput, TrancheMetadata, TrancheType,
+};
 use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
-use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheMetadata, TrancheType};
+use pallet_pools::{Call as PoolsCall, TrancheIndex};
+use pallet_pools_registry::Call as PoolsRegistryCall;
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{
@@ -350,7 +353,7 @@ pub fn create_pool_call(
 	max_reserve: Balance,
 	tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 ) -> Call {
-	Call::Pools(PoolsCall::create {
+	Call::PoolsRegistry(PoolsRegistryCall::create {
 		admin,
 		pool_id,
 		tranche_inputs,
