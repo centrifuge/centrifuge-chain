@@ -129,9 +129,11 @@ pub mod pallet {
 		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
 
+		/// Specify the internal reward mechanism used by this pallet.
+		/// Check available mechanisms at [`mechanism`] module.
 		type RewardMechanism: RewardMechanism<Balance = Self::Balance>;
 
-		/// Max number of currency movements. See [`Rewards::attach_currency()`].
+		/// Max number of currency movements. See [`Pallet::attach_currency()`].
 		#[pallet::constant]
 		type MaxCurrencyMovements: Get<u32> + TypeInfo;
 	}
