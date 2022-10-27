@@ -61,10 +61,7 @@ pub trait PoolMutate<
 	MaxTokenNameLength,
 	MaxTokenSymbolLength,
 	MaxTranches,
-> where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-	MaxTranches: Get<u32>,
+>
 {
 	fn create(
 		admin: AccountId,
@@ -74,7 +71,8 @@ pub trait PoolMutate<
 		currency: CurrencyId,
 		max_reserve: Balance,
 		metadata: Option<Vec<u8>>,
-	) -> DispatchResult;
+	)
+	-> DispatchResult;
 
 	fn update(
 		pool_id: PoolId,
