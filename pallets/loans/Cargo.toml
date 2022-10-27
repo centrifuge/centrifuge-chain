@@ -27,9 +27,9 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
-pallet-permissions = { path = "../../pallets/permissions", default-features = false}
-pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false}
-pallet-pool-registry = { path = "../pool-registry", default-features = false}
+pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
+pallet-permissions = { path = "../../pallets/permissions", default-features = false }
+pallet-pool-registry = { path = "../pool-registry", default-features = false }
 
 # optional dependencies for benchmarking
 cfg-test-utils = { path = "../../libs/test-utils", default-features = false, optional = true }
@@ -73,21 +73,21 @@ runtime-benchmarks = [
   "cfg-test-utils/runtime-benchmarks",
 ]
 std = [
-    'serde/std',
-    'scale-info/std',
-    'pallet-permissions/std',
-    'pallet-pool-registry/std',
-    'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'sp-core/std',
-    'sp-runtime/std',
-    'sp-std/std',
-    'sp-arithmetic/std',
-    'parachain-info/std',
-    'pallet-interest-accrual/std',
-    'cfg-traits/std',
-    'cfg-types/std',
-    'cfg-primitives/std'
+  'serde/std',
+  'scale-info/std',
+  'pallet-permissions/std',
+  'pallet-pool-registry/std',
+  'codec/std',
+  'frame-support/std',
+  'frame-system/std',
+  'sp-core/std',
+  'sp-runtime/std',
+  'sp-std/std',
+  'sp-arithmetic/std',
+  'parachain-info/std',
+  'pallet-interest-accrual/std',
+  'cfg-traits/std',
+  'cfg-types/std',
+  'cfg-primitives/std',
 ]
 try-runtime = ["frame-support/try-runtime"]

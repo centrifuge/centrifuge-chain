@@ -27,40 +27,40 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-	"libs/primitives",
-	"libs/primitives",
-	"libs/proofs",
-	"libs/proofs",
-	"libs/proofs",
-	"libs/test-utils",
-	"libs/traits",
-	"libs/traits",
-	"libs/types",
-	"libs/types",
-	"pallets/anchors",
-	"pallets/bridge",
-	"pallets/claims",
-	"pallets/collator-allowlist",
-	"pallets/crowdloan-claim",
-	"pallets/crowdloan-reward",
-	"pallets/fees",
-	"pallets/interest-accrual",
-	"pallets/investments",
-	"pallets/keystore",
-	"pallets/liquidity-rewards",
-	"pallets/loans",
-	"pallets/migration",
-	"pallets/nft",
-	"pallets/nft-sales",
-	"pallets/permissions",
-	"pallets/pools",
-	"pallets/pool-registry",
-	"pallets/restricted-tokens",
-	"pallets/rewards",
-	"runtime/altair",
-	"runtime/centrifuge",
-	"runtime/common",
-	"runtime/integration-tests",
+  "libs/primitives",
+  "libs/primitives",
+  "libs/proofs",
+  "libs/proofs",
+  "libs/proofs",
+  "libs/test-utils",
+  "libs/traits",
+  "libs/traits",
+  "libs/types",
+  "libs/types",
+  "pallets/anchors",
+  "pallets/bridge",
+  "pallets/claims",
+  "pallets/collator-allowlist",
+  "pallets/crowdloan-claim",
+  "pallets/crowdloan-reward",
+  "pallets/fees",
+  "pallets/interest-accrual",
+  "pallets/investments",
+  "pallets/keystore",
+  "pallets/liquidity-rewards",
+  "pallets/loans",
+  "pallets/migration",
+  "pallets/nft",
+  "pallets/nft-sales",
+  "pallets/permissions",
+  "pallets/pools",
+  "pallets/pool-registry",
+  "pallets/restricted-tokens",
+  "pallets/rewards",
+  "runtime/altair",
+  "runtime/centrifuge",
+  "runtime/common",
+  "runtime/integration-tests",
 ]
 
 [dependencies]
@@ -133,8 +133,8 @@ try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = 
 cfg-types = { path = "./libs/types" }
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
-pallet-pools = { path = "./pallets/pools" }
 pallet-pool-registry = { path = "pallets/pool-registry" }
+pallet-pools = { path = "./pallets/pools" }
 
 # frame dependencies
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
@@ -187,17 +187,17 @@ tempfile = "3.1.0"
 [features]
 default = ["std", "cli"]
 std = [
-	"sc-service/rocksdb",
-	"sp-consensus-babe/std",
-	"substrate-build-script-utils",
+  "sc-service/rocksdb",
+  "sp-consensus-babe/std",
+  "substrate-build-script-utils",
 ]
 runtime-benchmarks = [
-	"altair-runtime/runtime-benchmarks",
-	"centrifuge-runtime/runtime-benchmarks",
-	"development-runtime/runtime-benchmarks",
-	"frame-benchmarking/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
-	"runtime-common/runtime-benchmarks",
+  "altair-runtime/runtime-benchmarks",
+  "centrifuge-runtime/runtime-benchmarks",
+  "development-runtime/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "runtime-common/runtime-benchmarks",
 ]
 test-benchmarks = [
   "runtime-benchmarks",
@@ -207,9 +207,9 @@ cli = [
   'try-runtime-cli',
 ]
 try-runtime = [
-	"altair-runtime/try-runtime",
-	"centrifuge-runtime/try-runtime",
-	"try-runtime-cli"
+  "altair-runtime/try-runtime",
+  "centrifuge-runtime/try-runtime",
+  "try-runtime-cli",
 ]
 
 fast-runtime = [
