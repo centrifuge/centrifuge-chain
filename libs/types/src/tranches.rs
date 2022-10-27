@@ -59,9 +59,9 @@ where
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
-	where
-		MaxTokenNameLength: Get<u32>,
-		MaxTokenSymbolLength: Get<u32>,
+where
+	MaxTokenNameLength: sp_runtime::traits::Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
 {
 	pub token_name: BoundedVec<u8, MaxTokenNameLength>,
 	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
@@ -72,9 +72,9 @@ pub type Seniority = u32;
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
 pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
-	where
-		MaxTokenNameLength: Get<u32>,
-		MaxTokenSymbolLength: Get<u32>,
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
 {
 	pub tranche_type: TrancheType<Rate>,
 	pub seniority: Option<Seniority>,
