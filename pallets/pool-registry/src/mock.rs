@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use cfg_primitives::Moment;
-use cfg_types::{CurrencyId, PoolChanges, Rate, TrancheInput};
+use cfg_types::{CurrencyId, PoolChanges, Rate, TrancheInput, UpdateState};
 use frame_support::{
 	dispatch::{
 		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
@@ -16,7 +16,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::{self as pallet_pool_registry, Config, PoolMutate};
+use crate::{self as pallet_pool_registry, Config, PoolMutate, WeightInfo};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -121,7 +121,10 @@ impl<T: Config + pallet_pool_registry::Config>
 			T::MaxTranches,
 		>,
 	) -> Result<(cfg_types::UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
-		todo!()
+		Ok((
+			UpdateState::Executed,
+			Some(T::WeightInfo::update_and_execute(5)).into(),
+		))
 	}
 
 	fn execute_update(_: T::PoolId) -> DispatchResultWithPostInfo {
