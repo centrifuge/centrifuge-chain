@@ -18,11 +18,13 @@ use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve, TrancheToken};
 use cfg_types::{
 	PermissionScope, PoolChanges, PoolLocator, PoolRole, Role, TrancheInput, TrancheType,
-	TrancheUpdate,
+	TrancheUpdate, UpdateState,
 };
 use codec::HasCompact;
 use frame_support::{
-	dispatch::DispatchResult,
+	dispatch::{
+		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
+	},
 	pallet_prelude::*,
 	traits::{
 		fungibles::{Inspect, Mutate, Transfer},
@@ -1799,7 +1801,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn update(pool_id: T::PoolId, changes: PoolChangesOf<T>) -> DispatchResultWithPostInfo {
+		fn update(
+			pool_id: T::PoolId,
+			changes: PoolChangesOf<T>,
+		) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
 			ensure!(
 				EpochExecution::<T>::try_get(pool_id).is_err(),
 				Error::<T>::InSubmissionPeriod
@@ -1824,7 +1829,10 @@ pub mod pallet {
 					ScheduledUpdate::<T>::remove(pool_id);
 				}
 
-				return Ok(Some(T::WeightInfo::update_no_execution(0)).into());
+				return Ok((
+					UpdateState::NotExecution,
+					Some(T::WeightInfo::update_no_execution(0)).into(),
+				));
 			}
 
 			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
@@ -1859,12 +1867,18 @@ pub mod pallet {
 			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
 				Self::do_update_pool(&pool_id, &changes)?;
 
-				Ok(Some(T::WeightInfo::update_and_execute(num_tranches)).into())
+				Ok((
+					UpdateState::Executed,
+					Some(T::WeightInfo::update_and_execute(num_tranches)).into(),
+				))
 			} else {
 				// If an update was already stored, this will override it
 				ScheduledUpdate::<T>::insert(pool_id, update);
 
-				Ok(Some(T::WeightInfo::update_no_execution(num_tranches)).into())
+				Ok((
+					UpdateState::Stored,
+					Some(T::WeightInfo::update_no_execution(num_tranches)).into(),
+				))
 			}
 		}
 

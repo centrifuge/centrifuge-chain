@@ -19,10 +19,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_types::{PoolChanges, TrancheInput};
+use cfg_types::{PoolChanges, TrancheInput, UpdateState};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{
+		Codec, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo,
+		PostDispatchInfo,
+	},
 	scale_info::TypeInfo,
 	traits::Get,
 	Parameter, RuntimeDebug,
@@ -155,7 +158,7 @@ pub trait PoolMutate<
 	fn update(
 		pool_id: PoolId,
 		changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	) -> DispatchResultWithPostInfo;
+	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
 
 	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }

@@ -3,7 +3,9 @@ use std::marker::PhantomData;
 use cfg_primitives::Moment;
 use cfg_types::{CurrencyId, PoolChanges, Rate, TrancheInput};
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{
+		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
+	},
 	parameter_types,
 	traits::{Hooks, SortedMembers},
 };
@@ -118,7 +120,7 @@ impl<T: Config + pallet_pool_registry::Config>
 			T::MaxTokenSymbolLength,
 			T::MaxTranches,
 		>,
-	) -> DispatchResultWithPostInfo {
+	) -> Result<(cfg_types::UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
 		todo!()
 	}
 

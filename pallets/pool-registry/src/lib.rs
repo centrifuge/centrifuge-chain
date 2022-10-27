@@ -14,7 +14,7 @@
 
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolMutate};
-use cfg_types::{PermissionScope, PoolChanges, PoolRole, Role, TrancheInput};
+use cfg_types::{PermissionScope, PoolChanges, PoolRole, Role, TrancheInput, UpdateState};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
@@ -166,6 +166,10 @@ pub mod pallet {
 		UpdateRegisted { pool_id: T::PoolId },
 		/// A pool update was executed.
 		UpdateExecuted { pool_id: T::PoolId },
+		/// A pool update was not executed (due to no changes made).
+		UpdateNotExecuted { pool_id: T::PoolId },
+		/// A pool update was stored for later execution.
+		UpdateStored { pool_id: T::PoolId },
 		/// Pool metadata was set.
 		MetadataSet {
 			pool_id: T::PoolId,
@@ -289,9 +293,20 @@ pub mod pallet {
 			);
 
 			match T::ModifyPool::update(pool_id, changes) {
-				Ok(res) => {
-					Self::deposit_event(Event::Updated { pool_id });
-					Ok(res)
+				Ok((state, dispatch_info)) => {
+					Self::deposit_event(Event::UpdateRegisted { pool_id });
+
+					match state {
+						UpdateState::NotExecution => {
+							Self::deposit_event(Event::UpdateNotExecuted { pool_id })
+						}
+						UpdateState::Executed => {
+							Self::deposit_event(Event::UpdateExecuted { pool_id })
+						}
+						UpdateState::Stored => Self::deposit_event(Event::UpdateStored { pool_id }),
+					}
+
+					Ok(dispatch_info)
 				}
 				Err(e) => Err(e),
 			}
@@ -310,8 +325,13 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			T::ModifyPool::execute_update(pool_id)
-				.map(|_| Self::deposit_event(Event::Updated { pool_id }))
+			match T::ModifyPool::execute_update(pool_id) {
+				Ok(res) => {
+					Self::deposit_event(Event::UpdateExecuted { pool_id });
+					Ok(res)
+				}
+				Err(e) => Err(e),
+			}
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
