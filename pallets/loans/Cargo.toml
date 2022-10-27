@@ -77,6 +77,7 @@ std = [
     'serde/std',
     'scale-info/std',
     'pallet-permissions/std',
+    'pallet-pools-registry/std',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
