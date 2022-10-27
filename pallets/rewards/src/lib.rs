@@ -17,6 +17,9 @@
 //! The Rewards pallet provides functionality for distributing rewards to different accounts with
 //! different currencies. The user can stake an amount to claim a proportional reward.
 //!
+//! The staked amount is reserved/hold from the user account for that currency when is deposited
+//! and unreserved/release when is withdrawed.
+//!
 //! ## Overview
 //!
 //! The Rewards pallet provides functions for:
@@ -41,8 +44,7 @@
 //!
 //! ### Implementations
 //!
-//! The Rewards pallet provides implementations for the Rewards trait. If these traits provide
-//! the functionality that you need, then you can avoid coupling with the Rewards pallet.
+//! The Rewards pallet provides implementations for the Rewards trait.
 //!
 //! ### Functionality
 //!

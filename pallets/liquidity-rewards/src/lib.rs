@@ -62,7 +62,7 @@ use sp_runtime::{
 use sp_std::mem;
 use weights::WeightInfo;
 
-/// Type that contains the finish timestamp of an epoch.
+/// Type that contains the timestamp of an epoch.
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct EpochTimestamp<BlockNumber>(BlockNumber);
@@ -199,7 +199,8 @@ pub mod pallet {
 	// Although this value could be stored inside `EpochData`,
 	// we maintain it separately to avoid deserializing the whole EpochData struct each `on_initialize()` call.
 	// EpochData could be relatively big if there many groups.
-	// We dont have to deserialize the whole struct 99% of the time assuming a duration of 100 blocks.
+	// We dont have to deserialize the whole struct 99% of the time assuming a duration of 100 blocks,
+	// we only need to perform that action when the epoch finalized, 1% of the time.
 	#[pallet::storage]
 	pub(super) type EndOfEpoch<T: Config> = StorageValue<
 		_,
