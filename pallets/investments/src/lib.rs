@@ -17,12 +17,12 @@ use cfg_primitives::OrderId;
 use cfg_traits::{
 	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
 };
-use cfg_types::{FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder};
+use cfg_types::{
+	FixedPointNumberExtension, FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder,
+};
 use frame_support::{
-	error::BadOrigin,
 	pallet_prelude::*,
 	traits::tokens::fungibles::{Inspect, Mutate, Transfer},
-	weights::PostDispatchInfo,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -33,6 +33,7 @@ use sp_runtime::{
 use sp_std::{
 	cmp::{min, Ordering},
 	convert::TryInto,
+	vec::Vec,
 };
 pub mod weights;
 
@@ -214,7 +215,8 @@ pub mod pallet {
 			+ Parameter
 			+ Default
 			+ Copy
-			+ FixedPointNumber<Inner = Self::Amount>;
+			+ FixedPointNumber<Inner = Self::Amount>
+			+ FixedPointNumberExtension;
 
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
@@ -230,7 +232,7 @@ pub mod pallet {
 		/// given investment
 		type PreConditions: PreConditions<
 			OrderType<Self::AccountId, Self::InvestmentId, Self::Amount>,
-			Result = bool,
+			Result = DispatchResult,
 		>;
 
 		/// The weight information for this pallet extrinsics.
@@ -455,7 +457,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(0)]
+		#[pallet::weight(80_000_000)]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -474,7 +476,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(0)]
+		#[pallet::weight(80_000_000)]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -485,32 +487,58 @@ pub mod pallet {
 			Pallet::<T>::do_update_redemption(who, investment_id, amount)
 		}
 
-		/// Collect the results of a users orders for the given investment.
-		/// The `CollectType` allows users to refund their funds if any
-		/// are not fulfilled or directly append them to the next acitve
+		/// Collect the results of a users invest orders for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
-		#[pallet::weight(0)]
-		pub fn collect(
+		#[pallet::weight(80_000_000)]
+		pub fn collect_investments(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			Self::do_collect_both(who, investment_id)
+			Self::do_collect_invest(who, investment_id)
 		}
 
-		/// Collect the results of another users orders for the given investment.
-		///
-		/// The type of collection will always be `CollectType::Closing`.
-		#[pallet::weight(0)]
-		pub fn collect_for(
+		/// Collect the results of a users redeem orders for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
+		/// order for this investment.
+		#[pallet::weight(80_000_000)]
+		pub fn collect_redemptions(
+			origin: OriginFor<T>,
+			investment_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			Self::do_collect_redeem(who, investment_id)
+		}
+
+		/// Collect the results of another users invest orders for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
+		/// order for this investment.
+		#[pallet::weight(80_000_000)]
+		pub fn collect_investments_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,
 			investment_id: T::InvestmentId,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect_both(who, investment_id)
+			Self::do_collect_invest(who, investment_id)
+		}
+
+		/// Collect the results of another users redeem orders for the given investment.
+		/// If any amounts are not fulfilled they are directly appended to the next active
+		/// order for this investment.
+		#[pallet::weight(80_000_000)]
+		pub fn collect_redemptions_for(
+			origin: OriginFor<T>,
+			who: T::AccountId,
+			investment_id: T::InvestmentId,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
+			Self::do_collect_redeem(who, investment_id)
 		}
 	}
 }
@@ -525,14 +553,11 @@ where
 		investment_id: T::InvestmentId,
 		amount: T::Amount,
 	) -> DispatchResult {
-		ensure!(
-			T::PreConditions::check(OrderType::Investment {
-				who: who.clone(),
-				investment_id,
-				amount
-			}),
-			BadOrigin
-		);
+		T::PreConditions::check(OrderType::Investment {
+			who: who.clone(),
+			investment_id,
+			amount,
+		})?;
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveInvestOrders::<T>::try_mutate(
@@ -590,14 +615,11 @@ where
 		investment_id: T::InvestmentId,
 		amount: T::Amount,
 	) -> DispatchResult {
-		ensure!(
-			T::PreConditions::check(OrderType::Redemption {
-				who: who.clone(),
-				investment_id,
-				amount
-			}),
-			BadOrigin
-		);
+		T::PreConditions::check(OrderType::Redemption {
+			who: who.clone(),
+			investment_id,
+			amount,
+		})?;
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveRedeemOrders::<T>::try_mutate(
@@ -646,43 +668,6 @@ where
 			amount,
 		});
 		Ok(())
-	}
-
-	pub(crate) fn do_collect_both(
-		who: T::AccountId,
-		investment_id: T::InvestmentId,
-	) -> DispatchResultWithPostInfo {
-		let postinfo_invest = Pallet::<T>::do_collect_invest(who.clone(), investment_id)?;
-		let postinfo_redeem = Pallet::<T>::do_collect_redeem(who.clone(), investment_id)?;
-
-		Ok(Pallet::<T>::merge_postinfos(
-			postinfo_invest,
-			postinfo_redeem,
-		))
-	}
-
-	/// Merges to PostDispatchInfo's into a single one
-	fn merge_postinfos(first: PostDispatchInfo, second: PostDispatchInfo) -> PostDispatchInfo {
-		let combined_weight = match (first.actual_weight, second.actual_weight) {
-			(Some(first_weight), Some(second_weight)) => {
-				Some(first_weight.saturating_add(second_weight))
-			}
-			(None, Some(second_weight)) => Some(second_weight),
-			(Some(first_weight), None) => Some(first_weight),
-			(None, None) => None,
-		};
-
-		let pays_fee = match (first.pays_fee, second.pays_fee) {
-			(Pays::No, Pays::No) => Pays::No,
-			(Pays::No, Pays::Yes) => Pays::Yes,
-			(Pays::Yes, Pays::Yes) => Pays::Yes,
-			(Pays::Yes, Pays::No) => Pays::Yes,
-		};
-
-		PostDispatchInfo {
-			pays_fee,
-			actual_weight: combined_weight,
-		}
 	}
 
 	fn rm_empty(amount: T::Amount, storage_order: &mut Option<OrderOf<T>>, on_not_empty: Event<T>) {
@@ -970,14 +955,25 @@ where
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
 	) -> DispatchResult {
 		let remaining = collection.remaining_investment_invest;
+		// NOTE: The checked_mul_int_floor and reciprocal_floor here ensure that for a given price
+		//       the system side (i.e. the pallet-investments) will always have
+		//       enough balance to satisfy all claims on payouts.
+		//
+		//       Importantly, the Accountant side (i.e. the pool and therefore an issuer)
+		//       will still drain its reserve by the amount without rounding. So we neither favor
+		//       issuer or investor but always the system.
+		//
+		//       TODO: Rounding always means, we might have issuance on tranche-tokens left, that are
+		//             rounding leftovers. This will be of importance, once we remove tranches at some
+		//             point.
 		collection.payout_investment_invest = collection
 			.payout_investment_invest
 			.checked_add(
 				&fulfillment
 					.price
-					.reciprocal()
+					.reciprocal_floor()
 					.ok_or(Error::<T>::ZeroPricedInvestment)?
-					.checked_mul_int(fulfillment.of_amount.mul_floor(remaining))
+					.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;
@@ -990,12 +986,23 @@ where
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
 	) -> DispatchResult {
 		let remaining = collection.remaining_investment_redeem;
+		// NOTE: The checked_mul_int_floor here ensures that for a given price
+		//       the system side (i.e. the pallet-investments) will always have
+		//       enough balance to satisfy all claims on payouts.
+		//
+		//       Importantly, the Accountant side (i.e. the pool and therefore an issuer)
+		//       will still drain its reserve by the amount without rounding. So we neither favor
+		//       issuer or investor but always the system.
+		//
+		//       TODO: Rounding always means, we might have issuance on tranche-tokens left, that are
+		//             rounding leftovers. This will be of importance, once we remove tranches at some
+		//             point.
 		collection.payout_investment_redeem = collection
 			.payout_investment_redeem
 			.checked_add(
 				&fulfillment
 					.price
-					.checked_mul_int(fulfillment.of_amount.mul_floor(remaining))
+					.checked_mul_int_floor(fulfillment.of_amount.mul_floor(remaining))
 					.ok_or(ArithmeticError::Overflow)?,
 			)
 			.ok_or(ArithmeticError::Overflow)?;
@@ -1120,7 +1127,17 @@ where
 	type InvestmentId = T::InvestmentId;
 	type Orders = TotalOrder<T::Amount>;
 
-	fn invest_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
+	fn invest_orders(investment_id: Self::InvestmentId) -> Self::Orders {
+		ActiveInvestOrders::<T>::get(&investment_id)
+	}
+
+	fn redeem_orders(investment_id: Self::InvestmentId) -> Self::Orders {
+		ActiveRedeemOrders::<T>::get(&investment_id)
+	}
+
+	fn process_invest_orders(
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Orders, Self::Error> {
 		let total_orders = ActiveInvestOrders::<T>::try_mutate(
 			&investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
@@ -1167,7 +1184,9 @@ where
 		Ok(total_orders)
 	}
 
-	fn redeem_orders(investment_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error> {
+	fn process_redeem_orders(
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Orders, Self::Error> {
 		let total_orders = ActiveRedeemOrders::<T>::try_mutate(
 			&investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {

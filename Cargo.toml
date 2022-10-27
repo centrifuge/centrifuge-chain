@@ -49,6 +49,7 @@ members = [
 	"pallets/rewards",
 	"pallets/liquidity-rewards",
 	"libs/traits",
+	"libs/test-utils",
 	"libs/types",
 	"libs/proofs",
 	"libs/primitives",

@@ -14,4 +14,6 @@
 //! Also does contain implementations for Substrate based traits for testing
 
 pub mod accountant;
+pub mod nav;
+pub mod order_manager;
 pub mod orml_asset_registry;

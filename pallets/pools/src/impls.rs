@@ -10,14 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{CurrencyPair, PriceValue};
+use cfg_traits::{CurrencyPair, InvestmentAccountant, PriceValue, TrancheCurrency};
+use cfg_types::InvestmentInfo;
 
 use super::*;
 
 impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type Moment = Moment;
 	type PoolId = T::PoolId;
-	type Rate = T::BalanceRatio;
+	type Rate = T::Rate;
 	type TrancheId = T::TrancheId;
 
 	fn pool_exists(pool_id: Self::PoolId) -> bool {
@@ -33,7 +34,7 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	fn get_tranche_token_price(
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
-	) -> Option<PriceValue<T::CurrencyId, T::BalanceRatio, Moment>> {
+	) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
 		let now = Self::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
@@ -48,10 +49,13 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 			.ok()?;
 		let prices = pool
 			.tranches
-			.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
+			.calculate_prices::<T::Rate, T::Tokens, _>(total_assets, now)
 			.ok()?;
 
-		let base = pool.tranches.tranche_currency(TrancheLoc::Id(tranche_id))?;
+		let base = pool
+			.tranches
+			.tranche_currency(TrancheLoc::Id(tranche_id))?
+			.into();
 
 		let price = prices.get(tranche_index).cloned()?;
 
@@ -75,5 +79,65 @@ impl<T: Config> PoolReserve<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
 		Self::do_deposit(from, pool_id, amount)
+	}
+}
+
+impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
+	type Amount = T::Balance;
+	type Error = DispatchError;
+	type InvestmentId = T::TrancheCurrency;
+	type InvestmentInfo = InvestmentInfo<T::AccountId, T::CurrencyId, Self::InvestmentId>;
+
+	fn info(id: Self::InvestmentId) -> Result<Self::InvestmentInfo, Self::Error> {
+		let details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+		// Need to check here, if this is a valid tranche
+		let _currency = details
+			.tranches
+			.tranche_currency(TrancheLoc::Id(id.of_tranche()))
+			.ok_or(Error::<T>::InvalidTrancheId)?;
+
+		Ok(InvestmentInfo {
+			owner: PoolLocator {
+				pool_id: id.of_pool(),
+			}
+			.into_account_truncating(),
+			id,
+			payment_currency: details.currency,
+		})
+	}
+
+	fn balance(id: Self::InvestmentId, who: &T::AccountId) -> Self::Amount {
+		T::Tokens::balance(id.into(), who)
+	}
+
+	fn transfer(
+		id: Self::InvestmentId,
+		source: &T::AccountId,
+		dest: &T::AccountId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error> {
+		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+
+		T::Tokens::transfer(id.into(), source, dest, amount, false).map(|_| ())
+	}
+
+	fn deposit(
+		buyer: &T::AccountId,
+		id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error> {
+		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+
+		T::Tokens::mint_into(id.into(), buyer, amount)
+	}
+
+	fn withdraw(
+		seller: &T::AccountId,
+		id: Self::InvestmentId,
+		amount: Self::Amount,
+	) -> Result<(), Self::Error> {
+		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
+
+		T::Tokens::burn_from(id.into(), seller, amount).map(|_| ())
 	}
 }

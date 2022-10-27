@@ -130,6 +130,7 @@ pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
+pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 pallet-liquidity-rewards = { path = "../../pallets/liquidity-rewards", default-features = false }
 
@@ -141,6 +142,7 @@ default = ["std"]
 std = [
     "cfg-primitives/std",
     "cfg-types/std",
+    "chainbridge/std",
     "chainbridge/std",
     "codec/std",
     "cumulus-pallet-aura-ext/std",
@@ -176,6 +178,7 @@ std = [
     "pallet-im-online/std",
     "pallet-indices/std",
     "pallet-interest-accrual/std",
+    "pallet-investments/std",
     "pallet-keystore/std",
     "pallet-liquidity-rewards/std",
     "pallet-loans/std",
@@ -194,13 +197,13 @@ std = [
     "pallet-scheduler/std",
     "pallet-session/std",
     "pallet-society/std",
+    "pallet-society/std",
     "pallet-staking/std",
     "pallet-sudo/std",
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",
     "pallet-treasury/std",
-    "pallet-uniques/std",
     "pallet-uniques/std",
     "pallet-utility/std",
     "pallet-vesting/std",
@@ -248,6 +251,7 @@ runtime-benchmarks = [
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-fees/runtime-benchmarks",
     "pallet-interest-accrual/runtime-benchmarks",
+    "pallet-investments/runtime-benchmarks",
     "pallet-keystore/runtime-benchmarks",
     "pallet-liquidity-rewards/runtime-benchmarks",
     "pallet-loans/runtime-benchmarks",
@@ -277,13 +281,11 @@ try-runtime = [
     "orml-xcm/try-runtime",
     "orml-xtokens/try-runtime",
     "pallet-anchors/try-runtime",
-    "pallet-anchors/try-runtime",
     "pallet-aura/try-runtime",
     "pallet-authorship/try-runtime",
     "pallet-balances/try-runtime",
     "pallet-collator-allowlist/try-runtime",
     "pallet-collator-selection/try-runtime",
-    "pallet-collective/try-runtime",
     "pallet-collective/try-runtime",
     "pallet-crowdloan-claim/try-runtime",
     "pallet-crowdloan-reward/try-runtime",
@@ -292,7 +294,8 @@ try-runtime = [
     "pallet-fees/try-runtime",
     "pallet-identity/try-runtime",
     "pallet-interest-accrual/try-runtime",
-    "pallet-liquidity-rewards/runtime-benchmarks",
+    "pallet-investments/try-runtime",
+    "pallet-liquidity-rewards/try-runtime",
     "pallet-loans/try-runtime",
     "pallet-migration-manager/try-runtime",
     "pallet-multisig/try-runtime",

@@ -1,14 +1,28 @@
-use cfg_primitives::BlockNumber;
-pub use cfg_primitives::{Moment, TrancheWeight};
-use cfg_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+//
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+use cfg_primitives::{Balance, BlockNumber, CollectionId, PoolId, TrancheId};
+pub use cfg_primitives::{Moment, PoolEpochId, TrancheWeight};
+use cfg_traits::{
+	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	TrancheCurrency as TrancheCurrencyT,
+};
 use cfg_types::{
 	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider,
-	UNION,
+	TrancheCurrency, UNION,
 };
 pub use cfg_types::{Rate, TrancheToken};
 use codec::Encode;
 use frame_support::{
-	parameter_types,
+	assert_ok, parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
 	Blake2_128, StorageHasher,
@@ -21,70 +35,15 @@ use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
-use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
+use crate::{self as pallet_pools, Config, DispatchResult};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-type TrancheId = [u8; 16];
-mod fake_nav {
-	use codec::HasCompact;
-	use frame_support::pallet_prelude::*;
-	pub use pallet::*;
 
-	use super::Balance;
-
-	#[frame_support::pallet]
-	pub mod pallet {
-		use super::*;
-		use crate::Moment;
-
-		#[pallet::config]
-		pub trait Config: frame_system::Config {
-			type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
-		}
-
-		#[pallet::pallet]
-		#[pallet::generate_store(pub(super) trait Store)]
-		pub struct Pallet<T>(_);
-
-		#[pallet::storage]
-		pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, (Balance, Moment)>;
-
-		impl<T: Config> Pallet<T> {
-			pub fn value(pool_id: T::PoolId) -> Balance {
-				Nav::<T>::get(pool_id).unwrap_or((0, 0)).0
-			}
-
-			pub fn update(pool_id: T::PoolId, balance: Balance, now: Moment) {
-				Nav::<T>::insert(pool_id, (balance, now));
-			}
-
-			pub fn latest(pool_id: T::PoolId) -> (Balance, Moment) {
-				Nav::<T>::get(pool_id).unwrap_or((0, 0))
-			}
-		}
-	}
-
-	impl<T: Config> cfg_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
-		type ClassId = u64;
-		type Origin = super::Origin;
-
-		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
-			Some(Self::latest(pool_id))
-		}
-
-		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
-			Ok(Self::value(pool_id))
-		}
-
-		fn initialise(_: Self::Origin, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
-			Ok(())
-		}
-	}
-}
+pub type MockAccountId = u64;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -98,10 +57,11 @@ frame_support::construct_runtime!(
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
-		FakeNav: fake_nav::{Pallet, Storage},
+		FakeNav: cfg_test_utils::mocks::nav::{Pallet, Storage},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
 		ParachainInfo: parachain_info::{Pallet, Storage},
+		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -136,7 +96,7 @@ parameter_types! {
 
 impl system::Config for Test {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = u64;
+	type AccountId = MockAccountId;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
@@ -167,8 +127,6 @@ impl pallet_timestamp::Config for Test {
 	type OnTimestampSet = ();
 	type WeightInfo = ();
 }
-
-pub type Balance = u128;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
@@ -215,7 +173,7 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
-cfg_traits::mocks::orml_asset_registry::impl_mock_registry! {
+cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	RegistryMock,
 	CurrencyId,
 	Balance,
@@ -288,6 +246,30 @@ where
 }
 
 parameter_types! {
+	pub const MaxOutstandingCollects: u32 = 10;
+}
+impl pallet_investments::Config for Test {
+	type Accountant = Pools;
+	type Amount = Balance;
+	type BalanceRatio = Rate;
+	type Event = Event;
+	type InvestmentId = TrancheCurrency;
+	type MaxOutstandingCollects = MaxOutstandingCollects;
+	type PreConditions = Always;
+	type Tokens = Tokens;
+	type WeightInfo = ();
+}
+
+pub struct Always;
+impl<T> PreConditions<T> for Always {
+	type Result = DispatchResult;
+
+	fn check(_: T) -> Self::Result {
+		Ok(())
+	}
+}
+
+parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	/// The index with which this pallet is instantiated in this runtime.
@@ -324,15 +306,14 @@ parameter_types! {
 impl Config for Test {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
-	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type EpochId = u32;
+	type EpochId = PoolEpochId;
 	type Event = Event;
-	type InterestRate = Rate;
+	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
@@ -349,11 +330,12 @@ impl Config for Test {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
-	type PoolId = u64;
+	type PoolId = PoolId;
+	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
-	type TrancheToken = TrancheToken;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
 	type WeightInfo = ();
@@ -372,8 +354,17 @@ impl Contains<CurrencyId> for PoolCurrency {
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Moment;
-	type PoolDetails =
-		PoolDetails<CurrencyId, u32, Balance, Rate, MaxSizeMetadata, TrancheWeight, TrancheId, u64>;
+	type PoolDetails = PoolDetails<
+		CurrencyId,
+		TrancheCurrency,
+		u32,
+		Balance,
+		Rate,
+		MaxSizeMetadata,
+		TrancheWeight,
+		TrancheId,
+		u64,
+	>;
 	type ScheduledUpdateDetails =
 		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
 
@@ -395,20 +386,23 @@ impl PoolUpdateGuard for UpdateGuard {
 		}
 
 		// There should be no outstanding redemption orders.
-		let acc_outstanding_redemptions = pool
+		if pool
 			.tranches
-			.acc_outstanding_redemptions()
-			.unwrap_or(Balance::MAX);
-		if acc_outstanding_redemptions != 0u128 {
+			.tranches
+			.iter()
+			.map(|tranche| Investments::redeem_orders(tranche.currency).amount)
+			.any(|redemption| redemption != Zero::zero())
+		{
 			return false;
 		}
-
 		return true;
 	}
 }
 
-impl fake_nav::Config for Test {
-	type PoolId = u64;
+impl cfg_test_utils::mocks::nav::Config for Test {
+	type Balance = Balance;
+	type ClassId = CollectionId;
+	type PoolId = PoolId;
 }
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
@@ -426,6 +420,9 @@ pub const JUNIOR_TRANCHE_INDEX: u8 = 0u8;
 pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
 pub const START_DATE: u64 = 1640991600; // 2022.01.01
 pub const SECONDS: u64 = 1000;
+
+pub const DEFAULT_POOL_ID: PoolId = 0;
+pub const DEFAULT_POOL_OWNER: MockAccountId = 10;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -474,6 +471,22 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
 		Timestamp::set(Origin::none(), START_DATE).unwrap();
+
+		for account in 0..10u64 {
+			<<Test as Config>::Permission as PermissionsT<u64>>::add(
+				PermissionScope::Pool(DEFAULT_POOL_ID),
+				account,
+				Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			)
+			.unwrap();
+
+			<<Test as Config>::Permission as PermissionsT<u64>>::add(
+				PermissionScope::Pool(DEFAULT_POOL_ID),
+				account,
+				Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			)
+			.unwrap();
+		}
 	});
 	ext
 }
@@ -524,22 +537,24 @@ pub fn test_nav_update(pool_id: u64, amount: Balance, now: Moment) {
 /// Assumes externalities are available
 pub fn invest_close_and_collect(
 	pool_id: u64,
-	investments: Vec<(Origin, TrancheId, Balance)>,
-) -> DispatchResult {
-	for (who, tranche_id, investment) in investments.clone() {
-		Pools::update_invest_order(who, pool_id, TrancheLoc::Id(tranche_id), investment)?;
+	investments: Vec<(MockAccountId, TrancheId, Balance)>,
+) {
+	for (account, tranche_id, investment) in investments.clone() {
+		assert_ok!(Investments::update_invest_order(
+			Origin::signed(account),
+			TrancheCurrency::generate(pool_id, tranche_id),
+			investment
+		));
 	}
+	assert_ok!(Pools::close_epoch(
+		Origin::signed(DEFAULT_POOL_OWNER).clone(),
+		pool_id
+	));
 
-	Pools::close_epoch(Origin::signed(10), pool_id).map_err(|e| e.error)?;
-
-	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
-		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.epoch
-		.last_executed;
-
-	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, TrancheLoc::Id(tranche_id), epoch).map_err(|e| e.error)?;
+	for (account, tranche_id, _) in investments {
+		assert_ok!(Investments::collect_investments(
+			Origin::signed(account),
+			TrancheCurrency::generate(pool_id, tranche_id),
+		));
 	}
-
-	Ok(())
 }

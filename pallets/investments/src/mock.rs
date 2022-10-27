@@ -15,10 +15,11 @@ use std::ops::Add;
 
 pub use cfg_primitives::CFG as CURRENCY;
 use cfg_primitives::*;
-use cfg_traits::{Always, OrderManager};
+use cfg_traits::{OrderManager, PreConditions};
 use cfg_types::{CurrencyId, FulfillmentWithPrice, InvestmentAccount, Rate, TotalOrder};
 use codec::{Decode, Encode};
 use frame_support::{
+	dispatch::DispatchResultWithPostInfo,
 	parameter_types,
 	traits::{GenesisBuild, Nothing},
 	RuntimeDebug,
@@ -128,7 +129,7 @@ impl pallet_balances::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-cfg_traits::mocks::accountant::impl_mock_accountant!(
+cfg_test_utils::mocks::accountant::impl_mock_accountant!(
 	MockAccountant,
 	MockAccountId,
 	InvestmentId,
@@ -150,6 +151,15 @@ impl pallet_investments::Config for MockRuntime {
 	type PreConditions = Always;
 	type Tokens = OrmlTokens;
 	type WeightInfo = ();
+}
+
+pub struct Always;
+impl<T> PreConditions<T> for Always {
+	type Result = DispatchResult;
+
+	fn check(_: T) -> Self::Result {
+		Ok(())
+	}
 }
 
 // TODO: This struct should be temporarily needed only
@@ -378,13 +388,13 @@ pub(crate) fn fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResu
 
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side
 pub(crate) fn fulfill_invest_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
-	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	let _invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side
 pub(crate) fn fulfill_redeem_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
-	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0)?;
+	let _redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
@@ -393,7 +403,7 @@ pub(crate) fn fulfill_redeem_x(fulfillment: FulfillmentWithPrice<Rate>) -> Dispa
 pub(crate) fn invest_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
 	invest_x_per_investor(50 * CURRENCY)?;
 
-	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	let _invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
@@ -405,7 +415,7 @@ pub(crate) fn invest_x_fulfill_x(
 ) -> DispatchResult {
 	invest_x_per_investor(invest_per_investor)?;
 
-	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	let _invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
@@ -418,7 +428,7 @@ pub(crate) fn invest_x_per_fulfill_x(
 	for (who, amount) in invest_per_investor {
 		Investments::update_invest_order(Origin::signed(who), INVESTMENT_0_0, amount)?;
 	}
-	let _invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	let _invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
@@ -433,7 +443,7 @@ where
 	F: FnOnce(TotalOrder<Balance>) -> DispatchResult,
 {
 	invest_x_per_investor(invest_per_investor)?;
-	let invest_orders = Investments::invest_orders(INVESTMENT_0_0)?;
+	let invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
 	runner(invest_orders)?;
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
@@ -443,7 +453,7 @@ where
 pub(crate) fn redeem_fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
 	redeem_x_per_investor(50 * CURRENCY)?;
 
-	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0);
+	let _redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0);
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
@@ -455,7 +465,7 @@ pub(crate) fn redeem_x_fulfill_x(
 ) -> DispatchResult {
 	redeem_x_per_investor(redeem_per_investor)?;
 
-	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0);
+	let _redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0);
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
@@ -468,7 +478,7 @@ pub(crate) fn redeem_x_per_fulfill_x(
 	for (who, amount) in redeem_per_investor {
 		Investments::update_redeem_order(Origin::signed(who), INVESTMENT_0_0, amount)?;
 	}
-	let _redeem_orders = Investments::redeem_orders(INVESTMENT_0_0)?;
+	let _redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
@@ -483,7 +493,13 @@ where
 	F: FnOnce(TotalOrder<Balance>) -> DispatchResult,
 {
 	redeem_x_per_investor(redeem_per_investor)?;
-	let redeem_orders = Investments::redeem_orders(INVESTMENT_0_0)?;
+	let redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0)?;
 	runner(redeem_orders)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
+}
+
+/// Collect both invest and redemptions
+pub(crate) fn collect_both(who: Origin, investment_id: InvestmentId) -> DispatchResultWithPostInfo {
+	Investments::collect_investments(who.clone(), investment_id)?;
+	Investments::collect_redemptions(who, investment_id)
 }

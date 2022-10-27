@@ -116,9 +116,9 @@ impl<Balance> EpochSolution<Balance> {
 	///  score = ||X||1
 	///
 	/// Returns error upon overflow of `Balances`.
-	pub fn calculate_score<BalanceRatio, Weight>(
+	pub fn calculate_score<BalanceRatio, Weight, TrancheCurrency>(
 		solution: &[TrancheSolution],
-		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 	) -> Result<Balance, DispatchError>
 	where
 		Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
@@ -159,9 +159,9 @@ impl<Balance> EpochSolution<Balance> {
 	}
 
 	/// Scores a solution and returns a healthy solution as a result.
-	pub fn score_solution_healthy<BalanceRatio, Weight>(
+	pub fn score_solution_healthy<BalanceRatio, Weight, TrancheCurrency>(
 		solution: &[TrancheSolution],
-		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 	) -> Result<EpochSolution<Balance>, DispatchError>
 	where
 		Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
@@ -178,9 +178,9 @@ impl<Balance> EpochSolution<Balance> {
 
 	/// Scores an solution, that would bring a pool into an unhealthy state.
 	///
-	pub fn score_solution_unhealthy<BalanceRatio, Weight>(
+	pub fn score_solution_unhealthy<BalanceRatio, Weight, TrancheCurrency>(
 		solution: &[TrancheSolution],
-		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		reserve: Balance,
 		max_reserve: Balance,
 		state: &[UnhealthyState],
@@ -395,7 +395,7 @@ pub struct TrancheSolution {
 }
 
 pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency>(
-	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, Currency>,
 	solution: &[TrancheSolution],
 ) -> Result<(Balance, Balance, Vec<Perquintill>), DispatchError>
 where

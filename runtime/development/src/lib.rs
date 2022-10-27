@@ -23,18 +23,20 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	CurrencyPrice, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard, PreConditions,
-	PriceValue,
+	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard,
+	PreConditions, PriceValue, TrancheCurrency as _,
 };
 pub use cfg_types::CurrencyId;
 use cfg_types::{
 	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
-	Rate, Role, TimeProvider, TrancheToken, UNION,
+	Rate, Role, TimeProvider, TrancheCurrency, UNION,
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	pallet_prelude::{DispatchError, DispatchResult},
+	parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EitherOfDiverse, EqualPrivilegeOnly, InstanceFilter,
@@ -54,6 +56,7 @@ use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
+use pallet_investments::OrderType;
 use pallet_pools::{
 	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
 };
@@ -74,7 +77,7 @@ use sp_inherents::{CheckInherentsResult, InherentData};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto},
+	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill,
 };
@@ -443,9 +446,10 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::Price => matches!(c, Call::Loans(pallet_loans::Call::price { .. })),
 			ProxyType::Invest => matches!(
 				c,
-				Call::Pools(pallet_pools::Call::update_invest_order{..}) |
-				Call::Pools(pallet_pools::Call::update_redeem_order{..}) |
-				Call::Pools(pallet_pools::Call::collect{..}) |
+				Call::Investments(pallet_investments::Call::update_invest_order{..}) |
+				Call::Investments(pallet_investments::Call::update_redeem_order{..}) |
+				Call::Investments(pallet_investments::Call::collect_investments{..}) |
+				Call::Investments(pallet_investments::Call::collect_redemptions{..}) |
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
@@ -895,15 +899,14 @@ parameter_types! {
 impl pallet_pools::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type EpochId = u32;
+	type EpochId = PoolEpochId;
 	type Event = Event;
-	type InterestRate = Rate;
+	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
@@ -921,10 +924,11 @@ impl pallet_pools::Config for Runtime {
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
+	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = TrancheId;
-	type TrancheToken = TrancheToken;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
@@ -948,6 +952,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Moment;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
+		TrancheCurrency,
 		u32,
 		Balance,
 		Rate,
@@ -976,11 +981,32 @@ impl PoolUpdateGuard for UpdateGuard {
 			return false;
 		}
 
+		let pool_id = pool.tranches.of_pool();
+
+		// We do not allow releasing updates during epoch
+		// closing.
+		//
+		// This is needed as:
+		// - investment side starts new order round with zero orders at epoch_closing
+		// - the pool might only fulfill x < 100% of redemptions
+		//         -> not all redemptions would be fulfilled after epoch_execution
+		if Pools::epoch_targets(pool_id).is_some() {
+			return false;
+		}
+
 		// There should be no outstanding redemption orders.
 		let acc_outstanding_redemptions = pool
 			.tranches
-			.acc_outstanding_redemptions()
-			.unwrap_or(Balance::MAX);
+			.ids_non_residual_top()
+			.iter()
+			.map(|tranche_id| {
+				let investment_id = TrancheCurrency::generate(pool_id, *tranche_id);
+				Investments::redeem_orders(investment_id).amount
+			})
+			.fold(Balance::zero(), |acc, redemption| {
+				acc.saturating_add(redemption)
+			});
+
 		if acc_outstanding_redemptions != 0u128 {
 			return false;
 		}
@@ -1361,6 +1387,71 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type WeightInfo = weights::pallet_keystore::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const MaxOutstandingCollects: u32 = 10;
+}
+impl pallet_investments::Config for Runtime {
+	type Accountant = Pools;
+	type Amount = Balance;
+	type BalanceRatio = Rate;
+	type Event = Event;
+	type InvestmentId = TrancheCurrency;
+	type MaxOutstandingCollects = MaxOutstandingCollects;
+	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
+	type Tokens = Tokens;
+	type WeightInfo = ();
+}
+
+/// Checks whether the given `who` has the role
+/// of a `TrancehInvestor` for the given pool.
+pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
+impl<
+		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
+		T: UnixTime,
+	> PreConditions<OrderType<AccountId, TrancheCurrency, Balance>> for IsTrancheInvestor<P, T>
+{
+	type Result = DispatchResult;
+
+	fn check(order: OrderType<AccountId, TrancheCurrency, Balance>) -> Self::Result {
+		let is_tranche_investor = match order {
+			OrderType::Investment {
+				who,
+				investment_id: tranche,
+				..
+			} => P::has(
+				PermissionScope::Pool(tranche.of_pool()),
+				who,
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					tranche.of_tranche(),
+					T::now().as_secs(),
+				)),
+			),
+			OrderType::Redemption {
+				who,
+				investment_id: tranche,
+				..
+			} => P::has(
+				PermissionScope::Pool(tranche.of_pool()),
+				who,
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					tranche.of_tranche(),
+					T::now().as_secs(),
+				)),
+			),
+		};
+
+		if is_tranche_investor {
+			Ok(())
+		} else {
+			// TODO: We should adapt the permissions pallets interface to return an error instead of a boolen. This makes the redundant has not role error
+			//       that downstream pallets always need to generate not needed anymore.
+			Err(DispatchError::Other(
+				"Account does not have the TrancheInvestor permission.",
+			))
+		}
+	}
+}
+
 #[derive(Clone, Copy, PartialEq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 pub enum RewardDomain {
 	Liquidity,
@@ -1471,8 +1562,9 @@ construct_runtime!(
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
-		Rewards: pallet_rewards::{Pallet, Storage, Event<T>} = 105,
-		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 106,
+		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
+		Rewards: pallet_rewards::{Pallet, Storage, Event<T>} = 106,
+		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1737,7 +1829,7 @@ impl_runtime_apis! {
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
 			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			pool.tranches.tranche_currency(tranche_loc)
+			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
 		}
 	}
 
@@ -1768,9 +1860,10 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			 use pallet_loans::benchmarking::Pallet as LoansPallet;
-
-			impl pallet_loans::benchmarking::Config for Runtime {}
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
+			impl pallet_loans::benchmarking::Config for Runtime {
+				type IM = Investments;
+			}
 
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;

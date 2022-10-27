@@ -36,9 +36,6 @@ pub trait WeightInfo {
 	fn execute_scheduled_update(n: u32) -> Weight;
 	fn set_metadata(n: u32) -> Weight;
 	fn set_max_reserve() -> Weight;
-	fn update_invest_order() -> Weight;
-	fn update_redeem_order() -> Weight;
-	fn collect(n: u32) -> Weight;
 	fn close_epoch_no_orders(n: u32) -> Weight;
 	fn close_epoch_no_execution(n: u32) -> Weight;
 	fn close_epoch_execute(n: u32) -> Weight;
@@ -88,26 +85,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(Weight::from_ref_time(34_009_000))
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-
-	fn update_invest_order() -> Weight {
-		(Weight::from_ref_time(100_107_000))
-			.saturating_add(T::DbWeight::get().reads(9_u64))
-			.saturating_add(T::DbWeight::get().writes(5_u64))
-	}
-
-	fn update_redeem_order() -> Weight {
-		(Weight::from_ref_time(102_338_000))
-			.saturating_add(T::DbWeight::get().reads(9_u64))
-			.saturating_add(T::DbWeight::get().writes(5_u64))
-	}
-
-	fn collect(n: u32) -> Weight {
-		(Weight::from_ref_time(69_069_000)) // Standard Error: 3_000
-			.saturating_add((Weight::from_ref_time(6_945_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(5_u64))
-			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n as u64)))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 
 	fn close_epoch_no_orders(n: u32) -> Weight {
@@ -193,26 +170,6 @@ impl WeightInfo for () {
 		(Weight::from_ref_time(34_009_000))
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
-
-	fn update_invest_order() -> Weight {
-		(Weight::from_ref_time(100_107_000))
-			.saturating_add(RocksDbWeight::get().reads(9_u64))
-			.saturating_add(RocksDbWeight::get().writes(5_u64))
-	}
-
-	fn update_redeem_order() -> Weight {
-		(Weight::from_ref_time(102_338_000))
-			.saturating_add(RocksDbWeight::get().reads(9_u64))
-			.saturating_add(RocksDbWeight::get().writes(5_u64))
-	}
-
-	fn collect(n: u32) -> Weight {
-		(Weight::from_ref_time(69_069_000)) // Standard Error: 3_000
-			.saturating_add((Weight::from_ref_time(6_945_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(5_u64))
-			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n as u64)))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 
 	fn close_epoch_no_orders(n: u32) -> Weight {
