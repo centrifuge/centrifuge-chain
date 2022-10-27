@@ -30,7 +30,6 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_pools.
 pub trait WeightInfo {
-	fn update_and_execute(n: u32) -> Weight;
 	fn execute_scheduled_update(n: u32) -> Weight;
 	fn set_max_reserve() -> Weight;
 	fn close_epoch_no_orders(n: u32) -> Weight;
@@ -43,13 +42,6 @@ pub trait WeightInfo {
 /// Weights for pallet_pools using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn update_and_execute(n: u32) -> Weight {
-		(Weight::from_ref_time(47_893_000)) // Standard Error: 40_000
-			.saturating_add((Weight::from_ref_time(716_000)).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(4_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-
 	fn execute_scheduled_update(n: u32) -> Weight {
 		(Weight::from_ref_time(45_439_000)) // Standard Error: 64_000
 			.saturating_add((Weight::from_ref_time(1_074_000)).saturating_mul(n as u64))
@@ -107,13 +99,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn update_and_execute(n: u32) -> Weight {
-		(Weight::from_ref_time(47_893_000)) // Standard Error: 40_000
-			.saturating_add((Weight::from_ref_time(716_000)).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-
 	fn execute_scheduled_update(n: u32) -> Weight {
 		(Weight::from_ref_time(45_439_000)) // Standard Error: 64_000
 			.saturating_add((Weight::from_ref_time(1_074_000)).saturating_mul(n as u64))

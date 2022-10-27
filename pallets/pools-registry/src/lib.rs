@@ -60,8 +60,9 @@ where
 	metadata: BoundedVec<u8, MetaSize>,
 }
 
-pub(crate) trait PoolMutate<
+pub trait PoolMutate<
 	T: Config,
+	AccountId,
 	Balance,
 	PoolId,
 	Currency,
@@ -73,6 +74,7 @@ pub(crate) trait PoolMutate<
 	MaxTokenSymbolLength: Get<u32>,
 {
 	fn create(
+		admin: AccountId,
 		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 		max_reserve: Balance,
 		metadata: Option<Vec<u8>>,
@@ -126,6 +128,7 @@ pub mod pallet {
 
 		type ModifyPool: PoolMutate<
 			Self,
+			Self::AccountId,
 			Self::Balance,
 			Self::PoolId,
 			Self::CurrencyId,
@@ -153,6 +156,9 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TypeInfo
 			+ From<[u8; 16]>;
+
+		/// The origin permitted to create pools
+		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Max length for a tranche token name
 		#[pallet::constant]
@@ -243,7 +249,7 @@ pub mod pallet {
 			admin: T::AccountId,
 			pool_id: T::PoolId,
 			tranche_inputs: Vec<
-				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
+				TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 			>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
@@ -251,17 +257,14 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
-			// First we take a deposit.
-			// If we are coming from a signed origin, we take
-			// the deposit from them
-			// If we are coming from some internal origin
-			// (Democracy, Council, etc.) we assume that the
-			// parameters are vetted somehow and rely on the
-			// admin as our depositor.
-			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
-			Self::take_deposit(depositor, pool_id)?;
-
-			T::ModifyPool::create(tranche_inputs, max_reserve, metadata, pool_id, currency)
+			T::ModifyPool::create(
+				admin,
+				tranche_inputs,
+				max_reserve,
+				metadata,
+				pool_id,
+				currency,
+			)
 		}
 
 		/// Update per-pool configuration settings.
