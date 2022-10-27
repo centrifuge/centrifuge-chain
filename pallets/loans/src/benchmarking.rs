@@ -46,7 +46,7 @@ pub trait Config:
 	LoanConfig<ClassId = <Self as pallet_uniques::Config>::CollectionId>
 	+ pallet_balances::Config
 	+ pallet_uniques::Config
-	+ pallet_pools::Config
+	+ pallet_pools_system::Config
 	+ ORMLConfig
 	+ TimestampConfig
 	+ InterestAccrualConfig
@@ -70,11 +70,11 @@ fn create_and_init_pool<T: Config>(
 where
 	<T as pallet_balances::Config>::Balance: From<u128>,
 	<T as pallet_uniques::Config>::CollectionId: From<u64>,
-	<T as pallet_pools::Config>::Balance: From<u128>,
-	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-	<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
-	<T as pallet_pools::Config>::EpochId: From<u32>,
-	<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+	<T as pallet_pools_system::Config>::Balance: From<u128>,
+	<T as pallet_pools_system::Config>::CurrencyId: From<CurrencyId>,
+	<T as pallet_pools_system::Config>::TrancheId: Into<[u8; 16]>,
+	<T as pallet_pools_system::Config>::EpochId: From<u32>,
+	<T as pallet_pools_system::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 	<T as ORMLConfig>::Balance: From<u128>,
 	<T as pallet_uniques::Config>::CollectionId: Default,
@@ -89,7 +89,7 @@ where
 	);
 	let pool_id: PoolIdOf<T> = Default::default();
 	let pool_account = pool_account::<T>(pool_id.into());
-	let pal_pool_id: <T as pallet_pools::Config>::PoolId = pool_id.into();
+	let pal_pool_id: <T as pallet_pools_system::Config>::PoolId = pool_id.into();
 	T::AssetRegistry::register_asset(
 		Some(CurrencyId::AUSD.into()),
 		orml_asset_registry::AssetMetadata {
@@ -117,24 +117,24 @@ where
 	);
 
 	make_free_cfg_balance::<T>(borrower::<T>());
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
+	assert_ok!(<T as pallet_pools_system::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
 		Role::PoolRole(PoolRole::Borrower)
 	));
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
+	assert_ok!(<T as pallet_pools_system::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
 		Role::PoolRole(PoolRole::PricingAdmin)
 	));
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
+	assert_ok!(<T as pallet_pools_system::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
 		Role::PoolRole(PoolRole::LoanAdmin)
 	));
 
 	make_free_cfg_balance::<T>(risk_admin::<T>());
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
+	assert_ok!(<T as pallet_pools_system::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		risk_admin::<T>(),
 		Role::PoolRole(PoolRole::LoanAdmin)
@@ -300,14 +300,14 @@ where
 	}
 }
 
-fn pool_account<T: pallet_pools::Config>(pool_id: T::PoolId) -> T::AccountId {
+fn pool_account<T: pallet_pools_system::Config>(pool_id: T::PoolId) -> T::AccountId {
 	PoolLocator { pool_id }.into_account_truncating()
 }
 
 benchmarks! {
 	where_clause {
 		where
-		T: pallet_pools::Config<
+		T: pallet_pools_system::Config<
 			CurrencyId = cfg_types::CurrencyId,
 			Balance = u128,
 		>,
@@ -319,11 +319,11 @@ benchmarks! {
 		<T as ORMLConfig>::Balance: From<u128>,
 		<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 		<T as TimestampConfig>::Moment: From<u64> + Into<u64>,
-		<T as pallet_pools::Config>::Balance: From<u128>,
-		<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-		<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
-		<T as pallet_pools::Config>::EpochId: From<u32>,
-		<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+		<T as pallet_pools_system::Config>::Balance: From<u128>,
+		<T as pallet_pools_system::Config>::CurrencyId: From<CurrencyId>,
+		<T as pallet_pools_system::Config>::TrancheId: Into<[u8; 16]>,
+		<T as pallet_pools_system::Config>::EpochId: From<u32>,
+		<T as pallet_pools_system::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 		<T as pallet_uniques::Config>::CollectionId: Default,
 		<T as pallet_uniques::Config>::CollectionId: Default,
 	}

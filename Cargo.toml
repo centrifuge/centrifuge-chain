@@ -53,7 +53,7 @@ members = [
 	"libs/types",
 	"libs/proofs",
 	"libs/primitives",
-	"pallets/pools",
+	"pallets/pools-system",
 	"pallets/restricted-tokens",
 	"runtime/altair",
 	"runtime/centrifuge",
@@ -132,7 +132,7 @@ try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = 
 cfg-types = { path = "./libs/types" }
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
-pallet-pools = { path = "./pallets/pools" }
+pallet-pools-system = { path = "./pallets/pools-system" }
 
 # frame dependencies
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }

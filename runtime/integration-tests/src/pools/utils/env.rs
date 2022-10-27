@@ -74,7 +74,7 @@ pub mod macros {
 	/// 		EventRange::All, //-> The range of blocks we check for the events
 	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..})
 	/// 			if [count 0], // -> Ensures zero occurencies of the given event. Could also ensure n-occurencies
-	/// 		Event::Pools(pallet_pools::Event::Created(id, ..)) if [id == 0], //-> matches only of the id matches to 0
+	/// 		Event::PoolsSystem(pallet_pools_system::Event::Created(id, ..)) if [id == 0], //-> matches only of the id matches to 0
 	/// 		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == 0],
 	/// 		Event::Loans(pallet_loans::Event::Created(id, loan, asset))
 	/// 			if [id == 0 && loan == InstanceId(1) && asset == Asset(4294967296, InstanceId(1))], //-> matches only of the clause matches
@@ -157,7 +157,7 @@ pub mod macros {
 	/// 		Event, //-> The event-enum type from the runtime
 	/// 		EventRange::All, //-> The range of blocks we check for the events
 	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..}) //-> The list of events that should be matched
-	/// 			| Event::Pools(pallet_pools::Event::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
+	/// 			| Event::PoolsSystem(pallet_pools_system::Event::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
 	/// 			| Event::Loans(..)
 	///	);
 	/// ```

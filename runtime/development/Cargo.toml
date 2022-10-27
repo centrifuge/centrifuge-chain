@@ -119,7 +119,7 @@ pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-f
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
-pallet-pools = { path = "../../pallets/pools", default-features = false }
+pallet-pools-system = { path = "../../pallets/pools-system", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
@@ -258,7 +258,7 @@ runtime-benchmarks = [
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
     "pallet-permissions/runtime-benchmarks",
-    "pallet-pools/runtime-benchmarks",
+    "pallet-pools-system/runtime-benchmarks",
     "pallet-restricted-tokens/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
     "pallet-uniques/runtime-benchmarks",
@@ -301,7 +301,7 @@ try-runtime = [
     "pallet-multisig/try-runtime",
     "pallet-nft-sales/try-runtime",
     "pallet-permissions/try-runtime",
-    "pallet-pools/try-runtime",
+    "pallet-pools-system/try-runtime",
     "pallet-preimage/try-runtime",
     "pallet-proxy/try-runtime",
     "pallet-randomness-collective-flip/try-runtime",

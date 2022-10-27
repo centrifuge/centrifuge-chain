@@ -30,7 +30,7 @@ use frame_support::{
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
+use pallet_pools_system::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
@@ -38,7 +38,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
-use crate::{self as pallet_pools, Config, DispatchResult};
+use crate::{self as pallet_pools_system, Config, DispatchResult};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -56,7 +56,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
+		PoolsSystem: pallet_pools_system::{Pallet, Call, Storage, Event<T>},
 		FakeNav: cfg_test_utils::mocks::nav::{Pallet, Storage},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
@@ -249,7 +249,7 @@ parameter_types! {
 	pub const MaxOutstandingCollects: u32 = 10;
 }
 impl pallet_investments::Config for Test {
-	type Accountant = Pools;
+	type Accountant = PoolsSystem;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
 	type Event = Event;
@@ -273,7 +273,7 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	/// The index with which this pallet is instantiated in this runtime.
-	pub PoolPalletIndex: u8 = <Pools as PalletInfoAccess>::index() as u8;
+	pub PoolPalletIndex: u8 = <PoolsSystem as PalletInfoAccess>::index() as u8;
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
@@ -506,12 +506,12 @@ pub fn next_block_after(seconds: u64) {
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_up(pool_id, amount);
-	Pools::do_withdraw(borrower, pool_id, amount)
+	PoolsSystem::do_withdraw(borrower, pool_id, amount)
 }
 
 pub fn test_payback(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_down(pool_id, amount);
-	Pools::do_deposit(borrower, pool_id, amount)
+	PoolsSystem::do_deposit(borrower, pool_id, amount)
 }
 
 pub fn test_nav_up(pool_id: u64, amount: Balance) {
@@ -546,7 +546,7 @@ pub fn invest_close_and_collect(
 			investment
 		));
 	}
-	assert_ok!(Pools::close_epoch(
+	assert_ok!(PoolsSystem::close_epoch(
 		Origin::signed(DEFAULT_POOL_OWNER).clone(),
 		pool_id
 	));

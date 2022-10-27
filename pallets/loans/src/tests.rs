@@ -57,24 +57,28 @@ fn fetch_loan_event(event: MockEvents) -> Option<LoanEvent<MockRuntime>> {
 	}
 }
 
-type MultiCurrencyBalanceOf<T> = <T as pallet_pools::Config>::Balance;
+type MultiCurrencyBalanceOf<T> = <T as pallet_pools_system::Config>::Balance;
 type CurrencyOf<T> = <<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<
 	<T as frame_system::Config>::AccountId,
 >>::AssetId;
 
 fn balance_of<T>(currency_id: T::CurrencyId, account: &T::AccountId) -> MultiCurrencyBalanceOf<T>
 where
-	T: pallet_pools::Config + frame_system::Config,
+	T: pallet_pools_system::Config + frame_system::Config,
 {
-	<T as pallet_pools::Config>::Tokens::balance(currency_id, account)
+	<T as pallet_pools_system::Config>::Tokens::balance(currency_id, account)
 }
 
 fn issue_test_loan<T>(
 	pool_id: u64,
 	borrower: T::AccountId,
-) -> (<T as pallet_pools::Config>::PoolId, AssetOf<T>, AssetOf<T>)
+) -> (
+	<T as pallet_pools_system::Config>::PoolId,
+	AssetOf<T>,
+	AssetOf<T>,
+)
 where
-	T: pallet_pools::Config<
+	T: pallet_pools_system::Config<
 			CurrencyId = CurrencyId,
 			Balance = u128,
 			PoolId = PoolId,
@@ -89,7 +93,7 @@ where
 			PoolId = PoolId,
 			TrancheId = TrancheId,
 		>,
-	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
+	PoolIdOf<T>: From<<T as pallet_pools_system::Config>::PoolId>,
 	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
 		From<u128> + From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
 	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
@@ -210,7 +214,7 @@ fn price_test_loan<T>(
 	rps: Rate,
 	loan_type: LoanType<Rate, Balance>,
 ) where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pools_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -244,7 +248,7 @@ fn price_bullet_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pools_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -262,7 +266,7 @@ fn price_credit_line_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pools_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -280,7 +284,7 @@ fn price_credit_line_with_maturity_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pools_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -298,7 +302,7 @@ fn close_test_loan<T>(
 	loan: AssetOf<T>,
 	collateral: AssetOf<T>,
 ) where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pools_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {

@@ -40,7 +40,7 @@ orml-traits = {  git = "https://github.com/open-web3-stack/open-runtime-module-l
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-pools = { path = "../../pallets/pools", default-features = false }
+pallet-pools-system = { path = "../../pallets/pools-system", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 
