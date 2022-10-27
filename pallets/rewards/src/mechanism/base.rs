@@ -5,56 +5,7 @@ use cfg_traits::ops::ensure::{
 use frame_support::pallet_prelude::*;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-/// Type that contains the stake properties of stake class
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct CurrencyInfo<Balance, Rate, GroupId, MaxMovements: Get<u32>> {
-	pub group_id: Option<GroupId>,
-	total_staked: Balance,
-	rpt_tallies: BoundedVec<Rate, MaxMovements>,
-}
-
-impl<Balance, Rate, GroupId, MaxMovements: Get<u32>> Default
-	for CurrencyInfo<Balance, Rate, GroupId, MaxMovements>
-where
-	Balance: Zero,
-	Rate: Zero,
-{
-	fn default() -> Self {
-		Self {
-			group_id: None,
-			total_staked: Zero::zero(),
-			rpt_tallies: BoundedVec::default(),
-		}
-	}
-}
-
-impl<Balance, Rate, GroupId, MaxMovements> CurrencyInfo<Balance, Rate, GroupId, MaxMovements>
-where
-	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd,
-	Rate: FixedPointNumber,
-	MaxMovements: Get<u32>,
-{
-	pub fn add_rpt_tally(&mut self, rpt_tally: Rate) -> Result<(), ()> {
-		self.rpt_tallies.try_push(rpt_tally)
-	}
-
-	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_add_assign(amount)
-	}
-
-	pub fn sub_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_sub_assign(amount)
-	}
-
-	pub fn total_staked(&self) -> Balance {
-		self.total_staked
-	}
-
-	pub fn rpt_tallies(&self) -> &[Rate] {
-		&self.rpt_tallies
-	}
-}
+use super::{MoveCurrencyError, RewardAccount, RewardGroup, RewardMechanism};
 
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
@@ -85,8 +36,12 @@ where
 	pub fn reward_per_token(&self) -> Rate {
 		self.reward_per_token
 	}
+}
 
-	pub fn total_staked(&self) -> Balance {
+impl<Balance: Copy, Rate> RewardGroup for Group<Balance, Rate> {
+	type Balance = Balance;
+
+	fn total_staked(&self) -> Self::Balance {
 		self.total_staked
 	}
 }
@@ -172,6 +127,147 @@ where
 
 	pub fn staked(&self) -> Balance {
 		self.staked
+	}
+}
+
+impl<Balance: Copy, SignedBalance> RewardAccount for StakeAccount<Balance, SignedBalance> {
+	type Balance = Balance;
+
+	fn staked(&self) -> Self::Balance {
+		self.staked
+	}
+}
+
+/// Type that contains the stake properties of stake class
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct CurrencyInfo<Balance, Rate, MaxMovements: Get<u32>> {
+	total_staked: Balance,
+	rpt_tallies: BoundedVec<Rate, MaxMovements>,
+}
+
+impl<Balance, Rate, MaxMovements: Get<u32>> Default for CurrencyInfo<Balance, Rate, MaxMovements>
+where
+	Balance: Zero,
+	Rate: Zero,
+{
+	fn default() -> Self {
+		Self {
+			total_staked: Zero::zero(),
+			rpt_tallies: BoundedVec::default(),
+		}
+	}
+}
+
+impl<Balance, Rate, MaxMovements> CurrencyInfo<Balance, Rate, MaxMovements>
+where
+	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd,
+	Rate: FixedPointNumber,
+	MaxMovements: Get<u32>,
+{
+	pub fn add_rpt_tally(&mut self, rpt_tally: Rate) -> Result<(), ()> {
+		self.rpt_tallies.try_push(rpt_tally)
+	}
+
+	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
+		self.total_staked.ensure_add_assign(amount)
+	}
+
+	pub fn sub_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
+		self.total_staked.ensure_sub_assign(amount)
+	}
+
+	pub fn total_staked(&self) -> Balance {
+		self.total_staked
+	}
+
+	pub fn rpt_tallies(&self) -> &[Rate] {
+		&self.rpt_tallies
+	}
+}
+
+pub struct Mechanism<Balance, SignedBalance, Rate, MaxMovements>(
+	sp_std::marker::PhantomData<(Balance, SignedBalance, Rate, MaxMovements)>,
+);
+
+impl<Balance, SignedBalance, Rate, MaxMovements> RewardMechanism
+	for Mechanism<Balance, SignedBalance, Rate, MaxMovements>
+where
+	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance> + Zero,
+	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
+	Rate: EnsureFixedPointNumber + Zero,
+	MaxMovements: Get<u32>,
+{
+	type Account = StakeAccount<Self::Balance, SignedBalance>;
+	type Balance = Balance;
+	type Currency = CurrencyInfo<Balance, Rate, MaxMovements>;
+	type Group = Group<Balance, Rate>;
+
+	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
+		group.distribute_reward(amount)
+	}
+
+	fn deposit_stake(
+		account: &mut Self::Account,
+		currency: &mut Self::Currency,
+		group: &mut Self::Group,
+		amount: Self::Balance,
+	) -> Result<(), ArithmeticError> {
+		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+		account.add_amount(amount, group.reward_per_token())?;
+
+		group.add_amount(amount)?;
+		currency.add_amount(amount)
+	}
+
+	fn withdraw_stake(
+		account: &mut Self::Account,
+		currency: &mut Self::Currency,
+		group: &mut Self::Group,
+		amount: Self::Balance,
+	) -> Result<(), ArithmeticError> {
+		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+		account.sub_amount(amount, group.reward_per_token())?;
+
+		group.sub_amount(amount)?;
+		currency.sub_amount(amount)
+	}
+
+	fn compute_reward(
+		account: &mut Self::Account,
+		currency: &Self::Currency,
+		group: &Self::Group,
+	) -> Result<Self::Balance, ArithmeticError> {
+		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+		account.compute_reward(group.reward_per_token())
+	}
+
+	fn claim_reward(
+		account: &mut Self::Account,
+		currency: &Self::Currency,
+		group: &Self::Group,
+	) -> Result<Self::Balance, ArithmeticError> {
+		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+		account.claim_reward(group.reward_per_token())
+	}
+
+	fn move_currency(
+		currency: &mut Self::Currency,
+		prev_group: &mut Self::Group,
+		next_group: &mut Self::Group,
+	) -> Result<(), MoveCurrencyError> {
+		let rpt_tally = next_group
+			.reward_per_token()
+			.ensure_sub(prev_group.reward_per_token())?;
+
+		currency
+			.add_rpt_tally(rpt_tally)
+			.map_err(|_| MoveCurrencyError::MaxMovements)?;
+
+		prev_group.sub_amount(currency.total_staked())?;
+		next_group.add_amount(currency.total_staked())?;
+
+		Ok(())
 	}
 }
 

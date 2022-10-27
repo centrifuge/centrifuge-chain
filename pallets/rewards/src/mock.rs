@@ -12,6 +12,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
+use super::mechanism::base;
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -127,6 +128,7 @@ impl pallet_rewards::Config for Test {
 	type PalletId = RewardsPalletId;
 	type Rate = FixedI64;
 	type RewardCurrency = RewardCurrency;
+	type RewardMechanism = base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>;
 	type SignedBalance = i128;
 }
 
