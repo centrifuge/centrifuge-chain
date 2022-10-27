@@ -294,7 +294,7 @@ pub mod pallet {
 
 			match T::ModifyPool::update(pool_id, changes) {
 				Ok((state, dispatch_info)) => {
-					Self::deposit_event(Event::UpdateRegisted { pool_id });
+					Self::deposit_event(Event::UpdateRegistered { pool_id });
 
 					match state {
 						UpdateState::NotExecution => {
