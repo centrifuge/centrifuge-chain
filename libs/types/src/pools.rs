@@ -21,7 +21,7 @@ use super::*;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
-	NotExecution,
+	NoExecution,
 	Executed,
 	Stored,
 }

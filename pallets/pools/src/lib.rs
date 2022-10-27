@@ -1567,7 +1567,7 @@ pub mod pallet {
 				}
 
 				return Ok((
-					UpdateState::NotExecution,
+					UpdateState::NoExecution,
 					Some(T::WeightInfo::update_no_execution(0)).into(),
 				));
 			}

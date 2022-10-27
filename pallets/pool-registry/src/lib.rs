@@ -297,9 +297,7 @@ pub mod pallet {
 					Self::deposit_event(Event::UpdateRegistered { pool_id });
 
 					match state {
-						UpdateState::NotExecution => {
-							Self::deposit_event(Event::UpdateNotExecuted { pool_id })
-						}
+						UpdateState::NoExecution => (),
 						UpdateState::Executed => {
 							Self::deposit_event(Event::UpdateExecuted { pool_id })
 						}
