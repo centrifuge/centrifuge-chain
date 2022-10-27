@@ -15,8 +15,8 @@
 #![feature(thread_local)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve};
-use cfg_types::{PermissionScope, PoolLocator, PoolRole, Role};
+use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use cfg_types::{PermissionScope, PoolChanges, PoolLocator, PoolRole, Role};
 use codec::HasCompact;
 use frame_support::{
 	dispatch::DispatchResult,
@@ -197,20 +197,6 @@ pub struct PoolParameters {
 	pub min_epoch_time: Moment,
 	/// Maximum time between the NAV update and the epoch closing.
 	pub max_nav_age: Moment,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-	MaxTranches: Get<u32>,
-{
-	pub tranches: Change<BoundedVec<TrancheUpdate<Rate>, MaxTranches>>,
-	pub tranche_metadata:
-		Change<BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>>,
-	pub min_epoch_time: Change<Moment>,
-	pub max_nav_age: Change<Moment>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -1462,7 +1448,17 @@ pub mod pallet {
 			>,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
+			pool_id: T::PoolId,
+			currency: T::CurrencyId,
 		) -> DispatchResult {
+			// A single pool ID can only be used by one owner.
+			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
+
+			ensure!(
+				T::PoolCurrency::contains(&currency),
+				Error::<T>::InvalidCurrency
+			);
+
 			Self::is_valid_tranche_change(
 				None,
 				&tranche_inputs
@@ -1559,6 +1555,66 @@ pub mod pallet {
 
 			Self::deposit_event(Event::Created { pool_id, admin });
 			Ok(())
+		}
+
+		fn update(pool_id: T::PoolId, changes: PoolChangesOf<T>) -> DispatchResultWithPostInfo {
+			ensure!(
+				EpochExecution::<T>::try_get(pool_id).is_err(),
+				Error::<T>::InSubmissionPeriod
+			);
+
+			if changes.min_epoch_time == Change::NoChange
+				&& changes.max_nav_age == Change::NoChange
+				&& changes.tranches == Change::NoChange
+			{
+				// If there's an existing update, we remove it
+				// If not, this transaction is a no-op
+				if ScheduledUpdate::<T>::contains_key(pool_id) {
+					ScheduledUpdate::<T>::remove(pool_id);
+				}
+
+				return Ok(Some(T::WeightInfo::update_no_execution(0)).into());
+			}
+
+			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
+				ensure!(
+					min_epoch_time >= T::MinEpochTimeLowerBound::get()
+						&& min_epoch_time <= T::MinEpochTimeUpperBound::get(),
+					Error::<T>::PoolParameterBoundViolated
+				);
+			}
+
+			if let Change::NewValue(max_nav_age) = changes.max_nav_age {
+				ensure!(
+					max_nav_age <= T::MaxNAVAgeUpperBound::get(),
+					Error::<T>::PoolParameterBoundViolated
+				);
+			}
+
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
+			if let Change::NewValue(tranches) = &changes.tranches {
+				Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
+			}
+
+			let now = Self::now();
+
+			let update = ScheduledUpdateDetails {
+				changes: changes.clone(),
+				scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
+			};
+
+			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
+			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
+				Self::do_update_pool(&pool_id, &changes)?;
+
+				Ok(Some(T::WeightInfo::update_and_execute(num_tranches)).into())
+			} else {
+				// If an update was already stored, this will override it
+				ScheduledUpdate::<T>::insert(pool_id, update);
+
+				Ok(Some(T::WeightInfo::update_no_execution(num_tranches)).into())
+			}
 		}
 	}
 }

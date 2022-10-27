@@ -14,14 +14,15 @@
 
 use cfg_primitives::Moment;
 use cfg_traits::Permissions;
-use cfg_types::{PermissionScope, PoolRole, Role};
+use cfg_types::{PermissionScope, PoolChanges, PoolRole, Role, TrancheInput};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
+use orml_traits::Change;
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
-	FixedPointOperand,
+	FixedPointNumber, FixedPointOperand,
 };
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
@@ -33,6 +34,13 @@ mod mock;
 #[cfg(test)]
 mod tests;
 pub mod weights;
+
+type PoolChangesOf<T> = PoolChanges<
+	<T as Config>::InterestRate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::MaxTranches,
+>;
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
@@ -52,14 +60,27 @@ where
 	metadata: BoundedVec<u8, MetaSize>,
 }
 
-pub(crate) trait PoolMutate<Balance> {
+pub(crate) trait PoolMutate<
+	T: Config,
+	Balance,
+	PoolId,
+	Currency,
+	Rate,
+	MaxTokenNameLength,
+	MaxTokenSymbolLength,
+> where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
 	fn create(
-		tranche_inputs: Vec<TranncheInput>,
+		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 		max_reserve: Balance,
-		metadata: Option<Vev<u8>>,
+		metadata: Option<Vec<u8>>,
+		pool_id: PoolId,
+		currency: Currency,
 	) -> DispatchResult;
 
-	fn update() -> DispatchResult;
+	fn update(pool_id: PoolId, changes: PoolChangesOf<T>) -> DispatchResultWithPostInfo;
 }
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
@@ -92,7 +113,26 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ core::fmt::Debug;
 
-		type ModifyPool: PoolMutate<Self::Balance>;
+		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
+
+		/// A fixed-point number which represents an
+		/// interest rate.
+		type InterestRate: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ TypeInfo
+			+ FixedPointNumber<Inner = Self::Balance>;
+
+		type ModifyPool: PoolMutate<
+			Self,
+			Self::Balance,
+			Self::PoolId,
+			Self::CurrencyId,
+			Self::Rate,
+			Self::MaxTokenNameLength,
+			Self::MaxTokenSymbolLength,
+		>;
 
 		type CurrencyId: Parameter + Copy;
 
@@ -113,6 +153,18 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ TypeInfo
 			+ From<[u8; 16]>;
+
+		/// Max length for a tranche token name
+		#[pallet::constant]
+		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
+
+		/// Max length for a tranche token symbol
+		#[pallet::constant]
+		type MaxTokenSymbolLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
+
+		/// Max number of Tranches
+		#[pallet::constant]
+		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
 
 		/// Max size of Metadata
 		#[pallet::constant]
@@ -209,15 +261,7 @@ pub mod pallet {
 			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
 			Self::take_deposit(depositor, pool_id)?;
 
-			// A single pool ID can only be used by one owner.
-			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
-
-			ensure!(
-				T::PoolCurrency::contains(&currency),
-				Error::<T>::InvalidCurrency
-			);
-
-			T::ModifyPool::create(tranche_inputs, max_reserve, metadata)
+			T::ModifyPool::create(tranche_inputs, max_reserve, metadata, pool_id, currency)
 		}
 
 		/// Update per-pool configuration settings.
@@ -249,11 +293,6 @@ pub mod pallet {
 				BadOrigin
 			);
 
-			ensure!(
-				EpochExecution::<T>::try_get(pool_id).is_err(),
-				Error::<T>::InSubmissionPeriod
-			);
-
 			// Both changes.tranches and changes.tranche_metadata
 			// have to be NoChange or Change, we don't allow to change either or
 			// ^ = XOR, !^ = negated XOR
@@ -263,58 +302,7 @@ pub mod pallet {
 				Error::<T>::InvalidTrancheUpdate
 			);
 
-			if changes.min_epoch_time == Change::NoChange
-				&& changes.max_nav_age == Change::NoChange
-				&& changes.tranches == Change::NoChange
-			{
-				// If there's an existing update, we remove it
-				// If not, this transaction is a no-op
-				if ScheduledUpdate::<T>::contains_key(pool_id) {
-					ScheduledUpdate::<T>::remove(pool_id);
-				}
-
-				return Ok(Some(T::WeightInfo::update_no_execution(0)).into());
-			}
-
-			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
-				ensure!(
-					min_epoch_time >= T::MinEpochTimeLowerBound::get()
-						&& min_epoch_time <= T::MinEpochTimeUpperBound::get(),
-					Error::<T>::PoolParameterBoundViolated
-				);
-			}
-
-			if let Change::NewValue(max_nav_age) = changes.max_nav_age {
-				ensure!(
-					max_nav_age <= T::MaxNAVAgeUpperBound::get(),
-					Error::<T>::PoolParameterBoundViolated
-				);
-			}
-
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-
-			if let Change::NewValue(tranches) = &changes.tranches {
-				Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
-			}
-
-			let now = Self::now();
-
-			let update = ScheduledUpdateDetails {
-				changes: changes.clone(),
-				scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
-			};
-
-			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
-				Self::do_update_pool(&pool_id, &changes)?;
-
-				Ok(Some(T::WeightInfo::update_and_execute(num_tranches)).into())
-			} else {
-				// If an update was already stored, this will override it
-				ScheduledUpdate::<T>::insert(pool_id, update);
-
-				Ok(Some(T::WeightInfo::update_no_execution(num_tranches)).into())
-			}
+			T::ModifyPool::update(pool_id, changes)
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.

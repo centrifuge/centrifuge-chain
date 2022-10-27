@@ -12,9 +12,11 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
-use cfg_primitives::CFG as CURRENCY;
-use cfg_traits::{Investment, PoolNAV, TrancheCurrency as _};
-use cfg_types::{CurrencyId, TrancheCurrency};
+use cfg_primitives::{Moment, CFG as CURRENCY};
+use cfg_traits::{Permissions, PoolNAV, TrancheCurrency as _};
+use cfg_types::{
+	CurrencyId, PermissionScope, PoolLocator, PoolRole, Role, TrancheCurrency, TrancheInput,
+};
 use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,

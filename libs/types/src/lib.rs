@@ -21,6 +21,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 pub use fixed_point::*;
 use frame_support::{traits::UnixTime, RuntimeDebug};
 pub use permissions::*;
+pub use pools::*;
 use scale_info::{build::Fields, Path, Type, TypeInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -30,11 +31,14 @@ use sp_std::{
 	marker::PhantomData,
 };
 pub use tokens::*;
+pub use tranches::*;
 
 pub mod fixed_point;
 pub mod ids;
 pub mod permissions;
+pub mod pools;
 pub mod tokens;
+pub mod tranches;
 
 /// A struct we need as the pallets implementing trait Time
 /// do not implement TypeInfo. This wraps this and implements everything manually.
@@ -59,12 +63,6 @@ impl<T> TypeInfo for TimeProvider<T> {
 			.docs(&["A wrapper around a T that provides a trait Time implementation. Should be filtered out."])
 			.composite(Fields::unit())
 	}
-}
-
-/// A representation of a pool identifier that can be converted to an account address
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolLocator<PoolId> {
-	pub pool_id: PoolId,
 }
 
 pub enum Adjustment<Amount> {
