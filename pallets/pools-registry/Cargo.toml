@@ -1,0 +1,52 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = 'Pools Registration for runtime'
+edition = '2021'
+license = "LGPL-3.0"
+name = 'pallet-pools-registry'
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = '1.0.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+serde = { version = "1.0.102" }
+codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false , optional = true , branch = "polkadot-v0.9.26" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
+orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
+
+common-traits = { path = "../../libs/common-traits", default-features = false }
+common-types = { path = "../../libs/common-types", default-features = false }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
+pallet-permissions = { path = "../../pallets/permissions", default-features = false}
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+
+[features]
+default = ['std']
+runtime-benchmarks = [
+    'frame-benchmarking'
+]
+std = [
+    'codec/std',
+    'frame-support/std',
+    'frame-system/std',
+    'common-traits/std',
+    'sp-runtime/std',
+    'sp-std/std',
+    'common-types/std',
+    'polkadot-parachain/std',
+    'xcm/std',
+]

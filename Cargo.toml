@@ -28,8 +28,13 @@ path = "src/main.rs"
 [workspace]
 members = [
 	"libs/primitives",
+	"libs/primitives",
 	"libs/proofs",
+	"libs/proofs",
+	"libs/test-utils",
 	"libs/traits",
+	"libs/traits",
+	"libs/types",
 	"libs/types",
 	"pallets/anchors",
 	"pallets/bridge",
@@ -41,20 +46,16 @@ members = [
 	"pallets/interest-accrual",
 	"pallets/investments",
 	"pallets/keystore",
+	"pallets/liquidity-rewards",
 	"pallets/loans",
 	"pallets/migration",
 	"pallets/nft",
 	"pallets/nft-sales",
 	"pallets/permissions",
-	"pallets/rewards",
-	"pallets/liquidity-rewards",
-	"libs/traits",
-	"libs/test-utils",
-	"libs/types",
-	"libs/proofs",
-	"libs/primitives",
 	"pallets/pools",
+	"pallets/pools-registry",
 	"pallets/restricted-tokens",
+	"pallets/rewards",
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
@@ -133,6 +134,7 @@ cfg-types = { path = "./libs/types" }
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
 pallet-pools = { path = "./pallets/pools" }
+pallet-pools-registry = { path = "./pallets/pools-registry" }
 
 # frame dependencies
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }

@@ -166,17 +166,6 @@ benchmarks! {
 		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
 
-	set_metadata {
-		let n in 0..T::MaxSizeMetadata::get();
-		let caller: T::AccountId = create_admin::<T>(0);
-		let metadata = vec![0u8; n as usize];
-		prepare_asset_registry::<T>();
-		create_pool::<T>(1, caller.clone())?;
-	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
-	verify {
-		assert_eq!(get_pool::<T>().metadata, Some(metadata.try_into().unwrap()));
-	}
-
 	set_max_reserve {
 		let admin: T::AccountId = create_admin::<T>(0);
 		let caller: T::AccountId = create_admin::<T>(1);

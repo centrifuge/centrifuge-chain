@@ -21,3 +21,4 @@ pub mod pallet_migration_manager;
 pub mod pallet_nft_sales;
 pub mod pallet_permissions;
 pub mod pallet_pools;
+pub mod pallet_pools_registry;
