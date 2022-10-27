@@ -2204,8 +2204,12 @@ pub mod test {
 
 		#[test]
 		fn epoch_execution_combine_with_mut_residual_top_works() {
+			let mut tranches = default_epoch_tranches();
+
+			// verify collection
+			// collection is from res to non-res -- same order as tranches
 			assert_eq!(
-				default_epoch_tranches()
+				tranches
 					.combine_with_mut_residual_top([220, 110, 250], |t, zip_val| {
 						t.invest = zip_val as u128;
 						Ok((t.seniority, t.invest))
@@ -2214,6 +2218,16 @@ pub mod test {
 				[(0, 220), (1, 110), (2, 250)]
 			);
 
+			// check mutated epoch_execution_tranches
+			// same order expected
+			let tranche_invest_vals = tranches
+				.into_tranches()
+				.iter()
+				.map(|t| t.invest)
+				.collect::<Vec<_>>();
+			assert_eq!(tranche_invest_vals, [220, 110, 250]);
+
+			// error if col has less items than EpochExecutionTrances
 			assert_eq!(
 				default_epoch_tranches().combine_with_mut_residual_top([220, 110], |t, zip_val| {
 					t.invest = zip_val as u128;
@@ -2224,6 +2238,7 @@ pub mod test {
 				))
 			);
 
+			// error if col has more items than EpochExecutionTranches
 			assert_eq!(
 				default_epoch_tranches().combine_with_mut_residual_top(
 					[220, 110, 222, 333],
@@ -2237,6 +2252,7 @@ pub mod test {
 				))
 			);
 
+			// error if col is empty and EpochExecutionTranches is not
 			assert_eq!(
 				default_epoch_tranches().combine_with_mut_residual_top([], |t, zip_val: u32| {
 					t.invest = zip_val as u128;
