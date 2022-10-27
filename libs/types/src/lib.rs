@@ -16,7 +16,6 @@
 
 ///! Common-types of the Centrifuge chain.
 use cfg_primitives::types::Balance;
-use cfg_traits::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use fixed_point::*;
 use frame_support::{traits::UnixTime, RuntimeDebug};

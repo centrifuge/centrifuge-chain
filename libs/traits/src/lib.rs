@@ -19,10 +19,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
+use cfg_types::{PoolChanges, TrancheInput};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
+	traits::Get,
 	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
@@ -33,13 +35,16 @@ use sp_runtime::{
 	},
 	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
+use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
 /// Traits related to operations.
 pub mod ops;
 
 /// Traits related to rewards.
 pub mod rewards;
+
+/// Trait implementations for types
+pub mod impls;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -123,6 +128,36 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+}
+
+/// A trait that supports modifications of pools
+pub trait PoolMutate<
+	AccountId,
+	Balance,
+	PoolId,
+	CurrencyId,
+	Rate,
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
+>
+{
+	fn create(
+		admin: AccountId,
+		depositor: AccountId,
+		pool_id: PoolId,
+		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+		currency: CurrencyId,
+		max_reserve: Balance,
+		metadata: Option<Vec<u8>>,
+	) -> DispatchResult;
+
+	fn update(
+		pool_id: PoolId,
+		changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
+	) -> DispatchResultWithPostInfo;
+
+	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit

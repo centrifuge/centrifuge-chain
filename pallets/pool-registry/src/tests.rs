@@ -3,21 +3,6 @@ use frame_support::assert_ok;
 use crate::mock::*;
 
 #[test]
-fn execute_update() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let pool_owner = 0u64;
-			let pool_id = 0;
-
-			assert_ok!(PoolsRegistry::execute(
-				Origin::signed(pool_owner),
-				pool_id,
-			));
-		})
-}
-
-#[test]
 fn set_metadata() {
 	TestExternalitiesBuilder::default()
 		.build()

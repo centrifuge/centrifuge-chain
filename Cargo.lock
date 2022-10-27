@@ -1145,6 +1145,7 @@ dependencies = [
  "cfg-primitives",
  "cfg-types",
  "frame-support",
+ "frame-system",
  "impl-trait-for-tuples",
  "orml-asset-registry",
  "orml-traits",
@@ -1162,7 +1163,6 @@ version = "2.0.0"
 dependencies = [
  "bitflags",
  "cfg-primitives",
- "cfg-traits",
  "frame-support",
  "frame-system",
  "orml-asset-registry",

@@ -13,7 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::Permissions;
+use cfg_traits::{Permissions, PoolMutate};
 use cfg_types::{PermissionScope, PoolChanges, PoolRole, Role, TrancheInput};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
@@ -50,35 +50,6 @@ where
 	MetaSize: Get<u32>,
 {
 	metadata: BoundedVec<u8, MetaSize>,
-}
-
-pub trait PoolMutate<
-	AccountId,
-	Balance,
-	PoolId,
-	CurrencyId,
-	Rate,
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-	MaxTranches: Get<u32>,
->
-{
-	fn create(
-		admin: AccountId,
-		depositor: AccountId,
-		pool_id: PoolId,
-		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
-		currency: CurrencyId,
-		max_reserve: Balance,
-		metadata: Option<Vec<u8>>,
-	) -> DispatchResult;
-
-	fn update(
-		pool_id: PoolId,
-		changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	) -> DispatchResultWithPostInfo;
-
-	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;

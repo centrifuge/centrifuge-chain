@@ -15,7 +15,7 @@
 #![feature(thread_local)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve, TrancheToken};
 use cfg_types::{
 	PermissionScope, PoolChanges, PoolLocator, PoolRole, Role, TrancheInput, TrancheType,
 	TrancheUpdate,
@@ -37,7 +37,6 @@ use orml_traits::{
 	Change,
 };
 pub use pallet::*;
-use pallet_pool_registry::PoolMutate;
 use polkadot_parachain::primitives::Id as ParachainId;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]

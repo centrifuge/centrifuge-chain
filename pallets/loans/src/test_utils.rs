@@ -13,7 +13,6 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use cfg_primitives::{Moment, CFG as CURRENCY};
-
 use cfg_traits::{Permissions, PoolNAV, TrancheCurrency as _};
 use cfg_types::{
 	CurrencyId, PermissionScope, PoolLocator, PoolRole, Role, TrancheCurrency, TrancheInput, TrancheMetadata,

@@ -57,49 +57,6 @@ impl From<u32> for CurrencyId {
 
 /// A type that can create a TrancheToken from a PoolId and a TrancheId
 pub struct TrancheToken;
-impl cfg_traits::TrancheToken<PoolId, TrancheId, CurrencyId> for TrancheToken {
-	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
-		CurrencyId::Tranche(pool, tranche)
-	}
-}
-
-/// A Currency that is solely used by tranches.
-///
-/// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
-/// in order to be able to have a clear seperation of concern. This enables us
-/// to use the `TrancheCurrency` type seperately where solely this enum variant would be
-/// relevant. Most notably, in the `struct Tranche`.
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TrancheCurrency {
-	pool_id: PoolId,
-	tranche_id: TrancheId,
-}
-
-impl Into<CurrencyId> for TrancheCurrency {
-	fn into(self) -> CurrencyId {
-		CurrencyId::Tranche(self.pool_id, self.tranche_id)
-	}
-}
-
-impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
-	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
-		Self {
-			pool_id,
-			tranche_id,
-		}
-	}
-
-	fn of_pool(&self) -> PoolId {
-		self.pool_id
-	}
-
-	fn of_tranche(&self) -> TrancheId {
-		self.tranche_id
-	}
-}
 
 /// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

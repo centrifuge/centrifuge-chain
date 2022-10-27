@@ -29,7 +29,6 @@ orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.29" }
 
 # local dependencies
-cfg-traits = { path = '../traits', default-features = false }
 cfg-primitives = { path = '../primitives', default-features = false }
 
 [dev-dependencies]
@@ -43,7 +42,6 @@ runtime-benchmarks = [
 ]
 std = [
     'cfg-primitives/std',
-    'cfg-traits/std',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
