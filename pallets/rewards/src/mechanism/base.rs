@@ -5,7 +5,7 @@ use cfg_traits::ops::ensure::{
 use frame_support::pallet_prelude::*;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-use super::{MoveCurrencyError, RewardAccount, RewardGroup, RewardMechanism};
+use super::{MoveCurrencyError, RewardMechanism};
 
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
@@ -17,7 +17,7 @@ pub struct Group<Balance, Rate> {
 
 impl<Balance, Rate> Group<Balance, Rate>
 where
-	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd,
+	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd + Copy,
 	Rate: EnsureFixedPointNumber,
 {
 	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
@@ -36,12 +36,8 @@ where
 	pub fn reward_per_token(&self) -> Rate {
 		self.reward_per_token
 	}
-}
 
-impl<Balance: Copy, Rate> RewardGroup for Group<Balance, Rate> {
-	type Balance = Balance;
-
-	fn total_staked(&self) -> Self::Balance {
+	pub fn total_staked(&self) -> Balance {
 		self.total_staked
 	}
 }
@@ -57,7 +53,7 @@ pub struct StakeAccount<Balance, SignedBalance> {
 
 impl<Balance, SignedBalance> StakeAccount<Balance, SignedBalance>
 where
-	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance>,
+	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance> + Copy,
 	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 {
 	/// Apply the following rpt_tallies to the stake account.
@@ -126,14 +122,6 @@ where
 	}
 
 	pub fn staked(&self) -> Balance {
-		self.staked
-	}
-}
-
-impl<Balance: Copy, SignedBalance> RewardAccount for StakeAccount<Balance, SignedBalance> {
-	type Balance = Balance;
-
-	fn staked(&self) -> Self::Balance {
 		self.staked
 	}
 }
@@ -268,6 +256,14 @@ where
 		next_group.add_amount(currency.total_staked())?;
 
 		Ok(())
+	}
+
+	fn account_stake(account: &Self::Account) -> Self::Balance {
+		account.staked()
+	}
+
+	fn group_stake(group: &Self::Group) -> Self::Balance {
+		group.total_staked()
 	}
 }
 

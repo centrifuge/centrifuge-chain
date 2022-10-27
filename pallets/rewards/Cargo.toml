@@ -28,6 +28,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 serde = "1.0"
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
+mockall = "0.11"
 
 [features]
 default = ["std"]

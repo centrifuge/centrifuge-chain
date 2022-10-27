@@ -7111,6 +7111,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "lazy_static",
+ "mockall",
  "num-traits",
  "orml-tokens",
  "orml-traits",

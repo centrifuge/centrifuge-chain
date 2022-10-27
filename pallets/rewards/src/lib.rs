@@ -73,7 +73,7 @@ use frame_support::{
 	},
 	PalletId,
 };
-use mechanism::{MoveCurrencyError, RewardAccount, RewardGroup, RewardMechanism};
+use mechanism::{MoveCurrencyError, RewardMechanism};
 use num_traits::Signed;
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand, TokenError};
@@ -258,7 +258,8 @@ pub mod pallet {
 		}
 
 		fn group_stake(group_id: Self::GroupId) -> Self::Balance {
-			Groups::<T, I>::get(group_id).total_staked()
+			let group = Groups::<T, I>::get(group_id);
+			T::RewardMechanism::group_stake(&group)
 		}
 	}
 
@@ -316,7 +317,7 @@ pub mod pallet {
 			Currencies::<T, I>::try_mutate(currency_id, |currency| {
 				Groups::<T, I>::try_mutate(group_id, |group| {
 					StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
-						if account.staked() < amount {
+						if T::RewardMechanism::account_stake(&account) < amount {
 							Err(TokenError::NoFunds)?;
 						}
 
@@ -389,7 +390,8 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Self::Balance {
-			StakeAccounts::<T, I>::get(account_id, currency_id).staked()
+			let account = StakeAccounts::<T, I>::get(account_id, currency_id);
+			T::RewardMechanism::account_stake(&account)
 		}
 	}
 

@@ -4,15 +4,6 @@ use sp_runtime::ArithmeticError;
 
 use super::*;
 
-const GROUP_A: u32 = 1;
-const GROUP_B: u32 = 2;
-
-const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
-const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
-const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
-
-const REWARD: u64 = 100;
-
 fn free_balance(currency_id: CurrencyId, account_id: &u64) -> u64 {
 	Tokens::reducible_balance(currency_id, account_id, true)
 }
@@ -30,6 +21,8 @@ fn distribute_to_all_groups() {
 		vec![]
 	);
 }
+
+use super::mock::RewardsBaseMechanism as Rewards;
 
 #[test]
 fn stake() {
@@ -59,17 +52,6 @@ fn stake() {
 		assert_eq!(
 			free_balance(CurrencyId::A, &USER_A),
 			USER_INITIAL_BALANCE - (USER_A_STAKED_1 + USER_A_STAKED_2)
-		);
-	});
-}
-
-#[test]
-fn stake_insufficient_balance() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_noop!(
-			Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, USER_INITIAL_BALANCE + 1),
-			TokenError::NoFunds
 		);
 	});
 }
@@ -326,39 +308,6 @@ fn several_users_interacting() {
 
 		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
 		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_B), 0);
-	});
-}
-
-#[test]
-fn use_currency_without_group() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-			Error::<Test, Instance1>::CurrencyWithoutGroup
-		);
-		assert_noop!(
-			Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-			Error::<Test, Instance1>::CurrencyWithoutGroup
-		);
-		assert_noop!(
-			Rewards::compute_reward(DOM_1_CURRENCY_A, &USER_A),
-			Error::<Test, Instance1>::CurrencyWithoutGroup
-		);
-		assert_noop!(
-			Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-			Error::<Test, Instance1>::CurrencyWithoutGroup
-		);
-	});
-}
-
-#[test]
-fn move_currency_same_group_error() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_noop!(
-			Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A),
-			Error::<Test, Instance1>::CurrencyInSameGroup
-		);
 	});
 }
 
