@@ -163,7 +163,7 @@ pub mod pallet {
 			admin: T::AccountId,
 		},
 		/// A pool update was registered.
-		UpdateRegisted { pool_id: T::PoolId },
+		UpdateRegistered { pool_id: T::PoolId },
 		/// A pool update was executed.
 		UpdateExecuted { pool_id: T::PoolId },
 		/// A pool update was not executed (due to no changes made).
