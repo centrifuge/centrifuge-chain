@@ -287,6 +287,8 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
+		#[pallet::weight(T::WeightInfo::update_no_execution(T::MaxTranches::get())
+		.max(T::WeightInfo::update_and_execute(T::MaxTranches::get())))]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
