@@ -17,6 +17,9 @@
 //! The Rewards pallet provides functionality for distributing rewards to different accounts with
 //! different currencies. The user can stake an amount to claim a proportional reward.
 //!
+//! The staked amount is reserved/hold from the user account for that currency when is deposited
+//! and unreserved/release when is withdrawed.
+//!
 //! ## Overview
 //!
 //! The Rewards pallet provides functions for:
@@ -28,8 +31,10 @@
 //!
 //! ### Terminology
 //!
-//! - **Currency ID**: The identification of a token used to make stake/unstake.
-//!   This ID is associated to a group used to reward the stake amount.
+//! - **Currency ID**: Identification of a token used to stake/unstake.
+//!   This ID is associated to a group.
+//! - **Domain ID**: Identification of a domain. A domain acts as a prefix for a currency id.
+//!   It allows to have the same currency in different reward groups.
 //! - **Reward**: The amount given in native tokens to a proportional amount of currency staked.
 //! - **Group**: A shared resource where the reward is distributed. The accounts with a currency
 //!   associated to a group can deposit/withdraw that currency to claim their proportional reward
@@ -39,8 +44,7 @@
 //!
 //! ### Implementations
 //!
-//! The Rewards pallet provides implementations for the Rewards trait. If these traits provide
-//! the functionality that you need, then you can avoid coupling with the Rewards pallet.
+//! The Rewards pallet provides implementations for the Rewards trait.
 //!
 //! ### Functionality
 //!
@@ -63,14 +67,14 @@ use cfg_traits::{
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		fungibles::{Mutate, MutateHold, Transfer},
+		fungibles::{InspectHold, Mutate, MutateHold, Transfer},
 		tokens::{AssetId, Balance},
 	},
 	PalletId,
 };
 use num_traits::Signed;
 pub use pallet::*;
-use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand, TokenError};
 use types::{CurrencyInfo, Group, StakeAccount};
 
 #[frame_support::pallet]
@@ -207,9 +211,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		// Emits when trying to withdraw more stake than an account has.
-		CanNotWithdraw,
-
 		// Emits when a currency is used but it does not have a group associated to.
 		CurrencyWithoutGroup,
 
@@ -268,13 +269,17 @@ pub mod pallet {
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
-						T::Currency::hold(currency_id.1, account_id, amount)?;
+						if !T::Currency::can_hold(currency_id.1, account_id, amount) {
+							Err(TokenError::NoFunds)?;
+						}
 
 						account.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						account.add_amount(amount, group.reward_per_token())?;
 
 						group.add_amount(amount)?;
 						currency.add_amount(amount)?;
+
+						T::Currency::hold(currency_id.1, account_id, amount)?;
 
 						Self::deposit_event(Event::StakeDeposited {
 							group_id,
@@ -301,7 +306,7 @@ pub mod pallet {
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
 						if account.staked() < amount {
-							Err(Error::<T>::CanNotWithdraw)?;
+							Err(TokenError::NoFunds)?;
 						}
 
 						account.try_apply_rpt_tallies(currency.rpt_tallies())?;
@@ -310,6 +315,8 @@ pub mod pallet {
 						group.sub_amount(amount)?;
 						currency.sub_amount(amount)?;
 
+						T::Currency::release(currency_id.1, account_id, amount, false)?;
+
 						Self::deposit_event(Event::StakeWithdrawn {
 							group_id,
 							domain_id: currency_id.0,
@@ -317,8 +324,6 @@ pub mod pallet {
 							account_id: account_id.clone(),
 							amount,
 						});
-
-						T::Currency::release(currency_id.1, account_id, amount, false)?;
 
 						Ok(())
 					})
