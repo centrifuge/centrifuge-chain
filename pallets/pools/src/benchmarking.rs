@@ -404,13 +404,13 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 ) -> DispatchResult {
 	let tranches = build_bench_input_tranches::<T>(num_tranches);
 	Pallet::<T>::create(
-		RawOrigin::Signed(caller.clone()).into(),
+		caller.clone(),
 		caller,
-		POOL,
 		tranches,
-		CurrencyId::AUSD,
 		MAX_RESERVE,
 		None,
+		POOL,
+		CurrencyId::AUSD,
 	)
 }
 

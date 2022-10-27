@@ -1,16 +1,19 @@
+use std::marker::PhantomData;
 use cfg_primitives::Moment;
-use cfg_types::CurrencyId;
+use cfg_types::{CurrencyId, PoolChanges, Rate, TrancheInput};
 use frame_support::{
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
 	parameter_types,
 	traits::{Hooks, SortedMembers},
 };
+use frame_system::EnsureSigned;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::{self as pallet_pools_registry, Config};
+use crate::{self as pallet_pools_registry, Config, PoolMutate};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -78,14 +81,57 @@ parameter_types! {
 	pub const MaxSizeMetadata: u32 = 100;
 }
 
+pub struct ModifyPoolMock<T> {
+	phantom: PhantomData<T>,
+}
+
+impl<T: Config + pallet_pools_registry::Config>
+	PoolMutate<
+		T::AccountId,
+		T::Balance,
+		T::PoolId,
+		T::CurrencyId,
+		T::Rate,
+		T::MaxTokenNameLength,
+		T::MaxTokenSymbolLength,
+		T::MaxTranches,
+	> for ModifyPoolMock<T>
+{
+	fn create(
+		admin: T::AccountId,
+		depositor: T::AccountId,
+		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
+		max_reserve: T::Balance,
+		metadata: Option<Vec<u8>>,
+		pool_id: T::PoolId,
+		currency: T::CurrencyId,
+	) -> DispatchResult {
+		todo!()
+	}
+
+	fn update(
+		pool_id: T::PoolId,
+		changes: PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>,
+	) -> DispatchResultWithPostInfo {
+		todo!()
+	}
+}
+
 impl Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type Event = Event;
+	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = ();
+	type MaxTokenSymbolLength = ();
+	type MaxTranches = ();
 	type Metadata = ();
+	type ModifyPool = ModifyPoolMock<Self>;
 	type Permission = PermissionsMock;
+	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;
+	type Rate = Rate;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }

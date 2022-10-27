@@ -10,9 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheCurrency};
-use frame_support::{assert_err, assert_noop, assert_ok};
+use cfg_traits::{Permissions as PermissionsT, TrancheCurrency as TrancheCurrencyT};
+use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheMetadata, TrancheCurrency};
+use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
 use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;
 use sp_core::storage::StateVersion;
