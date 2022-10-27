@@ -18,7 +18,7 @@ fn update_pool() {
 				max_nav_age: Change::NoChange,
 			};
 
-			assert_ok!(PoolsRegistry::update(
+			assert_ok!(PoolRegistry::update(
 				Origin::signed(pool_owner),
 				pool_id,
 				changes,
