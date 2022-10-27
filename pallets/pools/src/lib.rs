@@ -37,7 +37,7 @@ use orml_traits::{
 	Change,
 };
 pub use pallet::*;
-use pallet_pools_registry::PoolMutate;
+use pallet_pool_registry::PoolMutate;
 use polkadot_parachain::primitives::Id as ParachainId;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]

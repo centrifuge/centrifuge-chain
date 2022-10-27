@@ -26,7 +26,7 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_pools_registry::weights::WeightInfo;
+use pallet_pool_registry::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_pools using the Substrate node and recommended hardware.

@@ -933,7 +933,7 @@ impl pallet_pools::Config for Runtime {
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 }
 
-impl pallet_pools_registry::Config for Runtime {
+impl pallet_pool_registry::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type Event = Event;
@@ -948,7 +948,7 @@ impl pallet_pools_registry::Config for Runtime {
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type TrancheId = TrancheId;
-	type WeightInfo = weights::pallet_pools_registry::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pool_registry::SubstrateWeight<Runtime>;
 }
 
 pub struct PoolCurrency;

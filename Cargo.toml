@@ -134,7 +134,7 @@ cfg-types = { path = "./libs/types" }
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
 pallet-pools = { path = "./pallets/pools" }
-pallet-pools-registry = { path = "./pallets/pools-registry" }
+pallet-pool-registry = { path = "pallets/pool-registry" }
 
 # frame dependencies
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }

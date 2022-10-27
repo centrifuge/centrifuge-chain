@@ -122,7 +122,7 @@ pallet-migration-manager = { path = "../../pallets/migration", default-features 
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pools = { path = "../../pallets/pools", default-features = false }
-pallet-pools-registry = { path = "../../pallets/pools-registry", default-features = false }
+pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -173,6 +173,7 @@ std = [
     "pallet-investments/std",
     "pallet-loans/std",
     "pallet-loans/std",
+    "pallet-loans/std",
     "pallet-membership/std",
     "pallet-migration-manager/std",
     "pallet-migration-manager/std",
@@ -181,8 +182,7 @@ std = [
     "pallet-nft-sales/std",
     "pallet-offences/std",
     "pallet-permissions/std",
-    "pallet-permissions/std",
-    "pallet-pools-registry/std",
+    "pallet-pool-registry/std",
     "pallet-pools/std",
     "pallet-pools/std",
     "pallet-preimage/std",
@@ -260,6 +260,7 @@ runtime-benchmarks = [
     "pallet-multisig/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
     "pallet-permissions/runtime-benchmarks",
+    "pallet-pool-registry/runtime-benchmarks",
     "pallet-pools/runtime-benchmarks",
     "pallet-preimage/runtime-benchmarks",
     "pallet-proxy/runtime-benchmarks",

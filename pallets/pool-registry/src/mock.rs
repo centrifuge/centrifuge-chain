@@ -14,7 +14,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::{self as pallet_pools_registry, Config, PoolMutate};
+use crate::{self as pallet_pool_registry, Config, PoolMutate};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -86,7 +86,7 @@ pub struct ModifyPoolMock<T> {
 	phantom: PhantomData<T>,
 }
 
-impl<T: Config + pallet_pools_registry::Config>
+impl<T: Config + pallet_pool_registry::Config>
 	PoolMutate<
 		T::AccountId,
 		T::Balance,
@@ -154,7 +154,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		PoolsRegistry: pallet_pools_registry::{Pallet, Call, Storage, Event<T>},
+		PoolsRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );

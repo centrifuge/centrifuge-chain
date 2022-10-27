@@ -3,7 +3,7 @@ authors = ["Centrifuge <admin@centrifuge.io>"]
 description = 'Pools Registration for runtime'
 edition = '2021'
 license = "LGPL-3.0"
-name = 'pallet-pools-registry'
+name = 'pallet-pool-registry'
 repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '1.0.0'
 
