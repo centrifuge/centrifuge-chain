@@ -67,7 +67,7 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-traits",
   "pallet-timestamp/runtime-benchmarks",
-  "pallet-pools/runtime-benchmarks",
+  "pallet-pools-system/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "cfg-test-utils/runtime-benchmarks",
 ]
