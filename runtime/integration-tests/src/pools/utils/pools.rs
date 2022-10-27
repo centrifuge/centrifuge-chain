@@ -353,7 +353,7 @@ pub fn create_pool_call(
 	max_reserve: Balance,
 	tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 ) -> Call {
-	Call::PoolsRegistry(PoolsRegistryCall::create {
+	Call::PoolRegistry(PoolRegistryCall::create {
 		admin,
 		pool_id,
 		tranche_inputs,
