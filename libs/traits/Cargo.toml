@@ -25,8 +25,8 @@ cfg-primitives = { path = '../primitives', default-features = false }
 cfg-types = { path = '../types', default-features = false }
 
 # Testing libraries that must be exported
-mockall = { version = "0.11", optional = true }
 lazy_static = { version = "1.4", optional = true }
+mockall = { version = "0.11", optional = true }
 
 [dev-dependencies]
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.29" }
