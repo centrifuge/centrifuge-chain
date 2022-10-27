@@ -1206,25 +1206,25 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let mut tranche_slices = self.non_residual_top_slice().iter();
+		let mut tranche_slice = self.non_residual_top_slice().iter();
 		let mut with_iter = with.into_iter();
 
-		let elem_mismatch_err = Err(DispatchError::Other(
-			"Tranche and iterable element count mismatch",
-		));
-
 		for _ in 0..self.tranches.len() {
-			let r = match (tranche_slices.next(), with_iter.next()) {
-				(Some(tranche), Some(w)) => f(tranche, w)?,
-				_ => return elem_mismatch_err,
+			match (tranche_slice.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"EpochExecutionTranches contains more tranches than iterables elements",
+					));
+				}
 			};
-
-			res.push(r);
 		}
 
-		match (tranche_slices.next(), with_iter.next()) {
+		match (tranche_slice.next(), with_iter.next()) {
 			(None, None) => Ok(res),
-			_ => elem_mismatch_err,
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than EpochExecutionTranches tranche count",
+			)),
 		}
 	}
 
@@ -1246,22 +1246,22 @@ where
 		let mut tranche_slices = self.non_residual_top_slice_mut().iter_mut();
 		let mut with_iter = with.into_iter();
 
-		let elem_mismatch_err = Err(DispatchError::Other(
-			"Tranche and iterable element count mismatch",
-		));
-
 		for _ in 0..tranches_count {
-			let r = match (tranche_slices.next(), with_iter.next()) {
-				(Some(tranche), Some(w)) => f(tranche, w)?,
-				_ => return elem_mismatch_err,
+			match (tranche_slices.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"EpochExecutionTranches contains more tranches than iterables elements",
+					))
+				}
 			};
-
-			res.push(r);
 		}
 
 		match (tranche_slices.next(), with_iter.next()) {
 			(None, None) => Ok(res),
-			_ => elem_mismatch_err,
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than EpochExecutionTranches tranche count",
+			)),
 		}
 	}
 
@@ -1306,14 +1306,26 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.residual_top_slice().iter().zip(with.into_iter());
+		let mut tranche_slice = self.residual_top_slice().iter();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
+		for _ in 0..self.tranches.len() {
+			match (tranche_slice.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"EpochExecutionTranches contains more tranches than iterables elements",
+					))
+				}
+			};
 		}
 
-		Ok(res)
+		match (tranche_slice.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than EpochExecutionTranches tranche count",
+			)),
+		}
 	}
 
 	pub fn combine_with_mut_residual_top<R, W, I, F>(
@@ -1987,23 +1999,36 @@ pub mod test {
 				[(2, 220), (1, 210), (0, 250)]
 			);
 
+			// error if len col < tranches count
 			assert_eq!(
 				default_epoch_tranches()
 					.combine_with_non_residual_top(&[220, 210], |tranche, other_val| {
 						Ok((tranche.seniority, *other_val))
 					}),
 				Err(DispatchError::Other(
-					"Tranche and iterable element count mismatch"
+					"EpochExecutionTranches contains more tranches than iterables elements"
 				))
 			);
 
+			// error if len with > tranches count
 			assert_eq!(
 				default_epoch_tranches()
 					.combine_with_non_residual_top(&[220, 210, 250, 110], |tranche, other_val| {
 						Ok((tranche.seniority, *other_val))
 					}),
 				Err(DispatchError::Other(
-					"Tranche and iterable element count mismatch"
+					"Iterable contains more elements than EpochExecutionTranches tranche count",
+				))
+			);
+
+			// error if col is empty
+			assert_eq!(
+				default_epoch_tranches()
+					.combine_with_non_residual_top(vec![], |tranche, other_val: u32| {
+						Ok((tranche.seniority, other_val))
+					}),
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements",
 				))
 			);
 		}
@@ -2048,7 +2073,7 @@ pub mod test {
 			// note -- collection done with non-residual first
 			assert_eq!(res.unwrap(), [(2, 0, 220), (1, 0, 210), (0, 0, 250)]);
 
-			// Error if len w/ > tranches count
+			// error if len col > tranches count
 			assert_eq!(
 				default_epoch_tranches().combine_with_mut_non_residual_top(
 					&[220, 210, 250, 252],
@@ -2060,11 +2085,11 @@ pub mod test {
 					},
 				),
 				Err(DispatchError::Other(
-					"Tranche and iterable element count mismatch",
+					"Iterable contains more elements than EpochExecutionTranches tranche count",
 				))
 			);
 
-			// Error if len w/ < tranches count
+			// error if len col < tranches count
 			assert_eq!(
 				default_epoch_tranches().combine_with_mut_non_residual_top(
 					&[220, 210],
@@ -2076,7 +2101,23 @@ pub mod test {
 					},
 				),
 				Err(DispatchError::Other(
-					"Tranche and iterable element count mismatch",
+					"EpochExecutionTranches contains more tranches than iterables elements",
+				))
+			);
+
+			// error if len col empty
+			assert_eq!(
+				default_epoch_tranches().combine_with_mut_non_residual_top(
+					[],
+					|t, new_investment: u128| {
+						let old_invest = t.invest;
+						t.invest += new_investment as u128;
+						order.push(t.seniority);
+						Ok((t.seniority, old_invest, t.invest))
+					},
+				),
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements",
 				))
 			)
 		}
@@ -2116,12 +2157,29 @@ pub mod test {
 			);
 
 			assert_eq!(
+				default_epoch_tranches().combine_with_residual_top([1, 2, 3, 4], |t, zip_val| {
+					Ok((t.seniority, zip_val))
+				}),
+				Err(DispatchError::Other(
+					"Iterable contains more elements than EpochExecutionTranches tranche count"
+				))
+			);
+
+			assert_eq!(
 				default_epoch_tranches()
-					.combine_with_residual_top([1, 2, 3, 4], |t, zip_val| {
-						Ok((t.seniority, zip_val))
-					})
-					.unwrap()[..],
-				[(0, 1), (1, 2), (2, 3)]
+					.combine_with_residual_top([1, 2], |t, zip_val| { Ok((t.seniority, zip_val)) }),
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements"
+				))
+			);
+
+			assert_eq!(
+				default_epoch_tranches().combine_with_residual_top(vec![], |t, zip_val: u32| {
+					Ok((t.seniority, zip_val))
+				}),
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements"
+				))
 			)
 		}
 
