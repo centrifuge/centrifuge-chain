@@ -176,9 +176,8 @@ pub mod pallet {
 				BadOrigin,
 			);
 
-			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata
-				.try_into()
-				.map_err(|_| Error::<T>::BadMetadata)?;
+			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
+				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
 
 			PoolMetadata::<T>::insert(
 				pool_id,
