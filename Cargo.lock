@@ -6613,8 +6613,9 @@ dependencies = [
 name = "pallet-pools-registry"
 version = "1.0.0"
 dependencies = [
- "common-traits",
- "common-types",
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

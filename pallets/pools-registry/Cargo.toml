@@ -25,8 +25,9 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.26" }
 orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.26" }
 
-common-traits = { path = "../../libs/common-traits", default-features = false }
-common-types = { path = "../../libs/common-types", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = false}
+cfg-types = { path = "../../libs/types", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
@@ -43,10 +44,11 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
-    'common-traits/std',
     'sp-runtime/std',
     'sp-std/std',
-    'common-types/std',
+    'cfg-traits/std',
+    'cfg-types/std',
+    'cfg-primitives/std',
     'polkadot-parachain/std',
     'xcm/std',
 ]

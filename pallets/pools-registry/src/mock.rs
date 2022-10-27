@@ -1,12 +1,15 @@
-use crate::{self as pallet_pools_registry, Config};
 use common_types::{CurrencyId, Moment};
-use frame_support::traits::SortedMembers;
-use frame_support::{parameter_types, traits::Hooks};
+use frame_support::{
+	parameter_types,
+	traits::{Hooks, SortedMembers},
+};
 use sp_core::H256;
 use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate::{self as pallet_pools_registry, Config};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -18,37 +21,37 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-    type BaseCallFilter = frame_support::traits::Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type Event = Event;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = ();
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = SS58Prefix;
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type AccountData = ();
+	type AccountId = u64;
+	type BaseCallFilter = frame_support::traits::Everything;
+	type BlockHashCount = BlockHashCount;
+	type BlockLength = ();
+	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
+	type Hash = H256;
+	type Hashing = BlakeTwo256;
+	type Header = Header;
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = SS58Prefix;
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 impl pallet_timestamp::Config for Test {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = ();
-    type WeightInfo = ();
+	type MinimumPeriod = ();
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -61,9 +64,9 @@ parameter_types! {
 }
 
 impl SortedMembers<u64> for One {
-    fn sorted_members() -> Vec<u64> {
-        vec![1]
-    }
+	fn sorted_members() -> Vec<u64> {
+		vec![1]
+	}
 }
 
 pub type Balance = u128;
@@ -75,15 +78,15 @@ parameter_types! {
 }
 
 impl Config for Test {
-    type Event = Event;
-    type Balance = Balance;
-    type PoolId = u64;
-    type CurrencyId = CurrencyId;
-    type Metadata = ();
-    type TrancheId = TrancheId;
-    type MaxSizeMetadata = MaxSizeMetadata;
-    type Permission = PermissionsMock;
-    type WeightInfo = ();
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Event = Event;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type Metadata = ();
+	type Permission = PermissionsMock;
+	type PoolId = u64;
+	type TrancheId = TrancheId;
+	type WeightInfo = ();
 }
 
 // Configure a mock runtime to test the pallet.
@@ -106,30 +109,30 @@ type PoolId = u64;
 pub struct PermissionsMock {}
 
 impl common_traits::Permissions<AccountId> for PermissionsMock {
-    type Scope = common_types::PermissionScope<PoolId, CurrencyId>;
-    type Role = common_types::Role;
-    type Error = sp_runtime::DispatchError;
-    type Ok = ();
+	type Error = sp_runtime::DispatchError;
+	type Ok = ();
+	type Role = common_types::Role;
+	type Scope = common_types::PermissionScope<PoolId, CurrencyId>;
 
-    fn has(_scope: Self::Scope, _who: AccountId, _role: Self::Role) -> bool {
-        true
-    }
+	fn has(_scope: Self::Scope, _who: AccountId, _role: Self::Role) -> bool {
+		true
+	}
 
-    fn add(
-        _scope: Self::Scope,
-        _who: AccountId,
-        _role: Self::Role,
-    ) -> Result<Self::Ok, Self::Error> {
-        todo!()
-    }
+	fn add(
+		_scope: Self::Scope,
+		_who: AccountId,
+		_role: Self::Role,
+	) -> Result<Self::Ok, Self::Error> {
+		todo!()
+	}
 
-    fn remove(
-        _scope: Self::Scope,
-        _who: AccountId,
-        _role: Self::Role,
-    ) -> Result<Self::Ok, Self::Error> {
-        todo!()
-    }
+	fn remove(
+		_scope: Self::Scope,
+		_who: AccountId,
+		_role: Self::Role,
+	) -> Result<Self::Ok, Self::Error> {
+		todo!()
+	}
 }
 
 // Test externalities builder
@@ -140,27 +143,27 @@ pub struct TestExternalitiesBuilder {}
 
 // Default trait implementation for test externalities builder
 impl Default for TestExternalitiesBuilder {
-    fn default() -> Self {
-        Self {}
-    }
+	fn default() -> Self {
+		Self {}
+	}
 }
 
 pub const SECONDS: u64 = 1000;
 pub const START_DATE: u64 = 1640995200;
 
 impl TestExternalitiesBuilder {
-    // Build a genesis storage key/value store
-    pub fn build(self) -> sp_io::TestExternalities {
-        let storage = frame_system::GenesisConfig::default()
-            .build_storage::<Test>()
-            .unwrap();
-        let mut externalities = sp_io::TestExternalities::new(storage);
-        externalities.execute_with(|| {
-            System::set_block_number(1);
-            System::on_initialize(System::block_number());
-            Timestamp::on_initialize(System::block_number());
-            Timestamp::set(Origin::none(), START_DATE * SECONDS).unwrap();
-        });
-        externalities
-    }
+	// Build a genesis storage key/value store
+	pub fn build(self) -> sp_io::TestExternalities {
+		let storage = frame_system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap();
+		let mut externalities = sp_io::TestExternalities::new(storage);
+		externalities.execute_with(|| {
+			System::set_block_number(1);
+			System::on_initialize(System::block_number());
+			Timestamp::on_initialize(System::block_number());
+			Timestamp::set(Origin::none(), START_DATE * SECONDS).unwrap();
+		});
+		externalities
+	}
 }

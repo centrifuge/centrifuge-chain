@@ -12,11 +12,11 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for the Pools Pallet
-use super::*;
-
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use sp_std::vec;
+
+use super::*;
 
 const POOL: u64 = 0;
 
@@ -38,7 +38,7 @@ benchmarks! {
 }
 
 fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
-    Pallet::<T>::get_pool_metadata(T::PoolId::from(POOL)).unwrap()
+	Pallet::<T>::get_pool_metadata(T::PoolId::from(POOL)).unwrap()
 }
 
 impl_benchmark_test_suite!(
