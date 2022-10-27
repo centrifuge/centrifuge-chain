@@ -159,7 +159,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		PoolsRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>},
+		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
