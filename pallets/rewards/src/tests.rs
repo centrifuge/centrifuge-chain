@@ -70,8 +70,20 @@ fn stake_insufficient_balance() {
 		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
 		assert_noop!(
 			Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, USER_INITIAL_BALANCE + 1),
-			orml_tokens::Error::<Test>::BalanceTooLow
+			TokenError::NoFunds
 		);
+	});
+}
+
+#[test]
+fn stake_all() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+		assert_ok!(Rewards::deposit_stake(
+			DOM_1_CURRENCY_A,
+			&USER_A,
+			USER_INITIAL_BALANCE
+		));
 	});
 }
 
@@ -124,14 +136,14 @@ fn unstake_insufficient_balance() {
 		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
 		assert_noop!(
 			Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 1),
-			Error::<Test>::CanNotWithdraw
+			TokenError::NoFunds
 		);
 
 		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 1000));
 
 		assert_noop!(
 			Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 2000),
-			Error::<Test>::CanNotWithdraw
+			TokenError::NoFunds
 		);
 	});
 }
@@ -491,7 +503,7 @@ fn same_currency_different_domains() {
 		// There is enough reserved CurrencyId::A for USER_A, but in other domain.
 		assert_noop!(
 			Rewards::withdraw_stake((DomainId::D2, CurrencyId::A), &USER_A, STAKE_A),
-			Error::<Test>::CanNotWithdraw
+			TokenError::NoFunds
 		);
 		assert_ok!(Rewards::withdraw_stake(
 			(DomainId::D1, CurrencyId::A),
