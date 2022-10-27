@@ -19,7 +19,6 @@ pub mod pallet_crowdloan_reward;
 pub mod pallet_democracy;
 pub mod pallet_fees;
 pub mod pallet_identity;
-pub mod pallet_interest_accrual;
 pub mod pallet_loans;
 pub mod pallet_migration_manager;
 pub mod pallet_multisig;
