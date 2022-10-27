@@ -148,12 +148,14 @@ benchmarks! {
 		// Submit redemption order so the update isn't immediately executed
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
 
-		let changes = PoolChanges {
-			tranches: Change::NewValue(build_update_tranches::<T>(n)),
-			min_epoch_time: Change::NewValue(SECS_PER_DAY),
-			max_nav_age: Change::NewValue(SECS_PER_HOUR),
-			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
-		};
+		// let changes = PoolChanges {
+		// 	tranches: Change::NewValue(build_update_tranches::<T>(n)),
+		// 	min_epoch_time: Change::NewValue(SECS_PER_DAY),
+		// 	max_nav_age: Change::NewValue(SECS_PER_HOUR),
+		// 	tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
+		// };
+
+		let changes = PoolChanges::Tranches(Change::NewValue(build_update_tranches::<T>(n)));
 
 		Pallet::<T>::update(POOL, changes)?;
 
@@ -163,8 +165,8 @@ benchmarks! {
 	verify {
 		let pool = get_pool::<T>();
 		assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
+		// assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
+		// assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
 
 	set_max_reserve {

@@ -1161,32 +1161,61 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
-				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
-					pool.parameters.min_epoch_time = min_epoch_time;
-				}
+				match changes {
+					PoolChanges::MinEpochTime(change) => {
+						if let Change::NewValue(min_epoch_time) = change {
+							pool.parameters.min_epoch_time = *min_epoch_time;
+						}
+					}
+					PoolChanges::MaxNavAge(change) => {
+						if let Change::NewValue(max_nav_age) = change {
+							pool.parameters.max_nav_age = *max_nav_age;
+						}
+					}
+					PoolChanges::Tranches(change) => {
+						if let Change::NewValue(tranches) = &change {
+							let now = Self::now();
 
-				if let Change::NewValue(max_nav_age) = changes.max_nav_age {
-					pool.parameters.max_nav_age = max_nav_age;
-				}
+							pool.tranches.combine_with_mut_residual_top(
+								tranches.iter(),
+								|tranche, tranche_update| {
+									// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
+									tranche.accrue(now)?;
 
-				if let Change::NewValue(tranches) = &changes.tranches {
-					let now = Self::now();
+									tranche.tranche_type = tranche_update.tranche_type;
 
-					pool.tranches.combine_with_mut_residual_top(
-						tranches.iter(),
-						|tranche, tranche_update| {
-							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
-							tranche.accrue(now)?;
+									if let Some(new_seniority) = tranche_update.seniority {
+										tranche.seniority = new_seniority;
+									}
 
-							tranche.tranche_type = tranche_update.tranche_type;
-
-							if let Some(new_seniority) = tranche_update.seniority {
-								tranche.seniority = new_seniority;
+									Ok(())
+								},
+							)?;
+						}
+					}
+					PoolChanges::TrancheMetadata(change) => {
+						//
+						// The case when Metadata AND the tranche changed, we don't allow for an or.
+						// Both have to be changed (for now)
+						//
+						if let Change::NewValue(metadata) = &change {
+							for (tranche, updated_metadata) in
+								pool.tranches.tranches.iter().zip(metadata.iter())
+							{
+								T::AssetRegistry::update_asset(
+									tranche.currency,
+									None,
+									Some(updated_metadata.clone().token_name.to_vec()),
+									Some(updated_metadata.clone().token_symbol.to_vec()),
+									None,
+									None,
+									None,
+								)
+								.map_err(|_| Error::<T>::FailedToUpdateTrancheMetadata)?;
 							}
 
 							Ok(())
-						},
-					)?;
+						}
 				}
 
 				//
@@ -1521,6 +1550,7 @@ pub mod pallet {
 				let metadata = tranche.create_asset_metadata(
 					decimals,
 					parachain_id,
+					T::PalletIndex::get(),
 					token_name.to_vec(),
 					token_symbol.to_vec(),
 				);
@@ -1573,43 +1603,53 @@ pub mod pallet {
 		}
 
 		fn update(pool_id: T::PoolId, changes: PoolChangesOf<T>) -> DispatchResultWithPostInfo {
+			//TODO! Do we need this anymore, now that we drive one change at a time?
+			//
+			// if changes.min_epoch_time == Change::NoChange
+			// 	&& changes.max_nav_age == Change::NoChange
+			// 	&& changes.tranches == Change::NoChange
+			// {
+			// 	// If there's an existing update, we remove it
+			// 	// If not, this transaction is a no-op
+			// 	if ScheduledUpdate::<T>::contains_key(pool_id) {
+			// 		ScheduledUpdate::<T>::remove(pool_id);
+			// 	}
+			//
+			// 	return Ok(Some(T::WeightInfo::update_no_execution(0)).into());
+			// }
+
 			ensure!(
 				EpochExecution::<T>::try_get(pool_id).is_err(),
 				Error::<T>::InSubmissionPeriod
 			);
 
-			if changes.min_epoch_time == Change::NoChange
-				&& changes.max_nav_age == Change::NoChange
-				&& changes.tranches == Change::NoChange
-			{
-				// If there's an existing update, we remove it
-				// If not, this transaction is a no-op
-				if ScheduledUpdate::<T>::contains_key(pool_id) {
-					ScheduledUpdate::<T>::remove(pool_id);
-				}
-
-				return Ok(Some(T::WeightInfo::update_no_execution(0)).into());
-			}
-
-			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
-				ensure!(
-					min_epoch_time >= T::MinEpochTimeLowerBound::get()
-						&& min_epoch_time <= T::MinEpochTimeUpperBound::get(),
-					Error::<T>::PoolParameterBoundViolated
-				);
-			}
-
-			if let Change::NewValue(max_nav_age) = changes.max_nav_age {
-				ensure!(
-					max_nav_age <= T::MaxNAVAgeUpperBound::get(),
-					Error::<T>::PoolParameterBoundViolated
-				);
-			}
-
 			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
-			if let Change::NewValue(tranches) = &changes.tranches {
-				Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
+			match changes {
+				PoolChanges::MinEpochTime(ref change) => {
+					if let Change::NewValue(min_epoch_time) = change {
+						ensure!(
+							min_epoch_time >= &T::MinEpochTimeLowerBound::get()
+								&& min_epoch_time <= &T::MinEpochTimeUpperBound::get(),
+							Error::<T>::PoolParameterBoundViolated
+						);
+					}
+				}
+				PoolChanges::MaxNavAge(ref change) => {
+					if let Change::NewValue(max_nav_age) = change {
+						ensure!(
+							max_nav_age <= &T::MaxNAVAgeUpperBound::get(),
+							Error::<T>::PoolParameterBoundViolated
+						);
+					}
+				}
+				PoolChanges::Tranches(ref change) => {
+					if let Change::NewValue(tranches) = &change {
+						Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
+					}
+				}
+				// Currently nothing being verified for PoolChanges::TrancheMetadata
+				_ => (),
 			}
 
 			let now = Self::now();

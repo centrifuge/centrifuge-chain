@@ -27,9 +27,16 @@ pub struct PoolLocator<PoolId> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub enum PoolChanges {
+pub enum PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
+{
 	Tranches(Change<BoundedVec<TrancheUpdate<Rate>, MaxTranches>>),
-	TrancheMetadata,
+	TrancheMetadata(
+		Change<BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>>,
+	),
 	MinEpochTime(Change<Moment>),
 	MaxNavAge(Change<Moment>),
 }

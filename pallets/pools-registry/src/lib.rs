@@ -18,7 +18,6 @@ use cfg_types::{PermissionScope, PoolChanges, PoolRole, Role, TrancheInput};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
-use orml_traits::Change;
 pub use pallet::*;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
@@ -282,17 +281,22 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges,
+			changes: PoolChanges<
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+				T::MaxTranches,
+			>,
 		) -> DispatchResultWithPostInfo {
-			/// Make sure the following are true for a valid Pool Update
-			/// 1. Make sure Origin is signed
-			/// 2. Ensure the signed origin is PoolAdmin
-			/// 3. Either no changes in tranches/metadata or changes in both
-			/// 4. Ensure not in Submission Epoch Time
-			/// 5. If no changes, do no_op
-			/// 6. Minimum epoch time has to be between min and max epoch time
-			/// 7. MaxNavAge has to be under the upper bound NavAge
-			/// 8. IsValidTrancheChange?
+			// Make sure the following are true for a valid Pool Update
+			// 1. Make sure Origin is signed
+			// 2. Ensure the signed origin is PoolAdmin
+			// 3. Either no changes in tranches/metadata or changes in both
+			// 4. Ensure not in Submission Epoch Time
+			// 5. If no changes, do no_op
+			// 6. Minimum epoch time has to be between min and max epoch time
+			// 7. MaxNavAge has to be under the upper bound NavAge
+			// 8. IsValidTrancheChange?
 
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -302,15 +306,6 @@ pub mod pallet {
 					Role::PoolRole(PoolRole::PoolAdmin)
 				),
 				BadOrigin
-			);
-
-			// Both changes.tranches and changes.tranche_metadata
-			// have to be NoChange or Change, we don't allow to change either or
-			// ^ = XOR, !^ = negated XOR
-			ensure!(
-				!((changes.tranches == Change::NoChange)
-					^ (changes.tranche_metadata == Change::NoChange)),
-				Error::<T>::InvalidTrancheUpdate
 			);
 
 			T::ModifyPool::update(pool_id, changes)
