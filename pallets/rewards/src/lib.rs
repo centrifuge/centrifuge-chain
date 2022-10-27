@@ -28,7 +28,7 @@
 //!
 //! ### Terminology
 //!
-//! - **Currency ID**: Identification of a token used to make stake/unstake.
+//! - **Currency ID**: Identification of a token used to stake/unstake.
 //!   This ID is associated to a group.
 //! - **Domain ID**: Identification of a domain. A domain acts as a prefix for a currency id.
 //!   It allows to have the same currency in different reward groups.
