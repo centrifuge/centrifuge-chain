@@ -1441,9 +1441,21 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> PoolMutate for Pallet<T> {
+	impl<T: Config>
+		PoolMutate<
+			T,
+			T::AccountId,
+			T::Balance,
+			T::PoolId,
+			T::Currency,
+			T::InterestRate,
+			T::MaxTokenNameLength,
+			T::MaxTokenSymbolLength,
+		> for Pallet<T>
+	{
 		fn create(
 			admin: T::AccountId,
+			depositor: T::AccountId,
 			tranche_inputs: Vec<
 				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 			>,
@@ -1471,14 +1483,6 @@ pub mod pallet {
 					.collect(),
 			)?;
 
-			// First we take a deposit.
-			// If we are coming from a signed origin, we take
-			// the deposit from them
-			// If we are coming from some internal origin
-			// (Democracy, Council, etc.) we assume that the
-			// parameters are vetted somehow and rely on the
-			// admin as our depositor.
-			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
 			Self::take_deposit(depositor, pool_id)?;
 
 			let now = Self::now();

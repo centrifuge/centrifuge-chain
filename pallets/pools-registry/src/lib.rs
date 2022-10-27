@@ -75,6 +75,7 @@ pub trait PoolMutate<
 {
 	fn create(
 		admin: AccountId,
+		depositor: AccountId,
 		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 		max_reserve: Balance,
 		metadata: Option<Vec<u8>>,
@@ -257,8 +258,18 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
+			// First we take a deposit.
+			// If we are coming from a signed origin, we take
+			// the deposit from them
+			// If we are coming from some internal origin
+			// (Democracy, Council, etc.) we assume that the
+			// parameters are vetted somehow and rely on the
+			// admin as our depositor.
+			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
+
 			T::ModifyPool::create(
 				admin,
+				depositor,
 				tranche_inputs,
 				max_reserve,
 				metadata,

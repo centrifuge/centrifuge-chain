@@ -13,8 +13,7 @@
 #[cfg(test)]
 use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::{CustomMetadata, CurrencyId, Seniority, TrancheInput, TrancheMetada, TrancheType, TrancheUpdate, XcmMetadata};
-
+use cfg_types::{CustomMetadata, CurrencyId, Seniority, TrancheInput, TrancheType, TrancheMetada, XcmMetadata, TrancheUpdate};
 #[cfg(test)]
 use cfg_types::{Rate, TrancheCurrency};
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
@@ -82,38 +81,6 @@ pub(super) type TrancheOf<T> = Tranche<
 pub enum TrancheLoc<TrancheId> {
 	Index(TrancheIndex),
 	Id(TrancheId),
-}
-
-impl<Rate> TrancheType<Rate>
-where
-	Rate: PartialOrd + PartialEq,
-{
-	/// Compares tranches with the following schema:
-	///
-	/// * (Residual, Residual) => false
-	/// * (Residual, NonResidual) => true,
-	/// * (NonResidual, Residual) => false,
-	/// * (NonResidual, NonResidual) =>
-	///         interest rate of next tranche must be smaller
-	///         equal to the interest rate of self.
-	///
-	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
-		match (self, next) {
-			(TrancheType::Residual, TrancheType::Residual) => false,
-			(TrancheType::Residual, TrancheType::NonResidual { .. }) => true,
-			(TrancheType::NonResidual { .. }, TrancheType::Residual) => false,
-			(
-				TrancheType::NonResidual {
-					interest_rate_per_sec: ref interest_prev,
-					..
-				},
-				TrancheType::NonResidual {
-					interest_rate_per_sec: ref interest_next,
-					..
-				},
-			) => interest_prev >= interest_next,
-		}
-	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
