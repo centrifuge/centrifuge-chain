@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+
 use cfg_primitives::Moment;
 use cfg_types::{CurrencyId, PoolChanges, Rate, TrancheInput};
 use frame_support::{
@@ -97,21 +98,33 @@ impl<T: Config + pallet_pools_registry::Config>
 		T::MaxTranches,
 	> for ModifyPoolMock<T>
 {
+	//				admin,
+	// 				depositor,
+	// 				pool_id,
+	// 				tranche_inputs,
+	// 				currency,
+	// 				max_reserve,
+	// 				metadata,
 	fn create(
-		admin: T::AccountId,
-		depositor: T::AccountId,
-		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
-		max_reserve: T::Balance,
-		metadata: Option<Vec<u8>>,
-		pool_id: T::PoolId,
-		currency: T::CurrencyId,
+		_admin: T::AccountId,
+		_depositor: T::AccountId,
+		_pool_id: T::PoolId,
+		_tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
+		_currency: T::CurrencyId,
+		_max_reserve: T::Balance,
+		_metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
 		todo!()
 	}
 
 	fn update(
-		pool_id: T::PoolId,
-		changes: PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>,
+		_pool_id: T::PoolId,
+		_changes: PoolChanges<
+			T::Rate,
+			T::MaxTokenNameLength,
+			T::MaxTokenSymbolLength,
+			T::MaxTranches,
+		>,
 	) -> DispatchResultWithPostInfo {
 		todo!()
 	}

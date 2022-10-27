@@ -28,7 +28,7 @@ use frame_support::{
 	Blake2_128, StorageHasher,
 };
 use frame_system as system;
-use frame_system::{EnsureSigned, EnsureSignedBy};
+use frame_system::EnsureSignedBy;
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;

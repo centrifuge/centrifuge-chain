@@ -1456,13 +1456,13 @@ pub mod pallet {
 		fn create(
 			admin: T::AccountId,
 			depositor: T::AccountId,
+			pool_id: T::PoolId,
 			tranche_inputs: Vec<
 				TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
 			>,
+			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
-			pool_id: T::PoolId,
-			currency: T::CurrencyId,
 		) -> DispatchResult {
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);

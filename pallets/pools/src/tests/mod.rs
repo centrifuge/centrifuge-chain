@@ -422,7 +422,7 @@ fn epoch() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -469,7 +469,6 @@ fn epoch() {
 		));
 
 		assert_ok!(Pools::update(
-			pool_owner_origin.clone(),
 			0,
 			PoolChanges {
 				tranches: Change::NoChange,

@@ -225,7 +225,6 @@ impl pallet_pools::Config for MockRuntime {
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainId;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = Everything;
 	type PoolDeposit = ZeroDeposit;
 	type PoolId = PoolId;

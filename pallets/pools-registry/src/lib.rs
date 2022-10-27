@@ -70,11 +70,11 @@ pub trait PoolMutate<
 	fn create(
 		admin: AccountId,
 		depositor: AccountId,
+		pool_id: PoolId,
 		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+		currency: CurrencyId,
 		max_reserve: Balance,
 		metadata: Option<Vec<u8>>,
-		pool_id: PoolId,
-		currency: CurrencyId,
 	) -> DispatchResult;
 
 	fn update(
@@ -267,11 +267,11 @@ pub mod pallet {
 			T::ModifyPool::create(
 				admin,
 				depositor,
+				pool_id,
 				tranche_inputs,
+				currency,
 				max_reserve,
 				metadata,
-				pool_id,
-				currency,
 			)
 		}
 
