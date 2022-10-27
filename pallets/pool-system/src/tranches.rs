@@ -1568,6 +1568,14 @@ pub mod test {
 	const DEFAULT_POOL_ID: PoolId = 0;
 	const _DEFAULT_TIME_NOW: Moment = 0;
 
+	struct TrancheTokenImpl;
+
+	impl TrancheTokenT<PoolId, TrancheId, CurrencyId> for TrancheTokenImpl {
+		fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
+			CurrencyId::Tranche(pool, tranche)
+		}
+	}
+
 	fn residual(id: u8) -> TTranche {
 		residual_base(id, 0)
 	}
@@ -1633,7 +1641,7 @@ pub mod test {
 	}
 
 	fn default_tranches() -> TTranches {
-		TTranches::new(
+		TTranches::new::<TrancheTokenImpl>(
 			DEFAULT_POOL_ID,
 			vec![
 				residual(0),
@@ -1645,7 +1653,7 @@ pub mod test {
 	}
 
 	fn default_tranches_with_seniority() -> TTranches {
-		TTranches::new(
+		TTranches::new::<TrancheTokenImpl>(
 			DEFAULT_POOL_ID,
 			vec![
 				residual_base(0, 0),
