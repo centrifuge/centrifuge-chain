@@ -140,6 +140,7 @@ dependencies = [
  "pallet-offences",
  "pallet-permissions",
  "pallet-pools",
+ "pallet-pools-registry",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",

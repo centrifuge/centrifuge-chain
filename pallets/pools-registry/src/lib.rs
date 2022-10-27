@@ -12,26 +12,19 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::HasCompact;
-use cfg_traits::Permissions;
 use cfg_primitives::Moment;
-use cfg_types::{CustomMetadata, PermissionScope, PoolRole, Role, XcmMetadata};
+use cfg_traits::Permissions;
+use cfg_types::{PermissionScope, PoolRole, Role};
+use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, BoundedVec};
 use frame_system::pallet_prelude::*;
-use orml_asset_registry::AssetMetadata;
 pub use pallet::*;
-use polkadot_parachain::primitives::Id as ParachainId;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, BadOrigin, Zero},
-	FixedPointOperand, WeakBoundedVec,
+	traits::{AtLeast32BitUnsigned, BadOrigin},
+	FixedPointOperand,
 };
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
-use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, Parachain, X2},
-	VersionedMultiLocation,
-};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -191,9 +184,14 @@ pub mod pallet {
 			PoolMetadata::<T>::insert(
 				pool_id,
 				PoolMetadataOf::<T> {
-					metadata: checked_metadata,
+					metadata: checked_metadata.clone(),
 				},
 			);
+
+			Self::deposit_event(Event::MetadataSet {
+				pool_id,
+				metadata: checked_metadata,
+			});
 
 			Ok(())
 		}

@@ -118,6 +118,8 @@ pub struct PoolDetails<
 	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>,
 	/// Details about the parameters of the pool.
 	pub parameters: PoolParameters,
+	/// Metadata that specifies the pool.
+	pub metadata: Option<BoundedVec<u8, MetaSize>>,
 	/// The status the pool is currently in.
 	pub status: PoolStatus,
 	/// Details about the epochs of the pool.
