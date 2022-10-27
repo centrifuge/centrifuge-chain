@@ -28,8 +28,10 @@
 //!
 //! ### Terminology
 //!
-//! - **Currency ID**: The identification of a token used to make stake/unstake.
-//!   This ID is associated to a group used to reward the stake amount.
+//! - **Currency ID**: Identification of a token used to make stake/unstake.
+//!   This ID is associated to a group.
+//! - **Domain ID**: Identification of a domain. A domain acts as a prefix for a currency id.
+//!   It allows to have the same currency in different reward groups.
 //! - **Reward**: The amount given in native tokens to a proportional amount of currency staked.
 //! - **Group**: A shared resource where the reward is distributed. The accounts with a currency
 //!   associated to a group can deposit/withdraw that currency to claim their proportional reward
