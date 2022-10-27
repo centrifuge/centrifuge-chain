@@ -920,7 +920,6 @@ impl pallet_pools::Config for Runtime {
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;

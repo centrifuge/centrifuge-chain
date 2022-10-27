@@ -32,13 +32,6 @@ use sp_std::marker::PhantomData;
 /// Weights for pallet_pools using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn create(n: u32) -> Weight {
-		Weight::from_ref_time(72_307_000) // Standard Error: 181_000
-			.saturating_add(Weight::from_ref_time(717_000).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(5 as u64))
-			.saturating_add(T::DbWeight::get().writes(5 as u64))
-	}
-
 	fn update_no_execution(n: u32) -> Weight {
 		Weight::from_ref_time(42_621_000) // Standard Error: 59_000
 			.saturating_add(Weight::from_ref_time(232_000).saturating_mul(n as u64))
