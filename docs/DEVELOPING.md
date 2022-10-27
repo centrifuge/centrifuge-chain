@@ -83,7 +83,12 @@ You can play with it from the parachain client, make transfers, inspect events, 
 
 ## Linting
 
-Lint the project with `cargo +nightly fmt`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.
+### Source code
+Lint the source code with `cargo +nightly fmt`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.
+
+### Cargo.toml files
+1. Install [taplo](https://github.com/tamasfe/taplo) with `cargo install taplo-cli`.
+2. Lint the `Cargo.toml` files with `taplo fmt`.
 
 ## Verifying Runtime
 1. Check out the commit at which the runtime was built.

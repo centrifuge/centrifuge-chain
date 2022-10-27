@@ -41,6 +41,7 @@ case $TARGET in
 
   lint)
     cargo fmt -- --check
+    taplo fmt --check
     ;;
 
   clippy)
