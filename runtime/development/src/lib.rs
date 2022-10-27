@@ -79,7 +79,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, Perbill, Permill,
+	ApplyExtrinsicResult, FixedI128, Perbill, Permill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -1452,6 +1452,58 @@ impl<
 	}
 }
 
+#[derive(Clone, Copy, PartialEq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+pub enum RewardDomain {
+	Liquidity,
+	Block,
+}
+
+frame_support::parameter_types! {
+	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
+	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
+
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxCurrencyMovements: u32 = 50;
+}
+
+impl pallet_rewards::Config for Runtime {
+	type Balance = Balance;
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type DomainId = RewardDomain;
+	type Event = Event;
+	type GroupId = u32;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type PalletId = RewardsPalletId;
+	type Rate = FixedI128;
+	type RewardCurrency = RewardCurrency;
+	type SignedBalance = IBalance;
+}
+
+frame_support::parameter_types! {
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxGroups: u32 = 20;
+
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
+	pub const MaxChangesPerEpoch: u32 = 50;
+
+	pub const LiquidityDomain: RewardDomain = RewardDomain::Liquidity;
+}
+
+impl pallet_liquidity_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Domain = LiquidityDomain;
+	type Event = Event;
+	type GroupId = u32;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxGroups = MaxGroups;
+	type Rewards = Rewards;
+	type Weight = u64;
+	type WeightInfo = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1511,6 +1563,8 @@ construct_runtime!(
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
+		Rewards: pallet_rewards::{Pallet, Storage, Event<T>} = 106,
+		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1828,6 +1882,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
+			add_benchmark!(params, batches, pallet_liquidity_rewards, LiquidityRewards);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1859,6 +1914,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
+			list_benchmark!(list, extra, pallet_liquidity_rewards, LiquidityRewards);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

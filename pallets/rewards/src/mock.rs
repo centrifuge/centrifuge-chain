@@ -22,9 +22,6 @@ pub const USER_B: u64 = 2;
 
 pub const USER_INITIAL_BALANCE: u64 = 100000;
 
-pub const GROUP_A: u32 = 1;
-pub const GROUP_B: u32 = 2;
-
 frame_support::construct_runtime!(
 	pub enum Test where
 		Block = Block,
@@ -85,6 +82,12 @@ pub enum CurrencyId {
 	C,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+pub enum DomainId {
+	D1,
+	D2,
+}
+
 orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 { 0 };
 }
@@ -117,6 +120,7 @@ impl pallet_rewards::Config for Test {
 	type Balance = u64;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
+	type DomainId = DomainId;
 	type Event = Event;
 	type GroupId = u32;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
