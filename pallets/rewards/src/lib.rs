@@ -63,14 +63,14 @@ use cfg_traits::{
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		fungibles::{Mutate, MutateHold, Transfer},
+		fungibles::{InspectHold, Mutate, MutateHold, Transfer},
 		tokens::{AssetId, Balance},
 	},
 	PalletId,
 };
 use num_traits::Signed;
 pub use pallet::*;
-use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand, TokenError};
 use types::{CurrencyInfo, Group, StakeAccount};
 
 #[frame_support::pallet]
@@ -207,9 +207,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		// Emits when trying to withdraw more stake than an account has.
-		CanNotWithdraw,
-
 		// Emits when a currency is used but it does not have a group associated to.
 		CurrencyWithoutGroup,
 
@@ -268,13 +265,17 @@ pub mod pallet {
 
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
-						T::Currency::hold(currency_id.1, account_id, amount)?;
+						if !T::Currency::can_hold(currency_id.1, account_id, amount) {
+							Err(TokenError::NoFunds)?;
+						}
 
 						account.try_apply_rpt_tallies(currency.rpt_tallies())?;
 						account.add_amount(amount, group.reward_per_token())?;
 
 						group.add_amount(amount)?;
 						currency.add_amount(amount)?;
+
+						T::Currency::hold(currency_id.1, account_id, amount)?;
 
 						Self::deposit_event(Event::StakeDeposited {
 							group_id,
@@ -301,7 +302,7 @@ pub mod pallet {
 				Groups::<T>::try_mutate(group_id, |group| {
 					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
 						if account.staked() < amount {
-							Err(Error::<T>::CanNotWithdraw)?;
+							Err(TokenError::NoFunds)?;
 						}
 
 						account.try_apply_rpt_tallies(currency.rpt_tallies())?;
@@ -310,6 +311,8 @@ pub mod pallet {
 						group.sub_amount(amount)?;
 						currency.sub_amount(amount)?;
 
+						T::Currency::release(currency_id.1, account_id, amount, false)?;
+
 						Self::deposit_event(Event::StakeWithdrawn {
 							group_id,
 							domain_id: currency_id.0,
@@ -317,8 +320,6 @@ pub mod pallet {
 							account_id: account_id.clone(),
 							amount,
 						});
-
-						T::Currency::release(currency_id.1, account_id, amount, false)?;
 
 						Ok(())
 					})
