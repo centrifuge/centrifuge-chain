@@ -33,19 +33,19 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn claim_reward_ed25519() -> Weight {
-		Weight::from_ref_time(129_000_000)
+		Weight::from_ref_time(133_000_000)
 			.saturating_add(T::DbWeight::get().reads(12 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 
 	fn claim_reward_sr25519() -> Weight {
-		Weight::from_ref_time(132_000_000)
+		Weight::from_ref_time(135_000_000)
 			.saturating_add(T::DbWeight::get().reads(12 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 
 	fn claim_reward_ecdsa() -> Weight {
-		Weight::from_ref_time(127_000_000)
+		Weight::from_ref_time(132_000_000)
 			.saturating_add(T::DbWeight::get().reads(12 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}

@@ -39,16 +39,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn force_create() -> Weight {
-		Weight::from_ref_time(17_000_000)
+		Weight::from_ref_time(16_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn destroy(n: u32, m: u32, a: u32) -> Weight {
-		Weight::from_ref_time(364_856_000) // Standard Error: 20_000
-			.saturating_add(Weight::from_ref_time(9_949_000).saturating_mul(n as u64)) // Standard Error: 20_000
-			.saturating_add(Weight::from_ref_time(1_483_000).saturating_mul(m as u64)) // Standard Error: 20_000
-			.saturating_add(Weight::from_ref_time(877_000).saturating_mul(a as u64))
+		Weight::from_ref_time(0) // Standard Error: 17_000
+			.saturating_add(Weight::from_ref_time(10_318_000).saturating_mul(n as u64)) // Standard Error: 17_000
+			.saturating_add(Weight::from_ref_time(1_497_000).saturating_mul(m as u64)) // Standard Error: 17_000
+			.saturating_add(Weight::from_ref_time(1_858_000).saturating_mul(a as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(4 as u64))
@@ -58,7 +58,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn mint() -> Weight {
-		Weight::from_ref_time(32_000_000)
+		Weight::from_ref_time(31_000_000)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
@@ -76,8 +76,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn redeposit(i: u32) -> Weight {
-		Weight::from_ref_time(0) // Standard Error: 7_000
-			.saturating_add(Weight::from_ref_time(11_318_000).saturating_mul(i as u64))
+		Weight::from_ref_time(0) // Standard Error: 24_000
+			.saturating_add(Weight::from_ref_time(11_888_000).saturating_mul(i as u64))
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(i as u64)))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
@@ -91,7 +91,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn thaw() -> Weight {
-		Weight::from_ref_time(19_000_000)
+		Weight::from_ref_time(20_000_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -121,13 +121,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn force_item_status() -> Weight {
-		Weight::from_ref_time(18_000_000)
+		Weight::from_ref_time(19_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn set_attribute() -> Weight {
-		Weight::from_ref_time(39_000_000)
+		Weight::from_ref_time(38_000_000)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -139,7 +139,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn set_metadata() -> Weight {
-		Weight::from_ref_time(29_000_000)
+		Weight::from_ref_time(31_000_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
@@ -169,7 +169,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn cancel_approval() -> Weight {
-		Weight::from_ref_time(21_000_000)
+		Weight::from_ref_time(20_000_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -187,7 +187,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn set_price() -> Weight {
-		Weight::from_ref_time(17_000_000)
+		Weight::from_ref_time(18_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}

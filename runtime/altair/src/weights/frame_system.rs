@@ -33,7 +33,7 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn remark(_b: u32) -> Weight {
-		Weight::from_ref_time(3_409_000)
+		Weight::from_ref_time(3_007_000)
 	}
 
 	fn remark_with_event(b: u32) -> Weight {
@@ -49,13 +49,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 	fn set_storage(i: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 1_000
-			.saturating_add(Weight::from_ref_time(603_000).saturating_mul(i as u64))
+			.saturating_add(Weight::from_ref_time(598_000).saturating_mul(i as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(i as u64)))
 	}
 
 	fn kill_storage(i: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 1_000
-			.saturating_add(Weight::from_ref_time(480_000).saturating_mul(i as u64))
+			.saturating_add(Weight::from_ref_time(483_000).saturating_mul(i as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(i as u64)))
 	}
 

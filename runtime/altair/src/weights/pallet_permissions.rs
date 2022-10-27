@@ -45,19 +45,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn remove_as_admin() -> Weight {
-		Weight::from_ref_time(20_000_000)
+		Weight::from_ref_time(19_000_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn remove_as_editor() -> Weight {
-		Weight::from_ref_time(24_000_000)
+		Weight::from_ref_time(23_000_000)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn purge() -> Weight {
-		Weight::from_ref_time(18_000_000)
+		Weight::from_ref_time(17_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}

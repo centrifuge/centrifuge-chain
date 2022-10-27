@@ -33,8 +33,8 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn batch(c: u32) -> Weight {
-		Weight::from_ref_time(17_206_000) // Standard Error: 2_000
-			.saturating_add(Weight::from_ref_time(4_716_000).saturating_mul(c as u64))
+		Weight::from_ref_time(17_578_000) // Standard Error: 1_000
+			.saturating_add(Weight::from_ref_time(4_633_000).saturating_mul(c as u64))
 	}
 
 	fn as_derivative() -> Weight {
@@ -42,8 +42,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn batch_all(c: u32) -> Weight {
-		Weight::from_ref_time(13_103_000) // Standard Error: 2_000
-			.saturating_add(Weight::from_ref_time(4_881_000).saturating_mul(c as u64))
+		Weight::from_ref_time(16_564_000) // Standard Error: 1_000
+			.saturating_add(Weight::from_ref_time(4_796_000).saturating_mul(c as u64))
 	}
 
 	fn dispatch_as() -> Weight {
@@ -51,7 +51,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn force_batch(c: u32) -> Weight {
-		Weight::from_ref_time(6_782_000) // Standard Error: 3_000
-			.saturating_add(Weight::from_ref_time(4_712_000).saturating_mul(c as u64))
+		Weight::from_ref_time(17_034_000) // Standard Error: 1_000
+			.saturating_add(Weight::from_ref_time(4_630_000).saturating_mul(c as u64))
 	}
 }

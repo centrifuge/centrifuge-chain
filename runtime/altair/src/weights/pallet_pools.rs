@@ -54,14 +54,34 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn set_max_reserve() -> Weight {
-		Weight::from_ref_time(24_000_000)
+		Weight::from_ref_time(23_000_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
+	fn update_invest_order() -> Weight {
+		Weight::from_ref_time(57_000_000)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
+	}
+
+	fn update_redeem_order() -> Weight {
+		Weight::from_ref_time(56_000_000)
+			.saturating_add(T::DbWeight::get().reads(9 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
+	}
+
+	fn collect(n: u32) -> Weight {
+		Weight::from_ref_time(41_914_000) // Standard Error: 5_000
+			.saturating_add(Weight::from_ref_time(3_352_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(5 as u64))
+			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
+	}
+
 	fn close_epoch_no_orders(n: u32) -> Weight {
-		Weight::from_ref_time(29_658_000) // Standard Error: 12_000
-			.saturating_add(Weight::from_ref_time(3_598_000).saturating_mul(n as u64))
+		Weight::from_ref_time(29_769_000) // Standard Error: 18_000
+			.saturating_add(Weight::from_ref_time(3_731_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
@@ -69,16 +89,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn close_epoch_no_execution(n: u32) -> Weight {
-		Weight::from_ref_time(32_213_000) // Standard Error: 17_000
-			.saturating_add(Weight::from_ref_time(2_563_000).saturating_mul(n as u64))
+		Weight::from_ref_time(32_410_000) // Standard Error: 12_000
+			.saturating_add(Weight::from_ref_time(2_694_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn close_epoch_execute(n: u32) -> Weight {
-		Weight::from_ref_time(57_240_000) // Standard Error: 21_000
-			.saturating_add(Weight::from_ref_time(4_559_000).saturating_mul(n as u64))
+		Weight::from_ref_time(56_423_000) // Standard Error: 26_000
+			.saturating_add(Weight::from_ref_time(5_093_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(4 as u64))
@@ -86,15 +106,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn submit_solution(n: u32) -> Weight {
-		Weight::from_ref_time(22_137_000) // Standard Error: 16_000
-			.saturating_add(Weight::from_ref_time(786_000).saturating_mul(n as u64))
+		Weight::from_ref_time(22_188_000) // Standard Error: 14_000
+			.saturating_add(Weight::from_ref_time(828_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn execute_epoch(n: u32) -> Weight {
-		Weight::from_ref_time(51_005_000) // Standard Error: 17_000
-			.saturating_add(Weight::from_ref_time(2_701_000).saturating_mul(n as u64))
+		Weight::from_ref_time(50_960_000) // Standard Error: 20_000
+			.saturating_add(Weight::from_ref_time(2_719_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))

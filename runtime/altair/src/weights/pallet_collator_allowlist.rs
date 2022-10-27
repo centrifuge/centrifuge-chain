@@ -33,13 +33,13 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn add() -> Weight {
-		Weight::from_ref_time(19_000_000)
+		Weight::from_ref_time(18_000_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn remove() -> Weight {
-		Weight::from_ref_time(16_000_000)
+		Weight::from_ref_time(15_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}

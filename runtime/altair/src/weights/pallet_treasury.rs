@@ -43,14 +43,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn reject_proposal() -> Weight {
-		Weight::from_ref_time(37_000_000)
+		Weight::from_ref_time(36_000_000)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn approve_proposal(p: u32) -> Weight {
-		Weight::from_ref_time(10_498_000) // Standard Error: 1_000
-			.saturating_add(Weight::from_ref_time(38_000).saturating_mul(p as u64))
+		Weight::from_ref_time(10_483_000) // Standard Error: 0
+			.saturating_add(Weight::from_ref_time(35_000).saturating_mul(p as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -62,8 +62,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn on_initialize_proposals(p: u32) -> Weight {
-		Weight::from_ref_time(16_345_000) // Standard Error: 10_000
-			.saturating_add(Weight::from_ref_time(2_259_000).saturating_mul(p as u64))
+		Weight::from_ref_time(19_035_000) // Standard Error: 16_000
+			.saturating_add(Weight::from_ref_time(2_276_000).saturating_mul(p as u64))
 			.saturating_add(T::DbWeight::get().reads(2 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(p as u64)))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))

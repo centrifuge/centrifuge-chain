@@ -122,7 +122,7 @@ impl<T: Config + pallet_pool_registry::Config>
 		todo!()
 	}
 
-	fn execute_update(pool_id: T::PoolId) -> DispatchResultWithPostInfo {
+	fn execute_update(_: T::PoolId) -> DispatchResultWithPostInfo {
 		todo!()
 	}
 }

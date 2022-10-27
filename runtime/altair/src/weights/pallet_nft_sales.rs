@@ -39,13 +39,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn remove() -> Weight {
-		Weight::from_ref_time(39_000_000)
+		Weight::from_ref_time(38_000_000)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 
 	fn buy() -> Weight {
-		Weight::from_ref_time(64_000_000)
+		Weight::from_ref_time(62_000_000)
 			.saturating_add(T::DbWeight::get().reads(6 as u64))
 			.saturating_add(T::DbWeight::get().writes(9 as u64))
 	}

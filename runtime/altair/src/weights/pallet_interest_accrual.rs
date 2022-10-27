@@ -34,6 +34,6 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn calculate_accumulated_rate(n: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 2_000
-			.saturating_add(Weight::from_ref_time(433_000).saturating_mul(n as u64))
+			.saturating_add(Weight::from_ref_time(444_000).saturating_mul(n as u64))
 	}
 }

@@ -39,8 +39,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn migrate_system_account(n: u32) -> Weight {
-		Weight::from_ref_time(15_734_000) // Standard Error: 1_000
-			.saturating_add(Weight::from_ref_time(766_000).saturating_mul(n as u64))
+		Weight::from_ref_time(15_515_000) // Standard Error: 1_000
+			.saturating_add(Weight::from_ref_time(772_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))
@@ -53,8 +53,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn migrate_vesting_vesting(n: u32) -> Weight {
-		Weight::from_ref_time(35_003_000) // Standard Error: 27_000
-			.saturating_add(Weight::from_ref_time(21_169_000).saturating_mul(n as u64))
+		Weight::from_ref_time(38_230_000) // Standard Error: 59_000
+			.saturating_add(Weight::from_ref_time(21_278_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().reads((3 as u64).saturating_mul(n as u64)))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
@@ -62,8 +62,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn migrate_proxy_proxies(n: u32) -> Weight {
-		Weight::from_ref_time(26_234_000) // Standard Error: 17_000
-			.saturating_add(Weight::from_ref_time(4_810_000).saturating_mul(n as u64))
+		Weight::from_ref_time(28_664_000) // Standard Error: 60_000
+			.saturating_add(Weight::from_ref_time(4_950_000).saturating_mul(n as u64))
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))

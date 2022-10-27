@@ -39,19 +39,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn transfer_keep_alive() -> Weight {
-		Weight::from_ref_time(30_000_000)
+		Weight::from_ref_time(29_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_balance_creating() -> Weight {
-		Weight::from_ref_time(22_000_000)
+		Weight::from_ref_time(21_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_balance_killing() -> Weight {
-		Weight::from_ref_time(25_000_000)
+		Weight::from_ref_time(24_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -63,7 +63,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn transfer_all() -> Weight {
-		Weight::from_ref_time(35_000_000)
+		Weight::from_ref_time(36_000_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}

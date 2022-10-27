@@ -37,7 +37,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn set_vesting_start() -> Weight {
-		Weight::from_ref_time(12_000_000).saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(11_000_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_vesting_period() -> Weight {
@@ -45,6 +45,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn set_direct_payout_ratio() -> Weight {
-		Weight::from_ref_time(12_000_000).saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(11_000_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
