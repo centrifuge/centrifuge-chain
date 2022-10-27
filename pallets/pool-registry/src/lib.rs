@@ -162,8 +162,10 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			admin: T::AccountId,
 		},
-		/// A pool was updated.
-		Updated { pool_id: T::PoolId },
+		/// A pool update was registered.
+		UpdateRegisted { pool_id: T::PoolId },
+		/// A pool update was executed.
+		UpdateExecuted { pool_id: T::PoolId },
 		/// Pool metadata was set.
 		MetadataSet {
 			pool_id: T::PoolId,
@@ -230,7 +232,7 @@ pub mod pallet {
 			// admin as our depositor.
 			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
 
-			match T::ModifyPool::create(
+			T::ModifyPool::create(
 				admin.clone(),
 				depositor,
 				pool_id,
@@ -238,13 +240,8 @@ pub mod pallet {
 				currency,
 				max_reserve,
 				metadata,
-			) {
-				Ok(_) => {
-					Self::deposit_event(Event::Created { pool_id, admin });
-					Ok(())
-				}
-				Err(e) => Err(e),
-			}
+			)
+			.map(|_| Self::deposit_event(Event::Created { pool_id, admin }))
 		}
 
 		/// Update per-pool configuration settings.
@@ -313,13 +310,8 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			match T::ModifyPool::execute_update(pool_id) {
-				Ok(res) => {
-					Self::deposit_event(Event::Updated { pool_id });
-					Ok(res)
-				}
-				Err(e) => Err(e),
-			}
+			T::ModifyPool::execute_update(pool_id)
+				.map(|_| Self::deposit_event(Event::Updated { pool_id }))
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
