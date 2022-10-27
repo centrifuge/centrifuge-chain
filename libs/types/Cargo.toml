@@ -30,7 +30,6 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 # local dependencies
 cfg-primitives = { path = '../primitives', default-features = false }
-cfg-traits = { path = '../traits', default-features = false }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
