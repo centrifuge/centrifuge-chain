@@ -31,6 +31,7 @@ members = [
 	"libs/primitives",
 	"libs/proofs",
 	"libs/proofs",
+	"libs/proofs",
 	"libs/test-utils",
 	"libs/traits",
 	"libs/traits",
@@ -60,6 +61,7 @@ members = [
 	"runtime/centrifuge",
 	"runtime/common",
 	"runtime/integration-tests",
+    "pallets/pool-registry",
 ]
 
 [dependencies]
@@ -188,15 +190,15 @@ pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", 
 default = [ "std", "cli" ]
 std = [
 	"sc-service/rocksdb",
-	"substrate-build-script-utils",
 	"sp-consensus-babe/std",
+	"substrate-build-script-utils",
 ]
 runtime-benchmarks = [
-	"frame-benchmarking/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
 	"altair-runtime/runtime-benchmarks",
 	"centrifuge-runtime/runtime-benchmarks",
 	"development-runtime/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
 	"runtime-common/runtime-benchmarks",
 ]
 test-benchmarks = [
@@ -207,8 +209,8 @@ cli = [
 	'try-runtime-cli',
 ]
 try-runtime = [
-	"centrifuge-runtime/try-runtime",
 	"altair-runtime/try-runtime",
+	"centrifuge-runtime/try-runtime",
 	"try-runtime-cli"
 ]
 
