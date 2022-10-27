@@ -31,7 +31,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Tokens: orml_tokens,
-		Rewards: pallet_rewards,
+		Rewards: pallet_rewards::<Instance1>,
 	}
 );
 
@@ -117,7 +117,7 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 3;
 }
 
-impl pallet_rewards::Config for Test {
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type Balance = u64;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;

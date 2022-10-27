@@ -334,19 +334,19 @@ fn use_currency_without_group() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
 			Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-			Error::<Test>::CurrencyWithoutGroup
+			Error::<Test, Instance1>::CurrencyWithoutGroup
 		);
 		assert_noop!(
 			Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-			Error::<Test>::CurrencyWithoutGroup
+			Error::<Test, Instance1>::CurrencyWithoutGroup
 		);
 		assert_noop!(
 			Rewards::compute_reward(DOM_1_CURRENCY_A, &USER_A),
-			Error::<Test>::CurrencyWithoutGroup
+			Error::<Test, Instance1>::CurrencyWithoutGroup
 		);
 		assert_noop!(
 			Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-			Error::<Test>::CurrencyWithoutGroup
+			Error::<Test, Instance1>::CurrencyWithoutGroup
 		);
 	});
 }
@@ -357,7 +357,7 @@ fn move_currency_same_group_error() {
 		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
 		assert_noop!(
 			Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A),
-			Error::<Test>::CurrencyInSameGroup
+			Error::<Test, Instance1>::CurrencyInSameGroup
 		);
 	});
 }
@@ -375,7 +375,7 @@ fn move_currency_max_times() {
 
 		assert_noop!(
 			Rewards::attach_currency(DOM_1_CURRENCY_A, MaxCurrencyMovements::get() + 1),
-			Error::<Test>::CurrencyMaxMovementsReached
+			Error::<Test, Instance1>::CurrencyMaxMovementsReached
 		);
 	});
 }

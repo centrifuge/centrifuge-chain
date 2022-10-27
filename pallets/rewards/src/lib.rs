@@ -78,17 +78,17 @@ use num_traits::Signed;
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand, TokenError};
 
-type RewardCurrencyOf<T> = <<T as Config>::RewardMechanism as RewardMechanism>::Currency;
-type RewardGroupOf<T> = <<T as Config>::RewardMechanism as RewardMechanism>::Group;
-type RewardAccountOf<T> = <<T as Config>::RewardMechanism as RewardMechanism>::Account;
+type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
+type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
+type RewardAccountOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Account;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+	pub trait Config<I: 'static = ()>: frame_system::Config {
+		type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Identifier of this pallet used as an account where stores the reward that is not claimed.
 		/// When you distribute reward, the amount distributed goes here.
@@ -138,47 +138,53 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+	pub struct Pallet<T, I = ()>(_);
 
 	// --------------------------
 	//          Storage
 	// --------------------------
 
 	#[pallet::storage]
-	pub(super) type CurrencyGroup<T: Config> =
+	pub(super) type CurrencyGroup<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Blake2_128Concat, (T::DomainId, T::CurrencyId), T::GroupId>;
 
 	#[pallet::storage]
-	pub(super) type Currencies<T: Config>
+	pub(super) type Currencies<T: Config<I>, I: 'static = ()>
 	where
-		RewardCurrencyOf<T>: TypeInfo + MaxEncodedLen + FullCodec + Default,
-	= StorageMap<_, Blake2_128Concat, (T::DomainId, T::CurrencyId), RewardCurrencyOf<T>, ValueQuery>;
+		RewardCurrencyOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
+	= StorageMap<
+		_,
+		Blake2_128Concat,
+		(T::DomainId, T::CurrencyId),
+		RewardCurrencyOf<T, I>,
+		ValueQuery,
+	>;
 
 	#[pallet::storage]
-	pub(super) type Groups<T: Config>
+	pub(super) type Groups<T: Config<I>, I: 'static = ()>
 	where
-		RewardGroupOf<T>: TypeInfo + MaxEncodedLen + FullCodec + Default,
-	= StorageMap<_, Blake2_128Concat, T::GroupId, RewardGroupOf<T>, ValueQuery>;
+		RewardGroupOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
+	= StorageMap<_, Blake2_128Concat, T::GroupId, RewardGroupOf<T, I>, ValueQuery>;
 
 	#[pallet::storage]
-	pub(super) type StakeAccounts<T: Config>
+	pub(super) type StakeAccounts<T: Config<I>, I: 'static = ()>
 	where
-		RewardAccountOf<T>: TypeInfo + MaxEncodedLen + FullCodec + Default,
+		RewardAccountOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
 	= StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
 		(T::DomainId, T::CurrencyId),
-		RewardAccountOf<T>,
+		RewardAccountOf<T, I>,
 		ValueQuery,
 	>;
 
 	// --------------------------
 
 	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)] // TODO
-	pub enum Event<T: Config> {
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config<I>, I: 'static = ()> {
 		GroupRewarded {
 			group_id: T::GroupId,
 			amount: T::Balance,
@@ -213,7 +219,7 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
+	pub enum Error<T, I = ()> {
 		// Emits when a currency is used but it does not have a group associated to.
 		CurrencyWithoutGroup,
 
@@ -224,16 +230,16 @@ pub mod pallet {
 		CurrencyMaxMovementsReached,
 	}
 
-	impl<T: Config> GroupRewards for Pallet<T>
+	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
 		T::Balance: EnsureAdd + EnsureSub,
-		RewardGroupOf<T>: FullCodec + Default,
+		RewardGroupOf<T, I>: FullCodec + Default,
 	{
 		type Balance = T::Balance;
 		type GroupId = T::GroupId;
 
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
-			Groups::<T>::try_mutate(group_id, |group| {
+			Groups::<T, I>::try_mutate(group_id, |group| {
 				T::RewardMechanism::reward_group(group, reward)?;
 
 				T::Currency::mint_into(
@@ -252,16 +258,16 @@ pub mod pallet {
 		}
 
 		fn group_stake(group_id: Self::GroupId) -> Self::Balance {
-			Groups::<T>::get(group_id).total_staked()
+			Groups::<T, I>::get(group_id).total_staked()
 		}
 	}
 
-	impl<T: Config> AccountRewards<T::AccountId> for Pallet<T>
+	impl<T: Config<I>, I: 'static> AccountRewards<T::AccountId> for Pallet<T, I>
 	where
 		T::Balance: EnsureAdd + EnsureSub,
-		RewardGroupOf<T>: FullCodec + Default,
-		RewardAccountOf<T>: FullCodec + Default,
-		RewardCurrencyOf<T>: FullCodec + Default,
+		RewardGroupOf<T, I>: FullCodec + Default,
+		RewardAccountOf<T, I>: FullCodec + Default,
+		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
 		type Balance = T::Balance;
 		type CurrencyId = (T::DomainId, T::CurrencyId);
@@ -271,11 +277,12 @@ pub mod pallet {
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			let group_id =
-				CurrencyGroup::<T>::get(currency_id).ok_or(Error::<T>::CurrencyWithoutGroup)?;
-			Currencies::<T>::try_mutate(currency_id, |currency| {
-				Groups::<T>::try_mutate(group_id, |group| {
-					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
+			let group_id = CurrencyGroup::<T, I>::get(currency_id)
+				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
+
+			Currencies::<T, I>::try_mutate(currency_id, |currency| {
+				Groups::<T, I>::try_mutate(group_id, |group| {
+					StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
 						if !T::Currency::can_hold(currency_id.1, account_id, amount) {
 							Err(TokenError::NoFunds)?;
 						}
@@ -303,11 +310,12 @@ pub mod pallet {
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			let group_id =
-				CurrencyGroup::<T>::get(currency_id).ok_or(Error::<T>::CurrencyWithoutGroup)?;
-			Currencies::<T>::try_mutate(currency_id, |currency| {
-				Groups::<T>::try_mutate(group_id, |group| {
-					StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
+			let group_id = CurrencyGroup::<T, I>::get(currency_id)
+				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
+
+			Currencies::<T, I>::try_mutate(currency_id, |currency| {
+				Groups::<T, I>::try_mutate(group_id, |group| {
+					StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
 						if account.staked() < amount {
 							Err(TokenError::NoFunds)?;
 						}
@@ -334,12 +342,12 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let group_id =
-				CurrencyGroup::<T>::get(currency_id).ok_or(Error::<T>::CurrencyWithoutGroup)?;
+			let group_id = CurrencyGroup::<T, I>::get(currency_id)
+				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
-			let currency = Currencies::<T>::get(currency_id);
-			let group = Groups::<T>::get(group_id);
-			StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
+			let currency = Currencies::<T, I>::get(currency_id);
+			let group = Groups::<T, I>::get(group_id);
+			StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
 				let reward = T::RewardMechanism::compute_reward(account, &currency, &group)?;
 				Ok(reward)
 			})
@@ -349,12 +357,12 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let group_id =
-				CurrencyGroup::<T>::get(currency_id).ok_or(Error::<T>::CurrencyWithoutGroup)?;
+			let group_id = CurrencyGroup::<T, I>::get(currency_id)
+				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
-			let currency = Currencies::<T>::get(currency_id);
-			let group = Groups::<T>::get(group_id);
-			StakeAccounts::<T>::try_mutate(account_id, currency_id, |account| {
+			let currency = Currencies::<T, I>::get(currency_id);
+			let group = Groups::<T, I>::get(group_id);
+			StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
 				let reward = T::RewardMechanism::claim_reward(account, &currency, &group)?;
 
 				T::Currency::transfer(
@@ -381,15 +389,15 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Self::Balance {
-			StakeAccounts::<T>::get(account_id, currency_id).staked()
+			StakeAccounts::<T, I>::get(account_id, currency_id).staked()
 		}
 	}
 
-	impl<T: Config> CurrencyGroupChange for Pallet<T>
+	impl<T: Config<I>, I: 'static> CurrencyGroupChange for Pallet<T, I>
 	where
 		<T::Rate as FixedPointNumber>::Inner: Signed,
-		RewardGroupOf<T>: FullCodec + Default,
-		RewardCurrencyOf<T>: FullCodec + Default,
+		RewardGroupOf<T, I>: FullCodec + Default,
+		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
 		type CurrencyId = (T::DomainId, T::CurrencyId);
 		type GroupId = T::GroupId;
@@ -398,20 +406,20 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			next_group_id: Self::GroupId,
 		) -> DispatchResult {
-			CurrencyGroup::<T>::try_mutate(currency_id, |group_id| {
+			CurrencyGroup::<T, I>::try_mutate(currency_id, |group_id| {
 				if let Some(prev_group_id) = *group_id {
-					Currencies::<T>::try_mutate(currency_id, |currency| {
+					Currencies::<T, I>::try_mutate(currency_id, |currency| {
 						if prev_group_id == next_group_id {
-							Err(Error::<T>::CurrencyInSameGroup)?;
+							Err(Error::<T, I>::CurrencyInSameGroup)?;
 						}
 
-						Groups::<T>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
-							Groups::<T>::try_mutate(next_group_id, |next_group| {
+						Groups::<T, I>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
+							Groups::<T, I>::try_mutate(next_group_id, |next_group| {
 								T::RewardMechanism::move_currency(currency, prev_group, next_group)
 									.map_err(|e| match e {
 										MoveCurrencyError::Arithmetic(error) => error.into(),
 										MoveCurrencyError::MaxMovements => {
-											Error::<T>::CurrencyMaxMovementsReached.into()
+											Error::<T, I>::CurrencyMaxMovementsReached.into()
 										}
 									})
 							})
@@ -435,7 +443,7 @@ pub mod pallet {
 		fn currency_group(
 			currency_id: Self::CurrencyId,
 		) -> Result<Option<Self::GroupId>, DispatchResult> {
-			Ok(CurrencyGroup::<T>::get(currency_id))
+			Ok(CurrencyGroup::<T, I>::get(currency_id))
 		}
 	}
 }
