@@ -45,24 +45,24 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn update_no_execution(n: u32) -> Weight {
-		(28_660_000 as Weight) // Standard Error: 17_000
-			.saturating_add((285_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(28_660_000) // Standard Error: 17_000
+			.saturating_add(Weight::from_ref_time(285_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn update_and_execute(n: u32) -> Weight {
-		(47_893_000 as Weight) // Standard Error: 40_000
-			.saturating_add((716_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(47_893_000) // Standard Error: 40_000
+			.saturating_add(Weight::from_ref_time(716_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn execute_update(n: u32) -> Weight {
-		(45_439_000 as Weight) // Standard Error: 64_000
-			.saturating_add((1_074_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(45_439_000) // Standard Error: 64_000
+			.saturating_add(Weight::from_ref_time(1_074_000).saturating_mul(n as u64))
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 
 	fn set_max_reserve() -> Weight {
@@ -116,24 +116,24 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn update_no_execution(n: u32) -> Weight {
-		(28_660_000 as Weight) // Standard Error: 17_000
-			.saturating_add((285_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(28_660_000) // Standard Error: 17_000
+			.saturating_add(Weight::from_ref_time(285_000).saturating_mul(n as u64))
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 
 	fn update_and_execute(n: u32) -> Weight {
-		(47_893_000 as Weight) // Standard Error: 40_000
-			.saturating_add((716_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(47_893_000) // Standard Error: 40_000
+			.saturating_add(Weight::from_ref_time(716_000).saturating_mul(n as u64))
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 
 	fn execute_update(n: u32) -> Weight {
-		(45_439_000 as Weight) // Standard Error: 64_000
-			.saturating_add((1_074_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(45_439_000) // Standard Error: 64_000
+			.saturating_add(Weight::from_ref_time(1_074_000).saturating_mul(n as u64))
+			.saturating_add(RocksDbWeight::get().reads(3 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 
 	fn set_max_reserve() -> Weight {

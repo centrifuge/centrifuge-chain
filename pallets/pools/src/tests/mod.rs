@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{Permissions as PermissionsT, TrancheCurrency as TrancheCurrencyT};
-use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheMetadata, TrancheCurrency};
+use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheCurrency, TrancheMetadata};
 use frame_support::{assert_err, assert_noop, assert_ok, traits::fungibles};
 use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;

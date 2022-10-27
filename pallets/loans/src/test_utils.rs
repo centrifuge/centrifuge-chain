@@ -13,11 +13,10 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use cfg_primitives::{Moment, CFG as CURRENCY};
-use cfg_traits::{Permissions, PoolNAV, TrancheCurrency as _};
+use cfg_traits::{Permissions, PoolMutate, PoolNAV, TrancheCurrency as _};
 use cfg_types::{
-	CurrencyId, PermissionScope, PoolLocator, PoolRole, Role, TrancheCurrency, TrancheInput, TrancheMetadata,
-	TrancheType,
-
+	CurrencyId, PermissionScope, PoolLocator, PoolRole, Role, TrancheCurrency, TrancheInput,
+	TrancheMetadata, TrancheType,
 };
 use codec::Encode;
 use frame_support::{
@@ -32,9 +31,9 @@ use frame_support::{
 use frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_pools::{
-	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType,
+	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheLoc, TrancheMetadata,
+	TrancheType,
 };
-use pallet_pools_registry::PoolMutate;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,

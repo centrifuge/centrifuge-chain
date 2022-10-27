@@ -15,7 +15,7 @@
 pub mod altair {
 	use cfg_primitives::{Moment, PoolId};
 	use cfg_traits::TrancheCurrency as _;
-	use cfg_types::{CurrencyId as TCurrencyId, TrancheCurrency};
+	use cfg_types::{CurrencyId as TCurrencyId, Seniority, TrancheCurrency};
 	use codec::{Decode, Encode};
 	use frame_support::{dispatch::Weight, Blake2_128Concat};
 	use scale_info::TypeInfo;
@@ -30,8 +30,8 @@ pub mod altair {
 
 	use crate::{
 		Config, EpochExecutionInfo, EpochExecutionTranche, EpochExecutionTranches, EpochSolution,
-		EpochState, One, Pallet, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
-		Seniority, Tranche, TrancheSalt, TrancheType, Tranches,
+		EpochState, One, Pallet, PoolDetails, PoolParameters, PoolStatus, ReserveDetails, Tranche,
+		TrancheSalt, TrancheType, Tranches,
 	};
 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]

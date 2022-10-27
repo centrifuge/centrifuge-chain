@@ -54,14 +54,13 @@ members = [
 	"pallets/nft-sales",
 	"pallets/permissions",
 	"pallets/pools",
-	"pallets/pools-registry",
+	"pallets/pool-registry",
 	"pallets/restricted-tokens",
 	"pallets/rewards",
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
 	"runtime/integration-tests",
-    "pallets/pool-registry",
 ]
 
 [dependencies]

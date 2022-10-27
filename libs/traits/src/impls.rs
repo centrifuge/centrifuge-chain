@@ -9,10 +9,9 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use cfg_primitives::{PoolId, TrancheId};
 use cfg_types::{
 	CurrencyAdminRoles, CurrencyId, InvestmentInfo, PermissionRoles, PermissionedCurrencyRole,
-	PoolAdminRoles, PoolRole, Role, TrancheToken,
+	PoolAdminRoles, PoolRole, Role,
 };
 use frame_support::{
 	sp_runtime::traits::Saturating,
@@ -22,7 +21,6 @@ use frame_system::RawOrigin;
 use sp_std::marker::PhantomData;
 
 use super::*;
-use crate::TrancheToken as TrancheTokenTrait;
 
 type AccountId = u64;
 
@@ -395,11 +393,5 @@ mod tests {
 		assert!(roles.rm(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
 		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
-	}
-}
-
-impl TrancheTokenTrait<PoolId, TrancheId, CurrencyId> for TrancheToken {
-	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
-		CurrencyId::Tranche(pool, tranche)
 	}
 }

@@ -14,7 +14,7 @@
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, PoolNAV, TrancheCurrency as _};
-use cfg_types::{CurrencyId, CustomMetadata, TrancheMetadata, TrancheCurrency};
+use cfg_types::{CurrencyId, CustomMetadata, TrancheCurrency, TrancheMetadata};
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
@@ -164,7 +164,6 @@ benchmarks! {
 	// 	assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
 	// 	assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	// }
->>>>>>> 08eae54e (Update weights and benchmarks)
 
 	set_max_reserve {
 		let admin: T::AccountId = create_admin::<T>(0);

@@ -13,7 +13,7 @@
 #[cfg(test)]
 use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::{CustomMetadata, CurrencyId, Seniority, TrancheInput, TrancheType, TrancheMetada, XcmMetadata, TrancheUpdate};
+use cfg_types::{CustomMetadata, Seniority, TrancheInput, TrancheType, XcmMetadata};
 #[cfg(test)]
 use cfg_types::{Rate, TrancheCurrency};
 use frame_support::{sp_runtime::ArithmeticError, StorageHasher};

@@ -82,29 +82,6 @@ pub struct InvestmentInfo<AccountId, Currency, InvestmentId> {
 	pub payment_currency: Currency,
 }
 
-impl<AccountId, Currency, InvestmentId> InvestmentProperties<AccountId>
-	for InvestmentInfo<AccountId, Currency, InvestmentId>
-where
-	AccountId: Clone,
-	Currency: Clone,
-	InvestmentId: Clone,
-{
-	type Currency = Currency;
-	type Id = InvestmentId;
-
-	fn owner(&self) -> AccountId {
-		self.owner.clone()
-	}
-
-	fn id(&self) -> Self::Id {
-		self.id.clone()
-	}
-
-	fn payment_currency(&self) -> Self::Currency {
-		self.payment_currency.clone()
-	}
-}
-
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TotalOrder<Balance> {

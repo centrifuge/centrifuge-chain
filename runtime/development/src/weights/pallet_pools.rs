@@ -47,10 +47,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn execute_update(n: u32) -> Weight {
-		(45_860_000 as Weight) // Standard Error: 42_000
-			.saturating_add((1_060_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(45_860_000) // Standard Error: 42_000
+			.saturating_add(Weight::from_ref_time(1_060_000).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn set_max_reserve() -> Weight {

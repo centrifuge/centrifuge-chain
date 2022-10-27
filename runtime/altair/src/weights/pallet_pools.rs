@@ -59,26 +59,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
-	fn update_invest_order() -> Weight {
-		Weight::from_ref_time(141_047_000)
-			.saturating_add(T::DbWeight::get().reads(9 as u64))
-			.saturating_add(T::DbWeight::get().writes(5 as u64))
-	}
-
-	fn update_redeem_order() -> Weight {
-		Weight::from_ref_time(144_671_000)
-			.saturating_add(T::DbWeight::get().reads(9 as u64))
-			.saturating_add(T::DbWeight::get().writes(5 as u64))
-	}
-
-	fn collect(n: u32) -> Weight {
-		Weight::from_ref_time(100_789_000) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(9_952_000).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(5 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
-	}
-
 	fn close_epoch_no_orders(n: u32) -> Weight {
 		Weight::from_ref_time(70_657_000) // Standard Error: 154_000
 			.saturating_add(Weight::from_ref_time(10_133_000).saturating_mul(n as u64))

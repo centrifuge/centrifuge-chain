@@ -1582,7 +1582,7 @@ construct_runtime!(
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
 		Rewards: pallet_rewards::{Pallet, Storage, Event<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
-		PoolsRegistry: pallet_pools_registry::{Pallet, Call, Storage, Event<T>} = 108,
+		PoolsRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 108,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

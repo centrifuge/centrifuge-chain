@@ -251,7 +251,6 @@ runtime-benchmarks = [
     "pallet-restricted-tokens/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
     "pallet-pools/runtime-benchmarks",
-    "pallet-pools-registry/runtime-benchmarks",
     "pallet-loans/runtime-benchmarks",
     "pallet-interest-accrual/runtime-benchmarks",
     "pallet-investments/runtime-benchmarks",
