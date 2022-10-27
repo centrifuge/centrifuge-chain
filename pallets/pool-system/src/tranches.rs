@@ -1240,14 +1240,14 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		// we're going to have a mutable borrow later, grabbing len now
+		// we're going to have a mutable borrow later and will need len after that, grabbing now
 		let tranches_count = self.tranches.len();
 		let mut res = Vec::with_capacity(tranches_count);
-		let mut tranche_slices = self.non_residual_top_slice_mut().iter_mut();
+		let mut tranche_slice = self.non_residual_top_slice_mut().iter_mut();
 		let mut with_iter = with.into_iter();
 
 		for _ in 0..tranches_count {
-			match (tranche_slices.next(), with_iter.next()) {
+			match (tranche_slice.next(), with_iter.next()) {
 				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
 				_ => {
 					return Err(DispatchError::Other(
@@ -1257,7 +1257,7 @@ where
 			};
 		}
 
-		match (tranche_slices.next(), with_iter.next()) {
+		match (tranche_slice.next(), with_iter.next()) {
 			(None, None) => Ok(res),
 			_ => Err(DispatchError::Other(
 				"Iterable contains more elements than EpochExecutionTranches tranche count",
@@ -1340,18 +1340,29 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self
-			.residual_top_slice_mut()
-			.iter_mut()
-			.zip(with.into_iter());
+		// we're going to have a mutable borrow later and will need len after that, grabbing now
+		let tranches_count = self.tranches.len();
+		let mut res = Vec::with_capacity(tranches_count);
+		let mut tranche_slice = self.residual_top_slice_mut().iter_mut();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
+		for _ in 0..tranches_count {
+			match (tranche_slice.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"EpochExecutionTranches contains more tranches than iterables elements",
+					))
+				}
+			};
 		}
 
-		Ok(res)
+		match (tranche_slice.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than EpochExecutionTranches tranche count",
+			)),
+		}
 	}
 }
 
@@ -2184,17 +2195,6 @@ pub mod test {
 		}
 
 		#[test]
-		#[should_panic]
-		fn epoch_execution_combine_with_residual_top_panics_if_with_has_less_elements() {
-			assert_eq!(
-				default_epoch_tranches()
-					.combine_with_residual_top([1, 2], |t, zip_val| { Ok((t.seniority, zip_val)) })
-					.unwrap()[..],
-				[(0, 1), (1, 2), (2, 3)]
-			)
-		}
-
-		#[test]
 		fn epoch_execution_combine_with_mut_residual_top_works() {
 			assert_eq!(
 				default_epoch_tranches()
@@ -2204,7 +2204,40 @@ pub mod test {
 					})
 					.unwrap()[..],
 				[(0, 220), (1, 110), (2, 250)]
-			)
+			);
+
+			assert_eq!(
+				default_epoch_tranches().combine_with_mut_residual_top([220, 110], |t, zip_val| {
+					t.invest = zip_val as u128;
+					Ok((t.seniority, t.invest))
+				}),
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements"
+				))
+			);
+
+			assert_eq!(
+				default_epoch_tranches().combine_with_mut_residual_top(
+					[220, 110, 222, 333],
+					|t, zip_val| {
+						t.invest = zip_val as u128;
+						Ok((t.seniority, t.invest))
+					}
+				),
+				Err(DispatchError::Other(
+					"Iterable contains more elements than EpochExecutionTranches tranche count"
+				))
+			);
+
+			assert_eq!(
+				default_epoch_tranches().combine_with_mut_residual_top([], |t, zip_val: u32| {
+					t.invest = zip_val as u128;
+					Ok((t.seniority, t.invest))
+				}),
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements"
+				))
+			);
 		}
 	}
 }
