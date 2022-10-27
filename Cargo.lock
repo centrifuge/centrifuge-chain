@@ -1144,7 +1144,6 @@ name = "cfg-traits"
 version = "0.1.0"
 dependencies = [
  "cfg-primitives",
- "cfg-types",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
@@ -1166,6 +1165,7 @@ version = "2.0.0"
 dependencies = [
  "bitflags",
  "cfg-primitives",
+ "cfg-traits",
  "frame-support",
  "frame-system",
  "orml-asset-registry",

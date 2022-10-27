@@ -30,6 +30,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 # local dependencies
 cfg-primitives = { path = '../primitives', default-features = false }
+cfg-traits = { path = '../traits', default-features = false }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
@@ -42,6 +43,7 @@ runtime-benchmarks = [
 ]
 std = [
   'cfg-primitives/std',
+  'cfg-traits/std',
   'codec/std',
   'frame-support/std',
   'frame-system/std',

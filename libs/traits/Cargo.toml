@@ -12,7 +12,6 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 cfg-primitives = { path = '../primitives', default-features = false }
-cfg-types = { path = '../types', default-features = false }
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
@@ -42,7 +41,6 @@ std = [
   "sp-arithmetic/std",
   "sp-std/std",
   "cfg-primitives/std",
-  "cfg-types/std",
   "orml-asset-registry/std",
   "mockall",
   "lazy_static",

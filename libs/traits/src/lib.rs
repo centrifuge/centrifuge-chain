@@ -19,10 +19,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::{Moment, PoolId, TrancheId};
-use cfg_types::{
-	CurrencyId, PoolChanges, TrancheCurrency as TrancheCurrencyT, TrancheInput,
-	TrancheToken as TrancheTokenT, UpdateState,
-};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{
@@ -148,11 +144,15 @@ pub trait PoolMutate<
 	MaxTranches: Get<u32>,
 >
 {
+	type TrancheInput;
+	type PoolChanges;
+	type UpdateState;
+
 	fn create(
 		admin: AccountId,
 		depositor: AccountId,
 		pool_id: PoolId,
-		tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: CurrencyId,
 		max_reserve: Balance,
 		metadata: Option<Vec<u8>>,
@@ -160,8 +160,8 @@ pub trait PoolMutate<
 
 	fn update(
 		pool_id: PoolId,
-		changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
+		changes: Self::PoolChanges,
+	) -> Result<(Self::UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
 
 	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }
@@ -352,12 +352,6 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
 
-impl TrancheToken<PoolId, TrancheId, CurrencyId> for TrancheTokenT {
-	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
-		CurrencyId::Tranche(pool, tranche)
-	}
-}
-
 /// A trait for converting from a PoolId and a TranchId
 /// into a given Self::Currency
 pub trait TrancheCurrency<PoolId, TrancheId> {
@@ -366,23 +360,6 @@ pub trait TrancheCurrency<PoolId, TrancheId> {
 	fn of_pool(&self) -> PoolId;
 
 	fn of_tranche(&self) -> TrancheId;
-}
-
-impl TrancheCurrency<PoolId, TrancheId> for TrancheCurrencyT {
-	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
-		Self {
-			pool_id,
-			tranche_id,
-		}
-	}
-
-	fn of_pool(&self) -> PoolId {
-		self.pool_id
-	}
-
-	fn of_tranche(&self) -> TrancheId {
-		self.tranche_id
-	}
 }
 
 /// A trait, when implemented allows to invest into

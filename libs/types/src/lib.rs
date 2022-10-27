@@ -16,6 +16,7 @@
 
 ///! Common-types of the Centrifuge chain.
 use cfg_primitives::types::Balance;
+use cfg_traits::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use fixed_point::*;
 use frame_support::{traits::UnixTime, RuntimeDebug};
@@ -64,6 +65,11 @@ impl<T> TypeInfo for TimeProvider<T> {
 	}
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolLocator<PoolId> {
+	pub pool_id: PoolId,
+}
+
 pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),
@@ -80,6 +86,29 @@ pub struct InvestmentInfo<AccountId, Currency, InvestmentId> {
 	pub owner: AccountId,
 	pub id: InvestmentId,
 	pub payment_currency: Currency,
+}
+
+impl<AccountId, Currency, InvestmentId> InvestmentProperties<AccountId>
+for InvestmentInfo<AccountId, Currency, InvestmentId>
+	where
+		AccountId: Clone,
+		Currency: Clone,
+		InvestmentId: Clone,
+{
+	type Currency = Currency;
+	type Id = InvestmentId;
+
+	fn owner(&self) -> AccountId {
+		self.owner.clone()
+	}
+
+	fn id(&self) -> Self::Id {
+		self.id.clone()
+	}
+
+	fn payment_currency(&self) -> Self::Currency {
+		self.payment_currency.clone()
+	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]

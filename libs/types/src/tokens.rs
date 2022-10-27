@@ -10,6 +10,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::types::{PoolId, TrancheId};
+use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -57,6 +58,12 @@ impl From<u32> for CurrencyId {
 /// A type that can create a TrancheToken from a PoolId and a TrancheId
 pub struct TrancheToken;
 
+impl cfg_traits::TrancheToken<PoolId, TrancheId, CurrencyId> for TrancheToken {
+	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
+		CurrencyId::Tranche(pool, tranche)
+	}
+}
+
 /// A Currency that is solely used by tranches.
 ///
 /// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
@@ -68,13 +75,30 @@ pub struct TrancheToken;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
-	pub pool_id: PoolId,
-	pub tranche_id: TrancheId,
+	pool_id: PoolId,
+	tranche_id: TrancheId,
 }
 
 impl Into<CurrencyId> for TrancheCurrency {
 	fn into(self) -> CurrencyId {
 		CurrencyId::Tranche(self.pool_id, self.tranche_id)
+	}
+}
+
+impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
+	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self {
+		Self {
+			pool_id,
+			tranche_id,
+		}
+	}
+
+	fn of_pool(&self) -> PoolId {
+		self.pool_id
+	}
+
+	fn of_tranche(&self) -> TrancheId {
+		self.tranche_id
 	}
 }
 
