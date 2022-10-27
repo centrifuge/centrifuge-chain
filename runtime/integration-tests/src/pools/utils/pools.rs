@@ -21,7 +21,7 @@ use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
-use pallet_pool_registry::Call as PoolsRegistryCall;
+use pallet_pool_registry::Call as PoolRegistryCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex};
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
