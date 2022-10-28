@@ -60,27 +60,24 @@ mod tests;
 
 pub mod mechanism;
 
-use cfg_traits::{
-	ops::ensure::{EnsureAdd, EnsureSub},
-	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
-};
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
 use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		fungibles::{InspectHold, Mutate, MutateHold, Transfer},
-		tokens::{AssetId, Balance},
+		tokens::AssetId,
 	},
 	PalletId,
 };
 use mechanism::{MoveCurrencyError, RewardMechanism};
-use num_traits::Signed;
 pub use pallet::*;
-use sp_runtime::{traits::AccountIdConversion, FixedPointOperand, TokenError};
+use sp_runtime::{traits::AccountIdConversion, TokenError};
 
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
 type RewardAccountOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Account;
+type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -104,31 +101,16 @@ pub mod pallet {
 		/// Identifier for the currency used to give the reward.
 		type RewardCurrency: Get<Self::CurrencyId>;
 
-		/// Type used to handle balances.
-		type Balance: Balance + MaxEncodedLen + FixedPointOperand + TryFrom<Self::SignedBalance>;
-
-		/// Type used to handle a Balance that can have negative values
-		type SignedBalance: TryFrom<Self::Balance>
-			+ FullCodec
-			+ Copy
-			+ Default
-			+ TypeInfo
-			+ MaxEncodedLen
-			+ Signed
-			+ FixedPointOperand
-			+ EnsureAdd
-			+ EnsureSub;
-
 		/// Type used to identify groups.
 		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + sp_std::fmt::Debug;
 
 		/// Type used to handle currency transfers and reservations.
-		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
-			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
+		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
+			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>;
 
 		/// Specify the internal reward mechanism used by this pallet.
 		/// Check available mechanisms at [`mechanism`] module.
-		type RewardMechanism: RewardMechanism<Balance = Self::Balance>;
+		type RewardMechanism: RewardMechanism;
 	}
 
 	#[pallet::pallet]
@@ -182,28 +164,28 @@ pub mod pallet {
 	pub enum Event<T: Config<I>, I: 'static = ()> {
 		GroupRewarded {
 			group_id: T::GroupId,
-			amount: T::Balance,
+			amount: BalanceOf<T, I>,
 		},
 		StakeDeposited {
 			group_id: T::GroupId,
 			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
-			amount: T::Balance,
+			amount: BalanceOf<T, I>,
 		},
 		StakeWithdrawn {
 			group_id: T::GroupId,
 			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
-			amount: T::Balance,
+			amount: BalanceOf<T, I>,
 		},
 		RewardClaimed {
 			group_id: T::GroupId,
 			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
-			amount: T::Balance,
+			amount: BalanceOf<T, I>,
 		},
 		CurrencyAttached {
 			domain_id: T::DomainId,
@@ -227,10 +209,9 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
-		T::Balance: EnsureAdd + EnsureSub,
 		RewardGroupOf<T, I>: FullCodec + Default,
 	{
-		type Balance = T::Balance;
+		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
 
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
@@ -260,12 +241,11 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> AccountRewards<T::AccountId> for Pallet<T, I>
 	where
-		T::Balance: EnsureAdd + EnsureSub,
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardAccountOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
-		type Balance = T::Balance;
+		type Balance = BalanceOf<T, I>;
 		type CurrencyId = (T::DomainId, T::CurrencyId);
 
 		fn deposit_stake(

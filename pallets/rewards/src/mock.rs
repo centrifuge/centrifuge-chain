@@ -117,7 +117,6 @@ frame_support::parameter_types! {
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
-	type Balance = u64;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DomainId = DomainId;
@@ -126,7 +125,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
 	type RewardMechanism = base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>;
-	type SignedBalance = i128;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

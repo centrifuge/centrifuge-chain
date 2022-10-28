@@ -1,3 +1,4 @@
+use frame_support::traits::tokens::Balance;
 use sp_runtime::{traits::Get, ArithmeticError};
 
 pub mod base;
@@ -6,7 +7,7 @@ pub trait RewardMechanism {
 	type Group;
 	type Account;
 	type Currency;
-	type Balance;
+	type Balance: Balance;
 	type MaxCurrencyMovements: Get<u32>;
 
 	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError>;

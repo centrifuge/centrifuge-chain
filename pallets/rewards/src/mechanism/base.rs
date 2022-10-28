@@ -2,7 +2,7 @@ use cfg_traits::ops::ensure::{
 	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureFrom, EnsureInto, EnsureSub,
 	EnsureSubAssign,
 };
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
@@ -151,7 +151,7 @@ where
 
 impl<Balance, Rate, MaxMovements> Currency<Balance, Rate, MaxMovements>
 where
-	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd,
+	Balance: FixedPointOperand + EnsureSub + EnsureAdd,
 	Rate: FixedPointNumber,
 	MaxMovements: Get<u32>,
 {
@@ -183,11 +183,11 @@ pub struct Mechanism<Balance, SignedBalance, Rate, MaxCurrencyMovements>(
 impl<Balance, SignedBalance, Rate, MaxCurrencyMovements> RewardMechanism
 	for Mechanism<Balance, SignedBalance, Rate, MaxCurrencyMovements>
 where
-	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance> + Zero,
+	Balance: tokens::Balance + FixedPointOperand + TryFrom<SignedBalance>,
 	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy + Signed,
-	Rate: EnsureFixedPointNumber + Zero,
+	Rate: EnsureFixedPointNumber,
 	MaxCurrencyMovements: Get<u32>,
-	//<T::Rate as FixedPointNumber>::Inner: Signed,
+	<Rate as FixedPointNumber>::Inner: Signed,
 {
 	type Account = Account<Self::Balance, SignedBalance>;
 	type Balance = Balance;

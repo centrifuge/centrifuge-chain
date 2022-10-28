@@ -1515,7 +1515,6 @@ frame_support::parameter_types! {
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
-	type Balance = Balance;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DomainId = RewardDomain;
@@ -1529,7 +1528,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 		FixedI128,
 		MaxCurrencyMovements,
 	>;
-	type SignedBalance = IBalance;
 }
 
 frame_support::parameter_types! {
