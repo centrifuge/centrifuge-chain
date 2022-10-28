@@ -11,7 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{base, mock};
+use super::mechanism::base;
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -30,8 +30,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Tokens: orml_tokens,
-		RewardsMockedMechanism: pallet_rewards,
-		RewardsBaseMechanism: pallet_rewards::<Instance1>,
+		RewardsBaseClaimMechanism: pallet_rewards::<Instance1>,
 	}
 );
 
@@ -115,21 +114,6 @@ frame_support::parameter_types! {
 
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 3;
-}
-
-impl pallet_rewards::Config for Test {
-	type Balance = u64;
-	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type DomainId = DomainId;
-	type Event = Event;
-	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
-	type PalletId = RewardsPalletId;
-	type Rate = FixedI64;
-	type RewardCurrency = RewardCurrency;
-	type RewardMechanism = mock::Mechanism<u64, (), (), ()>;
-	type SignedBalance = i128;
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
