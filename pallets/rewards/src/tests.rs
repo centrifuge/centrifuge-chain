@@ -30,7 +30,7 @@ fn rewards_account() -> u64 {
 
 #[macro_export]
 macro_rules! stake_common_tests {
-	($pallet:ident, $instance:ty) => {
+	($pallet:ident, $instance:ident) => {
 		#[test]
 		fn stake() {
 			const USER_A_STAKED_1: u64 = 5000;
@@ -98,7 +98,7 @@ macro_rules! stake_common_tests {
 
 #[macro_export]
 macro_rules! unstake_common_tests {
-	($pallet:ident, $instance:ty) => {
+	($pallet:ident, $instance:ident) => {
 		#[test]
 		fn unstake() {
 			const USER_A_STAKED: u64 = 1000;
@@ -175,7 +175,7 @@ macro_rules! unstake_common_tests {
 
 #[macro_export]
 macro_rules! currency_common_tests {
-	($pallet:ident, $instance:ty) => {
+	($pallet:ident, $instance:ident) => {
 		#[test]
 		fn use_currency_without_group() {
 			new_test_ext().execute_with(|| {
@@ -215,8 +215,11 @@ macro_rules! currency_common_tests {
 				// First attach only attach the currency, does not move it.
 				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, 0));
 
+				type Mechanism = <Test as crate::Config<crate::$instance>>::RewardMechanism;
+				type MaxMovements = <Mechanism as RewardMechanism>::MaxCurrencyMovements;
+
 				// Waste all correct movements.
-				for i in 0..MaxCurrencyMovements::get() {
+				for i in 0..MaxMovements::get() {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, i + 1));
 				}
 
@@ -264,7 +267,7 @@ macro_rules! currency_common_tests {
 
 #[macro_export]
 macro_rules! claim_common_tests {
-	($pallet:ident, $instance:ty) => {
+	($pallet:ident, $instance:ident) => {
 		#[test]
 		fn claim_nothing() {
 			const USER_A_STAKED: u64 = 1000;
@@ -296,7 +299,7 @@ macro_rules! claim_common_tests {
 
 #[macro_export]
 macro_rules! common_tests {
-	($pallet:ident, $instance:ty) => {
+	($pallet:ident, $instance:ident) => {
 		stake_common_tests!($pallet, $instance);
 		unstake_common_tests!($pallet, $instance);
 		currency_common_tests!($pallet, $instance);

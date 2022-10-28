@@ -1,4 +1,4 @@
-use sp_runtime::ArithmeticError;
+use sp_runtime::{traits::Get, ArithmeticError};
 
 pub mod base;
 
@@ -7,6 +7,7 @@ pub trait RewardMechanism {
 	type Account;
 	type Currency;
 	type Balance;
+	type MaxCurrencyMovements: Get<u32>;
 
 	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError>;
 

@@ -132,10 +132,6 @@ pub mod pallet {
 		/// Specify the internal reward mechanism used by this pallet.
 		/// Check available mechanisms at [`mechanism`] module.
 		type RewardMechanism: RewardMechanism<Balance = Self::Balance>;
-
-		/// Max number of currency movements. See [`Pallet::attach_currency()`].
-		#[pallet::constant]
-		type MaxCurrencyMovements: Get<u32> + TypeInfo;
 	}
 
 	#[pallet::pallet]
@@ -228,7 +224,7 @@ pub mod pallet {
 		// Emits when a currency is attached to the group it is already attached.
 		CurrencyInSameGroup,
 
-		// Emits when a currency is moved more than `MaxCurrencyMovements` times.
+		// Emits when a currency is moved more than the mechanism allows.
 		CurrencyMaxMovementsReached,
 	}
 

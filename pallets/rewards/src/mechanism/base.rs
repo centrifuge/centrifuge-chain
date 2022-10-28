@@ -45,13 +45,13 @@ where
 /// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct StakeAccount<Balance, SignedBalance> {
+pub struct Account<Balance, SignedBalance> {
 	staked: Balance,
 	reward_tally: SignedBalance,
-	currency_version: u32,
+	last_currency_movement: u32,
 }
 
-impl<Balance, SignedBalance> StakeAccount<Balance, SignedBalance>
+impl<Balance, SignedBalance> Account<Balance, SignedBalance>
 where
 	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance> + Copy,
 	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
@@ -61,13 +61,13 @@ where
 		&mut self,
 		rpt_tallies: &[Rate],
 	) -> Result<(), ArithmeticError> {
-		for i in self.currency_version as usize..rpt_tallies.len() {
+		for i in self.last_currency_movement as usize..rpt_tallies.len() {
 			let currency_reward_tally =
 				rpt_tallies[i].ensure_mul_int(SignedBalance::ensure_from(self.staked)?)?;
 
 			self.reward_tally.ensure_add_assign(currency_reward_tally)?;
 
-			self.currency_version = rpt_tallies.len() as u32;
+			self.last_currency_movement = rpt_tallies.len() as u32;
 		}
 
 		Ok(())
@@ -129,15 +129,16 @@ where
 /// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct CurrencyInfo<Balance, Rate, MaxMovements: Get<u32>> {
+pub struct Currency<Balance, Rate, MaxMovements: Get<u32>> {
 	total_staked: Balance,
 	rpt_tallies: BoundedVec<Rate, MaxMovements>,
 }
 
-impl<Balance, Rate, MaxMovements: Get<u32>> Default for CurrencyInfo<Balance, Rate, MaxMovements>
+impl<Balance, Rate, MaxMovements> Default for Currency<Balance, Rate, MaxMovements>
 where
 	Balance: Zero,
 	Rate: Zero,
+	MaxMovements: Get<u32>,
 {
 	fn default() -> Self {
 		Self {
@@ -147,7 +148,7 @@ where
 	}
 }
 
-impl<Balance, Rate, MaxMovements> CurrencyInfo<Balance, Rate, MaxMovements>
+impl<Balance, Rate, MaxMovements> Currency<Balance, Rate, MaxMovements>
 where
 	Balance: Zero + FixedPointOperand + EnsureSub + EnsureAdd,
 	Rate: FixedPointNumber,
@@ -174,22 +175,23 @@ where
 	}
 }
 
-pub struct Mechanism<Balance, SignedBalance, Rate, MaxMovements>(
-	sp_std::marker::PhantomData<(Balance, SignedBalance, Rate, MaxMovements)>,
+pub struct Mechanism<Balance, SignedBalance, Rate, MaxCurrencyMovements>(
+	sp_std::marker::PhantomData<(Balance, SignedBalance, Rate, MaxCurrencyMovements)>,
 );
 
-impl<Balance, SignedBalance, Rate, MaxMovements> RewardMechanism
-	for Mechanism<Balance, SignedBalance, Rate, MaxMovements>
+impl<Balance, SignedBalance, Rate, MaxCurrencyMovements> RewardMechanism
+	for Mechanism<Balance, SignedBalance, Rate, MaxCurrencyMovements>
 where
 	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance> + Zero,
 	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 	Rate: EnsureFixedPointNumber + Zero,
-	MaxMovements: Get<u32>,
+	MaxCurrencyMovements: Get<u32>,
 {
-	type Account = StakeAccount<Self::Balance, SignedBalance>;
+	type Account = Account<Self::Balance, SignedBalance>;
 	type Balance = Balance;
-	type Currency = CurrencyInfo<Balance, Rate, MaxMovements>;
+	type Currency = Currency<Balance, Rate, MaxCurrencyMovements>;
 	type Group = Group<Balance, Rate>;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
 
 	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
 		group.distribute_reward(amount)
@@ -311,7 +313,7 @@ mod test {
 		const AMOUNT_1: u64 = 10;
 		const AMOUNT_2: u64 = 20;
 
-		let mut account = StakeAccount::<u64, i128>::default();
+		let mut account = Account::<u64, i128>::default();
 
 		assert_ok!(account.add_amount(AMOUNT_1, *RPT_0));
 		assert_ok!(account.add_amount(AMOUNT_2, *RPT_1));
@@ -336,7 +338,7 @@ mod test {
 	fn reward() {
 		const AMOUNT: u64 = 10;
 
-		let mut account = StakeAccount::<u64, i128>::default();
+		let mut account = Account::<u64, i128>::default();
 
 		assert_ok!(account.add_amount(AMOUNT, *RPT_0));
 		assert_ok!(account.claim_reward(*RPT_0), 0);
@@ -359,7 +361,7 @@ mod test {
 	fn apply_rpt_tallies() {
 		const AMOUNT: u64 = 10;
 
-		let mut account = StakeAccount::<u64, i128>::default();
+		let mut account = Account::<u64, i128>::default();
 
 		assert_ok!(account.add_amount(AMOUNT, *RPT_0));
 
@@ -374,7 +376,7 @@ mod test {
 				+ i128::from((*RPT_2 - *RPT_1).saturating_mul_int(AMOUNT as i128))
 		);
 
-		assert_eq!(account.currency_version, rpt_tallies.len() as u32);
+		assert_eq!(account.last_currency_movement, rpt_tallies.len() as u32);
 
 		let rpt_tallies = [(*RPT_1 - *RPT_0), (*RPT_2 - *RPT_1), (*RPT_3 - *RPT_2)];
 
@@ -388,6 +390,6 @@ mod test {
 				+ i128::from((*RPT_3 - *RPT_2).saturating_mul_int(AMOUNT as i128))
 		);
 
-		assert_eq!(account.currency_version, rpt_tallies.len() as u32);
+		assert_eq!(account.last_currency_movement, rpt_tallies.len() as u32);
 	}
 }

@@ -123,7 +123,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type DomainId = DomainId;
 	type Event = Event;
 	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
 	type Rate = FixedI64;
 	type RewardCurrency = RewardCurrency;
