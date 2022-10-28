@@ -3,6 +3,7 @@ use cfg_traits::ops::ensure::{
 	EnsureSubAssign,
 };
 use frame_support::pallet_prelude::*;
+use num_traits::Signed;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
 use super::{MoveCurrencyError, RewardMechanism};
@@ -183,9 +184,10 @@ impl<Balance, SignedBalance, Rate, MaxCurrencyMovements> RewardMechanism
 	for Mechanism<Balance, SignedBalance, Rate, MaxCurrencyMovements>
 where
 	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance> + Zero,
-	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
+	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy + Signed,
 	Rate: EnsureFixedPointNumber + Zero,
 	MaxCurrencyMovements: Get<u32>,
+	//<T::Rate as FixedPointNumber>::Inner: Signed,
 {
 	type Account = Account<Self::Balance, SignedBalance>;
 	type Balance = Balance;

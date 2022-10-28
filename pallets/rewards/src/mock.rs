@@ -124,7 +124,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type Event = Event;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
-	type Rate = FixedI64;
 	type RewardCurrency = RewardCurrency;
 	type RewardMechanism = base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>;
 	type SignedBalance = i128;

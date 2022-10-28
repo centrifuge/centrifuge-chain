@@ -76,7 +76,7 @@ use frame_support::{
 use mechanism::{MoveCurrencyError, RewardMechanism};
 use num_traits::Signed;
 pub use pallet::*;
-use sp_runtime::{traits::AccountIdConversion, FixedPointNumber, FixedPointOperand, TokenError};
+use sp_runtime::{traits::AccountIdConversion, FixedPointOperand, TokenError};
 
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
@@ -118,9 +118,6 @@ pub mod pallet {
 			+ FixedPointOperand
 			+ EnsureAdd
 			+ EnsureSub;
-
-		/// Type used to handle rates as fixed points numbers.
-		type Rate: FixedPointNumber + TypeInfo + MaxEncodedLen + Encode + Decode;
 
 		/// Type used to identify groups.
 		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + sp_std::fmt::Debug;
@@ -395,7 +392,6 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> CurrencyGroupChange for Pallet<T, I>
 	where
-		<T::Rate as FixedPointNumber>::Inner: Signed,
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{

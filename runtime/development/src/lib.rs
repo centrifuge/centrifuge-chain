@@ -1521,9 +1521,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type DomainId = RewardDomain;
 	type Event = Event;
 	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
-	type Rate = FixedI128;
 	type RewardCurrency = RewardCurrency;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
 		Balance,
