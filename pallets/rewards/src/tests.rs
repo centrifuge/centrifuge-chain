@@ -11,7 +11,7 @@ pub const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::
 pub const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
 pub const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
 
-pub const REWARD: u64 = 100;
+pub const REWARD: u64 = 120;
 
 fn free_balance(currency_id: CurrencyId, account_id: &u64) -> u64 {
 	Tokens::reducible_balance(currency_id, account_id, true)

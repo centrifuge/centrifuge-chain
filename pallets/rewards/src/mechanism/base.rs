@@ -62,14 +62,15 @@ where
 		&mut self,
 		rpt_tallies: &[Rate],
 	) -> Result<(), ArithmeticError> {
-		for i in self.last_currency_movement as usize..rpt_tallies.len() {
-			let currency_reward_tally =
-				rpt_tallies[i].ensure_mul_int(SignedBalance::ensure_from(self.staked)?)?;
+		let rpt_to_apply = &rpt_tallies[self.last_currency_movement as usize..]
+			.iter()
+			.try_fold(Rate::zero(), |a, b| a.ensure_add(*b))?;
 
-			self.reward_tally.ensure_add_assign(currency_reward_tally)?;
+		let tally_to_apply =
+			rpt_to_apply.ensure_mul_int(SignedBalance::ensure_from(self.staked)?)?;
 
-			self.last_currency_movement = rpt_tallies.len() as u32;
-		}
+		self.reward_tally.ensure_add_assign(tally_to_apply)?;
+		self.last_currency_movement = rpt_tallies.len() as u32;
 
 		Ok(())
 	}
