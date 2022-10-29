@@ -17,7 +17,12 @@ pub mod altair {
 	use cfg_traits::TrancheCurrency as _;
 	use cfg_types::{CurrencyId as TCurrencyId, TrancheCurrency};
 	use codec::{Decode, Encode};
-	use frame_support::{dispatch::Weight, Blake2_128Concat};
+	use frame_support::{
+		dispatch::Weight,
+		storage::types::{StorageDoubleMap, StorageMap},
+		traits::StorageInstance,
+		Blake2_128Concat,
+	};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::{FixedPointNumber, FixedPointOperand, Perquintill};
 	use sp_runtime::{
@@ -30,8 +35,8 @@ pub mod altair {
 
 	use crate::{
 		Config, EpochExecutionInfo, EpochExecutionTranche, EpochExecutionTranches, EpochSolution,
-		EpochState, One, Pallet, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
-		Seniority, Tranche, TrancheSalt, TrancheType, Tranches,
+		EpochState, One, PoolDetails, PoolParameters, PoolStatus, ReserveDetails, Seniority,
+		Tranche, TrancheSalt, TrancheType, Tranches,
 	};
 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -89,9 +94,18 @@ pub mod altair {
 		pub reserve: ReserveDetails<Balance>,
 	}
 
-	#[frame_support::storage_alias]
+	/// The old prefix we used when using pallet-pools as
+	/// `Pools` in the construct_runtime!-macro
+	pub struct PoolPrefix;
+	impl StorageInstance for PoolPrefix {
+		const STORAGE_PREFIX: &'static str = "Pools";
+
+		fn pallet_prefix() -> &'static str {
+			"Pool"
+		}
+	}
 	type Pool<T: Config> = StorageMap<
-		Pallet<T>,
+		PoolPrefix,
 		Blake2_128Concat,
 		<T as Config>::PoolId,
 		OldPoolDetails<
@@ -133,9 +147,18 @@ pub mod altair {
 		challenge_period_end: Option<BlockNumber>,
 	}
 
-	#[frame_support::storage_alias]
+	/// The old prefix we used when using pallet-pools as
+	/// `Pools` in the construct_runtime!-macro
+	pub struct EpochExecutionPrefix;
+	impl StorageInstance for EpochExecutionPrefix {
+		const STORAGE_PREFIX: &'static str = "Pools";
+
+		fn pallet_prefix() -> &'static str {
+			"EpochExecution"
+		}
+	}
 	type EpochExecution<T: Config> = StorageMap<
-		Pallet<T>,
+		EpochExecutionPrefix,
 		Blake2_128Concat,
 		<T as Config>::PoolId,
 		OldEpochExecutionInfo<
@@ -154,9 +177,16 @@ pub mod altair {
 		pub token_price: BalanceRatio,
 	}
 
-	#[frame_support::storage_alias]
+	pub struct EpochPrefix;
+	impl StorageInstance for EpochPrefix {
+		const STORAGE_PREFIX: &'static str = "Pools";
+
+		fn pallet_prefix() -> &'static str {
+			"Epoch"
+		}
+	}
 	type Epoch<T: Config> = StorageDoubleMap<
-		Pallet<T>,
+		EpochPrefix,
 		Blake2_128Concat,
 		<T as Config>::TrancheId,
 		Blake2_128Concat,
@@ -164,9 +194,16 @@ pub mod altair {
 		OldEpochDetails<<T as Config>::Rate>,
 	>;
 
-	#[frame_support::storage_alias]
+	pub struct OrderPrefix;
+	impl StorageInstance for OrderPrefix {
+		const STORAGE_PREFIX: &'static str = "Pools";
+
+		fn pallet_prefix() -> &'static str {
+			"Order"
+		}
+	}
 	pub type Order<T: Config> = StorageDoubleMap<
-		Pallet<T>,
+		OrderPrefix,
 		Blake2_128Concat,
 		<T as Config>::TrancheId,
 		Blake2_128Concat,
@@ -207,19 +244,7 @@ pub mod altair {
 
 		// Migrate PoolDetails
 		let mut loops = 0u64;
-		crate::Pool::<T>::translate::<
-			OldPoolDetails<
-				T::CurrencyId,
-				T::EpochId,
-				T::Balance,
-				T::Rate,
-				T::MaxSizeMetadata,
-				T::TrancheWeight,
-				T::TrancheId,
-				T::PoolId,
-			>,
-			_,
-		>(|pool_id, old_details| {
+		Pool::<T>::iter().for_each(|(pool_id, old_details)| {
 			loops += 1;
 
 			let OldPoolDetails {
@@ -258,19 +283,22 @@ pub mod altair {
 				})
 				.collect::<Vec<_>>();
 
-			Some(PoolDetails {
-				currency,
-				tranches: Tranches {
-					tranches: new_tranches,
-					ids,
-					salt,
+			crate::Pool::<T>::insert(
+				pool_id,
+				PoolDetails {
+					currency,
+					tranches: Tranches {
+						tranches: new_tranches,
+						ids,
+						salt,
+					},
+					parameters,
+					metadata,
+					status,
+					epoch,
+					reserve,
 				},
-				parameters,
-				metadata,
-				status,
-				epoch,
-				reserve,
-			})
+			);
 		});
 		weight += loops * (T::DbWeight::get().write + T::DbWeight::get().read);
 
@@ -288,16 +316,7 @@ pub mod altair {
 
 		// Migrate EpochExecutionInfo
 		let mut loops = 0u64;
-		crate::EpochExecution::<T>::translate::<
-			OldEpochExecutionInfo<
-				T::Balance,
-				T::Rate,
-				T::EpochId,
-				T::TrancheWeight,
-				T::BlockNumber,
-			>,
-			_,
-		>(|pool_id, info| {
+		EpochExecution::<T>::iter().for_each(|(pool_id, info)| {
 			loops += 1;
 
 			let OldEpochExecutionInfo {
@@ -318,7 +337,12 @@ pub mod altair {
 			let new_tranches = old_tranches
 				.into_iter()
 				.zip(details.tranches.ids)
-				.map(|(old_tranche, tranche_id)| EpochExecutionTranche {
+				.map(|(old_tranche, tranche_id)| EpochExecutionTranche::<
+					T::Balance,
+					T::Rate,
+					T::TrancheWeight,
+					T::TrancheCurrency,
+				> {
 					currency: TrancheCurrency::generate(pool_id.into(), tranche_id.into()).into(),
 					supply: old_tranche.supply,
 					price: old_tranche.price,
@@ -330,22 +354,25 @@ pub mod altair {
 				})
 				.collect::<Vec<_>>();
 
-			Some(EpochExecutionInfo {
-				epoch,
-				nav,
-				reserve,
-				max_reserve,
-				tranches: EpochExecutionTranches::new(new_tranches),
-				best_submission,
-				challenge_period_end,
-			})
+			crate::EpochExecution::<T>::insert(
+				pool_id,
+				EpochExecutionInfo {
+					epoch,
+					nav,
+					reserve,
+					max_reserve,
+					tranches: EpochExecutionTranches::new(new_tranches),
+					best_submission,
+					challenge_period_end,
+				},
+			);
 		});
 		weight += loops * (T::DbWeight::get().write + 2 * T::DbWeight::get().read);
 
 		Weight::from_ref_time(weight)
 	}
 
-	/// This function MUST be called AFTER `migrate_orders`
+	/// This function MUST be called AFTER `migrate_all_storage_under_old_prefix`
 	pub fn remove_not_needed_storage<T: Config>() -> Weight {
 		let mut weight = 0u64;
 
@@ -353,11 +380,34 @@ pub mod altair {
 		let loops = Epoch::<T>::clear(u32::MAX, None).loops;
 		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
 
+		// Remove EpochExecutionInfo
+		let loops = EpochExecution::<T>::clear(u32::MAX, None).loops;
+		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
+
+		// Remove Pool
+		let loops = Pool::<T>::clear(u32::MAX, None).loops;
+		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
+
 		// Remove Order
 		let loops = Order::<T>::clear(u32::MAX, None).loops;
 		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
 
 		Weight::from_ref_time(weight)
+	}
+
+	pub fn migrate_all_storage_under_old_prefix_and_remove_old_one<T: Config>() -> Weight
+	where
+		T::TrancheId: From<[u8; 16]> + Into<[u8; 16]>,
+		T::PoolId: From<PoolId> + Into<PoolId>,
+		T::TrancheCurrency: From<TrancheCurrency>,
+		T::CurrencyId: Into<TCurrencyId>,
+	{
+		let mut weight = Weight::from_ref_time(0u64);
+
+		weight += migrate_epoch_tranches::<T>();
+		weight += migrate_tranches::<T>();
+		weight += remove_not_needed_storage::<T>();
+		weight
 	}
 
 	#[cfg(feature = "try-runtime")]
