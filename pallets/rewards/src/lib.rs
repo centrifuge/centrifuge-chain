@@ -323,10 +323,11 @@ pub mod pallet {
 
 			let currency = Currencies::<T, I>::get(currency_id);
 			let group = Groups::<T, I>::get(group_id);
-			StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
-				let reward = T::RewardMechanism::compute_reward(account, &currency, &group)?;
-				Ok(reward)
-			})
+			let account = StakeAccounts::<T, I>::get(account_id, currency_id);
+
+			let reward = T::RewardMechanism::compute_reward(&account, &currency, &group)?;
+
+			Ok(reward)
 		}
 
 		fn claim_reward(

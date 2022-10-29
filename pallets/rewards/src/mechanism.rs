@@ -27,7 +27,7 @@ pub trait RewardMechanism {
 	) -> Result<(), ArithmeticError>;
 
 	fn compute_reward(
-		account: &mut Self::Account,
+		account: &Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError>;

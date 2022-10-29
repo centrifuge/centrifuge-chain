@@ -46,36 +46,40 @@ where
 /// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Account<Balance, SignedBalance> {
+pub struct Account<Balance, IBalance> {
 	staked: Balance,
-	reward_tally: SignedBalance,
+	reward_tally: IBalance,
 	last_currency_movement: u32,
 }
 
-impl<Balance, SignedBalance> Account<Balance, SignedBalance>
+impl<Balance, IBalance> Account<Balance, IBalance>
 where
-	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<SignedBalance> + Copy,
-	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
+	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<IBalance> + Copy,
+	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 {
-	/// Apply the following rpt_tallies to the stake account.
-	pub fn try_apply_rpt_tallies<Rate: FixedPointNumber>(
-		&mut self,
-		rpt_tallies: &[Rate],
-	) -> Result<(), ArithmeticError> {
-		let rpt_to_apply = &rpt_tallies[self.last_currency_movement as usize..]
+	pub fn get_tally_from_rpt_changes<Rate: FixedPointNumber>(
+		&self,
+		rpt_changes: &[Rate],
+	) -> Result<IBalance, ArithmeticError> {
+		let rpt_to_apply = &rpt_changes[self.last_currency_movement as usize..]
 			.iter()
 			.try_fold(Rate::zero(), |a, b| a.ensure_add(*b))?;
 
-		let tally_to_apply =
-			rpt_to_apply.ensure_mul_int(SignedBalance::ensure_from(self.staked)?)?;
+		rpt_to_apply.ensure_mul_int(IBalance::ensure_from(self.staked)?)
+	}
+
+	pub fn apply_rpt_changes<Rate: FixedPointNumber>(
+		&mut self,
+		rpt_changes: &[Rate],
+	) -> Result<(), ArithmeticError> {
+		let tally_to_apply = self.get_tally_from_rpt_changes(rpt_changes)?;
 
 		self.reward_tally.ensure_add_assign(tally_to_apply)?;
-		self.last_currency_movement = rpt_tallies.len() as u32;
+		self.last_currency_movement = rpt_changes.len() as u32;
 
 		Ok(())
 	}
 
-	/// Add a stake amount for a given supposed *reward per token* and *epoch*
 	pub fn add_amount<Rate: FixedPointNumber>(
 		&mut self,
 		amount: Balance,
@@ -86,7 +90,6 @@ where
 			.ensure_add_assign(reward_per_token.ensure_mul_int(amount)?.ensure_into()?)
 	}
 
-	/// Remove a stake amount for a supposed *reward per token*.
 	pub fn sub_amount<Rate: FixedPointNumber>(
 		&mut self,
 		amount: Balance,
@@ -97,19 +100,17 @@ where
 			.ensure_sub_assign(reward_per_token.ensure_mul_int(amount)?.ensure_into()?)
 	}
 
-	/// Compute the reward for the current staked amount given a supposed *reward per token* and *epoch*.
 	pub fn compute_reward<Rate: FixedPointNumber>(
 		&self,
 		reward_per_token: Rate,
 	) -> Result<Balance, ArithmeticError> {
-		let gross_reward: SignedBalance = reward_per_token
+		let gross_reward: IBalance = reward_per_token
 			.ensure_mul_int(self.staked)?
 			.ensure_into()?;
 
 		gross_reward.ensure_sub(self.reward_tally)?.ensure_into()
 	}
 
-	/// Claim a reward for the current staked amount given a supposed *reward per token* and *epoch*.
 	pub fn claim_reward<Rate: FixedPointNumber>(
 		&mut self,
 		reward_per_token: Rate,
@@ -133,7 +134,7 @@ where
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Currency<Balance, Rate, MaxMovements: Get<u32>> {
 	total_staked: Balance,
-	rpt_tallies: BoundedVec<Rate, MaxMovements>,
+	rpt_changes: BoundedVec<Rate, MaxMovements>,
 }
 
 impl<Balance, Rate, MaxMovements> Default for Currency<Balance, Rate, MaxMovements>
@@ -145,7 +146,7 @@ where
 	fn default() -> Self {
 		Self {
 			total_staked: Zero::zero(),
-			rpt_tallies: BoundedVec::default(),
+			rpt_changes: BoundedVec::default(),
 		}
 	}
 }
@@ -156,8 +157,8 @@ where
 	Rate: FixedPointNumber,
 	MaxMovements: Get<u32>,
 {
-	pub fn add_rpt_tally(&mut self, rpt_tally: Rate) -> Result<(), ()> {
-		self.rpt_tallies.try_push(rpt_tally)
+	pub fn add_rpt_change(&mut self, rpt_change: Rate) -> Result<(), ()> {
+		self.rpt_changes.try_push(rpt_change)
 	}
 
 	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
@@ -172,25 +173,25 @@ where
 		self.total_staked
 	}
 
-	pub fn rpt_tallies(&self) -> &[Rate] {
-		&self.rpt_tallies
+	pub fn rpt_changes(&self) -> &[Rate] {
+		&self.rpt_changes
 	}
 }
 
-pub struct Mechanism<Balance, SignedBalance, Rate, MaxCurrencyMovements>(
-	sp_std::marker::PhantomData<(Balance, SignedBalance, Rate, MaxCurrencyMovements)>,
+pub struct Mechanism<Balance, IBalance, Rate, MaxCurrencyMovements>(
+	sp_std::marker::PhantomData<(Balance, IBalance, Rate, MaxCurrencyMovements)>,
 );
 
-impl<Balance, SignedBalance, Rate, MaxCurrencyMovements> RewardMechanism
-	for Mechanism<Balance, SignedBalance, Rate, MaxCurrencyMovements>
+impl<Balance, IBalance, Rate, MaxCurrencyMovements> RewardMechanism
+	for Mechanism<Balance, IBalance, Rate, MaxCurrencyMovements>
 where
-	Balance: tokens::Balance + FixedPointOperand + TryFrom<SignedBalance>,
-	SignedBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy + Signed,
+	Balance: tokens::Balance + FixedPointOperand + TryFrom<IBalance>,
+	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy + Signed,
 	Rate: EnsureFixedPointNumber,
 	MaxCurrencyMovements: Get<u32>,
 	<Rate as FixedPointNumber>::Inner: Signed,
 {
-	type Account = Account<Self::Balance, SignedBalance>;
+	type Account = Account<Self::Balance, IBalance>;
 	type Balance = Balance;
 	type Currency = Currency<Balance, Rate, MaxCurrencyMovements>;
 	type Group = Group<Balance, Rate>;
@@ -206,7 +207,7 @@ where
 		group: &mut Self::Group,
 		amount: Self::Balance,
 	) -> Result<(), ArithmeticError> {
-		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+		account.apply_rpt_changes(currency.rpt_changes())?;
 		account.add_amount(amount, group.reward_per_token())?;
 
 		group.add_amount(amount)?;
@@ -219,7 +220,7 @@ where
 		group: &mut Self::Group,
 		amount: Self::Balance,
 	) -> Result<(), ArithmeticError> {
-		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+		account.apply_rpt_changes(currency.rpt_changes())?;
 		account.sub_amount(amount, group.reward_per_token())?;
 
 		group.sub_amount(amount)?;
@@ -227,12 +228,15 @@ where
 	}
 
 	fn compute_reward(
-		account: &mut Self::Account,
+		account: &Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
-		account.compute_reward(group.reward_per_token())
+		let reward = account.compute_reward(group.reward_per_token())?;
+		let extra_tally = account.get_tally_from_rpt_changes(currency.rpt_changes())?;
+		IBalance::ensure_from(reward)?
+			.ensure_sub(extra_tally)?
+			.ensure_into()
 	}
 
 	fn claim_reward(
@@ -240,7 +244,7 @@ where
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		account.try_apply_rpt_tallies(currency.rpt_tallies())?;
+		account.apply_rpt_changes(currency.rpt_changes())?;
 		account.claim_reward(group.reward_per_token())
 	}
 
@@ -249,12 +253,12 @@ where
 		prev_group: &mut Self::Group,
 		next_group: &mut Self::Group,
 	) -> Result<(), MoveCurrencyError> {
-		let rpt_tally = next_group
+		let rpt_change = next_group
 			.reward_per_token()
 			.ensure_sub(prev_group.reward_per_token())?;
 
 		currency
-			.add_rpt_tally(rpt_tally)
+			.add_rpt_change(rpt_change)
 			.map_err(|_| MoveCurrencyError::MaxMovements)?;
 
 		prev_group.sub_amount(currency.total_staked())?;
@@ -368,9 +372,9 @@ mod test {
 
 		assert_ok!(account.add_amount(AMOUNT, *RPT_0));
 
-		let rpt_tallies = [(*RPT_1 - *RPT_0), (*RPT_2 - *RPT_1)];
+		let rpt_changes = [(*RPT_1 - *RPT_0), (*RPT_2 - *RPT_1)];
 
-		assert_ok!(account.try_apply_rpt_tallies(&rpt_tallies));
+		assert_ok!(account.apply_rpt_changes(&rpt_changes));
 
 		assert_eq!(
 			account.reward_tally,
@@ -379,11 +383,11 @@ mod test {
 				+ i128::from((*RPT_2 - *RPT_1).saturating_mul_int(AMOUNT as i128))
 		);
 
-		assert_eq!(account.last_currency_movement, rpt_tallies.len() as u32);
+		assert_eq!(account.last_currency_movement, rpt_changes.len() as u32);
 
-		let rpt_tallies = [(*RPT_1 - *RPT_0), (*RPT_2 - *RPT_1), (*RPT_3 - *RPT_2)];
+		let rpt_changes = [(*RPT_1 - *RPT_0), (*RPT_2 - *RPT_1), (*RPT_3 - *RPT_2)];
 
-		assert_ok!(account.try_apply_rpt_tallies(&rpt_tallies));
+		assert_ok!(account.apply_rpt_changes(&rpt_changes));
 
 		assert_eq!(
 			account.reward_tally,
@@ -393,6 +397,6 @@ mod test {
 				+ i128::from((*RPT_3 - *RPT_2).saturating_mul_int(AMOUNT as i128))
 		);
 
-		assert_eq!(account.last_currency_movement, rpt_tallies.len() as u32);
+		assert_eq!(account.last_currency_movement, rpt_changes.len() as u32);
 	}
 }
