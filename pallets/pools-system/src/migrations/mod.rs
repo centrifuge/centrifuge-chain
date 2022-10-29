@@ -19,6 +19,7 @@ pub mod altair {
 	use codec::{Decode, Encode};
 	use frame_support::{
 		dispatch::Weight,
+		pallet_prelude::ValueQuery,
 		storage::types::{StorageDoubleMap, StorageMap},
 		traits::StorageInstance,
 		Blake2_128Concat,
@@ -35,7 +36,7 @@ pub mod altair {
 
 	use crate::{
 		Config, EpochExecutionInfo, EpochExecutionTranche, EpochExecutionTranches, EpochSolution,
-		EpochState, One, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
+		EpochState, One, PoolDepositOf, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
 		ScheduledUpdateDetailsOf, Seniority, Tranche, TrancheSalt, TrancheType, Tranches,
 	};
 
@@ -248,10 +249,67 @@ pub mod altair {
 		ScheduledUpdateDetailsOf<T>,
 	>;
 
+	pub struct AccountDepositPrefix;
+	impl StorageInstance for AccountDepositPrefix {
+		const STORAGE_PREFIX: &'static str = "AccountDeposit";
+
+		fn pallet_prefix() -> &'static str {
+			"Pools"
+		}
+	}
+	pub type AccountDeposit<T> = StorageMap<
+		AccountDepositPrefix,
+		Blake2_128Concat,
+		<T as frame_system::Config>::AccountId,
+		<T as Config>::Balance,
+		ValueQuery,
+	>;
+
+	pub struct PoolDepositPrefix;
+	impl StorageInstance for PoolDepositPrefix {
+		const STORAGE_PREFIX: &'static str = "PoolDeposit";
+
+		fn pallet_prefix() -> &'static str {
+			"Pools"
+		}
+	}
+	pub type PoolDeposit<T> =
+		StorageMap<PoolDepositPrefix, Blake2_128Concat, <T as Config>::PoolId, PoolDepositOf<T>>;
+
+	pub fn migrate_pool_deposit<T: Config>() -> Weight {
+		let mut weight = 0u64;
+
+		// Migrate PoolDeposit
+		let mut loops = 0u64;
+		PoolDeposit::<T>::iter().for_each(|(pool_id, deposit)| {
+			loops += 1;
+			crate::PoolDeposit::<T>::insert(pool_id, deposit);
+		});
+
+		weight += loops * (T::DbWeight::get().write + T::DbWeight::get().read);
+
+		Weight::from_ref_time(weight)
+	}
+
+	pub fn migrate_account_deposit<T: Config>() -> Weight {
+		let mut weight = 0u64;
+
+		// Migrate AccountDeposit
+		let mut loops = 0u64;
+		AccountDeposit::<T>::iter().for_each(|(pool_id, deposit)| {
+			loops += 1;
+			crate::AccountDeposit::<T>::insert(pool_id, deposit);
+		});
+
+		weight += loops * (T::DbWeight::get().write + T::DbWeight::get().read);
+
+		Weight::from_ref_time(weight)
+	}
+
 	pub fn migrate_scheduled_update<T: Config>() -> Weight {
 		let mut weight = 0u64;
 
-		// Migrate PoolDetails
+		// Migrate ScheduledUpdate
 		let mut loops = 0u64;
 		ScheduledUpdate::<T>::iter().for_each(|(pool_id, scheduled_update)| {
 			loops += 1;
@@ -426,6 +484,14 @@ pub mod altair {
 		let loops = ScheduledUpdate::<T>::clear(u32::MAX, None).loops;
 		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
 
+		// Remove AccountDeposit
+		let loops = AccountDeposit::<T>::clear(u32::MAX, None).loops;
+		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
+
+		// RemoveP PoolDeposit
+		let loops = PoolDeposit::<T>::clear(u32::MAX, None).loops;
+		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
+
 		Weight::from_ref_time(weight)
 	}
 
@@ -441,7 +507,10 @@ pub mod altair {
 		weight += migrate_epoch_tranches::<T>();
 		weight += migrate_tranches::<T>();
 		weight += migrate_scheduled_update::<T>();
+		weight += migrate_account_deposit::<T>();
+		weight += migrate_pool_deposit::<T>();
 		weight += remove_not_needed_storage::<T>();
+
 		weight
 	}
 
