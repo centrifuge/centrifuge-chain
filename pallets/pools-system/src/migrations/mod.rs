@@ -20,7 +20,10 @@ pub mod altair {
 	use frame_support::{
 		dispatch::Weight,
 		pallet_prelude::ValueQuery,
-		storage::types::{StorageDoubleMap, StorageMap},
+		storage::{
+			types::{StorageDoubleMap, StorageMap},
+			PrefixIterator,
+		},
 		traits::StorageInstance,
 		Blake2_128Concat,
 	};
@@ -276,7 +279,7 @@ pub mod altair {
 	pub type PoolDeposit<T> =
 		StorageMap<PoolDepositPrefix, Blake2_128Concat, <T as Config>::PoolId, PoolDepositOf<T>>;
 
-	pub fn migrate_pool_deposit<T: Config>() -> Weight {
+	fn migrate_pool_deposit<T: Config>() -> Weight {
 		let mut weight = 0u64;
 
 		// Migrate PoolDeposit
@@ -291,7 +294,7 @@ pub mod altair {
 		Weight::from_ref_time(weight)
 	}
 
-	pub fn migrate_account_deposit<T: Config>() -> Weight {
+	fn migrate_account_deposit<T: Config>() -> Weight {
 		let mut weight = 0u64;
 
 		// Migrate AccountDeposit
@@ -306,7 +309,7 @@ pub mod altair {
 		Weight::from_ref_time(weight)
 	}
 
-	pub fn migrate_scheduled_update<T: Config>() -> Weight {
+	fn migrate_scheduled_update<T: Config>() -> Weight {
 		let mut weight = 0u64;
 
 		// Migrate ScheduledUpdate
@@ -321,7 +324,7 @@ pub mod altair {
 		Weight::from_ref_time(weight)
 	}
 
-	pub fn migrate_tranches<T: Config>() -> Weight
+	fn migrate_tranches<T: Config>() -> Weight
 	where
 		T::TrancheId: From<[u8; 16]> + Into<[u8; 16]>,
 		T::PoolId: From<PoolId> + Into<PoolId>,
@@ -394,7 +397,7 @@ pub mod altair {
 	}
 
 	/// MUST RUN BEFORE `migrate_tranches`
-	pub fn migrate_epoch_tranches<T: Config>() -> Weight
+	fn migrate_epoch_tranches<T: Config>() -> Weight
 	where
 		T::TrancheId: From<[u8; 16]> + Into<[u8; 16]>,
 		T::PoolId: From<PoolId> + Into<PoolId>,
@@ -461,7 +464,7 @@ pub mod altair {
 	}
 
 	/// This function MUST be called AFTER `migrate_all_storage_under_old_prefix`
-	pub fn remove_not_needed_storage<T: Config>() -> Weight {
+	fn remove_not_needed_storage<T: Config>() -> Weight {
 		let mut weight = 0u64;
 
 		// Remove EpochDetails
@@ -549,6 +552,16 @@ pub mod altair {
 	}
 
 	#[cfg(feature = "try-runtime")]
+	fn assert_no_items<T>(iter: PrefixIterator<T>) {
+		let mut counter = 0u32;
+		iter.for_each(|_| {
+			counter += 1;
+		});
+
+		assert_eq!(counter, 0);
+	}
+
+	#[cfg(feature = "try-runtime")]
 	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
 		let mut count_pool_details = 0u32;
 		let mut count_epoch_execution_infos = 0u32;
@@ -560,6 +573,14 @@ pub mod altair {
 		crate::EpochExecution::<T>::iter_values()
 			.map(|_| count_epoch_execution_infos += 1)
 			.for_each(|_| {});
+
+		assert_no_items(EpochExecution::<T>::iter_values());
+		assert_no_items(Epoch::<T>::iter_values());
+		assert_no_items(Pool::<T>::iter_values());
+		assert_no_items(Order::<T>::iter_values());
+		assert_no_items(ScheduledUpdate::<T>::iter_values());
+		assert_no_items(AccountDeposit::<T>::iter_values());
+		assert_no_items(PoolDeposit::<T>::iter_values());
 
 		assert_eq!(count_pool_details, *NUM_POOL_DETAILS.as_ref());
 		assert_eq!(
@@ -576,12 +597,16 @@ pub mod altair {
 		use cfg_primitives::TrancheId;
 		use cfg_types::Rate;
 		use frame_support::assert_ok;
+		use orml_traits::Change;
 
 		use super::*;
-		use crate::mock::{new_test_ext, MockAccountId, Test};
+		use crate::{
+			mock::{new_test_ext, MockAccountId, Test},
+			PoolChanges, PoolDepositInfo, ScheduledUpdateDetails,
+		};
 
 		#[test]
-		fn all_three_migrations_are_correct() {
+		fn all_migrations_are_correct() {
 			new_test_ext().execute_with(|| {
 				const POOL_ID: PoolId = 0;
 				const TRANCHE_ID_JUNIOR: TrancheId = [0u8; 16];
@@ -715,13 +740,31 @@ pub mod altair {
 						token_price: Rate::one(),
 					},
 				);
+				PoolDeposit::<Test>::insert(
+					POOL_ID,
+					PoolDepositInfo {
+						depositor: Default::default(),
+						deposit: Default::default(),
+					},
+				);
+				AccountDeposit::<Test>::insert(POOL_ID, 0);
+				ScheduledUpdate::<Test>::insert(
+					POOL_ID,
+					ScheduledUpdateDetails {
+						changes: PoolChanges {
+							tranches: Change::NoChange,
+							tranche_metadata: Change::NoChange,
+							min_epoch_time: Change::NoChange,
+							max_nav_age: Change::NoChange,
+						},
+						scheduled_time: 0,
+					},
+				);
 
 				assert_ok!(pre_migrate::<Test>());
 
 				// Run migrations
-				let _ = migrate_epoch_tranches::<Test>();
-				let _ = migrate_tranches::<Test>();
-				let _ = remove_not_needed_storage::<Test>();
+				let _ = migrate_all_storage_under_old_prefix_and_remove_old_one::<Test>();
 
 				// Assert post migration
 				assert_ok!(post_migrate::<Test>());
