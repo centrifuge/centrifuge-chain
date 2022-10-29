@@ -2,6 +2,7 @@ use frame_support::traits::tokens::Balance;
 use sp_runtime::{traits::Get, ArithmeticError};
 
 pub mod base;
+pub mod base_with_currency_movement;
 
 pub trait RewardMechanism {
 	type Group;

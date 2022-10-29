@@ -1522,7 +1522,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
-	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
+	type RewardMechanism = pallet_rewards::mechanism::base_with_currency_movement::Mechanism<
 		Balance,
 		IBalance,
 		FixedI128,

@@ -1,4 +1,5 @@
 mod base;
+mod base_with_currency_movement;
 
 use frame_support::traits::fungibles::Inspect;
 
@@ -219,7 +220,7 @@ macro_rules! currency_common_tests {
 				type MaxMovements = <Mechanism as RewardMechanism>::MaxCurrencyMovements;
 
 				// Waste all correct movements.
-				for i in 0..MaxMovements::get() {
+				for i in 0..<MaxMovements as TypedGet>::get() {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, i + 1));
 				}
 
