@@ -17,13 +17,12 @@ pub mod altair {
 	use cfg_traits::TrancheCurrency as _;
 	use cfg_types::{CurrencyId as TCurrencyId, TrancheCurrency};
 	use codec::{Decode, Encode};
+	#[cfg(feature = "try-runtime")]
+	use frame_support::storage::PrefixIterator;
 	use frame_support::{
 		dispatch::Weight,
 		pallet_prelude::ValueQuery,
-		storage::{
-			types::{StorageDoubleMap, StorageMap},
-			PrefixIterator,
-		},
+		storage::types::{StorageDoubleMap, StorageMap},
 		traits::StorageInstance,
 		Blake2_128Concat,
 	};
@@ -521,6 +520,9 @@ pub mod altair {
 	lazy_static::lazy_static! {
 		pub static ref NUM_POOL_DETAILS: Arc<u32> = Arc::new(0);
 		pub static ref NUM_EPOCH_EXECUTION_INFOS:  Arc<u32> = Arc::new(0);
+		pub static ref NUM_SCHEDULED_UPDATES:  Arc<u32> = Arc::new(0);
+		pub static ref NUM_POOL_DEPOSITS:  Arc<u32> = Arc::new(0);
+		pub static ref NUM_ACCOUNT_DEPOSITS:  Arc<u32> = Arc::new(0);
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -533,22 +535,43 @@ pub mod altair {
 			let mut_ref = &mut *(NUM_EPOCH_EXECUTION_INFOS.as_ref() as *const u32 as *mut u32);
 			*mut_ref = 0;
 		}
+		unsafe {
+			let mut_ref = &mut *(NUM_SCHEDULED_UPDATES.as_ref() as *const u32 as *mut u32);
+			*mut_ref = 0;
+		}
+		unsafe {
+			let mut_ref = &mut *(NUM_POOL_DEPOSITS.as_ref() as *const u32 as *mut u32);
+			*mut_ref = 0;
+		}
+		unsafe {
+			let mut_ref = &mut *(NUM_ACCOUNT_DEPOSITS.as_ref() as *const u32 as *mut u32);
+			*mut_ref = 0;
+		}
 
-		Pool::<T>::iter_values()
-			.map(|_| unsafe {
-				let mut_ref = &mut *(NUM_POOL_DETAILS.as_ref() as *const u32 as *mut u32);
-				*mut_ref = *mut_ref + 1;
-			})
-			.for_each(|_| {});
-
-		EpochExecution::<T>::iter_values()
-			.map(|_| unsafe {
-				let mut_ref = &mut *(NUM_EPOCH_EXECUTION_INFOS.as_ref() as *const u32 as *mut u32);
-				*mut_ref = *mut_ref + 1;
-			})
-			.for_each(|_| {});
+		count_items(Pool::<T>::iter_values(), NUM_POOL_DETAILS.as_ref());
+		count_items(
+			EpochExecution::<T>::iter_values(),
+			NUM_EPOCH_EXECUTION_INFOS.as_ref(),
+		);
+		count_items(
+			ScheduledUpdate::<T>::iter_values(),
+			&3, //NUM_SCHEDULED_UPDATES.as_ref(),
+		);
+		count_items(PoolDeposit::<T>::iter_values(), NUM_POOL_DEPOSITS.as_ref());
+		count_items(
+			AccountDeposit::<T>::iter_values(),
+			NUM_ACCOUNT_DEPOSITS.as_ref(),
+		);
 
 		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn count_items<T>(iter: PrefixIterator<T>, counter_ref: &u32) {
+		let counter = unsafe { &mut *(counter_ref as *const u32 as *mut u32) };
+		iter.for_each(|_| {
+			*counter += 1;
+		});
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -562,17 +585,34 @@ pub mod altair {
 	}
 
 	#[cfg(feature = "try-runtime")]
+	fn assert_correct_amount<T>(iter: PrefixIterator<T>, amount: &u32) {
+		let mut counter = 0u32;
+		iter.for_each(|_| {
+			counter += 1;
+		});
+
+		assert_eq!(counter, *amount);
+	}
+
+	#[cfg(feature = "try-runtime")]
 	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
-		let mut count_pool_details = 0u32;
-		let mut count_epoch_execution_infos = 0u32;
-
-		crate::Pool::<T>::iter_values()
-			.map(|_| count_pool_details += 1)
-			.for_each(|_| {});
-
-		crate::EpochExecution::<T>::iter_values()
-			.map(|_| count_epoch_execution_infos += 1)
-			.for_each(|_| {});
+		assert_correct_amount(crate::Pool::<T>::iter_values(), NUM_POOL_DETAILS.as_ref());
+		assert_correct_amount(
+			crate::EpochExecution::<T>::iter_values(),
+			NUM_EPOCH_EXECUTION_INFOS.as_ref(),
+		);
+		assert_correct_amount(
+			crate::Pool::<T>::iter_values(),
+			NUM_SCHEDULED_UPDATES.as_ref(),
+		);
+		assert_correct_amount(
+			crate::PoolDeposit::<T>::iter_values(),
+			NUM_POOL_DEPOSITS.as_ref(),
+		);
+		assert_correct_amount(
+			crate::AccountDeposit::<T>::iter_values(),
+			NUM_ACCOUNT_DEPOSITS.as_ref(),
+		);
 
 		assert_no_items(EpochExecution::<T>::iter_values());
 		assert_no_items(Epoch::<T>::iter_values());
@@ -581,12 +621,6 @@ pub mod altair {
 		assert_no_items(ScheduledUpdate::<T>::iter_values());
 		assert_no_items(AccountDeposit::<T>::iter_values());
 		assert_no_items(PoolDeposit::<T>::iter_values());
-
-		assert_eq!(count_pool_details, *NUM_POOL_DETAILS.as_ref());
-		assert_eq!(
-			count_epoch_execution_infos,
-			*NUM_EPOCH_EXECUTION_INFOS.as_ref()
-		);
 
 		Ok(())
 	}
@@ -609,6 +643,7 @@ pub mod altair {
 		fn all_migrations_are_correct() {
 			new_test_ext().execute_with(|| {
 				const POOL_ID: PoolId = 0;
+				const POOL_ID_2: PoolId = 0;
 				const TRANCHE_ID_JUNIOR: TrancheId = [0u8; 16];
 				const TRANCHE_ID_SENIOR: TrancheId = [1u8; 16];
 
@@ -747,9 +782,41 @@ pub mod altair {
 						deposit: Default::default(),
 					},
 				);
+				PoolDeposit::<Test>::insert(
+					POOL_ID_2,
+					PoolDepositInfo {
+						depositor: Default::default(),
+						deposit: Default::default(),
+					},
+				);
 				AccountDeposit::<Test>::insert(POOL_ID, 0);
+				AccountDeposit::<Test>::insert(POOL_ID_2, 0);
 				ScheduledUpdate::<Test>::insert(
 					POOL_ID,
+					ScheduledUpdateDetails {
+						changes: PoolChanges {
+							tranches: Change::NoChange,
+							tranche_metadata: Change::NoChange,
+							min_epoch_time: Change::NoChange,
+							max_nav_age: Change::NoChange,
+						},
+						scheduled_time: 0,
+					},
+				);
+				ScheduledUpdate::<Test>::insert(
+					POOL_ID_2,
+					ScheduledUpdateDetails {
+						changes: PoolChanges {
+							tranches: Change::NoChange,
+							tranche_metadata: Change::NoChange,
+							min_epoch_time: Change::NoChange,
+							max_nav_age: Change::NoChange,
+						},
+						scheduled_time: 0,
+					},
+				);
+				ScheduledUpdate::<Test>::insert(
+					POOL_ID_2,
 					ScheduledUpdateDetails {
 						changes: PoolChanges {
 							tranches: Change::NoChange,
