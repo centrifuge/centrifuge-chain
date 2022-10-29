@@ -35,8 +35,8 @@ pub mod altair {
 
 	use crate::{
 		Config, EpochExecutionInfo, EpochExecutionTranche, EpochExecutionTranches, EpochSolution,
-		EpochState, One, PoolDetails, PoolParameters, PoolStatus, ReserveDetails, Seniority,
-		Tranche, TrancheSalt, TrancheType, Tranches,
+		EpochState, One, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
+		ScheduledUpdateDetailsOf, Seniority, Tranche, TrancheSalt, TrancheType, Tranches,
 	};
 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -98,13 +98,13 @@ pub mod altair {
 	/// `Pools` in the construct_runtime!-macro
 	pub struct PoolPrefix;
 	impl StorageInstance for PoolPrefix {
-		const STORAGE_PREFIX: &'static str = "Pools";
+		const STORAGE_PREFIX: &'static str = "Pool";
 
 		fn pallet_prefix() -> &'static str {
-			"Pool"
+			"Pools"
 		}
 	}
-	type Pool<T: Config> = StorageMap<
+	type Pool<T> = StorageMap<
 		PoolPrefix,
 		Blake2_128Concat,
 		<T as Config>::PoolId,
@@ -151,13 +151,13 @@ pub mod altair {
 	/// `Pools` in the construct_runtime!-macro
 	pub struct EpochExecutionPrefix;
 	impl StorageInstance for EpochExecutionPrefix {
-		const STORAGE_PREFIX: &'static str = "Pools";
+		const STORAGE_PREFIX: &'static str = "EpochExecution";
 
 		fn pallet_prefix() -> &'static str {
-			"EpochExecution"
+			"Pools"
 		}
 	}
-	type EpochExecution<T: Config> = StorageMap<
+	type EpochExecution<T> = StorageMap<
 		EpochExecutionPrefix,
 		Blake2_128Concat,
 		<T as Config>::PoolId,
@@ -179,13 +179,13 @@ pub mod altair {
 
 	pub struct EpochPrefix;
 	impl StorageInstance for EpochPrefix {
-		const STORAGE_PREFIX: &'static str = "Pools";
+		const STORAGE_PREFIX: &'static str = "Epoch";
 
 		fn pallet_prefix() -> &'static str {
-			"Epoch"
+			"Pools"
 		}
 	}
-	type Epoch<T: Config> = StorageDoubleMap<
+	type Epoch<T> = StorageDoubleMap<
 		EpochPrefix,
 		Blake2_128Concat,
 		<T as Config>::TrancheId,
@@ -196,13 +196,13 @@ pub mod altair {
 
 	pub struct OrderPrefix;
 	impl StorageInstance for OrderPrefix {
-		const STORAGE_PREFIX: &'static str = "Pools";
+		const STORAGE_PREFIX: &'static str = "Order";
 
 		fn pallet_prefix() -> &'static str {
-			"Order"
+			"Pools"
 		}
 	}
-	pub type Order<T: Config> = StorageDoubleMap<
+	pub type Order<T> = StorageDoubleMap<
 		OrderPrefix,
 		Blake2_128Concat,
 		<T as Config>::TrancheId,
@@ -231,6 +231,36 @@ pub mod altair {
 				epoch: One::one(),
 			}
 		}
+	}
+
+	pub struct ScheduledUpdatePrefix;
+	impl StorageInstance for ScheduledUpdatePrefix {
+		const STORAGE_PREFIX: &'static str = "ScheduledUpdate";
+
+		fn pallet_prefix() -> &'static str {
+			"Pools"
+		}
+	}
+	pub type ScheduledUpdate<T> = StorageMap<
+		ScheduledUpdatePrefix,
+		Blake2_128Concat,
+		<T as Config>::PoolId,
+		ScheduledUpdateDetailsOf<T>,
+	>;
+
+	pub fn migrate_scheduled_update<T: Config>() -> Weight {
+		let mut weight = 0u64;
+
+		// Migrate PoolDetails
+		let mut loops = 0u64;
+		ScheduledUpdate::<T>::iter().for_each(|(pool_id, scheduled_update)| {
+			loops += 1;
+			crate::ScheduledUpdate::<T>::insert(pool_id, scheduled_update);
+		});
+
+		weight += loops * (T::DbWeight::get().write + T::DbWeight::get().read);
+
+		Weight::from_ref_time(weight)
 	}
 
 	pub fn migrate_tranches<T: Config>() -> Weight
@@ -392,6 +422,10 @@ pub mod altair {
 		let loops = Order::<T>::clear(u32::MAX, None).loops;
 		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
 
+		// Remove ScheduledUpdate
+		let loops = ScheduledUpdate::<T>::clear(u32::MAX, None).loops;
+		weight += loops as u64 * (T::DbWeight::get().write + T::DbWeight::get().read);
+
 		Weight::from_ref_time(weight)
 	}
 
@@ -406,6 +440,7 @@ pub mod altair {
 
 		weight += migrate_epoch_tranches::<T>();
 		weight += migrate_tranches::<T>();
+		weight += migrate_scheduled_update::<T>();
 		weight += remove_not_needed_storage::<T>();
 		weight
 	}
