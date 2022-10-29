@@ -29,9 +29,13 @@ where
 		self.total_staked.ensure_sub_assign(amount)
 	}
 
+	pub fn reward_rate(&self, reward: Balance) -> Result<Rate, ArithmeticError> {
+		Rate::ensure_from_rational(reward, self.total_staked)
+	}
+
 	pub fn distribute_reward(&mut self, reward: Balance) -> Result<(), ArithmeticError> {
-		let rate_increment = Rate::ensure_from_rational(reward, self.total_staked)?;
-		self.reward_per_token.ensure_add_assign(rate_increment)
+		let rate = self.reward_rate(reward)?;
+		self.reward_per_token.ensure_add_assign(rate)
 	}
 
 	pub fn reward_per_token(&self) -> Rate {
@@ -232,8 +236,8 @@ where
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let reward = account.compute_reward(group.reward_per_token())?;
 		let extra_tally = account.get_tally_from_rpt_changes(currency.rpt_changes())?;
+		let reward = account.compute_reward(group.reward_per_token())?;
 		IBalance::ensure_from(reward)?
 			.ensure_sub(extra_tally)?
 			.ensure_into()
