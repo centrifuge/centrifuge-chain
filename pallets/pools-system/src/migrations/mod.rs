@@ -527,26 +527,11 @@ pub mod altair {
 
 	#[cfg(feature = "try-runtime")]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
-		unsafe {
-			let mut_ref = &mut *(NUM_POOL_DETAILS.as_ref() as *const u32 as *mut u32);
-			*mut_ref = 0;
-		}
-		unsafe {
-			let mut_ref = &mut *(NUM_EPOCH_EXECUTION_INFOS.as_ref() as *const u32 as *mut u32);
-			*mut_ref = 0;
-		}
-		unsafe {
-			let mut_ref = &mut *(NUM_SCHEDULED_UPDATES.as_ref() as *const u32 as *mut u32);
-			*mut_ref = 0;
-		}
-		unsafe {
-			let mut_ref = &mut *(NUM_POOL_DEPOSITS.as_ref() as *const u32 as *mut u32);
-			*mut_ref = 0;
-		}
-		unsafe {
-			let mut_ref = &mut *(NUM_ACCOUNT_DEPOSITS.as_ref() as *const u32 as *mut u32);
-			*mut_ref = 0;
-		}
+		reset_counter(NUM_POOL_DETAILS.as_ref());
+		reset_counter(NUM_EPOCH_EXECUTION_INFOS.as_ref());
+		reset_counter(NUM_SCHEDULED_UPDATES.as_ref());
+		reset_counter(NUM_POOL_DEPOSITS.as_ref());
+		reset_counter(NUM_ACCOUNT_DEPOSITS.as_ref());
 
 		count_items(Pool::<T>::iter_values(), NUM_POOL_DETAILS.as_ref());
 		count_items(
@@ -555,7 +540,7 @@ pub mod altair {
 		);
 		count_items(
 			ScheduledUpdate::<T>::iter_values(),
-			&3, //NUM_SCHEDULED_UPDATES.as_ref(),
+			NUM_SCHEDULED_UPDATES.as_ref(),
 		);
 		count_items(PoolDeposit::<T>::iter_values(), NUM_POOL_DEPOSITS.as_ref());
 		count_items(
@@ -564,6 +549,12 @@ pub mod altair {
 		);
 
 		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn reset_counter(counter_ref: &u32) {
+		let counter = unsafe { &mut *(counter_ref as *const u32 as *mut u32) };
+		*counter = 0;
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -602,7 +593,7 @@ pub mod altair {
 			NUM_EPOCH_EXECUTION_INFOS.as_ref(),
 		);
 		assert_correct_amount(
-			crate::Pool::<T>::iter_values(),
+			crate::ScheduledUpdate::<T>::iter_values(),
 			NUM_SCHEDULED_UPDATES.as_ref(),
 		);
 		assert_correct_amount(
@@ -827,6 +818,9 @@ pub mod altair {
 						scheduled_time: 0,
 					},
 				);
+
+				crate::AccountDeposit::<Test>::insert(POOL_ID_2, 0);
+				crate::AccountDeposit::<Test>::insert(POOL_ID, 0);
 
 				assert_ok!(pre_migrate::<Test>());
 
