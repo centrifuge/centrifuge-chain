@@ -30,15 +30,15 @@ fn rewards_account() -> u64 {
 mod base_mechanism {
 	use super::*;
 
-	super::common_tests!(Rewards1, Instance1);
-	super::base_claiming_tests!(Rewards1, Instance1);
+	common_tests!(Rewards1, Instance1);
+	base_claiming_tests!(Rewards1, Instance1);
 }
 
 mod base_with_currency_movement_mechanism {
 	use super::*;
 
-	super::common_tests!(Rewards2, Instance2);
-	super::base_claiming_tests!(Rewards2, Instance2);
+	common_tests!(Rewards2, Instance2);
+	base_claiming_tests!(Rewards2, Instance2);
 
 	use Rewards2 as Rewards;
 
