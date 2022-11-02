@@ -33,6 +33,7 @@ members = [
   "libs/types",
   "pallets/anchors",
   "pallets/bridge",
+  "pallets/connectors",
   "pallets/claims",
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",

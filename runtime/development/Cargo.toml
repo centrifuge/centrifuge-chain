@@ -118,6 +118,7 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
+pallet-connectors = { path = "../../pallets/connectors", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
@@ -133,6 +134,10 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 pallet-pools = { path = "../../pallets/pools", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
+
+# Connectors 3rd-party dependencies
+pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, branch = "unfork-v0.9.29" }
+xcm-primitives = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, branch = "unfork-v0.9.29" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
@@ -168,6 +173,7 @@ std = [
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
   "pallet-collective/std",
+  "pallet-connectors/std",
   "pallet-crowdloan-claim/std",
   "pallet-crowdloan-reward/std",
   "pallet-democracy/std",
@@ -232,6 +238,8 @@ std = [
   "xcm-builder/std",
   "xcm-executor/std",
   "xcm/std",
+  "xcm-primitives/std",
+  "pallet-xcm-transactor/std",
 ]
 
 runtime-benchmarks = [
