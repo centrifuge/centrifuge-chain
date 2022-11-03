@@ -26,8 +26,8 @@ use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{
 	chain::centrifuge::{
-		Call, Loans, MaxTokenNameLength, MaxTokenSymbolLength, OrmlTokens, Permissions,
-		PoolSystem, Timestamp, PARA_ID,
+		Call, Loans, MaxTokenNameLength, MaxTokenSymbolLength, OrmlTokens, Permissions, PoolSystem,
+		Timestamp, PARA_ID,
 	},
 	pools::utils::{
 		accounts::Keyring,
