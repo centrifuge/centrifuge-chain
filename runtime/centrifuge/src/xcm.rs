@@ -143,7 +143,7 @@ pub type Barrier = (
 	AllowSubscriptionsFrom<Everything>,
 );
 
-/// Means for transacting the fungibles assets of ths parachain.
+/// Means for transacting the fungibles assets of this parachain.
 pub type FungiblesTransactor = FungiblesAdapter<
 	// Use this fungibles implementation
 	Tokens,

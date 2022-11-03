@@ -18,7 +18,7 @@ use super::*;
 type AccountId = u64;
 
 /// This OrmlAssetRegistry::AuthorityOrigin implementation is used for our pallet-loans
-/// and pallet-pools Mocks. We overwrite this because of the `type AccountId = u64`.
+/// and pallet-pool-system Mocks. We overwrite this because of the `type AccountId = u64`.
 /// In the runtime tests, we use proper AccountIds, in the Mocks, we use 1,2,3,... .
 /// Therefore, we implement `AuthorityOrigin` and use the `u64` type for the AccountId.
 ///

@@ -18,6 +18,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
+use ::xcm::v2::MultiLocation;
 pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
@@ -87,6 +88,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
+use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -109,7 +111,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1004,
+	spec_version: 1007,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1119,6 +1121,40 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
+#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+pub struct NullTransactor {}
+
+impl UtilityEncodeCall for NullTransactor {
+	fn encode_call(self, _call: UtilityAvailableCalls) -> Vec<u8> {
+		unimplemented!("XcmTransactor feature not used")
+	}
+}
+
+impl xcm_primitives::XcmTransact for NullTransactor {
+	fn destination(self) -> MultiLocation {
+		unimplemented!("XcmTransactor feature not used")
+	}
+}
+
+impl pallet_xcm_transactor::Config for Runtime {
+	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
+	type AssetTransactor = xcm::FungiblesTransactor;
+	type Balance = Balance;
+	type BaseXcmWeight = BaseXcmWeight;
+	type CurrencyId = CurrencyId;
+	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
+	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
+	type Event = Event;
+	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type SelfLocation = SelfLocation;
+	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
+	type Transactor = NullTransactor;
+	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
+	type WeightInfo = ();
+	type XcmSender = XcmRouter;
+}
+
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 50;
@@ -1314,6 +1350,19 @@ impl pallet_interest_accrual::Config for Runtime {
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type Time = Timestamp;
 	type Weights = ();
+}
+
+impl pallet_connectors::Config for Runtime {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Event = Event;
+	type Permission = Permissions;
+	type PoolInspect = PoolSystem;
+	type Rate = Rate;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1565,6 +1614,7 @@ construct_runtime!(
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
 		Rewards: pallet_rewards::{Pallet, Storage, Event<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
+		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1572,6 +1622,7 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
+		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
