@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Migrations of storage concerned with the pallet PoolsSystem
+//! Migrations of storage concerned with the pallet PoolSystem
 
 pub mod altair {
 	use cfg_primitives::{Moment, PoolId};

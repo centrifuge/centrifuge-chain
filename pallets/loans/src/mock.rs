@@ -31,7 +31,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pools_system::{PoolDetails, ScheduledUpdateDetails};
+use pallet_pool_system::{PoolDetails, ScheduledUpdateDetails};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -54,7 +54,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		PoolsSystem: pallet_pools_system::{Pallet, Call, Storage, Event<T>},
+		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>},
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
@@ -151,7 +151,7 @@ impl orml_tokens::Config for MockRuntime {
 }
 
 impl cfg_test_utils::mocks::order_manager::Config for MockRuntime {
-	type Accountant = PoolsSystem;
+	type Accountant = PoolSystem;
 	type FundsAccount = FundsAccount;
 	type InvestmentId = TrancheCurrency;
 	type PoolId = PoolId;
@@ -164,7 +164,7 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	/// The index with which this pallet is instantiated in this runtime.
-	pub PoolPalletIndex: u8 = <PoolsSystem as PalletInfoAccess>::index() as u8;
+	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
 	pub const ChallengeTime: u64 = 0; // disable challenge period
 	pub const MinUpdateDelay: u64 = 0; // no delay
@@ -201,7 +201,7 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	CustomMetadata
 }
 
-impl pallet_pools_system::Config for MockRuntime {
+impl pallet_pool_system::Config for MockRuntime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type ChallengeTime = ChallengeTime;
@@ -362,7 +362,7 @@ impl pallet_loans::Config for MockRuntime {
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type NonFungible = Uniques;
 	type Permission = Permissions;
-	type Pool = PoolsSystem;
+	type Pool = PoolSystem;
 	type Rate = Rate;
 	type Time = Timestamp;
 	type WeightInfo = ();

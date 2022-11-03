@@ -98,7 +98,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			PoolsSystem::inspect_solution(&pool, &epoch, &full_solution),
+			PoolSystem::inspect_solution(&pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientCurrency
 		);
 	});
@@ -183,7 +183,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.collect::<Vec<_>>();
 
 		assert_eq!(
-			PoolsSystem::inspect_solution(pool, &epoch, &full_solution),
+			PoolSystem::inspect_solution(pool, &epoch, &full_solution),
 			Ok(PoolState::Unhealthy(vec![
 				UnhealthyState::MaxReserveViolated
 			]))
@@ -192,7 +192,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let mut details = pool.clone();
 		details.reserve.max = 100;
 		assert_eq!(
-			PoolsSystem::inspect_solution(&details, &epoch, &full_solution),
+			PoolSystem::inspect_solution(&details, &epoch, &full_solution),
 			Ok(PoolState::Healthy)
 		);
 	});
@@ -285,7 +285,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let prev_root = frame_support::storage_root(StateVersion::V0);
 		assert_eq!(
-			PoolsSystem::inspect_solution(pool, &epoch, &full_solution).unwrap(),
+			PoolSystem::inspect_solution(pool, &epoch, &full_solution).unwrap(),
 			PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated])
 		);
 		assert_eq!(prev_root, frame_support::storage_root(StateVersion::V0))
@@ -399,7 +399,7 @@ fn pool_constraints_pass() {
 			})
 			.collect::<Vec<_>>();
 
-		assert_ok!(PoolsSystem::inspect_solution(pool, &epoch, &full_solution));
+		assert_ok!(PoolSystem::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
 			crate::calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
@@ -421,7 +421,7 @@ fn epoch() {
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -450,7 +450,7 @@ fn epoch() {
 			10_000 * CURRENCY,
 			None
 		));
-		assert_ok!(PoolsSystem::set_metadata(
+		assert_ok!(PoolSystem::set_metadata(
 			pool_owner_origin.clone(),
 			0,
 			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
@@ -468,7 +468,7 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(PoolsSystem::update(
+		assert_ok!(PoolSystem::update(
 			pool_owner_origin.clone(),
 			0,
 			PoolChanges {
@@ -480,7 +480,7 @@ fn epoch() {
 		));
 
 		assert_eq!(
-			<PoolsSystem as PoolInspect<
+			<PoolSystem as PoolInspect<
 				<Test as frame_system::Config>::AccountId,
 				<Test as Config>::CurrencyId,
 			>>::get_tranche_token_price(0, SeniorTrancheId::get())
@@ -490,7 +490,7 @@ fn epoch() {
 		);
 
 		assert_err!(
-			PoolsSystem::close_epoch(pool_owner_origin.clone(), 0),
+			PoolSystem::close_epoch(pool_owner_origin.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
@@ -504,7 +504,7 @@ fn epoch() {
 		})
 		.unwrap();
 
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
@@ -514,7 +514,7 @@ fn epoch() {
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 		));
 
-		let pool = PoolsSystem::pool(0).unwrap();
+		let pool = PoolSystem::pool(0).unwrap();
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize]
 				.interest_rate_per_sec(),
@@ -551,13 +551,13 @@ fn epoch() {
 		next_block();
 		// Borrow more than pool reserve should fail NoFunds error
 		assert_noop!(
-			PoolsSystem::do_withdraw(borrower.clone(), 0, pool.reserve.total + 1),
+			PoolSystem::do_withdraw(borrower.clone(), 0, pool.reserve.total + 1),
 			TokenError::NoFunds
 		);
 
 		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));
 
-		let pool = PoolsSystem::pool(0).unwrap();
+		let pool = PoolSystem::pool(0).unwrap();
 		assert_eq!(
 			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].debt,
 			250 * CURRENCY
@@ -583,7 +583,7 @@ fn epoch() {
 		test_nav_up(0, 10 * CURRENCY);
 		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
 
-		let pool = PoolsSystem::pool(0).unwrap();
+		let pool = PoolSystem::pool(0).unwrap();
 		assert_eq!(
 			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].debt,
 			0
@@ -615,10 +615,10 @@ fn epoch() {
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			250 * CURRENCY
 		));
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
-		let pool = PoolsSystem::pool(0).unwrap();
-		let senior_price = PoolsSystem::get_tranche_token_price(0, SeniorTrancheId::get())
+		let pool = PoolSystem::pool(0).unwrap();
+		let senior_price = PoolSystem::get_tranche_token_price(0, SeniorTrancheId::get())
 			.unwrap()
 			.price;
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
@@ -642,7 +642,7 @@ fn epoch() {
 		);
 
 		assert_eq!(
-			<PoolsSystem as PoolInspect<
+			<PoolSystem as PoolInspect<
 				<Test as frame_system::Config>::AccountId,
 				<Test as Config>::CurrencyId,
 			>>::get_tranche_token_price(0, SeniorTrancheId::get())
@@ -664,7 +664,7 @@ fn submission_period() {
 		let senior_interest_rate = Rate::saturating_from_rational(10u128, 100u128)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -714,7 +714,7 @@ fn submission_period() {
 		})
 		.unwrap();
 
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
@@ -726,17 +726,17 @@ fn submission_period() {
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
 		// Not allowed as it breaks the min risk buffer, and the current state isn't broken
 		let epoch = <pallet::EpochExecution<mock::Test>>::try_get(0).unwrap();
-		let existing_state_score = PoolsSystem::score_solution(
+		let existing_state_score = PoolSystem::score_solution(
 			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&epoch.clone().best_submission.unwrap().solution(),
 		)
 		.unwrap();
-		let new_solution_score = PoolsSystem::score_solution(
+		let new_solution_score = PoolSystem::score_solution(
 			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&vec![
@@ -756,7 +756,7 @@ fn submission_period() {
 		assert_eq!(new_solution_score < existing_state_score, true);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -774,7 +774,7 @@ fn submission_period() {
 		);
 
 		// Allowed as 1% redemption keeps the risk buffer healthy
-		let partial_fulfilment_solution = PoolsSystem::score_solution(
+		let partial_fulfilment_solution = PoolSystem::score_solution(
 			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&vec![
@@ -792,7 +792,7 @@ fn submission_period() {
 		assert_eq!(partial_fulfilment_solution.healthy(), true);
 		assert_eq!(partial_fulfilment_solution > existing_state_score, true);
 
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -808,7 +808,7 @@ fn submission_period() {
 		));
 
 		// Can submit the same solution twice
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -824,7 +824,7 @@ fn submission_period() {
 		));
 
 		// Slight risk buffer improvement
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -853,7 +853,7 @@ fn execute_info_removed_after_epoch_execute() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -907,9 +907,9 @@ fn execute_info_removed_after_epoch_execute() {
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -926,7 +926,7 @@ fn execute_info_removed_after_epoch_execute() {
 
 		next_block();
 
-		assert_ok!(PoolsSystem::execute_epoch(pool_owner_origin, 0));
+		assert_ok!(PoolSystem::execute_epoch(pool_owner_origin, 0));
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
@@ -938,7 +938,7 @@ fn pool_updates_should_be_constrained() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 		let pool_id = 0;
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			pool_id,
@@ -967,7 +967,7 @@ fn pool_updates_should_be_constrained() {
 			100 * CURRENCY
 		));
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
@@ -978,7 +978,7 @@ fn pool_updates_should_be_constrained() {
 		let realistic_max_nav_age = 1 * 60; // 1 min
 
 		assert_err!(
-			PoolsSystem::update(
+			PoolSystem::update(
 				pool_owner_origin.clone(),
 				pool_id,
 				PoolChanges {
@@ -991,7 +991,7 @@ fn pool_updates_should_be_constrained() {
 			Error::<Test>::PoolParameterBoundViolated
 		);
 		assert_err!(
-			PoolsSystem::update(
+			PoolSystem::update(
 				pool_owner_origin.clone(),
 				pool_id,
 				PoolChanges {
@@ -1010,7 +1010,7 @@ fn pool_updates_should_be_constrained() {
 			100 * CURRENCY
 		));
 
-		assert_ok!(PoolsSystem::update(
+		assert_ok!(PoolSystem::update(
 			pool_owner_origin.clone(),
 			pool_id,
 			PoolChanges {
@@ -1029,16 +1029,16 @@ fn pool_updates_should_be_constrained() {
 		);
 
 		assert_err!(
-			PoolsSystem::execute_scheduled_update(pool_owner_origin.clone(), pool_id),
+			PoolSystem::execute_scheduled_update(pool_owner_origin.clone(), pool_id),
 			Error::<Test>::UpdatePrerequesitesNotFulfilled
 		);
 
 		next_block();
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), pool_id));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), pool_id));
 
 		// Now it works since the epoch was executed and the redemption order was fulfilled
-		assert_ok!(PoolsSystem::execute_scheduled_update(
+		assert_ok!(PoolSystem::execute_scheduled_update(
 			pool_owner_origin.clone(),
 			pool_id
 		));
@@ -1067,7 +1067,7 @@ fn tranche_ids_are_unique() {
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			Origin::signed(0),
 			0,
 			pool_id_0,
@@ -1119,7 +1119,7 @@ fn tranche_ids_are_unique() {
 			None
 		));
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			Origin::signed(0),
 			0,
 			pool_id_1,
@@ -1171,11 +1171,11 @@ fn tranche_ids_are_unique() {
 			None
 		));
 
-		let pool_ids_0 = PoolsSystem::pool(pool_id_0)
+		let pool_ids_0 = PoolSystem::pool(pool_id_0)
 			.unwrap()
 			.tranches
 			.ids_residual_top();
-		let pool_ids_1 = PoolsSystem::pool(pool_id_1)
+		let pool_ids_1 = PoolSystem::pool(pool_id_1)
 			.unwrap()
 			.tranches
 			.ids_residual_top();
@@ -1193,7 +1193,7 @@ fn same_pool_id_not_possible() {
 		let mut rng = rand::thread_rng();
 		let pool_id_1: u64 = rng.gen();
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			Origin::signed(0),
 			0,
 			pool_id_1,
@@ -1211,7 +1211,7 @@ fn same_pool_id_not_possible() {
 		));
 
 		assert_noop!(
-			PoolsSystem::create(
+			PoolSystem::create(
 				Origin::signed(0),
 				0,
 				pool_id_1,
@@ -1242,7 +1242,7 @@ fn valid_tranche_structure_is_enforced() {
 			+ One::one();
 
 		assert_noop!(
-			PoolsSystem::create(
+			PoolSystem::create(
 				Origin::signed(0),
 				0,
 				pool_id_0,
@@ -1297,7 +1297,7 @@ fn valid_tranche_structure_is_enforced() {
 		);
 
 		assert_noop!(
-			PoolsSystem::create(
+			PoolSystem::create(
 				Origin::signed(0),
 				0,
 				pool_id_0,
@@ -1360,7 +1360,7 @@ fn valid_tranche_structure_is_enforced() {
 		);
 
 		assert_noop!(
-			PoolsSystem::create(
+			PoolSystem::create(
 				Origin::signed(0),
 				0,
 				pool_id_0,
@@ -1415,7 +1415,7 @@ fn valid_tranche_structure_is_enforced() {
 		);
 
 		assert_noop!(
-			PoolsSystem::create(
+			PoolSystem::create(
 				Origin::signed(0),
 				0,
 				pool_id_0,
@@ -1480,7 +1480,7 @@ fn triger_challange_period_with_zero_solution() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -1534,14 +1534,14 @@ fn triger_challange_period_with_zero_solution() {
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
 		assert_err!(
-			PoolsSystem::execute_epoch(pool_owner_origin.clone(), 0),
+			PoolSystem::execute_epoch(pool_owner_origin.clone(), 0),
 			Error::<Test>::NoSolutionAvailable
 		);
 
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -1558,7 +1558,7 @@ fn triger_challange_period_with_zero_solution() {
 
 		next_block();
 
-		assert_ok!(PoolsSystem::execute_epoch(pool_owner_origin, 0));
+		assert_ok!(PoolSystem::execute_epoch(pool_owner_origin, 0));
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
@@ -1575,7 +1575,7 @@ fn min_challenge_time_is_respected() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -1629,11 +1629,11 @@ fn min_challenge_time_is_respected() {
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
 		next_block();
 
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -1652,11 +1652,11 @@ fn min_challenge_time_is_respected() {
 		//       and not in blocks. THis needs to be solved in a seperate PR
 		/*
 		assert_noop!(
-			PoolsSystem::execute_epoch(pool_owner_origin.clone(), 0),
+			PoolSystem::execute_epoch(pool_owner_origin.clone(), 0),
 			Error::<Test>::ChallengeTimeHasNotPassed
 		);
 		next_block();
-		assert_ok!(PoolsSystem::execute_epoch(pool_owner_origin, 0));
+		assert_ok!(PoolSystem::execute_epoch(pool_owner_origin, 0));
 		 */
 	});
 }
@@ -1673,7 +1673,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -1733,10 +1733,10 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			1 * CURRENCY
 		));
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1754,7 +1754,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1772,7 +1772,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1790,7 +1790,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1808,7 +1808,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1826,7 +1826,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1842,7 +1842,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			),
 			Error::<Test>::NotNewBestSubmission
 		);
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -1858,7 +1858,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		));
 		next_block();
 
-		assert_ok!(PoolsSystem::execute_epoch(pool_owner_origin, 0));
+		assert_ok!(PoolSystem::execute_epoch(pool_owner_origin, 0));
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
@@ -1875,7 +1875,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -1929,7 +1929,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			88_888_888_888_888_888_799
 		));
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
@@ -1940,10 +1940,10 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			1 * CURRENCY
 		));
 
-		assert_ok!(PoolsSystem::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1961,7 +1961,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1979,7 +1979,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -1997,7 +1997,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -2015,7 +2015,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		);
 
 		assert_err!(
-			PoolsSystem::submit_solution(
+			PoolSystem::submit_solution(
 				pool_owner_origin.clone(),
 				0,
 				vec![
@@ -2032,7 +2032,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			Error::<Test>::NotNewBestSubmission
 		);
 
-		assert_ok!(PoolsSystem::submit_solution(
+		assert_ok!(PoolSystem::submit_solution(
 			pool_owner_origin.clone(),
 			0,
 			vec![
@@ -2049,7 +2049,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 
 		next_block();
 
-		assert_ok!(PoolsSystem::execute_epoch(pool_owner_origin, 0));
+		assert_ok!(PoolSystem::execute_epoch(pool_owner_origin, 0));
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
@@ -2067,7 +2067,7 @@ fn only_usd_as_pool_currency_allowed() {
 			+ One::one();
 
 		assert_noop!(
-			PoolsSystem::create(
+			PoolSystem::create(
 				pool_owner_origin.clone(),
 				pool_owner.clone(),
 				0,
@@ -2100,7 +2100,7 @@ fn only_usd_as_pool_currency_allowed() {
 		);
 
 		assert_noop!(
-			PoolsSystem::create(
+			PoolSystem::create(
 				pool_owner_origin.clone(),
 				pool_owner.clone(),
 				0,
@@ -2132,7 +2132,7 @@ fn only_usd_as_pool_currency_allowed() {
 			Error::<Test>::InvalidCurrency
 		);
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -2177,7 +2177,7 @@ fn creation_takes_deposit() {
 		// total deposit for this owner is 1
 		let pool_owner = 1_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
@@ -2215,7 +2215,7 @@ fn creation_takes_deposit() {
 		// Pool creation one:
 		// Owner 1, second deposit
 		// total deposit for this owner is 2
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			1,
@@ -2255,7 +2255,7 @@ fn creation_takes_deposit() {
 		// total deposit for this owner is 1
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			2,
@@ -2304,7 +2304,7 @@ fn create_tranche_token_metadata() {
 		let token_symbol =
 			BoundedVec::try_from("ST".as_bytes().to_owned()).expect("Can't create BoundedVec");
 
-		assert_ok!(PoolsSystem::create(
+		assert_ok!(PoolSystem::create(
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			3,

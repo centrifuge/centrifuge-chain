@@ -48,7 +48,7 @@ members = [
   "pallets/nft",
   "pallets/nft-sales",
   "pallets/permissions",
-  "pallets/pools-system",
+  "pallets/pool-system",
   "pallets/restricted-tokens",
   "pallets/rewards",
   "runtime/altair",
@@ -127,7 +127,7 @@ try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = 
 cfg-types = { path = "./libs/types" }
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
-pallet-pools-system = { path = "./pallets/pools-system" }
+pallet-pool-system = { path = "./pallets/pool-system" }
 
 # frame dependencies
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }

@@ -24,7 +24,7 @@ pub mod pallet_migration_manager;
 pub mod pallet_multisig;
 pub mod pallet_nft_sales;
 pub mod pallet_permissions;
-pub mod pallet_pools_system;
+pub mod pallet_pool_system;
 pub mod pallet_preimage;
 pub mod pallet_proxy;
 pub mod pallet_scheduler;

@@ -57,7 +57,7 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
 use pallet_investments::OrderType;
-use pallet_pools_system::{
+use pallet_pool_system::{
 	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
 };
 use pallet_restricted_tokens::{
@@ -437,9 +437,9 @@ impl InstanceFilter<Call> for ProxyType {
 				// Borrowers should be able to close and execute an epoch
 				// in order to get liquidity from repayments in previous epochs.
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
-				Call::PoolsSystem(pallet_pools_system::Call::close_epoch{..}) |
-				Call::PoolsSystem(pallet_pools_system::Call::submit_solution{..}) |
-				Call::PoolsSystem(pallet_pools_system::Call::execute_epoch{..}) |
+				Call::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				Call::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				Call::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
 				Call::Utility(pallet_utility::Call::batch_all{..}) |
 				Call::Utility(pallet_utility::Call::batch{..})
 			),
@@ -453,9 +453,9 @@ impl InstanceFilter<Call> for ProxyType {
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
-				Call::PoolsSystem(pallet_pools_system::Call::close_epoch{..}) |
-				Call::PoolsSystem(pallet_pools_system::Call::submit_solution{..}) |
-				Call::PoolsSystem(pallet_pools_system::Call::execute_epoch{..}) |
+				Call::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				Call::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				Call::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
 				Call::Utility(pallet_utility::Call::batch_all{..}) |
 				Call::Utility(pallet_utility::Call::batch{..})
 			),
@@ -863,7 +863,7 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	/// The index with which this pallet is instantiated in this runtime.
-	pub PoolPalletIndex: u8 = <PoolsSystem as PalletInfoAccess>::index() as u8;
+	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
@@ -896,7 +896,7 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 100 * CFG;
 }
 
-impl pallet_pools_system::Config for Runtime {
+impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type ChallengeTime = ChallengeTime;
@@ -931,7 +931,7 @@ impl pallet_pools_system::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
-	type WeightInfo = weights::pallet_pools_system::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pool_system::SubstrateWeight<Runtime>;
 }
 
 pub struct PoolCurrency;
@@ -990,7 +990,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		// - investment side starts new order round with zero orders at epoch_closing
 		// - the pool might only fulfill x < 100% of redemptions
 		//         -> not all redemptions would be fulfilled after epoch_execution
-		if PoolsSystem::epoch_targets(pool_id).is_some() {
+		if PoolSystem::epoch_targets(pool_id).is_some() {
 			return false;
 		}
 
@@ -1026,7 +1026,7 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
 		match base {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				match <pallet_pools_system::Pallet<Runtime> as PoolInspect<
+				match <pallet_pool_system::Pallet<Runtime> as PoolInspect<
 				AccountId,
 				CurrencyId,
 			>>::get_tranche_token_price(pool_id, tranche_id) {
@@ -1138,7 +1138,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type NonFungible = Uniques;
 	type Permission = Permissions;
-	type Pool = PoolsSystem;
+	type Pool = PoolSystem;
 	type Rate = Rate;
 	type Time = Timestamp;
 	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
@@ -1391,7 +1391,7 @@ parameter_types! {
 	pub const MaxOutstandingCollects: u32 = 10;
 }
 impl pallet_investments::Config for Runtime {
-	type Accountant = PoolsSystem;
+	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
 	type Event = Event;
@@ -1552,7 +1552,7 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
-		PoolsSystem: pallet_pools_system::{Pallet, Call, Storage, Event<T>} = 95,
+		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 95,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
@@ -1775,13 +1775,13 @@ impl_runtime_apis! {
 	// PoolsApi
 	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
-			pallet_pools_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
+			pallet_pool_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
 
 		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>{
-			let pool = pallet_pools_system::Pool::<Runtime>::get(pool_id)?;
-			let epoch_execution_info = pallet_pools_system::EpochExecution::<Runtime>::get(pool_id)?;
-			pallet_pools_system::Pallet::<Runtime>::score_solution(
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			let epoch_execution_info = pallet_pool_system::EpochExecution::<Runtime>::get(pool_id)?;
+			pallet_pool_system::Pallet::<Runtime>::score_solution(
 				&pool,
 				&epoch_execution_info,
 				&solution
@@ -1790,7 +1790,7 @@ impl_runtime_apis! {
 
 		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
 			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
-			let mut pool = pallet_pools_system::Pool::<Runtime>::get(pool_id)?;
+			let mut pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
 				.ok()
 				.map(|(latest, _)| latest.into())?;
@@ -1805,7 +1805,7 @@ impl_runtime_apis! {
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
 			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
-			let mut pool = pallet_pools_system::Pool::<Runtime>::get(pool_id)?;
+			let mut pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
 				.ok()
 				.map(|(latest, _)| latest.into())?;
@@ -1817,18 +1817,18 @@ impl_runtime_apis! {
 		}
 
 		fn tranche_ids(pool_id: PoolId) -> Option<Vec<TrancheId>>{
-			let pool = pallet_pools_system::Pool::<Runtime>::get(pool_id)?;
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			Some(pool.tranches.ids_residual_top())
 		}
 
 		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>{
-			let pool = pallet_pools_system::Pool::<Runtime>::get(pool_id)?;
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			let index: usize = tranche_index.try_into().ok()?;
 			pool.tranches.ids_residual_top().get(index).cloned()
 		}
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
-			let pool = pallet_pools_system::Pool::<Runtime>::get(pool_id)?;
+			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
 		}
 	}
@@ -1878,7 +1878,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
-			add_benchmark!(params, batches, pallet_pools_system, PoolsSystem);
+			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
@@ -1910,7 +1910,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_pools_system, PoolsSystem);
+			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
