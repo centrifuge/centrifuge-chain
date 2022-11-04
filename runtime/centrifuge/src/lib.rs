@@ -170,7 +170,7 @@ impl frame_system::Config for Runtime {
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
 	/// The hashing algorithm used.
-	type Hashing = BlakeTwo256;
+	type Hashing = Hashing;
 	/// The header type.
 	type Header = Header;
 	/// The index type for storing how many extrinsics an account has signed.
