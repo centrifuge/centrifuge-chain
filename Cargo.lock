@@ -998,6 +998,7 @@ dependencies = [
  "try-runtime-cli",
  "url",
  "vergen",
+ "xcm",
 ]
 
 [[package]]

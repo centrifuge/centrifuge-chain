@@ -171,6 +171,9 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional
 # integration testing
 runtime-integration-tests = { path = "runtime/integration-tests", optional = true }
 
+# xcm
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.29" }
+
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
 vergen = "3.0.4"
