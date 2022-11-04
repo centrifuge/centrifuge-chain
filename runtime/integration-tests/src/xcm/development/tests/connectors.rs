@@ -33,13 +33,13 @@ use cfg_types::{
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, Pools, XTokens, XcmTransactor,
+	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, PoolSystem, XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, dispatch::Weight};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_connectors::{encoded_contract_call, Domain, Message, ParachainId, Router, XcmDomain};
-use pallet_pools::{TrancheInput, TrancheMetadata, TrancheType};
+use pallet_pool_system::{TrancheInput, TrancheMetadata, TrancheType};
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::H160;
 use sp_runtime::{
@@ -146,7 +146,7 @@ fn add_pool_works() {
 		));
 
 		// then we can create the pool
-		assert_ok!(Pools::create(
+		assert_ok!(PoolSystem::create(
 			Origin::signed(BOB.into()),
 			BOB.into(),
 			pool_id,

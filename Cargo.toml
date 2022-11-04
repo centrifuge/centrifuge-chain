@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-chain"
-version = "0.10.21"
+version = "0.10.22"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge chain implementation in Rust."
 build = "build.rs"
@@ -29,6 +29,7 @@ path = "src/main.rs"
 members = [
   "libs/primitives",
   "libs/proofs",
+  "libs/test-utils",
   "libs/traits",
   "libs/types",
   "pallets/anchors",
@@ -42,20 +43,15 @@ members = [
   "pallets/interest-accrual",
   "pallets/investments",
   "pallets/keystore",
+  "pallets/liquidity-rewards",
   "pallets/loans",
   "pallets/migration",
   "pallets/nft",
   "pallets/nft-sales",
   "pallets/permissions",
-  "pallets/rewards",
-  "pallets/liquidity-rewards",
-  "libs/traits",
-  "libs/test-utils",
-  "libs/types",
-  "libs/proofs",
-  "libs/primitives",
-  "pallets/pools",
+  "pallets/pool-system",
   "pallets/restricted-tokens",
+  "pallets/rewards",
   "runtime/altair",
   "runtime/centrifuge",
   "runtime/common",
@@ -132,7 +128,7 @@ try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = 
 cfg-types = { path = "./libs/types" }
 pallet-anchors = { path = "./pallets/anchors" }
 pallet-loans = { path = "./pallets/loans" }
-pallet-pools = { path = "./pallets/pools" }
+pallet-pool-system = { path = "./pallets/pool-system" }
 
 # frame dependencies
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }

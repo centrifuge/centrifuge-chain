@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.21"
+version = "0.10.22"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -139,7 +139,7 @@ dependencies = [
  "pallet-nft-sales",
  "pallet-offences",
  "pallet-permissions",
- "pallet-pools",
+ "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
@@ -903,7 +903,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.21"
+version = "0.10.22"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -933,7 +933,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-im-online",
  "pallet-loans",
- "pallet-pools",
+ "pallet-pool-system",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec 3.2.1",
@@ -2358,7 +2358,7 @@ dependencies = [
  "pallet-nft-sales",
  "pallet-offences",
  "pallet-permissions",
- "pallet-pools",
+ "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
@@ -6373,7 +6373,7 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-loans",
  "pallet-permissions",
- "pallet-pools",
+ "pallet-pool-system",
  "pallet-timestamp",
  "pallet-uniques",
  "pallet-xcm-transactor",
@@ -6777,7 +6777,7 @@ dependencies = [
  "pallet-balances",
  "pallet-interest-accrual",
  "pallet-permissions",
- "pallet-pools",
+ "pallet-pool-system",
  "pallet-timestamp",
  "pallet-uniques",
  "parachain-info",
@@ -6987,7 +6987,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-pools"
+name = "pallet-pool-system"
 version = "3.0.0"
 dependencies = [
  "cfg-primitives",
@@ -9643,7 +9643,7 @@ dependencies = [
  "pallet-balances",
  "pallet-collective",
  "pallet-permissions",
- "pallet-pools",
+ "pallet-pool-system",
  "pallet-treasury",
  "parity-scale-codec 3.2.1",
  "scale-info",
@@ -9690,7 +9690,7 @@ dependencies = [
  "pallet-connectors",
  "pallet-loans",
  "pallet-permissions",
- "pallet-pools",
+ "pallet-pool-system",
  "pallet-transaction-payment",
  "pallet-uniques",
  "pallet-xcm",

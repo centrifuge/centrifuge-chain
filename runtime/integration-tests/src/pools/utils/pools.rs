@@ -19,12 +19,14 @@ use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
-use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheMetadata, TrancheType};
+use pallet_pool_system::{
+	Call as PoolSystemCall, TrancheIndex, TrancheInput, TrancheMetadata, TrancheType,
+};
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{
 	chain::centrifuge::{
-		Call, Loans, MaxTokenNameLength, MaxTokenSymbolLength, OrmlTokens, Permissions, Pools,
+		Call, Loans, MaxTokenNameLength, MaxTokenSymbolLength, OrmlTokens, Permissions, PoolSystem,
 		Timestamp, PARA_ID,
 	},
 	pools::utils::{
@@ -350,7 +352,7 @@ pub fn create_pool_call(
 	max_reserve: Balance,
 	tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 ) -> Call {
-	Call::Pools(PoolsCall::create {
+	Call::PoolSystem(PoolSystemCall::create {
 		admin,
 		pool_id,
 		tranche_inputs,
@@ -422,7 +424,7 @@ mod with_ext {
 	/// * update_nav() is called with Keyring::Admin as calley
 	pub fn get_tranche_prices(pool: PoolId) -> Vec<Rate> {
 		let now = Timestamp::now();
-		let mut details = Pools::pool(pool).expect("POOLS: Getting pool failed.");
+		let mut details = PoolSystem::pool(pool).expect("POOLS: Getting pool failed.");
 		Loans::update_nav(Keyring::Admin.into(), pool).expect("LOANS: UpdatingNav failed");
 		let (epoch_nav, _) =
 			<Loans as PoolNAV<PoolId, Balance>>::nav(pool).expect("LOANS: Getting NAV failed");

@@ -27,8 +27,8 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
-use pallet_pools::TrancheLoc;
-use pallet_pools::{
+use pallet_pool_system::TrancheLoc;
+use pallet_pool_system::{
 	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheMetadata, TrancheType,
 };
 use sp_runtime::{
@@ -115,20 +115,23 @@ where
 }
 
 pub(crate) fn create<T, OM: Investment<T::AccountId>>(
-	pool_id: <T as pallet_pools::Config>::PoolId,
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
 	owner: T::AccountId,
 	currency_id: CurrencyId,
 ) where
-	T: pallet_pools::Config + frame_system::Config + pallet_loans::Config,
-	<T as pallet_pools::Config>::Balance: From<u128>,
-	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-	<T as pallet_pools::Config>::EpochId: From<u32>,
-	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
+	T: pallet_pool_system::Config + frame_system::Config + pallet_loans::Config,
+	<T as pallet_pool_system::Config>::Balance: From<u128>,
+	<T as pallet_pool_system::Config>::CurrencyId: From<CurrencyId>,
+	<T as pallet_pool_system::Config>::EpochId: From<u32>,
+	<T as pallet_pool_system::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 	<OM as Investment<T::AccountId>>::Amount: From<u128>,
 	<OM as Investment<T::AccountId>>::InvestmentId: From<TrancheCurrency>,
 {
-	let mint_amount = <T as pallet_pools::Config>::PoolDeposit::get() * 2.into();
-	<T as pallet_pools::Config>::Currency::deposit_creating(&owner.clone().into(), mint_amount);
+	let mint_amount = <T as pallet_pool_system::Config>::PoolDeposit::get() * 2.into();
+	<T as pallet_pool_system::Config>::Currency::deposit_creating(
+		&owner.clone().into(),
+		mint_amount,
+	);
 
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
@@ -176,12 +179,17 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 	)
 	.expect("update nav should work");
 
-	pallet_pools::Pool::<T>::try_mutate(pool_id, |pool| -> Result<(), pallet_pools::Error<T>> {
-		let pool = pool.as_mut().ok_or(pallet_pools::Error::<T>::NoSuchPool)?;
-		pool.parameters.min_epoch_time = 0;
-		pool.parameters.max_nav_age = 999_999_999_999;
-		Ok(())
-	})
+	pallet_pool_system::Pool::<T>::try_mutate(
+		pool_id,
+		|pool| -> Result<(), pallet_pool_system::Error<T>> {
+			let pool = pool
+				.as_mut()
+				.ok_or(pallet_pool_system::Error::<T>::NoSuchPool)?;
+			pool.parameters.min_epoch_time = 0;
+			pool.parameters.max_nav_age = 999_999_999_999;
+			Ok(())
+		},
+	)
 	.expect("Could not fixup pool parameters");
 
 	assert_ok!(PoolPallet::<T>::close_epoch(
@@ -220,13 +228,13 @@ where
 /// Only used for runtime benchmarks at the moment
 #[cfg(feature = "runtime-benchmarks")]
 pub(crate) fn get_tranche_id<T>(
-	pool_id: <T as pallet_pools::Config>::PoolId,
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
 	index: u64,
-) -> <T as pallet_pools::Config>::TrancheId
+) -> <T as pallet_pool_system::Config>::TrancheId
 where
-	T: pallet_pools::Config,
+	T: pallet_pool_system::Config,
 {
-	pallet_pools::Pool::<T>::get(pool_id)
+	pallet_pool_system::Pool::<T>::get(pool_id)
 		.unwrap()
 		.tranches
 		.tranche_id(TrancheLoc::Index(index))
@@ -235,7 +243,7 @@ where
 
 pub(crate) fn assert_last_event<T, E>(generic_event: E)
 where
-	T: pallet_loans::Config + pallet_pools::Config,
+	T: pallet_loans::Config + pallet_pool_system::Config,
 	E: Into<<T as frame_system::Config>::Event>,
 {
 	let events = frame_system::Pallet::<T>::events();

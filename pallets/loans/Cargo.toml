@@ -37,7 +37,7 @@ orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-m
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
-pallet-pools = { path = "../pools", optional = true, default-features = false }
+pallet-pool-system = { path = "../pool-system", optional = true, default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
 
@@ -54,7 +54,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.29" }
 
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
-pallet-pools = { path = "../pools", default-features = true }
+pallet-pool-system = { path = "../pool-system", default-features = true }
 
 [features]
 default = ['std']
@@ -67,7 +67,7 @@ runtime-benchmarks = [
   "orml-tokens/runtime-benchmarks",
   "orml-traits",
   "pallet-timestamp/runtime-benchmarks",
-  "pallet-pools/runtime-benchmarks",
+  "pallet-pool-system/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "cfg-test-utils/runtime-benchmarks",
 ]

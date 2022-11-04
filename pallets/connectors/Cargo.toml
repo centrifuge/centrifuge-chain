@@ -52,7 +52,7 @@ serde = { version = "1.0.102" }
 pallet-interest-accrual = { path = "../interest-accrual", default-features = true }
 pallet-loans = { path = "../loans", default-features = true }
 pallet-permissions = { path = "../permissions", default-features = true }
-pallet-pools = { path = "../pools", default-features = true }
+pallet-pool-system = { path = "../pool-system", default-features = true }
 
 # Substrate crates & pallets
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
@@ -97,6 +97,6 @@ std = [
   'pallet-interest-accrual/std',
   'pallet-permissions/std',
   'pallet-loans/std',
-  'pallet-pools/std',
+  'pallet-pool-system/std',
   'pallet-uniques/std',
 ]
