@@ -30,8 +30,9 @@ pub mod types {
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
+	use sp_runtime::traits;
 	use sp_runtime::{
-		traits::{BlakeTwo256, Hash as HashT, IdentifyAccount, Verify},
+		traits::{BlakeTwo256 IdentifyAccount, Verify},
 		OpaqueExtrinsic,
 	};
 	use sp_std::vec::Vec;
@@ -90,7 +91,7 @@ pub mod types {
 	pub type Index = u32;
 
 	/// A hash of some data used by the chain.
-	pub type Hash = <BlakeTwo256 as HashT>::Output;
+	pub type Hash = <BlakeTwo256 as traits::Hash>::Output;
 
 	/// The hashing algorithm used by the chain
 	///
