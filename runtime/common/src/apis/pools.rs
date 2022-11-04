@@ -10,15 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use codec::Codec;
-use pallet_pools::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
+use pallet_pool_system::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
 use sp_api::decl_runtime_apis;
 use sp_std::vec::Vec;
 
 decl_runtime_apis! {
-	/// Runtime for pallet-pools.
+	/// Runtime for pallet-pool-system.
 	///
-	/// Note: That the runtime api is pallet specific, while the rpcs method
-	///       are more focused on domain-specifc logic
+	/// Note: The runtime api is pallet specific, while the RPC methods
+	///       are more focused on domain-specific logic
 	pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio>
 	where
 		PoolId: Codec,

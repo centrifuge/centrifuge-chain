@@ -17,7 +17,7 @@ Centrifuge is the infrastructure that facilitates the decentralized financing of
 ## Building blocks
 On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallets/) framework, Centrifuge Chain is composed of custom pallets which can be found inside the `pallets` folder. The following list gives a brief overview, and links to the corresponding documentation.
 
-- [**pools**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/pools) ([docs](https://reference.centrifuge.io/pallet_pools/index.html)): Creating and managing investment pools. It is bundling loans, slicing pools into tranches, and controlling investment epochs.
+- [**pool-system**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/pool-system) ([docs](https://reference.centrifuge.io/pallet_pool_system/index.html)): Creating and managing investment pools. It is bundling loans, slicing pools into tranches, and controlling investment epochs.
 
 - [**loans**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/loans) ([docs](https://reference.centrifuge.io/pallet_loans/index.html)): Locking a collateral NFT into a pool. The loans pallet is also used for bookkeeping loan values and outstanding debt.
 
