@@ -30,9 +30,8 @@ pub mod types {
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
-	use sp_runtime::traits;
 	use sp_runtime::{
-		traits::{BlakeTwo256 IdentifyAccount, Verify},
+		traits::{self, BlakeTwo256, IdentifyAccount, Verify},
 		OpaqueExtrinsic,
 	};
 	use sp_std::vec::Vec;
