@@ -17,7 +17,7 @@ Centrifuge is the infrastructure that facilitates the decentralized financing of
 ## Building blocks
 On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallets/) framework, Centrifuge Chain is composed of custom pallets which can be found inside the `pallets` folder. The following list gives a brief overview, and links to the corresponding documentation.
 
-- [**pools**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/pools) ([docs](https://reference.centrifuge.io/pallet_pools/index.html)): Creating and managing investment pools. It is bundling loans, slicing pools into tranches, and controlling investment epochs.
+- [**pool-system**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/pool-system) ([docs](https://reference.centrifuge.io/pallet_pool_system/index.html)): Creating and managing investment pools. It is bundling loans, slicing pools into tranches, and controlling investment epochs.
 
 - [**loans**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/loans) ([docs](https://reference.centrifuge.io/pallet_loans/index.html)): Locking a collateral NFT into a pool. The loans pallet is also used for bookkeeping loan values and outstanding debt.
 
@@ -46,6 +46,10 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 - [**permissions**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/permissions) ([docs](https://reference.centrifuge.io/pallet_permissions/index.html)): Linking roles to accounts. It is adding and removing relationships between roles and accounts on chain.
 
 - [**restricted-tokens**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/restricted-tokens) ([docs](https://reference.centrifuge.io/pallet_restricted_tokens/index.html)): Transferring tokens and setting balances. It is wrapping `orml-tokens` with the addition of checking for permissions.
+
+- [**rewards**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/rewards) ([docs](https://reference.centrifuge.io/pallet_rewards/index.html)): Implement a [scalable reward distribution](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism that can be used for other pallets to create different rewards systems.
+
+- [**liquidity-rewards**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/liquidity-rewards) ([docs](https://reference.centrifuge.io/pallet_liquidity_rewards/index.html)): Epoch based reward system.
 
 ## Developing
 Instructions for building, testing, and developing Centrifuge Chain can be found in [`docs/DEVELOPING.md`](docs/DEVELOPING.md).

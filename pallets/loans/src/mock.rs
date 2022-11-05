@@ -16,13 +16,13 @@
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
 use cfg_primitives::{
-	Balance, CollectionId, ItemId, Moment, PoolId, TrancheId, TrancheWeight,
+	Balance, CollectionId, ItemId, Moment, PoolEpochId, PoolId, TrancheId, TrancheWeight,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use cfg_traits::PoolUpdateGuard;
 use cfg_types::{
 	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolLocator, Rate, Role,
-	TimeProvider, TrancheToken,
+	TimeProvider, TrancheCurrency,
 };
 use frame_support::{
 	parameter_types,
@@ -31,7 +31,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
+use pallet_pool_system::{PoolDetails, ScheduledUpdateDetails};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -40,7 +40,7 @@ use sp_runtime::{
 };
 
 use crate as pallet_loans;
-use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
+use crate::test_utils::{FundsAccount, JuniorTrancheId, SeniorTrancheId};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -54,13 +54,14 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
+		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>},
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>},
+		OrderManager: cfg_test_utils::mocks::order_manager::{Pallet, Storage}
 	}
 );
 
@@ -83,7 +84,7 @@ parameter_types! {
 impl frame_system::Config for MockRuntime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
-	type BaseCallFilter = frame_support::traits::Everything;
+	type BaseCallFilter = Everything;
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
 	type BlockNumber = u64;
@@ -149,11 +150,21 @@ impl orml_tokens::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+impl cfg_test_utils::mocks::order_manager::Config for MockRuntime {
+	type Accountant = PoolSystem;
+	type FundsAccount = FundsAccount;
+	type InvestmentId = TrancheCurrency;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type Tokens = Tokens;
+	type TrancheId = TrancheId;
+}
+
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
 
 	/// The index with which this pallet is instantiated in this runtime.
-	pub PoolPalletIndex: u8 = <Pools as PalletInfoAccess>::index() as u8;
+	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
 	pub const ChallengeTime: u64 = 0; // disable challenge period
 	pub const MinUpdateDelay: u64 = 0; // no delay
@@ -183,25 +194,24 @@ parameter_types! {
 	pub const ParachainId: u32 = 2008;
 }
 
-cfg_traits::mocks::orml_asset_registry::impl_mock_registry! {
+cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	RegistryMock,
 	CurrencyId,
 	Balance,
 	CustomMetadata
 }
 
-impl pallet_pools::Config for MockRuntime {
+impl pallet_pool_system::Config for MockRuntime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
-	type BalanceRatio = Rate;
 	type ChallengeTime = ChallengeTime;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type EpochId = u32;
+	type EpochId = PoolEpochId;
 	type Event = Event;
-	type InterestRate = Rate;
+	type Investments = OrderManager;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
@@ -219,10 +229,11 @@ impl pallet_pools::Config for MockRuntime {
 	type PoolCurrency = Everything;
 	type PoolDeposit = ZeroDeposit;
 	type PoolId = PoolId;
+	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
 	type TrancheId = [u8; 16];
-	type TrancheToken = TrancheToken;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
 	type WeightInfo = ();
@@ -233,6 +244,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Moment;
 	type PoolDetails = PoolDetails<
 		CurrencyId,
+		TrancheCurrency,
 		u32,
 		Balance,
 		Rate,
@@ -350,7 +362,7 @@ impl pallet_loans::Config for MockRuntime {
 	type MaxWriteOffStates = MaxWriteOffStates;
 	type NonFungible = Uniques;
 	type Permission = Permissions;
-	type Pool = Pools;
+	type Pool = PoolSystem;
 	type Rate = Rate;
 	type Time = Timestamp;
 	type WeightInfo = ();
@@ -423,8 +435,11 @@ impl TestExternalitiesBuilder {
 					100_000 * CURRENCY,
 				),
 				(7, USD, 100 * CURRENCY),
-				(SeniorInvestor::get(), USD, 1000 * CURRENCY),
-				(JuniorInvestor::get(), USD, 1000 * CURRENCY),
+				(
+					FundsAccount::get().into_account_truncating(),
+					USD,
+					2000 * CURRENCY,
+				),
 			],
 		}
 		.assimilate_storage(&mut storage)

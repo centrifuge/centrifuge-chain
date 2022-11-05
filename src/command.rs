@@ -409,6 +409,7 @@ pub fn run() -> Result<()> {
 					},
 					BenchmarkCmd::Block(_)
 					| BenchmarkCmd::Storage(_)
+					| BenchmarkCmd::Extrinsic(_)
 					| BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
 					BenchmarkCmd::Machine(cmd) => runner
 						.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
@@ -535,22 +536,17 @@ impl CliConfiguration<Self> for RelayChainCli {
 	}
 
 	fn base_path(&self) -> Result<Option<BasePath>> {
-		Ok(self
-			.shared_params()
+		self.shared_params()
 			.base_path()
-			.or_else(|| self.base_path.clone().map(Into::into)))
+			.or_else(|_| Ok(self.base_path.clone().map(Into::into)))
 	}
 
 	fn role(&self, is_dev: bool) -> Result<sc_service::Role> {
 		self.base.base.role(is_dev)
 	}
 
-	fn transaction_pool(&self) -> Result<sc_service::config::TransactionPoolOptions> {
-		self.base.base.transaction_pool()
-	}
-
-	fn state_cache_child_ratio(&self) -> Result<Option<usize>> {
-		self.base.base.state_cache_child_ratio()
+	fn transaction_pool(&self, is_dev: bool) -> Result<sc_service::config::TransactionPoolOptions> {
+		self.base.base.transaction_pool(is_dev)
 	}
 
 	fn chain_id(&self, is_dev: bool) -> Result<String> {

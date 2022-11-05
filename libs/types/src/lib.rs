@@ -108,7 +108,8 @@ where
 	}
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TotalOrder<Balance> {
 	pub amount: Balance,
 }
@@ -122,7 +123,8 @@ impl<Balance: Zero> Default for TotalOrder<Balance> {
 }
 
 /// The order type of the pallet.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Order<Balance, OrderId> {
 	amount: Balance,
 	submitted_at: OrderId,

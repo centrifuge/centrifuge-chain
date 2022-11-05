@@ -143,7 +143,7 @@ pub type Barrier = (
 	AllowSubscriptionsFrom<Everything>,
 );
 
-/// Means for transacting the fungibles assets of ths parachain.
+/// Means for transacting the fungibles assets of this parachain.
 pub type FungiblesTransactor = FungiblesAdapter<
 	// Use this fungibles implementation
 	Tokens,
@@ -163,7 +163,7 @@ pub type FungiblesTransactor = FungiblesAdapter<
 
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
-	pub const UnitWeightCost: Weight = 200_000_000;
+	pub const UnitWeightCost: u64 = 200_000_000;
 	pub const MaxInstructions: u32 = 100;
 }
 
@@ -346,7 +346,7 @@ pub type XcmOriginToTransactDispatchOrigin = (
 );
 
 parameter_types! {
-	pub const BaseXcmWeight: Weight = 100_000_000;
+	pub const BaseXcmWeight: u64 = 100_000_000;
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 

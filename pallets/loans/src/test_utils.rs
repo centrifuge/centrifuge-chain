@@ -12,24 +12,24 @@
 // GNU General Public License for more details.
 
 //! Module provides testing utilities for benchmarking and tests.
-use cfg_primitives::{Moment, CFG as CURRENCY};
-use cfg_traits::{Permissions, PoolNAV};
-use cfg_types::{CurrencyId, PermissionScope, PoolLocator, PoolRole, Role};
+use cfg_primitives::CFG as CURRENCY;
+use cfg_traits::{Investment, PoolNAV, TrancheCurrency as _};
+use cfg_types::{CurrencyId, TrancheCurrency};
 use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
 	sp_runtime::traits::One,
 	traits::{
-		fungibles::Transfer,
 		tokens::nonfungibles::{Create, Inspect, Mutate},
 		Currency, Get,
 	},
-	Blake2_128, BoundedVec, StorageHasher,
+	Blake2_128, BoundedVec, PalletId, StorageHasher,
 };
 use frame_system::RawOrigin;
-use pallet_pools::{
-	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheLoc, TrancheMetadata,
-	TrancheType,
+#[cfg(feature = "runtime-benchmarks")]
+use pallet_pool_system::TrancheLoc;
+use pallet_pool_system::{
+	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheMetadata, TrancheType,
 };
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -40,20 +40,6 @@ use sp_std::vec;
 use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 
-type TrancheId = [u8; 16];
-type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
-
-pub(crate) fn set_role<T: pallet_loans::Config>(
-	scope: PermissionScope<
-		<T::Pool as cfg_traits::PoolInspect<T::AccountId, T::CurrencyId>>::PoolId,
-		<T as pallet_loans::Config>::CurrencyId,
-	>,
-	who: T::AccountId,
-	role: Role<TrancheId, Moment>,
-) {
-	PermissionsOf::<T>::add(scope, who, role).expect("adding permissions should not fail");
-}
-
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
 	Blake2_128::hash(&hash_input)
@@ -62,6 +48,7 @@ fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 parameter_types! {
 	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
 	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+	pub const FundsAccount: PalletId = cfg_test_utils::TEST_PALLET_ID;
 }
 
 pub(crate) fn create_nft_class<T>(
@@ -127,23 +114,24 @@ where
 	loan_id
 }
 
-pub(crate) fn create<T>(
-	pool_id: T::PoolId,
+pub(crate) fn create<T, OM: Investment<T::AccountId>>(
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
 	owner: T::AccountId,
-	junior_investor: T::AccountId,
-	senior_investor: T::AccountId,
 	currency_id: CurrencyId,
 ) where
-	T: pallet_pools::Config + frame_system::Config + pallet_loans::Config,
-	<T as pallet_pools::Config>::Balance: From<u128>,
-	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-	<T as pallet_pools::Config>::EpochId: From<u32>,
-	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
+	T: pallet_pool_system::Config + frame_system::Config + pallet_loans::Config,
+	<T as pallet_pool_system::Config>::Balance: From<u128>,
+	<T as pallet_pool_system::Config>::CurrencyId: From<CurrencyId>,
+	<T as pallet_pool_system::Config>::EpochId: From<u32>,
+	<T as pallet_pool_system::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
+	<OM as Investment<T::AccountId>>::Amount: From<u128>,
+	<OM as Investment<T::AccountId>>::InvestmentId: From<TrancheCurrency>,
 {
-	let pool_account = PoolLocator { pool_id }.into_account_truncating();
-
-	let mint_amount = <T as pallet_pools::Config>::PoolDeposit::get() * 2.into();
-	<T as pallet_pools::Config>::Currency::deposit_creating(&owner.clone().into(), mint_amount);
+	let mint_amount = <T as pallet_pool_system::Config>::PoolDeposit::get() * 2.into();
+	<T as pallet_pool_system::Config>::Currency::deposit_creating(
+		&owner.clone().into(),
+		mint_amount,
+	);
 
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
@@ -176,33 +164,14 @@ pub(crate) fn create<T>(
 		None
 	));
 
-	set_role::<T>(
-		PermissionScope::Pool(pool_id.into()),
-		junior_investor.clone(),
-		Role::PoolRole(PoolRole::TrancheInvestor(
-			JuniorTrancheId::get().into(),
-			999_999_999u32.into(),
-		)),
-	);
-	set_role::<T>(
-		PermissionScope::Pool(pool_id.into()),
-		senior_investor.clone(),
-		Role::PoolRole(PoolRole::TrancheInvestor(
-			SeniorTrancheId::get().into(),
-			999_999_999u32.into(),
-		)),
-	);
-
-	assert_ok!(PoolPallet::<T>::update_invest_order(
-		RawOrigin::Signed(junior_investor.clone()).into(),
-		pool_id,
-		TrancheLoc::Id(JuniorTrancheId::get().into()),
+	assert_ok!(OM::update_investment(
+		&FundsAccount::get().into_account_truncating(),
+		TrancheCurrency::generate(pool_id.into(), JuniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
-	assert_ok!(PoolPallet::<T>::update_invest_order(
-		RawOrigin::Signed(senior_investor.clone()).into(),
-		pool_id,
-		TrancheLoc::Id(SeniorTrancheId::get().into()),
+	assert_ok!(OM::update_investment(
+		&FundsAccount::get().into_account_truncating(),
+		TrancheCurrency::generate(pool_id.into(), SeniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
 	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, <T as pallet_loans::Config>::Balance>>::update_nav(
@@ -210,12 +179,17 @@ pub(crate) fn create<T>(
 	)
 	.expect("update nav should work");
 
-	pallet_pools::Pool::<T>::try_mutate(pool_id, |pool| -> Result<(), pallet_pools::Error<T>> {
-		let pool = pool.as_mut().ok_or(pallet_pools::Error::<T>::NoSuchPool)?;
-		pool.parameters.min_epoch_time = 0;
-		pool.parameters.max_nav_age = 999_999_999_999;
-		Ok(())
-	})
+	pallet_pool_system::Pool::<T>::try_mutate(
+		pool_id,
+		|pool| -> Result<(), pallet_pool_system::Error<T>> {
+			let pool = pool
+				.as_mut()
+				.ok_or(pallet_pool_system::Error::<T>::NoSuchPool)?;
+			pool.parameters.min_epoch_time = 0;
+			pool.parameters.max_nav_age = 999_999_999_999;
+			Ok(())
+		},
+	)
 	.expect("Could not fixup pool parameters");
 
 	assert_ok!(PoolPallet::<T>::close_epoch(
@@ -225,22 +199,6 @@ pub(crate) fn create<T>(
 
 	let pool = PoolStorage::<T>::get(pool_id).unwrap();
 	assert_eq!(pool.reserve.available, (1000 * CURRENCY).into());
-
-	// TODO(ved) do disbursal manually for now
-	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), JuniorTrancheId::get()).into(),
-		&pool_account,
-		&junior_investor,
-		(500 * CURRENCY).into(),
-		false
-	));
-	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), SeniorTrancheId::get()).into(),
-		&pool_account,
-		&senior_investor,
-		(500 * CURRENCY).into(),
-		false
-	));
 }
 
 pub(crate) fn initialise_test_pool<T>(
@@ -270,13 +228,13 @@ where
 /// Only used for runtime benchmarks at the moment
 #[cfg(feature = "runtime-benchmarks")]
 pub(crate) fn get_tranche_id<T>(
-	pool_id: <T as pallet_pools::Config>::PoolId,
+	pool_id: <T as pallet_pool_system::Config>::PoolId,
 	index: u64,
-) -> <T as pallet_pools::Config>::TrancheId
+) -> <T as pallet_pool_system::Config>::TrancheId
 where
-	T: pallet_pools::Config,
+	T: pallet_pool_system::Config,
 {
-	pallet_pools::Pool::<T>::get(pool_id)
+	pallet_pool_system::Pool::<T>::get(pool_id)
 		.unwrap()
 		.tranches
 		.tranche_id(TrancheLoc::Index(index))
@@ -285,7 +243,7 @@ where
 
 pub(crate) fn assert_last_event<T, E>(generic_event: E)
 where
-	T: pallet_loans::Config + pallet_pools::Config,
+	T: pallet_loans::Config + pallet_pool_system::Config,
 	E: Into<<T as frame_system::Config>::Event>,
 {
 	let events = frame_system::Pallet::<T>::events();

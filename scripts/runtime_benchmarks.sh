@@ -9,8 +9,8 @@ check() {
 
   if [[ $return_code -ne 0 ]]
   then
-    echo "Error: Intermediate error occured. Cleaning up artifacts in '/tmp/${runtime_path}'"
-    rm -r "/tmp/${runtime_path}"
+    echo "Error: Intermediate error occurred. Cleaning up artifacts in '/tmp/${runtime_path}'"
+    rm -rf "/tmp/${runtime_path}"
     echo "Aborting!"
     exit 1
   fi
@@ -111,8 +111,7 @@ check $?
 echo "Moving new weights from '${build_path}' into '${weight_path}'"
 mv -f ${build_path} ${weight_path}
 
-# since benchmark generates a weight.rs file that may or may not cargo fmt'ed.
-# so do cargo fmt here.
+# Run cargo fmt to ensure that all the new weight.rs files are properly formatted.
 cargo fmt
 check $?
 

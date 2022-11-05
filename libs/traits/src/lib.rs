@@ -35,9 +35,6 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
 
-// #[cfg(test)]
-pub mod mocks;
-
 /// Traits related to operations.
 pub mod ops;
 
@@ -114,7 +111,7 @@ pub trait PoolNAV<PoolId, Amount> {
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
-	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo;
+	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo + Encode + Decode;
 	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo;
 	type Rate;
 	type Moment;
@@ -314,10 +311,20 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
 
+/// A trait for converting from a PoolId and a TranchId
+/// into a given Self::Currency
+pub trait TrancheCurrency<PoolId, TrancheId> {
+	fn generate(pool_id: PoolId, tranche_id: TrancheId) -> Self;
+
+	fn of_pool(&self) -> PoolId;
+
+	fn of_tranche(&self) -> TrancheId;
+}
+
 /// A trait, when implemented allows to invest into
 /// investment classes
 pub trait Investment<AccountId> {
-	type Error;
+	type Error: Debug;
 	type InvestmentId;
 	type Amount;
 
@@ -368,11 +375,33 @@ pub trait OrderManager {
 
 	/// When called the manager return the current
 	/// invest orders for the given investment class.
-	fn invest_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+	fn invest_orders(asset_id: Self::InvestmentId) -> Self::Orders;
 
 	/// When called the manager return the current
 	/// redeem orders for the given investment class.
-	fn redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+	fn redeem_orders(asset_id: Self::InvestmentId) -> Self::Orders;
+
+	/// When called the manager return the current
+	/// invest orders for the given investment class.
+	/// Callers of this method can expect that the returned
+	/// orders equal the returned orders from `invest_orders`.
+	///
+	/// **NOTE:** Once this is called, the OrderManager is expected
+	/// to start a new round of orders and return an error if this
+	/// method is to be called again before `invest_fulfillment` is
+	/// called.
+	fn process_invest_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
+
+	/// When called the manager return the current
+	/// invest orders for the given investment class.
+	/// Callers of this method can expect that the returned
+	/// orders equal the returned orders from `redeem_orders`.
+	///
+	/// **NOTE:** Once this is called, the OrderManager is expected
+	/// to start a new round of orders and return an error if this
+	/// method is to be called again before `redeem_fulfillment` is
+	/// called.
+	fn process_redeem_orders(asset_id: Self::InvestmentId) -> Result<Self::Orders, Self::Error>;
 
 	/// Signals the manager that the previously
 	/// fetch invest orders for a given investment class

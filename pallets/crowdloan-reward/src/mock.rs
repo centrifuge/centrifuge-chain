@@ -25,7 +25,6 @@
 use frame_support::{
 	parameter_types,
 	traits::{Everything, SortedMembers},
-	weights::Weight,
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -116,7 +115,7 @@ impl SortedMembers<u64> for One {
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
+	pub const MaximumBlockWeight: u64 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }

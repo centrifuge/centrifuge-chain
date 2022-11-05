@@ -13,7 +13,8 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::CFG as CURRENCY;
-use cfg_types::{CurrencyId, CustomMetadata, PoolLocator, Rate};
+use cfg_traits::Investment;
+use cfg_types::{CurrencyId, CustomMetadata, PoolLocator, Rate, TrancheCurrency};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
 	assert_ok,
@@ -25,6 +26,7 @@ use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
+use sp_runtime::traits::{AccountIdConversion, CheckedDiv};
 use test_utils::{
 	assert_last_event, create as create_test_pool, create_nft_class_if_needed, expect_asset_owner,
 	expect_asset_to_be_burned, get_tranche_id, mint_nft_of,
@@ -34,7 +36,7 @@ use super::*;
 use crate::{
 	loan_type::{BulletLoan, CreditLineWithMaturity},
 	test_utils::initialise_test_pool,
-	types::WriteOffStateInput,
+	types::WriteOffGroupInput,
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
 };
 
@@ -44,15 +46,113 @@ pub trait Config:
 	LoanConfig<ClassId = <Self as pallet_uniques::Config>::CollectionId>
 	+ pallet_balances::Config
 	+ pallet_uniques::Config
-	+ pallet_pools::Config
+	+ pallet_pool_system::Config
 	+ ORMLConfig
 	+ TimestampConfig
 	+ InterestAccrualConfig
 {
+	type IM: Investment<Self::AccountId, Amount = u128, InvestmentId = TrancheCurrency>;
 }
 
 #[cfg(test)]
-impl Config for super::mock::MockRuntime {}
+impl Config for super::mock::MockRuntime {
+	type IM = mock::OrderManager;
+}
+
+fn create_and_init_pool<T: Config>(
+	init_pool: bool,
+) -> (
+	T::AccountId,
+	PoolIdOf<T>,
+	T::AccountId,
+	<T as LoanConfig>::ClassId,
+)
+where
+	<T as pallet_balances::Config>::Balance: From<u128>,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
+	<T as pallet_pool_system::Config>::Balance: From<u128>,
+	<T as pallet_pool_system::Config>::CurrencyId: From<CurrencyId>,
+	<T as pallet_pool_system::Config>::TrancheId: Into<[u8; 16]>,
+	<T as pallet_pool_system::Config>::EpochId: From<u32>,
+	<T as pallet_pool_system::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
+	<T as ORMLConfig>::Balance: From<u128>,
+	<T as pallet_uniques::Config>::CollectionId: Default,
+{
+	// create pool
+	let pool_owner = account::<T::AccountId>("owner", 0, 0);
+	make_free_cfg_balance::<T>(pool_owner.clone());
+	make_free_token_balance::<T>(
+		CurrencyId::AUSD,
+		&FundsAccount::get().into_account_truncating(),
+		(1000 * CURRENCY).into(),
+	);
+	let pool_id: PoolIdOf<T> = Default::default();
+	let pool_account = pool_account::<T>(pool_id.into());
+	let pal_pool_id: <T as pallet_pool_system::Config>::PoolId = pool_id.into();
+	T::AssetRegistry::register_asset(
+		Some(CurrencyId::AUSD.into()),
+		orml_asset_registry::AssetMetadata {
+			decimals: 18,
+			name: "MOCK AUSD TOKEN".as_bytes().to_vec(),
+			symbol: "MckAUSD".as_bytes().to_vec(),
+			existential_deposit: 0.into(),
+			location: None,
+			additional: CustomMetadata::default(),
+		},
+	)
+	.expect("Registering pool currency must work");
+	create_test_pool::<T, T::IM>(pool_id.into(), pool_owner.clone(), CurrencyId::AUSD);
+	let tranche_id = get_tranche_id::<T>(pool_id.into(), 0);
+	make_free_token_balance::<T>(
+		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
+		&pool_account,
+		(500 * CURRENCY).into(),
+	);
+	let tranche_id = get_tranche_id::<T>(pool_id.into(), 1);
+	make_free_token_balance::<T>(
+		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
+		&pool_account,
+		(500 * CURRENCY).into(),
+	);
+
+	make_free_cfg_balance::<T>(borrower::<T>());
+	assert_ok!(<T as pallet_pool_system::Config>::Permission::add(
+		PermissionScope::Pool(pool_id.into()),
+		borrower::<T>(),
+		Role::PoolRole(PoolRole::Borrower)
+	));
+	assert_ok!(<T as pallet_pool_system::Config>::Permission::add(
+		PermissionScope::Pool(pool_id.into()),
+		borrower::<T>(),
+		Role::PoolRole(PoolRole::PricingAdmin)
+	));
+	assert_ok!(<T as pallet_pool_system::Config>::Permission::add(
+		PermissionScope::Pool(pool_id.into()),
+		borrower::<T>(),
+		Role::PoolRole(PoolRole::LoanAdmin)
+	));
+
+	make_free_cfg_balance::<T>(risk_admin::<T>());
+	assert_ok!(<T as pallet_pool_system::Config>::Permission::add(
+		PermissionScope::Pool(pool_id.into()),
+		risk_admin::<T>(),
+		Role::PoolRole(PoolRole::LoanAdmin)
+	));
+
+	// initialise pool on loan
+	let loan_account = LoansPallet::<T>::account_id();
+	make_free_cfg_balance::<T>(loan_account.clone());
+	let mut loan_class_id = Default::default();
+	if init_pool {
+		loan_class_id =
+			initialise_test_pool::<T>(pool_id, 1, pool_owner.clone(), Some(loan_account.clone()));
+	}
+
+	whitelist_acc::<T>(&pool_owner);
+	whitelist_acc::<T>(&loan_account);
+	(pool_owner, pool_id, loan_account, loan_class_id)
+}
 
 fn make_free_cfg_balance<T>(account: T::AccountId)
 where
@@ -106,15 +206,6 @@ fn whitelist_acc<T: frame_system::Config>(acc: &T::AccountId) {
 	);
 }
 
-// return white listed senior and junior tranche investors
-fn investors<T: frame_system::Config>() -> (T::AccountId, T::AccountId) {
-	let senior_investor = account::<T::AccountId>("senior", 0, 0);
-	let junior_investor = account::<T::AccountId>("junior", 0, 0);
-	whitelist_acc::<T>(&senior_investor);
-	whitelist_acc::<T>(&junior_investor);
-	(senior_investor, junior_investor)
-}
-
 fn risk_admin<T: frame_system::Config>() -> T::AccountId {
 	let risk_admin = account::<T::AccountId>("risk_admin", 0, 0);
 	whitelist_acc::<T>(&risk_admin);
@@ -125,95 +216,6 @@ fn borrower<T: frame_system::Config>() -> T::AccountId {
 	let borrower = account::<T::AccountId>("borrower", 0, 0);
 	whitelist_acc::<T>(&borrower);
 	borrower
-}
-
-fn create_and_init_pool<T: Config>(
-	init_pool: bool,
-) -> (
-	T::AccountId,
-	PoolIdOf<T>,
-	T::AccountId,
-	<T as LoanConfig>::ClassId,
-)
-where
-	<T as pallet_balances::Config>::Balance: From<u128>,
-	<T as pallet_uniques::Config>::CollectionId: From<u64>,
-	<T as pallet_pools::Config>::Balance: From<u128>,
-	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-	<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
-	<T as pallet_pools::Config>::EpochId: From<u32>,
-	<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
-	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
-	<T as ORMLConfig>::Balance: From<u128>,
-	<T as pallet_uniques::Config>::CollectionId: Default,
-{
-	// create pool
-	let pool_owner = account::<T::AccountId>("owner", 0, 0);
-	make_free_cfg_balance::<T>(pool_owner.clone());
-	let (senior_inv, junior_inv) = investors::<T>();
-	make_free_cfg_balance::<T>(senior_inv.clone());
-	make_free_cfg_balance::<T>(junior_inv.clone());
-	make_free_token_balance::<T>(CurrencyId::AUSD, &senior_inv, (500 * CURRENCY).into());
-	make_free_token_balance::<T>(CurrencyId::AUSD, &junior_inv, (500 * CURRENCY).into());
-	let pool_id: PoolIdOf<T> = Default::default();
-	let pool_account = pool_account::<T>(pool_id.into());
-	let pal_pool_id: T::PoolId = pool_id.into();
-	create_test_pool::<T>(
-		pool_id.into(),
-		pool_owner.clone(),
-		junior_inv,
-		senior_inv,
-		CurrencyId::AUSD,
-	);
-	let tranche_id = get_tranche_id::<T>(pool_id.into(), 0);
-	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
-		&pool_account,
-		(500 * CURRENCY).into(),
-	);
-	let tranche_id = get_tranche_id::<T>(pool_id.into(), 1);
-	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
-		&pool_account,
-		(500 * CURRENCY).into(),
-	);
-
-	make_free_cfg_balance::<T>(borrower::<T>());
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		PermissionScope::Pool(pool_id.into()),
-		borrower::<T>(),
-		Role::PoolRole(PoolRole::Borrower)
-	));
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		PermissionScope::Pool(pool_id.into()),
-		borrower::<T>(),
-		Role::PoolRole(PoolRole::PricingAdmin)
-	));
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		PermissionScope::Pool(pool_id.into()),
-		borrower::<T>(),
-		Role::PoolRole(PoolRole::LoanAdmin)
-	));
-
-	make_free_cfg_balance::<T>(risk_admin::<T>());
-	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		PermissionScope::Pool(pool_id.into()),
-		risk_admin::<T>(),
-		Role::PoolRole(PoolRole::LoanAdmin)
-	));
-
-	// initialise pool on loan
-	let loan_account = LoansPallet::<T>::account_id();
-	make_free_cfg_balance::<T>(loan_account.clone());
-	let mut loan_class_id = Default::default();
-	if init_pool {
-		loan_class_id =
-			initialise_test_pool::<T>(pool_id, 1, pool_owner.clone(), Some(loan_account.clone()));
-	}
-
-	whitelist_acc::<T>(&pool_owner);
-	whitelist_acc::<T>(&loan_account);
-	(pool_owner, pool_id, loan_account, loan_class_id)
 }
 
 fn create_asset<T: Config + frame_system::Config>(loan_id: T::LoanId) -> (T::AccountId, AssetOf<T>)
@@ -269,7 +271,7 @@ fn activate_test_loan_with_rate<T: Config>(
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
-	let rp: T::Rate = Rate::saturating_from_rational(rate, 5000).into();
+	let rp: <T as pallet::Config>::Rate = Rate::saturating_from_rational(rate, 5000).into();
 	LoansPallet::<T>::price(
 		RawOrigin::Signed(borrower).into(),
 		pool_id,
@@ -298,36 +300,14 @@ where
 	}
 }
 
-fn pool_account<T: pallet_pools::Config>(pool_id: T::PoolId) -> T::AccountId {
+fn pool_account<T: pallet_pool_system::Config>(pool_id: T::PoolId) -> T::AccountId {
 	PoolLocator { pool_id }.into_account_truncating()
-}
-
-fn prepare_asset_registry<T: Config>()
-where
-	T::AssetRegistry: orml_traits::asset_registry::Mutate<
-		AssetId = CurrencyId,
-		Balance = u128,
-		CustomMetadata = CustomMetadata,
-	>,
-{
-	T::AssetRegistry::register_asset(
-		Some(CurrencyId::AUSD),
-		orml_asset_registry::AssetMetadata {
-			decimals: 18,
-			name: "MOCK TOKEN".as_bytes().to_vec(),
-			symbol: "MOCK".as_bytes().to_vec(),
-			existential_deposit: 0,
-			location: None,
-			additional: CustomMetadata::default(),
-		},
-	)
-	.expect("Registering Pool asset must work");
 }
 
 benchmarks! {
 	where_clause {
 		where
-		T: pallet_pools::Config<
+		T: pallet_pool_system::Config<
 			CurrencyId = cfg_types::CurrencyId,
 			Balance = u128,
 		>,
@@ -339,11 +319,12 @@ benchmarks! {
 		<T as ORMLConfig>::Balance: From<u128>,
 		<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 		<T as TimestampConfig>::Moment: From<u64> + Into<u64>,
-		<T as pallet_pools::Config>::Balance: From<u128>,
-		<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-		<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
-		<T as pallet_pools::Config>::EpochId: From<u32>,
-		<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+		<T as pallet_pool_system::Config>::Balance: From<u128>,
+		<T as pallet_pool_system::Config>::CurrencyId: From<CurrencyId>,
+		<T as pallet_pool_system::Config>::TrancheId: Into<[u8; 16]>,
+		<T as pallet_pool_system::Config>::EpochId: From<u32>,
+		<T as pallet_pool_system::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+		<T as pallet_uniques::Config>::CollectionId: Default,
 		<T as pallet_uniques::Config>::CollectionId: Default,
 	}
 
@@ -358,7 +339,6 @@ benchmarks! {
 	}
 
 	create {
-		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, collateral) = create_asset::<T>(1.into());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, collateral)
@@ -378,7 +358,6 @@ benchmarks! {
 
 	price {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -406,8 +385,8 @@ benchmarks! {
 			math::seconds_per_year() * 2,
 		));
 		// interest rate is 5%
-		let interest_rate_per_year: T::Rate = Rate::saturating_from_rational(5, 100).into();
-		let interest_rate_per_sec: T::Rate = math::interest_rate_per_sec(interest_rate_per_year).unwrap();
+		let interest_rate_per_year: <T as pallet::Config>::Rate = Rate::saturating_from_rational(5, 100).into();
+		let interest_rate_per_sec: <T as pallet::Config>::Rate = math::interest_rate_per_sec(interest_rate_per_year).unwrap().into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_year, loan_type)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
@@ -419,7 +398,6 @@ benchmarks! {
 	}
 
 	add_write_off_group {
-		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let write_off_group = WriteOffStateInput {
 			// 10%
@@ -435,7 +413,6 @@ benchmarks! {
 
 	initial_borrow {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -461,7 +438,6 @@ benchmarks! {
 
 	further_borrows {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -494,7 +470,6 @@ benchmarks! {
 
 	repay {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -544,8 +519,12 @@ benchmarks! {
 		let loan_id = n.into();
 		let risk_admin = risk_admin::<T>();
 		for i in 0..m {
-			let percentage: T::Rate = Rate::saturating_from_rational(i+1, m).into();
-			let penalty_interest_rate_per_year = Rate::saturating_from_rational(2*i + 1, 2*m).into();
+			let percentage: <T as pallet::Config>::Rate = Rate::saturating_from_rational(i+1, m).into();
+			let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*i + 1) * 10000, 2*m)
+				.trunc()
+				.checked_div(&Rate::saturating_from_integer(10000))
+				.expect("Rate is an integer after `trunc`. div by 10000 is safe")
+				.into();
 			let overdue_days = percentage.checked_mul_int(120).unwrap();
 			let write_off_group = WriteOffStateInput {
 				percentage, penalty_interest_rate_per_year, overdue_days
@@ -564,7 +543,12 @@ benchmarks! {
 	verify {
 		let index = (m-1).into();
 		let percentage = Rate::saturating_from_rational(100, 100).into();
-		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(Rate::saturating_from_rational(2*m - 1, 2*m).into()).expect("Rate should be convertible to per-sec");
+		let penalty_interest_rate_per_year = Rate::saturating_from_rational((2*m - 1) * 10000, 2*m)
+			.trunc()
+			.checked_div(&Rate::saturating_from_integer(10000))
+			.expect("Rate is an integer after `trunc`. div by 10000 is safe")
+			.into();
+		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-sec");
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOff{write_off_index: index})
@@ -572,7 +556,6 @@ benchmarks! {
 
 	admin_write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
@@ -602,7 +585,6 @@ benchmarks! {
 
 	repay_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let mut collateral = None;
 		for idx in 0..n {
@@ -653,7 +635,6 @@ benchmarks! {
 
 	write_off_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let mut collateral = None;
 		for idx in 0..n {
@@ -702,7 +683,6 @@ benchmarks! {
 
 	update_nav {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let amount = (CURRENCY / 4).into();
 		for idx in 0..n {

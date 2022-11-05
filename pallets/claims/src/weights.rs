@@ -26,17 +26,17 @@ use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
 	fn claim(hashes_length: usize) -> Weight {
-		(195_000_000 as Weight).saturating_add(
-			hashes_length.saturating_mul(1_000_000) as Weight
+		(Weight::from_ref_time(195_000_000)).saturating_add(
+			Weight::from_ref_time(hashes_length.saturating_mul(1_000_000) as u64)
 				+ RocksDbWeight::get().reads_writes(2, 2),
 		)
 	}
 
 	fn set_upload_account() -> Weight {
-		190_000_000 as Weight
+		Weight::from_ref_time(190_000_000)
 	}
 
 	fn store_root_hash() -> Weight {
-		185_000_000 as Weight
+		Weight::from_ref_time(185_000_000)
 	}
 }

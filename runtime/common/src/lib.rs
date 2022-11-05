@@ -34,8 +34,8 @@ pub mod xcm_fees {
 	}
 
 	pub fn default_per_second(decimals: u32) -> Balance {
-		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
-		let default_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		let base_weight = Balance::from(ExtrinsicBaseWeight::get().ref_time());
+		let default_per_second = WEIGHT_PER_SECOND.ref_time() as u128 / base_weight;
 		default_per_second * base_fee(decimals)
 	}
 
@@ -125,7 +125,7 @@ pub mod fees {
 
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
 			let p = CENTI_CFG;
-			let q = 10 * Balance::from(ExtrinsicBaseWeight::get());
+			let q = 10 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
 
 			smallvec!(WeightToFeeCoefficient {
 				degree: 1,

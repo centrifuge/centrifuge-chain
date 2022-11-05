@@ -12,8 +12,10 @@
 // GNU General Public License for more details.
 
 //! Unit test cases for Loan pallet
-use cfg_primitives::{Balance, CollectionId, ItemId, PoolId, CFG as USD};
-use cfg_types::{CurrencyId, PoolLocator, Rate};
+use cfg_primitives::{Balance, CollectionId, ItemId, PoolEpochId, PoolId, TrancheId, CFG as USD};
+use cfg_traits::{InvestmentAccountant, InvestmentProperties};
+use cfg_types::{CurrencyId, PoolLocator, Rate, TrancheCurrency};
+use codec::MaxEncodedLen;
 use frame_support::{
 	assert_err, assert_ok,
 	traits::{fungibles::Inspect, Hooks},
@@ -22,7 +24,7 @@ use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
 use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
 use sp_runtime::{
-	traits::{BadOrigin, StaticLookup},
+	traits::{BadOrigin, MaybeSerializeDeserialize, StaticLookup},
 	ArithmeticError,
 };
 
@@ -31,9 +33,8 @@ use crate as pallet_loans;
 use crate::{
 	loan_type::{CreditLine, CreditLineWithMaturity},
 	mock::{
-		Borrower, Event as MockEvents, InterestAccrual, JuniorInvestor, LoanAdmin, Loans,
-		MockRuntime, Origin, PoolAdmin, SeniorInvestor, TestExternalitiesBuilder, Timestamp,
-		Tokens,
+		Borrower, Event as MockEvents, InterestAccrual, LoanAdmin, Loans, MockRuntime,
+		OrderManager, Origin, PoolAdmin, TestExternalitiesBuilder, Timestamp, Tokens,
 	},
 	test_utils::{
 		assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
@@ -56,38 +57,54 @@ fn fetch_loan_event(event: MockEvents) -> Option<LoanEvent<MockRuntime>> {
 	}
 }
 
-type MultiCurrencyBalanceOf<T> = <T as pallet_pools::Config>::Balance;
+type MultiCurrencyBalanceOf<T> = <T as pallet_pool_system::Config>::Balance;
+type CurrencyOf<T> = <<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<
+	<T as frame_system::Config>::AccountId,
+>>::AssetId;
 
 fn balance_of<T>(currency_id: T::CurrencyId, account: &T::AccountId) -> MultiCurrencyBalanceOf<T>
 where
-	T: pallet_pools::Config + frame_system::Config,
+	T: pallet_pool_system::Config + frame_system::Config,
 {
-	<T as pallet_pools::Config>::Tokens::balance(currency_id, account)
+	<T as pallet_pool_system::Config>::Tokens::balance(currency_id, account)
 }
 
-fn issue_test_loan<T>(pool_id: u64, borrower: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>)
+fn issue_test_loan<T>(
+	pool_id: u64,
+	borrower: T::AccountId,
+) -> (
+	<T as pallet_pool_system::Config>::PoolId,
+	AssetOf<T>,
+	AssetOf<T>,
+)
 where
-	T: pallet_pools::Config<
+	T: pallet_pool_system::Config<
 			CurrencyId = CurrencyId,
 			Balance = u128,
 			PoolId = PoolId,
 			TrancheId = [u8; 16],
-			EpochId = u32,
+			EpochId = PoolEpochId,
 		> + pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>
 		+ pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
-		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
-	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
+		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>
+		+ cfg_test_utils::mocks::order_manager::Config<
+			InvestmentId = TrancheCurrency,
+			PoolId = PoolId,
+			TrancheId = TrancheId,
+		>,
+	PoolIdOf<T>: From<<T as pallet_pool_system::Config>::PoolId>,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::Balance:
+		From<u128> + From<u64> + FixedPointOperand + MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Tokens as Inspect<T::AccountId>>::AssetId:
+		MaxEncodedLen + MaybeSerializeDeserialize,
+	<<T as cfg_test_utils::mocks::order_manager::Config>::Accountant as InvestmentAccountant<
+		T::AccountId,
+	>>::InvestmentInfo: InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
 {
 	let pool_admin = PoolAdmin::get();
 
-	create::<T>(
-		pool_id,
-		pool_admin,
-		JuniorInvestor::get(),
-		SeniorInvestor::get(),
-		CurrencyId::AUSD,
-	);
+	create::<T, OrderManager>(pool_id, pool_admin, CurrencyId::AUSD);
 	// add borrower role and price admin role
 	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
@@ -197,7 +214,7 @@ fn price_test_loan<T>(
 	rps: Rate,
 	loan_type: LoanType<Rate, Balance>,
 ) where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -231,7 +248,7 @@ fn price_bullet_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -249,7 +266,7 @@ fn price_credit_line_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -267,7 +284,7 @@ fn price_credit_line_with_maturity_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, Rate, LoanType<Rate, Balance>)
 where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -285,7 +302,7 @@ fn close_test_loan<T>(
 	loan: AssetOf<T>,
 	collateral: AssetOf<T>,
 ) where
-	T: pallet_pools::Config<PoolId = PoolId>
+	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
@@ -1341,13 +1358,7 @@ fn test_add_write_off_groups() {
 			let pool_admin = PoolAdmin::get();
 			let risk_admin: u64 = LoanAdmin::get();
 			let pool_id = 0;
-			create::<MockRuntime>(
-				pool_id,
-				pool_admin,
-				JuniorInvestor::get(),
-				SeniorInvestor::get(),
-				CurrencyId::AUSD,
-			);
+			create::<MockRuntime, OrderManager>(pool_id, pool_admin, CurrencyId::AUSD);
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
 			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(

@@ -37,15 +37,15 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn calculate_accumulated_rate(n: u32) -> Weight {
-		(0 as Weight) // Standard Error: 8_000
-			.saturating_add((9_747_000 as Weight).saturating_mul(n as Weight))
+		(Weight::from_ref_time(0)) // Standard Error: 8_000
+			.saturating_add((Weight::from_ref_time(9_747_000)).saturating_mul(n as u64))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn calculate_accumulated_rate(n: u32) -> Weight {
-		(0 as Weight) // Standard Error: 8_000
-			.saturating_add((9_747_000 as Weight).saturating_mul(n as Weight))
+		(Weight::from_ref_time(0)) // Standard Error: 8_000
+			.saturating_add((Weight::from_ref_time(9_747_000)).saturating_mul(n as u64))
 	}
 }

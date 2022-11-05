@@ -40,7 +40,7 @@ use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
-use sp_runtime::{generic::BlockId, DigestItem, Storage};
+use sp_runtime::{generic::BlockId, traits::Extrinsic, DigestItem, Storage};
 use tokio::runtime::Handle;
 
 use crate::{
@@ -74,7 +74,7 @@ pub mod macros {
 	/// 		EventRange::All, //-> The range of blocks we check for the events
 	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..})
 	/// 			if [count 0], // -> Ensures zero occurencies of the given event. Could also ensure n-occurencies
-	/// 		Event::Pools(pallet_pools::Event::Created(id, ..)) if [id == 0], //-> matches only of the id matches to 0
+	/// 		Event::PoolSystem(pallet_pool_system::Event::Created(id, ..)) if [id == 0], //-> matches only of the id matches to 0
 	/// 		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == 0],
 	/// 		Event::Loans(pallet_loans::Event::Created(id, loan, asset))
 	/// 			if [id == 0 && loan == InstanceId(1) && asset == Asset(4294967296, InstanceId(1))], //-> matches only of the clause matches
@@ -157,7 +157,7 @@ pub mod macros {
 	/// 		Event, //-> The event-enum type from the runtime
 	/// 		EventRange::All, //-> The range of blocks we check for the events
 	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..}) //-> The list of events that should be matched
-	/// 			| Event::Pools(pallet_pools::Event::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
+	/// 			| Event::PoolSystem(pallet_pool_system::Event::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
 	/// 			| Event::Loans(..)
 	///	);
 	/// ```
@@ -354,10 +354,17 @@ pub struct TestEnv {
 	pub events: Arc<Mutex<EventsStorage>>,
 }
 
+pub type Header = cfg_primitives::Header;
+pub type Block = cfg_primitives::Block;
+pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
+
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
 //       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
-	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()> {
+	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
+	where
+		sp_runtime::generic::Block<Header, UncheckedExtrinsic>: sp_runtime::traits::Block,
+	{
 		match chain {
 			Chain::Relay => {
 				let latest = self
@@ -704,13 +711,11 @@ fn test_env(
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
-		let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
-		assert!(FudgeInherentTimestamp::new(
-			instance,
+
+		let instance_id = FudgeInherentTimestamp::create_instance(
 			std::time::Duration::from_secs(6),
 			Some(std::time::Duration::from_millis(START_DATE)),
-		)
-		.is_none());
+		);
 
 		let cidp = Box::new(move |parent: H256, ()| {
 			let client = clone_client.clone();
@@ -723,7 +728,7 @@ fn test_env(
 				let uncles =
 					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
 
-				let timestamp = FudgeInherentTimestamp::get_instance(instance)
+				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
 					.expect("Instances is initialized");
 
 				let slot =
@@ -784,18 +789,15 @@ fn test_env(
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
-		let instance = INSTANCE_COUNTER.fetch_add(1, sp_std::sync::atomic::Ordering::SeqCst);
-		assert!(FudgeInherentTimestamp::new(
-			instance,
+		let instance_id = FudgeInherentTimestamp::create_instance(
 			std::time::Duration::from_secs(12),
 			Some(std::time::Duration::from_millis(START_DATE)),
-		)
-		.is_none());
+		);
 
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
 			async move {
-				let timestamp = FudgeInherentTimestamp::get_instance(instance)
+				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
 					.expect("Instances is initialized");
 
 				let slot =

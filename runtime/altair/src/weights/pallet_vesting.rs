@@ -33,66 +33,66 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn vest_locked(l: u32, s: u32) -> Weight {
-		(73_341_000 as Weight) // Standard Error: 7_000
-			.saturating_add((178_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 14_000
-			.saturating_add((192_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(73_341_000) // Standard Error: 7_000
+			.saturating_add(Weight::from_ref_time(178_000).saturating_mul(l as u64)) // Standard Error: 14_000
+			.saturating_add(Weight::from_ref_time(192_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn vest_unlocked(l: u32, s: u32) -> Weight {
-		(74_550_000 as Weight) // Standard Error: 10_000
-			.saturating_add((120_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 21_000
-			.saturating_add((185_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(74_550_000) // Standard Error: 10_000
+			.saturating_add(Weight::from_ref_time(120_000).saturating_mul(l as u64)) // Standard Error: 21_000
+			.saturating_add(Weight::from_ref_time(185_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 
 	fn vest_other_locked(l: u32, s: u32) -> Weight {
-		(74_118_000 as Weight) // Standard Error: 8_000
-			.saturating_add((160_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 16_000
-			.saturating_add((168_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(74_118_000) // Standard Error: 8_000
+			.saturating_add(Weight::from_ref_time(160_000).saturating_mul(l as u64)) // Standard Error: 16_000
+			.saturating_add(Weight::from_ref_time(168_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn vest_other_unlocked(l: u32, s: u32) -> Weight {
-		(69_982_000 as Weight) // Standard Error: 8_000
-			.saturating_add((184_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 17_000
-			.saturating_add((246_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(69_982_000) // Standard Error: 8_000
+			.saturating_add(Weight::from_ref_time(184_000).saturating_mul(l as u64)) // Standard Error: 17_000
+			.saturating_add(Weight::from_ref_time(246_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn vested_transfer(l: u32, s: u32) -> Weight {
-		(107_495_000 as Weight) // Standard Error: 9_000
-			.saturating_add((205_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 19_000
-			.saturating_add((211_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(107_495_000) // Standard Error: 9_000
+			.saturating_add(Weight::from_ref_time(205_000).saturating_mul(l as u64)) // Standard Error: 19_000
+			.saturating_add(Weight::from_ref_time(211_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn force_vested_transfer(l: u32, s: u32) -> Weight {
-		(114_701_000 as Weight) // Standard Error: 10_000
-			.saturating_add((109_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 22_000
-			.saturating_add((50_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+		Weight::from_ref_time(114_701_000) // Standard Error: 10_000
+			.saturating_add(Weight::from_ref_time(109_000).saturating_mul(l as u64)) // Standard Error: 22_000
+			.saturating_add(Weight::from_ref_time(50_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(4 as u64))
 	}
 
 	fn not_unlocking_merge_schedules(l: u32, s: u32) -> Weight {
-		(73_279_000 as Weight) // Standard Error: 9_000
-			.saturating_add((205_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 20_000
-			.saturating_add((288_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(73_279_000) // Standard Error: 9_000
+			.saturating_add(Weight::from_ref_time(205_000).saturating_mul(l as u64)) // Standard Error: 20_000
+			.saturating_add(Weight::from_ref_time(288_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
 	fn unlocking_merge_schedules(l: u32, s: u32) -> Weight {
-		(73_523_000 as Weight) // Standard Error: 8_000
-			.saturating_add((181_000 as Weight).saturating_mul(l as Weight)) // Standard Error: 17_000
-			.saturating_add((250_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(73_523_000) // Standard Error: 8_000
+			.saturating_add(Weight::from_ref_time(181_000).saturating_mul(l as u64)) // Standard Error: 17_000
+			.saturating_add(Weight::from_ref_time(250_000).saturating_mul(s as u64))
+			.saturating_add(T::DbWeight::get().reads(3 as u64))
+			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 }

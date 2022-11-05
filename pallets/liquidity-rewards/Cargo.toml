@@ -1,0 +1,42 @@
+[package]
+name = "pallet-liquidity-rewards"
+version = "0.1.0"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Liquidity Rewards pallet"
+edition = "2021"
+homepage = "https://centrifuge.io"
+license = "LGPL-3.0"
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/liquidity-rewards"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+cfg-traits = { path = "../../libs/traits", default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
+num-traits = { version = "0.2", default-features = false }
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
+
+# optional dependencies for benchmarking
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
+
+[features]
+default = ["std"]
+try-runtime = ["frame-support/try-runtime"]
+runtime-benchmarks = ["frame-benchmarking"]
+std = [
+  "codec/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "cfg-traits/std",
+]

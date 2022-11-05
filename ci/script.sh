@@ -39,8 +39,12 @@ case $TARGET in
     RUST_MIN_STACK=8388608 cargo test --release --package runtime-integration-tests
     ;;
 
-  lint)
+  fmt)
     cargo fmt -- --check
+    ;;
+
+  taplo)
+    taplo fmt --check
     ;;
 
   clippy)

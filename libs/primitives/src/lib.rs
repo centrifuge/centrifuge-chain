@@ -31,7 +31,7 @@ pub mod types {
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
 	use sp_runtime::{
-		traits::{BlakeTwo256, IdentifyAccount, Verify},
+		traits::{self, BlakeTwo256, IdentifyAccount, Verify},
 		OpaqueExtrinsic,
 	};
 	use sp_std::vec::Vec;
@@ -39,8 +39,11 @@ pub mod types {
 	/// PoolId type we use.
 	pub type PoolId = u64;
 
-	/// OrderId type we to identify order per epoch.
+	/// OrderId type we use to identify order per epoch.
 	pub type OrderId = u64;
+
+	/// EpochId type we use to identify epochs in our revolving pools
+	pub type PoolEpochId = u32;
 
 	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
 	pub type EnsureRootOr<O> = EitherOfDiverse<EnsureRoot<AccountId>, O>;
@@ -87,7 +90,12 @@ pub mod types {
 	pub type Index = u32;
 
 	/// A hash of some data used by the chain.
-	pub type Hash = sp_core::H256;
+	pub type Hash = <BlakeTwo256 as traits::Hash>::Output;
+
+	/// The hashing algorithm used by the chain
+	///
+	/// NOTE: Must never change
+	pub type Hashing = BlakeTwo256;
 
 	/// A generic block for the node to use, as we can not commit to
 	/// a specific Extrinsic format at this point. Runtimes will ensure
@@ -95,7 +103,7 @@ pub mod types {
 	pub type Block = sp_runtime::generic::Block<Header, OpaqueExtrinsic>;
 
 	/// Block header type as expected by this runtime.
-	pub type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
+	pub type Header = sp_runtime::generic::Header<BlockNumber, Hashing>;
 
 	/// Aura consensus authority.
 	pub type AuraId = sp_consensus_aura::sr25519::AuthorityId;
@@ -201,7 +209,7 @@ pub mod constants {
 	pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
-	pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND / 2;
+	pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND.saturating_div(2);
 
 	pub const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
 	pub const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001

@@ -22,10 +22,10 @@ use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
 	fn transfer() -> Weight {
-		(195_000_000 as Weight).saturating_add(RocksDbWeight::get().reads_writes(1, 1))
+		(Weight::from_ref_time(195_000_000)).saturating_add(RocksDbWeight::get().reads_writes(1, 1))
 	}
 
 	fn validate_mint() -> Weight {
-		120_000_000 as Weight
+		Weight::from_ref_time(120_000_000)
 	}
 }

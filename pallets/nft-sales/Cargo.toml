@@ -11,57 +11,58 @@ version = '2.0.0'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
+codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 
 # Optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.26" }
-pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.26" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.26" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.26" }
-cfg-types = { path = "../../libs/types", default-features = false, optional = true }
 cfg-primitives = { path = "../../libs/primitives", default-features = false, optional = true }
+cfg-types = { path = "../../libs/types", default-features = false, optional = true }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
 
 [dev-dependencies]
 # Substrate crates & pallets
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.26" }
-pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = true , branch = "polkadot-v0.9.26" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = true , branch = "polkadot-v0.9.26" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 
 # Orml crates
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.26" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.26" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.29" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.29" }
 
 # Local crates
 cfg-primitives = { path = "../../libs/primitives", default-features = true }
-cfg-types = { path = "../../libs/types", default-features = true}
+cfg-types = { path = "../../libs/types", default-features = true }
 
 [features]
 default = ['std']
 runtime-benchmarks = [
-    "frame-benchmarking",
-    "pallet-balances",
-    "pallet-uniques",
-    "cfg-types",
-    "cfg-primitives",
-    "orml-tokens",
-    "orml-traits",
+  "frame-benchmarking",
+  "pallet-balances",
+  "pallet-uniques",
+  "cfg-types",
+  "cfg-primitives",
+  "orml-tokens",
+  "orml-traits",
 ]
 std = [
-    'codec/std',
-    'cfg-types/std',
-    'frame-support/std',
-    'frame-system/std',
-    'sp-std/std',
-    'sp-runtime/std',
-    'orml-tokens/std',
-    'orml-traits/std',
-    'pallet-balances/std',
-    'cfg-primitives/std',
+  'codec/std',
+  'cfg-types/std',
+  'frame-support/std',
+  'frame-system/std',
+  'sp-std/std',
+  'sp-runtime/std',
+  'orml-tokens/std',
+  'orml-traits/std',
+  'pallet-balances/std',
+  'cfg-primitives/std',
 ]
+try-runtime = ["frame-support/try-runtime"]

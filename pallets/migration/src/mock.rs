@@ -22,7 +22,6 @@ use frame_support::{
 	scale_info::TypeInfo,
 	sp_runtime::traits::ConvertInto,
 	traits::{Contains, InstanceFilter},
-	weights::Weight,
 };
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
@@ -149,7 +148,7 @@ impl pallet_vesting::Config for MockRuntime {
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
+	pub const MaximumBlockWeight: u64 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }

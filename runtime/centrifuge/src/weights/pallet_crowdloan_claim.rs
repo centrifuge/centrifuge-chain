@@ -33,46 +33,46 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn claim_reward_ed25519() -> Weight {
-		(327_961_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(327_961_000)
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 
 	fn claim_reward_sr25519() -> Weight {
-		(331_009_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(331_009_000)
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 
 	fn claim_reward_ecdsa() -> Weight {
-		(300_477_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+		Weight::from_ref_time(300_477_000)
+			.saturating_add(T::DbWeight::get().reads(12 as u64))
+			.saturating_add(T::DbWeight::get().writes(5 as u64))
 	}
 
 	fn initialize() -> Weight {
-		(49_596_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+		Weight::from_ref_time(49_596_000)
+			.saturating_add(T::DbWeight::get().reads(4 as u64))
+			.saturating_add(T::DbWeight::get().writes(6 as u64))
 	}
 
 	fn set_lease_start() -> Weight {
-		(27_251_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(27_251_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_lease_period() -> Weight {
-		(27_847_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(27_847_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_contributions_root() -> Weight {
-		(29_357_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(29_357_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_locked_at() -> Weight {
-		(27_671_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(27_671_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 
 	fn set_crowdloan_trie_index() -> Weight {
-		(27_811_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(27_811_000).saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
