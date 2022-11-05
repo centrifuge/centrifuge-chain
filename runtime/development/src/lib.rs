@@ -1093,7 +1093,7 @@ impl pallet_collator_selection::Config for Runtime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 50;
-	pub const MaxWriteOffGroups: u32 = 10;
+	pub const MaxWriteOffStates: u32 = 10;
 }
 
 impl pallet_loans::Config for Runtime {
@@ -1106,7 +1106,7 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = ItemId;
 	type LoansPalletId = LoansPalletId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type MaxWriteOffStates = MaxWriteOffStates;
 	type NonFungible = Uniques;
 	type Permission = Permissions;
 	type Pool = Pools;

@@ -1013,7 +1013,7 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
-	pub const MaxWriteOffGroups: u32 = 100;
+	pub const MaxWriteOffStates: u32 = 100;
 }
 
 impl pallet_loans::Config for Runtime {
@@ -1026,7 +1026,7 @@ impl pallet_loans::Config for Runtime {
 	type LoanId = ItemId;
 	type LoansPalletId = LoansPalletId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type MaxWriteOffStates = MaxWriteOffStates;
 	type NonFungible = Uniques;
 	type Permission = Permissions;
 	type Pool = Pools;

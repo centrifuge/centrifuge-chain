@@ -281,7 +281,7 @@ pub mod pallet {
 		/// The write-off policy for a pool was updated.
 		WriteOffPolicyUpdated {
 			pool_id: PoolIdOf<T>,
-			write_off_policy: Vec<WriteOffState>
+			write_off_policy: Vec<WriteOffState<T::Rate>>
 		},
 		/// A loan was written off.
 		WrittenOff {
@@ -337,15 +337,15 @@ pub mod pallet {
 		/// Emits when trying to write off of a healthy loan
 		LoanHealthy,
 		/// Emits when trying to write off loan that was written off by admin already
-		WrittenOffByAdmin,
+		WrittenDownByAdmin,
 		/// Emits when there is no valid write off group available for unhealthy loan
-		NoValidWriteOffGroup,
+		NoValidWriteOffState,
 		/// Emits when there is no valid write off groups associated with given index
-		InvalidWriteOffGroupIndex,
+		InvalidWriteOffStateIndex,
 		/// Emits when new write off group is invalid
-		InvalidWriteOffGroup,
+		InvalidWriteOffState,
 		/// Emits when the max number of write off groups was reached
-		TooManyWriteOffGroups,
+		TooManyWriteOffStates,
 		/// Emits when the max number of active loans was reached
 		TooManyActiveLoans,
 	}
@@ -621,7 +621,7 @@ pub mod pallet {
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 
 			// Convert percentage from a yearly rate to a per-second rate.
-			let WriteOffGroupInput {
+			let WriteOffStateInput {
 				percentage,
 				overdue_days,
 				penalty_interest_rate_per_year,
@@ -630,14 +630,14 @@ pub mod pallet {
 				T::InterestAccrual::convert_additive_rate_to_per_sec(
 					penalty_interest_rate_per_year,
 				)?;
-			let group = WriteOffGroup {
+			let group = WriteOffState {
 				percentage,
 				overdue_days,
 				penalty_interest_rate_per_sec,
 			};
 
 			let write_off_group_index = Self::add_write_off_group_to_pool(pool_id, group)?;
-			Self::deposit_event(Event::<T>::WriteOffGroupAdded {
+			Self::deposit_event(Event::<T>::WriteOffStateAdded {
 				pool_id,
 				write_off_group_index,
 			});
@@ -654,7 +654,7 @@ pub mod pallet {
 		///
 		/// Weight is calculated for one group. Since there is no extra read or writes for groups more than 1,
 		/// We need to ensure we are charging the reads and write only once but the actual compute to be equal to number of groups processed
-		#[pallet::weight(<T as Config>::WeightInfo::write_off(T::MaxActiveLoansPerPool::get(), T::MaxWriteOffGroups::get()))]
+		#[pallet::weight(<T as Config>::WeightInfo::write_off(T::MaxActiveLoansPerPool::get(), T::MaxWriteOffStates::get()))]
 		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -676,7 +676,7 @@ pub mod pallet {
 
 			// since the write off group index is picked in loop sequentially,
 			// total loops = index+1. This cannot overflow since it is
-			// capped by `MaxWriteOffGroups`
+			// capped by `MaxWriteOffStates`
 			let count = write_off_group_index
 				.expect("non-admin write off always returns an index. qed")
 				+ 1;
@@ -731,7 +731,7 @@ pub mod pallet {
 		pub fn reference_active_rates() -> Weight {
 			let mut weight = 0;
 			for (pool, active_loans) in ActiveLoans::<T>::iter() {
-				let write_off_groups = PoolWriteOffGroups::<T>::get(pool);
+				let write_off_groups = PoolWriteOffPolicy::<T>::get(pool);
 				weight += T::DbWeight::get().reads(2);
 				for loan in active_loans.iter() {
 					weight += T::DbWeight::get().reads_writes(1, 1);

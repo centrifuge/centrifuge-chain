@@ -334,7 +334,7 @@ impl pallet_permissions::Config for MockRuntime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 200;
-	pub const MaxWriteOffGroups: u32 = 10;
+	pub const MaxWriteOffStates: u32 = 10;
 }
 
 impl pallet_loans::Config for MockRuntime {
@@ -347,7 +347,7 @@ impl pallet_loans::Config for MockRuntime {
 	type LoanId = ItemId;
 	type LoansPalletId = LoansPalletId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type MaxWriteOffStates = MaxWriteOffStates;
 	type NonFungible = Uniques;
 	type Permission = Permissions;
 	type Pool = Pools;

@@ -685,7 +685,7 @@ macro_rules! test_borrow_loan {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
-						WriteOffGroupInput {
+						WriteOffStateInput {
 							percentage: Rate::saturating_from_rational::<u64, u64>(group.1, 100),
 							overdue_days: group.0,
 							penalty_interest_rate_per_year: Rate::saturating_from_rational::<
@@ -709,7 +709,7 @@ macro_rules! test_borrow_loan {
 				assert_ok!(res);
 
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::WrittenOffByAdmin);
+				assert_err!(res, Error::<MockRuntime>::WrittenDownByAdmin);
 
 				// update nav
 				let updated_nav =
@@ -1200,7 +1200,7 @@ macro_rules! test_pool_nav {
 				));
 				// write off the loan and check for updated nav
 				for group in vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4)] {
-					let group = WriteOffGroupInput {
+					let group = WriteOffStateInput {
 						percentage: Rate::saturating_from_rational::<u128, u128>(group.1, 100),
 						overdue_days: group.0,
 						penalty_interest_rate_per_year: Rate::saturating_from_rational::<u64, u64>(
@@ -1359,12 +1359,12 @@ fn test_add_write_off_groups() {
 			));
 
 			// fetch write off groups
-			let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);
+			let groups = PoolWriteOffPolicy::<MockRuntime>::get(pool_id);
 			assert_eq!(groups, vec![]);
 
 			for percentage in vec![10, 20, 30, 40, 30, 50, 70, 100] {
 				// add a new write off group
-				let group = WriteOffGroupInput {
+				let group = WriteOffStateInput {
 					percentage: Rate::saturating_from_rational(percentage, 100),
 					overdue_days: 3,
 					penalty_interest_rate_per_year: Rate::saturating_from_rational::<u64, u64>(
@@ -1375,7 +1375,7 @@ fn test_add_write_off_groups() {
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, index) = match loan_event {
-					LoanEvent::WriteOffGroupAdded {
+					LoanEvent::WriteOffStateAdded {
 						pool_id,
 						write_off_group_index,
 					} => Some((pool_id, Some(write_off_group_index))),
@@ -1384,7 +1384,7 @@ fn test_add_write_off_groups() {
 				.expect("must be a write off group added event");
 
 				// check if the write off group is added
-				let group = WriteOffGroup {
+				let group = WriteOffState {
 					percentage: group.percentage,
 					overdue_days: group.overdue_days,
 					penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
@@ -1393,19 +1393,19 @@ fn test_add_write_off_groups() {
 					.unwrap(),
 				};
 				let write_off_group_index = index.expect("must be some");
-				let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);
+				let groups = PoolWriteOffPolicy::<MockRuntime>::get(pool_id);
 				assert_eq!(groups[write_off_group_index as usize], group);
 				assert_eq!(groups.len() - 1, write_off_group_index as usize);
 			}
 
 			// invalid write off group
-			let group = WriteOffGroupInput {
+			let group = WriteOffStateInput {
 				percentage: Rate::saturating_from_rational(110, 100),
 				overdue_days: 3,
 				penalty_interest_rate_per_year: Rate::saturating_from_rational::<u64, u64>(5, 100),
 			};
 			let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
-			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroup);
+			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffState);
 		})
 }
 
@@ -1449,7 +1449,7 @@ macro_rules! test_write_off_maturity_loan {
 				Timestamp::set_timestamp(t * 1000);
 				InterestAccrual::on_initialize(0);
 				let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
-				assert_err!(res, Error::<MockRuntime>::NoValidWriteOffGroup);
+				assert_err!(res, Error::<MockRuntime>::NoValidWriteOffState);
 
 				// add write off groups
 				let risk_admin = LoanAdmin::get();
@@ -1464,7 +1464,7 @@ macro_rules! test_write_off_maturity_loan {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
-						WriteOffGroupInput {
+						WriteOffStateInput {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
 							penalty_interest_rate_per_year: Rate::saturating_from_rational::<
@@ -1481,7 +1481,7 @@ macro_rules! test_write_off_maturity_loan {
 				Timestamp::set_timestamp(t * 1000);
 				InterestAccrual::on_initialize(0);
 				let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
-				assert_err!(res, Error::<MockRuntime>::NoValidWriteOffGroup);
+				assert_err!(res, Error::<MockRuntime>::NoValidWriteOffState);
 
 				// days, index
 				for days_index in vec![(3, 0), (5, 1), (7, 2), (20, 3)] {
@@ -1509,7 +1509,7 @@ macro_rules! test_write_off_maturity_loan {
 						.expect("PricedLoanDetails should be present");
 					assert_eq!(
 						active_loan.write_off_status,
-						WriteOffStatus::WrittenOff {
+						WriteOffStatus::WrittenDownByPolicy {
 							write_off_index: days_index.1
 						}
 					);
@@ -1573,7 +1573,7 @@ macro_rules! test_admin_write_off_loan_type {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
-						WriteOffGroupInput {
+						WriteOffStateInput {
 							percentage: Rate::saturating_from_rational(group.1 as u64, 100u64),
 							overdue_days: group.0,
 							penalty_interest_rate_per_year: Rate::saturating_from_rational::<
@@ -1627,7 +1627,7 @@ macro_rules! test_admin_write_off_loan_type {
 								.expect("Rate should be convertible to per-second");
 						assert_eq!(
 							active_loan.write_off_status,
-							WriteOffStatus::WrittenOffByAdmin {
+							WriteOffStatus::WrittenDownByAdmin {
 								percentage,
 								penalty_interest_rate_per_sec,
 							}
@@ -1637,7 +1637,7 @@ macro_rules! test_admin_write_off_loan_type {
 
 				// permission less write off should not work once written off by admin
 				let res = Loans::write_off(Origin::signed(100), pool_id, loan_id);
-				assert_err!(res, Error::<MockRuntime>::WrittenOffByAdmin)
+				assert_err!(res, Error::<MockRuntime>::WrittenDownByAdmin)
 			})
 	};
 }
@@ -1712,7 +1712,7 @@ macro_rules! test_close_written_off_loan_type {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
-						WriteOffGroupInput {
+						WriteOffStateInput {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
 							penalty_interest_rate_per_year: Rate::saturating_from_rational::<
@@ -1932,7 +1932,7 @@ macro_rules! write_off_overflow {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
-						WriteOffGroupInput {
+						WriteOffStateInput {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
 							penalty_interest_rate_per_year: Rate::saturating_from_rational::<

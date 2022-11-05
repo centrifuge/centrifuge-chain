@@ -34,7 +34,7 @@ use super::*;
 use crate::{
 	loan_type::{BulletLoan, CreditLineWithMaturity},
 	test_utils::initialise_test_pool,
-	types::WriteOffGroupInput,
+	types::WriteOffStateInput,
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
 };
 
@@ -288,7 +288,7 @@ where
 		LoansPallet::<T>::add_write_off_group(
 			RawOrigin::Signed(risk_admin.clone()).into(),
 			pool_id,
-			WriteOffGroupInput {
+			WriteOffStateInput {
 				percentage: Rate::saturating_from_rational(group.1, 100).into(),
 				penalty_interest_rate_per_year: Rate::saturating_from_rational(1, 100).into(),
 				overdue_days: group.0,
@@ -421,7 +421,7 @@ benchmarks! {
 	add_write_off_group {
 		prepare_asset_registry::<T>();
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
-		let write_off_group = WriteOffGroupInput {
+		let write_off_group = WriteOffStateInput {
 			// 10%
 			percentage: Rate::saturating_from_rational(10, 100).into(),
 			penalty_interest_rate_per_year: Rate::saturating_from_rational(1, 100).into(),
@@ -430,7 +430,7 @@ benchmarks! {
 	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, write_off_group)
 	verify {
 		let write_off_group_index = 0u32;
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WriteOffGroupAdded { pool_id, write_off_group_index }.into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WriteOffStateAdded { pool_id, write_off_group_index }.into());
 	}
 
 	initial_borrow {
@@ -531,7 +531,7 @@ benchmarks! {
 
 	write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		let m in 1..T::MaxWriteOffGroups::get();
+		let m in 1..T::MaxWriteOffStates::get();
 		prepare_asset_registry::<T>();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		for idx in 0..n {
@@ -547,7 +547,7 @@ benchmarks! {
 			let percentage: T::Rate = Rate::saturating_from_rational(i+1, m).into();
 			let penalty_interest_rate_per_year = Rate::saturating_from_rational(2*i + 1, 2*m).into();
 			let overdue_days = percentage.checked_mul_int(120).unwrap();
-			let write_off_group = WriteOffGroupInput {
+			let write_off_group = WriteOffStateInput {
 				percentage, penalty_interest_rate_per_year, overdue_days
 			};
 			LoansPallet::<T>::add_write_off_group(RawOrigin::Signed(risk_admin.clone()).into(), pool_id, write_off_group).expect("adding write off groups should not fail");
@@ -597,7 +597,7 @@ benchmarks! {
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: None }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
-		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOffByAdmin{percentage, penalty_interest_rate_per_sec});
+		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenDownByAdmin{percentage, penalty_interest_rate_per_sec});
 	}
 
 	repay_and_close {

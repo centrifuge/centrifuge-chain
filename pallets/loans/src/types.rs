@@ -104,8 +104,8 @@ pub enum WriteOffStatus<Rate> {
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffAction<Rate> {
-	WriteOffToCurrentState,
-	WriteOffAsAdmin {
+	WriteOffByPolicy,
+	WriteOffByAdmin {
 		percentage: Rate,
 		penalty_interest_rate_per_sec: Rate,
 	},
@@ -181,18 +181,18 @@ where
 	pub(crate) fn present_value(
 		&self,
 		debt: Balance,
-		write_off_groups: &[WriteOffGroup<Rate>],
+		write_off_policy: &[WriteOffState<Rate>],
 		now: Moment,
 	) -> Option<Balance> {
 		// if the debt is written off, write off accordingly
 		let debt = match self.write_off_status {
 			WriteOffStatus::None => debt,
-			WriteOffStatus::WrittenOff { write_off_index } => {
-				let group = write_off_groups.get(write_off_index as usize)?;
-				let write_off_amount = group.percentage.checked_mul_int(debt)?;
+			WriteOffStatus::WrittenDownByPolicy { write_off_index } => {
+				let state = write_off_policy.get(write_off_index as usize)?;
+				let write_off_amount = state.percentage.checked_mul_int(debt)?;
 				debt.checked_sub(&write_off_amount)?
 			}
-			WriteOffStatus::WrittenOffByAdmin { percentage, .. } => {
+			WriteOffStatus::WrittenDownByAdmin { percentage, .. } => {
 				let write_off_amount = percentage.checked_mul_int(debt)?;
 				debt.checked_sub(&write_off_amount)?
 			}

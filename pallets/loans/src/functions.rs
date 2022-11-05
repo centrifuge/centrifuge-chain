@@ -87,15 +87,15 @@ impl<T: Config> Pallet<T> {
 
 	pub(crate) fn rate_with_penalty(
 		loan: &PricedLoanDetailsOf<T>,
-		write_off_groups: &[WriteOffGroup<T::Rate>],
+		write_off_policy: &[WriteOffState<T::Rate>],
 	) -> T::Rate {
 		match loan.write_off_status {
 			WriteOffStatus::None => loan.interest_rate_per_sec,
-			WriteOffStatus::WrittenOff { write_off_index } => {
+			WriteOffStatus::WrittenDownByPolicy { write_off_index } => {
 				loan.interest_rate_per_sec
-					+ write_off_groups[write_off_index as usize].penalty_interest_rate_per_sec
+					+ write_off_policy[write_off_index as usize].penalty_interest_rate_per_sec
 			}
-			WriteOffStatus::WrittenOffByAdmin {
+			WriteOffStatus::WrittenDownByAdmin {
 				penalty_interest_rate_per_sec,
 				..
 			} => loan.interest_rate_per_sec + penalty_interest_rate_per_sec,
@@ -213,9 +213,9 @@ impl<T: Config> Pallet<T> {
 				)?;
 
 				// calculate old present_value
-				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+				let write_off_policy = PoolWriteOffPolicy::<T>::get(pool_id);
 				let old_pv = active_loan
-					.present_value(old_debt, &write_off_groups, active_loan.last_updated)
+					.present_value(old_debt, &write_off_policy, active_loan.last_updated)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// calculate new normalized debt without amount
@@ -239,7 +239,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate new present_value
 				let new_pv = active_loan
-					.present_value(new_debt, &write_off_groups, now)
+					.present_value(new_debt, &write_off_policy, now)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)
@@ -290,7 +290,7 @@ impl<T: Config> Pallet<T> {
 				// ensure debt is all paid
 				// we just need to ensure normalized debt is zero
 				// if not, we check if the loan is written of 100%
-				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+				let write_off_policy = PoolWriteOffPolicy::<T>::get(pool_id);
 				let written_off = match (
 					active_loan.normalized_debt == Zero::zero(),
 					active_loan.write_off_status,
@@ -301,23 +301,20 @@ impl<T: Config> Pallet<T> {
 					(_, WriteOffStatus::None) => Err(Error::<T>::LoanNotRepaid),
 					// debt not cleared but loan is written off
 					// if written off completely, then we can close it
-					(_, WriteOffStatus::WrittenOff { write_off_index }) => {
-						let group = write_off_groups
-							.get(write_off_index as usize)
-							.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
-						ensure!(group.percentage == One::one(), Error::<T>::LoanNotRepaid);
+					(_, WriteOffStatus::WrittenDownByPolicy { percentage, .. }) => {
+						ensure!(percentage == One::one(), Error::<T>::LoanNotRepaid);
 						Ok(true)
 					}
 					// debt not cleared but loan is written off by admin
 					// if written off completely, then we can close it
-					(_, WriteOffStatus::WrittenOffByAdmin { percentage, .. }) => {
+					(_, WriteOffStatus::WrittenDownByAdmin { percentage, .. }) => {
 						ensure!(percentage == One::one(), Error::<T>::LoanNotRepaid);
 						Ok(true)
 					}
 				}?;
 
 				let interest_rate_with_penalty =
-					Self::rate_with_penalty(active_loan, &write_off_groups);
+					Self::rate_with_penalty(active_loan, &write_off_policy);
 
 				// transfer collateral nft to owner
 				let (collateral_class_id, instance_id) = collateral.destruct();
@@ -363,7 +360,7 @@ impl<T: Config> Pallet<T> {
 				// ensure loan is not written off
 				ensure!(
 					active_loan.write_off_status == WriteOffStatus::None,
-					Error::<T>::WrittenOffByAdmin
+					Error::<T>::WrittenDownByAdmin
 				);
 
 				// ensure maturity date has not passed if the loan has a maturity date
@@ -502,9 +499,9 @@ impl<T: Config> Pallet<T> {
 				// ensure repay amount is positive
 				ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
-				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+				let write_off_policy = PoolWriteOffPolicy::<T>::get(pool_id);
 				let interest_rate_with_penalty =
-					Self::rate_with_penalty(active_loan, &write_off_groups);
+					Self::rate_with_penalty(active_loan, &write_off_policy);
 
 				let old_debt = T::InterestAccrual::previous_debt(
 					interest_rate_with_penalty,
@@ -514,7 +511,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate old present_value
 				let old_pv = active_loan
-					.present_value(old_debt, &write_off_groups, active_loan.last_updated)
+					.present_value(old_debt, &write_off_policy, active_loan.last_updated)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				let current_debt = T::InterestAccrual::current_debt(
@@ -547,7 +544,7 @@ impl<T: Config> Pallet<T> {
 				)?;
 
 				let new_pv = active_loan
-					.present_value(new_debt, &write_off_groups, now)
+					.present_value(new_debt, &write_off_policy, now)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::deposit(pool_id, owner, repay_amount)?;
@@ -564,9 +561,9 @@ impl<T: Config> Pallet<T> {
 	/// returns the present value of the loan accounting any write offs
 	pub(crate) fn accrue_debt_and_calculate_present_value(
 		active_loan: &mut PricedLoanDetailsOf<T>,
-		write_off_groups: &[WriteOffGroup<T::Rate>],
+		write_off_policy: &[WriteOffState<T::Rate>],
 	) -> Result<T::Balance, DispatchError> {
-		let interest_rate_with_penalty = Self::rate_with_penalty(active_loan, write_off_groups);
+		let interest_rate_with_penalty = Self::rate_with_penalty(active_loan, write_off_policy);
 
 		let debt = T::InterestAccrual::current_debt(
 			interest_rate_with_penalty,
@@ -577,7 +574,7 @@ impl<T: Config> Pallet<T> {
 		active_loan.last_updated = now;
 
 		let present_value = active_loan
-			.present_value(debt, write_off_groups, now)
+			.present_value(debt, write_off_policy, now)
 			.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 		Ok(present_value)
@@ -587,7 +584,7 @@ impl<T: Config> Pallet<T> {
 	pub fn update_nav_of_pool(
 		pool_id: PoolIdOf<T>,
 	) -> Result<(ActiveCount, T::Balance), DispatchError> {
-		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+		let write_off_policy = PoolWriteOffPolicy::<T>::get(pool_id);
 
 		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 			// Loop over all loans and sum all present values, to calculate the Net Asset Value (NAV)
@@ -596,7 +593,7 @@ impl<T: Config> Pallet<T> {
 				|sum, active_loan| -> Result<T::Balance, DispatchError> {
 					let present_value = Self::accrue_debt_and_calculate_present_value(
 						active_loan,
-						&write_off_groups,
+						&write_off_policy,
 					)?;
 
 					sum.checked_add(&present_value)
@@ -620,7 +617,7 @@ impl<T: Config> Pallet<T> {
 
 	pub(crate) fn add_write_off_group_to_pool(
 		pool_id: PoolIdOf<T>,
-		group: WriteOffGroup<T::Rate>,
+		group: WriteOffState<T::Rate>,
 	) -> Result<u32, DispatchError> {
 		// ensure pool is initialised
 		ensure!(
@@ -631,15 +628,15 @@ impl<T: Config> Pallet<T> {
 		// ensure write off percentage is not more than 100%
 		ensure!(
 			group.percentage <= One::one(),
-			Error::<T>::InvalidWriteOffGroup
+			Error::<T>::InvalidWriteOffState
 		);
 
 		// append new group
-		PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| {
-			write_off_groups
+		PoolWriteOffPolicy::<T>::mutate(pool_id, |write_off_policy| {
+			write_off_policy
 				.try_push(group)
-				.map(|_| (write_off_groups.len() - 1) as u32)
-				.map_err(|_| Error::<T>::TooManyWriteOffGroups.into())
+				.map(|_| (write_off_policy.len() - 1) as u32)
+				.map_err(|_| Error::<T>::TooManyWriteOffStates.into())
 		})
 	}
 
@@ -661,21 +658,21 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			|active_loan| -> Result<WriteOffDetailsOf<T>, DispatchError> {
-				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+				let write_off_policy = PoolWriteOffPolicy::<T>::get(pool_id);
 				let (
 					write_off_group_index,
 					write_off_percentage,
 					write_off_penalty_rate,
 					new_write_off_status,
 				) = match action {
-					WriteOffAction::WriteOffToCurrentGroup => {
+					WriteOffAction::WriteOffByPolicy => {
 						// Loans that were already written off by an admin,
 						// cannot be written off to the current group anymore.
 						let is_written_off_by_admin = matches!(
 							active_loan.write_off_status,
-							WriteOffStatus::WrittenOffByAdmin { .. }
+							WriteOffStatus::WriteOffByAdmin { .. }
 						);
-						ensure!(!is_written_off_by_admin, Error::<T>::WrittenOffByAdmin);
+						ensure!(!is_written_off_by_admin, Error::<T>::WrittenDownByAdmin);
 
 						let maturity_date = active_loan
 							.loan_type
@@ -689,14 +686,14 @@ impl<T: Config> Pallet<T> {
 						// not written off by admin, and non admin trying to write off, then
 						// fetch the best write group available for this loan
 						let (write_off_index, group) =
-							math::valid_write_off_group(maturity_date, now, &write_off_groups)?
-								.ok_or(Error::<T>::NoValidWriteOffGroup)?;
+							math::valid_write_off_group(maturity_date, now, &write_off_policy)?
+								.ok_or(Error::<T>::NoValidWriteOffState)?;
 
 						(
 							Some(write_off_index),
 							group.percentage,
 							group.penalty_interest_rate_per_sec,
-							WriteOffStatus::WrittenOff { write_off_index },
+							WriteOffStatus::WrittenDownByPolicy { write_off_index },
 						)
 					}
 					WriteOffAction::WriteOffAsAdmin {
@@ -706,7 +703,7 @@ impl<T: Config> Pallet<T> {
 						None,
 						percentage,
 						penalty_interest_rate_per_sec,
-						WriteOffStatus::WrittenOffByAdmin {
+						WriteOffStatus::WrittenDownByAdmin {
 							percentage,
 							penalty_interest_rate_per_sec,
 						},
@@ -714,7 +711,7 @@ impl<T: Config> Pallet<T> {
 				};
 
 				let previous_interest_rate =
-					Self::rate_with_penalty(active_loan, &write_off_groups);
+					Self::rate_with_penalty(active_loan, &write_off_policy);
 
 				let debt = T::InterestAccrual::current_debt(
 					previous_interest_rate,
@@ -730,7 +727,7 @@ impl<T: Config> Pallet<T> {
 
 				// get old present value accounting for any write offs
 				let old_pv = active_loan
-					.present_value(old_debt, &write_off_groups, active_loan.last_updated)
+					.present_value(old_debt, &write_off_policy, active_loan.last_updated)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				active_loan.write_off_status = new_write_off_status;
@@ -738,7 +735,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate updated write off adjusted present value
 				let new_pv = active_loan
-					.present_value(debt, &write_off_groups, now)
+					.present_value(debt, &write_off_policy, now)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// Migrate written-off loan to new interest rate

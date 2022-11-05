@@ -19,7 +19,7 @@ use sp_arithmetic::{
 };
 use sp_runtime::{ArithmeticError, DispatchError};
 
-use crate::WriteOffGroup;
+use crate::WriteOffState;
 
 /// calculates the latest accumulated rate since the last
 pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
@@ -153,8 +153,8 @@ where
 pub(crate) fn valid_write_off_group<Rate>(
 	maturity_date: Moment,
 	now: Moment,
-	write_off_groups: &[WriteOffGroup<Rate>],
-) -> Result<Option<(u32, &WriteOffGroup<Rate>)>, DispatchError> {
+	write_off_groups: &[WriteOffState<Rate>],
+) -> Result<Option<(u32, &WriteOffState<Rate>)>, DispatchError> {
 	let mut current_group = None;
 	let mut highest_overdue_days = 0;
 	let seconds_per_day = seconds_per_day();
@@ -371,33 +371,33 @@ mod tests {
 
 	#[test]
 	fn test_valid_write_off_groups() {
-		let groups: Vec<WriteOffGroup<Rate>> = vec![
-			WriteOffGroup {
+		let groups: Vec<WriteOffState<Rate>> = vec![
+			WriteOffState {
 				percentage: Rate::saturating_from_rational(0, 100),
 				overdue_days: 3,
 				penalty_interest_rate_per_sec: Rate::saturating_from_rational(0, 100),
 			},
-			WriteOffGroup {
+			WriteOffState {
 				percentage: Rate::saturating_from_rational(0, 100),
 				overdue_days: 5,
 				penalty_interest_rate_per_sec: Rate::saturating_from_rational(0, 100),
 			},
-			WriteOffGroup {
+			WriteOffState {
 				percentage: Rate::saturating_from_rational(0, 100),
 				overdue_days: 6,
 				penalty_interest_rate_per_sec: Rate::saturating_from_rational(0, 100),
 			},
-			WriteOffGroup {
+			WriteOffState {
 				percentage: Rate::saturating_from_rational(0, 100),
 				overdue_days: 14,
 				penalty_interest_rate_per_sec: Rate::saturating_from_rational(0, 100),
 			},
-			WriteOffGroup {
+			WriteOffState {
 				percentage: Rate::saturating_from_rational(0, 100),
 				overdue_days: 9,
 				penalty_interest_rate_per_sec: Rate::saturating_from_rational(0, 100),
 			},
-			WriteOffGroup {
+			WriteOffState {
 				percentage: Rate::saturating_from_rational(0, 100),
 				overdue_days: 7,
 				penalty_interest_rate_per_sec: Rate::saturating_from_rational(0, 100),
@@ -407,7 +407,7 @@ mod tests {
 		let sec_per_day = seconds_per_day();
 
 		// maturity date in days and current time offset to maturity date  and resultant index from the group
-		let tests: Vec<(Moment, Moment, Option<(u32, &WriteOffGroup<Rate>)>)> = vec![
+		let tests: Vec<(Moment, Moment, Option<(u32, &WriteOffState<Rate>)>)> = vec![
 			// day 0, and now is at zero, index is None
 			(0, 0, None),
 			(0, 1, None),
