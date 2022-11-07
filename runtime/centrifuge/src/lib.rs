@@ -23,7 +23,9 @@ use cfg_types::{CustomMetadata, FeeKey};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{
+		EqualPrivilegeOnly, InstanceFilter, LockIdentifier, OnRuntimeUpgrade, U128CurrencyToVote,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, DispatchClass, Weight,
@@ -838,14 +840,13 @@ impl pallet_nft::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID));
 	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type BridgePalletId = BridgePalletId;
+	type BridgePalletId = ChainBridgePalletId;
 	type Currency = Balances;
 	type Event = Event;
 	type Fees = Fees;
@@ -1044,8 +1045,27 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(),
+	Upgrade,
 >;
+
+pub struct Upgrade;
+impl OnRuntimeUpgrade for Upgrade {
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		pallet_bridge::migration::fix_pallet_account::pre_migrate::<Runtime>()
+	}
+
+	fn on_runtime_upgrade() -> Weight {
+		let mut weight = Weight::from_ref_time(0);
+		weight += pallet_bridge::migration::fix_pallet_account::migrate::<Runtime>();
+		weight
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		pallet_bridge::migration::fix_pallet_account::post_migrate::<Runtime>()
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

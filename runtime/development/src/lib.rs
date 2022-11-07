@@ -1366,14 +1366,13 @@ impl pallet_connectors::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
 	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type BridgePalletId = BridgePalletId;
+	type BridgePalletId = ChainBridgePalletId;
 	type Currency = Balances;
 	type Event = Event;
 	type Fees = Fees;
@@ -1385,7 +1384,7 @@ impl pallet_bridge::Config for Runtime {
 parameter_types! {
 	pub const ChainId: chainbridge::ChainId = 1;
 	pub const ProposalLifetime: u32 = 500;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainBridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
