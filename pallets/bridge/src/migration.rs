@@ -14,46 +14,75 @@ use super::*;
 
 pub mod fix_pallet_account {
 	use cfg_primitives::AccountId;
+	#[cfg(feature = "try-runtime")]
+	use frame_support::ensure;
 	use frame_support::{log, weights::Weight};
-	use sp_core::crypto::Ss58Codec;
-	use sp_runtime::traits::AccountIdConversion;
-	use sp_std::{vec, vec::Vec};
+	use sp_runtime::traits::{AccountIdConversion, Zero};
+	use sp_std::vec;
 
-	use super::*;
+	use super::*; // Not in prelude for try-runtime
+
+	const WRONG_INBOUND_ID: PalletId = PalletId(*b"cb/bridg");
+	const WRONG_OUTBOUND_ID: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
+
+	#[cfg(feature = "try-runtime")]
+	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
+		Ok(())
+	}
 
 	pub fn migrate<T: Config>() -> Weight
 	where
 		<T as frame_system::Config>::AccountId: From<AccountId>,
 	{
-		log::info!("pallet_bridge: fix pallet account");
-
-		let wrong_accounts: Vec<T::AccountId> = vec![
-			"4dpEcgqFmYGRSkRhTzVZjTG4uKoiB9VBB4Qi33LH73WsWXa4",
-			"4dpEcgqFor2TJw9uWSjx2JpjkNmTic2UjJAK1j9fRtcTUoRu",
-		]
-		.iter()
-		.map(|x| {
-			AccountId::from_string(x)
-				.expect("Account conversion should work")
-				.into()
-		})
-		.collect::<Vec<_>>();
+		log::info!("pallet_bridge: initiating migration to move funds from wrong bridge accounts");
 
 		let correct_bridge_account: T::AccountId =
 			cfg_types::ids::CHAIN_BRIDGE_PALLET_ID.into_account_truncating();
+		let wrong_accounts = vec![
+			WRONG_INBOUND_ID.into_account_truncating(),
+			WRONG_OUTBOUND_ID.into_account_truncating(),
+		];
 
 		wrong_accounts.iter().for_each(|x| {
 			let balance = T::Currency::free_balance(&x);
-			// Transfers the balance of the bad account to the correct one
-			T::Currency::transfer(
-				&x,
-				&correct_bridge_account,
-				balance,
-				AllowDeath,
-			)
-				.expect("TODO(nuno)");
+
+			// Transfer the balance of the wrong account to the correct one if there's balance
+			// to be moved; this works as a simple check to stop us from running this migration
+			// more than once.
+			if balance > Zero::zero() {
+				log::info!(
+					"pallet_bridge: will move balance from the wrong account {}",
+					x
+				);
+				let res = T::Currency::transfer(&x, &correct_bridge_account, balance, AllowDeath);
+
+				match res {
+					Ok(_) => log::info!("pallet_bridge: balance migration succeeded"),
+					Err(err) => {
+						log::error!("pallet_bridge: balance migration failed with {:?}", err)
+					}
+				}
+			}
 		});
 
 		Weight::from_ref_time(0)
+	}
+
+	/// Ensure that the wrong accounts' balance is zero after the migration has been executed.
+	#[cfg(feature = "try-runtime")]
+	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
+		vec![
+			WRONG_INBOUND_ID.into_account_truncating(),
+			WRONG_OUTBOUND_ID.into_account_truncating(),
+		]
+		.iter()
+		.for_each(|x| {
+			ensure!(
+				T::Currency::free_balance(&x) == Zero::zero(),
+				format!("Wrong account {:?} still has some balance", x)
+			);
+		});
+
+		Ok(())
 	}
 }
