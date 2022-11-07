@@ -23,7 +23,7 @@ pub mod fix_pallet_account {
 	use super::*; // Not in prelude for try-runtime
 
 	const WRONG_INBOUND_ID: PalletId = PalletId(*b"cb/bridg");
-	const WRONG_OUTBOUND_ID: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
+	const WRONG_OUTBOUND_ID: PalletId = PalletId(*b"c/bridge");
 
 	#[cfg(feature = "try-runtime")]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
