@@ -13,13 +13,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{pools::PoolMutate, Permissions};
+use cfg_traits::{Permissions, PoolMutate};
 use cfg_types::{PermissionScope, PoolRole, Role, UpdateState};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use pallet_pools::{PoolChanges, TrancheInput};
+use pallet_pool_system::{PoolChanges, TrancheInput};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
 	FixedPointNumber, FixedPointOperand,

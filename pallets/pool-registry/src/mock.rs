@@ -1,7 +1,18 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+//
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 use std::marker::PhantomData;
 
 use cfg_primitives::Moment;
-use cfg_types::{CurrencyId, PoolChanges, Rate, TrancheInput, UpdateState};
+use cfg_types::{CurrencyId, Rate, UpdateState};
 use frame_support::{
 	dispatch::{
 		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
@@ -10,6 +21,7 @@ use frame_support::{
 	traits::{Hooks, SortedMembers},
 };
 use frame_system::EnsureSigned;
+use pallet_pool_system::{PoolChanges, TrancheInput};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,

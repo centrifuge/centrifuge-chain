@@ -13,7 +13,7 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use cfg_primitives::CFG as CURRENCY;
-use cfg_traits::{Investment, PoolNAV, TrancheCurrency as _};
+use cfg_traits::{Investment, PoolMutate, PoolNAV, TrancheCurrency as _};
 use cfg_types::{CurrencyId, TrancheCurrency};
 use codec::Encode;
 use frame_support::{
