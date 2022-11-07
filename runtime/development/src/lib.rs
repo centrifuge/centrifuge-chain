@@ -24,7 +24,7 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	pools::{PoolInspect, PoolUpdateGuard},
+	PoolInspect, PoolUpdateGuard,
 	CurrencyPrice, OrderManager, Permissions as PermissionsT, PreConditions, PriceValue,
 	TrancheCurrency as _,
 };

@@ -1199,6 +1199,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-asset-registry",
+ "orml-traits",
  "parity-scale-codec 3.2.1",
  "polkadot-parachain",
  "scale-info",
@@ -6984,6 +6985,33 @@ dependencies = [
  "serde",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-pool-registry"
+version = "1.0.0"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-asset-registry",
+ "orml-traits",
+ "pallet-permissions",
+ "pallet-pool-system",
+ "pallet-timestamp",
+ "parity-scale-codec 3.2.1",
+ "polkadot-parachain",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]

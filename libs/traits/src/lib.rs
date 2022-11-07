@@ -21,28 +21,28 @@
 use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{
+		Codec, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo,
+		PostDispatchInfo,
+	},
 	scale_info::TypeInfo,
 	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 		MaybeSerializeDeserialize, Member, Zero,
 	},
 	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
+use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
 /// Traits related to operations.
 pub mod ops;
 
 /// Traits related to rewards.
 pub mod rewards;
-
-/// Traits related to poools.
-pub mod pools;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -126,6 +126,40 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+}
+
+/// A trait that supports modifications of pools
+pub trait PoolMutate<
+	AccountId,
+	Balance,
+	PoolId,
+	CurrencyId,
+	Rate,
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
+>
+{
+	type TrancheInput: Encode + Decode + Clone;
+	type PoolChanges: Encode + Decode + Clone;
+	type UpdateState: Encode + Decode + Clone;
+
+	fn create(
+		admin: AccountId,
+		depositor: AccountId,
+		pool_id: PoolId,
+		tranche_inputs: Vec<Self::TrancheInput>,
+		currency: CurrencyId,
+		max_reserve: Balance,
+		metadata: Option<Vec<u8>>,
+	) -> DispatchResult;
+
+	fn update(
+		pool_id: PoolId,
+		changes: Self::PoolChanges,
+	) -> Result<(Self::UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
+
+	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
@@ -247,6 +281,18 @@ pub trait Properties {
 	fn rm(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 
 	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
+}
+
+pub trait PoolUpdateGuard {
+	type PoolDetails;
+	type ScheduledUpdateDetails;
+	type Moment: Copy;
+
+	fn released(
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
+	) -> bool;
 }
 
 pub trait PreConditions<T> {

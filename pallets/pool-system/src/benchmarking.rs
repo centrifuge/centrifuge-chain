@@ -282,8 +282,8 @@ benchmarks! {
 }
 
 fn prepare_asset_registry<T: Config>()
-	where
-		T::AssetRegistry:
+where
+	T::AssetRegistry:
 		OrmlMutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
 {
 	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
@@ -300,7 +300,7 @@ fn prepare_asset_registry<T: Config>()
 					additional: CustomMetadata::default(),
 				},
 			)
-				.expect("Registering Pool asset must work");
+			.expect("Registering Pool asset must work");
 		}
 	}
 }
@@ -359,10 +359,10 @@ fn create_investor<
 	id: u32,
 	tranche: TrancheIndex,
 ) -> Result<T::AccountId, DispatchError>
-	where
-		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
+where
+	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 		From<<T as frame_system::Config>::AccountId>,
-		T::Permission: Permissions<T::AccountId, Ok = ()>,
+	T::Permission: Permissions<T::AccountId, Ok = ()>,
 {
 	let investor: T::AccountId = account("investor", id, 0);
 	let tranche_id = get_tranche_id::<T>(tranche);
@@ -381,8 +381,8 @@ fn create_investor<
 }
 
 fn create_admin<T: Config<CurrencyId = CurrencyId, Balance = u128>>(id: u32) -> T::AccountId
-	where
-		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
+where
+	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 		From<<T as frame_system::Config>::AccountId>,
 {
 	let admin: T::AccountId = account("admin", id, 0);
@@ -392,8 +392,8 @@ fn create_admin<T: Config<CurrencyId = CurrencyId, Balance = u128>>(id: u32) -> 
 }
 
 fn set_liquidity_admin<T: Config<PoolId = u64>>(target: T::AccountId) -> DispatchResult
-	where
-		T::Permission: Permissions<T::AccountId, Ok = ()>,
+where
+	T::Permission: Permissions<T::AccountId, Ok = ()>,
 {
 	T::Permission::add(
 		PermissionScope::Pool(POOL),

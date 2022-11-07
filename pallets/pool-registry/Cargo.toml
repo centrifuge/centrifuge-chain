@@ -31,7 +31,7 @@ cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
-pallet-pools = { path = "../../pallets/pools", default-features = false }
+pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
 [dev-dependencies]
 pallet-permissions = { path = "../../pallets/permissions", default-features = true }

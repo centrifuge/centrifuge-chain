@@ -21,8 +21,8 @@ use std::fmt::Debug;
 
 use cfg_primitives::Moment;
 use cfg_traits::{
-	pools::{PoolInspect, PoolNAV as TPoolNav, PoolReserve},
-	InterestAccrual as InterestAccrualT, Permissions as PermissionsT,
+	InterestAccrual as InterestAccrualT, Permissions as PermissionsT, PoolInspect,
+	PoolNAV as TPoolNav, PoolReserve,
 };
 pub use cfg_types::{Adjustment, PermissionScope, PoolRole, Role};
 use codec::{Decode, Encode};

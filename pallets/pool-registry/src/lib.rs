@@ -14,14 +14,12 @@
 
 use cfg_primitives::Moment;
 use cfg_traits::{pools::PoolMutate, Permissions};
-use cfg_types::{
-	PermissionScope, PoolRole, Role, UpdateState,
-};
-use pallet_pools::{TrancheInput, PoolChanges};
+use cfg_types::{PermissionScope, PoolRole, Role, UpdateState};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
+use pallet_pools::{PoolChanges, TrancheInput};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
 	FixedPointNumber, FixedPointOperand,
