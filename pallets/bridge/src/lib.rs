@@ -28,6 +28,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migration;
+
 // Pallet traits declaration
 pub mod traits;
 
