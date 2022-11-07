@@ -373,7 +373,7 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 /// A module where all calls need to be called within an
 /// externalities provided environment.
 mod with_ext {
-	use cfg_traits::PoolNAV;
+	use cfg_traits::pools::PoolNAV;
 
 	use super::*;
 

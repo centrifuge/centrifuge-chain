@@ -40,19 +40,6 @@ pub trait PoolNAV<PoolId, Amount> {
 		-> DispatchResult;
 }
 
-/// A trait that can make sure an update is allowed on a pool or not.
-pub trait PoolUpdateGuard {
-	type PoolDetails;
-	type ScheduledUpdateDetails;
-	type Moment: Copy;
-
-	fn released(
-		pool: &Self::PoolDetails,
-		update: &Self::ScheduledUpdateDetails,
-		now: Self::Moment,
-	) -> bool;
-}
-
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
 	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo;
