@@ -24,8 +24,9 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard,
-	PreConditions, PriceValue, TrancheCurrency as _,
+	pools::{PoolInspect, PoolUpdateGuard},
+	CurrencyPrice, OrderManager, Permissions as PermissionsT, PreConditions, PriceValue,
+	TrancheCurrency as _,
 };
 pub use cfg_types::CurrencyId;
 use cfg_types::{

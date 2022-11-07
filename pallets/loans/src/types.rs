@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 //! Module provides base types and their functions
-use cfg_traits::PoolInspect;
+use cfg_traits::pools::PoolInspect;
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;

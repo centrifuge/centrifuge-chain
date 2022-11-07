@@ -1,0 +1,12 @@
+[package]
+authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+description = 'FRAME pallet template for defining custom runtime logic.'
+edition = '2021'
+homepage = 'https://substrate.dev'
+license = 'Unlicense'
+name = 'pallet-pool-registry'
+readme = 'README.md'
+repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+version = '3.0.0'
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']

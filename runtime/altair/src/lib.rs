@@ -20,7 +20,8 @@
 
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, TrancheCurrency as _,
+	pools::PoolUpdateGuard, OrderManager, Permissions as PermissionsT, PreConditions,
+	TrancheCurrency as _,
 };
 pub use cfg_types::CurrencyId;
 use cfg_types::{

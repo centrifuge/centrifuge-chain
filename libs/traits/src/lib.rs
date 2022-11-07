@@ -41,6 +41,9 @@ pub mod ops;
 /// Traits related to rewards.
 pub mod rewards;
 
+/// Traits related to poools.
+pub mod pools;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
@@ -244,18 +247,6 @@ pub trait Properties {
 	fn rm(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 
 	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
-}
-
-pub trait PoolUpdateGuard {
-	type PoolDetails;
-	type ScheduledUpdateDetails;
-	type Moment: Copy;
-
-	fn released(
-		pool: &Self::PoolDetails,
-		update: &Self::ScheduledUpdateDetails,
-		now: Self::Moment,
-	) -> bool;
 }
 
 pub trait PreConditions<T> {
