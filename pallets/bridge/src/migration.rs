@@ -17,6 +17,7 @@ pub mod fix_pallet_account {
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::{log, weights::Weight};
+	use scale_info::prelude::format;
 	use sp_runtime::traits::{AccountIdConversion, Zero};
 	use sp_std::vec;
 
@@ -71,17 +72,17 @@ pub mod fix_pallet_account {
 	/// Ensure that the wrong accounts' balance is zero after the migration has been executed.
 	#[cfg(feature = "try-runtime")]
 	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
-		vec![
-			WRONG_INBOUND_ID.into_account_truncating(),
-			WRONG_OUTBOUND_ID.into_account_truncating(),
-		]
-		.iter()
-		.for_each(|x| {
-			ensure!(
-				T::Currency::free_balance(&x) == Zero::zero(),
-				format!("Wrong account {:?} still has some balance", x)
-			);
-		});
+		let wrong_account_inbound = WRONG_INBOUND_ID.into_account_truncating();
+		ensure!(
+			T::Currency::free_balance(&wrong_account_inbound) == Zero::zero(),
+			"Inbound account still has balance"
+		);
+
+		let wrong_account_outbound = WRONG_OUTBOUND_ID.into_account_truncating();
+		ensure!(
+			T::Currency::free_balance(&wrong_account_outbound) == Zero::zero(),
+			"Outbound account still has balance"
+		);
 
 		Ok(())
 	}
