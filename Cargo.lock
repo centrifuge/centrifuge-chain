@@ -9688,6 +9688,7 @@ dependencies = [
  "pallet-balances",
  "pallet-connectors",
  "pallet-loans",
+ "pallet-multisig",
  "pallet-permissions",
  "pallet-pool-system",
  "pallet-transaction-payment",

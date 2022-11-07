@@ -208,18 +208,20 @@ impl Contains<Call> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
-					return false;
-				}
+				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
 				pallet_xcm::Call::__Ignore { .. } => {
 					unimplemented!()
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
-					return true;
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
+			},
+			Call::Multisig(method) => match method {
+				pallet_multisig::Call::as_multi { call, .. } => {
+					call.encoded_len() < MAX_MULTISIG_CALL_SIZE
 				}
+				_ => true,
 			},
 			_ => true,
 		}
