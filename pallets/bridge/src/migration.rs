@@ -17,8 +17,7 @@ pub mod fix_pallet_account {
 	#[cfg(feature = "try-runtime")]
 	use frame_support::ensure;
 	use frame_support::{log, weights::Weight};
-	use scale_info::prelude::format;
-	use sp_runtime::traits::{AccountIdConversion, Zero};
+	use sp_runtime::traits::{AccountIdConversion, Get, Zero};
 	use sp_std::vec;
 
 	use super::*; // Not in prelude for try-runtime
@@ -35,6 +34,7 @@ pub mod fix_pallet_account {
 	where
 		<T as frame_system::Config>::AccountId: From<AccountId>,
 	{
+		let mut weight = Weight::from_ref_time(0);
 		log::info!("pallet_bridge: initiating migration to move funds from wrong bridge accounts");
 
 		let correct_bridge_account: T::AccountId =
@@ -64,9 +64,10 @@ pub mod fix_pallet_account {
 					}
 				}
 			}
+			weight += T::DbWeight::get().reads_writes(2, 1);
 		});
 
-		Weight::from_ref_time(0)
+		weight
 	}
 
 	/// Ensure that the wrong accounts' balance is zero after the migration has been executed.
