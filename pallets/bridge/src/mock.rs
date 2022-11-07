@@ -181,7 +181,7 @@ impl chainbridge::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
-	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
+	pub const BridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 }
 

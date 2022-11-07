@@ -838,14 +838,13 @@ impl pallet_nft::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID));
 	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type BridgePalletId = BridgePalletId;
+	type BridgePalletId = ChainBridgePalletId;
 	type Currency = Balances;
 	type Event = Event;
 	type Fees = Fees;
