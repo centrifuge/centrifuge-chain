@@ -51,7 +51,7 @@ pub mod fix_pallet_account {
 			// more than once.
 			if balance > Zero::zero() {
 				log::info!(
-					"pallet_bridge: will move balance from the wrong account {}",
+					"pallet_bridge: will move balance from the wrong account {:?}",
 					x
 				);
 				let res = T::Currency::transfer(&x, &correct_bridge_account, balance, AllowDeath);
