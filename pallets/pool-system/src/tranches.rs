@@ -1683,6 +1683,17 @@ pub mod test {
 		EpochExecutionTranches::new(epoch_tranches)
 	}
 
+	fn tranche_solution(i: Perquintill, r: Perquintill) -> TrancheSolution {
+		TrancheSolution {
+			invest_fulfillment: i,
+			redeem_fulfillment: r,
+		}
+	}
+
+	fn default_tranche_solution() -> TrancheSolution {
+		tranche_solution(Perquintill::one(), Perquintill::one())
+	}
+
 	mod tranche_type {
 		use super::*;
 
@@ -2262,6 +2273,69 @@ pub mod test {
 					"EpochExecutionTranches contains more tranches than iterables elements"
 				))
 			);
+		}
+
+		#[test]
+		fn epoch_execution_tranches_prices_works() {
+			let tranches = default_epoch_tranches();
+
+			assert_eq!(
+				vec![Rate::one(), Rate::one(), Rate::one()],
+				tranches.prices()
+			)
+		}
+
+		#[test]
+		fn epoch_execution_supplies_with_fulfillment_works() {
+			assert_eq!(
+				Err(DispatchError::Other(
+					"Iterable contains more elements than EpochExecutionTranches tranche count"
+				)),
+				default_epoch_tranches().supplies_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			assert_eq!(
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements"
+				)),
+				default_epoch_tranches().supplies_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			assert_eq!(
+				Ok(vec![0, 0, 0]),
+				default_epoch_tranches().supplies_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([(100, 100), (200, 200), (300, 300)], |e, (i, r)| {
+					e.invest = i;
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+
+			assert_eq!(
+				Ok(vec![0, 0, 0]),
+				e_e_tranches.supplies_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			)
 		}
 	}
 }
