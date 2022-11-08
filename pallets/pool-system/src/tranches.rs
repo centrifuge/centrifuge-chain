@@ -2329,13 +2329,116 @@ pub mod test {
 				.unwrap();
 
 			assert_eq!(
+				Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+				e_e_tranches.supplies_with_fulfillment(&[
+					tranche_solution(Perquintill::from_percent(50), Perquintill::one()),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top(
+					[(1000, u128::MAX, 100), (200, 0, 200), (300, 0, 300)],
+					|e, (i, s, r)| {
+						e.invest = i;
+						e.supply = s;
+						e.redeem = r;
+						Ok(())
+					},
+				)
+				.unwrap();
+
+			assert_eq!(
+				Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
+				e_e_tranches.supplies_with_fulfillment(&[
+					tranche_solution(Perquintill::one(), Perquintill::from_percent(1)),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([(100, 100), (200, 200), (300, 300)], |e, (i, r)| {
+					e.invest = i;
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+
+			assert_eq!(
 				Ok(vec![0, 0, 0]),
 				e_e_tranches.supplies_with_fulfillment(&[
 					default_tranche_solution(),
 					default_tranche_solution(),
 					default_tranche_solution()
 				])
-			)
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([(200, 100), (200, 200), (300, 300)], |e, (i, r)| {
+					e.invest = i;
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+
+			assert_eq!(
+				Ok(vec![100, 0, 0]),
+				e_e_tranches.supplies_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([(200, 100), (200, 200), (300, 300)], |e, (i, r)| {
+					e.invest = i;
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+
+			assert_eq!(
+				Ok(vec![50, 0, 0]),
+				e_e_tranches.supplies_with_fulfillment(&[
+					tranche_solution(Perquintill::from_percent(50), Perquintill::from_percent(50)),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top(
+					[(200, 100, 100), (200, 100, 200), (300, 200, 300)],
+					|e, (i, s, r)| {
+						e.invest = i;
+						e.supply = s;
+						e.redeem = r;
+						Ok(())
+					},
+				)
+				.unwrap();
+
+			assert_eq!(
+				Ok(vec![200, 100, 200]),
+				e_e_tranches.supplies_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
 		}
 	}
 }
