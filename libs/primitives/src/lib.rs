@@ -241,6 +241,10 @@ pub mod constants {
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
+
+	/// Maximum size of a multisig call allowed by the base filters - 50Kib
+	/// TODO: Remove once we have upgraded to Substrate/Polkadot v0.9.31
+	pub const MAX_MULTISIG_CALL_SIZE: usize = 50000;
 }
 
 /// Listing of parachains we integrate with.

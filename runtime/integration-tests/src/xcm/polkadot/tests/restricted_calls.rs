@@ -21,10 +21,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use centrifuge_runtime::{Balances, Call, Origin, PolkadotXcm, XTokens};
+use centrifuge_runtime::{Balances, Call, Multisig, Origin, PolkadotXcm, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
-use frame_support::{assert_err, assert_noop, assert_ok, dispatch::Dispatchable};
+use codec::Encode;
+use frame_support::{
+	assert_err, assert_noop, assert_ok, dispatch::Dispatchable, traits::WrapperKeepOpaque,
+};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use sp_runtime::{DispatchError, DispatchError::BadOrigin};
@@ -49,6 +52,7 @@ use crate::xcm::polkadot::{
 /// Verify that calls that would allow for Tranche token to be transferred through XCM
 /// fail because the underlying CurrencyIdConvert doesn't handle Tranche tokens.
 pub mod blocked {
+	use frame_support::weights::Weight;
 	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
 	use xcm::{latest::MultiAssets, VersionedMultiAsset, VersionedMultiAssets};
 
@@ -167,6 +171,49 @@ pub mod blocked {
 					8_000_000_000_000,
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
+			);
+		});
+	}
+
+	// TODO (miguel): Remove this test case once we have migrated to substrate v0.9.31
+	#[test]
+	fn verify_multisig_filter_for_max_size_call() {
+		use centrifuge_runtime::{AccountId, Runtime};
+		use cfg_primitives::constants::MAX_MULTISIG_CALL_SIZE;
+
+		Centrifuge::execute_with(|| {
+			let under_limit_payload: Vec<u8> = vec![1; MAX_MULTISIG_CALL_SIZE - 1];
+			// Allowed under limit payload, goes through
+			assert_noop!(
+				Call::Multisig(pallet_multisig::Call::<Runtime>::as_multi {
+					threshold: 2,
+					other_signatories: vec![ALICE.into(), BOB.into()],
+					maybe_timepoint: None,
+					call: WrapperKeepOpaque::from_encoded(under_limit_payload.clone()),
+					store_call: false,
+					max_weight: Weight::zero()
+				})
+				.dispatch(<Runtime as frame_system::Config>::Origin::signed(
+					AccountId::from(ALICE)
+				)),
+				pallet_multisig::Error::<Runtime>::SenderInSignatories
+			);
+
+			let over_limit_payload: Vec<u8> = vec![1; MAX_MULTISIG_CALL_SIZE];
+			// Not allowed over limit payload, Call is Filtered
+			assert_noop!(
+				Call::Multisig(pallet_multisig::Call::<Runtime>::as_multi {
+					threshold: 2,
+					other_signatories: vec![ALICE.into(), BOB.into()],
+					maybe_timepoint: None,
+					call: WrapperKeepOpaque::from_encoded(over_limit_payload.clone()),
+					store_call: false,
+					max_weight: Weight::zero()
+				})
+				.dispatch(<Runtime as frame_system::Config>::Origin::signed(
+					AccountId::from(ALICE)
+				)),
+				frame_system::Error::<Runtime>::CallFiltered
 			);
 		});
 	}
