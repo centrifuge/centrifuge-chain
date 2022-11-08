@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.22"
+version = "0.10.23"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -903,7 +903,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.22"
+version = "0.10.23"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -1003,7 +1003,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.14"
+version = "0.10.15"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -9689,6 +9689,7 @@ dependencies = [
  "pallet-balances",
  "pallet-connectors",
  "pallet-loans",
+ "pallet-multisig",
  "pallet-permissions",
  "pallet-pool-system",
  "pallet-transaction-payment",
