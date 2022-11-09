@@ -2408,6 +2408,7 @@ pub mod test {
 				})
 				.unwrap();
 
+			// Percentages for tranche solution taken into account for supplies
 			assert_eq!(
 				Ok(vec![50, 0, 0]),
 				e_e_tranches.supplies_with_fulfillment(&[
@@ -2431,9 +2432,125 @@ pub mod test {
 				)
 				.unwrap();
 
+			// Supplies updated correctly with pre-existing supply ammounts
+			// with invest amount doubling redeem for first tranch
 			assert_eq!(
 				Ok(vec![200, 100, 200]),
 				e_e_tranches.supplies_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+		}
+
+		#[test]
+		fn epoch_execution_acc_supply_with_fulfillment_works() {
+			assert_eq!(
+				default_epoch_tranches().acc_supply_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution()
+				]),
+				Err(DispatchError::Other(
+					"EpochExecutionTranches contains more tranches than iterables elements"
+				))
+			);
+
+			assert_eq!(
+				default_epoch_tranches().acc_supply_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				]),
+				Err(DispatchError::Other(
+					"Iterable contains more elements than EpochExecutionTranches tranche count"
+				))
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top(
+					[
+						(200, u128::MAX / 2, 100),
+						(200, u128::MAX / 2, 200),
+						(300, 200, 300),
+					],
+					|e, (i, s, r)| {
+						e.invest = i;
+						e.supply = s;
+						e.redeem = r;
+						Ok(())
+					},
+				)
+				.unwrap();
+			// Verify overflow error when accum overflows
+			assert_eq!(
+				Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
+				e_e_tranches.acc_supply_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			e_e_tranches
+				.combine_with_mut_residual_top(
+					[(200, u128::MAX, 100), (200, 100, 200), (300, 200, 300)],
+					|e, (i, s, r)| {
+						e.invest = i;
+						e.supply = s;
+						e.redeem = r;
+						Ok(())
+					},
+				)
+				.unwrap();
+			// Verify overflow error when a supply fulfillment overflows
+			assert_eq!(
+				Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
+				e_e_tranches.acc_supply_with_fulfillment(&[
+					default_tranche_solution(),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([(100, 100), (200, 200), (300, 300)], |e, (i, r)| {
+					e.invest = i;
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+
+			// Verify underflow when a supply fulfillment has an underflow
+			assert_eq!(
+				Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+				e_e_tranches.acc_supply_with_fulfillment(&[
+					tranche_solution(Perquintill::from_percent(50), Perquintill::one()),
+					default_tranche_solution(),
+					default_tranche_solution()
+				])
+			);
+
+			e_e_tranches
+				.combine_with_mut_residual_top(
+					[(200, 100, 100), (200, 100, 200), (300, 200, 300)],
+					|e, (i, s, r)| {
+						e.invest = i;
+						e.supply = s;
+						e.redeem = r;
+						Ok(())
+					},
+				)
+				.unwrap();
+			// Verify accum
+			assert_eq!(
+				Ok(500),
+				e_e_tranches.acc_supply_with_fulfillment(&[
 					default_tranche_solution(),
 					default_tranche_solution(),
 					default_tranche_solution()
