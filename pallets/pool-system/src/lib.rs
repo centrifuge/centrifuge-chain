@@ -277,6 +277,124 @@ pub struct PoolDepositInfo<AccountId, Balance> {
 	pub deposit: Balance,
 }
 
+/// The core metadata about the pool which we can attach to an event
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolEssence<
+	CurrencyId,
+	Balance,
+	TrancheCurrency,
+	Rate,
+	MaxTokenNameLength,
+	MaxTokenSymbolLength,
+> where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	/// Currency that the pool is denominated in (immutable).
+	pub currency: CurrencyId,
+	/// The maximum allowed reserve on a given pool
+	pub max_reserve: Balance,
+	/// Maximum time between the NAV update and the epoch closing.
+	pub max_nav_age: Moment,
+	/// Minimum duration for an epoch.
+	pub min_epoch_time: Moment,
+	/// Tranches on a pool
+	pub tranches:
+		Vec<TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+}
+
+/// The core metadata about a tranche which we can attach to an event
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	/// Currency that the tranche is denominated in
+	pub currency: TrancheCurrency,
+	/// Type of the tranche (Residual or NonResidual)
+	pub ty: TrancheType<Rate>,
+	/// Metadata of a Tranche
+	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
+}
+
+/// Transform PoolDetails into PoolEssence for sending out events
+impl<
+		CurrencyId,
+		Balance,
+		TrancheCurrency,
+		Rate,
+		EpochId,
+		MetaSize,
+		Weight,
+		TrancheId,
+		PoolId,
+		MaxTokenNameLength,
+		MaxTokenSymbolLength,
+	>
+	From<
+		PoolDetails<
+			CurrencyId,
+			TrancheCurrency,
+			EpochId,
+			Balance,
+			Rate,
+			MetaSize,
+			Weight,
+			TrancheId,
+			PoolId,
+		>,
+	>
+	for PoolEssence<
+		CurrencyId,
+		Balance,
+		TrancheCurrency,
+		Rate,
+		MaxTokenNameLength,
+		MaxTokenSymbolLength,
+	> where
+	Rate: FixedPointNumber<Inner = Balance>,
+	Balance: FixedPointOperand,
+	MetaSize: Get<u32> + Copy,
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	fn from(
+		p: PoolDetails<
+			CurrencyId,
+			TrancheCurrency,
+			EpochId,
+			Balance,
+			Rate,
+			MetaSize,
+			Weight,
+			TrancheId,
+			PoolId,
+		>,
+	) -> Self {
+		let mut tranches = Vec::new();
+
+		for tranche in p.tranches.tranches {
+			tranches.push(TrancheEssence {
+				currency: tranche.currency,
+				ty: tranche.tranche_type,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			});
+		}
+
+		PoolEssence {
+			currency: p.currency,
+			max_reserve: p.reserve.max,
+			max_nav_age: p.parameters.max_nav_age,
+			min_epoch_time: p.parameters.min_epoch_time,
+			tranches,
+		}
+	}
+}
+
 /// Type alias to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
@@ -549,6 +667,25 @@ pub mod pallet {
 		EpochExecuted {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
+		},
+		PoolUpdated {
+			id: T::PoolId,
+			old: PoolEssence<
+				T::CurrencyId,
+				T::Balance,
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
+			new: PoolEssence<
+				T::CurrencyId,
+				T::Balance,
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
 		},
 	}
 
@@ -1132,6 +1269,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				let copy_of_pool = pool.clone();
+				let old_pool = PoolEssence::from(copy_of_pool);
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1181,6 +1320,15 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::FailedToUpdateTrancheMetadata)?;
 					}
 				}
+
+				let copy_of_pool = pool.clone();
+				let new_pool = PoolEssence::from(copy_of_pool);
+
+				Self::deposit_event(Event::PoolUpdated {
+					id: *pool_id,
+					old: old_pool,
+					new: new_pool,
+				});
 
 				ScheduledUpdate::<T>::remove(pool_id);
 
