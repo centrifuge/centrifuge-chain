@@ -105,12 +105,12 @@ impl<T: Config + pallet_pool_registry::Config> PoolMutate<T::PoolId> for ModifyP
 	type AccountId = T::AccountId;
 	type Balance = T::Balance;
 	type CurrencyId = T::CurrencyId;
-	type Rate = T::Rate;
 	type MaxTokenNameLength = T::MaxTokenNameLength;
 	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
 	type MaxTranches = T::MaxTranches;
 	type PoolChanges =
 		PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>;
+	type Rate = T::Rate;
 	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
 
 	fn create(
