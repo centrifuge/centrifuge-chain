@@ -896,6 +896,9 @@ fn altair_genesis(
 	}
 }
 
+/// The CurrencyId for the USDT asset on the development runtime
+const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 fn development_genesis(
 	root_key: development_runtime::AccountId,
 	initial_authorities: Vec<(development_runtime::AccountId, development_runtime::AuraId)>,
@@ -909,22 +912,27 @@ fn development_genesis(
 			let balance_per_endowed = total_issuance
 				.checked_div(num_endowed_accounts as development_runtime::Balance)
 				.unwrap_or(0 as development_runtime::Balance);
+
 			(
+				// pallet_balances balances
 				endowed_accounts
 					.iter()
 					.cloned()
-					.map(|k| (k, balance_per_endowed))
+					.map(|x| (x, balance_per_endowed))
 					.collect(),
-				// We can only mint AUSD in development
+				// orml_tokens balances
+				// bootstrap each endowed accounts with 1 million of each the foreign assets.
 				endowed_accounts
 					.iter()
 					.cloned()
-					.map(|k| {
-						(
-							k,
-							development_runtime::CurrencyId::AUSD,
-							balance_per_endowed,
-						)
+					.flat_map(|x| {
+						// NOTE: We can only mint these foreign assets on development
+						vec![
+							// AUSD is a 12-decimal asset, so 1 million + 12 zeros
+							(x.clone(), CurrencyId::AUSD, 1_000_000_000_000_000_000),
+							// USDT is a 6-decimal asset, so 1 million + 6 zeros
+							(x, DEV_USDT_CURRENCY_ID, 1_000_000_000_000),
+						]
 					})
 					.collect(),
 			)
@@ -1049,7 +1057,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			CurrencyId::ForeignAsset(1),
+			DEV_USDT_CURRENCY_ID,
 			AssetMetadata::<Balance, CustomMetadata> {
 				decimals: 6,
 				name: b"Tether USD".to_vec(),
