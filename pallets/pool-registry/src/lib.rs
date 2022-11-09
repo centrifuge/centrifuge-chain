@@ -168,8 +168,6 @@ pub mod pallet {
 		UpdateRegistered { pool_id: T::PoolId },
 		/// A pool update was executed.
 		UpdateExecuted { pool_id: T::PoolId },
-		/// A pool update was not executed (due to no changes made).
-		UpdateNotExecuted { pool_id: T::PoolId },
 		/// A pool update was stored for later execution.
 		UpdateStored { pool_id: T::PoolId },
 		/// Pool metadata was set.
