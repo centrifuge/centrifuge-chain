@@ -2573,5 +2573,33 @@ pub mod test {
 				.unwrap();
 			assert_eq!(e_e_tranches.redemptions(), [100, 200, 300])
 		}
+
+		#[test]
+		fn epoch_execution_tranches_acc_redemptions_works() {
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([100, u128::MAX, 300], |e, r| {
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+			assert_eq!(
+				e_e_tranches.acc_redemptions(),
+				Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+			);
+
+			assert_eq!(default_epoch_tranches().acc_redemptions(), Ok(0));
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([100, 200, 300], |e, r| {
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+			assert_eq!(e_e_tranches.acc_redemptions(), Ok(600))
+		}
 	}
 }
