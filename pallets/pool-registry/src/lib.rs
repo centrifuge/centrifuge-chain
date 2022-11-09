@@ -54,27 +54,11 @@ where
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
 
-type PoolChangesOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
-	<T as frame_system::Config>::AccountId,
-	<T as Config>::Balance,
-	<T as Config>::PoolId,
-	<T as Config>::CurrencyId,
-	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
-	<T as Config>::MaxTranches,
->>::PoolChanges;
+type PoolChangesOf<T> =
+	<<T as Config>::ModifyPool as cfg_traits::PoolMutate<<T as Config>::PoolId>>::PoolChanges;
 
-type TrancheInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
-	<T as frame_system::Config>::AccountId,
-	<T as Config>::Balance,
-	<T as Config>::PoolId,
-	<T as Config>::CurrencyId,
-	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
-	<T as Config>::MaxTranches,
->>::TrancheInput;
+type TrancheInputOf<T> =
+	<<T as Config>::ModifyPool as cfg_traits::PoolMutate<<T as Config>::PoolId>>::TrancheInput;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -116,14 +100,10 @@ pub mod pallet {
 			+ FixedPointNumber<Inner = Self::Balance>;
 
 		type ModifyPool: PoolMutate<
-			Self::AccountId,
-			Self::Balance,
 			Self::PoolId,
-			Self::CurrencyId,
-			Self::Rate,
-			Self::MaxTokenNameLength,
-			Self::MaxTokenSymbolLength,
-			Self::MaxTranches,
+			AccountId = Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			Balance = Self::Balance,
 		>;
 
 		type CurrencyId: Parameter + Copy;

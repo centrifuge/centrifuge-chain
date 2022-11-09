@@ -137,27 +137,24 @@ pub enum UpdateState {
 }
 
 /// A trait that supports modifications of pools
-pub trait PoolMutate<
-	AccountId,
-	Balance,
-	PoolId,
-	CurrencyId,
-	Rate,
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-	MaxTranches: Get<u32>,
->
-{
+pub trait PoolMutate<PoolId> {
+	type AccountId;
+	type Balance;
+	type CurrencyId;
+	type Rate;
+	type MaxTokenNameLength: Get<u32>;
+	type MaxTokenSymbolLength: Get<u32>;
+	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 
 	fn create(
-		admin: AccountId,
-		depositor: AccountId,
+		admin: Self::AccountId,
+		depositor: Self::AccountId,
 		pool_id: PoolId,
 		tranche_inputs: Vec<Self::TrancheInput>,
-		currency: CurrencyId,
-		max_reserve: Balance,
+		currency: Self::CurrencyId,
+		max_reserve: Self::Balance,
 		metadata: Option<Vec<u8>>,
 	) -> DispatchResult;
 

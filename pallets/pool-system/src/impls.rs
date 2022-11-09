@@ -73,24 +73,20 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	}
 }
 
-impl<T: Config>
-	PoolMutate<
-		T::AccountId,
-		T::Balance,
-		T::PoolId,
-		T::CurrencyId,
-		T::Rate,
-		T::MaxTokenNameLength,
-		T::MaxTokenSymbolLength,
-		T::MaxTranches,
-	> for Pallet<T>
-{
+impl<T: Config> PoolMutate<T::PoolId> for Pallet<T> {
+	type AccountId = T::AccountId;
+	type Balance = T::Balance;
+	type CurrencyId = T::CurrencyId;
+	type MaxTokenNameLength = T::MaxTokenNameLength;
+	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
+	type MaxTranches = T::MaxTranches;
 	type PoolChanges = PoolChangesOf<T>;
+	type Rate = T::Rate;
 	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
 
 	fn create(
-		admin: T::AccountId,
-		depositor: T::AccountId,
+		admin: Self::AccountId,
+		depositor: Self::AccountId,
 		pool_id: T::PoolId,
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,

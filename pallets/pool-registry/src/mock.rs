@@ -101,18 +101,14 @@ pub struct ModifyPoolMock<T> {
 	phantom: PhantomData<T>,
 }
 
-impl<T: Config + pallet_pool_registry::Config>
-	PoolMutate<
-		T::AccountId,
-		T::Balance,
-		T::PoolId,
-		T::CurrencyId,
-		T::Rate,
-		T::MaxTokenNameLength,
-		T::MaxTokenSymbolLength,
-		T::MaxTranches,
-	> for ModifyPoolMock<T>
-{
+impl<T: Config + pallet_pool_registry::Config> PoolMutate<T::PoolId> for ModifyPoolMock<T> {
+	type AccountId = T::AccountId;
+	type Balance = T::Balance;
+	type CurrencyId = T::CurrencyId;
+	type Rate = T::Rate;
+	type MaxTokenNameLength = T::MaxTokenNameLength;
+	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
+	type MaxTranches = T::MaxTranches;
 	type PoolChanges =
 		PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>;
 	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
