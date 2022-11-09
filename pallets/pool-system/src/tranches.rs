@@ -2536,6 +2536,7 @@ pub mod test {
 				])
 			);
 
+			let mut e_e_tranches = default_epoch_tranches();
 			e_e_tranches
 				.combine_with_mut_residual_top(
 					[(200, 100, 100), (200, 100, 200), (300, 200, 300)],
@@ -2556,6 +2557,21 @@ pub mod test {
 					default_tranche_solution()
 				])
 			);
+		}
+
+		#[test]
+		fn epoch_execution_tranches_redemptions_works() {
+			assert_eq!(default_epoch_tranches().redemptions(), [0, 0, 0]);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([100, 200, 300], |e, r| {
+					e.redeem = r;
+					Ok(())
+				})
+				.unwrap();
+			assert_eq!(e_e_tranches.redemptions(), [100, 200, 300])
 		}
 	}
 }
