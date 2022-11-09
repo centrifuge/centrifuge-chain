@@ -1465,6 +1465,7 @@ where
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
+	// Note: weight tuple contains (investment_weight, redemption weight)
 	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
 		let n_tranches: u32 = self.tranches.len().try_into().expect("MaxTranches is u32");
 		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
@@ -1490,7 +1491,11 @@ where
 						.unwrap_or(u128::MAX)
 						.into(),
 					redeem_starts
-						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)))
+						.checked_mul(
+							10u128
+								.checked_pow(tranche.seniority.saturating_add(1))
+								.unwrap_or(u128::MAX),
+						)
 						.unwrap_or(u128::MAX)
 						.into(),
 				)
@@ -2600,6 +2605,39 @@ pub mod test {
 				})
 				.unwrap();
 			assert_eq!(e_e_tranches.acc_redemptions(), Ok(600))
+		}
+
+		#[test]
+		fn epoch_execution_calculate_weights_works() {
+			// Note: weight tuple containss: (investment_weight, redemption_weight)
+			// seniority of default tranches: 1, 2, 3
+			// expected weights: [
+			//  (highest_invest_weight, lowest_redemption_weight),
+			//  (mid_invest_weight, mid_redemption_weight),
+			//  (lowest_invest_weight, highest_redemption_Weight)
+			// ]
+			assert_eq!(
+				default_epoch_tranches().calculate_weights(),
+				vec![(1000, 10000), (100, 100000), (10, 1000000)]
+			);
+
+			let mut e_e_tranches = default_epoch_tranches();
+
+			e_e_tranches
+				.combine_with_mut_residual_top([u32::MAX - 2, u32::MAX - 1, u32::MAX], |e, s| {
+					e.seniority = s;
+					Ok(())
+				})
+				.unwrap();
+			// Verify weights don't panic when calc would overflow
+			assert_eq!(
+				e_e_tranches.calculate_weights(),
+				vec![
+					(u128::MAX, u128::MAX),
+					(u128::MAX, u128::MAX),
+					(u128::MAX, u128::MAX)
+				]
+			)
 		}
 	}
 }
