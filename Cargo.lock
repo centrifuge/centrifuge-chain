@@ -1199,7 +1199,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-asset-registry",
- "orml-traits",
  "parity-scale-codec 3.2.1",
  "polkadot-parachain",
  "scale-info",
