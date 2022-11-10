@@ -1669,21 +1669,27 @@ pub mod test {
 		.unwrap()
 	}
 
+	fn tranche_to_epoch_execution_tranche(
+		tranche: Tranche<Balance, Rate, Weight, CurrencyId>,
+	) -> EpochExecutionTranche<Balance, BalanceRatio, Weight> {
+		EpochExecutionTranche {
+			supply: tranche
+				.reserve
+				.checked_add(tranche.debt)
+				.expect("Test EpochExecutionTranche supply calc overflow"),
+			price: One::one(),
+			invest: tranche.outstanding_invest_orders,
+			redeem: tranche.outstanding_redeem_orders,
+			seniority: tranche.seniority,
+			..Default::default()
+		}
+	}
+
 	fn default_epoch_tranches() -> EpochExecutionTranches<Balance, BalanceRatio, Weight> {
 		let epoch_tranches = default_tranches_with_seniority()
 			.into_tranches()
 			.into_iter()
-			.map(|tranche| EpochExecutionTranche {
-				supply: tranche
-					.reserve
-					.checked_add(tranche.debt)
-					.expect("Test EpochExecutionTranche supply calc overflow"),
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
-				seniority: tranche.seniority,
-				..Default::default()
-			})
+			.map(|tranche| tranche_to_epoch_execution_tranche(tranche))
 			.collect();
 		EpochExecutionTranches::new(epoch_tranches)
 	}
@@ -2638,6 +2644,30 @@ pub mod test {
 					(u128::MAX, u128::MAX)
 				]
 			)
+			// Verification of too many tranches unsurprisingly taking too long to run for tests
+			// commenting out for now.
+			// let col_size = usize::try_from(u32::MAX).unwrap() + 1;
+			// let mut tranches_col: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>> =
+			// 	Vec::with_capacity(col_size);
+
+			// tranches_col.push(tranche_to_epoch_execution_tranche(residual_base(0, 0)));
+			// for i in 1..col_size {
+			// 	tranches_col.push(tranche_to_epoch_execution_tranche(non_residual_base(
+			// 		// given that we're testing that we don't receive more than u32::MAX tranches
+			// 		// and that for that to happen the unique number of IDs and Seniorities would
+			// 		// already be maxed out defaulting to max for overlapping vals
+			// 		u8::try_from(i).unwrap_or(u8::MAX),
+			// 		Some(10),
+			// 		Some(10),
+			// 		u32::try_from(i).unwrap_or(u32::MAX),
+			// 	)));
+			// }
+
+			// let e_e_tranches = EpochExecutionTranches::new(tranches_col);
+			// assert_eq!(e_e_tranches.calculate_weights(), vec![])
 		}
+
+		#[test]
+		fn epoch_execution_min_risk_buffers() {}
 	}
 }
