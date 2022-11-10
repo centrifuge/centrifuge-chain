@@ -122,10 +122,6 @@ pub mod pallet {
 	// --------------------------
 
 	#[pallet::storage]
-	pub(super) type CurrencyGroup<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Blake2_128Concat, (T::DomainId, T::CurrencyId), T::GroupId>;
-
-	#[pallet::storage]
 	pub(super) type Currencies<T: Config<I>, I: 'static = ()>
 	where
 		RewardCurrencyOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
@@ -133,7 +129,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		(T::DomainId, T::CurrencyId),
-		RewardCurrencyOf<T, I>,
+		(Option<T::GroupId>, RewardCurrencyOf<T, I>),
 		ValueQuery,
 	>;
 
@@ -253,10 +249,9 @@ pub mod pallet {
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			let group_id = CurrencyGroup::<T, I>::get(currency_id)
-				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
+			Currencies::<T, I>::try_mutate(currency_id, |(group_id, currency)| {
+				let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
-			Currencies::<T, I>::try_mutate(currency_id, |currency| {
 				Groups::<T, I>::try_mutate(group_id, |group| {
 					StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
 						if !T::Currency::can_hold(currency_id.1, account_id, amount) {
@@ -286,10 +281,9 @@ pub mod pallet {
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
-			let group_id = CurrencyGroup::<T, I>::get(currency_id)
-				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
+			Currencies::<T, I>::try_mutate(currency_id, |(group_id, currency)| {
+				let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
-			Currencies::<T, I>::try_mutate(currency_id, |currency| {
 				Groups::<T, I>::try_mutate(group_id, |group| {
 					StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
 						if T::RewardMechanism::account_stake(&account) < amount {
@@ -318,10 +312,9 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let group_id = CurrencyGroup::<T, I>::get(currency_id)
-				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
+			let (group_id, currency) = Currencies::<T, I>::get(currency_id);
+			let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
-			let currency = Currencies::<T, I>::get(currency_id);
 			let group = Groups::<T, I>::get(group_id);
 			let account = StakeAccounts::<T, I>::get(account_id, currency_id);
 
@@ -334,10 +327,9 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
-			let group_id = CurrencyGroup::<T, I>::get(currency_id)
-				.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
+			let (group_id, currency) = Currencies::<T, I>::get(currency_id);
+			let group_id = group_id.ok_or(Error::<T, I>::CurrencyWithoutGroup)?;
 
-			let currency = Currencies::<T, I>::get(currency_id);
 			let group = Groups::<T, I>::get(group_id);
 			StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
 				let reward = T::RewardMechanism::claim_reward(account, &currency, &group)?;
@@ -383,23 +375,21 @@ pub mod pallet {
 			currency_id: Self::CurrencyId,
 			next_group_id: Self::GroupId,
 		) -> DispatchResult {
-			CurrencyGroup::<T, I>::try_mutate(currency_id, |group_id| {
+			Currencies::<T, I>::try_mutate(currency_id, |(group_id, currency)| {
 				if let Some(prev_group_id) = *group_id {
-					Currencies::<T, I>::try_mutate(currency_id, |currency| {
-						if prev_group_id == next_group_id {
-							Err(Error::<T, I>::CurrencyInSameGroup)?;
-						}
+					if prev_group_id == next_group_id {
+						Err(Error::<T, I>::CurrencyInSameGroup)?;
+					}
 
-						Groups::<T, I>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
-							Groups::<T, I>::try_mutate(next_group_id, |next_group| {
-								T::RewardMechanism::move_currency(currency, prev_group, next_group)
-									.map_err(|e| match e {
-										MoveCurrencyError::Arithmetic(error) => error.into(),
-										MoveCurrencyError::MaxMovements => {
-											Error::<T, I>::CurrencyMaxMovementsReached.into()
-										}
-									})
-							})
+					Groups::<T, I>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
+						Groups::<T, I>::try_mutate(next_group_id, |next_group| {
+							T::RewardMechanism::move_currency(currency, prev_group, next_group)
+								.map_err(|e| match e {
+									MoveCurrencyError::Arithmetic(error) => error.into(),
+									MoveCurrencyError::MaxMovements => {
+										Error::<T, I>::CurrencyMaxMovementsReached.into()
+									}
+								})
 						})
 					})?;
 				}
@@ -417,10 +407,8 @@ pub mod pallet {
 			})
 		}
 
-		fn currency_group(
-			currency_id: Self::CurrencyId,
-		) -> Result<Option<Self::GroupId>, DispatchResult> {
-			Ok(CurrencyGroup::<T, I>::get(currency_id))
+		fn currency_group(currency_id: Self::CurrencyId) -> Option<Self::GroupId> {
+			Currencies::<T, I>::get(currency_id).0
 		}
 	}
 }
