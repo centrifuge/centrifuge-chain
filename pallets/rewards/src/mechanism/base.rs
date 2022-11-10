@@ -124,7 +124,6 @@ where
 
 #[cfg(test)]
 pub mod test {
-	use frame_support::{assert_err, assert_ok};
 	use sp_runtime::FixedI64;
 
 	use super::*;
@@ -135,10 +134,10 @@ pub mod test {
 
 	type TestMechanism = Mechanism<Balance, IBalance, Rate>;
 
-	pub const RPT: i64 = 2;
-	pub const RPT_NEXT: i64 = 3;
-	pub const REWARD: u64 = 100;
-	pub const AMOUNT: u64 = 10;
+	const RPT: i64 = 2;
+	const RPT_NEXT: i64 = 3;
+	const REWARD: u64 = crate::mechanism::test::REWARD;
+	const AMOUNT: u64 = crate::mechanism::test::AMOUNT;
 
 	lazy_static::lazy_static! {
 		pub static ref GROUP: Group<Balance, Rate> = Group {
@@ -146,7 +145,7 @@ pub mod test {
 			reward_per_token: FixedI64::from_u32(RPT as u32),
 		};
 
-		pub static ref GROUP_NEXT: Group<Balance, Rate> = Group {
+		pub static ref NEXT_GROUP: Group<Balance, Rate> = Group {
 			total_stake: 2000,
 			reward_per_token: FixedI64::from_u32(RPT_NEXT as u32),
 		};
@@ -190,76 +189,23 @@ pub mod test {
 		pub static ref REWARD_EXPECTATION: u64 = (RPT * ACCOUNT.stake as i64 - ACCOUNT.reward_tally) as u64;
 	}
 
-	#[test]
-	fn reward_group() {
-		let mut group = GROUP.clone();
-
-		assert_ok!(TestMechanism::reward_group(&mut group, REWARD));
-		assert_eq!(group, *GROUP_REWARD_GROUP_EXPECTATION);
-	}
-
-	#[test]
-	fn deposit_stake() {
-		let mut account = ACCOUNT.clone();
-		let mut group = GROUP.clone();
-
-		assert_ok!(TestMechanism::deposit_stake(
-			&mut account,
-			&mut (),
-			&mut group,
-			AMOUNT,
-		));
-
-		assert_eq!(account, *ACCOUNT_DEPOSIT_STAKE_EXPECTATION);
-		assert_eq!(group, *GROUP_DEPOSIT_STAKE_EXPECTATION);
-	}
-
-	#[test]
-	fn withdraw_stake() {
-		let mut account = ACCOUNT.clone();
-		let mut group = GROUP.clone();
-
-		assert_ok!(TestMechanism::withdraw_stake(
-			&mut account,
-			&mut (),
-			&mut group,
-			AMOUNT,
-		));
-
-		assert_eq!(account, *ACCOUNT_WITHDRAW_STAKE_EXPECTATION);
-		assert_eq!(group, *GROUP_WITHDRAW_STAKE_EXPECTATION);
-	}
-
-	#[test]
-	fn compute_reward() {
-		assert_ok!(
-			TestMechanism::compute_reward(&ACCOUNT, &(), &GROUP),
-			*REWARD_EXPECTATION
-		);
-	}
-
-	#[test]
-	fn claim_reward() {
-		let mut account = ACCOUNT.clone();
-
-		assert_ok!(
-			TestMechanism::claim_reward(&mut account, &(), &GROUP),
-			*REWARD_EXPECTATION
-		);
-		assert_eq!(account, ACCOUNT_CLAIM_REWARD_EXPECTATION.clone());
-	}
-
-	#[test]
-	fn move_currency() {
-		let mut prev_group = GROUP.clone();
-		let mut next_group = GROUP_NEXT.clone();
-
-		assert_err!(
-			TestMechanism::move_currency(&mut (), &mut prev_group, &mut next_group),
-			MoveCurrencyError::MaxMovements
-		);
-
-		assert_eq!(prev_group, GROUP.clone());
-		assert_eq!(next_group, GROUP_NEXT.clone());
-	}
+	crate::mechanism_tests_impl!(
+		TestMechanism,
+		*GROUP,
+		*NEXT_GROUP,
+		(),
+		*ACCOUNT,
+		*GROUP_REWARD_GROUP_EXPECTATION,
+		*ACCOUNT_DEPOSIT_STAKE_EXPECTATION,
+		(),
+		*GROUP_DEPOSIT_STAKE_EXPECTATION,
+		*ACCOUNT_WITHDRAW_STAKE_EXPECTATION,
+		(),
+		*GROUP_WITHDRAW_STAKE_EXPECTATION,
+		*REWARD_EXPECTATION,
+		*ACCOUNT_CLAIM_REWARD_EXPECTATION,
+		(),
+		*GROUP,
+		*NEXT_GROUP,
+	);
 }

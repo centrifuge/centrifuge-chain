@@ -187,8 +187,7 @@ where
 
 #[cfg(test)]
 mod test {
-	use base::test::AMOUNT;
-	use frame_support::{assert_ok, bounded_vec};
+	use frame_support::bounded_vec;
 	use sp_runtime::FixedI64;
 
 	use super::*;
@@ -209,6 +208,8 @@ mod test {
 	const RPT_2: i64 = 0;
 	const RPT_3: i64 = 1;
 
+	const AMOUNT: u64 = crate::mechanism::test::AMOUNT;
+
 	lazy_static::lazy_static! {
 		static ref GROUP_PREV_MOVE_CURRENCY_EXPECTATION: base::Group<Balance, Rate> = base::Group {
 			total_stake: base::test::GROUP.total_stake - CURRENCY.total_stake,
@@ -216,8 +217,8 @@ mod test {
 		};
 
 		static ref GROUP_NEXT_MOVE_CURRENCY_EXPECTATION: base::Group<Balance, Rate> = base::Group {
-			total_stake: base::test::GROUP_NEXT.total_stake + CURRENCY.total_stake,
-			..base::test::GROUP_NEXT.clone()
+			total_stake: base::test::NEXT_GROUP.total_stake + CURRENCY.total_stake,
+			..base::test::NEXT_GROUP.clone()
 		};
 
 		static ref CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
@@ -244,7 +245,7 @@ mod test {
 				CURRENCY.rpt_changes[0],
 				CURRENCY.rpt_changes[1],
 				CURRENCY.rpt_changes[2],
-				base::test::GROUP_NEXT.reward_per_token - base::test::GROUP.reward_per_token,
+				base::test::NEXT_GROUP.reward_per_token - base::test::GROUP.reward_per_token,
 			],
 			..CURRENCY.clone()
 		};
@@ -280,76 +281,23 @@ mod test {
 		static ref RPT_CHANGE_TALLY_EXPECTATION: i64 = ((RPT_2 - RPT_1) + (RPT_3 - RPT_2)) * ACCOUNT.base.stake as i64;
 	}
 
-	#[test]
-	fn deposit_stake() {
-		let mut account = ACCOUNT.clone();
-		let mut currency = CURRENCY.clone();
-		let mut group = base::test::GROUP.clone();
-
-		assert_ok!(TestMechanism::deposit_stake(
-			&mut account,
-			&mut currency,
-			&mut group,
-			AMOUNT,
-		));
-
-		assert_eq!(account, *ACCOUNT_DEPOSIT_STAKE_EXPECTATION);
-		assert_eq!(currency, *CURRENCY_DEPOSIT_STAKE_EXPECTATION);
-		assert_eq!(group, *base::test::GROUP_DEPOSIT_STAKE_EXPECTATION);
-	}
-
-	#[test]
-	fn withdraw_stake() {
-		let mut account = ACCOUNT.clone();
-		let mut currency = CURRENCY.clone();
-		let mut group = base::test::GROUP.clone();
-
-		assert_ok!(TestMechanism::withdraw_stake(
-			&mut account,
-			&mut currency,
-			&mut group,
-			AMOUNT,
-		));
-
-		assert_eq!(account, *ACCOUNT_WITHDRAW_STAKE_EXPECTATION);
-		assert_eq!(currency, *CURRENCY_WITHDRAW_STAKE_EXPECTATION);
-		assert_eq!(group, *base::test::GROUP_WITHDRAW_STAKE_EXPECTATION);
-	}
-
-	#[test]
-	fn compute_reward() {
-		assert_ok!(
-			TestMechanism::compute_reward(&ACCOUNT, &CURRENCY, &base::test::GROUP),
-			(*base::test::REWARD_EXPECTATION as i64 - *RPT_CHANGE_TALLY_EXPECTATION) as u64,
-		);
-	}
-
-	#[test]
-	fn claim_reward() {
-		let mut account = ACCOUNT.clone();
-
-		assert_ok!(
-			TestMechanism::claim_reward(&mut account, &CURRENCY, &base::test::GROUP),
-			(*base::test::REWARD_EXPECTATION as i64 - *RPT_CHANGE_TALLY_EXPECTATION) as u64,
-		);
-
-		assert_eq!(account, ACCOUNT_CLAIM_REWARD_EXPECTATION.clone());
-	}
-
-	#[test]
-	fn move_currency() {
-		let mut currency = CURRENCY.clone();
-		let mut prev_group = base::test::GROUP.clone();
-		let mut next_group = base::test::GROUP_NEXT.clone();
-
-		assert_ok!(TestMechanism::move_currency(
-			&mut currency,
-			&mut prev_group,
-			&mut next_group,
-		));
-
-		assert_eq!(currency, CURRENCY_MOVE_CURRENCY_EXPECTATION.clone());
-		assert_eq!(prev_group, GROUP_PREV_MOVE_CURRENCY_EXPECTATION.clone());
-		assert_eq!(next_group, GROUP_NEXT_MOVE_CURRENCY_EXPECTATION.clone());
-	}
+	crate::mechanism_tests_impl!(
+		TestMechanism,
+		*base::test::GROUP,
+		*base::test::NEXT_GROUP,
+		*CURRENCY,
+		*ACCOUNT,
+		*base::test::GROUP_REWARD_GROUP_EXPECTATION,
+		*ACCOUNT_DEPOSIT_STAKE_EXPECTATION,
+		*CURRENCY_DEPOSIT_STAKE_EXPECTATION,
+		*base::test::GROUP_DEPOSIT_STAKE_EXPECTATION,
+		*ACCOUNT_WITHDRAW_STAKE_EXPECTATION,
+		*CURRENCY_WITHDRAW_STAKE_EXPECTATION,
+		*base::test::GROUP_WITHDRAW_STAKE_EXPECTATION,
+		(*base::test::REWARD_EXPECTATION as i64 - *RPT_CHANGE_TALLY_EXPECTATION) as u64,
+		*ACCOUNT_CLAIM_REWARD_EXPECTATION,
+		*CURRENCY_MOVE_CURRENCY_EXPECTATION,
+		*GROUP_PREV_MOVE_CURRENCY_EXPECTATION,
+		*GROUP_NEXT_MOVE_CURRENCY_EXPECTATION,
+	);
 }
