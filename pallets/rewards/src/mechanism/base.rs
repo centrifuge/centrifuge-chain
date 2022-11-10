@@ -139,73 +139,70 @@ pub mod test {
 	const REWARD: u64 = crate::mechanism::test::REWARD;
 	const AMOUNT: u64 = crate::mechanism::test::AMOUNT;
 
-	lazy_static::lazy_static! {
-		pub static ref GROUP: Group<Balance, Rate> = Group {
-			total_stake: 1000,
-			reward_per_token: FixedI64::from_u32(RPT as u32),
-		};
+	pub mod initial {
+		use super::*;
 
-		pub static ref NEXT_GROUP: Group<Balance, Rate> = Group {
-			total_stake: 2000,
-			reward_per_token: FixedI64::from_u32(RPT_NEXT as u32),
-		};
+		lazy_static::lazy_static! {
+			pub static ref GROUP: Group<Balance, Rate> = Group {
+				total_stake: 1000,
+				reward_per_token: FixedI64::from_u32(RPT as u32),
+			};
 
-		pub static ref GROUP_REWARD_GROUP_EXPECTATION: Group<Balance, Rate> = Group {
-			reward_per_token: GROUP.reward_per_token
-				+ FixedI64::saturating_from_rational(REWARD, GROUP.total_stake),
-			..GROUP.clone()
-		};
+			pub static ref NEXT_GROUP: Group<Balance, Rate> = Group {
+				total_stake: 2000,
+				reward_per_token: FixedI64::from_u32(RPT_NEXT as u32),
+			};
 
-		pub static ref GROUP_DEPOSIT_STAKE_EXPECTATION: Group<Balance, Rate> = Group {
-			total_stake: GROUP.total_stake + AMOUNT,
-			..GROUP.clone()
-		};
+			pub static ref ACCOUNT: Account<Balance, IBalance> = Account {
+				stake: 500,
+				reward_tally: 250,
+			};
 
-		pub static ref GROUP_WITHDRAW_STAKE_EXPECTATION: Group<Balance, Rate> = Group {
-			total_stake: GROUP.total_stake - AMOUNT,
-			..GROUP.clone()
-		};
-
-		pub static ref ACCOUNT: Account<Balance, IBalance> = Account {
-			stake: 500,
-			reward_tally: 250,
-		};
-
-		pub static ref ACCOUNT_DEPOSIT_STAKE_EXPECTATION: Account<Balance, IBalance> = Account {
-			stake: ACCOUNT.stake + AMOUNT,
-			reward_tally: ACCOUNT.reward_tally + RPT * AMOUNT as i64,
-		};
-
-		pub static ref ACCOUNT_WITHDRAW_STAKE_EXPECTATION: Account<Balance, IBalance> = Account {
-			stake: ACCOUNT.stake - AMOUNT,
-			reward_tally: ACCOUNT.reward_tally - RPT * AMOUNT as i64,
-		};
-
-		pub static ref ACCOUNT_CLAIM_REWARD_EXPECTATION: Account<Balance, IBalance> = Account {
-			reward_tally: RPT * ACCOUNT.stake as i64,
-			..ACCOUNT.clone()
-		};
-
-		pub static ref REWARD_EXPECTATION: u64 = (RPT * ACCOUNT.stake as i64 - ACCOUNT.reward_tally) as u64;
+			pub static ref CURRENCY: () = ();
+		}
 	}
 
-	crate::mechanism_tests_impl!(
-		TestMechanism,
-		*GROUP,
-		*NEXT_GROUP,
-		(),
-		*ACCOUNT,
-		*GROUP_REWARD_GROUP_EXPECTATION,
-		*ACCOUNT_DEPOSIT_STAKE_EXPECTATION,
-		(),
-		*GROUP_DEPOSIT_STAKE_EXPECTATION,
-		*ACCOUNT_WITHDRAW_STAKE_EXPECTATION,
-		(),
-		*GROUP_WITHDRAW_STAKE_EXPECTATION,
-		*REWARD_EXPECTATION,
-		*ACCOUNT_CLAIM_REWARD_EXPECTATION,
-		(),
-		*GROUP,
-		*NEXT_GROUP,
-	);
+	pub mod expectation {
+		use super::{initial::*, *};
+
+		lazy_static::lazy_static! {
+			pub static ref REWARD_GROUP__GROUP: Group<Balance, Rate> = Group {
+				reward_per_token: GROUP.reward_per_token
+					+ FixedI64::saturating_from_rational(REWARD, GROUP.total_stake),
+				..GROUP.clone()
+			};
+
+			pub static ref DEPOSIT_STAKE__GROUP: Group<Balance, Rate> = Group {
+				total_stake: GROUP.total_stake + AMOUNT,
+				..GROUP.clone()
+			};
+			pub static ref DEPOSIT_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
+				stake: ACCOUNT.stake + AMOUNT,
+				reward_tally: ACCOUNT.reward_tally + RPT * AMOUNT as i64,
+			};
+			pub static ref DEPOSIT_STAKE__CURRENCY: () = ();
+
+			pub static ref WITHDRAW_STAKE__GROUP: Group<Balance, Rate> = Group {
+				total_stake: GROUP.total_stake - AMOUNT,
+				..GROUP.clone()
+			};
+			pub static ref WITHDRAW_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
+				stake: ACCOUNT.stake - AMOUNT,
+				reward_tally: ACCOUNT.reward_tally - RPT * AMOUNT as i64,
+			};
+			pub static ref WITHDRAW_STAKE__CURRENCY: () = ();
+
+			pub static ref CLAIM__ACCOUNT: Account<Balance, IBalance> = Account {
+				reward_tally: RPT * ACCOUNT.stake as i64,
+				..ACCOUNT.clone()
+			};
+			pub static ref CLAIM__REWARD: u64 = (RPT * ACCOUNT.stake as i64 - ACCOUNT.reward_tally) as u64;
+
+			pub static ref MOVE__CURRENCY: () = ();
+			pub static ref MOVE__GROUP_PREV: Group<Balance, Rate> = GROUP.clone();
+			pub static ref MOVE__GROUP_NEXT: Group<Balance, Rate> = NEXT_GROUP.clone();
+		}
+	}
+
+	crate::mechanism_tests_impl!(TestMechanism, initial, expectation);
 }

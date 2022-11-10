@@ -70,42 +70,28 @@ pub mod test {
 	macro_rules! mechanism_tests_impl {
 		(
         $mechanism:ident,
-        $group:expr,
-        $next_group:expr,
-        $currency:expr,
-        $account:expr,
-        $group_reward_group_expectation:expr,
-        $account_deposit_stake_expectation:expr,
-        $currency_deposit_stake_expectation:expr,
-        $group_deposit_stake_expectation:expr,
-        $account_withdraw_stake_expectation:expr,
-        $currency_withdraw_stake_expectation:expr,
-        $group_withdraw_stake_expectation:expr,
-        $reward_expectation:expr,
-        $account_claim_reward_expectation:expr,
-        $currency_move_currency_expectation:expr,
-        $group_prev_move_currency_expectation:expr,
-        $group_next_move_currency_expectation:expr,
-    ) => {
+        $initial:ident,
+        $expectation:ident
+        ) => {
 			use frame_support::{assert_err, assert_ok};
 
 			#[test]
 			fn reward_group() {
-				let mut group = $group.clone();
+				let mut group = $initial::GROUP.clone();
 
 				assert_ok!($mechanism::reward_group(
 					&mut group,
 					crate::mechanism::test::REWARD
 				));
 
-				assert_eq!(group, $group_reward_group_expectation);
+				assert_eq!(group, *$expectation::REWARD_GROUP__GROUP);
 			}
 
 			#[test]
 			fn deposit_stake() {
-				let mut account = $account.clone();
-				let mut currency = $currency.clone();
-				let mut group = $group.clone();
+				let mut account = $initial::ACCOUNT.clone();
+				let mut currency = $initial::CURRENCY.clone();
+				let mut group = $initial::GROUP.clone();
 
 				assert_ok!($mechanism::deposit_stake(
 					&mut account,
@@ -114,16 +100,16 @@ pub mod test {
 					crate::mechanism::test::AMOUNT,
 				));
 
-				assert_eq!(account, $account_deposit_stake_expectation);
-				assert_eq!(currency, $currency_deposit_stake_expectation);
-				assert_eq!(group, $group_deposit_stake_expectation);
+				assert_eq!(account, *$expectation::DEPOSIT_STAKE__ACCOUNT);
+				assert_eq!(currency, *$expectation::DEPOSIT_STAKE__CURRENCY);
+				assert_eq!(group, *$expectation::DEPOSIT_STAKE__GROUP);
 			}
 
 			#[test]
 			fn withdraw_stake() {
-				let mut account = $account.clone();
-				let mut currency = $currency.clone();
-				let mut group = $group.clone();
+				let mut account = $initial::ACCOUNT.clone();
+				let mut currency = $initial::CURRENCY.clone();
+				let mut group = $initial::GROUP.clone();
 
 				assert_ok!($mechanism::withdraw_stake(
 					&mut account,
@@ -132,36 +118,40 @@ pub mod test {
 					crate::mechanism::test::AMOUNT,
 				));
 
-				assert_eq!(account, $account_withdraw_stake_expectation);
-				assert_eq!(currency, $currency_withdraw_stake_expectation);
-				assert_eq!(group, $group_withdraw_stake_expectation);
+				assert_eq!(account, *$expectation::WITHDRAW_STAKE__ACCOUNT);
+				assert_eq!(currency, *$expectation::WITHDRAW_STAKE__CURRENCY);
+				assert_eq!(group, *$expectation::WITHDRAW_STAKE__GROUP);
 			}
 
 			#[test]
 			fn compute_reward() {
 				assert_ok!(
-					$mechanism::compute_reward(&$account, &$currency, &$group),
-					$reward_expectation
+					$mechanism::compute_reward(
+						&$initial::ACCOUNT,
+						&$initial::CURRENCY,
+						&$initial::GROUP
+					),
+					*$expectation::CLAIM__REWARD
 				);
 			}
 
 			#[test]
 			fn claim_reward() {
-				let mut account = $account.clone();
+				let mut account = $initial::ACCOUNT.clone();
 
 				assert_ok!(
-					$mechanism::claim_reward(&mut account, &$currency, &$group),
-					$reward_expectation
+					$mechanism::claim_reward(&mut account, &$initial::CURRENCY, &$initial::GROUP),
+					*$expectation::CLAIM__REWARD
 				);
 
-				assert_eq!(account, $account_claim_reward_expectation.clone());
+				assert_eq!(account, *$expectation::CLAIM__ACCOUNT);
 			}
 
 			#[test]
 			fn move_currency() {
-				let mut currency = $currency.clone();
-				let mut prev_group = $group.clone();
-				let mut next_group = $next_group.clone();
+				let mut currency = $initial::CURRENCY.clone();
+				let mut prev_group = $initial::GROUP.clone();
+				let mut next_group = $initial::NEXT_GROUP.clone();
 
 				let result =
 					$mechanism::move_currency(&mut currency, &mut prev_group, &mut next_group);
@@ -172,9 +162,9 @@ pub mod test {
 					assert_err!(result, MoveCurrencyError::MaxMovements);
 				}
 
-				assert_eq!(currency, $currency_move_currency_expectation.clone());
-				assert_eq!(prev_group, $group_prev_move_currency_expectation.clone());
-				assert_eq!(next_group, $group_next_move_currency_expectation.clone());
+				assert_eq!(currency, *$expectation::MOVE__CURRENCY);
+				assert_eq!(prev_group, *$expectation::MOVE__GROUP_PREV);
+				assert_eq!(next_group, *$expectation::MOVE__GROUP_NEXT);
 			}
 		};
 	}

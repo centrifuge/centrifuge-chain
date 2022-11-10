@@ -210,94 +210,101 @@ mod test {
 
 	const AMOUNT: u64 = crate::mechanism::test::AMOUNT;
 
-	lazy_static::lazy_static! {
-		static ref GROUP_PREV_MOVE_CURRENCY_EXPECTATION: base::Group<Balance, Rate> = base::Group {
-			total_stake: base::test::GROUP.total_stake - CURRENCY.total_stake,
-			..base::test::GROUP.clone()
-		};
+	pub mod initial {
+		use super::*;
 
-		static ref GROUP_NEXT_MOVE_CURRENCY_EXPECTATION: base::Group<Balance, Rate> = base::Group {
-			total_stake: base::test::NEXT_GROUP.total_stake + CURRENCY.total_stake,
-			..base::test::NEXT_GROUP.clone()
-		};
+		lazy_static::lazy_static! {
+			pub static ref GROUP: base::Group<Balance, Rate> = base::test::initial::GROUP.clone();
 
-		static ref CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
-			total_stake: 200,
-			rpt_changes: bounded_vec![
-				(Rate::from_u32(RPT_1 as u32) - Rate::from_u32(RPT_0 as u32)),
-				(Rate::from_u32(RPT_2 as u32) - Rate::from_u32(RPT_1 as u32)),
-				(Rate::from_u32(RPT_3 as u32) - Rate::from_u32(RPT_2 as u32)),
-			],
-		};
+			pub static ref NEXT_GROUP: base::Group<Balance, Rate> = base::test::initial::NEXT_GROUP.clone();
 
-		static ref CURRENCY_DEPOSIT_STAKE_EXPECTATION: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
-			total_stake: CURRENCY.total_stake + AMOUNT,
-			..CURRENCY.clone()
-		};
+			pub static ref ACCOUNT: Account<Balance, IBalance> = Account {
+				base: base::test::initial::ACCOUNT.clone(),
+				last_currency_movement: 1,
+			};
 
-		static ref CURRENCY_WITHDRAW_STAKE_EXPECTATION: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
-			total_stake: CURRENCY.total_stake - AMOUNT,
-			..CURRENCY.clone()
-		};
-
-		static ref CURRENCY_MOVE_CURRENCY_EXPECTATION: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
-			rpt_changes: bounded_vec![
-				CURRENCY.rpt_changes[0],
-				CURRENCY.rpt_changes[1],
-				CURRENCY.rpt_changes[2],
-				base::test::NEXT_GROUP.reward_per_token - base::test::GROUP.reward_per_token,
-			],
-			..CURRENCY.clone()
-		};
-
-		static ref ACCOUNT: Account<Balance, IBalance> = Account {
-			base: base::test::ACCOUNT.clone(),
-			last_currency_movement: 1,
-		};
-
-		static ref ACCOUNT_DEPOSIT_STAKE_EXPECTATION: Account<Balance, IBalance> = Account {
-			base: base::Account {
-				reward_tally: base::test::ACCOUNT_DEPOSIT_STAKE_EXPECTATION.reward_tally + *RPT_CHANGE_TALLY_EXPECTATION,
-				..base::test::ACCOUNT_DEPOSIT_STAKE_EXPECTATION.clone()
-			},
-			last_currency_movement: CURRENCY.rpt_changes.len() as u32,
-		};
-
-		static ref ACCOUNT_WITHDRAW_STAKE_EXPECTATION: Account<Balance, IBalance> = Account {
-			base: base::Account {
-				reward_tally: base::test::ACCOUNT_WITHDRAW_STAKE_EXPECTATION.reward_tally + *RPT_CHANGE_TALLY_EXPECTATION,
-				..base::test::ACCOUNT_WITHDRAW_STAKE_EXPECTATION.clone()
-			},
-			last_currency_movement: CURRENCY.rpt_changes.len() as u32,
-		};
-
-		static ref ACCOUNT_CLAIM_REWARD_EXPECTATION: Account<Balance, IBalance> = Account {
-			base: base::Account {
-				..base::test::ACCOUNT_CLAIM_REWARD_EXPECTATION.clone()
-			},
-			last_currency_movement: CURRENCY.rpt_changes.len() as u32,
-		};
-
-		static ref RPT_CHANGE_TALLY_EXPECTATION: i64 = ((RPT_2 - RPT_1) + (RPT_3 - RPT_2)) * ACCOUNT.base.stake as i64;
+			pub static ref CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+				total_stake: 200,
+				rpt_changes: bounded_vec![
+					(Rate::from_u32(RPT_1 as u32) - Rate::from_u32(RPT_0 as u32)),
+					(Rate::from_u32(RPT_2 as u32) - Rate::from_u32(RPT_1 as u32)),
+					(Rate::from_u32(RPT_3 as u32) - Rate::from_u32(RPT_2 as u32)),
+				],
+			};
+		}
 	}
 
-	crate::mechanism_tests_impl!(
-		TestMechanism,
-		*base::test::GROUP,
-		*base::test::NEXT_GROUP,
-		*CURRENCY,
-		*ACCOUNT,
-		*base::test::GROUP_REWARD_GROUP_EXPECTATION,
-		*ACCOUNT_DEPOSIT_STAKE_EXPECTATION,
-		*CURRENCY_DEPOSIT_STAKE_EXPECTATION,
-		*base::test::GROUP_DEPOSIT_STAKE_EXPECTATION,
-		*ACCOUNT_WITHDRAW_STAKE_EXPECTATION,
-		*CURRENCY_WITHDRAW_STAKE_EXPECTATION,
-		*base::test::GROUP_WITHDRAW_STAKE_EXPECTATION,
-		(*base::test::REWARD_EXPECTATION as i64 - *RPT_CHANGE_TALLY_EXPECTATION) as u64,
-		*ACCOUNT_CLAIM_REWARD_EXPECTATION,
-		*CURRENCY_MOVE_CURRENCY_EXPECTATION,
-		*GROUP_PREV_MOVE_CURRENCY_EXPECTATION,
-		*GROUP_NEXT_MOVE_CURRENCY_EXPECTATION,
-	);
+	pub mod expectation {
+		use super::{initial::*, *};
+
+		lazy_static::lazy_static! {
+			pub static ref REWARD_GROUP__GROUP: base::Group<Balance, Rate> =
+				base::test::expectation::REWARD_GROUP__GROUP.clone();
+
+			pub static ref DEPOSIT_STAKE__GROUP: base::Group<Balance, Rate> =
+				base::test::expectation::DEPOSIT_STAKE__GROUP.clone();
+
+			pub static ref DEPOSIT_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
+				base: base::Account {
+					reward_tally: base::test::expectation::DEPOSIT_STAKE__ACCOUNT.reward_tally
+						+ *RPT_CHANGE_TALLY_EXPECTATION,
+					..base::test::expectation::DEPOSIT_STAKE__ACCOUNT.clone()
+				},
+				last_currency_movement: CURRENCY.rpt_changes.len() as u32,
+			};
+
+			pub static ref DEPOSIT_STAKE__CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+				total_stake: CURRENCY.total_stake + AMOUNT,
+				..CURRENCY.clone()
+			};
+
+			pub static ref WITHDRAW_STAKE__GROUP: base::Group<Balance, Rate> =
+				base::test::expectation::WITHDRAW_STAKE__GROUP.clone();
+			pub static ref WITHDRAW_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
+				base: base::Account {
+					reward_tally: base::test::expectation::WITHDRAW_STAKE__ACCOUNT.reward_tally
+						+ *RPT_CHANGE_TALLY_EXPECTATION,
+					..base::test::expectation::WITHDRAW_STAKE__ACCOUNT.clone()
+				},
+				last_currency_movement: CURRENCY.rpt_changes.len() as u32,
+			};
+			pub static ref WITHDRAW_STAKE__CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+				total_stake: CURRENCY.total_stake - AMOUNT,
+				..CURRENCY.clone()
+			};
+
+			pub static ref CLAIM__ACCOUNT: Account<Balance, IBalance> = Account {
+				base: base::test::expectation::CLAIM__ACCOUNT.clone(),
+				last_currency_movement: CURRENCY.rpt_changes.len() as u32,
+			};
+
+			pub static ref CLAIM__REWARD: u64 =
+				(*base::test::expectation::CLAIM__REWARD as i64 - *RPT_CHANGE_TALLY_EXPECTATION)as u64;
+
+			pub static ref MOVE__CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+				rpt_changes: bounded_vec![
+					CURRENCY.rpt_changes[0],
+					CURRENCY.rpt_changes[1],
+					CURRENCY.rpt_changes[2],
+					base::test::initial::NEXT_GROUP.reward_per_token - base::test::initial::GROUP.reward_per_token,
+				],
+				..CURRENCY.clone()
+			};
+			pub static ref MOVE__GROUP_PREV: base::Group<Balance, Rate> = base::Group {
+				total_stake: base::test::initial::GROUP.total_stake - CURRENCY.total_stake,
+				..base::test::initial::GROUP.clone()
+			};
+
+			pub static ref MOVE__GROUP_NEXT: base::Group<Balance, Rate> = base::Group {
+				total_stake: base::test::initial::NEXT_GROUP.total_stake + CURRENCY.total_stake,
+				..base::test::initial::NEXT_GROUP.clone()
+			};
+
+			static ref RPT_CHANGE_TALLY_EXPECTATION: i64 =
+				((RPT_2 - RPT_1) + (RPT_3 - RPT_2)) * ACCOUNT.base.stake as i64;
+
+		}
+	}
+
+	crate::mechanism_tests_impl!(TestMechanism, initial, expectation);
 }
