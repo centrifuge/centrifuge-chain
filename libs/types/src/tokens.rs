@@ -13,6 +13,7 @@
 use cfg_primitives::types::{PoolId, TrancheId};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
+pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

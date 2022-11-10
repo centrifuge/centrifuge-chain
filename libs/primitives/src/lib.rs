@@ -278,4 +278,19 @@ pub mod parachains {
 			pub const CFG_KEY: &[u8] = &[0, 1];
 		}
 	}
+
+	pub mod rococo {
+		pub mod rocksmine {
+			pub const ID: u32 = 1000;
+			pub mod usdt {
+				pub const PALLET_INSTANCE: u8 = 50;
+				pub const GENERAL_INDEX: u128 = 1984;
+			}
+		}
+
+		pub mod acala {
+			pub const ID: u32 = 2000;
+			pub const AUSD_KEY: &[u8] = &[0, 129];
+		}
+	}
 }
