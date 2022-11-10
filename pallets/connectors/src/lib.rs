@@ -19,7 +19,7 @@ use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
 };
-use orml_traits::asset_registry;
+use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
@@ -188,6 +188,12 @@ pub mod pallet {
 		PoolNotFound,
 		/// A tranche could not be found
 		TrancheNotFound,
+		/// Could not find the metadata of a tranche token
+		TrancheMetadataNotFound,
+		/// The tranche token name can't be converted to the expected bounded size
+		InvalidTrancheMetadataName,
+		/// The tranche token symbol can't be converted to the expected bounded size
+		InvalidTrancheMetadataSymbol,
 		/// Failed to fetch a tranche token price.
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
@@ -253,18 +259,27 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			// Send the message through the router
-			//
-			// TODO: retrieve token name and symbol from asset-registry
-			// Depends on https://github.com/centrifuge/centrifuge-chain/issues/842
-			//
+			// Look up the metadata of the tranche token
+			let currency_id = T::TrancheToken::tranche_token(pool_id.clone(), tranche_id.clone());
+			let tranche_metadata = T::AssetRegistry::metadata(&currency_id)
+				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
+			let token_name = tranche_metadata
+				.name
+				.try_into()
+				.map_err(|_| Error::<T>::InvalidTrancheMetadataName)?;
+			let token_symbol = tranche_metadata
+				.symbol
+				.try_into()
+				.map_err(|_| Error::<T>::InvalidTrancheMetadataSymbol)?;
+
+			// Send the message to the domain
 			Self::do_send_message(
 				who,
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
-					token_name: [0; 32],
-					token_symbol: [0; 32],
+					token_name,
+					token_symbol,
 				},
 				domain,
 			)?;
