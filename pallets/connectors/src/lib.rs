@@ -99,7 +99,7 @@ pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
-	use cfg_traits::{Permissions, PoolInspect};
+	use cfg_traits::{Permissions, PoolInspect, TrancheToken};
 	use cfg_types::{PermissionScope, PoolRole, Role};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -151,6 +151,8 @@ pub mod pallet {
 				AssetId = CurrencyIdOf<Self>,
 				Balance = <Self as pallet::Config>::Balance,
 			> + Transfer<Self::AccountId>;
+
+		type TrancheToken: TrancheToken<PoolIdOf<Self>, TrancheIdOf<Self>, CurrencyIdOf<Self>>;
 	}
 
 	#[pallet::event]
@@ -354,17 +356,17 @@ pub mod pallet {
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
-			// TODO: Transfer to the domain account for bookkeeping
-			// T::Tokens::transfer(
-			// 	T::CurrencyId::Tranche(pool_id, tranche_id),
-			// 	&who,
-			// 	&DomainLocator {
-			// 		domain: address.domain,
-			// 	}
-			// 	.into_account_truncating(),
-			// 	amount,
-			// 	false,
-			// )?;
+			// Transfer to the domain account for bookkeeping
+			T::Tokens::transfer(
+				T::TrancheToken::tranche_token(pool_id, tranche_id),
+				&who,
+				&DomainLocator {
+					domain: address.domain.clone(),
+				}
+				.into_account_truncating(),
+				amount,
+				false,
+			)?;
 
 			Self::do_send_message(
 				who,
