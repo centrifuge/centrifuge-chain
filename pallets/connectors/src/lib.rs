@@ -83,12 +83,12 @@ impl<Domain> TypeId for DomainAddress<Domain> {
 // Type aliases
 pub type PoolIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
-	<T as Config>::CurrencyId,
+	CurrencyIdOf<T>,
 >>::PoolId;
 
 pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
-	<T as Config>::CurrencyId,
+	CurrencyIdOf<T>,
 >>::TrancheId;
 
 pub type MessageOf<T> =
@@ -131,23 +131,14 @@ pub mod pallet {
 
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
-		type CurrencyId: Parameter
-			+ Copy
-			+ Default
-			+ IsType<<Self as pallet_xcm_transactor::Config>::CurrencyId>;
-
 		/// The origin allowed to make admin-like changes, such calling `set_domain_router`.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
-		type PoolInspect: PoolInspect<
-			Self::AccountId,
-			<Self as Config>::CurrencyId,
-			Rate = Self::Rate,
-		>;
+		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
 
 		type Permission: Permissions<
 			Self::AccountId,
-			Scope = PermissionScope<PoolIdOf<Self>, <Self as pallet::Config>::CurrencyId>,
+			Scope = PermissionScope<PoolIdOf<Self>, CurrencyIdOf<Self>>,
 			Role = Role<TrancheIdOf<Self>, Moment>,
 			Error = DispatchError,
 		>;
@@ -157,7 +148,7 @@ pub mod pallet {
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<
 				Self::AccountId,
-				AssetId = <Self as pallet::Config>::CurrencyId,
+				AssetId = CurrencyIdOf<Self>,
 				Balance = <Self as pallet::Config>::Balance,
 			> + Transfer<Self::AccountId>;
 	}
