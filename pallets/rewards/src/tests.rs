@@ -76,6 +76,7 @@ mod base_with_currency_movement_mechanism {
 				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
 				REWARD / 4 + 2 * REWARD / 5
 			);
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
 			assert_ok!(Rewards::withdraw_stake(
 				DOM_1_CURRENCY_B,
 				&USER_A,

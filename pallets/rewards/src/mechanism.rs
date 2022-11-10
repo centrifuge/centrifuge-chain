@@ -49,7 +49,7 @@ pub trait RewardMechanism {
 	fn group_stake(group: &Self::Group) -> Self::Balance;
 }
 
-#[derive(Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum MoveCurrencyError {
 	Arithmetic(ArithmeticError),
 	MaxMovements,

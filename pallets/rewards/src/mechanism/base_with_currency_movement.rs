@@ -10,10 +10,10 @@ use super::{base, MoveCurrencyError, RewardMechanism};
 
 /// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Account<Balance, IBalance> {
-	base: base::Account<Balance, IBalance>,
-	last_currency_movement: u32,
+	pub base: base::Account<Balance, IBalance>,
+	pub last_currency_movement: u32,
 }
 
 impl<Balance, IBalance> Account<Balance, IBalance>
@@ -29,7 +29,7 @@ where
 			.iter()
 			.try_fold(Rate::zero(), |a, b| a.ensure_add(*b))?;
 
-		rpt_to_apply.ensure_mul_int(IBalance::ensure_from(self.base.staked())?)
+		rpt_to_apply.ensure_mul_int(IBalance::ensure_from(self.base.stake)?)
 	}
 
 	pub fn apply_rpt_changes<Rate: FixedPointNumber>(
@@ -38,7 +38,7 @@ where
 	) -> Result<(), ArithmeticError> {
 		let tally_to_apply = self.get_tally_from_rpt_changes(rpt_changes)?;
 
-		self.base.add_reward_tally(tally_to_apply)?;
+		self.base.reward_tally.ensure_add_assign(tally_to_apply)?;
 		self.last_currency_movement = rpt_changes.len() as u32;
 
 		Ok(())
@@ -47,10 +47,10 @@ where
 
 /// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Currency<Balance, Rate, MaxMovements: Get<u32>> {
-	total_staked: Balance,
-	rpt_changes: BoundedVec<Rate, MaxMovements>,
+	pub total_stake: Balance,
+	pub rpt_changes: BoundedVec<Rate, MaxMovements>,
 }
 
 impl<Balance, Rate, MaxMovements> Default for Currency<Balance, Rate, MaxMovements>
@@ -61,36 +61,9 @@ where
 {
 	fn default() -> Self {
 		Self {
-			total_staked: Zero::zero(),
+			total_stake: Zero::zero(),
 			rpt_changes: BoundedVec::default(),
 		}
-	}
-}
-
-impl<Balance, Rate, MaxMovements> Currency<Balance, Rate, MaxMovements>
-where
-	Balance: FixedPointOperand + EnsureSub + EnsureAdd,
-	Rate: FixedPointNumber,
-	MaxMovements: Get<u32>,
-{
-	pub fn add_rpt_change(&mut self, rpt_change: Rate) -> Result<(), ()> {
-		self.rpt_changes.try_push(rpt_change)
-	}
-
-	pub fn add_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_add_assign(amount)
-	}
-
-	pub fn sub_amount(&mut self, amount: Balance) -> Result<(), ArithmeticError> {
-		self.total_staked.ensure_sub_assign(amount)
-	}
-
-	pub fn total_staked(&self) -> Balance {
-		self.total_staked
-	}
-
-	pub fn rpt_changes(&self) -> &[Rate] {
-		&self.rpt_changes
 	}
 }
 
@@ -114,7 +87,7 @@ where
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 
 	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
-		group.distribute_reward(amount)
+		base::Mechanism::<Balance, IBalance, Rate>::reward_group(group, amount)
 	}
 
 	fn deposit_stake(
@@ -123,10 +96,16 @@ where
 		group: &mut Self::Group,
 		amount: Self::Balance,
 	) -> Result<(), ArithmeticError> {
-		account.apply_rpt_changes(currency.rpt_changes())?;
-		account.base.add_amount(amount, group.reward_per_token())?;
-		group.add_amount(amount)?;
-		currency.add_amount(amount)
+		account.apply_rpt_changes(&currency.rpt_changes)?;
+
+		base::Mechanism::<Balance, IBalance, Rate>::deposit_stake(
+			&mut account.base,
+			&mut (),
+			group,
+			amount,
+		)?;
+
+		currency.total_stake.ensure_add_assign(amount)
 	}
 
 	fn withdraw_stake(
@@ -135,10 +114,16 @@ where
 		group: &mut Self::Group,
 		amount: Self::Balance,
 	) -> Result<(), ArithmeticError> {
-		account.apply_rpt_changes(currency.rpt_changes())?;
-		account.base.sub_amount(amount, group.reward_per_token())?;
-		group.sub_amount(amount)?;
-		currency.sub_amount(amount)
+		account.apply_rpt_changes(&currency.rpt_changes)?;
+
+		base::Mechanism::<Balance, IBalance, Rate>::withdraw_stake(
+			&mut account.base,
+			&mut (),
+			group,
+			amount,
+		)?;
+
+		currency.total_stake.ensure_sub_assign(amount)
 	}
 
 	fn compute_reward(
@@ -146,9 +131,12 @@ where
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let extra_tally = account.get_tally_from_rpt_changes(currency.rpt_changes())?;
-		let reward = account.base.compute_reward(group.reward_per_token())?;
-		IBalance::ensure_from(reward)?
+		let extra_tally = account.get_tally_from_rpt_changes(&currency.rpt_changes)?;
+
+		let base_reward =
+			base::Mechanism::<Balance, IBalance, Rate>::compute_reward(&account.base, &(), group)?;
+
+		IBalance::ensure_from(base_reward)?
 			.ensure_sub(extra_tally)?
 			.ensure_into()
 	}
@@ -158,8 +146,9 @@ where
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		account.apply_rpt_changes(currency.rpt_changes())?;
-		account.base.claim_reward(group.reward_per_token())
+		account.apply_rpt_changes(&currency.rpt_changes)?;
+
+		base::Mechanism::<Balance, IBalance, Rate>::claim_reward(&mut account.base, &(), group)
 	}
 
 	fn move_currency(
@@ -168,69 +157,199 @@ where
 		next_group: &mut Self::Group,
 	) -> Result<(), MoveCurrencyError> {
 		let rpt_change = next_group
-			.reward_per_token()
-			.ensure_sub(prev_group.reward_per_token())?;
+			.reward_per_token
+			.ensure_sub(prev_group.reward_per_token)?;
 
 		currency
-			.add_rpt_change(rpt_change)
+			.rpt_changes
+			.try_push(rpt_change)
 			.map_err(|_| MoveCurrencyError::MaxMovements)?;
 
-		prev_group.sub_amount(currency.total_staked())?;
-		next_group.add_amount(currency.total_staked())?;
+		prev_group
+			.total_stake
+			.ensure_sub_assign(currency.total_stake)?;
+
+		next_group
+			.total_stake
+			.ensure_add_assign(currency.total_stake)?;
 
 		Ok(())
 	}
 
 	fn account_stake(account: &Self::Account) -> Self::Balance {
-		account.base.staked()
+		account.base.stake
 	}
 
 	fn group_stake(group: &Self::Group) -> Self::Balance {
-		group.total_staked()
+		group.total_stake
 	}
 }
 
 #[cfg(test)]
 mod test {
-	use frame_support::assert_ok;
+	use base::test::AMOUNT;
+	use frame_support::{assert_ok, bounded_vec};
 	use sp_runtime::FixedI64;
 
 	use super::*;
 
+	type Balance = u64;
+	type IBalance = i64;
+	type Rate = FixedI64;
+
+	type TestMechanism = Mechanism<Balance, IBalance, Rate, MaxCurrencyMovements>;
+
+	frame_support::parameter_types! {
+		#[derive(scale_info::TypeInfo, PartialEq, Clone, Debug)]
+		pub const MaxCurrencyMovements: u32 = 4;
+	}
+
+	const RPT_0: i64 = 2;
+	const RPT_1: i64 = 3;
+	const RPT_2: i64 = 0;
+	const RPT_3: i64 = 1;
+
+	lazy_static::lazy_static! {
+		static ref GROUP_PREV_MOVE_CURRENCY_EXPECTATION: base::Group<Balance, Rate> = base::Group {
+			total_stake: base::test::GROUP.total_stake - CURRENCY.total_stake,
+			..base::test::GROUP.clone()
+		};
+
+		static ref GROUP_NEXT_MOVE_CURRENCY_EXPECTATION: base::Group<Balance, Rate> = base::Group {
+			total_stake: base::test::GROUP_NEXT.total_stake + CURRENCY.total_stake,
+			..base::test::GROUP_NEXT.clone()
+		};
+
+		static ref CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+			total_stake: 200,
+			rpt_changes: bounded_vec![
+				(Rate::from_u32(RPT_1 as u32) - Rate::from_u32(RPT_0 as u32)),
+				(Rate::from_u32(RPT_2 as u32) - Rate::from_u32(RPT_1 as u32)),
+				(Rate::from_u32(RPT_3 as u32) - Rate::from_u32(RPT_2 as u32)),
+			],
+		};
+
+		static ref CURRENCY_DEPOSIT_STAKE_EXPECTATION: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+			total_stake: CURRENCY.total_stake + AMOUNT,
+			..CURRENCY.clone()
+		};
+
+		static ref CURRENCY_WITHDRAW_STAKE_EXPECTATION: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+			total_stake: CURRENCY.total_stake - AMOUNT,
+			..CURRENCY.clone()
+		};
+
+		static ref CURRENCY_MOVE_CURRENCY_EXPECTATION: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+			rpt_changes: bounded_vec![
+				CURRENCY.rpt_changes[0],
+				CURRENCY.rpt_changes[1],
+				CURRENCY.rpt_changes[2],
+				base::test::GROUP_NEXT.reward_per_token - base::test::GROUP.reward_per_token,
+			],
+			..CURRENCY.clone()
+		};
+
+		static ref ACCOUNT: Account<Balance, IBalance> = Account {
+			base: base::test::ACCOUNT.clone(),
+			last_currency_movement: 1,
+		};
+
+		static ref ACCOUNT_DEPOSIT_STAKE_EXPECTATION: Account<Balance, IBalance> = Account {
+			base: base::Account {
+				reward_tally: base::test::ACCOUNT_DEPOSIT_STAKE_EXPECTATION.reward_tally + *RPT_CHANGE_TALLY_EXPECTATION,
+				..base::test::ACCOUNT_DEPOSIT_STAKE_EXPECTATION.clone()
+			},
+			last_currency_movement: CURRENCY.rpt_changes.len() as u32,
+		};
+
+		static ref ACCOUNT_WITHDRAW_STAKE_EXPECTATION: Account<Balance, IBalance> = Account {
+			base: base::Account {
+				reward_tally: base::test::ACCOUNT_WITHDRAW_STAKE_EXPECTATION.reward_tally + *RPT_CHANGE_TALLY_EXPECTATION,
+				..base::test::ACCOUNT_WITHDRAW_STAKE_EXPECTATION.clone()
+			},
+			last_currency_movement: CURRENCY.rpt_changes.len() as u32,
+		};
+
+		static ref ACCOUNT_CLAIM_REWARD_EXPECTATION: Account<Balance, IBalance> = Account {
+			base: base::Account {
+				..base::test::ACCOUNT_CLAIM_REWARD_EXPECTATION.clone()
+			},
+			last_currency_movement: CURRENCY.rpt_changes.len() as u32,
+		};
+
+		static ref RPT_CHANGE_TALLY_EXPECTATION: i64 = ((RPT_2 - RPT_1) + (RPT_3 - RPT_2)) * ACCOUNT.base.stake as i64;
+	}
+
 	#[test]
-	fn rpt_changes() {
-		const AMOUNT: u64 = 10;
+	fn deposit_stake() {
+		let mut account = ACCOUNT.clone();
+		let mut currency = CURRENCY.clone();
+		let mut group = base::test::GROUP.clone();
 
-		let rpt_0 = FixedI64::saturating_from_rational(2, 1);
-		let rpt_1 = FixedI64::saturating_from_rational(3, 1);
-		let rpt_2 = FixedI64::saturating_from_rational(0, 1);
-		let rpt_3 = FixedI64::saturating_from_rational(1, 1);
+		assert_ok!(TestMechanism::deposit_stake(
+			&mut account,
+			&mut currency,
+			&mut group,
+			AMOUNT,
+		));
 
-		let mut account = Account::<u64, i128>::default();
+		assert_eq!(account, *ACCOUNT_DEPOSIT_STAKE_EXPECTATION);
+		assert_eq!(currency, *CURRENCY_DEPOSIT_STAKE_EXPECTATION);
+		assert_eq!(group, *base::test::GROUP_DEPOSIT_STAKE_EXPECTATION);
+	}
 
-		assert_ok!(account.base.add_amount(AMOUNT, rpt_0));
+	#[test]
+	fn withdraw_stake() {
+		let mut account = ACCOUNT.clone();
+		let mut currency = CURRENCY.clone();
+		let mut group = base::test::GROUP.clone();
 
-		let rpt_changes = [(rpt_1 - rpt_0), (rpt_2 - rpt_1)];
+		assert_ok!(TestMechanism::withdraw_stake(
+			&mut account,
+			&mut currency,
+			&mut group,
+			AMOUNT,
+		));
+
+		assert_eq!(account, *ACCOUNT_WITHDRAW_STAKE_EXPECTATION);
+		assert_eq!(currency, *CURRENCY_WITHDRAW_STAKE_EXPECTATION);
+		assert_eq!(group, *base::test::GROUP_WITHDRAW_STAKE_EXPECTATION);
+	}
+
+	#[test]
+	fn compute_reward() {
+		assert_ok!(
+			TestMechanism::compute_reward(&ACCOUNT, &CURRENCY, &base::test::GROUP),
+			(*base::test::REWARD_EXPECTATION as i64 - *RPT_CHANGE_TALLY_EXPECTATION) as u64,
+		);
+	}
+
+	#[test]
+	fn claim_reward() {
+		let mut account = ACCOUNT.clone();
 
 		assert_ok!(
-			account.get_tally_from_rpt_changes(&rpt_changes),
-			rpt_changes[0].saturating_mul_int(AMOUNT as i128)
-				+ rpt_changes[1].saturating_mul_int(AMOUNT as i128)
+			TestMechanism::claim_reward(&mut account, &CURRENCY, &base::test::GROUP),
+			(*base::test::REWARD_EXPECTATION as i64 - *RPT_CHANGE_TALLY_EXPECTATION) as u64,
 		);
 
-		assert_ok!(account.apply_rpt_changes(&rpt_changes));
+		assert_eq!(account, ACCOUNT_CLAIM_REWARD_EXPECTATION.clone());
+	}
 
-		assert_eq!(account.last_currency_movement, rpt_changes.len() as u32);
+	#[test]
+	fn move_currency() {
+		let mut currency = CURRENCY.clone();
+		let mut prev_group = base::test::GROUP.clone();
+		let mut next_group = base::test::GROUP_NEXT.clone();
 
-		let rpt_changes = [rpt_changes[0], rpt_changes[1], (rpt_3 - rpt_2)];
+		assert_ok!(TestMechanism::move_currency(
+			&mut currency,
+			&mut prev_group,
+			&mut next_group,
+		));
 
-		assert_ok!(
-			account.get_tally_from_rpt_changes(&rpt_changes),
-			rpt_changes[2].saturating_mul_int(AMOUNT as i128)
-		);
-
-		assert_ok!(account.apply_rpt_changes(&rpt_changes));
-
-		assert_eq!(account.last_currency_movement, rpt_changes.len() as u32);
+		assert_eq!(currency, CURRENCY_MOVE_CURRENCY_EXPECTATION.clone());
+		assert_eq!(prev_group, GROUP_PREV_MOVE_CURRENCY_EXPECTATION.clone());
+		assert_eq!(next_group, GROUP_NEXT_MOVE_CURRENCY_EXPECTATION.clone());
 	}
 }
