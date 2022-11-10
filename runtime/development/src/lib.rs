@@ -28,7 +28,10 @@ use cfg_traits::{
 	PreConditions, PriceValue, TrancheCurrency as _,
 };
 pub use cfg_types::CurrencyId;
-use cfg_types::{CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Rate, Role, TimeProvider, TrancheCurrency, UNION, TrancheToken};
+use cfg_types::{
+	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
+	Rate, Role, TimeProvider, TrancheCurrency, TrancheToken, UNION,
+};
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -1351,6 +1354,7 @@ impl pallet_interest_accrual::Config for Runtime {
 
 impl pallet_connectors::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
+	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type Event = Event;
 	type Permission = Permissions;
@@ -1358,9 +1362,8 @@ impl pallet_connectors::Config for Runtime {
 	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
-	type WeightInfo = ();
 	type TrancheToken = TrancheToken;
-	type AssetRegistry = OrmlAssetRegistry;
+	type WeightInfo = ();
 }
 
 parameter_types! {
