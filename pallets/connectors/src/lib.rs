@@ -19,6 +19,7 @@ use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
 };
+use orml_traits::asset_registry;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
@@ -100,7 +101,7 @@ pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{Permissions, PoolInspect, TrancheToken};
-	use cfg_types::{PermissionScope, PoolRole, Role};
+	use cfg_types::{CustomMetadata, PermissionScope, PoolRole, Role};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
@@ -153,6 +154,12 @@ pub mod pallet {
 			> + Transfer<Self::AccountId>;
 
 		type TrancheToken: TrancheToken<PoolIdOf<Self>, TrancheIdOf<Self>, CurrencyIdOf<Self>>;
+
+		type AssetRegistry: asset_registry::Inspect<
+			AssetId = CurrencyIdOf<Self>,
+			Balance = <Self as Config>::Balance,
+			CustomMetadata = CustomMetadata,
+		>;
 	}
 
 	#[pallet::event]
