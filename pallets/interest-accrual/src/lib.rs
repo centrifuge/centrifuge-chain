@@ -415,19 +415,6 @@ pub mod pallet {
 			})
 		}
 
-		pub fn remove_unused_rates() -> Weight {
-			let mut count = 0;
-			Rate::<T>::translate(|_, rate: RateDetailsOf<T>| {
-				count += 1;
-				if rate.reference_count == 0 {
-					None
-				} else {
-					Some(rate)
-				}
-			});
-			T::DbWeight::get().reads_writes(count, count)
-		}
-
 		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
 			let four_decimals = T::InterestRate::saturating_from_integer(10000);
 			ensure!(
