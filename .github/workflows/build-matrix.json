@@ -3,7 +3,7 @@
     "os": "ubuntu-latest",
     "target": "build-node",
     "run_on_event": "any",
-    "rust_toolchain": "nightly-2022-05-09"
+    "rust_toolchain": "nightly-2022-08-05"
   },
 
   {
@@ -11,7 +11,7 @@
     "target": "build-runtime",
     "package": "altair-runtime",
     "run_on_event": "push",
-    "rust_toolchain": "1.62.0"
+    "rust_toolchain": "1.64.0"
   },
 
   {
@@ -19,7 +19,7 @@
     "target": "build-runtime",
     "package": "centrifuge-runtime",
     "run_on_event": "push",
-    "rust_toolchain": "1.62.0"
+    "rust_toolchain": "1.64.0"
   },
 
   {
@@ -27,7 +27,7 @@
     "target": "build-runtime-fast",
     "package": "altair-runtime",
     "run_on_event": "push",
-    "rust_toolchain": "1.62.0"
+    "rust_toolchain": "1.64.0"
   },
 
   {
@@ -35,6 +35,6 @@
     "target": "build-runtime-fast",
     "package": "centrifuge-runtime",
     "run_on_event": "push",
-    "rust_toolchain": "1.62.0"
+    "rust_toolchain": "1.64.0"
   }
 ]
