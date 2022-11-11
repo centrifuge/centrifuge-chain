@@ -135,7 +135,7 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
-		RawOrigin::Signed(owner.clone()).into(),
+		owner.clone(),
 		owner.clone(),
 		pool_id,
 		vec![

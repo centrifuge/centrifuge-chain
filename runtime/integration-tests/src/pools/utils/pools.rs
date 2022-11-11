@@ -19,6 +19,7 @@ use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
+use pallet_pool_registry::Call as PoolRegistryCall;
 use pallet_pool_system::{
 	Call as PoolSystemCall, TrancheIndex, TrancheInput, TrancheMetadata, TrancheType,
 };
@@ -352,7 +353,7 @@ pub fn create_pool_call(
 	max_reserve: Balance,
 	tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 ) -> Call {
-	Call::PoolSystem(PoolSystemCall::create {
+	Call::PoolRegistry(PoolRegistryCall::create {
 		admin,
 		pool_id,
 		tranche_inputs,
@@ -373,7 +374,7 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 /// A module where all calls need to be called within an
 /// externalities provided environment.
 mod with_ext {
-	use cfg_traits::pools::PoolNAV;
+	use cfg_traits::PoolNAV;
 
 	use super::*;
 

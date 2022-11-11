@@ -128,6 +128,14 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 }
 
+/// Variants for valid Pool updates to send out as events
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum UpdateState {
+	NoExecution,
+	Executed,
+	Stored,
+}
+
 /// A trait that supports modifications of pools
 pub trait PoolMutate<
 	AccountId,
@@ -140,9 +148,8 @@ pub trait PoolMutate<
 	MaxTranches: Get<u32>,
 >
 {
-	type TrancheInput: Encode + Decode + Clone;
-	type PoolChanges: Encode + Decode + Clone;
-	type UpdateState: Encode + Decode + Clone;
+	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 
 	fn create(
 		admin: AccountId,
@@ -157,7 +164,7 @@ pub trait PoolMutate<
 	fn update(
 		pool_id: PoolId,
 		changes: Self::PoolChanges,
-	) -> Result<(Self::UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
+	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
 
 	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }

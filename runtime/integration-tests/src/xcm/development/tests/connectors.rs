@@ -28,6 +28,7 @@ use ::xcm::{
 	VersionedMultiLocation,
 };
 use cfg_primitives::{currency_decimals, parachains, Balance, PoolId, TrancheId};
+use cfg_traits::PoolMutate;
 use cfg_types::{
 	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, Rate, XcmMetadata,
 };
@@ -147,7 +148,7 @@ fn add_pool_works() {
 
 		// then we can create the pool
 		assert_ok!(PoolSystem::create(
-			Origin::signed(BOB.into()),
+			BOB.into(),
 			BOB.into(),
 			pool_id,
 			vec![

@@ -67,14 +67,6 @@ pub struct PoolLocator<PoolId> {
 	pub pool_id: PoolId,
 }
 
-/// Variants for valid Pool updates to send out as events
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub enum UpdateState {
-	NoExecution,
-	Executed,
-	Stored,
-}
-
 pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),

@@ -92,6 +92,7 @@ pallet-connectors = { path = "../../pallets/connectors" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
+pallet-pool-registry = { path = "../../pallets/pool-registry" }
 
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }

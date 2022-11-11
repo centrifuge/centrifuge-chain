@@ -13,13 +13,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolMutate};
-use cfg_types::{PermissionScope, PoolRole, Role, UpdateState};
+use cfg_traits::{Permissions, PoolMutate, UpdateState};
+use cfg_types::{PermissionScope, PoolRole, Role};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use pallet_pool_system::{PoolChanges, TrancheInput};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, BadOrigin},
 	FixedPointNumber, FixedPointOperand,
@@ -54,6 +53,28 @@ where
 }
 
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
+
+type PoolChangesOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::Balance,
+	<T as Config>::PoolId,
+	<T as Config>::CurrencyId,
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::MaxTranches,
+>>::PoolChanges;
+
+type TrancheInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::Balance,
+	<T as Config>::PoolId,
+	<T as Config>::CurrencyId,
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+	<T as Config>::MaxTranches,
+>>::TrancheInput;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -219,9 +240,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			admin: T::AccountId,
 			pool_id: T::PoolId,
-			tranche_inputs: Vec<
-				TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
-			>,
+			tranche_inputs: Vec<TrancheInputOf<T>>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
@@ -266,12 +285,7 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			changes: PoolChanges<
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-				T::MaxTranches,
-			>,
+			changes: PoolChangesOf<T>,
 		) -> DispatchResultWithPostInfo {
 			// Make sure the following are true for a valid Pool Update
 			// 1. Make sure Origin is signed

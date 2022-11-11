@@ -12,7 +12,8 @@
 use std::marker::PhantomData;
 
 use cfg_primitives::Moment;
-use cfg_types::{CurrencyId, Rate, UpdateState};
+use cfg_traits::UpdateState;
+use cfg_types::{CurrencyId, Rate};
 use frame_support::{
 	dispatch::{
 		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
@@ -112,11 +113,15 @@ impl<T: Config + pallet_pool_registry::Config>
 		T::MaxTranches,
 	> for ModifyPoolMock<T>
 {
+	type PoolChanges =
+		PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>;
+	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
+
 	fn create(
 		_admin: T::AccountId,
 		_depositor: T::AccountId,
 		_pool_id: T::PoolId,
-		_tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
+		_tranche_inputs: Vec<Self::TrancheInput>,
 		_currency: T::CurrencyId,
 		_max_reserve: T::Balance,
 		_metadata: Option<Vec<u8>>,
@@ -126,13 +131,8 @@ impl<T: Config + pallet_pool_registry::Config>
 
 	fn update(
 		_pool_id: T::PoolId,
-		_changes: PoolChanges<
-			T::Rate,
-			T::MaxTokenNameLength,
-			T::MaxTokenSymbolLength,
-			T::MaxTranches,
-		>,
-	) -> Result<(cfg_types::UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
+		_changes: Self::PoolChanges,
+	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
 		Ok((
 			UpdateState::Executed,
 			Some(T::WeightInfo::update_and_execute(5)).into(),
