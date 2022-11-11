@@ -100,7 +100,7 @@ pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
-	use cfg_traits::{Permissions, PoolInspect, TrancheToken};
+	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
 	use cfg_types::{CustomMetadata, PermissionScope, PoolRole, Role};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -153,7 +153,8 @@ pub mod pallet {
 				Balance = <Self as pallet::Config>::Balance,
 			> + Transfer<Self::AccountId>;
 
-		type TrancheToken: TrancheToken<PoolIdOf<Self>, TrancheIdOf<Self>, CurrencyIdOf<Self>>;
+		type TrancheCurrency: TrancheCurrency<PoolIdOf<Self>, TrancheIdOf<Self>>
+			+ Into<CurrencyIdOf<Self>>;
 
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = CurrencyIdOf<Self>,
@@ -260,7 +261,8 @@ pub mod pallet {
 			);
 
 			// Look up the metadata of the tranche token
-			let currency_id = T::TrancheToken::tranche_token(pool_id.clone(), tranche_id.clone());
+			let currency_id =
+				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into();
 			let tranche_metadata = T::AssetRegistry::metadata(&currency_id)
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = tranche_metadata
@@ -380,7 +382,7 @@ pub mod pallet {
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
-				T::TrancheToken::tranche_token(pool_id, tranche_id),
+				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into(),
 				&who,
 				&DomainLocator {
 					domain: address.domain.clone(),

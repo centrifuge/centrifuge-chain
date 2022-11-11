@@ -30,7 +30,7 @@ use cfg_traits::{
 pub use cfg_types::CurrencyId;
 use cfg_types::{
 	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
-	Rate, Role, TimeProvider, TrancheCurrency, TrancheToken, UNION,
+	Rate, Role, TimeProvider, TrancheCurrency, UNION,
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -1362,7 +1362,7 @@ impl pallet_connectors::Config for Runtime {
 	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
-	type TrancheToken = TrancheToken;
+	type TrancheCurrency = TrancheCurrency;
 	type WeightInfo = ();
 }
 
