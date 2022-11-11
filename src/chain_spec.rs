@@ -831,7 +831,7 @@ fn altair_genesis(
 				.map(|k| (k, balance_per_endowed))
 				.collect()
 		}
-		None => (vec![]),
+		None => vec![],
 	};
 
 	altair_runtime::GenesisConfig {
