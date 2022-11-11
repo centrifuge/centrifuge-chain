@@ -1269,8 +1269,26 @@ pub mod pallet {
 		) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				// Prepare PoolEssence struct for sending out UpdateExecuted event
 				let copy_of_pool = pool.clone();
-				let old_pool = PoolEssence::from(copy_of_pool);
+				let mut old_pool = PoolEssence::from(copy_of_pool);
+				for (pool_tranche, pool_essence_tranche) in pool
+					.tranches
+					.tranches
+					.iter()
+					.zip(old_pool.tranches.iter_mut())
+				{
+					let tranche_metadata =
+						T::AssetRegistry::metadata(&pool_tranche.currency.into())
+							.ok_or(Error::<T>::FailedToUpdateTrancheMetadata)?;
+					pool_essence_tranche.metadata.token_symbol =
+						BoundedVec::try_from(tranche_metadata.symbol)
+							.unwrap_or(BoundedVec::default());
+					pool_essence_tranche.metadata.token_name =
+						BoundedVec::try_from(tranche_metadata.name)
+							.unwrap_or(BoundedVec::default());
+				}
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1321,8 +1339,25 @@ pub mod pallet {
 					}
 				}
 
+				// Prepare PoolEssence struct for sending out UpdateExecuted event
 				let copy_of_pool = pool.clone();
-				let new_pool = PoolEssence::from(copy_of_pool);
+				let mut new_pool = PoolEssence::from(copy_of_pool);
+				for (pool_tranche, pool_essence_tranche) in pool
+					.tranches
+					.tranches
+					.iter()
+					.zip(new_pool.tranches.iter_mut())
+				{
+					let tranche_metadata =
+						T::AssetRegistry::metadata(&pool_tranche.currency.into())
+							.ok_or(Error::<T>::FailedToUpdateTrancheMetadata)?;
+					pool_essence_tranche.metadata.token_symbol =
+						BoundedVec::try_from(tranche_metadata.symbol)
+							.unwrap_or(BoundedVec::default());
+					pool_essence_tranche.metadata.token_name =
+						BoundedVec::try_from(tranche_metadata.name)
+							.unwrap_or(BoundedVec::default());
+				}
 
 				Self::deposit_event(Event::PoolUpdated {
 					id: *pool_id,
