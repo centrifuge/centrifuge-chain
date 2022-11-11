@@ -144,6 +144,60 @@ macro_rules! unstake_common_tests {
 				assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0));
 			});
 		}
+
+		#[test]
+		fn unstake_several_users() {
+			const USER_A_STAKED: u64 = 1000;
+			const USER_B_STAKED: u64 = 500;
+
+			new_test_ext().execute_with(|| {
+				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+				assert_ok!($pallet::deposit_stake(
+					DOM_1_CURRENCY_A,
+					&USER_A,
+					USER_A_STAKED
+				));
+				assert_eq!(
+					free_balance(CurrencyId::A, &USER_A),
+					USER_INITIAL_BALANCE - USER_A_STAKED
+				);
+				assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+				// DISTRIBUTION 1
+				assert_ok!($pallet::deposit_stake(
+					DOM_1_CURRENCY_A,
+					&USER_B,
+					USER_B_STAKED
+				));
+				assert_eq!(
+					free_balance(CurrencyId::A, &USER_B),
+					USER_INITIAL_BALANCE - USER_B_STAKED
+				);
+				assert_ok!($pallet::withdraw_stake(
+					DOM_1_CURRENCY_A,
+					&USER_A,
+					USER_A_STAKED
+				));
+				assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
+				assert_ok!($pallet::withdraw_stake(
+					DOM_1_CURRENCY_A,
+					&USER_B,
+					USER_B_STAKED
+				));
+				assert_eq!(free_balance(CurrencyId::A, &USER_B), USER_INITIAL_BALANCE);
+				assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+				// DISTRIBUTION 2
+				assert_noop!(
+					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 1),
+					TokenError::NoFunds
+				);
+				assert_noop!(
+					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_B, 1),
+					TokenError::NoFunds
+				);
+			});
+		}
 	};
 }
 

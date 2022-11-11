@@ -4,6 +4,8 @@ use sp_runtime::{traits::Get, ArithmeticError};
 pub mod base;
 pub mod base_with_currency_movement;
 
+pub mod deferred;
+
 pub trait RewardMechanism {
 	type Group;
 	type Account;
