@@ -3,7 +3,6 @@ use frame_support::{
 	traits::{ConstU16, ConstU32, ConstU64},
 	PalletId,
 };
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::{
@@ -12,6 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
+use super::mechanism::{base, base_with_currency_movement};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -30,7 +30,8 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Tokens: orml_tokens,
-		Rewards: pallet_rewards,
+		Rewards1: pallet_rewards::<Instance1>,
+		Rewards2: pallet_rewards::<Instance2>,
 	}
 );
 
@@ -116,18 +117,27 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 3;
 }
 
-impl pallet_rewards::Config for Test {
-	type Balance = u64;
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DomainId = DomainId;
 	type Event = Event;
 	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
-	type Rate = FixedI64;
 	type RewardCurrency = RewardCurrency;
-	type SignedBalance = i128;
+	type RewardMechanism = base::Mechanism<u64, i128, FixedI64>;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Test {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type DomainId = DomainId;
+	type Event = Event;
+	type GroupId = u32;
+	type PalletId = RewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardMechanism =
+		base_with_currency_movement::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

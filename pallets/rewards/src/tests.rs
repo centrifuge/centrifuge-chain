@@ -1,18 +1,20 @@
+mod claiming;
+mod common;
+
 use cfg_traits::rewards::DistributedRewards;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
 use sp_runtime::ArithmeticError;
 
-use super::*;
-use crate::mock::*;
+use super::{mock::*, *};
 
-const GROUP_A: u32 = 1;
-const GROUP_B: u32 = 2;
+pub const GROUP_A: u32 = 1;
+pub const GROUP_B: u32 = 2;
 
-const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
-const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
-const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
+pub const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
+pub const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
+pub const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
 
-const REWARD: u64 = 100;
+pub const REWARD: u64 = 120;
 
 fn free_balance(currency_id: CurrencyId, account_id: &u64) -> u64 {
 	Tokens::reducible_balance(currency_id, account_id, true)
@@ -25,490 +27,118 @@ fn rewards_account() -> u64 {
 	)
 }
 
-fn distribute_to_all_groups() {
-	assert_ok!(
-		Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]),
-		vec![]
-	);
+mod base_mechanism {
+	use super::*;
+
+	common_tests!(Rewards1, Instance1);
+	base_claiming_tests!(Rewards1, Instance1);
 }
 
-#[test]
-fn stake() {
-	const USER_A_STAKED_1: u64 = 5000;
-	const USER_A_STAKED_2: u64 = 1000;
+mod base_with_currency_movement_mechanism {
+	use super::*;
 
-	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED_1
-		));
-		assert_eq!(
-			free_balance(CurrencyId::A, &USER_A),
-			USER_INITIAL_BALANCE - USER_A_STAKED_1
-		);
-		assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
+	common_tests!(Rewards2, Instance2);
+	base_claiming_tests!(Rewards2, Instance2);
 
-		// DISTRIBUTION 1
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED_2
-		));
-		assert_eq!(
-			free_balance(CurrencyId::A, &USER_A),
-			USER_INITIAL_BALANCE - (USER_A_STAKED_1 + USER_A_STAKED_2)
-		);
-	});
-}
+	use Rewards2 as Rewards;
 
-#[test]
-fn stake_insufficient_balance() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_noop!(
-			Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, USER_INITIAL_BALANCE + 1),
-			TokenError::NoFunds
-		);
-	});
-}
+	#[test]
+	fn move_currency_one_move() {
+		const STAKE_A: u64 = 2000;
+		const STAKE_B: u64 = 2000;
+		const STAKE_C: u64 = 1000;
 
-#[test]
-fn stake_all() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_INITIAL_BALANCE
-		));
-	});
-}
+		new_test_ext().execute_with(|| {
+			// DISTRIBUTION 0
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
+			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
 
-#[test]
-fn stake_nothing() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0));
-	});
-}
+			// DISTRIBUTION 1
+			assert_ok!(
+				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
+				REWARD / 4
+			);
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(
+				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
+				REWARD / 4
+			);
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
 
-#[test]
-fn unstake() {
-	const USER_A_STAKED: u64 = 1000;
-	const USER_A_UNSTAKED_1: u64 = 250;
-	const USER_A_UNSTAKED_2: u64 = USER_A_STAKED - USER_A_UNSTAKED_1;
+			// DISTRIBUTION 2
+			assert_ok!(
+				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
+				REWARD / 4 + 2 * REWARD / 5
+			);
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::withdraw_stake(
+				DOM_1_CURRENCY_B,
+				&USER_A,
+				STAKE_B * 2
+			));
+			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
 
-	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED
-		));
-		assert_ok!(Rewards::withdraw_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_UNSTAKED_1
-		));
-		assert_eq!(
-			free_balance(CurrencyId::A, &USER_A),
-			USER_INITIAL_BALANCE - USER_A_STAKED + USER_A_UNSTAKED_1
-		);
-		assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
+			// DISTRIBUTION 3
+			assert_ok!(
+				Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A),
+				REWARD / 4 + REWARD / 2 + REWARD / 2
+			);
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(
+				Rewards::claim_reward(DOM_1_CURRENCY_C, &USER_A),
+				REWARD / 2 + REWARD / 10 + REWARD / 2
+			);
+		});
+	}
 
-		// DISTRIBUTION 1
-		assert_ok!(Rewards::withdraw_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_UNSTAKED_2
-		));
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
-	});
-}
+	/// Makes two movements without account interaction and the another move.
+	#[test]
+	fn move_currency_several_moves() {
+		const STAKE_A: u64 = 2000;
+		const STAKE_B: u64 = 2000;
+		const STAKE_C: u64 = 1000;
 
-#[test]
-fn unstake_insufficient_balance() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_noop!(
-			Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 1),
-			TokenError::NoFunds
-		);
+		new_test_ext().execute_with(|| {
+			// DISTRIBUTION 0
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
+			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
 
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 1000));
+			// DISTRIBUTION 1
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
 
-		assert_noop!(
-			Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 2000),
-			TokenError::NoFunds
-		);
-	});
-}
+			// DISTRIBUTION 2
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
 
-#[test]
-fn unstake_exact() {
-	const STAKE_A: u64 = 1000;
+			// DISTRIBUTION 3
+			assert_ok!(
+				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
+				REWARD / 4 + REWARD / 3 + REWARD / 4
+			);
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(
+				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
+				REWARD / 4 + REWARD / 3 + REWARD / 4
+			);
+			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
 
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-		assert_ok!(Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-	});
-}
-
-#[test]
-fn unstake_nothing() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0));
-	});
-}
-
-#[test]
-fn claim() {
-	const USER_A_STAKED: u64 = 1000;
-
-	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		let mut expected_user_balance = USER_INITIAL_BALANCE;
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED
-		));
-		expected_user_balance -= USER_A_STAKED;
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), expected_user_balance);
-		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
-
-		// DISTRIBUTION 1
-		assert_eq!(rewards_account(), REWARD);
-		assert_ok!(Rewards::compute_reward(DOM_1_CURRENCY_A, &USER_A), REWARD);
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A), REWARD);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD);
-		assert_eq!(rewards_account(), 0);
-
-		assert_ok!(Rewards::compute_reward(DOM_1_CURRENCY_A, &USER_A), 0);
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD);
-		assert_eq!(rewards_account(), 0);
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), expected_user_balance);
-		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
-
-		// DISTRIBUTION 2
-		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
-		assert_eq!(rewards_account(), REWARD * 2);
-
-		// DISTRIBUTION 3
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A), REWARD * 2);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD * 3);
-		assert_ok!(Rewards::withdraw_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED
-		));
-		expected_user_balance += USER_A_STAKED;
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), expected_user_balance);
-		// No more stake in the group
-		assert_noop!(
-			Rewards::reward_group(GROUP_A, REWARD),
-			ArithmeticError::DivisionByZero
-		);
-
-		// DISTRIBUTION 4
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
-	});
-}
-
-#[test]
-fn claim_nothing() {
-	const USER_A_STAKED: u64 = 1000;
-
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A));
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
-
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED
-		));
-		assert_ok!(Rewards::withdraw_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED
-		));
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A));
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
-	});
-}
-
-#[test]
-fn several_users_interacting() {
-	const USER_A_STAKED: u64 = 1000;
-	const USER_B_STAKED: u64 = 4000;
-
-	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		let mut user_a_balance = USER_INITIAL_BALANCE;
-		let mut user_b_balance = USER_INITIAL_BALANCE;
-		let mut user_a_reward = 0;
-		let mut user_b_reward = 0;
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED
-		));
-		user_a_balance -= USER_A_STAKED;
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), user_a_balance);
-		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
-
-		// DISTRIBUTION 1
-		assert_ok!(Rewards::deposit_stake(
-			DOM_1_CURRENCY_A,
-			&USER_B,
-			USER_B_STAKED
-		));
-		user_b_balance -= USER_B_STAKED;
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A));
-		user_a_reward += REWARD;
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), user_a_balance);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), user_a_reward);
-		assert_eq!(free_balance(CurrencyId::A, &USER_B), user_b_balance);
-		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
-
-		// DISTRIBUTION 2
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A));
-		user_a_reward += REWARD * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_B));
-		user_b_reward += REWARD * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), user_a_reward);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_B), user_b_reward);
-		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
-
-		// DISTRIBUTION 3
-		assert_ok!(Rewards::withdraw_stake(
-			DOM_1_CURRENCY_A,
-			&USER_A,
-			USER_A_STAKED
-		));
-		user_a_balance += USER_A_STAKED;
-		assert_eq!(free_balance(CurrencyId::A, &USER_A), user_a_balance);
-		assert_ok!(Rewards::reward_group(GROUP_A, REWARD));
-
-		// DISTRIBUTION 4
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A));
-		user_a_reward += REWARD * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED);
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_B));
-		user_b_reward += REWARD * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED) + REWARD;
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_A), user_a_reward);
-		assert_eq!(free_balance(CurrencyId::Reward, &USER_B), user_b_reward);
-		assert_ok!(Rewards::withdraw_stake(
-			DOM_1_CURRENCY_A,
-			&USER_B,
-			USER_B_STAKED
-		));
-		user_b_balance += USER_B_STAKED;
-		assert_eq!(free_balance(CurrencyId::A, &USER_B), user_b_balance);
-		// No more stake in the group
-		assert_noop!(
-			Rewards::reward_group(GROUP_A, REWARD),
-			ArithmeticError::DivisionByZero
-		);
-
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_B), 0);
-	});
-}
-
-#[test]
-fn use_currency_without_group() {
-	new_test_ext().execute_with(|| {
-		assert_noop!(
-			Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-			Error::<Test>::CurrencyWithoutGroup
-		);
-		assert_noop!(
-			Rewards::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-			Error::<Test>::CurrencyWithoutGroup
-		);
-		assert_noop!(
-			Rewards::compute_reward(DOM_1_CURRENCY_A, &USER_A),
-			Error::<Test>::CurrencyWithoutGroup
-		);
-		assert_noop!(
-			Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-			Error::<Test>::CurrencyWithoutGroup
-		);
-	});
-}
-
-#[test]
-fn move_currency_same_group_error() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_noop!(
-			Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A),
-			Error::<Test>::CurrencyInSameGroup
-		);
-	});
-}
-
-#[test]
-fn move_currency_max_times() {
-	new_test_ext().execute_with(|| {
-		// First attach only attach the currency, does not move it.
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, 0));
-
-		// Waste all correct movements.
-		for i in 0..MaxCurrencyMovements::get() {
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, i + 1));
-		}
-
-		assert_noop!(
-			Rewards::attach_currency(DOM_1_CURRENCY_A, MaxCurrencyMovements::get() + 1),
-			Error::<Test>::CurrencyMaxMovementsReached
-		);
-	});
-}
-
-#[test]
-fn move_currency_one_move() {
-	const STAKE_A: u64 = 2000;
-	const STAKE_B: u64 = 2000;
-	const STAKE_C: u64 = 1000;
-
-	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
-		distribute_to_all_groups();
-
-		// DISTRIBUTION 1
-		assert_ok!(
-			Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-			REWARD / 4
-		);
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-		assert_ok!(
-			Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-			REWARD / 4
-		);
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-		distribute_to_all_groups();
-
-		// DISTRIBUTION 2
-		assert_ok!(
-			Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-			REWARD / 4 + 2 * REWARD / 5
-		);
-		assert_ok!(Rewards::withdraw_stake(
-			DOM_1_CURRENCY_B,
-			&USER_A,
-			STAKE_B * 2
-		));
-		distribute_to_all_groups();
-
-		// DISTRIBUTION 3
-		assert_ok!(
-			Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-			REWARD / 4 + REWARD / 2 + REWARD / 2
-		);
-		assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
-		assert_ok!(
-			Rewards::claim_reward(DOM_1_CURRENCY_C, &USER_A),
-			REWARD / 2 + REWARD / 10 + REWARD / 2
-		);
-	});
-}
-
-/// Makes two movements without account interaction and the another move.
-#[test]
-fn move_currency_several_moves() {
-	const STAKE_A: u64 = 2000;
-	const STAKE_B: u64 = 2000;
-	const STAKE_C: u64 = 1000;
-
-	new_test_ext().execute_with(|| {
-		// DISTRIBUTION 0
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
-		distribute_to_all_groups();
-
-		// DISTRIBUTION 1
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-		distribute_to_all_groups();
-
-		// DISTRIBUTION 2
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A)); // MOVEMENT HERE!!
-		distribute_to_all_groups();
-
-		// DISTRIBUTION 3
-		assert_ok!(
-			Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-			REWARD / 4 + REWARD / 3 + REWARD / 4
-		);
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-		assert_ok!(
-			Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-			REWARD / 4 + REWARD / 3 + REWARD / 4
-		);
-		distribute_to_all_groups();
-
-		// DISTRIBUTION 4
-		assert_ok!(
-			Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-			REWARD / 4 + REWARD / 3 + REWARD / 4 + REWARD / 3
-		);
-	});
-}
-
-#[test]
-fn same_currency_different_domains() {
-	const STAKE_A: u64 = 1000;
-
-	new_test_ext().execute_with(|| {
-		assert_ok!(Rewards::attach_currency(
-			(DomainId::D1, CurrencyId::A),
-			GROUP_A
-		));
-		assert_ok!(Rewards::attach_currency(
-			(DomainId::D2, CurrencyId::A),
-			GROUP_A
-		));
-
-		assert_ok!(Rewards::deposit_stake(
-			(DomainId::D1, CurrencyId::A),
-			&USER_A,
-			STAKE_A
-		));
-
-		// There is enough reserved CurrencyId::A for USER_A, but in other domain.
-		assert_noop!(
-			Rewards::withdraw_stake((DomainId::D2, CurrencyId::A), &USER_A, STAKE_A),
-			TokenError::NoFunds
-		);
-		assert_ok!(Rewards::withdraw_stake(
-			(DomainId::D1, CurrencyId::A),
-			&USER_A,
-			STAKE_A
-		));
-	});
+			// DISTRIBUTION 4
+			assert_ok!(
+				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
+				REWARD / 4 + REWARD / 3 + REWARD / 4 + REWARD / 3
+			);
+		});
+	}
 }
