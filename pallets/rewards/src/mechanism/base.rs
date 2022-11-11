@@ -30,7 +30,13 @@ pub struct Mechanism<Balance, IBalance, Rate>(
 impl<Balance, IBalance, Rate> RewardMechanism for Mechanism<Balance, IBalance, Rate>
 where
 	Balance: tokens::Balance + FixedPointOperand + TryFrom<IBalance>,
-	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy + Signed,
+	IBalance: FixedPointOperand
+		+ TryFrom<Balance>
+		+ EnsureAdd
+		+ EnsureSub
+		+ Copy
+		+ Signed
+		+ sp_std::fmt::Debug,
 	Rate: EnsureFixedPointNumber,
 	<Rate as FixedPointNumber>::Inner: Signed,
 {
@@ -134,8 +140,6 @@ pub mod test {
 
 	type TestMechanism = Mechanism<Balance, IBalance, Rate>;
 
-	const RPT: i64 = 2;
-	const RPT_NEXT: i64 = 3;
 	const REWARD: u64 = crate::mechanism::test::REWARD;
 	const AMOUNT: u64 = crate::mechanism::test::AMOUNT;
 
@@ -145,12 +149,12 @@ pub mod test {
 		lazy_static::lazy_static! {
 			pub static ref GROUP: Group<Balance, Rate> = Group {
 				total_stake: 1000,
-				reward_per_token: FixedI64::from_u32(RPT as u32),
+				reward_per_token: FixedI64::from(5),
 			};
 
 			pub static ref NEXT_GROUP: Group<Balance, Rate> = Group {
 				total_stake: 2000,
-				reward_per_token: FixedI64::from_u32(RPT_NEXT as u32),
+				reward_per_token: FixedI64::from(6),
 			};
 
 			pub static ref ACCOUNT: Account<Balance, IBalance> = Account {
@@ -167,36 +171,37 @@ pub mod test {
 
 		lazy_static::lazy_static! {
 			pub static ref REWARD_GROUP__GROUP: Group<Balance, Rate> = Group {
+				total_stake: GROUP.total_stake,
 				reward_per_token: GROUP.reward_per_token
 					+ FixedI64::saturating_from_rational(REWARD, GROUP.total_stake),
-				..GROUP.clone()
 			};
 
 			pub static ref DEPOSIT_STAKE__GROUP: Group<Balance, Rate> = Group {
 				total_stake: GROUP.total_stake + AMOUNT,
-				..GROUP.clone()
+				reward_per_token: GROUP.reward_per_token,
 			};
 			pub static ref DEPOSIT_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
 				stake: ACCOUNT.stake + AMOUNT,
-				reward_tally: ACCOUNT.reward_tally + RPT * AMOUNT as i64,
+				reward_tally: ACCOUNT.reward_tally + GROUP.reward_per_token.saturating_mul_int(AMOUNT) as i64,
 			};
 			pub static ref DEPOSIT_STAKE__CURRENCY: () = ();
 
 			pub static ref WITHDRAW_STAKE__GROUP: Group<Balance, Rate> = Group {
 				total_stake: GROUP.total_stake - AMOUNT,
-				..GROUP.clone()
+				reward_per_token: GROUP.reward_per_token,
 			};
 			pub static ref WITHDRAW_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
 				stake: ACCOUNT.stake - AMOUNT,
-				reward_tally: ACCOUNT.reward_tally - RPT * AMOUNT as i64,
+				reward_tally: ACCOUNT.reward_tally - GROUP.reward_per_token.saturating_mul_int(AMOUNT) as i64,
 			};
 			pub static ref WITHDRAW_STAKE__CURRENCY: () = ();
 
 			pub static ref CLAIM__ACCOUNT: Account<Balance, IBalance> = Account {
-				reward_tally: RPT * ACCOUNT.stake as i64,
-				..ACCOUNT.clone()
+				stake: ACCOUNT.stake,
+				reward_tally: GROUP.reward_per_token.saturating_mul_int(ACCOUNT.stake) as i64,
 			};
-			pub static ref CLAIM__REWARD: u64 = (RPT * ACCOUNT.stake as i64 - ACCOUNT.reward_tally) as u64;
+			pub static ref CLAIM__REWARD: u64 =
+				(GROUP.reward_per_token.saturating_mul_int(ACCOUNT.stake) as i64 - ACCOUNT.reward_tally) as u64;
 
 			pub static ref MOVE__CURRENCY: () = ();
 			pub static ref MOVE__GROUP_PREV: Group<Balance, Rate> = GROUP.clone();

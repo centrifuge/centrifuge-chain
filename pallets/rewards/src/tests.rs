@@ -3,7 +3,6 @@ mod common;
 
 use cfg_traits::rewards::DistributedRewards;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
-use sp_runtime::ArithmeticError;
 
 use super::{mock::*, *};
 
@@ -141,4 +140,11 @@ mod base_with_currency_movement_mechanism {
 			);
 		});
 	}
+}
+
+mod deferred_mechanism {
+	use super::*;
+
+	common_tests!(Rewards3, Instance3);
+	deferred_claiming_tests!(Rewards3, Instance3);
 }
