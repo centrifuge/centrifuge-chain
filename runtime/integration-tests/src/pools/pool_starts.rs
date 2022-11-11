@@ -66,7 +66,7 @@ async fn create_init_and_price() {
 		Event,
 		EventRange::All,
 		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
-		// Event::PoolSystem(pallet_pool_registry::Event::Created { pool_id, .. }) if [pool_id == 0],
+		Event::PoolRegistry(pallet_pool_registry::Event::Created { pool_id, .. }) if [pool_id == 0],
 		Event::Loans(pallet_loans::Event::PoolInitialised{pool_id}) if [pool_id == 0],
 		Event::Loans(pallet_loans::Event::Created{pool_id, loan_id, collateral})
 			if [pool_id == 0 && loan_id == ItemId(1) && collateral == Asset(4294967296, ItemId(1))],
