@@ -80,9 +80,9 @@ pub struct TrancheCurrency {
 	tranche_id: TrancheId,
 }
 
-impl Into<CurrencyId> for TrancheCurrency {
-	fn into(self) -> CurrencyId {
-		CurrencyId::Tranche(self.pool_id, self.tranche_id)
+impl From<TrancheCurrency> for CurrencyId {
+	fn from(x: TrancheCurrency) -> Self {
+		CurrencyId::Tranche(x.pool_id, x.tranche_id)
 	}
 }
 
