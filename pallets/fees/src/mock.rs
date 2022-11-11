@@ -12,13 +12,13 @@ use sp_runtime::{
 
 use crate::{self as pallet_fees, *};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 type Balance = u64;
 
 // For testing the pallet, we construct a mock runtime.
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -35,7 +35,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = Everything;
@@ -73,7 +73,7 @@ impl FindAuthor<u64> for AuthorGiven {
 	}
 }
 
-impl pallet_authorship::Config for Test {
+impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
 	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
@@ -84,7 +84,7 @@ parameter_types! {
 	pub const TreasuryPalletId: PalletId = PalletId(*b"treasury");
 }
 
-impl pallet_treasury::Config for Test {
+impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = EnsureSignedBy<Admin, u64>;
 	type Burn = ();
 	type BurnDestination = ();
@@ -107,7 +107,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -130,7 +130,7 @@ impl SortedMembers<u64> for Admin {
 	}
 }
 
-impl Config for Test {
+impl Config for Runtime {
 	type Currency = Balances;
 	type DefaultFeeValue = DefaultFeeValue;
 	type Event = ();
@@ -146,10 +146,10 @@ pub const USER_INITIAL_BALANCE: u64 = 50;
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
+		.build_storage::<Runtime>()
 		.unwrap();
 
-	pallet_balances::GenesisConfig::<Test> {
+	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![(USER_ACCOUNT, USER_INITIAL_BALANCE)],
 	}
 	.assimilate_storage(&mut t)

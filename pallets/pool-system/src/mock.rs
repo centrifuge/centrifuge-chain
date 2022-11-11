@@ -40,14 +40,14 @@ use sp_runtime::{
 
 use crate::{self as pallet_pool_system, Config, DispatchResult};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type MockAccountId = u64;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -72,7 +72,7 @@ parameter_types! {
 
 	pub const MaxRoles: u32 = u32::MAX;
 }
-impl pallet_permissions::Config for Test {
+impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 	type Event = Event;
@@ -94,7 +94,7 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
-impl system::Config for Test {
+impl system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = MockAccountId;
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -121,7 +121,7 @@ impl system::Config for Test {
 	type Version = ();
 }
 
-impl pallet_timestamp::Config for Test {
+impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
 	type Moment = Moment;
 	type OnTimestampSet = ();
@@ -140,7 +140,7 @@ parameter_types! {
 }
 
 // Implement balances pallet configuration for mock runtime
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -157,7 +157,7 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
-impl orml_tokens::Config for Test {
+impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -184,13 +184,13 @@ parameter_types! {
 	pub const MockParachainId: u32 = 100;
 }
 
-impl parachain_info::Config for Test {}
+impl parachain_info::Config for Runtime {}
 
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
 
-impl pallet_restricted_tokens::Config for Test {
+impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type Event = Event;
@@ -248,7 +248,7 @@ where
 parameter_types! {
 	pub const MaxOutstandingCollects: u32 = 10;
 }
-impl pallet_investments::Config for Test {
+impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
@@ -303,7 +303,7 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
-impl Config for Test {
+impl Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type ChallengeTime = ChallengeTime;
@@ -399,7 +399,7 @@ impl PoolUpdateGuard for UpdateGuard {
 	}
 }
 
-impl cfg_test_utils::mocks::nav::Config for Test {
+impl cfg_test_utils::mocks::nav::Config for Runtime {
 	type Balance = Balance;
 	type ClassId = CollectionId;
 	type PoolId = PoolId;
@@ -427,10 +427,10 @@ pub const DEFAULT_POOL_OWNER: MockAccountId = 10;
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = system::GenesisConfig::default()
-		.build_storage::<Test>()
+		.build_storage::<Runtime>()
 		.unwrap();
 
-	orml_tokens::GenesisConfig::<Test> {
+	orml_tokens::GenesisConfig::<Runtime> {
 		balances: (0..10)
 			.into_iter()
 			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
@@ -439,7 +439,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
-	pallet_balances::GenesisConfig::<Test> {
+	pallet_balances::GenesisConfig::<Runtime> {
 		balances: (0..10)
 			.into_iter()
 			.map(|idx| (idx, 1000 * CURRENCY))
@@ -473,14 +473,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Timestamp::set(Origin::none(), START_DATE).unwrap();
 
 		for account in 0..10u64 {
-			<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			<<Runtime as Config>::Permission as PermissionsT<u64>>::add(
 				PermissionScope::Pool(DEFAULT_POOL_ID),
 				account,
 				Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 			)
 			.unwrap();
 
-			<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			<<Runtime as Config>::Permission as PermissionsT<u64>>::add(
 				PermissionScope::Pool(DEFAULT_POOL_ID),
 				account,
 				Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),

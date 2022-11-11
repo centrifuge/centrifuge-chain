@@ -47,8 +47,8 @@ use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
 // Types and constants declaration
 // ----------------------------------------------------------------------------
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 // Implement testing extrinsic weights for the pallet
 pub struct MockWeightInfo;
@@ -79,7 +79,7 @@ pub(crate) const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
 // Build mock runtime
 frame_support::construct_runtime!(
 
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -111,7 +111,7 @@ parameter_types! {
 }
 
 // Implement FRAME system pallet configuration trait for the mock runtime
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = Everything;
@@ -144,7 +144,7 @@ parameter_types! {
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -168,7 +168,7 @@ impl FindAuthor<u64> for AuthorGiven {
 }
 
 // Implement Substrate FRAME authorship pallet for the mock runtime
-impl pallet_authorship::Config for MockRuntime {
+impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
 	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
@@ -176,7 +176,7 @@ impl pallet_authorship::Config for MockRuntime {
 }
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime
-impl pallet_timestamp::Config for MockRuntime {
+impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
 	type Moment = u64;
 	type OnTimestampSet = ();
@@ -192,7 +192,7 @@ parameter_types! {
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
-impl chainbridge::Config for MockRuntime {
+impl chainbridge::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type ChainId = MockChainId;
 	type Event = Event;
@@ -205,13 +205,13 @@ impl chainbridge::Config for MockRuntime {
 
 impl_mock_fees_state!(
 	MockFeesState,
-	<MockRuntime as frame_system::Config>::AccountId,
+	<Runtime as frame_system::Config>::AccountId,
 	Balance,
 	(),
 	|_key| NFT_PROOF_VALIDATION_FEE
 );
 
-impl pallet_anchors::Config for MockRuntime {
+impl pallet_anchors::Config for Runtime {
 	type CommitAnchorFeeKey = ();
 	type Currency = Balances;
 	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
@@ -225,7 +225,7 @@ parameter_types! {
 }
 
 // Implement NFT pallet's configuration trait for the mock runtime
-impl PalletNftConfig for MockRuntime {
+impl PalletNftConfig for Runtime {
 	type ChainId = ChainId;
 	type Event = Event;
 	type NftProofValidationFeeKey = ();
@@ -234,10 +234,10 @@ impl PalletNftConfig for MockRuntime {
 }
 
 // ----------------------------------------------------------------------------
-// Test externalities
+// Runtime externalities
 // ----------------------------------------------------------------------------
 
-// Test externalities builder type declaration.
+// Runtime externalities builder type declaration.
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
@@ -254,10 +254,10 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<MockRuntime> {
+		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![(USER_A, USER_A_INITIAL_BALANCE)],
 		}
 		.assimilate_storage(&mut storage)
@@ -390,7 +390,7 @@ pub(crate) mod helpers {
 	}
 
 	pub fn get_params() -> (H256, [u8; 20], Vec<Proof<H256>>, [H256; 3], ChainId) {
-		let anchor_id = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 		let deposit_address: [u8; 20] = [0; 20];
 		let proofs: Vec<Proof<H256>> = vec![];
 		let static_proofs: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];

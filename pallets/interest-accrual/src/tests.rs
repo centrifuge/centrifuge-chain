@@ -17,7 +17,7 @@ use sp_runtime::{
 };
 
 use crate::{
-	mock::{Rate, Test as TestConfig},
+	mock::{Rate, Runtime},
 	Pallet,
 };
 
@@ -28,10 +28,10 @@ fn test_rate_validation() {
 	let normal_rate = Rate::saturating_from_rational(5, 100);
 	let too_many_decimals = Rate::saturating_from_rational(55, 100000);
 
-	assert!(Pallet::<TestConfig>::validate_rate(max_rate).is_ok());
-	assert!(Pallet::<TestConfig>::validate_rate(min_rate).is_ok());
-	assert!(Pallet::<TestConfig>::validate_rate(normal_rate).is_ok());
-	assert!(Pallet::<TestConfig>::validate_rate(One::one()).is_err());
-	assert!(Pallet::<TestConfig>::validate_rate(Zero::zero()).is_err());
-	assert!(Pallet::<TestConfig>::validate_rate(too_many_decimals).is_err());
+	assert!(Pallet::<Runtime>::validate_rate(max_rate).is_ok());
+	assert!(Pallet::<Runtime>::validate_rate(min_rate).is_ok());
+	assert!(Pallet::<Runtime>::validate_rate(normal_rate).is_ok());
+	assert!(Pallet::<Runtime>::validate_rate(One::one()).is_err());
+	assert!(Pallet::<Runtime>::validate_rate(Zero::zero()).is_err());
+	assert!(Pallet::<Runtime>::validate_rate(too_many_decimals).is_err());
 }

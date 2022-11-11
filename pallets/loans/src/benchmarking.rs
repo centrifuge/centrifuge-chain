@@ -55,7 +55,7 @@ pub trait Config:
 }
 
 #[cfg(test)]
-impl Config for super::mock::MockRuntime {
+impl Config for super::mock::Runtime {
 	type IM = mock::OrderManager;
 }
 
@@ -712,5 +712,5 @@ benchmarks! {
 impl_benchmark_test_suite!(
 	Pallet,
 	crate::mock::TestExternalitiesBuilder::default().build(),
-	crate::mock::MockRuntime,
+	crate::mock::Runtime,
 );

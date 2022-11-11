@@ -28,12 +28,12 @@ use sp_runtime::{
 
 pub use crate::{self as nft_sales};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 // For testing the pallet, we construct a mock runtime.
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -51,7 +51,7 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
-impl orml_tokens::Config for Test {
+impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -79,7 +79,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl pallet_uniques::Config for Test {
+impl pallet_uniques::Config for Runtime {
 	type AttributeDepositBase = AttributeDepositBase;
 	type CollectionDeposit = CollectionDeposit;
 	type CollectionId = CollectionId;
@@ -117,7 +117,7 @@ parameter_types! {
 
 type AccountId = u64;
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
@@ -148,7 +148,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -170,7 +170,7 @@ impl frame_support::traits::SortedMembers<u64> for One {
 	}
 }
 
-impl nft_sales::Config for Test {
+impl nft_sales::Config for Runtime {
 	type CollectionId = CollectionId;
 	type Event = ();
 	type Fungibles = OrmlTokens;
@@ -192,11 +192,11 @@ pub(crate) const BAD_ACTOR: u64 = 0x3;
 // Build the genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
+		.build_storage::<Runtime>()
 		.unwrap();
 
 	// pre-fill balances
-	pallet_balances::GenesisConfig::<Test> {
+	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
 			(SELLER, 100_000 * CURRENCY),
 			(BUYER, 10_000 * CURRENCY),
@@ -206,7 +206,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
-	orml_tokens::GenesisConfig::<Test> {
+	orml_tokens::GenesisConfig::<Runtime> {
 		balances: (0..10)
 			.into_iter()
 			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
