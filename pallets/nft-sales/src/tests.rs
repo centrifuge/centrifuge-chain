@@ -35,7 +35,7 @@ fn add_nft_not_found() {
 					amount: 3
 				}
 			),
-			DispatchError::from(nft_sales::Error::<Test>::NotFound)
+			DispatchError::from(nft_sales::Error::<Runtime>::NotFound)
 		);
 	});
 }
@@ -58,11 +58,11 @@ fn add_nft_not_owner() {
 					amount: 3
 				}
 			),
-			DispatchError::from(nft_sales::Error::<Test>::NotOwner)
+			DispatchError::from(nft_sales::Error::<Runtime>::NotOwner)
 		);
 
 		// Verify that the NFT is not listed under the BAD_ACTOR
-		assert!(!NftsBySeller::<Test>::contains_key((
+		assert!(!NftsBySeller::<Runtime>::contains_key((
 			BAD_ACTOR,
 			collection_id,
 			item_id
@@ -92,18 +92,18 @@ fn add_nft_works() {
 		// given that the NFT is not owned by the nft-sales pallet.
 		assert_noop!(
 			NftSales::add(seller, collection_id, item_id, price.clone()),
-			DispatchError::from(nft_sales::Error::<Test>::NotOwner)
+			DispatchError::from(nft_sales::Error::<Runtime>::NotOwner)
 		);
 
 		// Verify that if the nft-sales pallet would go on trying to add it again,
 		// it would fail with `AlreadyForSale`.
 		assert_noop!(
 			NftSales::add(NftSales::origin(), collection_id, item_id, price),
-			DispatchError::from(nft_sales::Error::<Test>::AlreadyForSale)
+			DispatchError::from(nft_sales::Error::<Runtime>::AlreadyForSale)
 		);
 
 		// Verify that the nft is now listed in the storage
-		assert!(NftsBySeller::<Test>::contains_key((
+		assert!(NftsBySeller::<Runtime>::contains_key((
 			SELLER,
 			collection_id,
 			item_id
@@ -126,7 +126,7 @@ fn remove_nft_bad_actor() {
 		assert_ok!(NftSales::add(seller, collection_id, item_id, price));
 
 		// Verify that the nft is now listed in the storage
-		assert!(NftsBySeller::<Test>::contains_key((
+		assert!(NftsBySeller::<Runtime>::contains_key((
 			SELLER,
 			collection_id,
 			item_id
@@ -136,11 +136,11 @@ fn remove_nft_bad_actor() {
 		let bad_actor = Origin::signed(BUYER);
 		assert_noop!(
 			NftSales::remove(bad_actor, collection_id, item_id),
-			DispatchError::from(nft_sales::Error::<Test>::NotOwner)
+			DispatchError::from(nft_sales::Error::<Runtime>::NotOwner)
 		);
 
 		// Verify that the nft is still listed
-		assert!(NftsBySeller::<Test>::contains_key((
+		assert!(NftsBySeller::<Runtime>::contains_key((
 			SELLER,
 			collection_id,
 			item_id
@@ -162,7 +162,7 @@ fn remove_nft_works() {
 		assert_ok!(NftSales::add(seller.clone(), collection_id, item_id, price));
 
 		// Verify that it's now stored
-		assert!(NftsBySeller::<Test>::contains_key((
+		assert!(NftsBySeller::<Runtime>::contains_key((
 			SELLER,
 			collection_id,
 			item_id
@@ -171,7 +171,7 @@ fn remove_nft_works() {
 		assert_ok!(NftSales::remove(seller.clone(), collection_id, item_id));
 
 		// Verify that the nft is no longer listed in the storage
-		assert!(!NftsBySeller::<Test>::contains_key((
+		assert!(!NftsBySeller::<Runtime>::contains_key((
 			SELLER,
 			collection_id,
 			item_id
@@ -180,7 +180,7 @@ fn remove_nft_works() {
 		// Verify that try and remove it again fails with `NotForSale`
 		assert_noop!(
 			NftSales::remove(seller, collection_id, item_id),
-			DispatchError::from(nft_sales::Error::<Test>::NotForSale)
+			DispatchError::from(nft_sales::Error::<Runtime>::NotForSale)
 		);
 	});
 }
@@ -221,7 +221,7 @@ fn buy_nft_not_for_sale() {
 		let buyer: Origin = Origin::signed(BUYER);
 		assert_noop!(
 			NftSales::buy(buyer, collection_id, item_id, offer),
-			DispatchError::from(nft_sales::Error::<Test>::NotForSale)
+			DispatchError::from(nft_sales::Error::<Runtime>::NotForSale)
 		);
 	});
 }
@@ -249,7 +249,7 @@ fn buy_nft_insufficient_balance() {
 		let buyer: Origin = Origin::signed(BUYER);
 		assert_noop!(
 			NftSales::buy(buyer, collection_id, item_id, price),
-			DispatchError::from(orml_tokens::Error::<Test>::BalanceTooLow)
+			DispatchError::from(orml_tokens::Error::<Runtime>::BalanceTooLow)
 		);
 	});
 }
@@ -274,7 +274,7 @@ fn buy_nft_works() {
 		));
 
 		// Verify that the nft is now listed in the storage
-		assert!(NftsBySeller::<Test>::contains_key((
+		assert!(NftsBySeller::<Runtime>::contains_key((
 			SELLER,
 			collection_id,
 			item_id
@@ -293,7 +293,7 @@ fn buy_nft_works() {
 		// Verify that if the seller can't buy it back because it's no longer for sale
 		assert_noop!(
 			NftSales::buy(seller, collection_id, item_id, price.clone()),
-			DispatchError::from(nft_sales::Error::<Test>::NotForSale)
+			DispatchError::from(nft_sales::Error::<Runtime>::NotForSale)
 		);
 
 		// Verify that if the seller can't buy it back because it's no longer for sale
@@ -312,7 +312,7 @@ fn buy_nft_works() {
 		);
 
 		// Verify that the nft is no longer listed
-		assert!(!NftsBySeller::<Test>::contains_key((
+		assert!(!NftsBySeller::<Runtime>::contains_key((
 			SELLER,
 			collection_id,
 			item_id
@@ -347,7 +347,7 @@ fn buy_nft_respects_max_offer_amount() {
 		};
 		assert_noop!(
 			NftSales::buy(buyer.clone(), collection_id, item_id, offer),
-			DispatchError::from(nft_sales::Error::<Test>::InvalidOffer)
+			DispatchError::from(nft_sales::Error::<Runtime>::InvalidOffer)
 		);
 	});
 }
@@ -380,7 +380,7 @@ fn buy_nft_respects_max_offer_currency() {
 
 		assert_noop!(
 			NftSales::buy(buyer.clone(), collection_id, item_id, offer),
-			DispatchError::from(nft_sales::Error::<Test>::InvalidOffer)
+			DispatchError::from(nft_sales::Error::<Runtime>::InvalidOffer)
 		);
 	});
 }

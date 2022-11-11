@@ -29,10 +29,9 @@ use sp_runtime::DispatchError;
 use crate::{
 	self as pallet_bridge,
 	mock::{
-		helpers::*, Balances, Bridge, ChainBridge, Event, MockRuntime, NativeTokenId, Origin,
-		ProposalLifetime, System, TestExternalitiesBuilder, ENDOWED_BALANCE,
-		NATIVE_TOKEN_TRANSFER_FEE, RELAYER_A, RELAYER_B, RELAYER_B_INITIAL_BALANCE, RELAYER_C,
-		TEST_RELAYER_VOTE_THRESHOLD,
+		helpers::*, Balances, Bridge, ChainBridge, Event, NativeTokenId, Origin, ProposalLifetime,
+		Runtime, System, TestExternalitiesBuilder, ENDOWED_BALANCE, NATIVE_TOKEN_TRANSFER_FEE,
+		RELAYER_A, RELAYER_B, RELAYER_B_INITIAL_BALANCE, RELAYER_C, TEST_RELAYER_VOTE_THRESHOLD,
 	},
 };
 
@@ -63,7 +62,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				pallet_balances::Error::<MockRuntime>::InsufficientBalance
+				pallet_balances::Error::<Runtime>::InsufficientBalance
 			);
 
 			// Using account with enough balance for fee but not for transfer amount
@@ -77,7 +76,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				pallet_balances::Error::<MockRuntime>::InsufficientBalance
+				pallet_balances::Error::<Runtime>::InsufficientBalance
 			);
 
 			// Account balance of relayer B should be reverted to original balance
@@ -99,7 +98,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				pallet_balances::Error::<MockRuntime>::LiquidityRestrictions
+				pallet_balances::Error::<Runtime>::LiquidityRestrictions
 			);
 
 			Balances::remove_lock(*b"testlock", &RELAYER_A);
@@ -173,7 +172,7 @@ fn create_successful_remark_proposal() {
 				Box::new(proposal.clone())
 			));
 
-			event_exists(pallet_bridge::Event::<MockRuntime>::Remark(hash, r_id));
+			event_exists(pallet_bridge::Event::<Runtime>::Remark(hash, r_id));
 		})
 }
 

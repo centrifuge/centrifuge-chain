@@ -54,26 +54,26 @@ mod test {
 	fn evict_anchors_working_after_migration() {
 		new_test_ext().execute_with(|| {
 			// Check migration:
-			assert_ok!(fix_evict_date::pre_migrate::<Test>());
-			assert!(fix_evict_date::post_migrate::<Test>().is_err());
+			assert_ok!(fix_evict_date::pre_migrate::<Runtime>());
+			assert!(fix_evict_date::post_migrate::<Runtime>().is_err());
 
-			fix_evict_date::migrate::<Test>();
+			fix_evict_date::migrate::<Runtime>();
 
-			assert_ok!(fix_evict_date::post_migrate::<Test>());
-			assert!(fix_evict_date::pre_migrate::<Test>().is_err());
+			assert_ok!(fix_evict_date::post_migrate::<Runtime>());
+			assert!(fix_evict_date::pre_migrate::<Runtime>().is_err());
 
 			// Check correct evict behaviour after migration:
 			let current_day = common::MILLISECS_PER_DAY
 				* (fix_evict_date::HARDCODED_EVICTED_DATE as u64 + MAX_LOOP_IN_TX * 3);
 
-			pallet_timestamp::Pallet::<Test>::set_timestamp(current_day);
+			pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_day);
 
-			assert_ok!(pallet_anchors::Pallet::<Test>::evict_anchors(
+			assert_ok!(pallet_anchors::Pallet::<Runtime>::evict_anchors(
 				Origin::signed(1)
 			));
 
 			assert_eq!(
-				LatestEvictedDate::<Test>::get(),
+				LatestEvictedDate::<Runtime>::get(),
 				Some(fix_evict_date::HARDCODED_EVICTED_DATE + MAX_LOOP_IN_TX as u32)
 			);
 		});
