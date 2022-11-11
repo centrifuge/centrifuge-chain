@@ -239,9 +239,6 @@ mod test {
 		use super::{initial::*, *};
 
 		lazy_static::lazy_static! {
-			pub static ref REWARD_GROUP__GROUP: base::Group<Balance, Rate> =
-				base::test::expectation::REWARD_GROUP__GROUP.clone();
-
 			pub static ref DEPOSIT_STAKE__GROUP: base::Group<Balance, Rate> =
 				base::test::expectation::DEPOSIT_STAKE__GROUP.clone();
 
@@ -284,7 +281,7 @@ mod test {
 			pub static ref CLAIM__REWARD: u64 =
 				(*base::test::expectation::CLAIM__REWARD as i64 - *RPT_CHANGE_TALLY)as u64;
 
-			pub static ref MOVE__CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
+			pub static ref MOVE_CURRENCY__CURRENCY: Currency<Balance, Rate, MaxCurrencyMovements> = Currency {
 				total_stake: CURRENCY.total_stake,
 				rpt_changes: bounded_vec![
 					CURRENCY.rpt_changes[0],
@@ -293,12 +290,12 @@ mod test {
 					base::test::initial::NEXT_GROUP.reward_per_token - base::test::initial::GROUP.reward_per_token,
 				],
 			};
-			pub static ref MOVE__GROUP_PREV: base::Group<Balance, Rate> = base::Group {
+			pub static ref MOVE_CURRENCY__GROUP_PREV: base::Group<Balance, Rate> = base::Group {
 				total_stake: base::test::initial::GROUP.total_stake - CURRENCY.total_stake,
 				reward_per_token: base::test::initial::GROUP.reward_per_token,
 			};
 
-			pub static ref MOVE__GROUP_NEXT: base::Group<Balance, Rate> = base::Group {
+			pub static ref MOVE_CURRENCY__GROUP_NEXT: base::Group<Balance, Rate> = base::Group {
 				total_stake: base::test::initial::NEXT_GROUP.total_stake + CURRENCY.total_stake,
 				reward_per_token: base::test::initial::NEXT_GROUP.reward_per_token,
 			};
@@ -308,5 +305,8 @@ mod test {
 		}
 	}
 
-	crate::mechanism_tests_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_deposit_stake_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_withdraw_stake_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_claim_reward_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_move_currency_test_impl!(TestMechanism, initial, expectation);
 }

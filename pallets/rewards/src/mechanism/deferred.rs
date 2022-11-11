@@ -12,8 +12,9 @@ use super::{base, MoveCurrencyError, RewardMechanism};
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Group<Balance, Rate> {
 	pub base: base::Group<Balance, Rate>,
-	pub last_rate: Rate,
 	pub distribution_count: u32,
+	pub last_rate: Rate,
+	pub lost_reward: Balance,
 }
 
 /// Type that contains the stake properties of an account
@@ -21,8 +22,8 @@ pub struct Group<Balance, Rate> {
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Account<Balance, IBalance> {
 	pub base: base::Account<Balance, IBalance>,
-	pub rewarded_stake: Balance,
 	pub distribution_count: u32,
+	pub rewarded_stake: Balance,
 }
 
 impl<Balance, IBalance> Account<Balance, IBalance>
@@ -70,10 +71,17 @@ where
 	type MaxCurrencyMovements = ConstU32<0>;
 
 	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
-		group.last_rate = Rate::ensure_from_rational(amount, group.base.total_stake)?;
 		group.distribution_count.ensure_add_assign(1)?;
+		group.last_rate = Rate::ensure_from_rational(amount, group.base.total_stake)?;
 
-		base::Mechanism::<Balance, IBalance, Rate>::reward_group(&mut group.base, amount)
+		base::Mechanism::<Balance, IBalance, Rate>::reward_group(
+			&mut group.base,
+			amount + group.lost_reward,
+		)?;
+
+		group.lost_reward = Balance::zero();
+
+		Ok(())
 	}
 
 	fn deposit_stake(
@@ -100,12 +108,27 @@ where
 	) -> Result<(), ArithmeticError> {
 		account.safe_rewarded_stake(group.distribution_count);
 
+		let unrewarded_stake = account.base.stake.saturating_sub(account.rewarded_stake);
+		let unrewarded_amount = amount.min(unrewarded_stake);
+		let rewarded_amount = amount.ensure_sub(unrewarded_amount)?;
+
 		base::Mechanism::<Balance, IBalance, Rate>::withdraw_stake(
 			&mut account.base,
 			&mut (),
 			&mut group.base,
 			amount,
-		)
+		)?;
+
+		account.rewarded_stake.ensure_sub_assign(rewarded_amount)?;
+
+		let lost_reward = group.last_rate.ensure_mul_int(rewarded_amount)?;
+
+		account
+			.base
+			.reward_tally
+			.ensure_add_assign(lost_reward.ensure_into()?)?;
+
+		group.lost_reward.ensure_add_assign(lost_reward)
 	}
 
 	fn compute_reward(
@@ -187,19 +210,21 @@ mod test {
 		lazy_static::lazy_static! {
 			pub static ref GROUP: Group<Balance, Rate> = Group {
 				base: base::test::initial::GROUP.clone(),
-				last_rate: base::test::initial::GROUP.reward_per_token - Rate::from(3),
 				distribution_count: 3,
+				last_rate: base::test::initial::GROUP.reward_per_token - Rate::from(2),
+				lost_reward: REWARD / 4,
 			};
 
 			pub static ref NEXT_GROUP: Group<Balance, Rate> = Group {
 				base: base::test::initial::NEXT_GROUP.clone(),
-				last_rate: base::test::initial::NEXT_GROUP.reward_per_token - Rate::from(3),
 				distribution_count: 4,
+				last_rate: base::test::initial::NEXT_GROUP.reward_per_token - Rate::from(3),
+				lost_reward: REWARD / 2,
 			};
 
 			pub static ref ACCOUNT: Account<Balance, IBalance> = Account {
 				base: base::test::initial::ACCOUNT.clone(),
-				rewarded_stake: AMOUNT / 2,
+				rewarded_stake: base::test::initial::ACCOUNT.stake - AMOUNT / 2,
 				distribution_count: 1,
 			};
 
@@ -212,31 +237,42 @@ mod test {
 
 		lazy_static::lazy_static! {
 			pub static ref REWARD_GROUP__GROUP: Group<Balance, Rate> = Group {
-				base: base::test::expectation::REWARD_GROUP__GROUP.clone(),
-				last_rate: FixedI64::saturating_from_rational(REWARD, GROUP.base.total_stake),
+				base: base::Group {
+					total_stake: base::test::expectation::REWARD_GROUP__GROUP.total_stake,
+					reward_per_token: base::test::expectation::REWARD_GROUP__GROUP.reward_per_token
+						+ (GROUP.lost_reward, GROUP.base.total_stake).into(),
+				},
 				distribution_count: GROUP.distribution_count + 1,
+				last_rate: (REWARD, GROUP.base.total_stake).into(),
+				lost_reward: 0,
 			};
 
 			pub static ref DEPOSIT_STAKE__GROUP: Group<Balance, Rate> = Group {
 				base: base::test::expectation::DEPOSIT_STAKE__GROUP.clone(),
-				last_rate: GROUP.last_rate,
 				distribution_count: GROUP.distribution_count,
+				last_rate: GROUP.last_rate,
+				lost_reward: GROUP.lost_reward,
 			};
 			pub static ref DEPOSIT_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
 				base: base::test::expectation::DEPOSIT_STAKE__ACCOUNT.clone(),
-				rewarded_stake: ACCOUNT.base.stake,
 				distribution_count: GROUP.distribution_count,
+				rewarded_stake: ACCOUNT.base.stake,
 			};
 			pub static ref DEPOSIT_STAKE__CURRENCY: () = ();
 
 			pub static ref WITHDRAW_STAKE__GROUP: Group<Balance, Rate> = Group {
 				base: base::test::expectation::WITHDRAW_STAKE__GROUP.clone(),
-				last_rate: GROUP.last_rate,
 				distribution_count: GROUP.distribution_count,
+				last_rate: GROUP.last_rate,
+				lost_reward: GROUP.lost_reward + GROUP.last_rate.saturating_mul_int(AMOUNT),
 			};
 			pub static ref WITHDRAW_STAKE__ACCOUNT: Account<Balance, IBalance> = Account {
-				base: base::test::expectation::WITHDRAW_STAKE__ACCOUNT.clone(),
-				rewarded_stake: ACCOUNT.base.stake,
+				base: base::Account {
+					stake: base::test::expectation::WITHDRAW_STAKE__ACCOUNT.stake,
+					reward_tally: base::test::expectation::WITHDRAW_STAKE__ACCOUNT.reward_tally
+						+ GROUP.last_rate.saturating_mul_int(AMOUNT) as i64,
+				},
+				rewarded_stake: ACCOUNT.base.stake - AMOUNT,
 				distribution_count: GROUP.distribution_count,
 			};
 			pub static ref WITHDRAW_STAKE__CURRENCY: () = ();
@@ -252,13 +288,12 @@ mod test {
 			};
 			pub static ref CLAIM__REWARD: u64 = *base::test::expectation::CLAIM__REWARD - *LAST_REWARDED_STAKE;
 
-			pub static ref MOVE__CURRENCY: () = ();
-			pub static ref MOVE__GROUP_PREV: Group<Balance, Rate> = GROUP.clone();
-			pub static ref MOVE__GROUP_NEXT: Group<Balance, Rate> = NEXT_GROUP.clone();
-
 			static ref LAST_REWARDED_STAKE: u64 = GROUP.last_rate.saturating_mul_int(ACCOUNT.base.stake);
 		}
 	}
 
-	crate::mechanism_tests_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_reward_group_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_deposit_stake_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_withdraw_stake_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_claim_reward_test_impl!(TestMechanism, initial, expectation);
 }

@@ -213,11 +213,11 @@ macro_rules! deferred_claiming_tests {
 				// DISTRIBUTION 5
 				assert_ok!(
 					$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-					2 * REWARD * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED)
+					REWARD * USER_A_STAKED / (USER_A_STAKED + USER_B_STAKED)
 				);
 				assert_ok!(
 					$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_B),
-					2 * REWARD * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED)
+					REWARD * USER_B_STAKED / (USER_A_STAKED + USER_B_STAKED) + REWARD
 				);
 
 				assert_ok!($pallet::distribute_reward(0, [GROUP_A]));
