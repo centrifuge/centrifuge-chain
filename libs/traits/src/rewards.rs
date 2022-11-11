@@ -174,9 +174,7 @@ pub trait CurrencyGroupChange {
 	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
 
 	/// Returns the associated group of a currency.
-	fn currency_group(
-		currency_id: Self::CurrencyId,
-	) -> Result<Option<Self::GroupId>, DispatchResult>;
+	fn currency_group(currency_id: Self::CurrencyId) -> Option<Self::GroupId>;
 }
 
 #[cfg(feature = "std")]
@@ -261,7 +259,7 @@ pub mod mock {
 
 			fn currency_group(
 				currency_id: <Self as CurrencyGroupChange>::CurrencyId,
-			) -> Result<Option<<Self as CurrencyGroupChange>::GroupId>, DispatchResult>;
+			) -> Option<<Self as CurrencyGroupChange>::GroupId>;
 		}
 	}
 }

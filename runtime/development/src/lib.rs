@@ -1515,18 +1515,20 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 50;
 }
 
-impl pallet_rewards::Config for Runtime {
-	type Balance = Balance;
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DomainId = RewardDomain;
 	type Event = Event;
 	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
-	type Rate = FixedI128;
 	type RewardCurrency = RewardCurrency;
-	type SignedBalance = IBalance;
+	type RewardMechanism = pallet_rewards::mechanism::base_with_currency_movement::Mechanism<
+		Balance,
+		IBalance,
+		FixedI128,
+		MaxCurrencyMovements,
+	>;
 }
 
 frame_support::parameter_types! {
@@ -1612,7 +1614,7 @@ construct_runtime!(
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
-		Rewards: pallet_rewards::{Pallet, Storage, Event<T>} = 106,
+		Rewards: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
 
