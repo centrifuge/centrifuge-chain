@@ -155,19 +155,19 @@ macro_rules! currency_common_tests {
 			new_test_ext().execute_with(|| {
 				assert_noop!(
 					$pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-					Error::<Test, $instance>::CurrencyWithoutGroup
+					Error::<Runtime, $instance>::CurrencyWithoutGroup
 				);
 				assert_noop!(
 					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-					Error::<Test, $instance>::CurrencyWithoutGroup
+					Error::<Runtime, $instance>::CurrencyWithoutGroup
 				);
 				assert_noop!(
 					$pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A),
-					Error::<Test, $instance>::CurrencyWithoutGroup
+					Error::<Runtime, $instance>::CurrencyWithoutGroup
 				);
 				assert_noop!(
 					$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-					Error::<Test, $instance>::CurrencyWithoutGroup
+					Error::<Runtime, $instance>::CurrencyWithoutGroup
 				);
 			});
 		}
@@ -178,7 +178,7 @@ macro_rules! currency_common_tests {
 				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
 				assert_noop!(
 					$pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A),
-					Error::<Test, $instance>::CurrencyInSameGroup
+					Error::<Runtime, $instance>::CurrencyInSameGroup
 				);
 			});
 		}
@@ -189,7 +189,7 @@ macro_rules! currency_common_tests {
 				// First attach only attach the currency, does not move it.
 				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, 0));
 
-				type Mechanism = <Test as crate::Config<crate::$instance>>::RewardMechanism;
+				type Mechanism = <Runtime as crate::Config<crate::$instance>>::RewardMechanism;
 				type MaxMovements = <Mechanism as RewardMechanism>::MaxCurrencyMovements;
 
 				// Waste all correct movements.
@@ -199,7 +199,7 @@ macro_rules! currency_common_tests {
 
 				assert_noop!(
 					$pallet::attach_currency(DOM_1_CURRENCY_A, MaxCurrencyMovements::get() + 1),
-					Error::<Test, $instance>::CurrencyMaxMovementsReached
+					Error::<Runtime, $instance>::CurrencyMaxMovementsReached
 				);
 			});
 		}

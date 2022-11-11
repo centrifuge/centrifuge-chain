@@ -626,7 +626,7 @@ pub mod altair {
 
 		use super::*;
 		use crate::{
-			mock::{new_test_ext, MockAccountId, Test},
+			mock::{new_test_ext, MockAccountId, Runtime},
 			PoolChanges, PoolDepositInfo, ScheduledUpdateDetails,
 		};
 
@@ -643,7 +643,7 @@ pub mod altair {
 
 				// Setup storage correctly first from old version
 				// We need one pool-details
-				Pool::<Test>::insert(
+				Pool::<Runtime>::insert(
 					POOL_ID,
 					OldPoolDetails {
 						currency: TCurrencyId::AUSD,
@@ -702,7 +702,7 @@ pub mod altair {
 					},
 				);
 				// We need one epochExecution Info
-				EpochExecution::<Test>::insert(
+				EpochExecution::<Runtime>::insert(
 					POOL_ID,
 					OldEpochExecutionInfo {
 						epoch: 0,
@@ -736,19 +736,19 @@ pub mod altair {
 					},
 				);
 				// We need two Orders with two different keys
-				Order::<Test>::insert(
+				Order::<Runtime>::insert(
 					TRANCHE_ID_JUNIOR,
 					ACCOUNT_JUNIOR_INVESTOR,
 					UserOrder::default(),
 				);
-				Order::<Test>::insert(
+				Order::<Runtime>::insert(
 					TRANCHE_ID_SENIOR,
 					ACCOUNT_SENIOR_INVESTOR,
 					UserOrder::default(),
 				);
 
 				// We need to Epoch with different keys
-				Epoch::<Test>::insert(
+				Epoch::<Runtime>::insert(
 					TRANCHE_ID_JUNIOR,
 					0,
 					OldEpochDetails {
@@ -757,7 +757,7 @@ pub mod altair {
 						token_price: Rate::one(),
 					},
 				);
-				Epoch::<Test>::insert(
+				Epoch::<Runtime>::insert(
 					TRANCHE_ID_SENIOR,
 					1,
 					OldEpochDetails {
@@ -766,23 +766,23 @@ pub mod altair {
 						token_price: Rate::one(),
 					},
 				);
-				PoolDeposit::<Test>::insert(
+				PoolDeposit::<Runtime>::insert(
 					POOL_ID,
 					PoolDepositInfo {
 						depositor: Default::default(),
 						deposit: Default::default(),
 					},
 				);
-				PoolDeposit::<Test>::insert(
+				PoolDeposit::<Runtime>::insert(
 					POOL_ID_2,
 					PoolDepositInfo {
 						depositor: Default::default(),
 						deposit: Default::default(),
 					},
 				);
-				AccountDeposit::<Test>::insert(POOL_ID, 0);
-				AccountDeposit::<Test>::insert(POOL_ID_2, 0);
-				ScheduledUpdate::<Test>::insert(
+				AccountDeposit::<Runtime>::insert(POOL_ID, 0);
+				AccountDeposit::<Runtime>::insert(POOL_ID_2, 0);
+				ScheduledUpdate::<Runtime>::insert(
 					POOL_ID,
 					ScheduledUpdateDetails {
 						changes: PoolChanges {
@@ -794,7 +794,7 @@ pub mod altair {
 						scheduled_time: 0,
 					},
 				);
-				ScheduledUpdate::<Test>::insert(
+				ScheduledUpdate::<Runtime>::insert(
 					POOL_ID_2,
 					ScheduledUpdateDetails {
 						changes: PoolChanges {
@@ -806,7 +806,7 @@ pub mod altair {
 						scheduled_time: 0,
 					},
 				);
-				ScheduledUpdate::<Test>::insert(
+				ScheduledUpdate::<Runtime>::insert(
 					POOL_ID_2,
 					ScheduledUpdateDetails {
 						changes: PoolChanges {
@@ -819,16 +819,16 @@ pub mod altair {
 					},
 				);
 
-				crate::AccountDeposit::<Test>::insert(POOL_ID_2, 0);
-				crate::AccountDeposit::<Test>::insert(POOL_ID, 0);
+				crate::AccountDeposit::<Runtime>::insert(POOL_ID_2, 0);
+				crate::AccountDeposit::<Runtime>::insert(POOL_ID, 0);
 
-				assert_ok!(pre_migrate::<Test>());
+				assert_ok!(pre_migrate::<Runtime>());
 
 				// Run migrations
-				let _ = migrate_all_storage_under_old_prefix_and_remove_old_one::<Test>();
+				let _ = migrate_all_storage_under_old_prefix_and_remove_old_one::<Runtime>();
 
 				// Assert post migration
-				assert_ok!(post_migrate::<Test>());
+				assert_ok!(post_migrate::<Runtime>());
 			})
 		}
 	}

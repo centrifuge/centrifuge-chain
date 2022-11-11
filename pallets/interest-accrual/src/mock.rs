@@ -12,15 +12,15 @@ use crate::*;
 pub type Balance = u128;
 pub type Rate = sp_arithmetic::fixed_point::FixedU128;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const SS58Prefix: u8 = 42;
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type AccountData = ();
 	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -47,7 +47,7 @@ impl frame_system::Config for Test {
 	type Version = ();
 }
 
-impl pallet_timestamp::Config for Test {
+impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
 	type Moment = Moment;
 	type OnTimestampSet = ();
@@ -58,7 +58,7 @@ parameter_types! {
 	pub const MaxRateCount: u32 = 100;
 }
 
-impl Config for Test {
+impl Config for Runtime {
 	type Balance = Balance;
 	type Event = Event;
 	type InterestRate = Rate;
@@ -69,7 +69,7 @@ impl Config for Test {
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -80,7 +80,7 @@ frame_support::construct_runtime!(
 	}
 );
 
-// Test externalities builder
+// Runtime externalities builder
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
@@ -94,7 +94,7 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build(self) -> TestExternalities {
 		let storage = frame_system::GenesisConfig::default()
-			.build_storage::<Test>()
+			.build_storage::<Runtime>()
 			.unwrap();
 		let mut externalities = TestExternalities::new(storage);
 		externalities.execute_with(|| {

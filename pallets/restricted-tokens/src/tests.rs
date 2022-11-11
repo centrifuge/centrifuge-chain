@@ -31,13 +31,13 @@ fn transfer_works() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 				Origin::signed(1),
 				2,
 				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			));
-			assert_ok!(pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 				Origin::signed(100),
 				101,
 				CurrencyId::RestrictedCoin,
@@ -52,40 +52,40 @@ fn transfer_fails() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_noop!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 					Origin::signed(10),
 					2,
 					CurrencyId::AUSD,
 					100
 				),
-				orml_tokens::Error::<MockRuntime>::BalanceTooLow
+				orml_tokens::Error::<Runtime>::BalanceTooLow
 			);
 			assert_noop!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 					Origin::signed(10),
 					2,
 					CurrencyId::AUSD,
 					100
 				),
-				orml_tokens::Error::<MockRuntime>::BalanceTooLow
+				orml_tokens::Error::<Runtime>::BalanceTooLow
 			);
 			assert_noop!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 					Origin::signed(10),
 					100,
 					CurrencyId::RestrictedCoin,
 					100
 				),
-				pallet_restricted_tokens::Error::<MockRuntime>::PreConditionsNotMet
+				pallet_restricted_tokens::Error::<Runtime>::PreConditionsNotMet
 			);
 			assert_noop!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
 					Origin::signed(100),
 					10,
 					CurrencyId::RestrictedCoin,
 					100
 				),
-				pallet_restricted_tokens::Error::<MockRuntime>::PreConditionsNotMet
+				pallet_restricted_tokens::Error::<Runtime>::PreConditionsNotMet
 			);
 		})
 }
@@ -96,31 +96,31 @@ fn transfer_keep_alive_fails() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_noop!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					Origin::signed(1),
 					2,
 					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				),
-				orml_tokens::Error::<MockRuntime>::KeepAlive
+				orml_tokens::Error::<Runtime>::KeepAlive
 			);
 			assert_noop!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					Origin::signed(1),
 					2,
 					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				),
-				orml_tokens::Error::<MockRuntime>::KeepAlive
+				orml_tokens::Error::<Runtime>::KeepAlive
 			);
 			assert_noop!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					Origin::signed(100),
 					101,
 					CurrencyId::RestrictedCoin,
 					DISTR_PER_ACCOUNT
 				),
-				orml_tokens::Error::<MockRuntime>::KeepAlive
+				orml_tokens::Error::<Runtime>::KeepAlive
 			);
 		})
 }
@@ -131,7 +131,7 @@ fn transfer_keep_alive_works() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					Origin::signed(1),
 					2,
 					CurrencyId::AUSD,
@@ -139,7 +139,7 @@ fn transfer_keep_alive_works() {
 				)
 			);
 			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
+				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
 					Origin::signed(100),
 					101,
 					CurrencyId::RestrictedCoin,
@@ -154,34 +154,28 @@ fn transfer_all_works() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_all(
-					Origin::signed(1),
-					2,
-					CurrencyId::AUSD,
-					false
-				)
-			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(2, CurrencyId::AUSD).free == 2000);
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_all(
-					Origin::signed(1),
-					2,
-					CurrencyId::AUSD,
-					false
-				)
-			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(2, CurrencyId::AUSD).free == 2000);
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_all(
-					Origin::signed(100),
-					101,
-					CurrencyId::RestrictedCoin,
-					false
-				)
-			);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
+				Origin::signed(1),
+				2,
+				CurrencyId::AUSD,
+				false
+			));
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
+				Origin::signed(1),
+				2,
+				CurrencyId::AUSD,
+				false
+			));
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
+				Origin::signed(100),
+				101,
+				CurrencyId::RestrictedCoin,
+				false
+			));
 			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(101, CurrencyId::RestrictedCoin).free
+				orml_tokens::Pallet::<Runtime>::accounts(101, CurrencyId::RestrictedCoin).free
 					== 2000
 			);
 		})
@@ -192,24 +186,20 @@ fn force_transfer_works() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::force_transfer(
-					Origin::root(),
-					1,
-					2,
-					CurrencyId::AUSD,
-					DISTR_PER_ACCOUNT
-				)
-			);
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::force_transfer(
-					Origin::root(),
-					1,
-					2,
-					CurrencyId::RestrictedCoin,
-					DISTR_PER_ACCOUNT
-				)
-			);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
+				Origin::root(),
+				1,
+				2,
+				CurrencyId::AUSD,
+				DISTR_PER_ACCOUNT
+			));
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
+				Origin::root(),
+				1,
+				2,
+				CurrencyId::RestrictedCoin,
+				DISTR_PER_ACCOUNT
+			));
 		})
 }
 
@@ -218,36 +208,30 @@ fn force_transfer_fails() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::force_transfer(
-					Origin::signed(1),
-					1,
-					2,
-					CurrencyId::AUSD,
-					DISTR_PER_ACCOUNT
-				)
-				.is_err()
-			);
-			assert!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::force_transfer(
-					Origin::signed(1),
-					1,
-					2,
-					CurrencyId::AUSD,
-					DISTR_PER_ACCOUNT
-				)
-				.is_err()
-			);
-			assert!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::force_transfer(
-					Origin::signed(100),
-					100,
-					101,
-					CurrencyId::RestrictedCoin,
-					DISTR_PER_ACCOUNT
-				)
-				.is_err()
-			);
+			assert!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
+				Origin::signed(1),
+				1,
+				2,
+				CurrencyId::AUSD,
+				DISTR_PER_ACCOUNT
+			)
+			.is_err());
+			assert!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
+				Origin::signed(1),
+				1,
+				2,
+				CurrencyId::AUSD,
+				DISTR_PER_ACCOUNT
+			)
+			.is_err());
+			assert!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
+				Origin::signed(100),
+				100,
+				101,
+				CurrencyId::RestrictedCoin,
+				DISTR_PER_ACCOUNT
+			)
+			.is_err());
 		})
 }
 
@@ -256,68 +240,55 @@ fn set_balance_works() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::set_balance(
-					Origin::root(),
-					1,
-					CurrencyId::AUSD,
-					200,
-					100
-				)
-			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).free == 200);
-			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).reserved == 100
-			);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
+				Origin::root(),
+				1,
+				CurrencyId::AUSD,
+				200,
+				100
+			));
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).free == 200);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 100);
 
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::set_balance(
-					Origin::root(),
-					1,
-					CurrencyId::AUSD,
-					400,
-					200
-				)
-			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).free == 400);
-			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).reserved == 200
-			);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
+				Origin::root(),
+				1,
+				CurrencyId::AUSD,
+				400,
+				200
+			));
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).free == 400);
+			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 200);
 
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::set_balance(
-					Origin::root(),
-					1111,
-					CurrencyId::RestrictedCoin,
-					999,
-					80
-				)
-			);
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
+				Origin::root(),
+				1111,
+				CurrencyId::RestrictedCoin,
+				999,
+				80
+			));
 			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(1111, CurrencyId::RestrictedCoin).free
+				orml_tokens::Pallet::<Runtime>::accounts(1111, CurrencyId::RestrictedCoin).free
 					== 999
 			);
 			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(1111, CurrencyId::RestrictedCoin)
-					.reserved == 80
+				orml_tokens::Pallet::<Runtime>::accounts(1111, CurrencyId::RestrictedCoin).reserved
+					== 80
 			);
 
-			assert_ok!(
-				pallet_restricted_tokens::Pallet::<MockRuntime>::set_balance(
-					Origin::root(),
-					101,
-					CurrencyId::RestrictedCoin,
-					0,
-					100
-				)
+			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
+				Origin::root(),
+				101,
+				CurrencyId::RestrictedCoin,
+				0,
+				100
+			));
+			assert!(
+				orml_tokens::Pallet::<Runtime>::accounts(101, CurrencyId::RestrictedCoin).free == 0
 			);
 			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(101, CurrencyId::RestrictedCoin).free
-					== 0
-			);
-			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(101, CurrencyId::RestrictedCoin)
-					.reserved == 100
+				orml_tokens::Pallet::<Runtime>::accounts(101, CurrencyId::RestrictedCoin).reserved
+					== 100
 			);
 		})
 }
@@ -329,7 +300,7 @@ fn fungible_total_issuance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::total_issuance(), 10 * DISTR_PER_ACCOUNT)
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::total_issuance(), 10 * DISTR_PER_ACCOUNT)
 		})
 }
 
@@ -338,7 +309,7 @@ fn fungible_minimum_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::minimum_balance(), 1)
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::minimum_balance(), 1)
 		})
 }
 
@@ -347,7 +318,7 @@ fn fungible_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::balance(&1), DISTR_PER_ACCOUNT)
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::balance(&1), DISTR_PER_ACCOUNT)
 		})
 }
 
@@ -356,8 +327,8 @@ fn fungible_reducible_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&1, true), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, true), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
 		})
 }
 
@@ -366,7 +337,7 @@ fn fungible_can_deposit() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10, false) == DepositConsequence::Success);
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10, false) == DepositConsequence::Success);
 		})
 }
 
@@ -375,12 +346,12 @@ fn fungible_can_withdraw() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungible::Inspect<
+			let res = <pallet_restricted_tokens::Pallet<Runtime> as fungible::Inspect<
 				AccountId,
 			>>::can_withdraw(&1, DISTR_PER_ACCOUNT)
 				== WithdrawConsequence::ReducedToZero(0);
 			assert!(res);
-			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungible::Inspect<
+			let res = <pallet_restricted_tokens::Pallet<Runtime> as fungible::Inspect<
 				AccountId,
 			>>::can_withdraw(&1, DISTR_PER_ACCOUNT - ExistentialDeposit::get())
 				== WithdrawConsequence::Success;
@@ -394,7 +365,7 @@ fn fungible_balance_on_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::InspectHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::InspectHold<
 					AccountId,
 				>>::balance_on_hold(&1,),
 				0
@@ -408,7 +379,7 @@ fn fungible_can_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::InspectHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::InspectHold<
 					AccountId,
 				>>::can_hold(&1, DISTR_PER_ACCOUNT)
 			);
@@ -420,7 +391,7 @@ fn fungible_mint_into() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Mutate<AccountId>>::mint_into(&1, 10).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Mutate<AccountId>>::mint_into(&1, 10).is_ok());
 		})
 }
 
@@ -429,7 +400,7 @@ fn fungible_burn_from() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Mutate<AccountId>>::burn_from(&1, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Mutate<AccountId>>::burn_from(&1, DISTR_PER_ACCOUNT).is_ok());
 		})
 }
 
@@ -439,7 +410,7 @@ fn fungible_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
 				>>::hold(&1, DISTR_PER_ACCOUNT)
 				.is_ok()
@@ -453,13 +424,13 @@ fn fungible_release() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
 				>>::hold(&1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<
 					AccountId,
 				>>::release(&1, DISTR_PER_ACCOUNT, false)
 				.is_ok()
@@ -472,16 +443,16 @@ fn fungible_transfer_held() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::hold(&1, DISTR_PER_ACCOUNT).is_ok());
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::transfer_held(&1, &9, DISTR_PER_ACCOUNT, false, true).is_ok());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), 0);
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&1, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_held(&1, &9, DISTR_PER_ACCOUNT, false, true).is_ok());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), 0);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
 
 
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::hold(&2, DISTR_PER_ACCOUNT).is_ok());
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::transfer_held(&2, &9, DISTR_PER_ACCOUNT, false, false).is_ok());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&2, false), 0);
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::hold(&2, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::MutateHold<AccountId>>::transfer_held(&2, &9, DISTR_PER_ACCOUNT, false, false).is_ok());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Inspect<AccountId>>::reducible_balance(&2, false), 0);
 		})
 }
 
@@ -492,14 +463,14 @@ fn fungible_transfer() {
 		.execute_with(|| {
 			// Min holding period is not over
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Transfer<
 					AccountId,
 				>>::transfer(&1, &100, DISTR_PER_ACCOUNT, false)
 				.is_err()
 			);
 			Timer::pass(MIN_HOLD_PERIOD);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungible::Transfer<
 					AccountId,
 				>>::transfer(&1, &100, DISTR_PER_ACCOUNT, false)
 				.is_ok()
@@ -515,13 +486,13 @@ fn fungibles_total_issuance() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::total_issuance(CurrencyId::Cfg),
 				10 * DISTR_PER_ACCOUNT
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::total_issuance(CurrencyId::AUSD),
 				10 * DISTR_PER_ACCOUNT
@@ -535,13 +506,13 @@ fn fungibles_minimum_balance() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::minimum_balance(CurrencyId::Cfg),
 				ExistentialDeposit::get()
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::minimum_balance(CurrencyId::AUSD),
 				ExistentialDeposits::get(&CurrencyId::AUSD)
@@ -555,13 +526,13 @@ fn fungibles_balance() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::balance(CurrencyId::Cfg, &1),
 				DISTR_PER_ACCOUNT
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::balance(CurrencyId::AUSD, &1),
 				DISTR_PER_ACCOUNT
@@ -575,13 +546,13 @@ fn fungibles_reducible_balance() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::Cfg, &1, false),
 				DISTR_PER_ACCOUNT - ExistentialDeposit::get()
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::AUSD, &1, false),
 				DISTR_PER_ACCOUNT / 2
@@ -595,13 +566,13 @@ fn fungibles_can_deposit() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::can_deposit(CurrencyId::Cfg, &1, 10, false)
 					== DepositConsequence::Success
 			);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::can_deposit(CurrencyId::AUSD, &1, 10, false)
 					== DepositConsequence::Success
@@ -614,12 +585,12 @@ fn fungibles_can_withdraw() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungibles::Inspect<
+			let res = <pallet_restricted_tokens::Pallet<Runtime> as fungibles::Inspect<
 				AccountId,
 			>>::can_withdraw(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT)
 				== WithdrawConsequence::ReducedToZero(0);
 			assert!(res);
-			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungibles::Inspect<
+			let res = <pallet_restricted_tokens::Pallet<Runtime> as fungibles::Inspect<
 				AccountId,
 			>>::can_withdraw(
 				CurrencyId::AUSD,
@@ -636,7 +607,7 @@ fn fungibles_balance_on_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
 				>>::balance_on_hold(CurrencyId::AUSD, &1,),
 				0
@@ -650,17 +621,17 @@ fn fungibles_can_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
 				>>::can_hold(CurrencyId::Cfg, &1, DISTR_PER_ACCOUNT)
 			);
 			assert!(
-				!<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+				!<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
 				>>::can_hold(CurrencyId::AUSD, &1, 0)
 			);
 			assert!(
-				!<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+				!<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::InspectHold<
 					AccountId,
 				>>::can_hold(CurrencyId::AUSD, &1, 0)
 			);
@@ -673,11 +644,11 @@ fn fungibles_mint_into() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &1, 10),
-				Error::<MockRuntime>::PreConditionsNotMet
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &1, 10),
+				Error::<Runtime>::PreConditionsNotMet
 			);
 
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, 10).is_ok())
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, 10).is_ok())
 		})
 }
 
@@ -687,11 +658,11 @@ fn fungibles_burn_from() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::burn_from(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT),
-				Error::<MockRuntime>::PreConditionsNotMet,
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::burn_from(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT),
+				Error::<Runtime>::PreConditionsNotMet,
 			);
 
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, 10).is_ok())
+			assert!(<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, 10).is_ok())
 		})
 }
 
@@ -701,24 +672,24 @@ fn fungibles_hold() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::AUSD, &1, 1),
-				Error::<MockRuntime>::PreConditionsNotMet,
+				Error::<Runtime>::PreConditionsNotMet,
 			);
 
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::AUSD, &1, 1),
-				Error::<MockRuntime>::PreConditionsNotMet,
+				Error::<Runtime>::PreConditionsNotMet,
 			);
 		})
 }
@@ -729,28 +700,28 @@ fn fungibles_release() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::release(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT, false)
 				.is_ok()
 			);
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT),
-				Error::<MockRuntime>::PreConditionsNotMet
+				Error::<Runtime>::PreConditionsNotMet
 			);
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT),
-				Error::<MockRuntime>::PreConditionsNotMet
+				Error::<Runtime>::PreConditionsNotMet
 			);
 		})
 }
@@ -761,13 +732,13 @@ fn fungibles_transfer_held() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::transfer_held(
 					CurrencyId::RestrictedCoin,
@@ -780,26 +751,26 @@ fn fungibles_transfer_held() {
 				.is_ok()
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, false),
 				0
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::RestrictedCoin, &9, false),
 				DISTR_PER_ACCOUNT / 2
 			);
 
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::hold(CurrencyId::RestrictedCoin, &2, DISTR_PER_ACCOUNT)
 				.is_ok()
 			);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::MutateHold<
 					AccountId,
 				>>::transfer_held(
 					CurrencyId::RestrictedCoin,
@@ -812,13 +783,13 @@ fn fungibles_transfer_held() {
 				.is_ok()
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::RestrictedCoin, &9, false),
 				DISTR_PER_ACCOUNT
 			);
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Inspect<
 					AccountId,
 				>>::reducible_balance(CurrencyId::RestrictedCoin, &2, false),
 				0
@@ -833,20 +804,20 @@ fn fungibles_transfer() {
 		.execute_with(|| {
 			// Min holding period is not over
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Transfer<
 					AccountId,
 				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, false)
 				.is_err()
 			);
 			Timer::pass(MIN_HOLD_PERIOD);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Transfer<
 					AccountId,
 				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, false)
 				.is_ok()
 			);
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Transfer<
 					AccountId,
 				>>::transfer(
 					CurrencyId::RestrictedCoin,
@@ -855,11 +826,11 @@ fn fungibles_transfer() {
 					DISTR_PER_ACCOUNT,
 					false
 				),
-				Error::<MockRuntime>::PreConditionsNotMet
+				Error::<Runtime>::PreConditionsNotMet
 			);
 
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+				<pallet_restricted_tokens::Pallet::<Runtime> as fungibles::Transfer<
 					AccountId,
 				>>::transfer(
 					CurrencyId::RestrictedCoin,
@@ -880,8 +851,15 @@ fn currency_make_free_balance_be() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			{<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::make_free_balance_be(&80, 100)};
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(&80), 100);
+			{
+				<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::make_free_balance_be(&80, 100)
+			};
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::free_balance(
+					&80
+				),
+				100
+			);
 		})
 }
 
@@ -890,8 +868,8 @@ fn currency_deposit_into_existing() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			{let _imb = <pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::deposit_into_existing(&8, 100).unwrap();}
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(&8), DISTR_PER_ACCOUNT + 100);
+			{let _imb = <pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::deposit_into_existing(&8, 100).unwrap();}
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::free_balance(&8), DISTR_PER_ACCOUNT + 100);
 		})
 }
 
@@ -900,10 +878,10 @@ fn currency_deposit_creating() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			let issuance = <pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance();
-			{let _imb = <pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::deposit_creating(&80, 100);}
-			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(&80), 100);
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance(), issuance + 100);
+			let issuance = <pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_issuance();
+			{let _imb = <pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::deposit_creating(&80, 100);}
+			assert_eq!(<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::free_balance(&80), 100);
+			assert_eq!(<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_issuance(), issuance + 100);
 		})
 }
 
@@ -913,16 +891,16 @@ fn currency_withdraw() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::withdraw(
+				<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::withdraw(
 					&1,
 					10,
 					WithdrawReasons::TRANSFER,
 					ExistenceRequirement::KeepAlive
 				),
-				Error::<MockRuntime>::PreConditionsNotMet
+				Error::<Runtime>::PreConditionsNotMet
 			);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::withdraw(
+				<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::withdraw(
 					&1,
 					10,
 					WithdrawReasons::TRANSACTION_PAYMENT,
@@ -938,10 +916,26 @@ fn currency_slash() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			let issuance = <pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance();
-			{let (_, _) = <pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::slash(&1, 10);}
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_balance(&1), DISTR_PER_ACCOUNT - 10);
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance(), issuance - 10);
+			let issuance =
+				<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_issuance(
+				);
+			{
+				let (_, _) =
+					<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::slash(
+						&1, 10,
+					);
+			}
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_balance(
+					&1
+				),
+				DISTR_PER_ACCOUNT - 10
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_issuance(
+				),
+				issuance - 10
+			);
 		})
 }
 
@@ -951,7 +945,7 @@ fn currency_transfer() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::transfer(
+				<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::transfer(
 					&1,
 					&20,
 					DISTR_PER_ACCOUNT,
@@ -968,16 +962,16 @@ fn currency_ensure_can_withdraw() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_noop!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::ensure_can_withdraw(
+				<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::ensure_can_withdraw(
 					&1,
 					10,
 					WithdrawReasons::TRANSFER,
 					DISTR_PER_ACCOUNT - 10
 				),
-				Error::<MockRuntime>::PreConditionsNotMet
+				Error::<Runtime>::PreConditionsNotMet
 			);
 			assert!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::ensure_can_withdraw(
+				<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::ensure_can_withdraw(
 					&1,
 					10,
 					WithdrawReasons::TRANSACTION_PAYMENT,
@@ -994,7 +988,7 @@ fn currency_free_balance() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_eq!(
-				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(
+				<pallet_restricted_tokens::Pallet::<Runtime> as Currency<AccountId>>::free_balance(
 					&1,
 				),
 				DISTR_PER_ACCOUNT
@@ -1007,8 +1001,7 @@ fn currency_issue() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			let _ =
-				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::issue(100);
+			let _ = <pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::issue(100);
 		})
 }
 
@@ -1017,8 +1010,7 @@ fn currency_burn() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			let _ =
-				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::burn(100);
+			let _ = <pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::burn(100);
 		})
 }
 
@@ -1027,7 +1019,12 @@ fn currency_total_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_balance(&1), DISTR_PER_ACCOUNT);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::total_balance(
+					&1
+				),
+				DISTR_PER_ACCOUNT
+			);
 		})
 }
 
@@ -1036,12 +1033,9 @@ fn currency_can_slash() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(
-				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::can_slash(
-					&1,
-					DISTR_PER_ACCOUNT
-				)
-			);
+			assert!(<pallet_restricted_tokens::Pallet<Runtime> as Currency<
+				AccountId,
+			>>::can_slash(&1, DISTR_PER_ACCOUNT));
 		})
 }
 
@@ -1050,7 +1044,11 @@ fn currency_minimum_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::minimum_balance(), ExistentialDeposit::get());
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::minimum_balance(
+				),
+				ExistentialDeposit::get()
+			);
 		})
 }
 
@@ -1060,7 +1058,7 @@ fn currency_can_reserve() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(
-				<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::can_reserve(
+				<pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::can_reserve(
 					&1,
 					DISTR_PER_ACCOUNT
 				)
@@ -1073,8 +1071,8 @@ fn currency_slash_reserved() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, DISTR_PER_ACCOUNT));
-			let _ = <pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::slash_reserved(&1, DISTR_PER_ACCOUNT);
+			assert_ok!(<pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::reserve(&1, DISTR_PER_ACCOUNT));
+			let _ = <pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::slash_reserved(&1, DISTR_PER_ACCOUNT);
 		})
 }
 
@@ -1083,8 +1081,8 @@ fn currency_reserved_balance() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT - 100);
+			assert_ok!(<pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
+			assert_eq!(<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT - 100);
 		})
 }
 
@@ -1093,7 +1091,7 @@ fn currency_reserve() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
+			assert_ok!(<pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
 		})
 }
 
@@ -1102,10 +1100,10 @@ fn currency_unreserve() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT - 100);
-			<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::unreserve(&1, 100);
-			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT);
+			assert_ok!(<pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
+			assert_eq!(<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT - 100);
+			<pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::unreserve(&1, 100);
+			assert_eq!(<pallet_restricted_tokens::Pallet<Runtime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT);
 		})
 }
 
@@ -1114,7 +1112,7 @@ fn currency_repatriate_reserved() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::repatriate_reserved(&1, &2, 100, BalanceStatus::Free));
+			assert_ok!(<pallet_restricted_tokens::Pallet<Runtime> as ReservableCurrency<AccountId>>::repatriate_reserved(&1, &2, 100, BalanceStatus::Free));
 		})
 }
 
@@ -1123,8 +1121,15 @@ fn currency_remove_lock() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::set_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSFER);
-			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::remove_lock(LOCK_ID, &1);
+			<pallet_restricted_tokens::Pallet<Runtime> as LockableCurrency<AccountId>>::set_lock(
+				LOCK_ID,
+				&1,
+				DISTR_PER_ACCOUNT,
+				WithdrawReasons::TRANSFER,
+			);
+			<pallet_restricted_tokens::Pallet<Runtime> as LockableCurrency<AccountId>>::remove_lock(
+				LOCK_ID, &1,
+			);
 		})
 }
 
@@ -1133,7 +1138,12 @@ fn currency_set_lock() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::set_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSFER);
+			<pallet_restricted_tokens::Pallet<Runtime> as LockableCurrency<AccountId>>::set_lock(
+				LOCK_ID,
+				&1,
+				DISTR_PER_ACCOUNT,
+				WithdrawReasons::TRANSFER,
+			);
 		})
 }
 
@@ -1142,7 +1152,17 @@ fn currency_extend_lock() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::set_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSFER);
-			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::extend_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSACTION_PAYMENT);
+			<pallet_restricted_tokens::Pallet<Runtime> as LockableCurrency<AccountId>>::set_lock(
+				LOCK_ID,
+				&1,
+				DISTR_PER_ACCOUNT,
+				WithdrawReasons::TRANSFER,
+			);
+			<pallet_restricted_tokens::Pallet<Runtime> as LockableCurrency<AccountId>>::extend_lock(
+				LOCK_ID,
+				&1,
+				DISTR_PER_ACCOUNT,
+				WithdrawReasons::TRANSACTION_PAYMENT,
+			);
 		})
 }

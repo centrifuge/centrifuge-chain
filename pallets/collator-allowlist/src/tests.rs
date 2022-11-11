@@ -77,7 +77,7 @@ fn not_registered_in_mock_session() {
 
 		assert_noop!(
 			CollatorAllowlist::add(sudo, collator_id),
-			DispatchError::from(crate::Error::<Test>::CollatorNotReady)
+			DispatchError::from(crate::Error::<Runtime>::CollatorNotReady)
 		);
 	});
 }
@@ -97,7 +97,7 @@ fn already_allowlisted() {
 		// Try and adding it again fails as expected
 		assert_noop!(
 			CollatorAllowlist::add(sudo, collator_id),
-			DispatchError::from(crate::Error::<Test>::CollatorAlreadyAllowed)
+			DispatchError::from(crate::Error::<Runtime>::CollatorAlreadyAllowed)
 		);
 	});
 }
@@ -112,7 +112,7 @@ fn remove_not_present() {
 
 		assert_noop!(
 			CollatorAllowlist::remove(sudo, collator_id),
-			DispatchError::from(crate::Error::<Test>::CollatorNotPresent)
+			DispatchError::from(crate::Error::<Runtime>::CollatorNotPresent)
 		);
 	});
 }

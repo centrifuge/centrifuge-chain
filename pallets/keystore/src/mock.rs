@@ -22,12 +22,12 @@ use sp_runtime::{
 
 use crate::{self as pallet_keystore, Config};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -44,7 +44,7 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
-impl system::Config for MockRuntime {
+impl system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -81,7 +81,7 @@ parameter_types! {
 	pub const DefaultKeyDeposit: Balance = 100 * CURRENCY;
 }
 
-impl Config for MockRuntime {
+impl Config for Runtime {
 	type AdminOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSigned<u64>>;
 	type Balance = Balance;
 	type Currency = Balances;
@@ -97,7 +97,7 @@ parameter_types! {
 	pub MaxLocks: u32 = 2;
 }
 
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -112,12 +112,12 @@ impl pallet_balances::Config for MockRuntime {
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext: sp_io::TestExternalities = system::GenesisConfig::default()
-		.build_storage::<MockRuntime>()
+		.build_storage::<Runtime>()
 		.unwrap()
 		.into();
 
 	// Ensure that we set a block number otherwise no events would be deposited.
-	ext.execute_with(|| frame_system::Pallet::<MockRuntime>::set_block_number(1));
+	ext.execute_with(|| frame_system::Pallet::<Runtime>::set_block_number(1));
 
 	ext
 }
