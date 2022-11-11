@@ -79,33 +79,40 @@ pub mod test {
 	pub const AMOUNT: u64 = 10;
 
 	#[macro_export]
-	macro_rules! mechanism_tests_impl {
+	macro_rules! mechanism_reward_group_test_impl {
 		(
         $mechanism:ident,
         $initial:ident,
         $expectation:ident
         ) => {
-			use frame_support::{assert_err, assert_ok};
-
 			#[test]
 			fn reward_group() {
 				let mut group = $initial::GROUP.clone();
 
-				assert_ok!($mechanism::reward_group(
+				frame_support::assert_ok!($mechanism::reward_group(
 					&mut group,
 					crate::mechanism::test::REWARD
 				));
 
 				assert_eq!(group, *$expectation::REWARD_GROUP__GROUP);
 			}
+		};
+	}
 
+	#[macro_export]
+	macro_rules! mechanism_deposit_stake_test_impl {
+		(
+        $mechanism:ident,
+        $initial:ident,
+        $expectation:ident
+        ) => {
 			#[test]
 			fn deposit_stake() {
 				let mut account = $initial::ACCOUNT.clone();
 				let mut currency = $initial::CURRENCY.clone();
 				let mut group = $initial::GROUP.clone();
 
-				assert_ok!($mechanism::deposit_stake(
+				frame_support::assert_ok!($mechanism::deposit_stake(
 					&mut account,
 					&mut currency,
 					&mut group,
@@ -116,14 +123,23 @@ pub mod test {
 				assert_eq!(currency, *$expectation::DEPOSIT_STAKE__CURRENCY);
 				assert_eq!(group, *$expectation::DEPOSIT_STAKE__GROUP);
 			}
+		};
+	}
 
+	#[macro_export]
+	macro_rules! mechanism_withdraw_stake_test_impl {
+		(
+        $mechanism:ident,
+        $initial:ident,
+        $expectation:ident
+        ) => {
 			#[test]
 			fn withdraw_stake() {
 				let mut account = $initial::ACCOUNT.clone();
 				let mut currency = $initial::CURRENCY.clone();
 				let mut group = $initial::GROUP.clone();
 
-				assert_ok!($mechanism::withdraw_stake(
+				frame_support::assert_ok!($mechanism::withdraw_stake(
 					&mut account,
 					&mut currency,
 					&mut group,
@@ -134,10 +150,19 @@ pub mod test {
 				assert_eq!(currency, *$expectation::WITHDRAW_STAKE__CURRENCY);
 				assert_eq!(group, *$expectation::WITHDRAW_STAKE__GROUP);
 			}
+		};
+	}
 
+	#[macro_export]
+	macro_rules! mechanism_claim_reward_test_impl {
+		(
+        $mechanism:ident,
+        $initial:ident,
+        $expectation:ident
+        ) => {
 			#[test]
 			fn compute_reward() {
-				assert_ok!(
+				frame_support::assert_ok!(
 					$mechanism::compute_reward(
 						&$initial::ACCOUNT,
 						&$initial::CURRENCY,
@@ -151,32 +176,38 @@ pub mod test {
 			fn claim_reward() {
 				let mut account = $initial::ACCOUNT.clone();
 
-				assert_ok!(
+				frame_support::assert_ok!(
 					$mechanism::claim_reward(&mut account, &$initial::CURRENCY, &$initial::GROUP),
 					*$expectation::CLAIM__REWARD
 				);
 
 				assert_eq!(account, *$expectation::CLAIM__ACCOUNT);
 			}
+		};
+	}
 
+	#[macro_export]
+	macro_rules! mechanism_move_currency_test_impl {
+		(
+        $mechanism:ident,
+        $initial:ident,
+        $expectation:ident
+        ) => {
 			#[test]
 			fn move_currency() {
 				let mut currency = $initial::CURRENCY.clone();
 				let mut prev_group = $initial::GROUP.clone();
 				let mut next_group = $initial::NEXT_GROUP.clone();
 
-				let result =
-					$mechanism::move_currency(&mut currency, &mut prev_group, &mut next_group);
+				frame_support::assert_ok!($mechanism::move_currency(
+					&mut currency,
+					&mut prev_group,
+					&mut next_group
+				));
 
-				if <<$mechanism as RewardMechanism>::MaxCurrencyMovements as Get<u32>>::get() > 0 {
-					assert_ok!(result);
-				} else {
-					assert_err!(result, MoveCurrencyError::MaxMovements);
-				}
-
-				assert_eq!(currency, *$expectation::MOVE__CURRENCY);
-				assert_eq!(prev_group, *$expectation::MOVE__GROUP_PREV);
-				assert_eq!(next_group, *$expectation::MOVE__GROUP_NEXT);
+				assert_eq!(currency, *$expectation::MOVE_CURRENCY__CURRENCY);
+				assert_eq!(prev_group, *$expectation::MOVE_CURRENCY__GROUP_PREV);
+				assert_eq!(next_group, *$expectation::MOVE_CURRENCY__GROUP_NEXT);
 			}
 		};
 	}

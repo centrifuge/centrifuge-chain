@@ -149,12 +149,12 @@ pub mod test {
 		lazy_static::lazy_static! {
 			pub static ref GROUP: Group<Balance, Rate> = Group {
 				total_stake: 1000,
-				reward_per_token: FixedI64::from(5),
+				reward_per_token: Rate::from(5),
 			};
 
 			pub static ref NEXT_GROUP: Group<Balance, Rate> = Group {
 				total_stake: 2000,
-				reward_per_token: FixedI64::from(6),
+				reward_per_token: Rate::from(6),
 			};
 
 			pub static ref ACCOUNT: Account<Balance, IBalance> = Account {
@@ -172,8 +172,7 @@ pub mod test {
 		lazy_static::lazy_static! {
 			pub static ref REWARD_GROUP__GROUP: Group<Balance, Rate> = Group {
 				total_stake: GROUP.total_stake,
-				reward_per_token: GROUP.reward_per_token
-					+ FixedI64::saturating_from_rational(REWARD, GROUP.total_stake),
+				reward_per_token: GROUP.reward_per_token + (REWARD, GROUP.total_stake).into(),
 			};
 
 			pub static ref DEPOSIT_STAKE__GROUP: Group<Balance, Rate> = Group {
@@ -202,12 +201,11 @@ pub mod test {
 			};
 			pub static ref CLAIM__REWARD: u64 =
 				(GROUP.reward_per_token.saturating_mul_int(ACCOUNT.stake) as i64 - ACCOUNT.reward_tally) as u64;
-
-			pub static ref MOVE__CURRENCY: () = ();
-			pub static ref MOVE__GROUP_PREV: Group<Balance, Rate> = GROUP.clone();
-			pub static ref MOVE__GROUP_NEXT: Group<Balance, Rate> = NEXT_GROUP.clone();
 		}
 	}
 
-	crate::mechanism_tests_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_reward_group_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_deposit_stake_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_withdraw_stake_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_claim_reward_test_impl!(TestMechanism, initial, expectation);
 }
