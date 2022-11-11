@@ -31,7 +31,7 @@
           # This selects a nightly Rust version, based on the date.
           nightly-date = pkgs.lib.strings.removePrefix "nightly-" rustToolChainTOML.toolchain.channel;
           # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
-          nightly-sha256 = "sha256-CNMj0ouNwwJ4zwgc/gAeTYyDYe0botMoaj/BkeDTy4M=";
+          nightly-sha256 = "sha256-UuVX3RxSsUfng4G/Bec8JcI/lOUmxrG7NXSG5hMRgbc=";
           # This is the git short commit of the current version of the program.
           shortCommit = builtins.substring 0 7 (inputs.self.rev or "dirty");
 
@@ -93,7 +93,7 @@
             };
 
             # This is a hash of all the Cargo dependencies, for reproducibility.
-            cargoSha256 = "sha256-5LGLf/ftvIhqbJcdq4CLgSos2SpmlWKG3OF2wAVXnQE=";
+            cargoSha256 = "sha256-UuVX3RxSsUfng4G/Bec8JcI/lOUmxrG7NXSG5hMRgbc=";
 
             nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
             buildInputs = with pkgs; [ openssl ] ++ (
