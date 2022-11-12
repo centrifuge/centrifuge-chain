@@ -70,7 +70,7 @@ fn missing_anchor() {
 					static_proofs,
 					chain_id
 				),
-				Error::<MockRuntime>::DocumentNotAnchored
+				Error::<Runtime>::DocumentNotAnchored
 			);
 
 			MockFeesState::get().with(|fees| {
@@ -86,16 +86,16 @@ fn valid_proof() {
 		.execute_with(|| {
 			let dest_id = 0;
 			let deposit_address: [u8; 20] = [0; 20];
-			let pre_image = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
+			let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 			let anchor_id =
-				(pre_image).using_encoded(<MockRuntime as frame_system::Config>::Hashing::hash);
+				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let (proof, doc_root, static_proofs) = get_valid_proof();
 
 			assert_ok!(Anchors::commit(
 				Origin::signed(USER_B),
 				pre_image,
 				doc_root,
-				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
+				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				MILLISECS_PER_DAY + 1
 			));
 
@@ -127,16 +127,16 @@ fn invalid_proof() {
 		.build()
 		.execute_with(|| {
 			let deposit_address: [u8; 20] = [0; 20];
-			let pre_image = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
+			let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 			let anchor_id =
-				(pre_image).using_encoded(<MockRuntime as frame_system::Config>::Hashing::hash);
+				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let (proof, doc_root, static_proofs) = get_invalid_proof();
 
 			assert_ok!(Anchors::commit(
 				Origin::signed(USER_B),
 				pre_image,
 				doc_root,
-				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
+				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				MILLISECS_PER_DAY + 1
 			));
 
@@ -149,7 +149,7 @@ fn invalid_proof() {
 					static_proofs,
 					0
 				),
-				Error::<MockRuntime>::InvalidProofs
+				Error::<Runtime>::InvalidProofs
 			);
 
 			MockFeesState::get().with(|fees| {

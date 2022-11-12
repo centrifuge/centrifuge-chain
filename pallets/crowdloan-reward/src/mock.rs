@@ -39,12 +39,12 @@ use crate as pallet_crowdloan_reward;
 
 type Balance = u64;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -63,7 +63,7 @@ parameter_types! {
 }
 
 // Implement balances pallet configuration for mock runtime
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -82,7 +82,7 @@ parameter_types! {
 }
 
 // Implement vesting pallet configuration for mock runtime
-impl pallet_vesting::Config for MockRuntime {
+impl pallet_vesting::Config for Runtime {
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
 	type Currency = Balances;
 	type Event = Event;
@@ -99,7 +99,7 @@ parameter_types! {
 }
 
 // Implement crowdloan reward pallet configuration for mock runtime
-impl pallet_crowdloan_reward::Config for MockRuntime {
+impl pallet_crowdloan_reward::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
@@ -121,7 +121,7 @@ parameter_types! {
 }
 
 // Implement frame system pallet configuration for mock runtime
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = Everything;
@@ -149,10 +149,10 @@ impl frame_system::Config for MockRuntime {
 }
 
 // ----------------------------------------------------------------------------
-// Test externalities
+// Runtime externalities
 // ----------------------------------------------------------------------------
 
-// Test externalities builder type declaraction.
+// Runtime externalities builder type declaraction.
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
@@ -179,10 +179,10 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<MockRuntime> {
+		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![
 				(1, 100 * self.existential_deposit),
 				(2, 200 * self.existential_deposit),
@@ -195,7 +195,7 @@ impl TestExternalitiesBuilder {
 		.unwrap();
 
 		use frame_support::traits::GenesisBuild;
-		pallet_vesting::GenesisConfig::<MockRuntime> {
+		pallet_vesting::GenesisConfig::<Runtime> {
 			vesting: vec![(1, 1, 10, 0), (2, 10, 20, 0), (12, 10, 20, 0)],
 		}
 		.assimilate_storage(&mut storage)
@@ -212,7 +212,7 @@ impl TestExternalitiesBuilder {
 	}
 } // end of 'TestExternalitiesBuilder' implementation
 
-pub fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>> {
+pub fn reward_events() -> Vec<pallet_crowdloan_reward::Event<Runtime>> {
 	System::events()
 		.into_iter()
 		.map(|r| r.event)

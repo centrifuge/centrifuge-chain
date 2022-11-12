@@ -90,16 +90,16 @@ mod test {
 				};
 				let rate_per_sec =
 					interest_rate_per_sec(mock::Rate::saturating_from_rational(10, 100)).unwrap();
-				v0::Rate::<Test>::insert(rate_per_sec, rate_info);
-				StorageVersion::<Test>::set(Release::V0);
+				v0::Rate::<Runtime>::insert(rate_per_sec, rate_info);
+				StorageVersion::<Runtime>::set(Release::V0);
 				next_block_after(seconds_per_day());
 				let now = mock::InterestAccrual::now();
-				let weight = v1::migrate::<Test>();
-				let expected_weight = <Test as Config>::Weights::calculate_accumulated_rate(17)
-					+ <Test as frame_system::Config>::DbWeight::get().reads_writes(2, 2);
+				let weight = v1::migrate::<Runtime>();
+				let expected_weight = <Runtime as Config>::Weights::calculate_accumulated_rate(17)
+					+ <Runtime as frame_system::Config>::DbWeight::get().reads_writes(2, 2);
 				assert_eq!(weight, expected_weight);
-				assert_eq!(LastUpdated::<Test>::get(), now);
-				let rate_info = crate::Rate::<Test>::get(rate_per_sec).unwrap();
+				assert_eq!(LastUpdated::<Runtime>::get(), now);
+				let rate_info = crate::Rate::<Runtime>::get(rate_per_sec).unwrap();
 				assert_eq!(0, rate_info.reference_count);
 				assert_eq!(1000274010136172548, rate_info.accumulated_rate.into_inner());
 			})

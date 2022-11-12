@@ -24,7 +24,7 @@ benchmarks! {
 	}
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test,);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
 
 // Return an account that will be included as part of the initial
 // state of the pallet_session in the runtime used for benchmarking.

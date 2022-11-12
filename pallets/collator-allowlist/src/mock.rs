@@ -20,13 +20,13 @@ use sp_runtime::{
 
 use crate::{self as collator_allowlist, *};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 type Balance = u64;
 
 // For testing the pallet, we construct a mock runtime.
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -39,7 +39,7 @@ frame_support::construct_runtime!(
 
 type AccountId = u64;
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
@@ -70,7 +70,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -88,7 +88,7 @@ parameter_types! {
 
 type ValidatorId = u64;
 
-impl Config for Test {
+impl Config for Runtime {
 	type Event = ();
 	type ValidatorId = ValidatorId;
 	type ValidatorRegistration = MockSession;
@@ -112,11 +112,11 @@ impl ValidatorRegistration<ValidatorId> for MockSession {
 // Build the genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
+		.build_storage::<Runtime>()
 		.unwrap();
 
 	// pre-fill balances
-	pallet_balances::GenesisConfig::<Test> {
+	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![(1, 100000), (2, 100000), (100, 100)],
 	}
 	.assimilate_storage(&mut t)

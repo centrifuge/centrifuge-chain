@@ -57,14 +57,6 @@ impl From<u32> for CurrencyId {
 	}
 }
 
-/// A type that can create a TrancheToken from a PoolId and a TrancheId
-pub struct TrancheToken;
-impl cfg_traits::TrancheToken<PoolId, TrancheId, CurrencyId> for TrancheToken {
-	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
-		CurrencyId::Tranche(pool, tranche)
-	}
-}
-
 /// A Currency that is solely used by tranches.
 ///
 /// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
@@ -80,9 +72,9 @@ pub struct TrancheCurrency {
 	tranche_id: TrancheId,
 }
 
-impl Into<CurrencyId> for TrancheCurrency {
-	fn into(self) -> CurrencyId {
-		CurrencyId::Tranche(self.pool_id, self.tranche_id)
+impl From<TrancheCurrency> for CurrencyId {
+	fn from(x: TrancheCurrency) -> Self {
+		CurrencyId::Tranche(x.pool_id, x.tranche_id)
 	}
 }
 

@@ -227,13 +227,13 @@ mod dummy {
 	}
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 pub type AccountId = u64;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -251,7 +251,7 @@ parameter_types! {
 }
 
 // Implement frame system configuration for the mock runtime
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = ();
 	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
@@ -285,7 +285,7 @@ parameter_types! {
 
 type AdminOrigin = EitherOfDiverse<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
 
-impl pallet_permissions::Config for MockRuntime {
+impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = AdminOrigin;
 	type Editors = Editors;
 	type Event = Event;
@@ -343,7 +343,7 @@ impl SortedMembers<u64> for One {
 	}
 }
 
-impl pallet_dummy::Config for MockRuntime {
+impl pallet_dummy::Config for Runtime {
 	type PalletId = DummyAccount;
 	type Permission = Permissions;
 	type Role = Role;
@@ -357,7 +357,7 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build(self, optional: impl FnOnce()) -> TestExternalities {
 		let storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
 		let mut ext = TestExternalities::from(storage);

@@ -46,8 +46,8 @@ use crate::{self as pallet_claims, traits::WeightInfo, Config};
 // Types and constants declaration
 // ----------------------------------------------------------------------------
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 // Implement testint extrinsic weights for the pallet
 pub struct MockWeightInfo;
@@ -89,7 +89,7 @@ pub(crate) const ENDOWED_BALANCE: u128 = 10000 * CFG;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -106,7 +106,7 @@ parameter_types! {
 }
 
 // Implement FRAME system pallet configuration trait for the mock runtime
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = Everything;
@@ -139,7 +139,7 @@ parameter_types! {
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -167,7 +167,7 @@ impl SortedMembers<u64> for One {
 }
 
 // Implement claims pallet configuration trait for the mock runtime
-impl Config for MockRuntime {
+impl Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Currency = Balances;
 	type Event = Event;
@@ -177,10 +177,10 @@ impl Config for MockRuntime {
 }
 
 // ----------------------------------------------------------------------------
-// Test externalities
+// Runtime externalities
 // ----------------------------------------------------------------------------
 
-// Test externalities builder type declaraction.
+// Runtime externalities builder type declaraction.
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
@@ -197,11 +197,11 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
 		// pre-fill balances
-		pallet_balances::GenesisConfig::<MockRuntime> {
+		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![
 				(ADMIN, ENDOWED_BALANCE),
 				(USER_A, 1),
