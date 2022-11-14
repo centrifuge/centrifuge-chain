@@ -1019,7 +1019,7 @@ fn pool_updates_should_be_constrained() {
 
 		assert_err!(
 			PoolSystem::execute_update(pool_id),
-			Error::<Test>::UpdatePrerequesitesNotFulfilled
+			Error::<Runtime>::UpdatePrerequesitesNotFulfilled
 		);
 
 		next_block();
