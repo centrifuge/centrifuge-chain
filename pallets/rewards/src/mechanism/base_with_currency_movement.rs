@@ -89,11 +89,16 @@ where
 	type Account = Account<Self::Balance, IBalance>;
 	type Balance = Balance;
 	type Currency = Currency<Balance, Rate, MaxCurrencyMovements>;
+	type DistributionId = ();
 	type Group = base::Group<Balance, Rate>;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 
-	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
-		base::Mechanism::<Balance, IBalance, Rate>::reward_group(group, amount)
+	fn reward_group(
+		group: &mut Self::Group,
+		amount: Self::Balance,
+		distribution_id: Self::DistributionId,
+	) -> Result<(), ArithmeticError> {
+		base::Mechanism::<Balance, IBalance, Rate>::reward_group(group, amount, distribution_id)
 	}
 
 	fn deposit_stake(

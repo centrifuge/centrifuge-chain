@@ -43,10 +43,15 @@ where
 	type Account = Account<Self::Balance, IBalance>;
 	type Balance = Balance;
 	type Currency = ();
+	type DistributionId = ();
 	type Group = Group<Balance, Rate>;
 	type MaxCurrencyMovements = ConstU32<0>;
 
-	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
+	fn reward_group(
+		group: &mut Self::Group,
+		amount: Self::Balance,
+		_distribution_id: Self::DistributionId,
+	) -> Result<(), ArithmeticError> {
 		let rate = Rate::ensure_from_rational(amount, group.total_stake)?;
 		group.reward_per_token.ensure_add_assign(rate)
 	}
@@ -204,7 +209,7 @@ pub mod test {
 		}
 	}
 
-	crate::mechanism_reward_group_test_impl!(TestMechanism, initial, expectation);
+	crate::mechanism_reward_group_test_impl!(TestMechanism, initial, expectation, ());
 	crate::mechanism_deposit_stake_test_impl!(TestMechanism, initial, expectation);
 	crate::mechanism_withdraw_stake_test_impl!(TestMechanism, initial, expectation);
 	crate::mechanism_claim_reward_test_impl!(TestMechanism, initial, expectation);
