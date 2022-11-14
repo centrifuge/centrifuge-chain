@@ -326,8 +326,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// Check that the origin is a member of this tranche token or
-			// is a MemberListAdmin and thus allowed to add other members.
+			// Check that the origin is allowed to add other members
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
@@ -337,6 +336,7 @@ pub mod pallet {
 				BadOrigin
 			);
 
+			// Now add the destination address as a TrancheInvestor of the given tranche
 			T::Permission::add(
 				PermissionScope::Pool(pool_id),
 				address.into_account_truncating(),

@@ -29,11 +29,13 @@ use ::xcm::{
 };
 use cfg_primitives::{currency_decimals, parachains, Balance, PoolId, TrancheId};
 use cfg_types::{
-	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, Rate, XcmMetadata,
+	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, PermissionScope,
+	PoolRole, Rate, Role, XcmMetadata, UNION,
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, PoolSystem, XTokens, XcmTransactor,
+	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, XTokens,
+	XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, dispatch::Weight};
 use hex::FromHex;
@@ -46,8 +48,8 @@ use pallet_pool_system::{PoolDetails, TrancheInput, TrancheLoc, TrancheMetadata,
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::H160;
 use sp_runtime::{
-	traits::{BadOrigin, One},
-	BoundedVec, DispatchError, Perquintill,
+	traits::{AccountIdConversion, BadOrigin, ConstU32, One},
+	BoundedVec, DispatchError, Perquintill, WeakBoundedVec,
 };
 use xcm_emulator::TestExt;
 
@@ -283,8 +285,19 @@ fn add_tranche() {
 					tranche_type: TrancheType::Residual,
 					seniority: None,
 					metadata: TrancheMetadata {
-						token_name: BoundedVec::default(),
-						token_symbol: BoundedVec::default(),
+						// NOTE: For now, we have to set these metadata fields of the first tranche
+						// to be convertible to the 32-byte size expected by the connectors AddTranche
+						// message.
+						token_name:
+							BoundedVec::<u8, development_runtime::MaxTokenNameLength>::try_from(
+								vec![1; 32]
+							)
+							.expect(""),
+						token_symbol:
+							BoundedVec::<u8, development_runtime::MaxTokenSymbolLength>::try_from(
+								vec![2; 32]
+							)
+							.expect(""),
 					}
 				},
 				TrancheInput {
@@ -315,11 +328,10 @@ fn add_tranche() {
 		// we can call Connectors::add_tranche successfully.
 		assert_ok!(Connectors::add_tranche(
 			Origin::signed(ALICE.into()),
-			pool_id,
+			pool_id.clone(),
 			tranche_id,
 			Domain::Parachain(ParachainId::Moonbeam),
 		));
-
 		// TODO(nuno): figure out how to convert the tranche metadata set by pool_system into the 32-bounded array expected by the Connectors::AddTranche message.
 	});
 }
@@ -446,22 +458,60 @@ fn transfer() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
+		let dest_address = DomainAddress {
+			domain: Domain::Parachain(ParachainId::Moonbeam),
+			address: [99; 32],
+		};
+
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
 			Connectors::transfer(
 				Origin::signed(ALICE.into()),
-				pool_id,
-				tranche_id,
-				DomainAddress {
-					domain: Domain::Parachain(ParachainId::Moonbeam),
-					address: [3; 32]
-				},
+				pool_id.clone(),
+				tranche_id.clone(),
+				dest_address.clone(),
 				42,
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::UnauthorizedTransfer
 		);
 
-		// TODO(nuno): Add the dest address as a whitelisted address fo the tranche token and re-try calling Connectors::transfer
+		// Make BOB the MembersListAdmin of this Pool
+		assert_ok!(Permissions::add(
+			Origin::root(),
+			Role::PoolRole(PoolRole::PoolAdmin),
+			BOB.into(),
+			PermissionScope::Pool(pool_id.clone()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+		));
+
+		// Give BOB enough glimmer to pay for fees
+		OrmlTokens::deposit(glmr_currency_id, &BOB.into(), 10 * dollar(18));
+
+		// Call the Connectors::update_member which ensures the destination address is whitelisted.
+		assert_ok!(Connectors::update_member(
+			Origin::signed(BOB.into()),
+			dest_address.clone(),
+			pool_id.clone(),
+			tranche_id.clone(),
+			u64::MAX,
+		));
+
+		// Give BOB enough Tranche balance to be able to transfer it
+		OrmlTokens::deposit(
+			CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
+			&BOB.into(),
+			100_000,
+		);
+
+		// Finally, verify that we can now transfer the tranche to the destination address
+		let amount = 123;
+		assert_ok!(Connectors::transfer(
+			Origin::signed(BOB.into()),
+			pool_id.clone(),
+			tranche_id.clone(),
+			dest_address.clone(),
+			amount,
+		));
 	});
 }
 
