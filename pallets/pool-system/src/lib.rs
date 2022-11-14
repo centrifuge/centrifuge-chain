@@ -30,7 +30,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 pub use impls::*;
 use orml_traits::{
-	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
+	asset_registry::{AssetMetadata, Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,
 };
 pub use pallet::*;
@@ -39,7 +39,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 pub use solution::*;
-use sp_arithmetic::traits::BaseArithmetic;
+use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Saturating, Zero,
@@ -235,10 +235,14 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		TrancheId,
 		PoolId,
 	> where
-	MetaSize: Get<u32> + Copy,
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand,
+	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
 	EpochId: BaseArithmetic,
+	MetaSize: Get<u32> + Copy,
+	PoolId: Copy + Encode,
+	Rate: FixedPointNumber<Inner = Balance>,
+	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,
+	TrancheId: Clone + From<[u8; 16]> + PartialEq,
+	Weight: Copy + From<u128>,
 {
 	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
 		self.epoch.current += One::one();
@@ -254,6 +258,51 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		self.reserve.available = self.reserve.total;
 		self.epoch.last_executed += One::one();
 		Ok(())
+	}
+
+	pub fn essence<T: Config>(&self) -> Result<PoolEssenceOf<T>, DispatchError>
+	where
+		<T as pallet::Config>::CurrencyId: From<CurrencyId>,
+		<T as pallet::Config>::Balance: From<Balance>,
+		<T as pallet::Config>::TrancheCurrency: From<TrancheCurrency>,
+		tranche::TrancheType<<T as pallet::Config>::Rate>: From<tranche::TrancheType<Rate>>,
+	{
+		let mut tranches: Vec<TrancheEssence<T::TrancheCurrency, T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> = Vec::new();
+
+		self
+			.tranches
+			.residual_top_slice()
+			.iter()
+			.map(|tranche| {
+				let metadata =
+					T::AssetRegistry::metadata(&self.clone().currency.into()).ok_or(AssetMetadata {
+						decimals: 0,
+						name: Vec::new(),
+						symbol: Vec::new(),
+						existential_deposit: (),
+						location: None,
+						additional: (),
+					});
+
+				tranches.push(TrancheEssence {
+					currency: tranche.currency.into(),
+					ty: tranche.tranche_type.into(),
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::try_from(metadata.unwrap().name)
+							.unwrap_or(BoundedVec::default()),
+						token_symbol: BoundedVec::try_from(metadata.unwrap().symbol)
+							.unwrap_or(BoundedVec::default()),
+					},
+				});
+			});
+
+		Ok(PoolEssence {
+			currency: self.currency.into(),
+			max_reserve: self.reserve.max.into(),
+			max_nav_age: self.parameters.max_nav_age,
+			min_epoch_time: self.parameters.min_epoch_time,
+			tranches,
+		})
 	}
 }
 
@@ -318,83 +367,6 @@ where
 	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
 
-/// Transform PoolDetails into PoolEssence for sending out events
-impl<
-		CurrencyId,
-		Balance,
-		TrancheCurrency,
-		Rate,
-		EpochId,
-		MetaSize,
-		Weight,
-		TrancheId,
-		PoolId,
-		MaxTokenNameLength,
-		MaxTokenSymbolLength,
-	>
-	From<
-		PoolDetails<
-			CurrencyId,
-			TrancheCurrency,
-			EpochId,
-			Balance,
-			Rate,
-			MetaSize,
-			Weight,
-			TrancheId,
-			PoolId,
-		>,
-	>
-	for PoolEssence<
-		CurrencyId,
-		Balance,
-		TrancheCurrency,
-		Rate,
-		MaxTokenNameLength,
-		MaxTokenSymbolLength,
-	> where
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand,
-	MetaSize: Get<u32> + Copy,
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-{
-	fn from(
-		p: PoolDetails<
-			CurrencyId,
-			TrancheCurrency,
-			EpochId,
-			Balance,
-			Rate,
-			MetaSize,
-			Weight,
-			TrancheId,
-			PoolId,
-		>,
-	) -> Self {
-		let mut tranches = Vec::new();
-
-		for tranche in p.tranches.tranches {
-			tranches.push(TrancheEssence {
-				currency: tranche.currency,
-				ty: tranche.tranche_type,
-				metadata: TrancheMetadata {
-					token_name: BoundedVec::default(),
-					token_symbol: BoundedVec::default(),
-				},
-			});
-		}
-
-		PoolEssence {
-			currency: p.currency,
-			max_reserve: p.reserve.max,
-			max_nav_age: p.parameters.max_nav_age,
-			min_epoch_time: p.parameters.min_epoch_time,
-			tranches,
-		}
-	}
-}
-
 /// Type alias to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
@@ -416,6 +388,15 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
 	<T as Config>::TrancheCurrency,
+>;
+
+type PoolEssenceOf<T> = PoolEssence<
+	<T as Config>::CurrencyId,
+	<T as Config>::Balance,
+	<T as Config>::TrancheCurrency,
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
 >;
 
 /// Type alias for `struct PoolDepositInfo`
@@ -1272,23 +1253,7 @@ pub mod pallet {
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
 				let copy_of_pool = pool.clone();
-				let mut old_pool = PoolEssence::from(copy_of_pool);
-				for (pool_tranche, pool_essence_tranche) in pool
-					.tranches
-					.tranches
-					.iter()
-					.zip(old_pool.tranches.iter_mut())
-				{
-					let tranche_metadata =
-						T::AssetRegistry::metadata(&pool_tranche.currency.into())
-							.ok_or(Error::<T>::FailedToUpdateTrancheMetadata)?;
-					pool_essence_tranche.metadata.token_symbol =
-						BoundedVec::try_from(tranche_metadata.symbol)
-							.unwrap_or(BoundedVec::default());
-					pool_essence_tranche.metadata.token_name =
-						BoundedVec::try_from(tranche_metadata.name)
-							.unwrap_or(BoundedVec::default());
-				}
+				let old_pool = copy_of_pool.essence::<T>()?;
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1341,23 +1306,7 @@ pub mod pallet {
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
 				let copy_of_pool = pool.clone();
-				let mut new_pool = PoolEssence::from(copy_of_pool);
-				for (pool_tranche, pool_essence_tranche) in pool
-					.tranches
-					.tranches
-					.iter()
-					.zip(new_pool.tranches.iter_mut())
-				{
-					let tranche_metadata =
-						T::AssetRegistry::metadata(&pool_tranche.currency.into())
-							.ok_or(Error::<T>::FailedToUpdateTrancheMetadata)?;
-					pool_essence_tranche.metadata.token_symbol =
-						BoundedVec::try_from(tranche_metadata.symbol)
-							.unwrap_or(BoundedVec::default());
-					pool_essence_tranche.metadata.token_name =
-						BoundedVec::try_from(tranche_metadata.name)
-							.unwrap_or(BoundedVec::default());
-				}
+				let new_pool = copy_of_pool.essence::<T>()?;
 
 				Self::deposit_event(Event::PoolUpdated {
 					id: *pool_id,
