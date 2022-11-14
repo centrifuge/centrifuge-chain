@@ -102,7 +102,7 @@ fn verify_proofs() {
 
 			// Single-leaf tree
 			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
-			let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+			let leaf_hash = <Runtime as frame_system::Config>::Hashing::hash(&v);
 			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
 			assert_eq!(Claims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
 
@@ -171,10 +171,10 @@ fn store_root_hash() {
 		.execute_with(|| {
 			assert_eq!(Claims::get_upload_account(), None);
 			// USER_A not allowed to upload hash
-			let root_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&[0; 32]);
+			let root_hash = <Runtime as frame_system::Config>::Hashing::hash(&[0; 32]);
 			assert_noop!(
 				Claims::store_root_hash(Origin::signed(USER_A), root_hash),
-				Error::<MockRuntime>::MustBeAdmin
+				Error::<Runtime>::MustBeAdmin
 			);
 			// Adding ADMIN as allowed upload account
 			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
@@ -185,13 +185,13 @@ fn store_root_hash() {
 }
 
 fn pre_calculate_single_root(
-	account_id: &<MockRuntime as frame_system::Config>::AccountId,
-	amount: &<MockRuntime as pallet_balances::Config>::Balance,
-	other_hash: &<MockRuntime as frame_system::Config>::Hash,
+	account_id: &<Runtime as frame_system::Config>::AccountId,
+	amount: &<Runtime as pallet_balances::Config>::Balance,
+	other_hash: &<Runtime as frame_system::Config>::Hash,
 ) -> H256 {
 	let mut v: Vec<u8> = account_id.encode();
 	v.extend(amount.encode());
-	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+	let leaf_hash = <Runtime as frame_system::Config>::Hashing::hash(&v);
 
 	Claims::sorted_hash_of(&leaf_hash, other_hash)
 }
@@ -213,7 +213,7 @@ fn claim() {
 					amount,
 					one_sorted_hashes.to_vec()
 				),
-				Error::<MockRuntime>::InvalidProofs
+				Error::<Runtime>::InvalidProofs
 			);
 
 			// Set valid proofs
@@ -234,7 +234,7 @@ fn claim() {
 					4 * CFG,
 					one_sorted_hashes.to_vec()
 				),
-				Error::<MockRuntime>::UnderMinPayout
+				Error::<Runtime>::UnderMinPayout
 			);
 
 			let long_root_hash =
@@ -252,14 +252,14 @@ fn claim() {
 					10001 * CFG,
 					one_sorted_hashes.to_vec()
 				),
-				BalancesError::<MockRuntime, _>::InsufficientBalance
+				BalancesError::<Runtime, _>::InsufficientBalance
 			);
 
 			// Ok
 			let ok_root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
 			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), ok_root_hash));
 
-			let account_balance = <pallet_balances::Pallet<MockRuntime>>::free_balance(USER_B);
+			let account_balance = <pallet_balances::Pallet<Runtime>>::free_balance(USER_B);
 			assert_ok!(Claims::claim(
 				Origin::signed(0),
 				USER_B,
@@ -267,7 +267,7 @@ fn claim() {
 				one_sorted_hashes.to_vec()
 			));
 			assert_eq!(Claims::get_claimed_amount(USER_B), amount);
-			let account_new_balance = <pallet_balances::Pallet<MockRuntime>>::free_balance(USER_B);
+			let account_new_balance = <pallet_balances::Pallet<Runtime>>::free_balance(USER_B);
 			assert_eq!(account_new_balance, account_balance + amount);
 
 			// Knowing that account has a balance of 100, trying to claim 50 will fail
@@ -285,7 +285,7 @@ fn claim() {
 					50 * CFG,
 					one_sorted_hashes.to_vec()
 				),
-				Error::<MockRuntime>::InsufficientBalance
+				Error::<Runtime>::InsufficientBalance
 			);
 		});
 }

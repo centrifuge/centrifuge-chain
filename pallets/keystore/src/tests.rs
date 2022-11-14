@@ -32,25 +32,25 @@ fn add_keys() {
 
 		assert_ok!(Keystore::add_keys(Origin::signed(origin), keys.clone()));
 		assert_eq!(
-			Keys::<MockRuntime>::iter().collect::<Vec<_>>().len(),
+			Keys::<Runtime>::iter().collect::<Vec<_>>().len(),
 			2,
 			"keys should be in storage"
 		);
 		assert_eq!(
-			LastKeyByPurpose::<MockRuntime>::iter()
+			LastKeyByPurpose::<Runtime>::iter()
 				.collect::<Vec<_>>()
 				.len(),
 			2,
 			"keys should be in storage"
 		);
 
-		event_exists(CrateEvent::<MockRuntime>::KeyAdded {
+		event_exists(CrateEvent::<Runtime>::KeyAdded {
 			owner: origin,
 			key: keys[0].key.clone(),
 			purpose: keys[0].purpose.clone(),
 			key_type: keys[0].key_type.clone(),
 		});
-		event_exists(CrateEvent::<MockRuntime>::KeyAdded {
+		event_exists(CrateEvent::<Runtime>::KeyAdded {
 			owner: origin,
 			key: keys[1].key.clone(),
 			purpose: keys[1].purpose.clone(),
@@ -59,9 +59,8 @@ fn add_keys() {
 
 		keys_are_in_storage(origin, keys.clone()).unwrap();
 
-		let account_info: AccountInfo<_, AccountData<Balance>> =
-			Account::<MockRuntime>::get(origin);
-		let default_key_deposit = <<MockRuntime as Config>::DefaultKeyDeposit>::get();
+		let account_info: AccountInfo<_, AccountData<Balance>> = Account::<Runtime>::get(origin);
+		let default_key_deposit = <<Runtime as Config>::DefaultKeyDeposit>::get();
 
 		assert_eq!(
 			account_info.data.reserved,
@@ -79,18 +78,18 @@ fn add_keys_key_errors() {
 
 		assert_err!(
 			Keystore::add_keys(Origin::signed(1), keys.clone()),
-			Error::<MockRuntime>::NoKeys
+			Error::<Runtime>::NoKeys
 		);
 	});
 
 	// Max + 1 keys
 	new_test_ext().execute_with(|| {
-		let num_keys = <<MockRuntime as Config>::MaxKeys>::get() + 1;
+		let num_keys = <<Runtime as Config>::MaxKeys>::get() + 1;
 		let keys = get_n_test_keys(num_keys);
 
 		assert_err!(
 			Keystore::add_keys(Origin::signed(1), keys),
-			Error::<MockRuntime>::TooManyKeys
+			Error::<Runtime>::TooManyKeys
 		);
 	});
 }
@@ -105,9 +104,9 @@ fn add_keys_key_already_exists() {
 
 		let first_key = keys[0].clone();
 		let key_id: KeyId<H256> = (first_key.key.clone(), first_key.purpose.clone());
-		let default_key_deposit = <<MockRuntime as Config>::DefaultKeyDeposit>::get();
+		let default_key_deposit = <<Runtime as Config>::DefaultKeyDeposit>::get();
 
-		Keys::<MockRuntime>::insert(
+		Keys::<Runtime>::insert(
 			origin,
 			key_id,
 			Key {
@@ -120,7 +119,7 @@ fn add_keys_key_already_exists() {
 
 		assert_err!(
 			Keystore::add_keys(Origin::signed(1), keys),
-			Error::<MockRuntime>::KeyAlreadyExists
+			Error::<Runtime>::KeyAlreadyExists
 		)
 	});
 }
@@ -133,7 +132,7 @@ fn add_keys_insufficient_balance() {
 
 		assert_err!(
 			Keystore::add_keys(Origin::signed(origin), keys.clone()),
-			pallet_balances::Error::<MockRuntime>::InsufficientBalance,
+			pallet_balances::Error::<Runtime>::InsufficientBalance,
 		);
 	});
 }
@@ -158,7 +157,7 @@ fn revoke_keys() {
 
 		// Keys are still in storage but should be revoked.
 		assert_eq!(
-			Keys::<MockRuntime>::iter().collect::<Vec<_>>().len(),
+			Keys::<Runtime>::iter().collect::<Vec<_>>().len(),
 			2,
 			"keys should still be in storage"
 		);
@@ -168,19 +167,19 @@ fn revoke_keys() {
 		keys_are_revoked(key_hashes);
 
 		assert_eq!(
-			LastKeyByPurpose::<MockRuntime>::iter()
+			LastKeyByPurpose::<Runtime>::iter()
 				.collect::<Vec<_>>()
 				.len(),
 			2,
 			"keys should still be in storage"
 		);
 
-		event_exists(CrateEvent::<MockRuntime>::KeyRevoked {
+		event_exists(CrateEvent::<Runtime>::KeyRevoked {
 			owner: origin,
 			key: keys[0].key.clone(),
 			block_number: 1,
 		});
-		event_exists(CrateEvent::<MockRuntime>::KeyRevoked {
+		event_exists(CrateEvent::<Runtime>::KeyRevoked {
 			owner: origin,
 			key: keys[1].key.clone(),
 			block_number: 1,
@@ -196,11 +195,11 @@ fn revoke_keys_key_errors() {
 
 		assert_err!(
 			Keystore::revoke_keys(Origin::signed(1), keys, KeyPurpose::P2PDocumentSigning),
-			Error::<MockRuntime>::NoKeys
+			Error::<Runtime>::NoKeys
 		);
 
 		assert_eq!(
-			Keys::<MockRuntime>::iter().collect::<Vec<_>>().len(),
+			Keys::<Runtime>::iter().collect::<Vec<_>>().len(),
 			0,
 			"keys storage should be empty"
 		);
@@ -208,7 +207,7 @@ fn revoke_keys_key_errors() {
 
 	// Max + 1 keys
 	new_test_ext().execute_with(|| {
-		let num_keys = <<MockRuntime as Config>::MaxKeys>::get() + 1;
+		let num_keys = <<Runtime as Config>::MaxKeys>::get() + 1;
 		let keys = get_n_test_keys(num_keys);
 
 		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
@@ -219,10 +218,10 @@ fn revoke_keys_key_errors() {
 				key_hashes,
 				KeyPurpose::P2PDocumentSigning
 			),
-			Error::<MockRuntime>::TooManyKeys
+			Error::<Runtime>::TooManyKeys
 		);
 		assert_eq!(
-			Keys::<MockRuntime>::iter().collect::<Vec<_>>().len(),
+			Keys::<Runtime>::iter().collect::<Vec<_>>().len(),
 			0,
 			"keys storage should be empty"
 		);
@@ -242,7 +241,7 @@ fn revoke_keys_key_not_found() {
 				key_hashes.clone(),
 				KeyPurpose::P2PDocumentSigning
 			),
-			Error::<MockRuntime>::KeyNotFound
+			Error::<Runtime>::KeyNotFound
 		);
 
 		assert_err!(
@@ -251,7 +250,7 @@ fn revoke_keys_key_not_found() {
 				key_hashes.clone(),
 				KeyPurpose::P2PDiscovery
 			),
-			Error::<MockRuntime>::KeyNotFound
+			Error::<Runtime>::KeyNotFound
 		);
 	});
 }
@@ -270,13 +269,13 @@ fn revoke_keys_key_already_revoked() {
 
 		let key_id: KeyId<H256> = (H256::random(), key.purpose.clone());
 
-		Keys::<MockRuntime>::insert(origin, key_id.clone(), key);
+		Keys::<Runtime>::insert(origin, key_id.clone(), key);
 
 		let key_hashes: Vec<H256> = vec![key_id.0];
 
 		assert_err!(
 			Keystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), key_purpose),
-			Error::<MockRuntime>::KeyAlreadyRevoked
+			Error::<Runtime>::KeyAlreadyRevoked
 		);
 	});
 }
@@ -285,11 +284,11 @@ fn revoke_keys_key_already_revoked() {
 fn set_deposit() {
 	new_test_ext().execute_with(|| {
 		let origin = 1;
-		let default_key_deposit = <<MockRuntime as Config>::DefaultKeyDeposit>::get();
+		let default_key_deposit = <<Runtime as Config>::DefaultKeyDeposit>::get();
 
 		assert_eq!(
 			default_key_deposit,
-			KeyDeposit::<MockRuntime>::get(),
+			KeyDeposit::<Runtime>::get(),
 			"default deposit should match"
 		);
 
@@ -298,16 +297,16 @@ fn set_deposit() {
 		assert_ok!(Keystore::set_deposit(Origin::signed(origin), new_deposit));
 		assert_eq!(
 			new_deposit,
-			KeyDeposit::<MockRuntime>::get(),
+			KeyDeposit::<Runtime>::get(),
 			"new deposit should match"
 		);
 
-		event_exists(CrateEvent::<MockRuntime>::DepositSet { new_deposit });
+		event_exists(CrateEvent::<Runtime>::DepositSet { new_deposit });
 	});
 }
 
 fn event_exists<E: Into<MockEvent>>(e: E) {
-	let actual: Vec<MockEvent> = frame_system::Pallet::<MockRuntime>::events()
+	let actual: Vec<MockEvent> = frame_system::Pallet::<Runtime>::events()
 		.iter()
 		.map(|e| e.event.clone())
 		.collect();
@@ -324,12 +323,12 @@ fn event_exists<E: Into<MockEvent>>(e: E) {
 }
 
 fn keys_are_in_storage(origin: u64, add_keys: Vec<AddKey<H256>>) -> Result<(), ()> {
-	let default_key_deposit = <<MockRuntime as Config>::DefaultKeyDeposit>::get();
+	let default_key_deposit = <<Runtime as Config>::DefaultKeyDeposit>::get();
 
 	for add_key in add_keys.iter() {
 		let key_id: KeyId<H256> = (add_key.key.clone(), add_key.purpose.clone());
 
-		let key = Keys::<MockRuntime>::try_get(origin, key_id.clone())?;
+		let key = Keys::<Runtime>::try_get(origin, key_id.clone())?;
 		assert_eq!(key.key_type, add_key.key_type, "key types do not match");
 		assert_eq!(key.purpose, add_key.purpose, "key purposes do not match");
 		assert_eq!(key.revoked_at, None, "key should not be revoked");
@@ -338,7 +337,7 @@ fn keys_are_in_storage(origin: u64, add_keys: Vec<AddKey<H256>>) -> Result<(), (
 			"key deposits do not match"
 		);
 
-		let last_key = LastKeyByPurpose::<MockRuntime>::try_get(origin, add_key.purpose.clone())?;
+		let last_key = LastKeyByPurpose::<Runtime>::try_get(origin, add_key.purpose.clone())?;
 		assert_eq!(add_key.key.clone(), last_key, "keys do not match");
 	}
 
@@ -375,12 +374,12 @@ fn get_n_test_keys(n: u32) -> Vec<AddKey<H256>> {
 }
 
 fn insert_test_keys_in_storage(origin: u64, keys: Vec<AddKey<H256>>) {
-	let default_key_deposit = <<MockRuntime as Config>::DefaultKeyDeposit>::get();
+	let default_key_deposit = <<Runtime as Config>::DefaultKeyDeposit>::get();
 
 	for key in keys {
 		let key_id: KeyId<H256> = (key.key.clone(), key.purpose.clone());
 
-		Keys::<MockRuntime>::insert(
+		Keys::<Runtime>::insert(
 			origin,
 			key_id.clone(),
 			Key {
@@ -391,7 +390,7 @@ fn insert_test_keys_in_storage(origin: u64, keys: Vec<AddKey<H256>>) {
 			},
 		);
 
-		LastKeyByPurpose::<MockRuntime>::insert(origin, key.purpose, key.key);
+		LastKeyByPurpose::<Runtime>::insert(origin, key.purpose, key.key);
 	}
 }
 
@@ -399,7 +398,7 @@ fn keys_are_revoked(key_hashes: Vec<H256>) {
 	for key_hash in key_hashes {
 		let mut key_found = false;
 
-		for (_, key_id, storage_key) in Keys::<MockRuntime>::iter() {
+		for (_, key_id, storage_key) in Keys::<Runtime>::iter() {
 			if key_id.0 == key_hash {
 				key_found = true;
 				let revoked_block_number = storage_key.revoked_at.unwrap();

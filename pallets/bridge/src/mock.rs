@@ -45,8 +45,8 @@ use crate::{self as pallet_bridge, Config as BridgePalletConfig};
 // ----------------------------------------------------------------------------
 
 // Types used to build the mock runtime
-type UncheckedExtrinsic = MockUncheckedExtrinsic<MockRuntime>;
-type Block = MockBlock<MockRuntime>;
+type UncheckedExtrinsic = MockUncheckedExtrinsic<Runtime>;
+type Block = MockBlock<Runtime>;
 
 pub(crate) const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
 pub(crate) const TEST_CHAIN_ID: u8 = 5;
@@ -65,7 +65,7 @@ pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
 // Build mock runtime
 frame_support::construct_runtime!(
 
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -96,7 +96,7 @@ parameter_types! {
 }
 
 // Implement FRAME system pallet configuration trait for the mock runtime
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = Everything;
@@ -124,7 +124,7 @@ impl frame_system::Config for MockRuntime {
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -137,7 +137,7 @@ impl pallet_balances::Config for MockRuntime {
 }
 
 // Required as a tight dependency from pallet_fees, but not used for it in the bridge pallet.
-impl pallet_authorship::Config for MockRuntime {
+impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
 	type FilterUncle = ();
 	type FindAuthor = ();
@@ -148,12 +148,12 @@ parameter_types! {
 	pub const DefaultFeeValue: Balance = NATIVE_TOKEN_TRANSFER_FEE;
 }
 
-impl pallet_fees::Config for MockRuntime {
+impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	// Not used in the tests.
 	type DefaultFeeValue = DefaultFeeValue;
 	type Event = Event;
-	type FeeChangeOrigin = EnsureNever<MockRuntime>;
+	type FeeChangeOrigin = EnsureNever<Runtime>;
 	type FeeKey = ();
 	type Treasury = ();
 	type WeightInfo = ();
@@ -168,7 +168,7 @@ parameter_types! {
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
-impl chainbridge::Config for MockRuntime {
+impl chainbridge::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
 	type ChainId = MockChainId;
 	type Event = Event;
@@ -186,8 +186,8 @@ parameter_types! {
 }
 
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
-impl BridgePalletConfig for MockRuntime {
-	type BridgeOrigin = EnsureBridge<MockRuntime>;
+impl BridgePalletConfig for Runtime {
+	type BridgeOrigin = EnsureBridge<Runtime>;
 	type BridgePalletId = BridgePalletId;
 	type Currency = Balances;
 	type Event = Event;
@@ -198,10 +198,10 @@ impl BridgePalletConfig for MockRuntime {
 }
 
 // ----------------------------------------------------------------------------
-// Test externalities
+// Runtime externalities
 // ----------------------------------------------------------------------------
 
-// Test externalities builder type declaraction.
+// Runtime externalities builder type declaraction.
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
@@ -220,11 +220,11 @@ impl TestExternalitiesBuilder {
 		let bridge_id = ChainBridge::account_id();
 
 		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
 		// pre-fill balances
-		pallet_balances::GenesisConfig::<MockRuntime> {
+		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![
 				(bridge_id, ENDOWED_BALANCE),
 				(RELAYER_A, ENDOWED_BALANCE),
@@ -254,7 +254,7 @@ pub(crate) mod helpers {
 
 	// Return last triggered event
 	fn last_event() -> Event {
-		frame_system::Pallet::<MockRuntime>::events()
+		frame_system::Pallet::<Runtime>::events()
 			.pop()
 			.map(|item| item.event)
 			.expect("Event expected")
@@ -262,7 +262,7 @@ pub(crate) mod helpers {
 
 	// Assert that the event was emitted at some point.
 	pub fn event_exists<E: Into<Event>>(e: E) {
-		let actual: Vec<Event> = frame_system::Pallet::<MockRuntime>::events()
+		let actual: Vec<Event> = frame_system::Pallet::<Runtime>::events()
 			.iter()
 			.map(|e| e.event.clone())
 			.collect();
@@ -282,7 +282,7 @@ pub(crate) mod helpers {
 	// A contiguous set of events must be provided. They must include the most recent
 	// event, but do not have to include every past event.
 	pub fn assert_events(mut expected: Vec<Event>) {
-		let mut actual: Vec<Event> = frame_system::Pallet::<MockRuntime>::events()
+		let mut actual: Vec<Event> = frame_system::Pallet::<Runtime>::events()
 			.iter()
 			.map(|e| e.event.clone())
 			.collect();

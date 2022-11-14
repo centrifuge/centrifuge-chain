@@ -53,5 +53,5 @@ benchmarks! {
 impl_benchmark_test_suite!(
 	Pallet,
 	crate::mock::TestExternalitiesBuilder::default().build(),
-	crate::mock::Test,
+	crate::mock::Runtime,
 );
