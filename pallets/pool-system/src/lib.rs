@@ -236,6 +236,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		PoolId,
 	> where
 	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
+	CurrencyId: Copy,
 	EpochId: BaseArithmetic,
 	MetaSize: Get<u32> + Copy,
 	PoolId: Copy + Encode,
@@ -260,44 +261,49 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		Ok(())
 	}
 
-	pub fn essence<T: Config>(&self) -> Result<PoolEssenceOf<T>, DispatchError>
-	where
-		<T as pallet::Config>::CurrencyId: From<CurrencyId>,
-		<T as pallet::Config>::Balance: From<Balance>,
-		<T as pallet::Config>::TrancheCurrency: From<TrancheCurrency>,
-		tranche::TrancheType<<T as pallet::Config>::Rate>: From<tranche::TrancheType<Rate>>,
-	{
-		let mut tranches: Vec<TrancheEssence<T::TrancheCurrency, T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> = Vec::new();
+	pub fn essence<
+		T: Config<
+			CurrencyId = CurrencyId,
+			Balance = Balance,
+			TrancheCurrency = TrancheCurrency,
+			Rate = Rate,
+		>,
+	>(
+		&self,
+	) -> Result<PoolEssenceOf<T>, DispatchError> {
+		let mut tranches: Vec<
+			TrancheEssence<
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
+		> = Vec::new();
 
-		self
-			.tranches
-			.residual_top_slice()
-			.iter()
-			.map(|tranche| {
-				let metadata =
-					T::AssetRegistry::metadata(&self.currency).ok_or(AssetMetadata {
-						decimals: 0,
-						name: Vec::new(),
-						symbol: Vec::new(),
-						existential_deposit: (),
-						location: None,
-						additional: (),
-					});
-
-				tranches.push(TrancheEssence {
-					currency: tranche.currency.into(),
-					ty: tranche.tranche_type.into(),
-					metadata: TrancheMetadata {
-						token_name: BoundedVec::try_from(metadata.unwrap().name)
-							.unwrap_or(BoundedVec::default()),
-						token_symbol: BoundedVec::try_from(metadata.unwrap().symbol)
-							.unwrap_or(BoundedVec::default()),
-					},
-				});
+		for tranche in self.tranches.residual_top_slice().iter() {
+			let metadata = T::AssetRegistry::metadata(&self.currency).ok_or(AssetMetadata {
+				decimals: 0,
+				name: Vec::new(),
+				symbol: Vec::new(),
+				existential_deposit: (),
+				location: None,
+				additional: (),
 			});
 
+			tranches.push(TrancheEssence {
+				currency: tranche.currency.into(),
+				ty: tranche.tranche_type.into(),
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::try_from(metadata.clone().unwrap().name)
+						.unwrap_or(BoundedVec::default()),
+					token_symbol: BoundedVec::try_from(metadata.unwrap().symbol)
+						.unwrap_or(BoundedVec::default()),
+				},
+			});
+		}
+
 		Ok(PoolEssence {
-			currency: self.currency.into(),
+			currency: self.currency,
 			max_reserve: self.reserve.max.into(),
 			max_nav_age: self.parameters.max_nav_age,
 			min_epoch_time: self.parameters.min_epoch_time,
@@ -336,6 +342,7 @@ pub struct PoolEssence<
 	MaxTokenNameLength,
 	MaxTokenSymbolLength,
 > where
+	CurrencyId: Copy,
 	MaxTokenNameLength: Get<u32>,
 	MaxTokenSymbolLength: Get<u32>,
 {
