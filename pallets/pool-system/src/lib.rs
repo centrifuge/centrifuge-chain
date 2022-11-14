@@ -275,7 +275,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 			.iter()
 			.map(|tranche| {
 				let metadata =
-					T::AssetRegistry::metadata(&self.clone().currency.into()).ok_or(AssetMetadata {
+					T::AssetRegistry::metadata(&self.currency).ok_or(AssetMetadata {
 						decimals: 0,
 						name: Vec::new(),
 						symbol: Vec::new(),
