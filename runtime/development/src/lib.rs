@@ -1372,14 +1372,15 @@ impl pallet_interest_accrual::Config for Runtime {
 
 impl pallet_connectors::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
+	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
-	type CurrencyId = CurrencyId;
 	type Event = Event;
 	type Permission = Permissions;
 	type PoolInspect = PoolSystem;
 	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
+	type TrancheCurrency = TrancheCurrency;
 	type WeightInfo = ();
 }
 

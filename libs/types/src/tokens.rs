@@ -60,8 +60,8 @@ impl From<u32> for CurrencyId {
 /// A Currency that is solely used by tranches.
 ///
 /// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
-/// in order to be able to have a clear seperation of concern. This enables us
-/// to use the `TrancheCurrency` type seperately where solely this enum variant would be
+/// in order to be able to have a clear separation of concerns. This enables us
+/// to use the `TrancheCurrency` type separately where solely this enum variant would be
 /// relevant. Most notably, in the `struct Tranche`.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,

@@ -10,7 +10,6 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-#![cfg_attr(not(feature = "std"), no_std)]
 use ethabi::{Bytes, Contract};
 use sp_std::{vec, vec::Vec};
 
