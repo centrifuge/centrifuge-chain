@@ -260,7 +260,7 @@ impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = MinimumPeriod;
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
-	type OnTimestampSet = ();
+	type OnTimestampSet = Aura;
 	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Self>;
 }
 
