@@ -422,7 +422,7 @@ fn epoch() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -450,13 +450,6 @@ fn epoch() {
 			10_000 * CURRENCY,
 			None
 		));
-		assert_ok!(PoolSystem::set_metadata(
-			pool_owner_origin.clone(),
-			0,
-			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
-				.as_bytes()
-				.to_vec()
-		));
 		assert_ok!(Investments::update_invest_order(
 			Origin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
@@ -469,7 +462,6 @@ fn epoch() {
 		));
 
 		assert_ok!(PoolSystem::update(
-			pool_owner_origin.clone(),
 			0,
 			PoolChanges {
 				tranches: Change::NoChange,
@@ -665,7 +657,7 @@ fn submission_period() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -854,7 +846,7 @@ fn execute_info_removed_after_epoch_execute() {
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -939,7 +931,7 @@ fn pool_updates_should_be_constrained() {
 		let pool_id = 0;
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			pool_id,
 			vec![TrancheInput {
@@ -979,7 +971,6 @@ fn pool_updates_should_be_constrained() {
 
 		assert_err!(
 			PoolSystem::update(
-				pool_owner_origin.clone(),
 				pool_id,
 				PoolChanges {
 					tranches: Change::NoChange,
@@ -992,7 +983,6 @@ fn pool_updates_should_be_constrained() {
 		);
 		assert_err!(
 			PoolSystem::update(
-				pool_owner_origin.clone(),
 				pool_id,
 				PoolChanges {
 					tranches: Change::NoChange,
@@ -1011,7 +1001,6 @@ fn pool_updates_should_be_constrained() {
 		));
 
 		assert_ok!(PoolSystem::update(
-			pool_owner_origin.clone(),
 			pool_id,
 			PoolChanges {
 				tranches: Change::NoChange,
@@ -1029,7 +1018,7 @@ fn pool_updates_should_be_constrained() {
 		);
 
 		assert_err!(
-			PoolSystem::execute_scheduled_update(pool_owner_origin.clone(), pool_id),
+			PoolSystem::execute_update(pool_id),
 			Error::<Runtime>::UpdatePrerequesitesNotFulfilled
 		);
 
@@ -1038,10 +1027,7 @@ fn pool_updates_should_be_constrained() {
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), pool_id));
 
 		// Now it works since the epoch was executed and the redemption order was fulfilled
-		assert_ok!(PoolSystem::execute_scheduled_update(
-			pool_owner_origin.clone(),
-			pool_id
-		));
+		assert_ok!(PoolSystem::execute_update(pool_id));
 
 		// And the parameter should be updated now
 		let pool = crate::Pool::<Runtime>::try_get(pool_id).unwrap();
@@ -1068,7 +1054,7 @@ fn tranche_ids_are_unique() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(PoolSystem::create(
-			Origin::signed(0),
+			0,
 			0,
 			pool_id_0,
 			vec![
@@ -1120,7 +1106,7 @@ fn tranche_ids_are_unique() {
 		));
 
 		assert_ok!(PoolSystem::create(
-			Origin::signed(0),
+			0,
 			0,
 			pool_id_1,
 			vec![
@@ -1194,7 +1180,7 @@ fn same_pool_id_not_possible() {
 		let pool_id_1: u64 = rng.gen();
 
 		assert_ok!(PoolSystem::create(
-			Origin::signed(0),
+			0,
 			0,
 			pool_id_1,
 			vec![TrancheInput {
@@ -1212,7 +1198,7 @@ fn same_pool_id_not_possible() {
 
 		assert_noop!(
 			PoolSystem::create(
-				Origin::signed(0),
+				0,
 				0,
 				pool_id_1,
 				vec![TrancheInput {
@@ -1243,7 +1229,7 @@ fn valid_tranche_structure_is_enforced() {
 
 		assert_noop!(
 			PoolSystem::create(
-				Origin::signed(0),
+				0,
 				0,
 				pool_id_0,
 				vec![
@@ -1298,7 +1284,7 @@ fn valid_tranche_structure_is_enforced() {
 
 		assert_noop!(
 			PoolSystem::create(
-				Origin::signed(0),
+				0,
 				0,
 				pool_id_0,
 				vec![
@@ -1361,7 +1347,7 @@ fn valid_tranche_structure_is_enforced() {
 
 		assert_noop!(
 			PoolSystem::create(
-				Origin::signed(0),
+				0,
 				0,
 				pool_id_0,
 				vec![
@@ -1416,7 +1402,7 @@ fn valid_tranche_structure_is_enforced() {
 
 		assert_noop!(
 			PoolSystem::create(
-				Origin::signed(0),
+				0,
 				0,
 				pool_id_0,
 				vec![
@@ -1481,7 +1467,7 @@ fn triger_challange_period_with_zero_solution() {
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -1576,7 +1562,7 @@ fn min_challenge_time_is_respected() {
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -1674,7 +1660,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -1876,7 +1862,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			+ One::one();
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -2058,7 +2044,6 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 fn only_usd_as_pool_currency_allowed() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -2068,7 +2053,7 @@ fn only_usd_as_pool_currency_allowed() {
 
 		assert_noop!(
 			PoolSystem::create(
-				pool_owner_origin.clone(),
+				pool_owner.clone(),
 				pool_owner.clone(),
 				0,
 				vec![
@@ -2101,7 +2086,7 @@ fn only_usd_as_pool_currency_allowed() {
 
 		assert_noop!(
 			PoolSystem::create(
-				pool_owner_origin.clone(),
+				pool_owner.clone(),
 				pool_owner.clone(),
 				0,
 				vec![
@@ -2133,7 +2118,7 @@ fn only_usd_as_pool_currency_allowed() {
 		);
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -2176,9 +2161,9 @@ fn creation_takes_deposit() {
 		// Owner 1, first deposit
 		// total deposit for this owner is 1
 		let pool_owner = 1_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -2216,7 +2201,7 @@ fn creation_takes_deposit() {
 		// Owner 1, second deposit
 		// total deposit for this owner is 2
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			1,
 			vec![
@@ -2254,9 +2239,9 @@ fn creation_takes_deposit() {
 		// Owner 2, first deposit
 		// total deposit for this owner is 1
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			2,
 			vec![
@@ -2297,7 +2282,6 @@ fn creation_takes_deposit() {
 fn create_tranche_token_metadata() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 1_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
 
 		let token_name = BoundedVec::try_from("SuperToken".as_bytes().to_owned())
 			.expect("Can't create BoundedVec");
@@ -2305,7 +2289,7 @@ fn create_tranche_token_metadata() {
 			BoundedVec::try_from("ST".as_bytes().to_owned()).expect("Can't create BoundedVec");
 
 		assert_ok!(PoolSystem::create(
-			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			pool_owner.clone(),
 			3,
 			vec![

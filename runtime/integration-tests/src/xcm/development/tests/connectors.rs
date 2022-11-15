@@ -28,6 +28,7 @@ use ::xcm::{
 	VersionedMultiLocation,
 };
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
+use cfg_traits::PoolMutate;
 use cfg_types::{
 	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, PermissionScope,
 	PoolRole, Rate, Role, XcmMetadata, UNION,
