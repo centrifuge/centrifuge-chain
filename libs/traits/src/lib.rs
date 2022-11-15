@@ -137,8 +137,7 @@ pub enum UpdateState {
 }
 
 /// A trait that supports modifications of pools
-pub trait PoolMutate<PoolId> {
-	type AccountId;
+pub trait PoolMutate<AccountId, PoolId> {
 	type Balance;
 	type CurrencyId;
 	type Rate;
@@ -149,8 +148,8 @@ pub trait PoolMutate<PoolId> {
 	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
 
 	fn create(
-		admin: Self::AccountId,
-		depositor: Self::AccountId,
+		admin: AccountId,
+		depositor: AccountId,
 		pool_id: PoolId,
 		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: Self::CurrencyId,

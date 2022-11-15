@@ -1259,8 +1259,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
-				let copy_of_pool = pool.clone();
-				let old_pool = copy_of_pool.essence::<T>()?;
+				let old_pool = pool.essence::<T>()?;
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1311,14 +1310,10 @@ pub mod pallet {
 					}
 				}
 
-				// Prepare PoolEssence struct for sending out UpdateExecuted event
-				let copy_of_pool = pool.clone();
-				let new_pool = copy_of_pool.essence::<T>()?;
-
 				Self::deposit_event(Event::PoolUpdated {
 					id: *pool_id,
 					old: old_pool,
-					new: new_pool,
+					new: pool.essence::<T>()?,
 				});
 
 				ScheduledUpdate::<T>::remove(pool_id);
