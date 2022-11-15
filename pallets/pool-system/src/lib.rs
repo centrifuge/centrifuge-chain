@@ -15,11 +15,11 @@
 #![feature(thread_local)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolInspect, PoolNAV, PoolReserve};
+use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
 use cfg_types::{PermissionScope, PoolLocator, PoolRole, Role};
 use codec::HasCompact;
 use frame_support::{
-	dispatch::DispatchResult,
+	dispatch::{DispatchErrorWithPostInfo, DispatchResult, PostDispatchInfo},
 	pallet_prelude::*,
 	traits::{
 		fungibles::{Inspect, Mutate, Transfer},
@@ -30,7 +30,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 pub use impls::*;
 use orml_traits::{
-	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
+	asset_registry::{AssetMetadata, Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,
 };
 pub use pallet::*;
@@ -39,7 +39,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 pub use solution::*;
-use sp_arithmetic::traits::BaseArithmetic;
+use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Saturating, Zero,
@@ -53,7 +53,7 @@ pub use weights::*;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod impls;
-pub mod migrations;
+
 #[cfg(test)]
 mod mock;
 mod solution;
@@ -235,10 +235,15 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		TrancheId,
 		PoolId,
 	> where
-	MetaSize: Get<u32> + Copy,
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand,
+	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
+	CurrencyId: Copy,
 	EpochId: BaseArithmetic,
+	MetaSize: Get<u32> + Copy,
+	PoolId: Copy + Encode,
+	Rate: FixedPointNumber<Inner = Balance>,
+	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,
+	TrancheId: Clone + From<[u8; 16]> + PartialEq,
+	Weight: Copy + From<u128>,
 {
 	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
 		self.epoch.current += One::one();
@@ -254,6 +259,56 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		self.reserve.available = self.reserve.total;
 		self.epoch.last_executed += One::one();
 		Ok(())
+	}
+
+	pub fn essence<
+		T: Config<
+			CurrencyId = CurrencyId,
+			Balance = Balance,
+			TrancheCurrency = TrancheCurrency,
+			Rate = Rate,
+		>,
+	>(
+		&self,
+	) -> Result<PoolEssenceOf<T>, DispatchError> {
+		let mut tranches: Vec<
+			TrancheEssence<
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
+		> = Vec::new();
+
+		for tranche in self.tranches.residual_top_slice().iter() {
+			let metadata = T::AssetRegistry::metadata(&self.currency).ok_or(AssetMetadata {
+				decimals: 0,
+				name: Vec::new(),
+				symbol: Vec::new(),
+				existential_deposit: (),
+				location: None,
+				additional: (),
+			});
+
+			tranches.push(TrancheEssence {
+				currency: tranche.currency.into(),
+				ty: tranche.tranche_type.into(),
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::try_from(metadata.clone().unwrap().name)
+						.unwrap_or(BoundedVec::default()),
+					token_symbol: BoundedVec::try_from(metadata.unwrap().symbol)
+						.unwrap_or(BoundedVec::default()),
+				},
+			});
+		}
+
+		Ok(PoolEssence {
+			currency: self.currency,
+			max_reserve: self.reserve.max.into(),
+			max_nav_age: self.parameters.max_nav_age,
+			min_epoch_time: self.parameters.min_epoch_time,
+			tranches,
+		})
 	}
 }
 
@@ -277,6 +332,48 @@ pub struct PoolDepositInfo<AccountId, Balance> {
 	pub deposit: Balance,
 }
 
+/// The core metadata about the pool which we can attach to an event
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolEssence<
+	CurrencyId,
+	Balance,
+	TrancheCurrency,
+	Rate,
+	MaxTokenNameLength,
+	MaxTokenSymbolLength,
+> where
+	CurrencyId: Copy,
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	/// Currency that the pool is denominated in (immutable).
+	pub currency: CurrencyId,
+	/// The maximum allowed reserve on a given pool
+	pub max_reserve: Balance,
+	/// Maximum time between the NAV update and the epoch closing.
+	pub max_nav_age: Moment,
+	/// Minimum duration for an epoch.
+	pub min_epoch_time: Moment,
+	/// Tranches on a pool
+	pub tranches:
+		Vec<TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+}
+
+/// The core metadata about a tranche which we can attach to an event
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	/// Currency that the tranche is denominated in
+	pub currency: TrancheCurrency,
+	/// Type of the tranche (Residual or NonResidual)
+	pub ty: TrancheType<Rate>,
+	/// Metadata of a Tranche
+	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
+}
+
 /// Type alias to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
@@ -298,6 +395,15 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
 	<T as Config>::TrancheCurrency,
+>;
+
+type PoolEssenceOf<T> = PoolEssence<
+	<T as Config>::CurrencyId,
+	<T as Config>::Balance,
+	<T as Config>::TrancheCurrency,
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
 >;
 
 /// Type alias for `struct PoolDepositInfo`
@@ -525,13 +631,6 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A pool was created.
-		Created {
-			pool_id: T::PoolId,
-			admin: T::AccountId,
-		},
-		/// A pool was updated.
-		Updated { pool_id: T::PoolId },
 		/// The tranches were rebalanced.
 		Rebalanced { pool_id: T::PoolId },
 		/// The max reserve was updated.
@@ -556,6 +655,25 @@ pub mod pallet {
 		EpochExecuted {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
+		},
+		PoolUpdated {
+			id: T::PoolId,
+			old: PoolEssence<
+				T::CurrencyId,
+				T::Balance,
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
+			new: PoolEssence<
+				T::CurrencyId,
+				T::Balance,
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
 		},
 	}
 
@@ -637,326 +755,6 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Create a new pool
-		///
-		/// Initialise a new pool with the given ID and tranche
-		/// configuration. Tranche 0 is the equity tranche, and must
-		/// have zero interest and a zero risk buffer.
-		///
-		/// The minimum epoch length, and maximum NAV age will be
-		/// set to chain-wide defaults. They can be updated
-		/// with a call to `update`.
-		///
-		/// The caller will be given the `PoolAdmin` role for
-		/// the created pool. Additional administrators can be
-		/// added with the Permissions pallet.
-		///
-		/// Returns an error if the requested pool ID is already in
-		/// use, or if the tranche configuration cannot be used.
-		#[pallet::weight(T::WeightInfo::create(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
-		#[transactional]
-		pub fn create(
-			origin: OriginFor<T>,
-			admin: T::AccountId,
-			pool_id: T::PoolId,
-			tranche_inputs: Vec<
-				TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>,
-			>,
-			currency: T::CurrencyId,
-			max_reserve: T::Balance,
-			metadata: Option<Vec<u8>>,
-		) -> DispatchResult {
-			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
-
-			// First we take a deposit.
-			// If we are coming from a signed origin, we take
-			// the deposit from them
-			// If we are coming from some internal origin
-			// (Democracy, Council, etc.) we assume that the
-			// parameters are vetted somehow and rely on the
-			// admin as our depositor.
-			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
-			Self::take_deposit(depositor, pool_id)?;
-
-			// A single pool ID can only be used by one owner.
-			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
-
-			ensure!(
-				T::PoolCurrency::contains(&currency),
-				Error::<T>::InvalidCurrency
-			);
-
-			Self::is_valid_tranche_change(
-				None,
-				&tranche_inputs
-					.iter()
-					.map(|t| TrancheUpdate {
-						tranche_type: t.tranche_type,
-						seniority: t.seniority,
-					})
-					.collect(),
-			)?;
-
-			let now = Self::now();
-
-			let tranches = Tranches::<
-				T::Balance,
-				T::Rate,
-				T::TrancheWeight,
-				T::TrancheCurrency,
-				T::TrancheId,
-				T::PoolId,
-			>::from_input::<T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
-				pool_id,
-				tranche_inputs.clone(),
-				now,
-			)?;
-
-			let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
-				Some(metadata_value) => {
-					let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
-						.try_into()
-						.map_err(|_| Error::<T>::BadMetadata)?;
-
-					Some(checked)
-				}
-				None => None,
-			};
-
-			for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
-				let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
-					tranche_input.clone().metadata.token_name.clone();
-
-				let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> =
-					tranche_input.metadata.token_symbol.clone();
-
-				let decimals = match T::AssetRegistry::metadata(&currency) {
-					Some(metadata) => metadata.decimals,
-					None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
-				};
-
-				let parachain_id = T::ParachainId::get();
-
-				let metadata = tranche.create_asset_metadata(
-					decimals,
-					parachain_id,
-					T::PalletIndex::get(),
-					token_name.to_vec(),
-					token_symbol.to_vec(),
-				);
-
-				T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
-					.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
-			}
-
-			Pool::<T>::insert(
-				pool_id,
-				PoolDetails {
-					currency,
-					tranches,
-					status: PoolStatus::Open,
-					epoch: EpochState {
-						current: One::one(),
-						last_closed: now,
-						last_executed: Zero::zero(),
-					},
-					parameters: PoolParameters {
-						min_epoch_time: sp_std::cmp::min(
-							sp_std::cmp::max(
-								T::DefaultMinEpochTime::get(),
-								T::MinEpochTimeLowerBound::get(),
-							),
-							T::MinEpochTimeUpperBound::get(),
-						),
-						max_nav_age: sp_std::cmp::min(
-							T::DefaultMaxNAVAge::get(),
-							T::MaxNAVAgeUpperBound::get(),
-						),
-					},
-					reserve: ReserveDetails {
-						max: max_reserve,
-						available: Zero::zero(),
-						total: Zero::zero(),
-					},
-					metadata: checked_metadata,
-				},
-			);
-
-			T::Permission::add(
-				PermissionScope::Pool(pool_id),
-				admin.clone(),
-				Role::PoolRole(PoolRole::PoolAdmin),
-			)?;
-
-			Self::deposit_event(Event::Created { pool_id, admin });
-			Ok(())
-		}
-
-		/// Update per-pool configuration settings.
-		///
-		/// This updates the tranches of the pool,
-		/// sets the minimum epoch length, and maximum NAV age.
-		///
-		/// If no delay is required for updates and redemptions
-		/// don't have to be fulfilled, then this is executed
-		/// immediately. Otherwise, the update is scheduled
-		/// to be executed later.
-		///
-		/// The caller must have the `PoolAdmin` role in order to
-		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution(T::MaxTranches::get())
-			.max(T::WeightInfo::update_and_execute(T::MaxTranches::get())))]
-		pub fn update(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			changes: PoolChangesOf<T>,
-		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
-				BadOrigin
-			);
-
-			ensure!(
-				EpochExecution::<T>::try_get(pool_id).is_err(),
-				Error::<T>::InSubmissionPeriod
-			);
-
-			// Both changes.tranches and changes.tranche_metadata
-			// have to be NoChange or Change, we don't allow to change either or
-			// ^ = XOR, !^ = negated XOR
-			ensure!(
-				!((changes.tranches == Change::NoChange)
-					^ (changes.tranche_metadata == Change::NoChange)),
-				Error::<T>::InvalidTrancheUpdate
-			);
-
-			if changes.min_epoch_time == Change::NoChange
-				&& changes.max_nav_age == Change::NoChange
-				&& changes.tranches == Change::NoChange
-			{
-				// If there's an existing update, we remove it
-				// If not, this transaction is a no-op
-				if ScheduledUpdate::<T>::contains_key(pool_id) {
-					ScheduledUpdate::<T>::remove(pool_id);
-				}
-
-				return Ok(Some(T::WeightInfo::update_no_execution(0)).into());
-			}
-
-			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
-				ensure!(
-					min_epoch_time >= T::MinEpochTimeLowerBound::get()
-						&& min_epoch_time <= T::MinEpochTimeUpperBound::get(),
-					Error::<T>::PoolParameterBoundViolated
-				);
-			}
-
-			if let Change::NewValue(max_nav_age) = changes.max_nav_age {
-				ensure!(
-					max_nav_age <= T::MaxNAVAgeUpperBound::get(),
-					Error::<T>::PoolParameterBoundViolated
-				);
-			}
-
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-
-			if let Change::NewValue(tranches) = &changes.tranches {
-				Self::is_valid_tranche_change(Some(&pool.tranches), tranches)?;
-			}
-
-			let now = Self::now();
-
-			let update = ScheduledUpdateDetails {
-				changes: changes.clone(),
-				scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
-			};
-
-			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
-				Self::do_update_pool(&pool_id, &changes)?;
-
-				Ok(Some(T::WeightInfo::update_and_execute(num_tranches)).into())
-			} else {
-				// If an update was already stored, this will override it
-				ScheduledUpdate::<T>::insert(pool_id, update);
-
-				Ok(Some(T::WeightInfo::update_no_execution(num_tranches)).into())
-			}
-		}
-
-		/// Executed a scheduled update to the pool.
-		///
-		/// This checks if the scheduled time is in the past
-		/// and, if required, if there are no outstanding
-		/// redeem orders. If both apply, then the scheduled
-		/// changes are applied.
-		#[pallet::weight(T::WeightInfo::execute_scheduled_update(T::MaxTranches::get()))]
-		pub fn execute_scheduled_update(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
-
-			let update = ScheduledUpdate::<T>::try_get(pool_id)
-				.map_err(|_| Error::<T>::NoScheduledUpdate)?;
-
-			ensure!(
-				Self::now() >= update.scheduled_time,
-				Error::<T>::ScheduledTimeHasNotPassed
-			);
-
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-
-			ensure!(
-				T::UpdateGuard::released(&pool, &update, Self::now()),
-				Error::<T>::UpdatePrerequesitesNotFulfilled
-			);
-
-			Self::do_update_pool(&pool_id, &update.changes)?;
-
-			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-			Ok(Some(T::WeightInfo::execute_scheduled_update(num_tranches)).into())
-		}
-
-		/// Sets the IPFS hash for the pool metadata information.
-		///
-		/// The caller must have the `PoolAdmin` role in order to
-		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len().try_into().unwrap_or(u32::MAX)))]
-		pub fn set_metadata(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			metadata: Vec<u8>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who,
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
-				BadOrigin
-			);
-
-			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
-				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.metadata = Some(checked_metadata.clone());
-				Self::deposit_event(Event::MetadataSet {
-					pool_id,
-					metadata: checked_metadata,
-				});
-				Ok(())
-			})
-		}
-
 		/// Sets the maximum reserve for a pool
 		///
 		/// The caller must have the `LiquidityAdmin` role in
@@ -1460,6 +1258,9 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
+				// Prepare PoolEssence struct for sending out UpdateExecuted event
+				let old_pool = pool.essence::<T>()?;
+
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
 				}
@@ -1509,9 +1310,14 @@ pub mod pallet {
 					}
 				}
 
+				Self::deposit_event(Event::PoolUpdated {
+					id: *pool_id,
+					old: old_pool,
+					new: pool.essence::<T>()?,
+				});
+
 				ScheduledUpdate::<T>::remove(pool_id);
 
-				Self::deposit_event(Event::Updated { pool_id: *pool_id });
 				Ok(())
 			})
 		}
@@ -1729,7 +1535,7 @@ pub mod pallet {
 			})
 		}
 
-		fn take_deposit(depositor: T::AccountId, pool: T::PoolId) -> DispatchResult {
+		pub(crate) fn take_deposit(depositor: T::AccountId, pool: T::PoolId) -> DispatchResult {
 			let deposit = T::PoolDeposit::get();
 			T::Currency::reserve(&depositor, deposit)?;
 			AccountDeposit::<T>::mutate(&depositor, |total_deposit| {

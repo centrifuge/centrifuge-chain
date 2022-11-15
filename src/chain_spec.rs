@@ -15,16 +15,23 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use altair_runtime::constants::currency::AIR;
-use cfg_primitives::{currency_decimals, CFG};
-use cfg_types::FeeKey;
+use cfg_primitives::{currency_decimals, parachains, Balance, CFG};
+use cfg_types::{AssetMetadata, CurrencyId, CustomMetadata, FeeKey};
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
-use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public};
+use sp_runtime::{
+	traits::{ConstU32, IdentifyAccount, Verify},
+	WeakBoundedVec,
+};
+use xcm::{
+	latest::MultiLocation,
+	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
+};
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
@@ -824,7 +831,7 @@ fn altair_genesis(
 				.map(|k| (k, balance_per_endowed))
 				.collect()
 		}
-		None => (vec![]),
+		None => vec![],
 	};
 
 	altair_runtime::GenesisConfig {
@@ -889,6 +896,9 @@ fn altair_genesis(
 	}
 }
 
+/// The CurrencyId for the USDT asset on the development runtime
+const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+
 fn development_genesis(
 	root_key: development_runtime::AccountId,
 	initial_authorities: Vec<(development_runtime::AccountId, development_runtime::AuraId)>,
@@ -902,22 +912,27 @@ fn development_genesis(
 			let balance_per_endowed = total_issuance
 				.checked_div(num_endowed_accounts as development_runtime::Balance)
 				.unwrap_or(0 as development_runtime::Balance);
+
 			(
+				// pallet_balances balances
 				endowed_accounts
 					.iter()
 					.cloned()
-					.map(|k| (k, balance_per_endowed))
+					.map(|x| (x, balance_per_endowed))
 					.collect(),
-				// We can only mint AUSD in development
+				// orml_tokens balances
+				// bootstrap each endowed accounts with 1 million of each the foreign assets.
 				endowed_accounts
 					.iter()
 					.cloned()
-					.map(|k| {
-						(
-							k,
-							development_runtime::CurrencyId::AUSD,
-							balance_per_endowed,
-						)
+					.flat_map(|x| {
+						// NOTE: We can only mint these foreign assets on development
+						vec![
+							// AUSD is a 12-decimal asset, so 1 million + 12 zeros
+							(x.clone(), CurrencyId::AUSD, 1_000_000_000_000_000_000),
+							// USDT is a 6-decimal asset, so 1 million + 6 zeros
+							(x, DEV_USDT_CURRENCY_ID, 1_000_000_000_000),
+						]
 					})
 					.collect(),
 			)
@@ -932,7 +947,10 @@ fn development_genesis(
 				.to_vec(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
-		orml_asset_registry: Default::default(),
+		orml_asset_registry: development_runtime::OrmlAssetRegistryConfig {
+			assets: asset_registry_assets(),
+			last_asset_id: Default::default(),
+		},
 		orml_tokens: development_runtime::OrmlTokensConfig {
 			balances: token_balances,
 		},
@@ -1008,4 +1026,59 @@ fn development_genesis(
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
 	}
+}
+
+fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
+	vec![
+		(
+			CurrencyId::AUSD,
+			AssetMetadata::<Balance, CustomMetadata> {
+				decimals: 12,
+				name: b"Acala USD".to_vec(),
+				symbol: b"AUSD".to_vec(),
+				existential_deposit: 0u128.into(),
+				location: Some(xcm::VersionedMultiLocation::V1(MultiLocation {
+					parents: 1,
+					interior: X2(
+						Parachain(parachains::rococo::acala::ID),
+						GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
+							parachains::rococo::acala::AUSD_KEY.to_vec(),
+							None,
+						)),
+					),
+				})),
+				additional: CustomMetadata {
+					xcm: Default::default(),
+					mintable: false,
+					permissioned: false,
+					pool_currency: true,
+				},
+			}
+			.encode(),
+		),
+		(
+			DEV_USDT_CURRENCY_ID,
+			AssetMetadata::<Balance, CustomMetadata> {
+				decimals: 6,
+				name: b"Tether USD".to_vec(),
+				symbol: b"USDT".to_vec(),
+				existential_deposit: 0u128.into(),
+				location: Some(xcm::VersionedMultiLocation::V1(MultiLocation {
+					parents: 1,
+					interior: X3(
+						Parachain(parachains::rococo::rocksmine::ID),
+						PalletInstance(parachains::rococo::rocksmine::usdt::PALLET_INSTANCE),
+						GeneralIndex(parachains::rococo::rocksmine::usdt::GENERAL_INDEX),
+					),
+				})),
+				additional: CustomMetadata {
+					xcm: Default::default(),
+					mintable: false,
+					permissioned: false,
+					pool_currency: true,
+				},
+			}
+			.encode(),
+		),
+	]
 }

@@ -42,12 +42,12 @@ use sp_runtime::{
 use crate as pallet_loans;
 use crate::test_utils::{FundsAccount, JuniorTrancheId, SeniorTrancheId};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -81,7 +81,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = Everything;
@@ -114,7 +114,7 @@ parameter_types! {
 }
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime
-impl pallet_timestamp::Config for MockRuntime {
+impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
 	type Moment = u64;
 	type OnTimestampSet = ();
@@ -134,7 +134,7 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
-impl orml_tokens::Config for MockRuntime {
+impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -150,7 +150,7 @@ impl orml_tokens::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-impl cfg_test_utils::mocks::order_manager::Config for MockRuntime {
+impl cfg_test_utils::mocks::order_manager::Config for Runtime {
 	type Accountant = PoolSystem;
 	type FundsAccount = FundsAccount;
 	type InvestmentId = TrancheCurrency;
@@ -201,7 +201,7 @@ cfg_test_utils::mocks::orml_asset_registry::impl_mock_registry! {
 	CustomMetadata
 }
 
-impl pallet_pool_system::Config for MockRuntime {
+impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type ChallengeTime = ChallengeTime;
@@ -266,7 +266,7 @@ impl PoolUpdateGuard for UpdateGuard {
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -293,7 +293,7 @@ parameter_types! {
 	pub const Limit: u32 = 256;
 }
 
-impl pallet_uniques::Config for MockRuntime {
+impl pallet_uniques::Config for Runtime {
 	type AttributeDepositBase = AttributeDepositBase;
 	type CollectionDeposit = CollectionDeposit;
 	type CollectionId = CollectionId;
@@ -314,7 +314,7 @@ impl pallet_uniques::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
-impl pallet_interest_accrual::Config for MockRuntime {
+impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	type Event = Event;
 	type InterestRate = Rate;
@@ -332,7 +332,7 @@ parameter_types! {
 
 	pub const MaxRoles: u32 = u32::MAX;
 }
-impl pallet_permissions::Config for MockRuntime {
+impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Everything;
 	type Event = Event;
@@ -349,7 +349,7 @@ parameter_types! {
 	pub const MaxWriteOffStates: u32 = 10;
 }
 
-impl pallet_loans::Config for MockRuntime {
+impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
 	type BlockNumberProvider = System;
 	type ClassId = CollectionId;
@@ -371,7 +371,7 @@ impl pallet_loans::Config for MockRuntime {
 // USD currencyId
 pub const USD: CurrencyId = CurrencyId::AUSD;
 
-// Test externalities builder
+// Runtime externalities builder
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
@@ -396,10 +396,10 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<MockRuntime> {
+		pallet_balances::GenesisConfig::<Runtime> {
 			// add balances to 1..10 and loan account for minting nft instances
 			balances: vec![
 				1,
@@ -412,7 +412,7 @@ impl TestExternalitiesBuilder {
 				8,
 				9,
 				10,
-				pallet_loans::Pallet::<MockRuntime>::account_id(),
+				pallet_loans::Pallet::<Runtime>::account_id(),
 			]
 			.into_iter()
 			.map(|acc| (acc, 100 * CURRENCY))
@@ -422,7 +422,7 @@ impl TestExternalitiesBuilder {
 		.unwrap();
 
 		// add pool account with 1000 balance with currencyId 1
-		orml_tokens::GenesisConfig::<MockRuntime> {
+		orml_tokens::GenesisConfig::<Runtime> {
 			balances: vec![
 				(
 					PoolLocator { pool_id: 0 }.into_account_truncating(),

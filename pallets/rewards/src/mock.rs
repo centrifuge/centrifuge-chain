@@ -3,7 +3,6 @@ use frame_support::{
 	traits::{ConstU16, ConstU32, ConstU64},
 	PalletId,
 };
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::{
@@ -12,10 +11,11 @@ use sp_runtime::{
 	FixedI64,
 };
 
+use super::mechanism::{base, base_with_currency_movement};
 use crate as pallet_rewards;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const USER_A: u64 = 1;
 pub const USER_B: u64 = 2;
@@ -23,18 +23,19 @@ pub const USER_B: u64 = 2;
 pub const USER_INITIAL_BALANCE: u64 = 100000;
 
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
 		Tokens: orml_tokens,
-		Rewards: pallet_rewards,
+		Rewards1: pallet_rewards::<Instance1>,
+		Rewards2: pallet_rewards::<Instance2>,
 	}
 );
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type AccountData = ();
 	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -92,7 +93,7 @@ orml_traits::parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 { 0 };
 }
 
-impl orml_tokens::Config for Test {
+impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = u64;
 	type CurrencyId = CurrencyId;
@@ -116,29 +117,38 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 3;
 }
 
-impl pallet_rewards::Config for Test {
-	type Balance = u64;
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DomainId = DomainId;
 	type Event = Event;
 	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
-	type Rate = FixedI64;
 	type RewardCurrency = RewardCurrency;
-	type SignedBalance = i128;
+	type RewardMechanism = base::Mechanism<u64, i128, FixedI64>;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type DomainId = DomainId;
+	type Event = Event;
+	type GroupId = u32;
+	type PalletId = RewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardMechanism =
+		base_with_currency_movement::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
+		.build_storage::<Runtime>()
 		.unwrap();
 
 	let users = [USER_A, USER_B];
 	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C];
 
-	orml_tokens::GenesisConfig::<Test> {
+	orml_tokens::GenesisConfig::<Runtime> {
 		balances: users
 			.iter()
 			.flat_map(|&user| {

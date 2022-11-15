@@ -936,6 +936,24 @@ impl pallet_pool_system::Config for Runtime {
 	type WeightInfo = weights::pallet_pool_system::SubstrateWeight<Runtime>;
 }
 
+impl pallet_pool_registry::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Event = Event;
+	type InterestRate = Rate;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
+	type MaxTranches = MaxTranches;
+	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type Permission = Permissions;
+	type PoolCreateOrigin = EnsureSigned<AccountId>;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type TrancheId = TrancheId;
+	type WeightInfo = weights::pallet_pool_registry::SubstrateWeight<Runtime>;
+}
+
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
@@ -1366,14 +1384,13 @@ impl pallet_connectors::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
 	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type BridgePalletId = BridgePalletId;
+	type BridgePalletId = ChainBridgePalletId;
 	type Currency = Balances;
 	type Event = Event;
 	type Fees = Fees;
@@ -1385,7 +1402,7 @@ impl pallet_bridge::Config for Runtime {
 parameter_types! {
 	pub const ChainId: chainbridge::ChainId = 1;
 	pub const ProposalLifetime: u32 = 500;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainBridgePalletId: PalletId = cfg_types::ids::CHAIN_BRIDGE_PALLET_ID;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
@@ -1515,18 +1532,20 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 50;
 }
 
-impl pallet_rewards::Config for Runtime {
-	type Balance = Balance;
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
 	type DomainId = RewardDomain;
 	type Event = Event;
 	type GroupId = u32;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
 	type PalletId = RewardsPalletId;
-	type Rate = FixedI128;
 	type RewardCurrency = RewardCurrency;
-	type SignedBalance = IBalance;
+	type RewardMechanism = pallet_rewards::mechanism::base_with_currency_movement::Mechanism<
+		Balance,
+		IBalance,
+		FixedI128,
+		MaxCurrencyMovements,
+	>;
 }
 
 frame_support::parameter_types! {
@@ -1607,14 +1626,15 @@ construct_runtime!(
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
-		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
+		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
-		Rewards: pallet_rewards::{Pallet, Storage, Event<T>} = 106,
+		Rewards: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
+		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

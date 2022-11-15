@@ -59,7 +59,7 @@ fn fee_to_author() {
 		// Try to perform an action over an user with insufficient balance.
 		assert_noop!(
 			Fees::fee_to_author(&USER_ACCOUNT, Fee::Key(FEE_KEY)),
-			pallet_balances::Error::<Test>::InsufficientBalance
+			pallet_balances::Error::<Runtime>::InsufficientBalance
 		);
 	});
 }
@@ -80,7 +80,7 @@ fn fee_to_treasury() {
 		// Try to perform an action over an user with insufficient balance.
 		assert_noop!(
 			Fees::fee_to_treasury(&USER_ACCOUNT, Fee::Key(FEE_KEY)),
-			pallet_balances::Error::<Test>::InsufficientBalance
+			pallet_balances::Error::<Runtime>::InsufficientBalance
 		);
 	});
 }
@@ -99,7 +99,7 @@ fn fee_to_burn() {
 		// Try to perform an action over an user with insufficient balance.
 		assert_noop!(
 			Fees::fee_to_burn(&USER_ACCOUNT, Fee::Key(FEE_KEY)),
-			pallet_balances::Error::<Test>::InsufficientBalance
+			pallet_balances::Error::<Runtime>::InsufficientBalance
 		);
 	});
 }

@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{InvestmentAccountant, InvestmentProperties, PoolNAV, TrancheCurrency as _};
+use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
 use cfg_types::{CurrencyId, CustomMetadata, TrancheCurrency};
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
@@ -51,130 +51,6 @@ benchmarks! {
 			From<<T as frame_system::Config>::AccountId>,
 		T::NAV: PoolNAV<T::PoolId, T::Balance, Origin = T::Origin, ClassId = u64>,
 		T::Permission: Permissions<T::AccountId, Ok = ()>,
-	}
-
-	create {
-		let n in 1..T::MaxTranches::get();
-		let caller: T::AccountId = create_admin::<T>(0);
-		let tranches = build_bench_input_tranches::<T>(n);
-		let origin = RawOrigin::Signed(caller.clone());
-		prepare_asset_registry::<T>();
-	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
-	verify {
-		let pool = get_pool::<T>();
-		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-		assert_eq!(pool.reserve.available, Zero::zero());
-		assert_eq!(pool.reserve.total, Zero::zero());
-		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
-		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
-		assert_eq!(pool.metadata, None);
-	}
-
-	update_no_execution {
-		let admin: T::AccountId = create_admin::<T>(0);
-		let n in 1..T::MaxTranches::get();
-		let tranches = build_update_tranches::<T>(n);
-		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
-		let pool = get_pool::<T>();
-		let default_min_epoch_time = pool.parameters.min_epoch_time;
-		let default_max_nav_age = pool.parameters.max_nav_age;
-
-		// Submit redemption order so the update isn't executed
-		let amount = MAX_RESERVE / 2;
-		let investor = create_investor::<T>(0, TRANCHE)?;
-		let locator = get_tranche_id::<T>(TRANCHE);
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), amount)?;
-
-		let changes = PoolChanges {
-			tranches: Change::NoChange,
-			min_epoch_time: Change::NewValue(SECS_PER_DAY),
-			max_nav_age: Change::NewValue(SECS_PER_HOUR),
-			tranche_metadata: Change::NoChange,
-		};
-	}: update(RawOrigin::Signed(admin), POOL, changes.clone())
-	verify {
-		// Should be the old values
-		let pool = get_pool::<T>();
-		assert_eq!(pool.parameters.min_epoch_time, default_min_epoch_time);
-		assert_eq!(pool.parameters.max_nav_age, default_max_nav_age);
-
-		let actual_update = get_scheduled_update::<T>();
-		assert_eq!(actual_update.changes, changes);
-	}
-
-	update_and_execute {
-		let admin: T::AccountId = create_admin::<T>(0);
-		let n in 1..T::MaxTranches::get();
-		let tranches = build_update_tranches::<T>(n);
-		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
-	}: update(RawOrigin::Signed(admin), POOL, PoolChanges {
-		tranches: Change::NewValue(build_update_tranches::<T>(n)),
-		min_epoch_time: Change::NewValue(SECS_PER_DAY),
-		max_nav_age: Change::NewValue(SECS_PER_HOUR),
-		tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
-	})
-	verify {
-		// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
-		// so the update should have been executed immediately.
-		let pool = get_pool::<T>();
-		assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
-	}
-
-	execute_scheduled_update {
-		let admin: T::AccountId = create_admin::<T>(0);
-		let n in 1..T::MaxTranches::get();
-		let tranches = build_update_tranches::<T>(n);
-		prepare_asset_registry::<T>();
-		create_pool::<T>(n, admin.clone())?;
-
-		let pool = get_pool::<T>();
-		let default_min_epoch_time = pool.parameters.min_epoch_time;
-		let default_max_nav_age = pool.parameters.max_nav_age;
-
-		// Invest so we can redeem later
-		let investor = create_investor::<T>(0, TRANCHE)?;
-		let locator = get_tranche_id::<T>(TRANCHE);
-		pallet_investments::Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 100)?;
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		unrestrict_epoch_close::<T>();
-		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), POOL)?;
-		pallet_investments::Pallet::<T>::collect_investments(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator))?;
-
-		// Submit redemption order so the update isn't immediately executed
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
-
-		let changes = PoolChanges {
-			tranches: Change::NewValue(build_update_tranches::<T>(n)),
-			min_epoch_time: Change::NewValue(SECS_PER_DAY),
-			max_nav_age: Change::NewValue(SECS_PER_HOUR),
-			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
-		};
-
-		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, changes)?;
-
-		// Withdraw redeem order so the update can be executed after that
-		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 0)?;
-	}: execute_scheduled_update(RawOrigin::Signed(admin), POOL)
-	verify {
-		let pool = get_pool::<T>();
-		assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
-	}
-
-	set_metadata {
-		let n in 0..T::MaxSizeMetadata::get();
-		let caller: T::AccountId = create_admin::<T>(0);
-		let metadata = vec![0u8; n as usize];
-		prepare_asset_registry::<T>();
-		create_pool::<T>(1, caller.clone())?;
-	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
-	verify {
-		assert_eq!(get_pool::<T>().metadata, Some(metadata.try_into().unwrap()));
 	}
 
 	set_max_reserve {
@@ -325,33 +201,38 @@ fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 	});
 }
 
-fn assert_input_tranches_match<T: Config>(
-	chain: &[TrancheOf<T>],
-	target: &[TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
-) {
-	assert_eq!(chain.len(), target.len());
-	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.tranche_type);
-	}
-}
+// fn assert_input_tranches_match<T: Config>(
+// 	chain: &[TrancheOf<T>],
+// 	target: &[TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
+// ) {
+// 	assert_eq!(chain.len(), target.len());
+// 	for (chain, target) in chain.iter().zip(target.iter()) {
+// 		assert_eq!(chain.tranche_type, target.tranche_type);
+// 	}
+// }
 
-fn assert_update_tranches_match<T: Config>(
-	chain: &[TrancheOf<T>],
-	target: &[TrancheUpdate<T::Rate>],
-) {
-	assert_eq!(chain.len(), target.len());
-	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.tranche_type);
-	}
-}
+// fn assert_update_tranches_match<T: Config>(
+// 	chain: &[TrancheOf<T>],
+// 	target: &[TrancheUpdate<T::InterestRate>],
+// ) {
+// 	assert_eq!(chain.len(), target.len());
+// 	for (chain, target) in chain.iter().zip(target.iter()) {
+// 		assert_eq!(chain.tranche_type, target.tranche_type);
+// 	}
+// }
 
 fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
 }
 
-fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetailsOf<T> {
-	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
-}
+// fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<
+// 	T::InterestRate,
+// 	T::MaxTokenNameLength,
+// 	T::MaxTokenSymbolLength,
+// 	T::MaxTranches,
+// > {
+// 	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
+// }
 
 fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
 	get_pool::<T>()
@@ -415,7 +296,7 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 ) -> DispatchResult {
 	let tranches = build_bench_input_tranches::<T>(num_tranches);
 	Pallet::<T>::create(
-		RawOrigin::Signed(caller.clone()).into(),
+		caller.clone(),
 		caller,
 		POOL,
 		tranches,
@@ -425,65 +306,65 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 	)
 }
 
-fn build_update_tranche_metadata<T: Config>(
-) -> BoundedVec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>, T::MaxTranches> {
-	vec![TrancheMetadata {
-		token_name: BoundedVec::default(),
-		token_symbol: BoundedVec::default(),
-	}]
-	.try_into()
-	.expect("T::MaxTranches > 0")
-}
+// fn build_update_tranche_metadata<T: Config>(
+// ) -> BoundedVec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>, T::MaxTranches> {
+// 	vec![TrancheMetadata {
+// 		token_name: BoundedVec::default(),
+// 		token_symbol: BoundedVec::default(),
+// 	}]
+// 	.try_into()
+// 	.expect("T::MaxTranches > 0")
+// }
 
-fn build_update_tranches<T: Config>(
-	num_tranches: u32,
-) -> BoundedVec<TrancheUpdate<T::Rate>, T::MaxTranches> {
-	let mut tranches = build_bench_update_tranches::<T>(num_tranches);
-
-	for tranche in &mut tranches {
-		tranche.tranche_type = match tranche.tranche_type {
-			TrancheType::Residual => TrancheType::Residual,
-			TrancheType::NonResidual {
-				interest_rate_per_sec,
-				min_risk_buffer,
-			} => {
-				let min_risk_buffer = Perquintill::from_parts(min_risk_buffer.deconstruct() * 2);
-				TrancheType::NonResidual {
-					interest_rate_per_sec,
-					min_risk_buffer,
-				}
-			}
-		}
-	}
-	tranches
-}
-
-fn build_bench_update_tranches<T: Config>(
-	num_tranches: u32,
-) -> BoundedVec<TrancheUpdate<T::Rate>, T::MaxTranches> {
-	let senior_interest_rate =
-		T::Rate::saturating_from_rational(5, 100) / T::Rate::saturating_from_integer(SECS_PER_YEAR);
-	let mut tranches: Vec<_> = (1..num_tranches)
-		.map(|tranche_id| TrancheUpdate {
-			tranche_type: TrancheType::NonResidual {
-				interest_rate_per_sec: senior_interest_rate
-					/ T::Rate::saturating_from_integer(tranche_id)
-					+ One::one(),
-				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
-			},
-			seniority: None,
-		})
-		.collect();
-	tranches.insert(
-		0,
-		TrancheUpdate {
-			tranche_type: TrancheType::Residual,
-			seniority: None,
-		},
-	);
-
-	tranches.try_into().expect("num_tranches <= T::MaxTranches")
-}
+// fn build_update_tranches<T: Config>(
+// 	num_tranches: u32,
+// ) -> BoundedVec<TrancheUpdate<T::InterestRate>, T::MaxTranches> {
+// 	let mut tranches = build_bench_update_tranches::<T>(num_tranches);
+//
+// 	for tranche in &mut tranches {
+// 		tranche.tranche_type = match tranche.tranche_type {
+// 			TrancheType::Residual => TrancheType::Residual,
+// 			TrancheType::NonResidual {
+// 				interest_rate_per_sec,
+// 				min_risk_buffer,
+// 			} => {
+// 				let min_risk_buffer = Perquintill::from_parts(min_risk_buffer.deconstruct() * 2);
+// 				TrancheType::NonResidual {
+// 					interest_rate_per_sec,
+// 					min_risk_buffer,
+// 				}
+// 			}
+// 		}
+// 	}
+// 	tranches
+// }
+//
+// fn build_bench_update_tranches<T: Config>(
+// 	num_tranches: u32,
+// ) -> BoundedVec<TrancheUpdate<T::InterestRate>, T::MaxTranches> {
+// 	let senior_interest_rate = T::InterestRate::saturating_from_rational(5, 100)
+// 		/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR);
+// 	let mut tranches: Vec<_> = (1..num_tranches)
+// 		.map(|tranche_id| TrancheUpdate {
+// 			tranche_type: TrancheType::NonResidual {
+// 				interest_rate_per_sec: senior_interest_rate
+// 					/ T::InterestRate::saturating_from_integer(tranche_id)
+// 					+ One::one(),
+// 				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+// 			},
+// 			seniority: None,
+// 		})
+// 		.collect();
+// 	tranches.insert(
+// 		0,
+// 		TrancheUpdate {
+// 			tranche_type: TrancheType::Residual,
+// 			seniority: None,
+// 		},
+// 	);
+//
+// 	tranches.try_into().expect("num_tranches <= T::MaxTranches")
+// }
 
 fn build_bench_input_tranches<T: Config>(
 	num_tranches: u32,
@@ -520,4 +401,4 @@ fn build_bench_input_tranches<T: Config>(
 	tranches
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test,);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

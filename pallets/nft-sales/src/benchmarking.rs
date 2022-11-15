@@ -86,7 +86,7 @@ benchmarks! {
 	}
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test,);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
 
 #[allow(dead_code)]
 fn deposit_token_balance<T>(

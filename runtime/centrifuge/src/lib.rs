@@ -89,7 +89,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1014,
+	spec_version: 1015,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -206,18 +206,20 @@ impl Contains<Call> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
-					return false;
-				}
+				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
 				pallet_xcm::Call::__Ignore { .. } => {
 					unimplemented!()
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
-					return true;
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
+			},
+			Call::Multisig(method) => match method {
+				pallet_multisig::Call::as_multi { call, .. } => {
+					call.encoded_len() < MAX_MULTISIG_CALL_SIZE
 				}
+				_ => true,
 			},
 			_ => true,
 		}
@@ -838,14 +840,13 @@ impl pallet_nft::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BridgePalletId: PalletId = cfg_types::ids::BRIDGE_PALLET_ID;
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(&cfg_types::ids::CHAIN_BRIDGE_NATIVE_TOKEN_ID));
 	pub const NativeTokenTransferFeeKey: FeeKey = FeeKey::BridgeNativeTransfer;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type BridgePalletId = BridgePalletId;
+	type BridgePalletId = ChainBridgePalletId;
 	type Currency = Balances;
 	type Event = Event;
 	type Fees = Fees;
@@ -1044,7 +1045,6 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(),
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]

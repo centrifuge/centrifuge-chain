@@ -63,18 +63,18 @@ fn not_admin_for_setters() {
 		.execute_with(|| {
 			assert_noop!(
 				CrowdloanReward::set_vesting_start(Origin::signed(2), 1),
-				CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
+				CrowdloanRewardError::<Runtime>::MustBeAdministrator
 			);
 			assert_noop!(
 				CrowdloanReward::set_vesting_period(Origin::signed(2), 3),
-				CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
+				CrowdloanRewardError::<Runtime>::MustBeAdministrator
 			);
 			assert_noop!(
 				CrowdloanReward::set_direct_payout_ratio(
 					Origin::signed(2),
 					Perbill::from_percent(10)
 				),
-				CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
+				CrowdloanRewardError::<Runtime>::MustBeAdministrator
 			);
 		});
 }
@@ -135,7 +135,7 @@ fn reward_participant() {
 
 			let events = reward_events();
 			assert!(events.iter().any(|event| {
-				*event == pallet_crowdloan_reward::Event::<MockRuntime>::RewardClaimed(4, 20, 80)
+				*event == pallet_crowdloan_reward::Event::<Runtime>::RewardClaimed(4, 20, 80)
 			}));
 		});
 }
@@ -169,7 +169,7 @@ fn zero_direct_payout_reward() {
 
 			let events = reward_events();
 			assert!(events.iter().any(|event| {
-				*event == pallet_crowdloan_reward::Event::<MockRuntime>::RewardClaimed(4, 0, 100)
+				*event == pallet_crowdloan_reward::Event::<Runtime>::RewardClaimed(4, 0, 100)
 			}));
 		});
 }
@@ -185,7 +185,7 @@ fn account_already_vesting() {
 		.execute_with(|| {
 			assert_noop!(
 				CrowdloanReward::reward(1, 30),
-				pallet_vesting::Error::<MockRuntime>::AtMaxVestingSchedules
+				pallet_vesting::Error::<Runtime>::AtMaxVestingSchedules
 			);
 		});
 }
@@ -201,7 +201,7 @@ fn reward_amount_to_low_for_vesting() {
 		.execute_with(|| {
 			assert_noop!(
 				CrowdloanReward::reward(1, 15),
-				pallet_vesting::Error::<MockRuntime>::AmountLow
+				pallet_vesting::Error::<Runtime>::AmountLow
 			);
 		});
 }
