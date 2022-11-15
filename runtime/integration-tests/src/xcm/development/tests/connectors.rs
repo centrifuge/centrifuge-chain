@@ -352,9 +352,18 @@ mod utils {
 		));
 	}
 
+
+	// admin: AccountId,
+	// depositor: AccountId,
+	// pool_id: PoolId,
+	// tranche_inputs: Vec<Self::TrancheInput>,
+	// currency: Self::CurrencyId,
+	// max_reserve: Self::Balance,
+	// metadata: Option<Vec<u8>>,
+
 	pub fn create_pool(pool_id: u64) {
 		assert_ok!(PoolSystem::create(
-			Origin::signed(BOB.into()),
+			BOB.into(),
 			BOB.into(),
 			pool_id.clone(),
 			vec![
