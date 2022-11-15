@@ -28,7 +28,7 @@ pub struct Account<Balance, IBalance, DistributionId> {
 
 impl<Balance, IBalance, DistributionId> Account<Balance, IBalance, DistributionId>
 where
-	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<IBalance> + Copy,
+	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<IBalance> + Copy + Ord,
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 	DistributionId: PartialEq + Copy,
 {
@@ -45,6 +45,11 @@ where
 		} else {
 			self.rewarded_stake
 		}
+	}
+
+	pub fn unrewarded_amount(&self, amount: Balance) -> Balance {
+		let unrewarded_stake = self.base.stake.saturating_sub(self.rewarded_stake);
+		amount.min(unrewarded_stake)
 	}
 }
 
@@ -115,9 +120,7 @@ where
 	) -> Result<(), ArithmeticError> {
 		account.safe_rewarded_stake(group.distribution_id);
 
-		let unrewarded_stake = account.base.stake.saturating_sub(account.rewarded_stake);
-		let unrewarded_amount = amount.min(unrewarded_stake);
-		let rewarded_amount = amount.ensure_sub(unrewarded_amount)?;
+		let rewarded_amount = amount.ensure_sub(account.unrewarded_amount(amount))?;
 
 		base::Mechanism::<Balance, IBalance, Rate>::withdraw_stake(
 			&mut account.base,
