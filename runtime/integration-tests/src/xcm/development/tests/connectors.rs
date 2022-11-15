@@ -352,7 +352,6 @@ mod utils {
 		));
 	}
 
-
 	// admin: AccountId,
 	// depositor: AccountId,
 	// pool_id: PoolId,
