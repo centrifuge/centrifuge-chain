@@ -936,6 +936,24 @@ impl pallet_pool_system::Config for Runtime {
 	type WeightInfo = weights::pallet_pool_system::SubstrateWeight<Runtime>;
 }
 
+impl pallet_pool_registry::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Event = Event;
+	type InterestRate = Rate;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
+	type MaxTranches = MaxTranches;
+	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type Permission = Permissions;
+	type PoolCreateOrigin = EnsureSigned<AccountId>;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type TrancheId = TrancheId;
+	type WeightInfo = weights::pallet_pool_registry::SubstrateWeight<Runtime>;
+}
+
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
@@ -1608,14 +1626,15 @@ construct_runtime!(
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
-		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 102,
+		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
 		Rewards: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
+		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

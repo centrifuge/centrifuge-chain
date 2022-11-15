@@ -50,6 +50,7 @@ members = [
   "pallets/nft-sales",
   "pallets/permissions",
   "pallets/pool-system",
+  "pallets/pool-registry",
   "pallets/restricted-tokens",
   "pallets/rewards",
   "runtime/altair",
