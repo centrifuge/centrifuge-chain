@@ -27,7 +27,7 @@ use ::xcm::{
 	prelude::{Parachain, X1, X2},
 	VersionedMultiLocation,
 };
-use cfg_primitives::{currency_decimals, parachains, Balance, PoolId, TrancheId};
+use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
 use cfg_types::{
 	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, PermissionScope,
 	PoolRole, Rate, Role, XcmMetadata, UNION,
@@ -41,8 +41,8 @@ use frame_support::{assert_noop, assert_ok, dispatch::Weight};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_connectors::{
-	encoded_contract_call, Domain, DomainAddress, Error::UnauthorizedTransfer, Message,
-	ParachainId, Router, XcmDomain,
+	encoded_contract_call, Domain, DomainAddress, DomainLocator, Error::UnauthorizedTransfer,
+	Message, ParachainId, Router, XcmDomain,
 };
 use pallet_pool_system::{PoolDetails, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType};
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
@@ -512,6 +512,21 @@ fn transfer() {
 			dest_address.clone(),
 			amount,
 		));
+
+		let domain_account: AccountId = DomainLocator {
+			domain: dest_address.domain.clone(),
+		}
+		.into_account_truncating();
+
+		// Verify that the correct amount of the Tranche token was transferred
+		// to the dest domain account on Centrifuge.
+		assert_eq!(
+			OrmlTokens::free_balance(
+				CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
+				&domain_account
+			),
+			amount
+		)
 	});
 }
 
