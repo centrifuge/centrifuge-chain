@@ -1,8 +1,10 @@
 mod claiming;
 mod common;
+mod currency_movement;
 
 use cfg_traits::rewards::DistributedRewards;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
+use sp_runtime::ArithmeticError;
 
 use super::{mock::*, *};
 
@@ -14,6 +16,11 @@ pub const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::
 pub const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
 pub const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
 pub const DOM_1_CURRENCY_M: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::M);
+
+pub const STAKE_A: u64 = 100;
+pub const STAKE_B: u64 = 200;
+pub const STAKE_C: u64 = 300;
+pub const STAKE_M: u64 = 400;
 
 pub const REWARD: u64 = 120;
 
@@ -143,145 +150,44 @@ mod base_with_currency_movement_mechanism {
 		});
 	}
 
-	const STAKE_A: u64 = 100;
-	const STAKE_B: u64 = 200;
-	const STAKE_C: u64 = 300;
-	const STAKE_M: u64 = 400;
+	#[allow(non_upper_case_globals)]
+	mod reward_expectation {
+		use super::*;
 
-	fn currency_movement_initial_state() {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_C));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_B, STAKE_B));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_B, STAKE_C));
-		assert_ok!(Rewards::distribute_reward(
-			REWARD,
-			[GROUP_A, GROUP_B, GROUP_C]
-		));
+		pub const move_claim: u64 = 0;
+		pub const move_stake_claim: u64 = 0;
+		pub const move_stake_distribute_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_B);
+		pub const move_stake_distribute_distribute_claim: u64 =
+			2 * REWARD * STAKE_M / (STAKE_M + STAKE_B);
+
+		pub const stake_move_claim: u64 = 0;
+		pub const stake_distribute_move_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_A);
+		pub const stake_distribute_distribute_move_claim: u64 =
+			2 * REWARD * STAKE_M / (STAKE_M + STAKE_A);
+		pub const stake_distribute_move_distribute_claim: u64 =
+			REWARD * STAKE_M / (STAKE_M + STAKE_A) + REWARD * STAKE_M / (STAKE_M + STAKE_B);
+		pub const stake_move_distribute_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_B);
+		pub const stake_move_distribute_distribute_claim: u64 =
+			2 * REWARD * STAKE_M / (STAKE_M + STAKE_B);
+
+		pub const stake_move_stake_claim: u64 = 0;
+		pub const stake_move_stake_distribute_claim: u64 =
+			REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B);
+		pub const stake_move_stake_distribute_distribute_claim: u64 =
+			2 * REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B);
+
+		pub const stake_move_unstake_claim: u64 = 0;
+		pub const stake_distribute_move_unstake_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_A);
+		pub const stake_move_distribute_unstake_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_B);
+		pub const stake_move_unstake_distribute_claim: u64 = 0;
+		pub const stake_distribute_move_unstake_distribute_claim: u64 =
+			REWARD * STAKE_M / (STAKE_M + STAKE_A);
+		pub const stake_move_distribute_unstake_distribute_claim: u64 =
+			REWARD * STAKE_M / (STAKE_M + STAKE_B);
+		pub const stake_move_unstake_distribute_distribute_claim: u64 = 0;
 	}
 
-	#[test]
-	fn move_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn move_stake_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn move_stake_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * STAKE_M / (STAKE_M + STAKE_B)
-			);
-		});
-	}
-
-	#[test]
-	fn stake_move_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn stake_distribute_move_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * STAKE_M / (STAKE_M + STAKE_A)
-			);
-		});
-	}
-
-	#[test]
-	fn stake_move_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * STAKE_M / (STAKE_M + STAKE_B)
-			);
-		});
-	}
-
-	#[test]
-	fn stake_move_stake_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn stake_move_stake_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B)
-			);
-		});
-	}
+	currency_movement_tests!(Rewards2, Instance2, reward_expectation);
 }
 
 mod deferred_mechanism {
@@ -297,224 +203,39 @@ mod deferred_with_currency_movement_mechanism {
 	common_tests!(Rewards4, Instance4);
 	deferred_claiming_tests!(Rewards4, Instance4);
 
-	use Rewards4 as Rewards;
+	#[allow(non_upper_case_globals)]
+	mod reward_expectation {
+		use super::*;
 
-	const STAKE_A: u64 = 100;
-	const STAKE_B: u64 = 200;
-	const STAKE_C: u64 = 300;
-	const STAKE_M: u64 = 400;
+		pub const move_claim: u64 = 0;
+		pub const move_stake_claim: u64 = 0;
+		pub const move_stake_distribute_claim: u64 = 0;
+		pub const move_stake_distribute_distribute_claim: u64 =
+			REWARD * STAKE_M / (STAKE_M + STAKE_B);
 
-	fn currency_movement_initial_state() {
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_C));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_A));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_B, STAKE_B));
-		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_B, STAKE_C));
-		assert_ok!(Rewards::distribute_reward(
-			REWARD,
-			[GROUP_A, GROUP_B, GROUP_C]
-		));
+		pub const stake_move_claim: u64 = 0;
+		pub const stake_distribute_move_claim: u64 = 0;
+		pub const stake_distribute_distribute_move_claim: u64 =
+			REWARD * STAKE_M / (STAKE_M + STAKE_A);
+		pub const stake_distribute_move_distribute_claim: u64 =
+			REWARD * STAKE_M / (STAKE_M + STAKE_A);
+		pub const stake_move_distribute_claim: u64 = 0;
+		pub const stake_move_distribute_distribute_claim: u64 =
+			REWARD * STAKE_M / (STAKE_M + STAKE_B);
+
+		pub const stake_move_stake_claim: u64 = 0;
+		pub const stake_move_stake_distribute_claim: u64 = 0;
+		pub const stake_move_stake_distribute_distribute_claim: u64 =
+			REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B);
+
+		pub const stake_move_unstake_claim: u64 = 0;
+		pub const stake_distribute_move_unstake_claim: u64 = 0;
+		pub const stake_move_distribute_unstake_claim: u64 = 0;
+		pub const stake_move_unstake_distribute_claim: u64 = 0;
+		pub const stake_distribute_move_unstake_distribute_claim: u64 = 0;
+		pub const stake_move_distribute_unstake_distribute_claim: u64 = 0;
+		pub const stake_move_unstake_distribute_distribute_claim: u64 = 0;
 	}
 
-	#[test]
-	fn move_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn move_stake_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn move_stake_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn move_stake_distribute_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * STAKE_M / (STAKE_M + STAKE_B)
-			);
-		});
-	}
-
-	#[test]
-	fn stake_move_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn stake_distribute_move_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn stake_distribute_distribute_move_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * STAKE_M / (STAKE_M + STAKE_A)
-			);
-		});
-	}
-
-	#[test]
-	fn stake_distribute_move_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * STAKE_M / (STAKE_M + STAKE_A)
-			);
-		});
-	}
-
-	#[test]
-	fn stake_move_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn stake_move_distribute_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * STAKE_M / (STAKE_M + STAKE_B)
-			);
-		});
-	}
-
-	#[test]
-	fn stake_move_stake_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn stake_move_stake_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
-		});
-	}
-
-	#[test]
-	fn stake_move_stake_distribute_distribute_claim() {
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			currency_movement_initial_state();
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-				REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B)
-			);
-		});
-	}
+	currency_movement_tests!(Rewards4, Instance4, reward_expectation);
 }
