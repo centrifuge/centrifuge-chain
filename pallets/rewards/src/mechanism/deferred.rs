@@ -34,15 +34,15 @@ where
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 	DistributionId: PartialEq + Copy,
 {
-	fn safe_rewarded_stake(&mut self, current_distribution_id: DistributionId) {
-		if self.distribution_id != current_distribution_id {
-			self.distribution_id = current_distribution_id;
+	fn safe_rewarded_stake(&mut self, group_distribution_id: DistributionId) {
+		if self.distribution_id != group_distribution_id {
+			self.distribution_id = group_distribution_id;
 			self.rewarded_stake = self.stake;
 		}
 	}
 
-	fn get_rewarded_stake(&self, current_distribution_id: DistributionId) -> Balance {
-		if self.distribution_id != current_distribution_id {
+	fn get_rewarded_stake(&self, group_distribution_id: DistributionId) -> Balance {
+		if self.distribution_id != group_distribution_id {
 			self.stake
 		} else {
 			self.rewarded_stake
@@ -165,11 +165,9 @@ where
 			.last_rate
 			.ensure_mul_int(account.get_rewarded_stake(group.distribution_id))?;
 
-		account.reward_tally = group
-			.rpt
-			.ensure_mul_int(account.stake)?
-			.ensure_sub(last_rewarded_stake)?
-			.ensure_into()?;
+		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
+
+		account.reward_tally = gross_reward.ensure_sub(last_rewarded_stake.ensure_into()?)?;
 
 		Ok(reward)
 	}
