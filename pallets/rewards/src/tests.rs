@@ -156,39 +156,46 @@ mod mechanism {
 		mod reward_expectation {
 			use super::*;
 
+			// Move first
 			pub const move_claim: u64 = 0;
 			pub const move_stake_claim: u64 = 0;
 			pub const move_stake_distribute_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_B);
-			pub const move_stake_distribute_distribute_claim: u64 =
-				2 * REWARD * STAKE_M / (STAKE_M + STAKE_B);
 
+			// Stake first, move later
 			pub const stake_move_claim: u64 = 0;
 			pub const stake_distribute_move_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_A);
-			pub const stake_distribute_distribute_move_claim: u64 =
-				2 * REWARD * STAKE_M / (STAKE_M + STAKE_A);
-			pub const stake_distribute_move_distribute_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_A) + REWARD * STAKE_M / (STAKE_M + STAKE_B);
 			pub const stake_move_distribute_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_B);
-			pub const stake_move_distribute_distribute_claim: u64 =
-				2 * REWARD * STAKE_M / (STAKE_M + STAKE_B);
 
+			// With two stakes
 			pub const stake_move_stake_claim: u64 = 0;
 			pub const stake_move_stake_distribute_claim: u64 =
 				REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B);
-			pub const stake_move_stake_distribute_distribute_claim: u64 =
-				2 * REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B);
 
+			// With unstake
 			pub const stake_move_unstake_claim: u64 = 0;
 			pub const stake_distribute_move_unstake_claim: u64 =
 				REWARD * STAKE_M / (STAKE_M + STAKE_A);
 			pub const stake_move_distribute_unstake_claim: u64 =
 				REWARD * STAKE_M / (STAKE_M + STAKE_B);
 			pub const stake_move_unstake_distribute_claim: u64 = 0;
-			pub const stake_distribute_move_unstake_distribute_claim: u64 =
+
+			// With two moves
+			pub const stake_move_move_claim: u64 = 0;
+			pub const stake_distribute_move_move_claim: u64 =
 				REWARD * STAKE_M / (STAKE_M + STAKE_A);
-			pub const stake_move_distribute_unstake_distribute_claim: u64 =
+			pub const stake_move_distribute_move_claim: u64 =
 				REWARD * STAKE_M / (STAKE_M + STAKE_B);
-			pub const stake_move_unstake_distribute_distribute_claim: u64 = 0;
+			pub const stake_move_move_distribute_claim: u64 =
+				REWARD * STAKE_M / (STAKE_M + STAKE_C);
+
+			// With two moves and then unstake
+			pub const stake_move_move_unstake_claim: u64 = 0;
+			pub const stake_distribute_move_move_unstake_claim: u64 =
+				REWARD * STAKE_M / (STAKE_M + STAKE_A);
+			pub const stake_move_distribute_move_unstake_claim: u64 =
+				REWARD * STAKE_M / (STAKE_M + STAKE_B);
+			pub const stake_move_move_distribute_unstake_claim: u64 =
+				REWARD * STAKE_M / (STAKE_M + STAKE_C);
 		}
 
 		currency_movement_tests!(Rewards2, Instance2, reward_expectation);
@@ -211,34 +218,41 @@ mod mechanism {
 		mod reward_expectation {
 			use super::*;
 
+			// Move first
 			pub const move_claim: u64 = 0;
 			pub const move_stake_claim: u64 = 0;
-			pub const move_stake_distribute_claim: u64 = 0;
-			pub const move_stake_distribute_distribute_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_B);
+			pub const move_stake_distribute_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_B);
 
+			// Stake first, move later
 			pub const stake_move_claim: u64 = 0;
-			pub const stake_distribute_move_claim: u64 = 0;
-			pub const stake_distribute_distribute_move_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_A);
-			pub const stake_distribute_move_distribute_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_A);
-			pub const stake_move_distribute_claim: u64 = 0;
-			pub const stake_move_distribute_distribute_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_B);
+			pub const stake_distribute_move_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_A);
+			pub const stake_move_distribute_claim: u64 = REWARD * STAKE_M / (STAKE_M + STAKE_B);
 
+			// With two stakes
 			pub const stake_move_stake_claim: u64 = 0;
-			pub const stake_move_stake_distribute_claim: u64 = 0;
-			pub const stake_move_stake_distribute_distribute_claim: u64 =
+			pub const stake_move_stake_distribute_claim: u64 =
 				REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B);
 
+			// With unstake
 			pub const stake_move_unstake_claim: u64 = 0;
 			pub const stake_distribute_move_unstake_claim: u64 = 0;
 			pub const stake_move_distribute_unstake_claim: u64 = 0;
 			pub const stake_move_unstake_distribute_claim: u64 = 0;
-			pub const stake_distribute_move_unstake_distribute_claim: u64 = 0;
-			pub const stake_move_distribute_unstake_distribute_claim: u64 = 0;
-			pub const stake_move_unstake_distribute_distribute_claim: u64 = 0;
+
+			// With two moves
+			pub const stake_move_move_claim: u64 = 0;
+			pub const stake_distribute_move_move_claim: u64 =
+				REWARD * STAKE_M / (STAKE_M + STAKE_A);
+			pub const stake_move_distribute_move_claim: u64 =
+				REWARD * STAKE_M / (STAKE_M + STAKE_B);
+			pub const stake_move_move_distribute_claim: u64 =
+				REWARD * STAKE_M / (STAKE_M + STAKE_C);
+
+			// With two moves and then unstake
+			pub const stake_move_move_unstake_claim: u64 = 0;
+			pub const stake_distribute_move_move_unstake_claim: u64 = 0;
+			pub const stake_move_distribute_move_unstake_claim: u64 = 0;
+			pub const stake_move_move_distribute_unstake_claim: u64 = 0;
 		}
 
 		currency_movement_tests!(Rewards4, Instance4, reward_expectation);

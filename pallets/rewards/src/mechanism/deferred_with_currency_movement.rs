@@ -272,6 +272,12 @@ where
 
 		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
 
+		dbg!(
+			gross_reward,
+			account.reward_tally,
+			last_rewarded_stake,
+			rpt_changes_tally
+		);
 		gross_reward
 			.ensure_sub(account.reward_tally)?
 			.ensure_sub(last_rewarded_stake.ensure_into()?)?
@@ -314,9 +320,13 @@ where
 			.rpt_changes
 			.try_push(rpt_change)
 			.map_err(|_| MoveCurrencyError::MaxMovements)?;
-		currency.prev_distribution_id = prev_group.distribution_id; //TODO: Not change if next_distribution_id does not change.
+
+		// Only if there was a distribution from last move, we update the previous related data.
+		if currency.next_distribution_id != prev_group.distribution_id {
+			currency.prev_distribution_id = prev_group.distribution_id;
+			currency.prev_last_rate = prev_group.last_rate;
+		}
 		currency.next_distribution_id = next_group.distribution_id;
-		currency.prev_last_rate = prev_group.last_rate;
 
 		prev_group
 			.total_stake
