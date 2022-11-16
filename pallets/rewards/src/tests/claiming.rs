@@ -1,7 +1,3 @@
-// ---------------------------------------------------------------------------------------------
-//  Common claiming tests that should behave identical for a mechanism and its currency version
-// ---------------------------------------------------------------------------------------------
-
 #[macro_export]
 macro_rules! base_claiming_tests {
 	($pallet:ident, $instance:ident) => {
