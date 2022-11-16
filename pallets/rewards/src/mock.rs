@@ -85,6 +85,7 @@ pub enum CurrencyId {
 	A,
 	B,
 	C,
+	M,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
@@ -147,7 +148,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	let users = [USER_A, USER_B];
-	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C];
+	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C, CurrencyId::M];
 
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: users

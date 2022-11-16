@@ -8,10 +8,12 @@ use super::{mock::*, *};
 
 pub const GROUP_A: u32 = 1;
 pub const GROUP_B: u32 = 2;
+pub const GROUP_C: u32 = 3;
 
 pub const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
 pub const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
 pub const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
+pub const DOM_1_CURRENCY_M: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::M);
 
 pub const REWARD: u64 = 120;
 
@@ -142,16 +144,22 @@ mod base_with_currency_movement_mechanism {
 	}
 
 	const STAKE_A: u64 = 100;
-	const STAKE_B: u64 = 100;
-	const STAKE_C: u64 = 500;
+	const STAKE_B: u64 = 200;
+	const STAKE_C: u64 = 300;
+	const STAKE_M: u64 = 400;
 
 	fn currency_movement_initial_state() {
 		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
+		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B));
+		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_C));
+		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
 		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_A));
+		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_B, STAKE_B));
 		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_B, STAKE_C));
-		assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
+		assert_ok!(Rewards::distribute_reward(
+			REWARD,
+			[GROUP_A, GROUP_B, GROUP_C]
+		));
 	}
 
 	#[test]
@@ -161,8 +169,8 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -173,9 +181,9 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -186,12 +194,12 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * STAKE_B / (STAKE_B + STAKE_C)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * STAKE_M / (STAKE_M + STAKE_B)
 			);
 		});
 	}
@@ -203,9 +211,9 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -216,12 +224,12 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * STAKE_B / (STAKE_A + STAKE_B)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * STAKE_M / (STAKE_M + STAKE_A)
 			);
 		});
 	}
@@ -233,12 +241,12 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * STAKE_B / (STAKE_B + STAKE_C)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * STAKE_M / (STAKE_M + STAKE_B)
 			);
 		});
 	}
@@ -250,10 +258,10 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -264,13 +272,13 @@ mod base_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * 2 * STAKE_B / (2 * STAKE_B + STAKE_C)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B)
 			);
 		});
 	}
@@ -292,16 +300,22 @@ mod deferred_with_currency_movement_mechanism {
 	use Rewards4 as Rewards;
 
 	const STAKE_A: u64 = 100;
-	const STAKE_B: u64 = 100;
-	const STAKE_C: u64 = 500;
+	const STAKE_B: u64 = 200;
+	const STAKE_C: u64 = 300;
+	const STAKE_M: u64 = 400;
 
 	fn currency_movement_initial_state() {
 		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
+		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B));
+		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_C));
+		assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
 		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_A));
+		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_B, STAKE_B));
 		assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_B, STAKE_C));
-		assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
+		assert_ok!(Rewards::distribute_reward(
+			REWARD,
+			[GROUP_A, GROUP_B, GROUP_C]
+		));
 	}
 
 	#[test]
@@ -311,8 +325,8 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -323,9 +337,9 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -336,10 +350,10 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -350,13 +364,13 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * STAKE_B / (STAKE_B + STAKE_C)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * STAKE_M / (STAKE_M + STAKE_B)
 			);
 		});
 	}
@@ -368,9 +382,9 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -381,10 +395,10 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -395,13 +409,13 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * STAKE_B / (STAKE_A + STAKE_B)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * STAKE_M / (STAKE_M + STAKE_A)
 			);
 		});
 	}
@@ -413,13 +427,13 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A]));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * STAKE_B / (STAKE_A + STAKE_B)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * STAKE_M / (STAKE_M + STAKE_A)
 			);
 		});
 	}
@@ -431,10 +445,10 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -445,13 +459,13 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * STAKE_B / (STAKE_B + STAKE_C)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * STAKE_M / (STAKE_M + STAKE_B)
 			);
 		});
 	}
@@ -463,10 +477,10 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -477,11 +491,11 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
+			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 		});
 	}
 
@@ -492,14 +506,14 @@ mod deferred_with_currency_movement_mechanism {
 			currency_movement_initial_state();
 
 			// DISTRIBUTION 1
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_B]));
 			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD * 2 * STAKE_B / (2 * STAKE_B + STAKE_C)
+				Rewards::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+				REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B)
 			);
 		});
 	}
