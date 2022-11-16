@@ -3,6 +3,17 @@ use sp_std::{vec, vec::Vec};
 
 use crate::*;
 
+/// Address type
+/// Note: It can be used to represent any address type with a length <= 32 bytes;
+/// For example, it can represent an Ethereum address (20-bytes long) by padding it with 12 zeros.
+type Address = [u8; 32];
+
+/// The fixed size for the array representing a tranche token name
+const TOKEN_NAME_SIZE: usize = 128;
+
+// The fixed size for the array representing a tranche token symbol
+const TOKEN_SYMBOL_SIZE: usize = 32;
+
 #[derive(Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
@@ -20,8 +31,8 @@ where
 	AddTranche {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		token_name: [u8; 32],
-		token_symbol: [u8; 32],
+		token_name: [u8; TOKEN_NAME_SIZE],
+		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 	},
 	UpdateTokenPrice {
 		pool_id: PoolId,
@@ -31,14 +42,14 @@ where
 	UpdateMember {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: [u8; 32],
+		address: Address,
 		valid_until: Moment,
 	},
 	Transfer {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		domain: Domain,
-		destination: [u8; 32],
+		destination: Address,
 		amount: Balance,
 	},
 }
@@ -222,7 +233,7 @@ mod tests {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddTranche {
 				pool_id: 12378532,
 				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				token_name: [0; 32],
+				token_name: [0; 128],
 				token_symbol: [0; 32],
 			};
 			let encoded = msg.encode();

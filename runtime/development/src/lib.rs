@@ -892,7 +892,7 @@ parameter_types! {
 	pub const MaxTokenNameLength: u32 = 128;
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = 128;
+	pub const MaxTokenSymbolLength: u32 = 32;
 
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 100 * CFG;

@@ -375,7 +375,7 @@ mod utils {
 						// message.
 						token_name:
 							BoundedVec::<u8, development_runtime::MaxTokenNameLength>::try_from(
-								vec![1; 32]
+								vec![1; 128]
 							)
 							.expect(""),
 						token_symbol:
