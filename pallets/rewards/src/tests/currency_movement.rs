@@ -22,6 +22,7 @@ macro_rules! currency_movement_tests {
 				// This method adds an extra distribution with 0 reward to emulate one more epoch.
 				// This allow deferred mechanism to behave in the same way as base mechanism if
 				// called just before the claim method.
+				// It is only necessary if there was any distribute_reward call in the test.
 				assert_ok!($pallet::distribute_reward(0, [GROUP_A, GROUP_B, GROUP_C]));
 			}
 
@@ -31,10 +32,7 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
-					assert_ok!(
-						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::move_claim
-					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
 
@@ -46,10 +44,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
-					assert_ok!(
-						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::move_stake_claim
-					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
 
@@ -65,7 +60,7 @@ macro_rules! currency_movement_tests {
 					ensure_deferred_works();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::move_stake_distribute_claim
+						REWARD * STAKE_M / (STAKE_M + STAKE_B)
 					);
 				});
 			}
@@ -78,10 +73,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 
-					assert_ok!(
-						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_claim
-					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
 
@@ -97,7 +89,7 @@ macro_rules! currency_movement_tests {
 					ensure_deferred_works();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_distribute_move_claim
+						REWARD * STAKE_M / (STAKE_M + STAKE_A)
 					);
 				});
 			}
@@ -114,7 +106,7 @@ macro_rules! currency_movement_tests {
 					ensure_deferred_works();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_distribute_claim
+						REWARD * STAKE_M / (STAKE_M + STAKE_B)
 					);
 				});
 			}
@@ -128,10 +120,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
-					assert_ok!(
-						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_stake_claim
-					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
 
@@ -148,7 +137,7 @@ macro_rules! currency_movement_tests {
 					ensure_deferred_works();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_stake_distribute_claim
+						REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B)
 					);
 				});
 			}
@@ -161,10 +150,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-					assert_ok!(
-						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_unstake_claim
-					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
 
@@ -231,10 +217,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 
-					assert_ok!(
-						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_move_claim,
-					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
 
@@ -251,7 +234,7 @@ macro_rules! currency_movement_tests {
 					ensure_deferred_works();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_distribute_move_move_claim,
+						REWARD * STAKE_M / (STAKE_M + STAKE_A)
 					);
 				});
 			}
@@ -269,7 +252,7 @@ macro_rules! currency_movement_tests {
 					ensure_deferred_works();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_distribute_move_claim,
+						REWARD * STAKE_M / (STAKE_M + STAKE_B)
 					);
 				});
 			}
@@ -287,7 +270,7 @@ macro_rules! currency_movement_tests {
 					ensure_deferred_works();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_move_distribute_claim,
+						REWARD * STAKE_M / (STAKE_M + STAKE_C)
 					);
 				});
 			}
@@ -302,10 +285,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
-					assert_ok!(
-						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
-						$expectation::stake_move_move_unstake_claim,
-					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
 
@@ -362,6 +342,24 @@ macro_rules! currency_movement_tests {
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
 						$expectation::stake_move_move_distribute_unstake_claim,
+					);
+				});
+			}
+
+			#[test]
+			fn stake_move_move_same_group_distribute_claim() {
+				new_test_ext().execute_with(|| {
+					currency_movement_initial_state();
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_A)); // MOVEMENT HERE!!
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+					ensure_deferred_works();
+					assert_ok!(
+						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+						REWARD * STAKE_M / (STAKE_M + STAKE_A)
 					);
 				});
 			}
