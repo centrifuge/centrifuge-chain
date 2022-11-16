@@ -1,4 +1,4 @@
-// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
 //
 // This file is part of the Centrifuge chain project.
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -17,8 +17,11 @@ use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::DispatchResult, ensure, sp_runtime::ArithmeticError, traits::Get, Blake2_128,
-	BoundedVec, Parameter, StorageHasher,
+	dispatch::DispatchResult,
+	ensure,
+	sp_runtime::ArithmeticError,
+	traits::{fungibles::Inspect, Get},
+	Blake2_128, BoundedVec, Parameter, RuntimeDebug, StorageHasher,
 };
 use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;

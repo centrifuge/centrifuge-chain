@@ -10,17 +10,33 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::types::Balance;
+use cfg_primitives::{types::Balance, Moment};
 use cfg_traits::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, RuntimeDebug};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	traits::{Get, UnixTime},
+	BoundedVec, RuntimeDebug,
+};
+use frame_system::Config;
+use orml_traits::asset_registry::AssetMetadata;
 use scale_info::{build::Fields, Path, Type, TypeInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::{traits::Zero, Perquintill};
+use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
+use sp_runtime::{
+	traits::{One, Zero},
+	FixedPointNumber, FixedPointOperand, Perquintill,
+};
 use sp_std::{
 	cmp::{Ord, PartialEq, PartialOrd},
 	marker::PhantomData,
+};
+
+use crate::{
+	epoch::EpochState,
+	reserves::ReserveDetails,
+	tranches::{TrancheEssence, TrancheMetadata, TrancheUpdate, Tranches},
 };
 
 /// A representation of a pool identifier that can be converted to an account address
@@ -160,16 +176,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		Ok(())
 	}
 
-	pub fn essence<
-		T: Config<
-			CurrencyId = CurrencyId,
-			Balance = Balance,
-			TrancheCurrency = TrancheCurrency,
-			Rate = Rate,
-		>,
-	>(
-		&self,
-	) -> Result<PoolEssenceOf<T>, DispatchError> {
+	pub fn essence<T: Config>(&self) -> Result<PoolEssenceOf<T>, DispatchError> {
 		let mut tranches: Vec<
 			TrancheEssence<
 				T::TrancheCurrency,

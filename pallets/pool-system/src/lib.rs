@@ -1,4 +1,4 @@
-// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -97,40 +97,6 @@ pub type TrancheOf<T> = Tranche<
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
 >;
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct EpochState<EpochId> {
-	/// Current epoch that is ongoing.
-	pub current: EpochId,
-	/// Time when the last epoch was closed.
-	pub last_closed: Moment,
-	/// Last epoch that was executed.
-	pub last_executed: EpochId,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-	MaxTranches: Get<u32>,
-{
-	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	pub scheduled_time: Moment,
-}
-
-/// The information for a currently executing epoch
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber, TrancheCurrency>
-{
-	epoch: EpochId,
-	nav: Balance,
-	reserve: Balance,
-	max_reserve: Balance,
-	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
-	best_submission: Option<EpochSolution<Balance>>,
-	challenge_period_end: Option<BlockNumber>,
-}
 
 /// Type alias to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
