@@ -32,12 +32,19 @@ use sp_std::{
 	cmp::{Ord, PartialEq, PartialOrd},
 	marker::PhantomData,
 };
+use orml_traits::Change;
 
 use crate::{
-	epoch::EpochState,
+	epoch::{EpochState, UnhealthyState},
 	reserves::ReserveDetails,
 	tranches::{TrancheEssence, TrancheMetadata, TrancheUpdate, Tranches},
 };
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum PoolState {
+	Healthy,
+	Unhealthy(Vec<UnhealthyState>),
+}
 
 /// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -153,7 +160,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
 	CurrencyId: Copy,
 	EpochId: BaseArithmetic,
-	MetaSize: Get<u32> + Copy,
+	MetaSize:  Get<u32> + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
 	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,
@@ -176,44 +183,48 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		Ok(())
 	}
 
-	pub fn essence<T: Config>(&self) -> Result<PoolEssenceOf<T>, DispatchError> {
-		let mut tranches: Vec<
-			TrancheEssence<
-				T::TrancheCurrency,
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>,
-		> = Vec::new();
-
-		for tranche in self.tranches.residual_top_slice().iter() {
-			let metadata = T::AssetRegistry::metadata(&self.currency).ok_or(AssetMetadata {
-				decimals: 0,
-				name: Vec::new(),
-				symbol: Vec::new(),
-				existential_deposit: (),
-				location: None,
-				additional: (),
-			});
-
-			tranches.push(TrancheEssence {
-				currency: tranche.currency.into(),
-				ty: tranche.tranche_type.into(),
-				metadata: TrancheMetadata {
-					token_name: BoundedVec::try_from(metadata.clone().unwrap().name)
-						.unwrap_or(BoundedVec::default()),
-					token_symbol: BoundedVec::try_from(metadata.unwrap().symbol)
-						.unwrap_or(BoundedVec::default()),
-				},
-			});
-		}
-
-		Ok(PoolEssence {
-			currency: self.currency,
-			max_reserve: self.reserve.max.into(),
-			max_nav_age: self.parameters.max_nav_age,
-			min_epoch_time: self.parameters.min_epoch_time,
-			tranches,
-		})
-	}
+	// pub fn essence<T: Config, MaxTokenNameLength, MaxTokenSymbolLength>(&self) -> Result<PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>, DispatchError>
+	// where
+	// 	MaxTokenNameLength: Get<u32>,
+	// 	MaxTokenSymbolLength: Get<u32>,
+	// {
+	// 	let mut tranches: Vec<
+	// 		TrancheEssence<
+	// 			T::TrancheCurrency,
+	// 			T::Rate,
+	// 			T::MaxTokenNameLength,
+	// 			T::MaxTokenSymbolLength,
+	// 		>,
+	// 	> = Vec::new();
+	//
+	// 	for tranche in self.tranches.residual_top_slice().iter() {
+	// 		let metadata = T::AssetRegistry::metadata(&self.currency).ok_or(AssetMetadata {
+	// 			decimals: 0,
+	// 			name: Vec::new(),
+	// 			symbol: Vec::new(),
+	// 			existential_deposit: (),
+	// 			location: None,
+	// 			additional: (),
+	// 		});
+	//
+	// 		tranches.push(TrancheEssence {
+	// 			currency: tranche.currency.into(),
+	// 			ty: tranche.tranche_type.into(),
+	// 			metadata: TrancheMetadata {
+	// 				token_name: BoundedVec::try_from(metadata.clone().unwrap().name)
+	// 					.unwrap_or(BoundedVec::default()),
+	// 				token_symbol: BoundedVec::try_from(metadata.unwrap().symbol)
+	// 					.unwrap_or(BoundedVec::default()),
+	// 			},
+	// 		});
+	// 	}
+	//
+	// 	Ok(PoolEssence {
+	// 		currency: self.currency,
+	// 		max_reserve: self.reserve.max.into(),
+	// 		max_nav_age: self.parameters.max_nav_age,
+	// 		min_epoch_time: self.parameters.min_epoch_time,
+	// 		tranches,
+	// 	})
+	// }
 }

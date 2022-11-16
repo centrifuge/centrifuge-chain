@@ -17,12 +17,6 @@ use sp_std::vec;
 
 use super::*;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub enum PoolState {
-	Healthy,
-	Unhealthy(Vec<UnhealthyState>),
-}
-
 impl PoolState {
 	/// Updates a PoolState to update.
 	///
@@ -82,21 +76,6 @@ impl PoolState {
 			}
 		}
 	}
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum UnhealthyState {
-	MaxReserveViolated,
-	MinRiskBufferViolated,
-}
-
-/// The solutions struct for epoch solution
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum EpochSolution<Balance> {
-	Healthy(HealthySolution<Balance>),
-	Unhealthy(UnhealthySolution<Balance>),
 }
 
 impl<Balance> EpochSolution<Balance> {
@@ -301,13 +280,6 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct HealthySolution<Balance> {
-	pub solution: Vec<TrancheSolution>,
-	pub score: Balance,
-}
-
 impl<Balance> PartialOrd for HealthySolution<Balance>
 where
 	Balance: PartialOrd,
@@ -315,17 +287,6 @@ where
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 		self.score.partial_cmp(&other.score)
 	}
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct UnhealthySolution<Balance> {
-	pub state: Vec<UnhealthyState>,
-	pub solution: Vec<TrancheSolution>,
-	// The risk buffer score per tranche (less junior tranche) for this solution
-	pub risk_buffer_improvement_scores: Option<Vec<Balance>>,
-	// The reserve buffer score for this solution
-	pub reserve_improvement_score: Option<Balance>,
 }
 
 impl<Balance> UnhealthySolution<Balance> {
@@ -384,14 +345,6 @@ where
 		// If both of the above rules to not apply, we value the solutions as equal
 		Some(Ordering::Equal)
 	}
-}
-
-// The solution struct for a specific tranche
-#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TrancheSolution {
-	pub invest_fulfillment: Perquintill,
-	pub redeem_fulfillment: Perquintill,
 }
 
 pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency>(

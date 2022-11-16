@@ -15,8 +15,44 @@ use frame_support::traits::Get;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::UnixTime, RuntimeDebug};
 use scale_info::{build::Fields, Path, Type, TypeInfo};
+use orml_traits::Change;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 
-use crate::{pools::PoolChanges, tranches::EpochExecutionTranches};
+use crate::{pools::PoolChanges, tranches::{TrancheSolution, EpochExecutionTranches}};
+
+/// The solutions struct for epoch solution
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum EpochSolution<Balance> {
+	Healthy(HealthySolution<Balance>),
+	Unhealthy(UnhealthySolution<Balance>),
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct HealthySolution<Balance> {
+	pub solution: Vec<TrancheSolution>,
+	pub score: Balance,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct UnhealthySolution<Balance> {
+	pub state: Vec<UnhealthyState>,
+	pub solution: Vec<TrancheSolution>,
+	// The risk buffer score per tranche (less junior tranche) for this solution
+	pub risk_buffer_improvement_scores: Option<Vec<Balance>>,
+	// The reserve buffer score for this solution
+	pub reserve_improvement_score: Option<Balance>,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum UnhealthyState {
+	MaxReserveViolated,
+	MinRiskBufferViolated,
+}
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochState<EpochId> {

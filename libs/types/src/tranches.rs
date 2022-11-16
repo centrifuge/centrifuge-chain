@@ -14,6 +14,7 @@ use std::marker::PhantomData;
 
 #[cfg(test)]
 use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
+use cfg_primitives::{TrancheId, PoolId, Moment};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -362,6 +363,14 @@ impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> 
 			salt,
 		})
 	}
+}
+
+// The solution struct for a specific tranche
+#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TrancheSolution {
+	pub invest_fulfillment: Perquintill,
+	pub redeem_fulfillment: Perquintill,
 }
 
 impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>

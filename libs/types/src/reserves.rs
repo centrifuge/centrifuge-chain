@@ -26,7 +26,7 @@ use sp_std::{
 	marker::PhantomData,
 };
 
-use crate::tranches::EpochExecutionTranches;
+use crate::tranches::{TrancheSolution, EpochExecutionTranches};
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ReserveDetails<Balance> {

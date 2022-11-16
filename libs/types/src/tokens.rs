@@ -17,6 +17,8 @@ pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use crate::tranches::TrancheCurrency;
+use crate::xcm::XcmMetadata;
 
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
@@ -98,7 +100,7 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 )]
 pub struct CustomMetadata {
 	/// XCM-related metadata.
-	pub xcm: super::XcmMetadata,
+	pub xcm: XcmMetadata,
 
 	/// Whether an asset can be minted.
 	/// When `true`, the right permissions will checked in the permissions
