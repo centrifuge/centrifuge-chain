@@ -5,25 +5,27 @@ use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 use sp_runtime::{ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-use super::{base, MoveCurrencyError, RewardMechanism};
+use super::{MoveCurrencyError, RewardMechanism};
 
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Group<Balance, Rate, DistributionId> {
-	pub base: base::Group<Balance, Rate>,
-	pub distribution_id: DistributionId,
-	pub last_rate: Rate,
-	pub lost_reward: Balance,
+	total_stake: Balance,
+	rpt: Rate,
+	distribution_id: DistributionId,
+	last_rate: Rate,
+	lost_reward: Balance,
 }
 
 /// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Account<Balance, IBalance, DistributionId> {
-	pub base: base::Account<Balance, IBalance>,
-	pub distribution_id: DistributionId,
-	pub rewarded_stake: Balance,
+	stake: Balance,
+	reward_tally: IBalance,
+	distribution_id: DistributionId,
+	rewarded_stake: Balance,
 }
 
 impl<Balance, IBalance, DistributionId> Account<Balance, IBalance, DistributionId>
@@ -32,23 +34,23 @@ where
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 	DistributionId: PartialEq + Copy,
 {
-	pub fn safe_rewarded_stake(&mut self, current_distribution_id: DistributionId) {
+	fn safe_rewarded_stake(&mut self, current_distribution_id: DistributionId) {
 		if self.distribution_id != current_distribution_id {
 			self.distribution_id = current_distribution_id;
-			self.rewarded_stake = self.base.stake;
+			self.rewarded_stake = self.stake;
 		}
 	}
 
-	pub fn get_rewarded_stake(&self, current_distribution_id: DistributionId) -> Balance {
+	fn get_rewarded_stake(&self, current_distribution_id: DistributionId) -> Balance {
 		if self.distribution_id != current_distribution_id {
-			self.base.stake
+			self.stake
 		} else {
 			self.rewarded_stake
 		}
 	}
 
-	pub fn unrewarded_amount(&self, amount: Balance) -> Balance {
-		let unrewarded_stake = self.base.stake.saturating_sub(self.rewarded_stake);
+	fn unrewarded_amount(&self, amount: Balance) -> Balance {
+		let unrewarded_stake = self.stake.saturating_sub(self.rewarded_stake);
 		amount.min(unrewarded_stake)
 	}
 }
@@ -82,16 +84,14 @@ where
 		amount: Self::Balance,
 		distribution_id: Self::DistributionId,
 	) -> Result<(), ArithmeticError> {
-		group.distribution_id = distribution_id;
-		group.last_rate = Rate::ensure_from_rational(amount, group.base.total_stake)?;
-
-		base::Mechanism::<Balance, IBalance, Rate>::reward_group(
-			&mut group.base,
-			amount + group.lost_reward,
-			(),
-		)?;
-
+		let lost_rate = Rate::ensure_from_rational(group.lost_reward, group.total_stake)?;
+		group.last_rate = Rate::ensure_from_rational(amount, group.total_stake)?;
+		group
+			.rpt
+			.ensure_add_assign(group.last_rate)?
+			.ensure_add_assign(lost_rate)?;
 		group.lost_reward = Balance::zero();
+		group.distribution_id = distribution_id;
 
 		Ok(())
 	}
@@ -104,12 +104,13 @@ where
 	) -> Result<(), ArithmeticError> {
 		account.safe_rewarded_stake(group.distribution_id);
 
-		base::Mechanism::<Balance, IBalance, Rate>::deposit_stake(
-			&mut account.base,
-			&mut (),
-			&mut group.base,
-			amount,
-		)
+		account.stake.ensure_add_assign(amount)?;
+		account
+			.reward_tally
+			.ensure_add_assign(group.rpt.ensure_mul_int(amount)?.ensure_into()?)?;
+		group.total_stake.ensure_add_assign(amount)?;
+
+		Ok(())
 	}
 
 	fn withdraw_stake(
@@ -121,24 +122,19 @@ where
 		account.safe_rewarded_stake(group.distribution_id);
 
 		let rewarded_amount = amount.ensure_sub(account.unrewarded_amount(amount))?;
-
-		base::Mechanism::<Balance, IBalance, Rate>::withdraw_stake(
-			&mut account.base,
-			&mut (),
-			&mut group.base,
-			amount,
-		)?;
-
-		account.rewarded_stake.ensure_sub_assign(rewarded_amount)?;
-
 		let lost_reward = group.last_rate.ensure_mul_int(rewarded_amount)?;
 
+		account.stake.ensure_sub_assign(amount)?;
 		account
-			.base
 			.reward_tally
+			.ensure_sub_assign(group.rpt.ensure_mul_int(amount)?.ensure_into()?)?
 			.ensure_add_assign(lost_reward.ensure_into()?)?;
+		account.rewarded_stake.ensure_sub_assign(rewarded_amount)?;
 
-		group.lost_reward.ensure_add_assign(lost_reward)
+		group.total_stake.ensure_sub_assign(amount)?;
+		group.lost_reward.ensure_add_assign(lost_reward)?;
+
+		Ok(())
 	}
 
 	fn compute_reward(
@@ -146,17 +142,16 @@ where
 		_: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let base_reward = base::Mechanism::<Balance, IBalance, Rate>::compute_reward(
-			&account.base,
-			&(),
-			&group.base,
-		)?;
-
 		let last_rewarded_stake = group
 			.last_rate
 			.ensure_mul_int(account.get_rewarded_stake(group.distribution_id))?;
 
-		base_reward.ensure_sub(last_rewarded_stake)
+		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
+
+		gross_reward
+			.ensure_sub(account.reward_tally)?
+			.ensure_sub(last_rewarded_stake.ensure_into()?)?
+			.ensure_into()
 	}
 
 	fn claim_reward(
@@ -164,22 +159,19 @@ where
 		_: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		account.safe_rewarded_stake(group.distribution_id);
+		let reward = Self::compute_reward(account, &(), group)?;
 
-		let last_rewarded_stake = group.last_rate.ensure_mul_int(account.rewarded_stake)?;
+		let last_rewarded_stake = group
+			.last_rate
+			.ensure_mul_int(account.get_rewarded_stake(group.distribution_id))?;
 
-		let base_reward = base::Mechanism::<Balance, IBalance, Rate>::claim_reward(
-			&mut account.base,
-			&(),
-			&group.base,
-		)?;
+		account.reward_tally = group
+			.rpt
+			.ensure_mul_int(account.stake)?
+			.ensure_sub(last_rewarded_stake)?
+			.ensure_into()?;
 
-		account
-			.base
-			.reward_tally
-			.ensure_sub_assign(last_rewarded_stake.ensure_into()?)?;
-
-		base_reward.ensure_sub(last_rewarded_stake)
+		Ok(reward)
 	}
 
 	fn move_currency(
@@ -191,14 +183,15 @@ where
 	}
 
 	fn account_stake(account: &Self::Account) -> Self::Balance {
-		account.base.stake
+		account.stake
 	}
 
 	fn group_stake(group: &Self::Group) -> Self::Balance {
-		group.base.total_stake
+		group.total_stake
 	}
 }
 
+/*
 #[cfg(test)]
 mod test {
 	use sp_runtime::FixedI64;
@@ -313,3 +306,4 @@ mod test {
 	crate::mechanism_withdraw_stake_test_impl!(TestMechanism, initial, expectation);
 	crate::mechanism_claim_reward_test_impl!(TestMechanism, initial, expectation);
 }
+*/
