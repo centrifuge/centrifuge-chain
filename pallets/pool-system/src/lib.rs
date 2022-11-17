@@ -651,6 +651,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
 		},
+		/// An Pool was created.
 		PoolCreated {
 			pool_id: T::PoolId,
 			essence: PoolEssence<
@@ -662,6 +663,7 @@ pub mod pallet {
 				T::MaxTokenSymbolLength,
 			>,
 		},
+		/// An Pool was updated.
 		PoolUpdated {
 			id: T::PoolId,
 			old: PoolEssence<

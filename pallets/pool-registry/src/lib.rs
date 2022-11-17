@@ -192,6 +192,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Invalid metadata passed
 		BadMetadata,
+		/// A Pool with the given ID was already registered in the past
+		PoolAlreadyRegistered,
 		/// Pre-requirements for a TrancheUpdate are not met
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
@@ -245,7 +247,11 @@ pub mod pallet {
 			// admin as our depositor.
 			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
 
-			Pools::<T>::set(pool_id, Some(PoolRegistrationStatus::Registered));
+			if Pools::<T>::contains_key(pool_id) {
+				return Err(Error::<T>::PoolAlreadyRegistered.into());
+			} else {
+				Pools::<T>::insert(pool_id, PoolRegistrationStatus::Registered);
+			}
 
 			T::ModifyPool::create(
 				admin.clone(),
