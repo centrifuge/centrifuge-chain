@@ -487,13 +487,9 @@ pub mod pallet {
 /// overflowing and ensuring that the array is 0 padded in the case where
 /// `src.len()` is smaller than S.
 pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
-	let mut dest = [0u8; S];
-
-	for i in 0..min(src.len(), S) {
-		if let Some(x) = src.get(i) {
-			dest[i] = x.clone();
-		}
-	}
+	let mut dest = [0; S];
+	let len = min(src.len(), S);
+	dest[..len].copy_from_slice(&src.as_slice()[..len]);
 
 	dest
 }
