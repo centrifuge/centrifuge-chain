@@ -238,6 +238,21 @@ fn transfer() {
 }
 
 #[test]
+fn test_vec_to_fixed_array() {
+	let src = "TrNcH".as_bytes().to_vec();
+	let symbol: [u8; 32] = pallet_connectors::vec_to_fixed_array(src.clone());
+
+	assert!(symbol.starts_with("TrNcH".as_bytes()));
+	assert_eq!(
+		symbol,
+		[
+			84, 114, 78, 99, 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		]
+	);
+}
+
+#[test]
 fn encoded_ethereum_xcm_add_pool() {
 	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was our first
 	// successfully ethereum_xcm encoded call tested in Moonbase.
@@ -352,14 +367,6 @@ mod utils {
 		));
 	}
 
-	// admin: AccountId,
-	// depositor: AccountId,
-	// pool_id: PoolId,
-	// tranche_inputs: Vec<Self::TrancheInput>,
-	// currency: Self::CurrencyId,
-	// max_reserve: Self::Balance,
-	// metadata: Option<Vec<u8>>,
-
 	pub fn create_pool(pool_id: u64) {
 		assert_ok!(PoolSystem::create(
 			BOB.into(),
@@ -380,7 +387,7 @@ mod utils {
 							.expect(""),
 						token_symbol:
 							BoundedVec::<u8, development_runtime::MaxTokenSymbolLength>::try_from(
-								vec![2; 32]
+								"TrNcH".as_bytes().to_vec()
 							)
 							.expect(""),
 					}
