@@ -233,14 +233,20 @@ mod tests {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddTranche {
 				pool_id: 12378532,
 				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				token_name: [0; 128],
-				token_symbol: [0; 32],
+				token_name: [5; 128],
+				token_symbol: [6; 32],
 			};
-			let encoded = msg.encode();
+			let encoded_bytes = msg.encode();
 
-			let expected_hex = "020000000000bce1a40000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-			let expected = <[u8; 89]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			// We encode the encoded bytes as hex to verify it's what we expect
+			let encoded_hex = hex::encode(encoded_bytes.clone());
+			let expected_hex = "020000000000bce1a40000000000000000000000000000000105050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050606060606060606060606060606060606060606060606060606060606060606";
+			assert_eq!(expected_hex, encoded_hex);
+
+			// Now decode the bytes encoded as hex back to bytes and verify it's the same as
+			// the original `encoded_bytes`
+			let hex_as_bytes = hex::decode(encoded_hex).expect("Should go vec -> hex -> vec");
+			assert_eq!(hex_as_bytes, encoded_bytes);
 		}
 
 		#[test]
