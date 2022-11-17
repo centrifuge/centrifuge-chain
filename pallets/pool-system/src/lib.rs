@@ -16,7 +16,10 @@
 
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
-use cfg_types::{permissions::{PoolRole, Role, PermissionScope}, pools::{PoolLocator}};
+use cfg_types::{
+	permissions::{PermissionScope, PoolRole, Role},
+	pools::PoolLocator,
+};
 use codec::HasCompact;
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, DispatchResult, PostDispatchInfo},
@@ -150,7 +153,9 @@ type PoolChangesOf<T> = PoolChanges<
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
-	use cfg_types::{tokens::CustomMetadata, fulfillments::FulfillmentWithPrice, orders::TotalOrder};
+	use cfg_types::{
+		fulfillments::FulfillmentWithPrice, orders::TotalOrder, tokens::CustomMetadata,
+	};
 	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 

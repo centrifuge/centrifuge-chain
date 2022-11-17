@@ -10,12 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::{epoch::UnhealthyState, pools::PoolState};
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
 use sp_std::vec;
-use cfg_types::pools::PoolState;
-use cfg_types::epoch::UnhealthyState;
 
 use super::*;
 

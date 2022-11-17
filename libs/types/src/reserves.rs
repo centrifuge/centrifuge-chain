@@ -13,10 +13,7 @@
 use codec::{Decode, Encode};
 use frame_support::{dispatch::DispatchResult, RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::{
-	traits::AtLeast32BitUnsigned,
-	ArithmeticError,
-};
+use sp_runtime::{traits::AtLeast32BitUnsigned, ArithmeticError};
 use sp_std::cmp::PartialEq;
 
 use crate::tranches::{EpochExecutionTranches, TrancheSolution};

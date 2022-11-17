@@ -205,14 +205,16 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		> = Vec::new();
 
 		for tranche in self.tranches.residual_top_slice().iter() {
-			let metadata = AssetRegistry::metadata(&self.currency.into()).ok_or(AssetMetadata {
-				decimals: 0,
-				name: Vec::new(),
-				symbol: Vec::new(),
-				existential_deposit: (),
-				location: None,
-				additional: (),
-			}).unwrap();
+			let metadata = AssetRegistry::metadata(&self.currency.into())
+				.ok_or(AssetMetadata {
+					decimals: 0,
+					name: Vec::new(),
+					symbol: Vec::new(),
+					existential_deposit: (),
+					location: None,
+					additional: (),
+				})
+				.unwrap();
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency.into(),
