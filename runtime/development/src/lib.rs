@@ -889,10 +889,10 @@ parameter_types! {
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenNameLength: u32 = 128;
+	pub const MaxTokenNameLength: u32 = MAX_TOKEN_NAME_LENGTH_BYTES;
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = 32;
+	pub const MaxTokenSymbolLength: u32 = MAX_TOKEN_SYMBOL_LENGTH_BYTES;
 
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 100 * CFG;

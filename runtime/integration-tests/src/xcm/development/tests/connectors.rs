@@ -38,7 +38,7 @@ use development_runtime::{
 	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, XTokens,
 	XcmTransactor,
 };
-use frame_support::{assert_noop, assert_ok, dispatch::Weight};
+use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_connectors::{
@@ -283,6 +283,19 @@ fn encoded_ethereum_xcm_add_pool() {
 	let encoded_call_hex = hex::encode(encoded_call);
 
 	assert_eq!(encoded_call_hex, expected_encoded_hex);
+}
+
+// Verify that the max tranche token symbol and name lengths are what the Connectors pallet expects.
+#[test]
+fn verify_tranche_fields_sizes() {
+	assert_eq!(
+		development_runtime::MaxTokenNameLength.get(),
+		pallet_connectors::TOKEN_NAME_SIZE
+	);
+	assert_eq!(
+		development_runtime::MaxTokenSymbolLength.get(),
+		pallet_connectors::TOKEN_SYMBOL_SIZE
+	);
 }
 
 mod utils {

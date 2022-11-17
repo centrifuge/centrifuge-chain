@@ -9,10 +9,10 @@ use crate::*;
 type Address = [u8; 32];
 
 /// The fixed size for the array representing a tranche token name
-const TOKEN_NAME_SIZE: usize = 128;
+pub const TOKEN_NAME_SIZE: usize = 128;
 
 // The fixed size for the array representing a tranche token symbol
-const TOKEN_SYMBOL_SIZE: usize = 32;
+pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
 #[derive(Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
