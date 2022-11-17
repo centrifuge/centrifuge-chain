@@ -13,7 +13,7 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use cfg_primitives::CFG as CURRENCY;
-use cfg_traits::{Investment, PoolNAV, TrancheCurrency as _};
+use cfg_traits::{Investment, PoolMutate, PoolNAV, TrancheCurrency as _};
 use cfg_types::{CurrencyId, TrancheCurrency};
 use codec::Encode;
 use frame_support::{
@@ -135,7 +135,7 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
-		RawOrigin::Signed(owner.clone()).into(),
+		owner.clone(),
 		owner.clone(),
 		pool_id,
 		vec![

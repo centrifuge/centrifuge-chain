@@ -15,12 +15,12 @@ use sp_runtime::{
 };
 use sp_std::convert::{TryFrom, TryInto};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 const TEST_ACCOUNT: AccountId = AccountId::new([1; 32]);
 
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -47,7 +47,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<u64>;
 	type AccountId = AccountId;
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -74,7 +74,7 @@ impl frame_system::Config for Test {
 	type Version = ();
 }
 
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = u64;
 	type DustRemoval = ();
@@ -91,11 +91,11 @@ parameter_types! {
 	pub const MaxApprovals: u32 = 100;
 }
 
-impl pallet_treasury::Config for Test {
+impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = frame_system::EnsureRoot<AccountId>;
 	type Burn = ();
 	type BurnDestination = ();
-	type Currency = pallet_balances::Pallet<Test>;
+	type Currency = pallet_balances::Pallet<Runtime>;
 	type Event = Event;
 	type MaxApprovals = MaxApprovals;
 	type OnSlash = ();
@@ -119,7 +119,7 @@ impl FindAuthor<AccountId> for OneAuthor {
 		Some(TEST_ACCOUNT)
 	}
 }
-impl pallet_authorship::Config for Test {
+impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
 	type FilterUncle = ();
 	type FindAuthor = OneAuthor;
@@ -137,10 +137,10 @@ impl Default for TestExternalitiesBuilder {
 impl TestExternalitiesBuilder {
 	pub(crate) fn build(self) -> TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Test>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<Test>::default()
+		pallet_balances::GenesisConfig::<Runtime>::default()
 			.assimilate_storage(&mut t)
 			.unwrap();
 

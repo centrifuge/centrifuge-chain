@@ -36,12 +36,12 @@ pub type Balance = u128;
 pub type Index = u32;
 pub type BlockNumber = u32;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -94,7 +94,7 @@ impl InstanceFilter<Call> for ProxyType {
 	}
 }
 
-impl pallet_proxy::Config for MockRuntime {
+impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 	type Call = Call;
@@ -116,7 +116,7 @@ parameter_types! {
 }
 
 // Implement balances pallet configuration for mock runtime
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -135,7 +135,7 @@ parameter_types! {
 }
 
 // Implement vesting pallet configuration for mock runtime
-impl pallet_vesting::Config for MockRuntime {
+impl pallet_vesting::Config for Runtime {
 	type BlockNumberToBalance = ConvertInto;
 	type Currency = Balances;
 	type Event = Event;
@@ -154,7 +154,7 @@ parameter_types! {
 }
 
 // Implement frame system pallet configuration for mock runtime
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId;
 	type BaseCallFilter = BaseFilter;
@@ -192,7 +192,7 @@ parameter_types! {
 
 // Implement the migration manager pallet
 // The actual associated type, which executes the migration can be found in the migration folder
-impl pallet_migration_manager::Config for MockRuntime {
+impl pallet_migration_manager::Config for Runtime {
 	type Event = Event;
 	type MigrationMaxAccounts = MigrationMaxAccounts;
 	type MigrationMaxProxies = MigrationMaxProxies;
@@ -218,10 +218,10 @@ impl Contains<Call> for BaseFilter {
 }
 
 // ----------------------------------------------------------------------------
-// Test externalities
+// Runtime externalities
 // ----------------------------------------------------------------------------
 
-// Test externalities builder type declaraction.
+// Runtime externalities builder type declaraction.
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
@@ -248,10 +248,10 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<MockRuntime> {
+		pallet_balances::GenesisConfig::<Runtime> {
 			balances: vec![(get_account(), 1000)],
 		}
 		.assimilate_storage(&mut storage)
@@ -275,7 +275,7 @@ pub(crate) fn get_account() -> AccountId {
 	codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
-pub(crate) fn reward_events() -> Vec<pallet_migration_manager::Event<MockRuntime>> {
+pub(crate) fn reward_events() -> Vec<pallet_migration_manager::Event<Runtime>> {
 	System::events()
 		.into_iter()
 		.map(|r| r.event)

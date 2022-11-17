@@ -42,8 +42,8 @@ fn setup_blocks(blocks: u64) {
 #[test]
 fn basic_pre_commit() {
 	new_test_ext().execute_with(|| {
-		let anchor_id = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let signing_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let signing_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 
 		// reject unsigned
 		assert_noop!(
@@ -57,7 +57,7 @@ fn basic_pre_commit() {
 		assert_ok!(Anchors::pre_commit(origin.clone(), anchor_id, signing_root));
 
 		assert_eq!(
-			<Test as pallet_anchors::Config>::Currency::reserved_balance(
+			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(
 				ensure_signed(origin).unwrap()
 			),
 			42,
@@ -77,9 +77,9 @@ fn basic_pre_commit() {
 #[test]
 fn pre_commit_fail_anchor_exists() {
 	new_test_ext().execute_with(|| {
-		let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let signing_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = (pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let signing_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 
 		assert_eq!(
 			Anchors::get_latest_anchor_index().unwrap_or_default(),
@@ -90,8 +90,8 @@ fn pre_commit_fail_anchor_exists() {
 		assert_ok!(Anchors::commit(
 			Origin::signed(1),
 			pre_image,
-			<Test as frame_system::Config>::Hashing::hash_of(&0),
-			<Test as frame_system::Config>::Hashing::hash_of(&0),
+			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
+			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			common::MILLISECS_PER_DAY + 1
 		));
 
@@ -113,7 +113,7 @@ fn pre_commit_fail_anchor_exists() {
 		// fails because of existing anchor
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-			Error::<Test>::AnchorAlreadyExists
+			Error::<Runtime>::AnchorAlreadyExists
 		);
 	});
 }
@@ -121,15 +121,15 @@ fn pre_commit_fail_anchor_exists() {
 #[test]
 fn pre_commit_fail_anchor_exists_different_acc() {
 	new_test_ext().execute_with(|| {
-		let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let signing_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = (pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let signing_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 		// anchor
 		assert_ok!(Anchors::commit(
 			Origin::signed(2),
 			pre_image,
-			<Test as frame_system::Config>::Hashing::hash_of(&0),
-			<Test as frame_system::Config>::Hashing::hash_of(&0),
+			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
+			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			common::MILLISECS_PER_DAY + 1
 		));
 
@@ -140,7 +140,7 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 		// fails because of existing anchor
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-			Error::<Test>::AnchorAlreadyExists
+			Error::<Runtime>::AnchorAlreadyExists
 		);
 	});
 }
@@ -148,8 +148,8 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 #[test]
 fn pre_commit_fail_pre_commit_exists() {
 	new_test_ext().execute_with(|| {
-		let anchor_id = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let signing_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let signing_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 
 		// first pre-commit
 		assert_ok!(Anchors::pre_commit(
@@ -168,7 +168,7 @@ fn pre_commit_fail_pre_commit_exists() {
 		// fail, pre-commit exists
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-			Error::<Test>::PreCommitAlreadyExists
+			Error::<Runtime>::PreCommitAlreadyExists
 		);
 
 		// expire the pre-commit
@@ -184,8 +184,8 @@ fn pre_commit_fail_pre_commit_exists() {
 #[test]
 fn pre_commit_fail_pre_commit_exists_different_acc() {
 	new_test_ext().execute_with(|| {
-		let anchor_id = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let signing_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let signing_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 
 		// first pre-commit
 		assert_ok!(Anchors::pre_commit(
@@ -204,7 +204,7 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
 		// fail, pre-commit exists
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(2), anchor_id, signing_root),
-			Error::<Test>::PreCommitAlreadyExists
+			Error::<Runtime>::PreCommitAlreadyExists
 		);
 
 		// expire the pre-commit
@@ -220,18 +220,19 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
 #[test]
 fn basic_commit() {
 	new_test_ext().execute_with(|| {
-		let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let pre_image2 = <Test as frame_system::Config>::Hashing::hash_of(&1);
-		let anchor_id2 = (pre_image2).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let doc_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = (pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let pre_image2 = <Runtime as frame_system::Config>::Hashing::hash_of(&1);
+		let anchor_id2 =
+			(pre_image2).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let doc_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 		// reject unsigned
 		assert_noop!(
 			Anchors::commit(
 				Origin::none(),
 				pre_image,
 				doc_root,
-				<Test as frame_system::Config>::Hashing::hash_of(&0),
+				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				1
 			),
 			BadOrigin
@@ -242,7 +243,7 @@ fn basic_commit() {
 			Origin::signed(1),
 			pre_image,
 			doc_root,
-			<Test as frame_system::Config>::Hashing::hash_of(&0),
+			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			1567589834087
 		));
 		// asserting that the stored anchor id is what we sent the pre-image for
@@ -261,7 +262,7 @@ fn basic_commit() {
 			Origin::signed(1),
 			pre_image2,
 			doc_root,
-			<Test as frame_system::Config>::Hashing::hash_of(&0),
+			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			1567589844087
 		));
 		a = Anchors::get_anchor_by_id(anchor_id2).unwrap();
@@ -280,10 +281,10 @@ fn basic_commit() {
 				Origin::signed(1),
 				pre_image2,
 				doc_root,
-				<Test as frame_system::Config>::Hashing::hash_of(&0),
+				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				2 // some arbitrary store until date that is less than the required minimum
 			),
-			Error::<Test>::AnchorStoreDateInPast
+			Error::<Runtime>::AnchorStoreDateInPast
 		);
 
 		// commit anchor triggering days overflow
@@ -292,10 +293,10 @@ fn basic_commit() {
 				Origin::signed(1),
 				pre_image2,
 				doc_root,
-				<Test as frame_system::Config>::Hashing::hash_of(&0),
+				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				371085174374358017 // triggers overflow
 			),
-			Error::<Test>::EvictionDateTooBig
+			Error::<Runtime>::EvictionDateTooBig
 		);
 	});
 }
@@ -303,16 +304,16 @@ fn basic_commit() {
 #[test]
 fn commit_fail_anchor_exists() {
 	new_test_ext().execute_with(|| {
-		let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let doc_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = (pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let doc_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 
 		// happy
 		assert_ok!(Anchors::commit(
 			Origin::signed(1),
 			pre_image,
 			doc_root,
-			<Test as frame_system::Config>::Hashing::hash_of(&0),
+			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			common::MILLISECS_PER_DAY + 1
 		));
 		// asserting that the stored anchor id is what we sent the pre-image for
@@ -325,10 +326,10 @@ fn commit_fail_anchor_exists() {
 				Origin::signed(1),
 				pre_image,
 				doc_root,
-				<Test as frame_system::Config>::Hashing::hash_of(&0),
+				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				common::MILLISECS_PER_DAY + 1
 			),
-			Error::<Test>::AnchorAlreadyExists
+			Error::<Runtime>::AnchorAlreadyExists
 		);
 
 		// different acc
@@ -337,10 +338,10 @@ fn commit_fail_anchor_exists() {
 				Origin::signed(2),
 				pre_image,
 				doc_root,
-				<Test as frame_system::Config>::Hashing::hash_of(&0),
+				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				common::MILLISECS_PER_DAY + 1
 			),
-			Error::<Test>::AnchorAlreadyExists
+			Error::<Runtime>::AnchorAlreadyExists
 		);
 	});
 }
@@ -348,10 +349,10 @@ fn commit_fail_anchor_exists() {
 #[test]
 fn basic_pre_commit_commit() {
 	new_test_ext().execute_with(|| {
-		let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let random_doc_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let (doc_root, signing_root, proof) = Test::test_document_hashes();
+		let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = (pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let random_doc_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let (doc_root, signing_root, proof) = Runtime::test_document_hashes();
 
 		// happy
 		assert_ok!(Anchors::pre_commit(
@@ -369,7 +370,7 @@ fn basic_pre_commit_commit() {
 				proof,
 				common::MILLISECS_PER_DAY + 1
 			),
-			Error::<Test>::InvalidPreCommitProof
+			Error::<Runtime>::InvalidPreCommitProof
 		);
 
 		// happy
@@ -393,9 +394,9 @@ fn basic_pre_commit_commit() {
 #[test]
 fn pre_commit_expired_when_anchoring() {
 	new_test_ext().execute_with(|| {
-		let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let (doc_root, signing_root, proof) = Test::test_document_hashes();
+		let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = (pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let (doc_root, signing_root, proof) = Runtime::test_document_hashes();
 
 		// happy
 		assert_ok!(Anchors::pre_commit(
@@ -427,9 +428,9 @@ fn pre_commit_expired_when_anchoring() {
 #[test]
 fn pre_commit_commit_fail_from_another_acc() {
 	new_test_ext().execute_with(|| {
-		let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-		let (doc_root, signing_root, proof) = Test::test_document_hashes();
+		let pre_image = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id = (pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+		let (doc_root, signing_root, proof) = Runtime::test_document_hashes();
 
 		// happy
 		assert_ok!(Anchors::pre_commit(
@@ -447,7 +448,7 @@ fn pre_commit_commit_fail_from_another_acc() {
 				proof,
 				common::MILLISECS_PER_DAY + 1
 			),
-			Error::<Test>::NotOwnerOfPreCommit
+			Error::<Runtime>::NotOwnerOfPreCommit
 		);
 
 		// Precommit is not removed if commit fails
@@ -458,11 +459,11 @@ fn pre_commit_commit_fail_from_another_acc() {
 #[test]
 fn pre_commit_and_then_evict() {
 	new_test_ext().execute_with(|| {
-		let anchor_id_0 = <Test as frame_system::Config>::Hashing::hash_of(&0);
-		let anchor_id_1 = <Test as frame_system::Config>::Hashing::hash_of(&1);
-		let anchor_id_2 = <Test as frame_system::Config>::Hashing::hash_of(&2);
+		let anchor_id_0 = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
+		let anchor_id_1 = <Runtime as frame_system::Config>::Hashing::hash_of(&1);
+		let anchor_id_2 = <Runtime as frame_system::Config>::Hashing::hash_of(&2);
 
-		let signing_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+		let signing_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 
 		// Expiration blocks
 		let block_height_0 = 0;
@@ -493,7 +494,7 @@ fn pre_commit_and_then_evict() {
 		));
 
 		assert_eq!(
-			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(account_id),
 			42 * 3,
 		);
 
@@ -518,7 +519,7 @@ fn pre_commit_and_then_evict() {
 		assert!(Anchors::get_pre_commit(anchor_id_2).is_some());
 
 		assert_eq!(
-			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(account_id),
 			42 * 3,
 		);
 
@@ -530,7 +531,7 @@ fn pre_commit_and_then_evict() {
 		assert!(Anchors::get_pre_commit(anchor_id_2).is_some());
 
 		assert_eq!(
-			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(account_id),
 			42 * 1,
 		);
 
@@ -540,7 +541,7 @@ fn pre_commit_and_then_evict() {
 		assert!(Anchors::get_pre_commit(anchor_id_2).is_none());
 
 		assert_eq!(
-			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(account_id),
 			0,
 		);
 	});
@@ -550,7 +551,7 @@ fn pre_commit_and_then_evict() {
 fn anchor_evict_single_anchor_per_day_many_days() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
-		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
+		let (doc_root, _signing_root, proof) = Runtime::test_document_hashes();
 		let mut anchors = vec![];
 		let verify_anchor_eviction = |day: usize, anchors: &Vec<H256>| {
 			assert!(Anchors::get_anchor_by_id(anchors[day - 2]).is_none());
@@ -587,11 +588,11 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		// create 1000 anchors one per day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 2 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
+			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
 			let pre_image =
-				(random_seed, i).using_encoded(<Test as frame_system::Config>::Hashing::hash);
+				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
-				(pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
+				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 
 			assert_ok!(Anchors::commit(
 				Origin::signed(1),
@@ -617,7 +618,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		}
 
 		// eviction on day 3
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(2));
+		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(2));
 		assert!(Anchors::get_anchor_by_id(anchors[0]).is_some());
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
 		verify_anchor_eviction(2, &anchors);
@@ -628,7 +629,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		const FIRST_ONES: u64 = MAX_LOOP_IN_TX / 5;
 		// do the same as above for next FIRST_ONES - 1 days without child trie root verification
 		for i in 3..FIRST_ONES as usize + 2 {
-			<pallet_timestamp::Pallet<Test>>::set_timestamp(day(i as u64));
+			<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(i as u64));
 			assert!(Anchors::get_anchor_by_id(anchors[i - 2]).is_some());
 
 			// evict
@@ -644,7 +645,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		// test out limit on the number of anchors removed at a time
 		// eviction on day 2 + FIRST_ONES * MAX_LOOP_IN_TX, i.e MAX_LOOP_IN_TX + 1 anchors to be removed one anchor
 		// per day from the last eviction on day 2 + FIRST_ONES
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(2 + FIRST_ONES + MAX_LOOP_IN_TX));
+		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(2 + FIRST_ONES + MAX_LOOP_IN_TX));
 		assert!(
 			Anchors::get_anchor_by_id(anchors[(FIRST_ONES + MAX_LOOP_IN_TX) as usize]).is_some()
 		);
@@ -713,7 +714,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		);
 
 		// remove remaining anchors
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(MAX_LOOP_IN_TX as u64 * 2 + 1));
+		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(MAX_LOOP_IN_TX as u64 * 2 + 1));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_some());
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_none());
@@ -737,16 +738,16 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 fn test_remove_anchor_indexes() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
-		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
+		let (doc_root, _signing_root, proof) = Runtime::test_document_hashes();
 
 		// create MAX_LOOP_IN_TX * 4 anchors that expire on same day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 4 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
+			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
 			let pre_image =
-				(random_seed, i).using_encoded(<Test as frame_system::Config>::Hashing::hash);
+				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let _anchor_id =
-				(pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
+				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			assert_ok!(Anchors::commit(
 				Origin::signed(1),
 				pre_image,
@@ -807,17 +808,17 @@ fn test_remove_anchor_indexes() {
 fn test_same_day_many_anchors() {
 	new_test_ext().execute_with(|| {
 		let day = |n| common::MILLISECS_PER_DAY * n + 1;
-		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
+		let (doc_root, _signing_root, proof) = Runtime::test_document_hashes();
 		let mut anchors = vec![];
 
 		// create MAX_LOOP_IN_TX * 2 + 1 anchors that expire on same day
 		setup_blocks(100);
 		for i in 0..MAX_LOOP_IN_TX * 2 + 1 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
+			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
 			let pre_image =
-				(random_seed, i).using_encoded(<Test as frame_system::Config>::Hashing::hash);
+				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
-				(pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
+				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			assert_ok!(Anchors::commit(
 				Origin::signed(1),
 				pre_image,
@@ -834,7 +835,7 @@ fn test_same_day_many_anchors() {
 		);
 
 		// first MAX_LOOP_IN_TX
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(2));
+		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(2));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_some());
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_none());
@@ -907,12 +908,12 @@ fn basic_commit_perf() {
 			.as_millis() as u64;
 
 		for i in 0..100000 {
-			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
+			let random_seed = <pallet_randomness_collective_flip::Pallet<Runtime>>::random_seed();
 			let pre_image =
-				(random_seed, i).using_encoded(<Test as frame_system::Config>::Hashing::hash);
+				(random_seed, i).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			let anchor_id =
-				(pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
-			let (doc_root, signing_root, proof) = Test::test_document_hashes();
+				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
+			let (doc_root, signing_root, proof) = Runtime::test_document_hashes();
 
 			// happy
 			assert_ok!(Anchors::pre_commit(
@@ -948,7 +949,7 @@ fn evict_anchors() {
 			ArithmeticError::Underflow
 		);
 
-		<pallet_timestamp::Pallet<Test>>::set_timestamp(day(1));
+		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(1));
 		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
 	});
 }

@@ -45,7 +45,7 @@ fn get_root() -> H256 {
 
 	let mut v: Vec<u8> = contributor.encode();
 	v.extend(amount.encode());
-	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+	let leaf_hash = <Runtime as frame_system::Config>::Hashing::hash(&v);
 
 	// 10-leaf tree
 	let leaf_hash_0: H256 = [0; 32].into();
@@ -58,37 +58,37 @@ fn get_root() -> H256 {
 	let leaf_hash_7: H256 = [7; 32].into();
 	let leaf_hash_8: H256 = [8; 32].into();
 	let leaf_hash_9: H256 = [9; 32].into();
-	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_0,
 		leaf_hash_1,
 	);
-	let node_1 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_1 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_2,
 		leaf_hash_3,
 	);
-	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_4,
 		leaf_hash_5,
 	);
-	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_6,
 		leaf_hash_7,
 	);
-	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_8,
 		leaf_hash_9,
 	);
-	let node_00 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_00 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_0, node_1,
 	);
-	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_2, node_3,
 	);
-	let node_000 = proofs::hashing::sort_hash_of::<
-		pallet_crowdloan_claim::ProofVerifier<MockRuntime>,
-	>(node_00, node_01);
+	let node_000 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
+		node_00, node_01,
+	);
 
-	proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_000, node_4,
 	)
 }
@@ -102,7 +102,7 @@ fn get_root_for_ext_sig() -> H256 {
 
 	let mut v: Vec<u8> = contributor.encode();
 	v.extend(amount.encode());
-	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+	let leaf_hash = <Runtime as frame_system::Config>::Hashing::hash(&v);
 
 	// 10-leaf tree
 	let leaf_hash_0: H256 = [0; 32].into();
@@ -115,37 +115,37 @@ fn get_root_for_ext_sig() -> H256 {
 	let leaf_hash_7: H256 = [7; 32].into();
 	let leaf_hash_8: H256 = [8; 32].into();
 	let leaf_hash_9: H256 = [9; 32].into();
-	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_0,
 		leaf_hash_1,
 	);
-	let node_1 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_1 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_2,
 		leaf_hash_3,
 	);
-	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_4,
 		leaf_hash_5,
 	);
-	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_6,
 		leaf_hash_7,
 	);
-	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_8,
 		leaf_hash_9,
 	);
-	let node_00 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_00 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_0, node_1,
 	);
-	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_2, node_3,
 	);
-	let node_000 = proofs::hashing::sort_hash_of::<
-		pallet_crowdloan_claim::ProofVerifier<MockRuntime>,
-	>(node_00, node_01);
+	let node_000 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
+		node_00, node_01,
+	);
 
-	proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_000, node_4,
 	)
 }
@@ -159,7 +159,7 @@ fn get_contributor_ext_sig() -> Contributor {
 
 	let mut v: Vec<u8> = contributor.encode();
 	v.extend(amount.encode());
-	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+	let leaf_hash = <Runtime as frame_system::Config>::Hashing::hash(&v);
 
 	// 10-leaf tree
 	let mut sorted_hashed: Vec<H256> = Vec::new();
@@ -173,23 +173,23 @@ fn get_contributor_ext_sig() -> Contributor {
 	let leaf_hash_7: H256 = [7; 32].into();
 	let leaf_hash_8: H256 = [8; 32].into();
 	let leaf_hash_9: H256 = [9; 32].into();
-	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_0,
 		leaf_hash_1,
 	);
-	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_4,
 		leaf_hash_5,
 	);
-	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_6,
 		leaf_hash_7,
 	);
-	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_8,
 		leaf_hash_9,
 	);
-	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_2, node_3,
 	);
 
@@ -224,7 +224,7 @@ fn get_contributor() -> Contributor {
 
 	let mut v: Vec<u8> = contributor.encode();
 	v.extend(amount.encode());
-	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+	let leaf_hash = <Runtime as frame_system::Config>::Hashing::hash(&v);
 
 	// 10-leaf tree
 	let mut sorted_hashed: Vec<H256> = Vec::new();
@@ -238,23 +238,23 @@ fn get_contributor() -> Contributor {
 	let leaf_hash_7: H256 = [7; 32].into();
 	let leaf_hash_8: H256 = [8; 32].into();
 	let leaf_hash_9: H256 = [9; 32].into();
-	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_0,
 		leaf_hash_1,
 	);
-	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_4,
 		leaf_hash_5,
 	);
-	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_6,
 		leaf_hash_7,
 	);
-	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		leaf_hash_8,
 		leaf_hash_9,
 	);
-	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<Runtime>>(
 		node_2, node_3,
 	);
 
@@ -301,7 +301,7 @@ fn get_false_proof() -> proofs::Proof<H256> {
 
 fn init_module() {
 	CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 0, 400).unwrap();
-	pallet_crowdloan_reward::Pallet::<MockRuntime>::initialize(
+	pallet_crowdloan_reward::Pallet::<Runtime>::initialize(
 		Origin::signed(1),
 		Perbill::from_percent(20),
 		500,
@@ -330,7 +330,7 @@ fn test_init_double() {
 		.execute_with(|| {
 			assert_noop!(
 				CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 200, 400),
-				CrowdloanClaimError::<MockRuntime>::PalletAlreadyInitialized
+				CrowdloanClaimError::<Runtime>::PalletAlreadyInitialized
 			);
 		})
 }
@@ -342,7 +342,7 @@ fn test_init_non_admin() {
 		.execute_with(|| {
 			assert_noop!(
 				CrowdloanClaim::initialize(Origin::signed(2), get_root(), 100, 0, 200, 400),
-				CrowdloanClaimError::<MockRuntime>::MustBeAdministrator
+				CrowdloanClaimError::<Runtime>::MustBeAdministrator
 			);
 		})
 }
@@ -417,7 +417,7 @@ fn test_invalid_signed_claim_transaction() {
 					alice.proof,
 					alice.contribution
 				),
-				CrowdloanClaimError::<MockRuntime>::InvalidContributorSignature
+				CrowdloanClaimError::<Runtime>::InvalidContributorSignature
 			);
 		})
 }
@@ -438,7 +438,7 @@ fn test_valid_claim() {
 				bob.proof,
 				bob.contribution
 			));
-			assert!(ProcessedClaims::<MockRuntime>::contains_key((
+			assert!(ProcessedClaims::<Runtime>::contains_key((
 				&bob.relaychain_account,
 				1
 			)));
@@ -460,7 +460,7 @@ fn test_valid_claim_ext_signature() {
 		.build(Some(|| {
 			CrowdloanClaim::initialize(Origin::signed(1), get_root_for_ext_sig(), 100, 0, 0, 400)
 				.unwrap();
-			pallet_crowdloan_reward::Pallet::<MockRuntime>::initialize(
+			pallet_crowdloan_reward::Pallet::<Runtime>::initialize(
 				Origin::signed(1),
 				Perbill::from_percent(20),
 				500,
@@ -480,7 +480,7 @@ fn test_valid_claim_ext_signature() {
 				bob.proof,
 				bob.contribution
 			));
-			assert!(ProcessedClaims::<MockRuntime>::contains_key((
+			assert!(ProcessedClaims::<Runtime>::contains_key((
 				&bob.relaychain_account,
 				1
 			)));
@@ -513,7 +513,7 @@ fn test_valid_claim_but_lease_elapsed() {
 					bob.proof,
 					bob.contribution
 				),
-				Error::<MockRuntime>::OutOfLeasePeriod
+				Error::<Runtime>::OutOfLeasePeriod
 			);
 		});
 }
@@ -532,7 +532,7 @@ fn test_valid_claim_claimed_twice() {
 				bob.proof,
 				bob.contribution
 			));
-			assert!(ProcessedClaims::<MockRuntime>::contains_key((
+			assert!(ProcessedClaims::<Runtime>::contains_key((
 				&bob.relaychain_account,
 				1
 			)));
@@ -547,7 +547,7 @@ fn test_valid_claim_claimed_twice() {
 					bob.proof,
 					bob.contribution
 				),
-				CrowdloanClaimError::<MockRuntime>::ClaimAlreadyProcessed
+				CrowdloanClaimError::<Runtime>::ClaimAlreadyProcessed
 			);
 		})
 }
@@ -560,7 +560,7 @@ fn test_invalid_claim_invalid_proof() {
 			let alice = get_contributor();
 
 			assert_noop!(
-				Pallet::<MockRuntime>::claim_reward(
+				Pallet::<Runtime>::claim_reward(
 					Origin::signed(0),
 					alice.relaychain_account,
 					alice.parachain_account,
@@ -568,7 +568,7 @@ fn test_invalid_claim_invalid_proof() {
 					get_false_proof(),
 					alice.contribution
 				),
-				CrowdloanClaimError::<MockRuntime>::InvalidProofOfContribution
+				CrowdloanClaimError::<Runtime>::InvalidProofOfContribution
 			);
 		})
 }
@@ -589,7 +589,7 @@ fn test_invalid_claim_mod_not_initialized() {
 					alice.proof,
 					alice.contribution
 				),
-				CrowdloanClaimError::<MockRuntime>::PalletNotInitialized
+				CrowdloanClaimError::<Runtime>::PalletNotInitialized
 			);
 		})
 }

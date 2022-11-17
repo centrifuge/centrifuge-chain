@@ -33,8 +33,8 @@ pub use crate as pallet_restricted_tokens;
 pub const DISTR_PER_ACCOUNT: u64 = 1000;
 pub type AccountId = u64;
 pub type Balance = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 pub const POOL_PALLET_ID: AccountId = 999u64;
 pub const MIN_HOLD_PERIOD: Moment = 10;
 static mut TIME: Moment = 0;
@@ -331,7 +331,7 @@ pub enum CurrencyId {
 
 // Build mock runtime
 frame_support::construct_runtime!(
-	pub enum MockRuntime where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -350,7 +350,7 @@ parameter_types! {
 }
 
 // Implement frame system configuration for the mock runtime
-impl frame_system::Config for MockRuntime {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
@@ -391,7 +391,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Config for MockRuntime {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -407,7 +407,7 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
-impl orml_tokens::Config for MockRuntime {
+impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -426,7 +426,7 @@ impl orml_tokens::Config for MockRuntime {
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Cfg;
 }
-impl pallet_restricted_tokens::Config for MockRuntime {
+impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type Event = Event;
@@ -475,7 +475,7 @@ impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build(self, optional: Option<impl FnOnce()>) -> TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default()
-			.build_storage::<MockRuntime>()
+			.build_storage::<Runtime>()
 			.unwrap();
 		let ausd = (0..10)
 			.into_iter()
@@ -495,11 +495,11 @@ impl TestExternalitiesBuilder {
 		balances.extend(restric_1);
 		balances.extend(restric_2);
 
-		orml_tokens::GenesisConfig::<MockRuntime> { balances }
+		orml_tokens::GenesisConfig::<Runtime> { balances }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<MockRuntime> {
+		pallet_balances::GenesisConfig::<Runtime> {
 			balances: (0..10u64)
 				.into_iter()
 				.map(|idx| {

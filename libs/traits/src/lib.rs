@@ -21,19 +21,22 @@
 use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{
+		Codec, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo,
+		PostDispatchInfo,
+	},
 	scale_info::TypeInfo,
 	Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 		MaybeSerializeDeserialize, Member, Zero,
 	},
 	DispatchError,
 };
-use sp_std::{fmt::Debug, hash::Hash, str::FromStr};
+use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
 /// Traits related to operations.
 pub mod ops;
@@ -123,6 +126,43 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+}
+
+/// Variants for valid Pool updates to send out as events
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum UpdateState {
+	NoExecution,
+	Executed,
+	Stored,
+}
+
+/// A trait that supports modifications of pools
+pub trait PoolMutate<AccountId, PoolId> {
+	type Balance;
+	type CurrencyId;
+	type Rate;
+	type MaxTokenNameLength: Get<u32>;
+	type MaxTokenSymbolLength: Get<u32>;
+	type MaxTranches: Get<u32>;
+	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+
+	fn create(
+		admin: AccountId,
+		depositor: AccountId,
+		pool_id: PoolId,
+		tranche_inputs: Vec<Self::TrancheInput>,
+		currency: Self::CurrencyId,
+		max_reserve: Self::Balance,
+		metadata: Option<Vec<u8>>,
+	) -> DispatchResult;
+
+	fn update(
+		pool_id: PoolId,
+		changes: Self::PoolChanges,
+	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
+
+	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
@@ -296,19 +336,6 @@ impl<T> PreConditions<T> for Never {
 	fn check(_t: T) -> bool {
 		false
 	}
-}
-
-/// Trait for converting a pool+tranche ID pair to a CurrencyId
-///
-/// This should be implemented in the runtime to convert from the
-/// PoolId and TrancheId types to a CurrencyId that represents that
-/// tranche.
-///
-/// The pool epoch logic assumes that every tranche has a UNIQUE
-/// currency, but nothing enforces that. Failure to ensure currency
-/// uniqueness will almost certainly cause some wild bugs.
-pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
-	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
 
 /// A trait for converting from a PoolId and a TranchId

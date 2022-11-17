@@ -65,7 +65,6 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
-pub mod migration;
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -81,7 +80,6 @@ pub use pallet::*;
 
 // Type aliases
 type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate>;
-type RateDetailsV0Of<T> = RateDetailsV0<<T as Config>::InterestRate, Moment>;
 
 // Storage types
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
@@ -415,29 +413,6 @@ pub mod pallet {
 					Err(Error::<T>::NoSuchRate.into())
 				}
 			})
-		}
-
-		pub fn upgrade_to_v1() -> Weight {
-			let mut weight = T::DbWeight::get().reads_writes(1, 1);
-			let version = Pallet::<T>::storage_version();
-			if version == Release::V0 {
-				weight += migration::v1::migrate::<T>();
-			}
-			StorageVersion::<T>::set(Release::V1);
-			weight
-		}
-
-		pub fn remove_unused_rates() -> Weight {
-			let mut count = 0;
-			Rate::<T>::translate(|_, rate: RateDetailsOf<T>| {
-				count += 1;
-				if rate.reference_count == 0 {
-					None
-				} else {
-					Some(rate)
-				}
-			});
-			T::DbWeight::get().reads_writes(count, count)
 		}
 
 		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {

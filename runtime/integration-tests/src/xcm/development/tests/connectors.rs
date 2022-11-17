@@ -27,24 +27,30 @@ use ::xcm::{
 	prelude::{Parachain, X1, X2},
 	VersionedMultiLocation,
 };
-use cfg_primitives::{currency_decimals, parachains, Balance, PoolId, TrancheId};
+use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
+use cfg_traits::PoolMutate;
 use cfg_types::{
-	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, Rate, XcmMetadata,
+	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, PermissionScope,
+	PoolRole, Rate, Role, XcmMetadata, UNION,
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, PoolSystem, XTokens, XcmTransactor,
+	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, XTokens,
+	XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, dispatch::Weight};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use pallet_connectors::{encoded_contract_call, Domain, Message, ParachainId, Router, XcmDomain};
-use pallet_pool_system::{TrancheInput, TrancheMetadata, TrancheType};
+use pallet_connectors::{
+	encoded_contract_call, Domain, DomainAddress, DomainLocator, Error::UnauthorizedTransfer,
+	Message, ParachainId, Router, XcmDomain,
+};
+use pallet_pool_system::{PoolDetails, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType};
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::H160;
 use sp_runtime::{
-	traits::{BadOrigin, One},
-	BoundedVec, Perquintill,
+	traits::{AccountIdConversion, BadOrigin, ConstU32, One},
+	BoundedVec, DispatchError, Perquintill, WeakBoundedVec,
 };
 use xcm_emulator::TestExt;
 
@@ -56,133 +62,178 @@ use crate::{
 	*,
 };
 
+/// NOTE: We can't actually verify that the Connectors messages hits the ConnectorsXcmRouter
+/// contract on Moonbeam since that would require a rather heavy e2e setup to emulate, involving
+/// depending on Moonbeam's runtime, having said contract deployed to their evm environment, and
+/// be able to query the evm side. Instead, these tests verify that - given all pre-requirements
+/// are set up correctly - we succeed to send the Connectors message from the Centrifuge chain pov.
+/// We have other unit tests verifying the Connectors' messages encoding and the encoding of the
+/// remote EVM call to be executed on Moonbeam.
+
 /// Verify that `Connectors::add_pool` succeeds when called with all the necessary requirements.
-/// We can't actually verify that the call hits the ConnectorsXcmRouter contract on Moonbeam
-/// since that would require a very heavy e2e setup to emulate. Instead, here we test that we
-/// can send the extrinsic and we have other unit tests verifying the encoding of the remote
-/// EVM call to be executed on Moonbeam.
 #[test]
-fn add_pool_works() {
+fn add_pool() {
 	TestNet::reset();
 
-	let moonbeam_location = MultiLocation {
-		parents: 1,
-		interior: X1(Parachain(PARA_ID_MOONBEAM)),
-	};
-	let moonbeam_native_token = MultiLocation {
-		parents: 1,
-		interior: X2(Parachain(PARA_ID_MOONBEAM), general_key(&[0, 1])),
-	};
-
 	Development::execute_with(|| {
-		// We need to set the Transact info for Moonbeam in the XcmTransact pallet
-		assert_ok!(XcmTransactor::set_transact_info(
-			Origin::root(),
-			Box::new(VersionedMultiLocation::V1(moonbeam_location.clone())),
-			1,
-			8_000_000_000_000_000,
-			Some(3)
-		));
+		utils::setup_pre_requirements();
+		let pool_id: u64 = 42;
 
-		assert_ok!(XcmTransactor::set_fee_per_second(
-			Origin::root(),
-			Box::new(VersionedMultiLocation::V1(moonbeam_native_token.clone())),
-			default_per_second(18), // default fee_per_second for this token which has 18 decimals
-		));
+		// Verify that the pool must exist before we can call Connectors::add_pool
+		assert_noop!(
+			Connectors::add_pool(
+				Origin::signed(ALICE.into()),
+				pool_id,
+				Domain::Parachain(ParachainId::Moonbeam),
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::PoolNotFound
+		);
 
-		/// Register Moonbeam's native token
-		let glmr_currency_id = CurrencyId::ForeignAsset(1);
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 18,
-			name: "Glimmer".into(),
-			symbol: "GLMR".into(),
-			existential_deposit: 1_000_000,
-			location: Some(VersionedMultiLocation::V1(moonbeam_native_token)),
-			additional: CustomMetadata::default(),
-		};
+		// Now create the pool
+		utils::create_pool(pool_id);
 
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
-			meta,
-			Some(glmr_currency_id.clone())
-		));
-
-		// Give Alice enough glimmer to pay for fees
-		OrmlTokens::deposit(glmr_currency_id, &ALICE.into(), 10 * dollar(18));
-
-		assert_ok!(Connectors::set_domain_router(
-			Origin::root(),
-			Domain::Parachain(ParachainId::Moonbeam),
-			Router::Xcm(XcmDomain {
-				location: moonbeam_location
-					.clone()
-					.try_into()
-					.expect("Bad xcm version"),
-				ethereum_xcm_transact_call_index: vec![38, 0],
-				contract_address: H160::from(
-					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
-						.expect("Invalid address"),
-				),
-				fee_currency: glmr_currency_id,
-			}),
-		));
-
-		// Register the pool
-		let pool_id = 42;
-
-		// we first need to register AUSD in the asset registry
-		let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 12,
-			name: "Acala Dollar".into(),
-			symbol: "AUSD".into(),
-			existential_deposit: 1_000,
-			location: None,
-			additional: CustomMetadata::default(),
-		};
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
-			ausd_meta,
-			Some(CurrencyId::AUSD)
-		));
-
-		// then we can create the pool
-		assert_ok!(PoolSystem::create(
-			Origin::signed(BOB.into()),
-			BOB.into(),
-			pool_id,
-			vec![
-				TrancheInput {
-					tranche_type: TrancheType::Residual,
-					seniority: None,
-					metadata: TrancheMetadata {
-						token_name: BoundedVec::default(),
-						token_symbol: BoundedVec::default(),
-					}
-				},
-				TrancheInput {
-					tranche_type: TrancheType::NonResidual {
-						interest_rate_per_sec: One::one(),
-						min_risk_buffer: Perquintill::from_percent(10),
-					},
-					seniority: None,
-					metadata: TrancheMetadata {
-						token_name: BoundedVec::default(),
-						token_symbol: BoundedVec::default(),
-					}
-				}
-			],
-			CurrencyId::AUSD,
-			10_000 * dollar(currency_decimals::AUSD),
-			None
-		));
-
-		// Finally, verify that with all the requirements set in place,
-		// we can call Connectors::add_pool.
+		// Verify that we can now call Connectors::add_pool successfully
 		assert_ok!(Connectors::add_pool(
 			Origin::signed(ALICE.into()),
 			pool_id,
 			Domain::Parachain(ParachainId::Moonbeam),
 		));
+	});
+}
+
+/// Verify that `Connectors::add_tranche` succeeds when called with all the necessary requirements.
+/// We can't actually verify that the call hits the ConnectorsXcmRouter contract on Moonbeam
+/// since that would require a very heavy e2e setup to emulate. Instead, here we test that we
+/// can send the extrinsic and we have other unit tests verifying the encoding of the remote
+/// EVM call to be executed on Moonbeam.
+#[test]
+fn add_tranche() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		// Now create the pool
+		let pool_id: u64 = 42;
+		utils::create_pool(pool_id);
+
+		// Verify we can't call Connectors::add_tranche with a non-existing tranche_id
+		let nonexistent_tranche = [71u8; 16];
+		assert_noop!(
+			Connectors::add_tranche(
+				Origin::signed(ALICE.into()),
+				pool_id.clone(),
+				nonexistent_tranche,
+				Domain::Parachain(ParachainId::Moonbeam),
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::TrancheNotFound
+		);
+
+		// Find the right tranche id
+		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
+		let tranche_id = pool_details
+			.tranches
+			.tranche_id(TrancheLoc::Index(0))
+			.expect("Tranche at index 0 exists");
+
+		// Finally, verify we can call Connectors::add_tranche successfully
+		// when given a valid pool + tranche id pair.
+		assert_ok!(Connectors::add_tranche(
+			Origin::signed(ALICE.into()),
+			pool_id.clone(),
+			tranche_id,
+			Domain::Parachain(ParachainId::Moonbeam),
+		));
+		// TODO(nuno): figure out how to convert the tranche metadata set by pool_system into the 32-bounded array expected by the Connectors::AddTranche message.
+	});
+}
+
+#[test]
+fn transfer() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		// Now create the pool
+		let pool_id: u64 = 42;
+		utils::create_pool(pool_id);
+
+		// Find the tranche id
+		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
+		let tranche_id = pool_details
+			.tranches
+			.tranche_id(TrancheLoc::Index(0))
+			.expect("Tranche at index 0 exists");
+
+		let dest_address = DomainAddress {
+			domain: Domain::Parachain(ParachainId::Moonbeam),
+			address: [99; 32],
+		};
+
+		// Verify that we first need the destination address to be whitelisted
+		assert_noop!(
+			Connectors::transfer(
+				Origin::signed(ALICE.into()),
+				pool_id.clone(),
+				tranche_id.clone(),
+				dest_address.clone(),
+				42,
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::UnauthorizedTransfer
+		);
+
+		// Make BOB the MembersListAdmin of this Pool
+		assert_ok!(Permissions::add(
+			Origin::root(),
+			Role::PoolRole(PoolRole::PoolAdmin),
+			BOB.into(),
+			PermissionScope::Pool(pool_id.clone()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+		));
+
+		// Call the Connectors::update_member which ensures the destination address is whitelisted.
+		assert_ok!(Connectors::update_member(
+			Origin::signed(BOB.into()),
+			dest_address.clone(),
+			pool_id.clone(),
+			tranche_id.clone(),
+			u64::MAX,
+		));
+
+		// Give BOB enough Tranche balance to be able to transfer it
+		OrmlTokens::deposit(
+			CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
+			&BOB.into(),
+			100_000,
+		);
+
+		// Finally, verify that we can now transfer the tranche to the destination address
+		let amount = 123;
+		assert_ok!(Connectors::transfer(
+			Origin::signed(BOB.into()),
+			pool_id.clone(),
+			tranche_id.clone(),
+			dest_address.clone(),
+			amount,
+		));
+
+		// The account to which the tranche should have been transferred
+		// to on Centrifuge for bookkeeping purposes.
+		let domain_account: AccountId = DomainLocator {
+			domain: dest_address.domain.clone(),
+		}
+		.into_account_truncating();
+
+		// Verify that the correct amount of the Tranche token was transferred
+		// to the dest domain account on Centrifuge.
+		assert_eq!(
+			OrmlTokens::free_balance(
+				CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
+				&domain_account
+			),
+			amount
+		)
 	});
 }
 
@@ -217,4 +268,138 @@ fn encoded_ethereum_xcm_add_pool() {
 	let encoded_call_hex = hex::encode(encoded_call);
 
 	assert_eq!(encoded_call_hex, expected_encoded_hex);
+}
+
+mod utils {
+	use super::*;
+
+	pub fn setup_pre_requirements() {
+		let moonbeam_location = MultiLocation {
+			parents: 1,
+			interior: X1(Parachain(PARA_ID_MOONBEAM)),
+		};
+		let moonbeam_native_token = MultiLocation {
+			parents: 1,
+			interior: X2(Parachain(PARA_ID_MOONBEAM), general_key(&[0, 1])),
+		};
+
+		// We need to set the Transact info for Moonbeam in the XcmTransactor pallet
+		assert_ok!(XcmTransactor::set_transact_info(
+			Origin::root(),
+			Box::new(VersionedMultiLocation::V1(moonbeam_location.clone())),
+			1,
+			8_000_000_000_000_000,
+			Some(3)
+		));
+
+		assert_ok!(XcmTransactor::set_fee_per_second(
+			Origin::root(),
+			Box::new(VersionedMultiLocation::V1(moonbeam_native_token.clone())),
+			default_per_second(18), // default fee_per_second for this token which has 18 decimals
+		));
+
+		/// Register Moonbeam's native token
+		let glmr_currency_id = CurrencyId::ForeignAsset(1);
+		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			decimals: 18,
+			name: "Glimmer".into(),
+			symbol: "GLMR".into(),
+			existential_deposit: 1_000_000,
+			location: Some(VersionedMultiLocation::V1(moonbeam_native_token)),
+			additional: CustomMetadata::default(),
+		};
+
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta,
+			Some(glmr_currency_id.clone())
+		));
+
+		// Give Alice and BOB enough glimmer to pay for fees
+		OrmlTokens::deposit(glmr_currency_id, &ALICE.into(), 10 * dollar(18));
+		OrmlTokens::deposit(glmr_currency_id, &BOB.into(), 10 * dollar(18));
+
+		assert_ok!(Connectors::set_domain_router(
+			Origin::root(),
+			Domain::Parachain(ParachainId::Moonbeam),
+			Router::Xcm(XcmDomain {
+				location: moonbeam_location
+					.clone()
+					.try_into()
+					.expect("Bad xcm version"),
+				ethereum_xcm_transact_call_index: vec![38, 0],
+				contract_address: H160::from(
+					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
+						.expect("Invalid address"),
+				),
+				fee_currency: glmr_currency_id,
+			}),
+		));
+
+		// We first need to register AUSD in the asset registry
+		let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			decimals: 12,
+			name: "Acala Dollar".into(),
+			symbol: "AUSD".into(),
+			existential_deposit: 1_000,
+			location: None,
+			additional: CustomMetadata::default(),
+		};
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			ausd_meta,
+			Some(CurrencyId::AUSD)
+		));
+	}
+
+	// admin: AccountId,
+	// depositor: AccountId,
+	// pool_id: PoolId,
+	// tranche_inputs: Vec<Self::TrancheInput>,
+	// currency: Self::CurrencyId,
+	// max_reserve: Self::Balance,
+	// metadata: Option<Vec<u8>>,
+
+	pub fn create_pool(pool_id: u64) {
+		assert_ok!(PoolSystem::create(
+			BOB.into(),
+			BOB.into(),
+			pool_id.clone(),
+			vec![
+				TrancheInput {
+					tranche_type: TrancheType::Residual,
+					seniority: None,
+					metadata: TrancheMetadata {
+						// NOTE: For now, we have to set these metadata fields of the first tranche
+						// to be convertible to the 32-byte size expected by the connectors AddTranche
+						// message.
+						token_name:
+							BoundedVec::<u8, development_runtime::MaxTokenNameLength>::try_from(
+								vec![1; 32]
+							)
+							.expect(""),
+						token_symbol:
+							BoundedVec::<u8, development_runtime::MaxTokenSymbolLength>::try_from(
+								vec![2; 32]
+							)
+							.expect(""),
+					}
+				},
+				TrancheInput {
+					tranche_type: TrancheType::NonResidual {
+						interest_rate_per_sec: One::one(),
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					seniority: None,
+					metadata: TrancheMetadata {
+						token_name: BoundedVec::default(),
+						token_symbol: BoundedVec::default(),
+					}
+				}
+			],
+			CurrencyId::AUSD,
+			10_000 * dollar(currency_decimals::AUSD),
+			None
+		));
+	}
 }

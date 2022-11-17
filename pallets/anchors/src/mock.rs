@@ -25,13 +25,13 @@ use sp_runtime::{
 
 use crate::{self as pallet_anchors, Config};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 type Balance = u64;
 
 // For testing the pallet, we construct a mock runtime.
 frame_support::construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -49,7 +49,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = Everything;
@@ -76,13 +76,13 @@ impl frame_system::Config for Test {
 	type Version = ();
 }
 
-impl pallet_randomness_collective_flip::Config for Test {}
+impl pallet_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
@@ -105,14 +105,14 @@ impl FindAuthor<u64> for AuthorGiven {
 	}
 }
 
-impl pallet_authorship::Config for Test {
+impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
 	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
 	type UncleGenerations = ();
 }
 
-impl pallet_timestamp::Config for Test {
+impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ();
 	type Moment = u64;
 	type OnTimestampSet = ();
@@ -121,7 +121,7 @@ impl pallet_timestamp::Config for Test {
 
 impl_mock_fees_state!(
 	MockFeesState,
-	<Test as frame_system::Config>::AccountId,
+	<Runtime as frame_system::Config>::AccountId,
 	Balance,
 	u8,
 	|key| match key {
@@ -130,7 +130,7 @@ impl_mock_fees_state!(
 	}
 );
 
-impl Config for Test {
+impl Config for Runtime {
 	type CommitAnchorFeeKey = ConstU8<1>;
 	type Currency = Balances;
 	type Fees = MockFees<Self::AccountId, Balance, u8, MockFeesState>;
@@ -138,11 +138,11 @@ impl Config for Test {
 	type WeightInfo = ();
 }
 
-impl Test {
+impl Runtime {
 	pub fn test_document_hashes() -> (
-		<Test as frame_system::Config>::Hash,
-		<Test as frame_system::Config>::Hash,
-		<Test as frame_system::Config>::Hash,
+		<Runtime as frame_system::Config>::Hash,
+		<Runtime as frame_system::Config>::Hash,
+		<Runtime as frame_system::Config>::Hash,
 	) {
 		// first is the hash of concatenated last two in sorted order
 		(
@@ -171,12 +171,12 @@ impl Test {
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
+		.build_storage::<Runtime>()
 		.unwrap();
 
 	// pre-fill balances
 	// 100 is the block author
-	pallet_balances::GenesisConfig::<Test> {
+	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![(1, 100000), (2, 100000), (100, 100)],
 	}
 	.assimilate_storage(&mut t)

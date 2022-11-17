@@ -23,9 +23,7 @@ use cfg_types::{CustomMetadata, FeeKey};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{
-		EqualPrivilegeOnly, InstanceFilter, LockIdentifier, OnRuntimeUpgrade, U128CurrencyToVote,
-	},
+	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, DispatchClass, Weight,
@@ -344,7 +342,7 @@ impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = MinimumPeriod;
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
-	type OnTimestampSet = ();
+	type OnTimestampSet = Aura;
 	type WeightInfo = weights::pallet_timestamp::SubstrateWeight<Runtime>;
 }
 
@@ -1047,27 +1045,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	Upgrade,
 >;
-
-pub struct Upgrade;
-impl OnRuntimeUpgrade for Upgrade {
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		pallet_bridge::migration::fix_pallet_account::pre_migrate::<Runtime>()
-	}
-
-	fn on_runtime_upgrade() -> Weight {
-		let mut weight = Weight::from_ref_time(0);
-		weight += pallet_bridge::migration::fix_pallet_account::migrate::<Runtime>();
-		weight
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		pallet_bridge::migration::fix_pallet_account::post_migrate::<Runtime>()
-	}
-}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

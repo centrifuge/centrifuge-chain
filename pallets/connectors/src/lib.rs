@@ -19,6 +19,7 @@ use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
 };
+use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
@@ -83,12 +84,12 @@ impl<Domain> TypeId for DomainAddress<Domain> {
 // Type aliases
 pub type PoolIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
-	<T as Config>::CurrencyId,
+	CurrencyIdOf<T>,
 >>::PoolId;
 
 pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
-	<T as Config>::CurrencyId,
+	CurrencyIdOf<T>,
 >>::TrancheId;
 
 pub type MessageOf<T> =
@@ -99,8 +100,8 @@ pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
-	use cfg_traits::{Permissions, PoolInspect};
-	use cfg_types::{PermissionScope, PoolRole, Role};
+	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
+	use cfg_types::{CustomMetadata, PermissionScope, PoolRole, Role};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
@@ -131,23 +132,14 @@ pub mod pallet {
 
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
-		type CurrencyId: Parameter
-			+ Copy
-			+ Default
-			+ IsType<<Self as pallet_xcm_transactor::Config>::CurrencyId>;
-
 		/// The origin allowed to make admin-like changes, such calling `set_domain_router`.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
-		type PoolInspect: PoolInspect<
-			Self::AccountId,
-			<Self as Config>::CurrencyId,
-			Rate = Self::Rate,
-		>;
+		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
 
 		type Permission: Permissions<
 			Self::AccountId,
-			Scope = PermissionScope<PoolIdOf<Self>, <Self as pallet::Config>::CurrencyId>,
+			Scope = PermissionScope<PoolIdOf<Self>, CurrencyIdOf<Self>>,
 			Role = Role<TrancheIdOf<Self>, Moment>,
 			Error = DispatchError,
 		>;
@@ -157,9 +149,18 @@ pub mod pallet {
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<
 				Self::AccountId,
-				AssetId = <Self as pallet::Config>::CurrencyId,
+				AssetId = CurrencyIdOf<Self>,
 				Balance = <Self as pallet::Config>::Balance,
 			> + Transfer<Self::AccountId>;
+
+		type TrancheCurrency: TrancheCurrency<PoolIdOf<Self>, TrancheIdOf<Self>>
+			+ Into<CurrencyIdOf<Self>>;
+
+		type AssetRegistry: asset_registry::Inspect<
+			AssetId = CurrencyIdOf<Self>,
+			Balance = <Self as Config>::Balance,
+			CustomMetadata = CustomMetadata,
+		>;
 	}
 
 	#[pallet::event]
@@ -188,6 +189,12 @@ pub mod pallet {
 		PoolNotFound,
 		/// A tranche could not be found
 		TrancheNotFound,
+		/// Could not find the metadata of a tranche token
+		TrancheMetadataNotFound,
+		/// The tranche token name can't be converted to the expected bounded size
+		InvalidTrancheMetadataName,
+		/// The tranche token symbol can't be converted to the expected bounded size
+		InvalidTrancheMetadataSymbol,
 		/// Failed to fetch a tranche token price.
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
@@ -253,18 +260,28 @@ pub mod pallet {
 				Error::<T>::TrancheNotFound
 			);
 
-			// Send the message through the router
-			//
-			// TODO: retrieve token name and symbol from asset-registry
-			// Depends on https://github.com/centrifuge/centrifuge-chain/issues/842
-			//
+			// Look up the metadata of the tranche token
+			let currency_id =
+				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into();
+			let tranche_metadata = T::AssetRegistry::metadata(&currency_id)
+				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
+			let token_name = tranche_metadata
+				.name
+				.try_into()
+				.map_err(|_| Error::<T>::InvalidTrancheMetadataName)?;
+			let token_symbol = tranche_metadata
+				.symbol
+				.try_into()
+				.map_err(|_| Error::<T>::InvalidTrancheMetadataSymbol)?;
+
+			// Send the message to the domain
 			Self::do_send_message(
 				who,
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
-					token_name: [0; 32],
-					token_symbol: [0; 32],
+					token_name,
+					token_symbol,
 				},
 				domain,
 			)?;
@@ -309,8 +326,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			// Check that the origin is a member of this tranche token or
-			// is a MemberListAdmin and thus allowed to add other members.
+			// Check that the origin is allowed to add other members
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
@@ -320,6 +336,7 @@ pub mod pallet {
 				BadOrigin
 			);
 
+			// Now add the destination address as a TrancheInvestor of the given tranche
 			T::Permission::add(
 				PermissionScope::Pool(pool_id),
 				address.into_account_truncating(),
@@ -363,17 +380,17 @@ pub mod pallet {
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
-			// TODO: Transfer to the domain account for bookkeeping
-			// T::Tokens::transfer(
-			// 	T::CurrencyId::Tranche(pool_id, tranche_id),
-			// 	&who,
-			// 	&DomainLocator {
-			// 		domain: address.domain,
-			// 	}
-			// 	.into_account_truncating(),
-			// 	amount,
-			// 	false,
-			// )?;
+			// Transfer to the domain account for bookkeeping
+			T::Tokens::transfer(
+				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into(),
+				&who,
+				&DomainLocator {
+					domain: address.domain.clone(),
+				}
+				.into_account_truncating(),
+				amount,
+				false,
+			)?;
 
 			Self::do_send_message(
 				who,
