@@ -369,7 +369,7 @@ where
 	/// Currency that the tranche is denominated in
 	pub currency: TrancheCurrency,
 	/// Type of the tranche (Residual or NonResidual)
-	pub ty: TrancheType<Rate>,
+	pub tranche_type: TrancheType<Rate>,
 	/// Metadata of a Tranche
 	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
