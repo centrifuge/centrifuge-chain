@@ -272,12 +272,6 @@ where
 
 		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
 
-		dbg!(
-			gross_reward,
-			account.reward_tally,
-			last_rewarded_stake,
-			rpt_changes_tally
-		);
 		gross_reward
 			.ensure_sub(account.reward_tally)?
 			.ensure_sub(last_rewarded_stake.ensure_into()?)?

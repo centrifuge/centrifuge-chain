@@ -1,4 +1,3 @@
-mod claiming;
 mod common;
 mod currency_movement;
 
@@ -34,172 +33,40 @@ fn rewards_account() -> u64 {
 	)
 }
 
+fn empty_distribution<Reward: DistributedRewards<GroupId = u32, Balance = u64>>() {
+	// This method adds an extra distribution with 0 reward to emulate one more epoch.
+	// This allow deferred mechanism to behave in the same way as base mechanism if
+	// called just before the claim method.
+	// It is only necessary if there was any distribute_reward call in the test.
+	assert_ok!(Reward::distribute_reward(0, [GROUP_A, GROUP_B, GROUP_C]));
+}
+
 mod mechanism {
 	use super::*;
 
 	mod base_standalone {
 		use super::*;
 
-		common_tests!(Rewards1, Instance1);
-		base_claiming_tests!(Rewards1, Instance1);
+		common_tests!(Rewards1, Instance1, "base");
 	}
 
 	mod base_with_movement {
 		use super::*;
 
-		common_tests!(Rewards2, Instance2);
-		base_claiming_tests!(Rewards2, Instance2);
-
-		use Rewards2 as Rewards;
-
-		#[test]
-		fn move_currency_one_move() {
-			const STAKE_A: u64 = 2000;
-			const STAKE_B: u64 = 2000;
-			const STAKE_C: u64 = 1000;
-
-			new_test_ext().execute_with(|| {
-				// DISTRIBUTION 0
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
-				assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-				assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-				assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
-				assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-				// DISTRIBUTION 1
-				assert_ok!(
-					Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-					REWARD / 4
-				);
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-				assert_ok!(
-					Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-					REWARD / 4
-				);
-				assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-				assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-				// DISTRIBUTION 2
-				assert_ok!(
-					Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-					REWARD / 4 + 2 * REWARD / 5
-				);
-				assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
-				assert_ok!(Rewards::withdraw_stake(
-					DOM_1_CURRENCY_B,
-					&USER_A,
-					STAKE_B * 2
-				));
-				assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-				// DISTRIBUTION 3
-				assert_ok!(
-					Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-					REWARD / 4 + REWARD / 2 + REWARD / 2
-				);
-				assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
-				assert_ok!(
-					Rewards::claim_reward(DOM_1_CURRENCY_C, &USER_A),
-					REWARD / 2 + REWARD / 10 + REWARD / 2
-				);
-			});
-		}
-
-		/// Makes two movements without account interaction and another move.
-		#[test]
-		fn move_currency_several_moves() {
-			const STAKE_A: u64 = 2000;
-			const STAKE_B: u64 = 2000;
-			const STAKE_C: u64 = 1000;
-
-			new_test_ext().execute_with(|| {
-				// DISTRIBUTION 0
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
-				assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-				assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-				assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
-				assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-				// DISTRIBUTION 1
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-				assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-				// DISTRIBUTION 2
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A)); // MOVEMENT HERE!!
-				assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-				// DISTRIBUTION 3
-				assert_ok!(
-					Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-					REWARD / 4 + REWARD / 3 + REWARD / 4
-				);
-				assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-				assert_ok!(
-					Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-					REWARD / 4 + REWARD / 3 + REWARD / 4
-				);
-				assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-				// DISTRIBUTION 4
-				assert_ok!(
-					Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-					REWARD / 4 + REWARD / 3 + REWARD / 4 + REWARD / 3
-				);
-			});
-		}
-
-		#[allow(non_upper_case_globals)]
-		mod reward_expectation {
-			use super::*;
-
-			pub const stake_distribute_move_unstake_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_A);
-			pub const stake_move_distribute_unstake_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_B);
-			pub const stake_move_unstake_distribute_claim: u64 = 0;
-
-			// With two moves and then unstake
-			pub const stake_distribute_move_move_unstake_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_A);
-			pub const stake_move_distribute_move_unstake_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_B);
-			pub const stake_move_move_distribute_unstake_claim: u64 =
-				REWARD * STAKE_M / (STAKE_M + STAKE_C);
-		}
-
-		currency_movement_tests!(Rewards2, Instance2, reward_expectation);
+		common_tests!(Rewards2, Instance2, "base");
+		currency_movement_tests!(Rewards2, Instance2, "base");
 	}
 
 	mod deferred_standalone {
 		use super::*;
 
-		common_tests!(Rewards3, Instance3);
-		deferred_claiming_tests!(Rewards3, Instance3);
+		common_tests!(Rewards3, Instance3, "deferred");
 	}
 
 	mod deferred_with_movement {
 		use super::*;
 
-		common_tests!(Rewards4, Instance4);
-		deferred_claiming_tests!(Rewards4, Instance4);
-
-		#[allow(non_upper_case_globals)]
-		mod reward_expectation {
-			// With unstake
-			pub const stake_distribute_move_unstake_claim: u64 = 0;
-			pub const stake_move_distribute_unstake_claim: u64 = 0;
-			pub const stake_move_unstake_distribute_claim: u64 = 0;
-
-			// With two moves and then unstake
-			pub const stake_distribute_move_move_unstake_claim: u64 = 0;
-			pub const stake_move_distribute_move_unstake_claim: u64 = 0;
-			pub const stake_move_move_distribute_unstake_claim: u64 = 0;
-		}
-
-		currency_movement_tests!(Rewards4, Instance4, reward_expectation);
+		common_tests!(Rewards4, Instance4, "deferred");
+		currency_movement_tests!(Rewards4, Instance4, "deferred");
 	}
 }
