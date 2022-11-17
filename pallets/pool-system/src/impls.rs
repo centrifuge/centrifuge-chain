@@ -111,7 +111,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				.collect(),
 		)?;
 
-		Self::take_deposit(depositor, pool_id)?;
+		Self::take_deposit(depositor.clone(), pool_id)?;
 
 		let now = Self::now();
 
@@ -141,7 +141,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
 			let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
-				tranche_input.clone().metadata.token_name.clone();
+				tranche_input.metadata.token_name.clone();
 
 			let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> =
 				tranche_input.metadata.token_symbol.clone();
@@ -165,42 +165,50 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 		}
 
-		Pool::<T>::insert(
-			pool_id,
-			PoolDetails {
-				currency,
-				tranches,
-				status: PoolStatus::Open,
-				epoch: EpochState {
-					current: One::one(),
-					last_closed: now,
-					last_executed: Zero::zero(),
-				},
-				parameters: PoolParameters {
-					min_epoch_time: sp_std::cmp::min(
-						sp_std::cmp::max(
-							T::DefaultMinEpochTime::get(),
-							T::MinEpochTimeLowerBound::get(),
-						),
-						T::MinEpochTimeUpperBound::get(),
-					),
-					max_nav_age: sp_std::cmp::min(
-						T::DefaultMaxNAVAge::get(),
-						T::MaxNAVAgeUpperBound::get(),
-					),
-				},
-				reserve: ReserveDetails {
-					max: max_reserve,
-					available: Zero::zero(),
-					total: Zero::zero(),
-				},
-				metadata: checked_metadata,
-			},
+		let min_epoch_time = sp_std::cmp::min(
+			sp_std::cmp::max(
+				T::DefaultMinEpochTime::get(),
+				T::MinEpochTimeLowerBound::get(),
+			),
+			T::MinEpochTimeUpperBound::get(),
 		);
+
+		let max_nav_age =
+			sp_std::cmp::min(T::DefaultMaxNAVAge::get(), T::MaxNAVAgeUpperBound::get());
+
+		let pool_details = PoolDetails {
+			currency,
+			tranches,
+			status: PoolStatus::Open,
+			epoch: EpochState {
+				current: One::one(),
+				last_closed: now,
+				last_executed: Zero::zero(),
+			},
+			parameters: PoolParameters {
+				min_epoch_time,
+				max_nav_age,
+			},
+			reserve: ReserveDetails {
+				max: max_reserve,
+				available: Zero::zero(),
+				total: Zero::zero(),
+			},
+			metadata: checked_metadata,
+		};
+
+		Pool::<T>::insert(pool_id, pool_details.clone());
+
+		Self::deposit_event(Event::PoolCreated {
+			admin: admin.clone(),
+			depositor,
+			pool_id,
+			essence: pool_details.essence::<T>()?,
+		});
 
 		T::Permission::add(
 			PermissionScope::Pool(pool_id),
-			admin.clone(),
+			admin,
 			Role::PoolRole(PoolRole::PoolAdmin),
 		)?;
 

@@ -292,7 +292,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency.into(),
-				ty: tranche.tranche_type.into(),
+				tranche_type: tranche.tranche_type.into(),
 				metadata: TrancheMetadata {
 					token_name: BoundedVec::try_from(metadata.clone().unwrap().name)
 						.unwrap_or(BoundedVec::default()),
@@ -369,7 +369,7 @@ where
 	/// Currency that the tranche is denominated in
 	pub currency: TrancheCurrency,
 	/// Type of the tranche (Residual or NonResidual)
-	pub ty: TrancheType<Rate>,
+	pub tranche_type: TrancheType<Rate>,
 	/// Metadata of a Tranche
 	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
@@ -635,11 +635,6 @@ pub mod pallet {
 		Rebalanced { pool_id: T::PoolId },
 		/// The max reserve was updated.
 		MaxReserveSet { pool_id: T::PoolId },
-		/// Pool metadata was set.
-		MetadataSet {
-			pool_id: T::PoolId,
-			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
-		},
 		/// An epoch was closed.
 		EpochClosed {
 			pool_id: T::PoolId,
@@ -656,6 +651,21 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
 		},
+		/// An Pool was created.
+		PoolCreated {
+			admin: T::AccountId,
+			depositor: T::AccountId,
+			pool_id: T::PoolId,
+			essence: PoolEssence<
+				T::CurrencyId,
+				T::Balance,
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
+		},
+		/// An Pool was updated.
 		PoolUpdated {
 			id: T::PoolId,
 			old: PoolEssence<

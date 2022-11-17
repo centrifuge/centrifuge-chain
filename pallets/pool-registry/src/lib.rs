@@ -52,6 +52,12 @@ where
 	metadata: BoundedVec<u8, MetaSize>,
 }
 
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum PoolRegistrationStatus {
+	Registered,
+	Unregistered,
+}
+
 type PoolMetadataOf<T> = PoolMetadata<<T as Config>::MaxSizeMetadata>;
 
 type PoolChangesOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
@@ -160,14 +166,15 @@ pub mod pallet {
 	pub(super) type PoolMetadata<T: Config> =
 		StorageMap<_, Blake2_256, T::PoolId, PoolMetadataOf<T>>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn get_pools)]
+	pub(super) type Pools<T: Config> = StorageMap<_, Blake2_256, T::PoolId, PoolRegistrationStatus>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A pool was created.
-		Created {
-			pool_id: T::PoolId,
-			admin: T::AccountId,
-		},
+		/// A pool was registered.
+		Registered { pool_id: T::PoolId },
 		/// A pool update was registered.
 		UpdateRegistered { pool_id: T::PoolId },
 		/// A pool update was executed.
@@ -185,6 +192,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Invalid metadata passed
 		BadMetadata,
+		/// A Pool with the given ID was already registered in the past
+		PoolAlreadyRegistered,
 		/// Pre-requirements for a TrancheUpdate are not met
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
@@ -218,7 +227,7 @@ pub mod pallet {
 		/// use, or if the tranche configuration cannot be used.
 		#[pallet::weight(T::WeightInfo::create(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
 		#[transactional]
-		pub fn create(
+		pub fn register(
 			origin: OriginFor<T>,
 			admin: T::AccountId,
 			pool_id: T::PoolId,
@@ -238,6 +247,12 @@ pub mod pallet {
 			// admin as our depositor.
 			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
 
+			if Pools::<T>::contains_key(pool_id) {
+				return Err(Error::<T>::PoolAlreadyRegistered.into());
+			} else {
+				Pools::<T>::insert(pool_id, PoolRegistrationStatus::Registered);
+			}
+
 			T::ModifyPool::create(
 				admin.clone(),
 				depositor,
@@ -247,7 +262,7 @@ pub mod pallet {
 				max_reserve,
 				metadata,
 			)
-			.map(|_| Self::deposit_event(Event::Created { pool_id, admin }))
+			.map(|_| Self::deposit_event(Event::Registered { pool_id }))
 		}
 
 		/// Update per-pool configuration settings.
