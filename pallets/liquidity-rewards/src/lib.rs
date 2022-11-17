@@ -289,15 +289,19 @@ pub mod pallet {
 						epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
 						epoch_data.duration = changes.duration.unwrap_or(epoch_data.duration);
 
-						let ends_on = ends_on.ensure_add(epoch_data.duration)?;
+						let last_changes = mem::take(changes);
 
-						EndOfEpoch::<T>::set(EpochTimestamp(ends_on));
+						if epoch_data.duration != T::BlockNumber::zero() {
+							let ends_on = ends_on.ensure_add(epoch_data.duration)?;
 
-						Self::deposit_event(Event::NewEpoch {
-							ends_on: ends_on,
-							reward: epoch_data.reward,
-							last_changes: mem::take(changes),
-						});
+							EndOfEpoch::<T>::set(EpochTimestamp(ends_on));
+
+							Self::deposit_event(Event::NewEpoch {
+								ends_on: ends_on,
+								reward: epoch_data.reward,
+								last_changes,
+							});
+						}
 
 						Ok(())
 					})
