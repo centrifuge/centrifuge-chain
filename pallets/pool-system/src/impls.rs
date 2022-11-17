@@ -165,7 +165,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 			tranches_essence_for_event.push(TrancheEssence {
 				currency: tranche.currency,
-				ty: tranche.tranche_type,
+				tranche_type: tranche.tranche_type,
 				metadata: TrancheMetadata {
 					token_name: tranche_input.metadata.token_name.clone(),
 					token_symbol: tranche_input.metadata.token_symbol.clone(),

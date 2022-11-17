@@ -292,7 +292,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 
 			tranches.push(TrancheEssence {
 				currency: tranche.currency.into(),
-				ty: tranche.tranche_type.into(),
+				tranche_type: tranche.tranche_type.into(),
 				metadata: TrancheMetadata {
 					token_name: BoundedVec::try_from(metadata.clone().unwrap().name)
 						.unwrap_or(BoundedVec::default()),
