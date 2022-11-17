@@ -22,49 +22,6 @@ use crate::{
 	tranches::{EpochExecutionTranches, TrancheSolution},
 };
 
-/// The solutions struct for epoch solution
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum EpochSolution<Balance> {
-	Healthy(HealthySolution<Balance>),
-	Unhealthy(UnhealthySolution<Balance>),
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct HealthySolution<Balance> {
-	pub solution: Vec<TrancheSolution>,
-	pub score: Balance,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct UnhealthySolution<Balance> {
-	pub state: Vec<UnhealthyState>,
-	pub solution: Vec<TrancheSolution>,
-	// The risk buffer score per tranche (less junior tranche) for this solution
-	pub risk_buffer_improvement_scores: Option<Vec<Balance>>,
-	// The reserve buffer score for this solution
-	pub reserve_improvement_score: Option<Balance>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum UnhealthyState {
-	MaxReserveViolated,
-	MinRiskBufferViolated,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct EpochState<EpochId> {
-	/// Current epoch that is ongoing.
-	pub current: EpochId,
-	/// Time when the last epoch was closed.
-	pub last_closed: Moment,
-	/// Last epoch that was executed.
-	pub last_executed: EpochId,
-}
-
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where

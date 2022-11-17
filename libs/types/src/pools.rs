@@ -32,12 +32,6 @@ use crate::{
 	tranches::{TrancheEssence, TrancheMetadata, TrancheUpdate, Tranches},
 };
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub enum PoolState {
-	Healthy,
-	Unhealthy(Vec<UnhealthyState>),
-}
-
 /// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolLocator<PoolId> {
