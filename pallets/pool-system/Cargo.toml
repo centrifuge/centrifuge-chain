@@ -1,13 +1,12 @@
 [package]
-authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
-description = 'FRAME pallet template for defining custom runtime logic.'
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = 'Centrifuge Pool System pallet'
 edition = '2021'
-homepage = 'https://substrate.dev'
-license = 'Unlicense'
+license = "LGPL-3.0"
 name = 'pallet-pool-system'
-readme = 'README.md'
-repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '3.0.0'
+
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 

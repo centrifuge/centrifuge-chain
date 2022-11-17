@@ -4,7 +4,7 @@ description = 'Access control list for bridge paths across chains'
 edition = '2021'
 license = "LGPL-3.0"
 name = 'pallet-bridge-mapping'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/bridge-mapping"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '2.0.0'
 
 [package.metadata.docs.rs]
