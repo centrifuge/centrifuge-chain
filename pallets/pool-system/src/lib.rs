@@ -16,7 +16,7 @@
 
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
-use cfg_types::{PermissionScope, PoolLocator, PoolRole, Role};
+use cfg_types::{permissions::{PoolRole, Role, PermissionScope}, pools::{PoolLocator}};
 use codec::HasCompact;
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, DispatchResult, PostDispatchInfo},
@@ -47,7 +47,6 @@ use sp_runtime::{
 	ArithmeticError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
-pub use tranche::*;
 pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -151,7 +150,7 @@ type PoolChangesOf<T> = PoolChanges<
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
-	use cfg_types::{CustomMetadata, FulfillmentWithPrice, TotalOrder};
+	use cfg_types::{tokens::CustomMetadata, fulfillments::FulfillmentWithPrice, orders::TotalOrder};
 	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 

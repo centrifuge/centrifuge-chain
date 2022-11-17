@@ -10,18 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::types::Balance;
-use cfg_traits::InvestmentProperties;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, RuntimeDebug};
-use scale_info::{build::Fields, Path, Type, TypeInfo};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
-use sp_runtime::{traits::Zero, Perquintill};
-use sp_std::{
-	cmp::{Ord, PartialEq, PartialOrd},
-	marker::PhantomData,
-};
+use codec::{Decode, Encode};
+use frame_support::RuntimeDebug;
+use scale_info::TypeInfo;
+use sp_runtime::Perquintill;
+use sp_std::cmp::PartialEq;
 
 #[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct FulfillmentWithPrice<BalanceRatio> {

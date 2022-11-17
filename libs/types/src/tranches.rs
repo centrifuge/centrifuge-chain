@@ -14,7 +14,7 @@ use std::marker::PhantomData;
 
 #[cfg(test)]
 use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
-use cfg_primitives::{TrancheId, PoolId, Moment};
+use cfg_primitives::{Moment, PoolId, TrancheId};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -58,8 +58,8 @@ pub type Seniority = u32;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
-	pool_id: PoolId,
-	tranche_id: TrancheId,
+	pub(crate) pool_id: PoolId,
+	pub(crate) tranche_id: TrancheId,
 }
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]

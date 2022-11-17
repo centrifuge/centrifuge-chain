@@ -55,7 +55,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use cfg_traits::InterestAccrual;
-use cfg_types::Adjustment;
+use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;

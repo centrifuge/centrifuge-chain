@@ -11,15 +11,16 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use frame_support::traits::Get;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, RuntimeDebug};
-use scale_info::{build::Fields, Path, Type, TypeInfo};
-use orml_traits::Change;
+use codec::{Decode, Encode};
+use frame_support::{traits::Get, RuntimeDebug};
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-use crate::{pools::PoolChanges, tranches::{TrancheSolution, EpochExecutionTranches}};
+use crate::{
+	pools::PoolChanges,
+	tranches::{EpochExecutionTranches, TrancheSolution},
+};
 
 /// The solutions struct for epoch solution
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]

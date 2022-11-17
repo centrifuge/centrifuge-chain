@@ -10,23 +10,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::types::Balance;
-use cfg_traits::InvestmentProperties;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{dispatch::DispatchResult, traits::UnixTime, RuntimeDebug};
-use scale_info::{build::Fields, Path, Type, TypeInfo};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use codec::{Decode, Encode};
+use frame_support::{dispatch::DispatchResult, RuntimeDebug};
+use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Zero},
-	ArithmeticError, Perquintill,
+	traits::AtLeast32BitUnsigned,
+	ArithmeticError,
 };
-use sp_std::{
-	cmp::{Ord, PartialEq, PartialOrd},
-	marker::PhantomData,
-};
+use sp_std::cmp::PartialEq;
 
-use crate::tranches::{TrancheSolution, EpochExecutionTranches};
+use crate::tranches::{EpochExecutionTranches, TrancheSolution};
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ReserveDetails<Balance> {

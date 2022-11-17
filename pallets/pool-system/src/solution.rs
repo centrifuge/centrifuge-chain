@@ -14,6 +14,8 @@ use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
 use sp_std::vec;
+use cfg_types::pools::PoolState;
+use cfg_types::epoch::UnhealthyState;
 
 use super::*;
 

@@ -17,8 +17,8 @@ pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use crate::tranches::TrancheCurrency;
-use crate::xcm::XcmMetadata;
+
+use crate::{tranches::TrancheCurrency, xcm::XcmMetadata};
 
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,

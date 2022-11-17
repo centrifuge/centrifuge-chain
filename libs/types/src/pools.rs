@@ -10,29 +10,21 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{types::Balance, Moment};
-use cfg_traits::InvestmentProperties;
-use codec::{Decode, Encode, MaxEncodedLen};
+use cfg_primitives::Moment;
+use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	traits::{Get, UnixTime},
+	traits::Get,
 	BoundedVec, RuntimeDebug,
 };
-use frame_system::Config;
-use orml_traits::asset_registry::AssetMetadata;
-use scale_info::{build::Fields, Path, Type, TypeInfo};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use orml_traits::{asset_registry::AssetMetadata, Change};
+use scale_info::TypeInfo;
 use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 use sp_runtime::{
 	traits::{One, Zero},
-	FixedPointNumber, FixedPointOperand, Perquintill,
+	FixedPointNumber, FixedPointOperand,
 };
-use sp_std::{
-	cmp::{Ord, PartialEq, PartialOrd},
-	marker::PhantomData,
-};
-use orml_traits::Change;
+use sp_std::cmp::PartialEq;
 
 use crate::{
 	epoch::{EpochState, UnhealthyState},
@@ -160,7 +152,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
 	CurrencyId: Copy,
 	EpochId: BaseArithmetic,
-	MetaSize:  Get<u32> + Copy,
+	MetaSize: Get<u32> + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
 	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,
@@ -183,48 +175,63 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		Ok(())
 	}
 
-	// pub fn essence<T: Config, MaxTokenNameLength, MaxTokenSymbolLength>(&self) -> Result<PoolEssence<CurrencyId, Balance, TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>, DispatchError>
-	// where
-	// 	MaxTokenNameLength: Get<u32>,
-	// 	MaxTokenSymbolLength: Get<u32>,
-	// {
-	// 	let mut tranches: Vec<
-	// 		TrancheEssence<
-	// 			T::TrancheCurrency,
-	// 			T::Rate,
-	// 			T::MaxTokenNameLength,
-	// 			T::MaxTokenSymbolLength,
-	// 		>,
-	// 	> = Vec::new();
-	//
-	// 	for tranche in self.tranches.residual_top_slice().iter() {
-	// 		let metadata = T::AssetRegistry::metadata(&self.currency).ok_or(AssetMetadata {
-	// 			decimals: 0,
-	// 			name: Vec::new(),
-	// 			symbol: Vec::new(),
-	// 			existential_deposit: (),
-	// 			location: None,
-	// 			additional: (),
-	// 		});
-	//
-	// 		tranches.push(TrancheEssence {
-	// 			currency: tranche.currency.into(),
-	// 			ty: tranche.tranche_type.into(),
-	// 			metadata: TrancheMetadata {
-	// 				token_name: BoundedVec::try_from(metadata.clone().unwrap().name)
-	// 					.unwrap_or(BoundedVec::default()),
-	// 				token_symbol: BoundedVec::try_from(metadata.unwrap().symbol)
-	// 					.unwrap_or(BoundedVec::default()),
-	// 			},
-	// 		});
-	// 	}
-	//
-	// 	Ok(PoolEssence {
-	// 		currency: self.currency,
-	// 		max_reserve: self.reserve.max.into(),
-	// 		max_nav_age: self.parameters.max_nav_age,
-	// 		min_epoch_time: self.parameters.min_epoch_time,
-	// 		tranches,
-	// 	})
-	// }
+	pub fn essence<
+		AssetRegistry,
+		AssetId,
+		CustomMetadata,
+		MaxTokenNameLength,
+		MaxTokenSymbolLength,
+	>(
+		&self,
+	) -> Result<
+		PoolEssence<
+			CurrencyId,
+			Balance,
+			TrancheCurrency,
+			Rate,
+			MaxTokenNameLength,
+			MaxTokenSymbolLength,
+		>,
+		DispatchError,
+	>
+	where
+		AssetRegistry: orml_traits::asset_registry::Inspect,
+		<AssetRegistry as orml_traits::asset_registry::Inspect>::AssetId: From<CurrencyId>,
+		MaxTokenNameLength: Get<u32>,
+		MaxTokenSymbolLength: Get<u32>,
+	{
+		let mut tranches: Vec<
+			TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>,
+		> = Vec::new();
+
+		for tranche in self.tranches.residual_top_slice().iter() {
+			let metadata = AssetRegistry::metadata(&self.currency.into()).ok_or(AssetMetadata {
+				decimals: 0,
+				name: Vec::new(),
+				symbol: Vec::new(),
+				existential_deposit: (),
+				location: None,
+				additional: (),
+			}).unwrap();
+
+			tranches.push(TrancheEssence {
+				currency: tranche.currency.into(),
+				ty: tranche.tranche_type.into(),
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::try_from(metadata.name)
+						.unwrap_or(BoundedVec::default()),
+					token_symbol: BoundedVec::try_from(metadata.symbol)
+						.unwrap_or(BoundedVec::default()),
+				},
+			});
+		}
+
+		Ok(PoolEssence {
+			currency: self.currency,
+			max_reserve: self.reserve.max.into(),
+			max_nav_age: self.parameters.max_nav_age,
+			min_epoch_time: self.parameters.min_epoch_time,
+			tranches,
+		})
+	}
 }

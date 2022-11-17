@@ -10,18 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::types::Balance;
-use cfg_traits::InvestmentProperties;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, RuntimeDebug};
+use codec::{Decode, Encode};
+use frame_support::traits::UnixTime;
 use scale_info::{build::Fields, Path, Type, TypeInfo};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
-use sp_runtime::{traits::Zero, Perquintill};
-use sp_std::{
-	cmp::{Ord, PartialEq, PartialOrd},
-	marker::PhantomData,
-};
+use sp_std::{cmp::PartialEq, marker::PhantomData};
 
 /// A struct we need as the pallets implementing trait Time
 /// do not implement TypeInfo. This wraps this and implements everything manually.

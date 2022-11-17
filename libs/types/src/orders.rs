@@ -10,18 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::types::Balance;
-use cfg_traits::InvestmentProperties;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, RuntimeDebug};
-use scale_info::{build::Fields, Path, Type, TypeInfo};
+use frame_support::RuntimeDebug;
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::{traits::Zero, Perquintill};
-use sp_std::{
-	cmp::{Ord, PartialEq, PartialOrd},
-	marker::PhantomData,
-};
+use sp_runtime::traits::Zero;
+use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 
 /// A convenience struct to easily pass around the accumulated orders
 /// for all tranches, which is of sole interest to the pool.

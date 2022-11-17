@@ -10,23 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_primitives::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	dispatch::DispatchResult, ensure, sp_runtime::ArithmeticError, traits::Get, Blake2_128,
-	BoundedVec, Parameter, RuntimeDebug, StorageHasher,
-};
-use orml_traits::asset_registry::AssetMetadata;
-use polkadot_parachain::primitives::Id as ParachainId;
-use rev_slice::{RevSlice, SliceExt};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
-use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
-use sp_runtime::{
-	traits::{ConstU32, Member, One, Zero},
-	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, WeakBoundedVec,
-};
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(

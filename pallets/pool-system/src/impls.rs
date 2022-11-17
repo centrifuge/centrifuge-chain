@@ -13,7 +13,9 @@
 use cfg_traits::{
 	CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue, TrancheCurrency, UpdateState,
 };
-use cfg_types::InvestmentInfo;
+use cfg_types::investments::InvestmentInfo;
+use cfg_types::pools::{PoolStatus, PoolState};
+use cfg_types::epoch::{EpochSolution, UnhealthyState};
 use frame_support::traits::Contains;
 
 use super::*;

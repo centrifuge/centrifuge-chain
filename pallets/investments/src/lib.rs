@@ -18,7 +18,7 @@ use cfg_traits::{
 	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
 };
 use cfg_types::{
-	FixedPointNumberExtension, FulfillmentWithPrice, InvestmentAccount, Order, TotalOrder,
+	fixed_point::FixedPointNumberExtension, fulfillments::FulfillmentWithPrice, investments::InvestmentAccount, orders::{Order, TotalOrder},
 };
 use frame_support::{
 	pallet_prelude::*,
