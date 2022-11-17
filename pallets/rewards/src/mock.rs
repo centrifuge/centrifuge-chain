@@ -11,7 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{base, base_with_currency_movement};
+use super::mechanism::{base, base_with_currency_movement, deferred};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -32,6 +32,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens,
 		Rewards1: pallet_rewards::<Instance1>,
 		Rewards2: pallet_rewards::<Instance2>,
+		Rewards3: pallet_rewards::<Instance3>,
 	}
 );
 
@@ -117,28 +118,24 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 3;
 }
 
-impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
-	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type DomainId = DomainId;
-	type Event = Event;
-	type GroupId = u32;
-	type PalletId = RewardsPalletId;
-	type RewardCurrency = RewardCurrency;
-	type RewardMechanism = base::Mechanism<u64, i128, FixedI64>;
+macro_rules! pallet_rewards_config {
+	($instance:ident, $mechanism:ty) => {
+		impl pallet_rewards::Config<pallet_rewards::$instance> for Runtime {
+			type Currency = Tokens;
+			type CurrencyId = CurrencyId;
+			type DomainId = DomainId;
+			type Event = Event;
+			type GroupId = u32;
+			type PalletId = RewardsPalletId;
+			type RewardCurrency = RewardCurrency;
+			type RewardMechanism = $mechanism;
+		}
+	};
 }
 
-impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
-	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type DomainId = DomainId;
-	type Event = Event;
-	type GroupId = u32;
-	type PalletId = RewardsPalletId;
-	type RewardCurrency = RewardCurrency;
-	type RewardMechanism =
-		base_with_currency_movement::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>;
-}
+pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64>);
+pallet_rewards_config!(Instance2, base_with_currency_movement::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance3, deferred::Mechanism<u64, i128, FixedI64>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
