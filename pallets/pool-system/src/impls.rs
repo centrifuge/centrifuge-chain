@@ -128,6 +128,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			now,
 		)?;
 
+		let mut tranches_essence_for_event = Vec::new();
+
 		let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
 			Some(metadata_value) => {
 				let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
@@ -141,7 +143,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
 			let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
-				tranche_input.clone().metadata.token_name.clone();
+				tranche_input.metadata.token_name.clone();
 
 			let token_symbol: BoundedVec<u8, T::MaxTokenSymbolLength> =
 				tranche_input.metadata.token_symbol.clone();
@@ -161,9 +163,29 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				token_symbol.to_vec(),
 			);
 
+			tranches_essence_for_event.push(TrancheEssence {
+				currency: tranche.currency,
+				ty: tranche.tranche_type,
+				metadata: TrancheMetadata {
+					token_name: tranche_input.metadata.token_name.clone(),
+					token_symbol: tranche_input.metadata.token_symbol.clone(),
+				},
+			});
+
 			T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 		}
+
+		let min_epoch_time = sp_std::cmp::min(
+			sp_std::cmp::max(
+				T::DefaultMinEpochTime::get(),
+				T::MinEpochTimeLowerBound::get(),
+			),
+			T::MinEpochTimeUpperBound::get(),
+		);
+
+		let max_nav_age =
+			sp_std::cmp::min(T::DefaultMaxNAVAge::get(), T::MaxNAVAgeUpperBound::get());
 
 		Pool::<T>::insert(
 			pool_id,
@@ -177,17 +199,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 					last_executed: Zero::zero(),
 				},
 				parameters: PoolParameters {
-					min_epoch_time: sp_std::cmp::min(
-						sp_std::cmp::max(
-							T::DefaultMinEpochTime::get(),
-							T::MinEpochTimeLowerBound::get(),
-						),
-						T::MinEpochTimeUpperBound::get(),
-					),
-					max_nav_age: sp_std::cmp::min(
-						T::DefaultMaxNAVAge::get(),
-						T::MaxNAVAgeUpperBound::get(),
-					),
+					min_epoch_time,
+					max_nav_age,
 				},
 				reserve: ReserveDetails {
 					max: max_reserve,
@@ -197,6 +210,17 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				metadata: checked_metadata,
 			},
 		);
+
+		Self::deposit_event(Event::PoolCreated {
+			pool_id,
+			essence: PoolEssence {
+				currency,
+				max_reserve,
+				max_nav_age,
+				min_epoch_time,
+				tranches: tranches_essence_for_event,
+			},
+		});
 
 		T::Permission::add(
 			PermissionScope::Pool(pool_id),

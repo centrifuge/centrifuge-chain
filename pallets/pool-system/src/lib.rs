@@ -652,7 +652,7 @@ pub mod pallet {
 			epoch_id: T::EpochId,
 		},
 		PoolCreated {
-			pool: T::PoolId,
+			pool_id: T::PoolId,
 			essence: PoolEssence<
 				T::CurrencyId,
 				T::Balance,
