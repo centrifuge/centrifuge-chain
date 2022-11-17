@@ -653,6 +653,8 @@ pub mod pallet {
 		},
 		/// An Pool was created.
 		PoolCreated {
+			admin: T::AccountId,
+			depositor: T::AccountId,
 			pool_id: T::PoolId,
 			essence: PoolEssence<
 				T::CurrencyId,
