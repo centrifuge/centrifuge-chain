@@ -420,6 +420,32 @@ macro_rules! currency_movement_tests {
 					);
 				});
 			}
+
+			#[test]
+			fn no_lost_reward_after_move() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+
+					empty_distribution::<$pallet>();
+					assert_ok!(
+						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
+						REWARD * STAKE_A / (STAKE_A + STAKE_M)
+					);
+					assert_ok!(
+						$pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A),
+						REWARD * STAKE_M / (STAKE_M + STAKE_A)
+					);
+
+					assert_eq!(rewards_account(), 0);
+				});
+			}
 		}
 	};
 }
