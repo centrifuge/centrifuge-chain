@@ -395,7 +395,7 @@ mod utils {
 						// message.
 						token_name:
 							BoundedVec::<u8, development_runtime::MaxTokenNameLength>::try_from(
-								vec![1; 128]
+								"A highly advanced tranche".as_bytes().to_vec(),
 							)
 							.expect(""),
 						token_symbol:
