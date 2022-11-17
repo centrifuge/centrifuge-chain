@@ -635,11 +635,6 @@ pub mod pallet {
 		Rebalanced { pool_id: T::PoolId },
 		/// The max reserve was updated.
 		MaxReserveSet { pool_id: T::PoolId },
-		/// Pool metadata was set.
-		MetadataSet {
-			pool_id: T::PoolId,
-			metadata: BoundedVec<u8, T::MaxSizeMetadata>,
-		},
 		/// An epoch was closed.
 		EpochClosed {
 			pool_id: T::PoolId,
@@ -655,6 +650,19 @@ pub mod pallet {
 		EpochExecuted {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
+		},
+		PoolCreated {
+			pool: T::PoolId,
+			essence: PoolEssence<
+				T::CurrencyId,
+				T::Balance,
+				T::TrancheCurrency,
+				T::Rate,
+				T::MaxTokenNameLength,
+				T::MaxTokenSymbolLength,
+			>,
+			admin:
+
 		},
 		PoolUpdated {
 			id: T::PoolId,
