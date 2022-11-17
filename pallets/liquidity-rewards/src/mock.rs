@@ -70,6 +70,7 @@ impl pallet_liquidity_rewards::Config for Test {
 	type Domain = LiquidityDomain;
 	type Event = Event;
 	type GroupId = u32;
+	type InitialEpochDuration = ConstU64<0>;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxGroups = MaxGroups;
 	type Rewards = MockRewards;

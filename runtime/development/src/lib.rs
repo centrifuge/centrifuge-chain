@@ -67,7 +67,7 @@ use pallet_restricted_tokens::{
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
 use scale_info::TypeInfo;
@@ -1556,6 +1556,8 @@ frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
 
+	pub const InitialEpochDuration: BlockNumber = 1 * MINUTES;
+
 	pub const LiquidityDomain: RewardDomain = RewardDomain::Liquidity;
 }
 
@@ -1566,6 +1568,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type Domain = LiquidityDomain;
 	type Event = Event;
 	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxGroups = MaxGroups;
 	type Rewards = Rewards;
