@@ -289,12 +289,12 @@ fn encoded_ethereum_xcm_add_pool() {
 #[test]
 fn verify_tranche_fields_sizes() {
 	assert_eq!(
-		development_runtime::MaxTokenNameLength.get(),
-		pallet_connectors::TOKEN_NAME_SIZE
+		development_runtime::MaxTokenNameLength::get(),
+		pallet_connectors::TOKEN_NAME_SIZE as u32
 	);
 	assert_eq!(
-		development_runtime::MaxTokenSymbolLength.get(),
-		pallet_connectors::TOKEN_SYMBOL_SIZE
+		development_runtime::MaxTokenSymbolLength::get(),
+		pallet_connectors::TOKEN_SYMBOL_SIZE as u32
 	);
 }
 
