@@ -1556,7 +1556,7 @@ frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
 
-	pub const InitialEpochDuration: BlockNumber = prod_or_fast!(5 * MINUTES, 1 * MINUTES);
+	pub const InitialEpochDuration: BlockNumber = 1 * MINUTES;
 
 	pub const LiquidityDomain: RewardDomain = RewardDomain::Liquidity;
 }
