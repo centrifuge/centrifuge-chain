@@ -661,8 +661,6 @@ pub mod pallet {
 				T::MaxTokenNameLength,
 				T::MaxTokenSymbolLength,
 			>,
-			admin:
-
 		},
 		PoolUpdated {
 			id: T::PoolId,
