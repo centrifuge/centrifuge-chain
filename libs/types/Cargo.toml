@@ -4,7 +4,7 @@ description = 'Common types for Centrifuge runtime'
 edition = '2021'
 license = "LGPL-3.0"
 name = 'cfg-types'
-repository = "https://github.com/centrifuge/centrifuge-chain/proofs"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '2.0.0'
 
 [package.metadata.docs.rs]

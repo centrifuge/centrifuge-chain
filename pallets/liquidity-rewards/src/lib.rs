@@ -56,7 +56,7 @@ use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{BlockNumberProvider, Zero},
+	traits::{BlockNumberProvider, Saturating, Zero},
 	FixedPointOperand,
 };
 use sp_std::mem;
@@ -67,13 +67,18 @@ use weights::WeightInfo;
 #[cfg_attr(test, derive(PartialEq))]
 pub struct EpochTimestamp<BlockNumber>(BlockNumber);
 
-pub struct FirstEpochTimestamp<Provider>(sp_std::marker::PhantomData<Provider>);
-impl<Provider, BlockNumber> Get<EpochTimestamp<BlockNumber>> for FirstEpochTimestamp<Provider>
+pub struct FirstEpochTimestamp<Provider, Duration>(
+	sp_std::marker::PhantomData<(Provider, Duration)>,
+);
+impl<Provider, Duration, BlockNumber> Get<EpochTimestamp<BlockNumber>>
+	for FirstEpochTimestamp<Provider, Duration>
 where
 	Provider: BlockNumberProvider<BlockNumber = BlockNumber>,
+	Duration: Get<BlockNumber>,
+	BlockNumber: Saturating,
 {
 	fn get() -> EpochTimestamp<BlockNumber> {
-		EpochTimestamp(Provider::current_block_number())
+		EpochTimestamp(Provider::current_block_number().saturating_add(Duration::get()))
 	}
 }
 
@@ -188,6 +193,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
+		/// Initial epoch duration.
+		/// This value can be updated later using [`Pallet::set_epoch_duration()`]`.
+		#[pallet::constant]
+		type InitialEpochDuration: Get<Self::BlockNumber>;
+
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
 	}
@@ -206,7 +216,7 @@ pub mod pallet {
 		_,
 		EpochTimestamp<T::BlockNumber>,
 		ValueQuery,
-		FirstEpochTimestamp<frame_system::Pallet<T>>,
+		FirstEpochTimestamp<frame_system::Pallet<T>, T::InitialEpochDuration>,
 	>;
 
 	#[pallet::storage]
