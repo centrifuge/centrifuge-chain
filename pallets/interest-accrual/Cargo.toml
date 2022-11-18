@@ -4,7 +4,7 @@ description = 'Interest Accrual pallet'
 edition = '2021'
 license = "LGPL-3.0"
 name = 'pallet-interest-accrual'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/interest-accrual"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '0.1.0'
 
 [package.metadata.docs.rs]
