@@ -1210,6 +1210,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cfg-utils"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec 3.2.1",
+ "scale-info",
+ "sp-std",
+]
+
+[[package]]
 name = "cfg_aliases"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
