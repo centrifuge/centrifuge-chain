@@ -14,6 +14,7 @@
 use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
+use cfg_utils::vec_to_fixed_array;
 use codec::{Decode, Encode};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
@@ -24,7 +25,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
 use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
-use sp_std::{boxed::Box, cmp::min, convert::TryInto, vec::Vec};
+use sp_std::{boxed::Box, convert::TryInto, vec::Vec};
 pub mod weights;
 
 mod message;
@@ -191,10 +192,6 @@ pub mod pallet {
 		TrancheNotFound,
 		/// Could not find the metadata of a tranche token
 		TrancheMetadataNotFound,
-		/// The tranche token name can't be converted to the expected bounded size
-		InvalidTrancheMetadataName,
-		/// The tranche token symbol can't be converted to the expected bounded size
-		InvalidTrancheMetadataSymbol,
 		/// Failed to fetch a tranche token price.
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
@@ -480,70 +477,5 @@ pub mod pallet {
 
 			encoded
 		}
-	}
-}
-
-/// Build a fixed-size array using as many elements from `src` as possible without
-/// overflowing and ensuring that the array is 0 padded in the case where
-/// `src.len()` is smaller than S.
-pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
-	let mut dest = [0; S];
-	let len = min(src.len(), S);
-	dest[..len].copy_from_slice(&src.as_slice()[..len]);
-
-	dest
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	// Verify that we can use `vec_to_fixed_array` to convert a short tranche token symbol
-	// such as "TrNcH` to a fixed-array of [u8; 32].
-	#[test]
-	fn convert_tranche_symbol_short() {
-		let src = "TrNcH".as_bytes().to_vec();
-		let symbol: [u8; 32] = vec_to_fixed_array(src.clone());
-
-		assert!(symbol.starts_with("TrNcH".as_bytes()));
-		assert_eq!(
-			symbol,
-			[
-				84, 114, 78, 99, 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0
-			]
-		);
-	}
-
-	// Verify that we can use `vec_to_fixed_array` to convert a vec of 32 bytes to
-	// a fixed-array of [u8; 32].
-	#[test]
-	fn convert_tranche_symbol_max() {
-		let src: Vec<u8> = (0..32).collect();
-		let symbol: [u8; 32] = vec_to_fixed_array(src.clone());
-
-		assert_eq!(
-			symbol,
-			[
-				0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-				23, 24, 25, 26, 27, 28, 29, 30, 31
-			]
-		);
-	}
-
-	// Verify that we can use `vec_to_fixed_array` to convert a vec of of MORE THAN 32 bytes to
-	// a fixed-array of [u8; 32] by truncating the source at 32 bytes.
-	#[test]
-	fn convert_tranche_symbol_exceeds() {
-		let src: Vec<u8> = (0..64).collect();
-		let symbol: [u8; 32] = vec_to_fixed_array(src.clone());
-
-		assert_eq!(
-			symbol,
-			[
-				0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-				23, 24, 25, 26, 27, 28, 29, 30, 31
-			]
-		);
 	}
 }

@@ -26,10 +26,7 @@ use pallet_pool_system::{
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{
-	chain::centrifuge::{
-		Call, Loans, OrmlTokens,
-		Permissions, PoolSystem, Timestamp, PARA_ID,
-	},
+	chain::centrifuge::{Call, Loans, OrmlTokens, Permissions, PoolSystem, Timestamp, PARA_ID},
 	pools::utils::{
 		accounts::Keyring,
 		env::TestEnv,

@@ -240,7 +240,7 @@ fn transfer() {
 #[test]
 fn test_vec_to_fixed_array() {
 	let src = "TrNcH".as_bytes().to_vec();
-	let symbol: [u8; 32] = pallet_connectors::vec_to_fixed_array(src.clone());
+	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src.clone());
 
 	assert!(symbol.starts_with("TrNcH".as_bytes()));
 	assert_eq!(
@@ -393,16 +393,16 @@ mod utils {
 						// NOTE: For now, we have to set these metadata fields of the first tranche
 						// to be convertible to the 32-byte size expected by the connectors AddTranche
 						// message.
-						token_name:
-							BoundedVec::<u8, cfg_types::consts::pools::MaxTrancheNameLengthBytes>::try_from(
-								"A highly advanced tranche".as_bytes().to_vec(),
-							)
-							.expect(""),
-						token_symbol:
-							BoundedVec::<u8, cfg_types::consts::pools::MaxTrancheSymbolLengthBytes>::try_from(
-								"TrNcH".as_bytes().to_vec()
-							)
-							.expect(""),
+						token_name: BoundedVec::<
+							u8,
+							cfg_types::consts::pools::MaxTrancheNameLengthBytes,
+						>::try_from("A highly advanced tranche".as_bytes().to_vec(),)
+						.expect(""),
+						token_symbol: BoundedVec::<
+							u8,
+							cfg_types::consts::pools::MaxTrancheSymbolLengthBytes,
+						>::try_from("TrNcH".as_bytes().to_vec())
+						.expect(""),
 					}
 				},
 				TrancheInput {

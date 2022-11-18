@@ -88,6 +88,7 @@ hex = { version = "0.4.3", default_features = false }
 
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
+cfg-utils = { path = "../../libs/utils" }
 pallet-connectors = { path = "../../pallets/connectors" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
