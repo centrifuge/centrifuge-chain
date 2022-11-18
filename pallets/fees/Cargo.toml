@@ -4,7 +4,7 @@ description = 'Fees pallet for runtime'
 edition = '2021'
 license = "LGPL-3.0"
 name = 'pallet-fees'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/fees"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '2.0.0'
 
 [package.metadata.docs.rs]

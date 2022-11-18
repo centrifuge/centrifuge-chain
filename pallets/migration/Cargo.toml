@@ -4,7 +4,7 @@ description = 'Migration pallet for the runtime'
 edition = '2021'
 license = "LGPL-3.0"
 name = 'pallet-migration-manager'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/fees"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '0.1.0'
 
 [package.metadata.docs.rs]
