@@ -237,9 +237,12 @@ where
 		);
 		account.apply_rpt_changes(&currency.rpt_changes)?;
 
-		let unrewarded_stake = account.stake.saturating_sub(account.rewarded_stake);
-		let unrewarded_amount = amount.min(unrewarded_stake);
-		let rewarded_amount = amount.ensure_sub(unrewarded_amount)?;
+		let rewarded_amount = {
+			let unrewarded_stake = account.stake.saturating_sub(account.rewarded_stake);
+			let unrewarded_amount = amount.min(unrewarded_stake);
+			amount.ensure_sub(unrewarded_amount)
+		}?;
+
 		let lost_reward = group
 			.get_last_rate(currency)
 			.ensure_mul_int(rewarded_amount)?;

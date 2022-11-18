@@ -125,9 +125,12 @@ where
 	) -> Result<(), ArithmeticError> {
 		account.safe_rewarded_stake(group.distribution_id);
 
-		let unrewarded_stake = account.stake.saturating_sub(account.rewarded_stake);
-		let unrewarded_amount = amount.min(unrewarded_stake);
-		let rewarded_amount = amount.ensure_sub(unrewarded_amount)?;
+		let rewarded_amount = {
+			let unrewarded_stake = account.stake.saturating_sub(account.rewarded_stake);
+			let unrewarded_amount = amount.min(unrewarded_stake);
+			amount.ensure_sub(unrewarded_amount)
+		}?;
+
 		let lost_reward = group.last_rate.ensure_mul_int(rewarded_amount)?;
 
 		account.stake.ensure_sub_assign(amount)?;
