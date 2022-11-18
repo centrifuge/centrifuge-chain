@@ -24,8 +24,8 @@ use cfg_traits::{
 };
 pub use cfg_types::CurrencyId;
 use cfg_types::{
-	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
-	Rate, Role, TimeProvider, TrancheCurrency,
+	consts::pools::*, CustomMetadata, FeeKey, PermissionRoles, PermissionScope,
+	PermissionedCurrencyRole, PoolRole, Rate, Role, TimeProvider, TrancheCurrency,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 /// Constant values used within the runtime.
@@ -1085,12 +1085,6 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenNameLength: u32 = MAX_TOKEN_NAME_LENGTH_BYTES;
-
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = MAX_TOKEN_SYMBOL_LENGTH_BYTES;
-
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 0;
 }
@@ -1115,8 +1109,8 @@ impl pallet_pool_system::Config for Runtime {
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
-	type MaxTokenNameLength = MaxTokenNameLength;
-	type MaxTokenSymbolLength = MaxTokenSymbolLength;
+	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
+	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
@@ -1167,8 +1161,12 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails =
-		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<
+		Rate,
+		MaxTrancheNameLengthBytes,
+		MaxTrancheSymbolLengthBytes,
+		MaxTranches,
+	>;
 
 	fn released(
 		pool: &Self::PoolDetails,

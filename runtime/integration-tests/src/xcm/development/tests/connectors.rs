@@ -289,11 +289,11 @@ fn encoded_ethereum_xcm_add_pool() {
 #[test]
 fn verify_tranche_fields_sizes() {
 	assert_eq!(
-		development_runtime::MaxTokenNameLength::get(),
+		cfg_types::consts::pools::MaxTrancheNameLengthBytes::get(),
 		pallet_connectors::TOKEN_NAME_SIZE as u32
 	);
 	assert_eq!(
-		development_runtime::MaxTokenSymbolLength::get(),
+		cfg_types::consts::pools::MaxTrancheSymbolLengthBytes::get(),
 		pallet_connectors::TOKEN_SYMBOL_SIZE as u32
 	);
 }
@@ -394,12 +394,12 @@ mod utils {
 						// to be convertible to the 32-byte size expected by the connectors AddTranche
 						// message.
 						token_name:
-							BoundedVec::<u8, development_runtime::MaxTokenNameLength>::try_from(
+							BoundedVec::<u8, cfg_types::consts::pools::MaxTrancheNameLengthBytes>::try_from(
 								"A highly advanced tranche".as_bytes().to_vec(),
 							)
 							.expect(""),
 						token_symbol:
-							BoundedVec::<u8, development_runtime::MaxTokenSymbolLength>::try_from(
+							BoundedVec::<u8, cfg_types::consts::pools::MaxTrancheSymbolLengthBytes>::try_from(
 								"TrNcH".as_bytes().to_vec()
 							)
 							.expect(""),
