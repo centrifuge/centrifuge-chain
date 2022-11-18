@@ -54,21 +54,6 @@ where
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 	DistributionId: Copy + PartialEq,
 {
-	fn safe_rewarded_stake(
-		&mut self,
-		group_distribution_id: DistributionId,
-		prev_distribution_id: DistributionId,
-		next_distribution_id: DistributionId,
-	) {
-		if self.distribution_id != group_distribution_id
-			&& (self.distribution_id != prev_distribution_id
-				|| group_distribution_id != next_distribution_id)
-		{
-			self.rewarded_stake = self.stake;
-		}
-		self.distribution_id = group_distribution_id;
-	}
-
 	fn get_rewarded_stake(
 		&self,
 		group_distribution_id: DistributionId,
@@ -85,9 +70,18 @@ where
 		}
 	}
 
-	fn unrewarded_amount(&self, amount: Balance) -> Balance {
-		let unrewarded_stake = self.stake.saturating_sub(self.rewarded_stake);
-		amount.min(unrewarded_stake)
+	fn safe_rewarded_stake(
+		&mut self,
+		group_distribution_id: DistributionId,
+		prev_distribution_id: DistributionId,
+		next_distribution_id: DistributionId,
+	) {
+		self.rewarded_stake = self.get_rewarded_stake(
+			group_distribution_id,
+			prev_distribution_id,
+			next_distribution_id,
+		);
+		self.distribution_id = group_distribution_id;
 	}
 
 	fn get_tally_from_rpt_changes<Rate: FixedPointNumber>(
@@ -111,6 +105,24 @@ where
 		self.last_currency_movement = rpt_changes.len() as u32;
 
 		Ok(())
+	}
+
+	fn last_rewarded_stake<Rate: FixedPointNumber, MaxMovements>(
+		&self,
+		group: &Group<Balance, Rate, DistributionId>,
+		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
+	) -> Result<IBalance, ArithmeticError>
+	where
+		MaxMovements: Get<u32>,
+	{
+		group
+			.get_last_rate(currency)
+			.ensure_mul_int(self.get_rewarded_stake(
+				group.distribution_id,
+				currency.prev_distribution_id,
+				currency.next_distribution_id,
+			))?
+			.ensure_into()
 	}
 }
 
@@ -142,15 +154,6 @@ where
 			prev_last_rate: Rate::default(),
 		}
 	}
-}
-
-impl<Balance, IBalance, DistributionId, MaxMovements>
-	Currency<Balance, IBalance, DistributionId, MaxMovements>
-where
-	MaxMovements: Get<u32>,
-	Balance: Copy + Zero,
-	DistributionId: Copy + PartialEq,
-{
 }
 
 pub struct Mechanism<Balance, IBalance, Rate, MaxCurrencyMovements>(
@@ -234,7 +237,9 @@ where
 		);
 		account.apply_rpt_changes(&currency.rpt_changes)?;
 
-		let rewarded_amount = amount.ensure_sub(account.unrewarded_amount(amount))?;
+		let unrewarded_stake = account.stake.saturating_sub(account.rewarded_stake);
+		let unrewarded_amount = amount.min(unrewarded_stake);
+		let rewarded_amount = amount.ensure_sub(unrewarded_amount)?;
 		let lost_reward = group
 			.get_last_rate(currency)
 			.ensure_mul_int(rewarded_amount)?;
@@ -259,23 +264,10 @@ where
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let last_rewarded_stake =
-			group
-				.get_last_rate(currency)
-				.ensure_mul_int(account.get_rewarded_stake(
-					group.distribution_id,
-					currency.prev_distribution_id,
-					currency.next_distribution_id,
-				))?;
-
-		let rpt_changes_tally = account.get_tally_from_rpt_changes(&currency.rpt_changes)?;
-
-		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
-
-		gross_reward
+		IBalance::ensure_from(group.rpt.ensure_mul_int(account.stake)?)?
 			.ensure_sub(account.reward_tally)?
-			.ensure_sub(last_rewarded_stake.ensure_into()?)?
-			.ensure_sub(rpt_changes_tally)?
+			.ensure_sub(account.last_rewarded_stake(group, currency)?)?
+			.ensure_sub(account.get_tally_from_rpt_changes(&currency.rpt_changes)?)?
 			.ensure_into()
 	}
 
@@ -284,20 +276,11 @@ where
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let reward = Self::compute_reward(account, &currency, group)?;
+		let reward = Self::compute_reward(account, currency, group)?;
 
-		let last_rewarded_stake =
-			group
-				.get_last_rate(currency)
-				.ensure_mul_int(account.get_rewarded_stake(
-					group.distribution_id,
-					currency.prev_distribution_id,
-					currency.next_distribution_id,
-				))?;
+		account.reward_tally = IBalance::ensure_from(group.rpt.ensure_mul_int(account.stake)?)?
+			.ensure_sub(account.last_rewarded_stake(group, currency)?)?;
 
-		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
-
-		account.reward_tally = gross_reward.ensure_sub(last_rewarded_stake.ensure_into()?)?;
 		account.last_currency_movement = currency.rpt_changes.len() as u32;
 
 		Ok(reward)

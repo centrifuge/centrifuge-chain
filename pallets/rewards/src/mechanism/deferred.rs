@@ -1,5 +1,6 @@
 use cfg_traits::ops::ensure::{
-	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
+	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureFrom, EnsureInto, EnsureSub,
+	EnsureSubAssign,
 };
 use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
@@ -34,13 +35,6 @@ where
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
 	DistributionId: PartialEq + Copy,
 {
-	fn safe_rewarded_stake(&mut self, group_distribution_id: DistributionId) {
-		if self.distribution_id != group_distribution_id {
-			self.distribution_id = group_distribution_id;
-			self.rewarded_stake = self.stake;
-		}
-	}
-
 	fn get_rewarded_stake(&self, group_distribution_id: DistributionId) -> Balance {
 		if self.distribution_id != group_distribution_id {
 			self.stake
@@ -49,9 +43,19 @@ where
 		}
 	}
 
-	fn unrewarded_amount(&self, amount: Balance) -> Balance {
-		let unrewarded_stake = self.stake.saturating_sub(self.rewarded_stake);
-		amount.min(unrewarded_stake)
+	fn safe_rewarded_stake(&mut self, group_distribution_id: DistributionId) {
+		self.rewarded_stake = self.get_rewarded_stake(group_distribution_id);
+		self.distribution_id = group_distribution_id;
+	}
+
+	fn last_rewarded_stake<Rate: FixedPointNumber>(
+		&self,
+		group: &Group<Balance, Rate, DistributionId>,
+	) -> Result<IBalance, ArithmeticError> {
+		group
+			.last_rate
+			.ensure_mul_int(self.get_rewarded_stake(group.distribution_id))?
+			.ensure_into()
 	}
 }
 
@@ -121,7 +125,9 @@ where
 	) -> Result<(), ArithmeticError> {
 		account.safe_rewarded_stake(group.distribution_id);
 
-		let rewarded_amount = amount.ensure_sub(account.unrewarded_amount(amount))?;
+		let unrewarded_stake = account.stake.saturating_sub(account.rewarded_stake);
+		let unrewarded_amount = amount.min(unrewarded_stake);
+		let rewarded_amount = amount.ensure_sub(unrewarded_amount)?;
 		let lost_reward = group.last_rate.ensure_mul_int(rewarded_amount)?;
 
 		account.stake.ensure_sub_assign(amount)?;
@@ -142,15 +148,9 @@ where
 		_: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let last_rewarded_stake = group
-			.last_rate
-			.ensure_mul_int(account.get_rewarded_stake(group.distribution_id))?;
-
-		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
-
-		gross_reward
+		IBalance::ensure_from(group.rpt.ensure_mul_int(account.stake)?)?
 			.ensure_sub(account.reward_tally)?
-			.ensure_sub(last_rewarded_stake.ensure_into()?)?
+			.ensure_sub(account.last_rewarded_stake(group)?)?
 			.ensure_into()
 	}
 
@@ -161,13 +161,8 @@ where
 	) -> Result<Self::Balance, ArithmeticError> {
 		let reward = Self::compute_reward(account, &(), group)?;
 
-		let last_rewarded_stake = group
-			.last_rate
-			.ensure_mul_int(account.get_rewarded_stake(group.distribution_id))?;
-
-		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
-
-		account.reward_tally = gross_reward.ensure_sub(last_rewarded_stake.ensure_into()?)?;
+		account.reward_tally = IBalance::ensure_from(group.rpt.ensure_mul_int(account.stake)?)?
+			.ensure_sub(account.last_rewarded_stake(group)?)?;
 
 		Ok(reward)
 	}
