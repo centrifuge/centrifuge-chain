@@ -242,11 +242,11 @@ pub mod consts {
 
 		parameter_types! {
 			/// The max length in bytes allowed for a tranche token name
-			#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+			#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 			pub const MaxTrancheNameLengthBytes: u32 = 128;
 
 			/// The max length in bytes allowed for a tranche token symbol
-			#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+			#[derive(TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 			pub const MaxTrancheSymbolLengthBytes: u32 = 32;
 		}
 	}
