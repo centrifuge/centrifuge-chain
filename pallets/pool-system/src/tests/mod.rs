@@ -11,7 +11,18 @@
 // GNU General Public License for more details.
 
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheCurrency};
+use cfg_types::{
+	epoch::EpochState,
+	fixed_point::Rate,
+	pools::{PoolChanges, PoolDetails, PoolParameters, PoolStatus},
+	reserves::ReserveDetails,
+	tokens::{CurrencyId, CustomMetadata},
+	tranches::{
+		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
+		TrancheCurrency, TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
+	},
+	xcm::XcmMetadata,
+};
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::AssetMetadata;
 use rand::Rng;
@@ -26,8 +37,10 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use super::*;
-use crate::mock::*;
+use crate::{
+	mock, mock::*, pallet, BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error,
+	PoolDeposit, PoolInspect, PoolState, UnhealthyState,
+};
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
@@ -402,7 +415,7 @@ fn pool_constraints_pass() {
 		assert_ok!(PoolSystem::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			crate::calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
+			calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
 				.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
@@ -2342,7 +2355,7 @@ fn create_tranche_token_metadata() {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
-					xcm: cfg_types::XcmMetadata {
+					xcm: XcmMetadata {
 						fee_per_second: None,
 					},
 				},

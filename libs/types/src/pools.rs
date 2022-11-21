@@ -24,10 +24,10 @@ use sp_runtime::{
 	traits::{One, Zero},
 	FixedPointNumber, FixedPointOperand,
 };
-use sp_std::cmp::PartialEq;
+use sp_std::{cmp::PartialEq, vec::Vec};
 
 use crate::{
-	epoch::{EpochState, UnhealthyState},
+	epoch::EpochState,
 	reserves::ReserveDetails,
 	tranches::{TrancheEssence, TrancheMetadata, TrancheUpdate, Tranches},
 };
@@ -163,19 +163,13 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		Ok(())
 	}
 
-	fn execute_previous_epoch(&mut self) -> DispatchResult {
+	pub fn execute_previous_epoch(&mut self) -> DispatchResult {
 		self.reserve.available = self.reserve.total;
 		self.epoch.last_executed += One::one();
 		Ok(())
 	}
 
-	pub fn essence<
-		AssetRegistry,
-		AssetId,
-		CustomMetadata,
-		MaxTokenNameLength,
-		MaxTokenSymbolLength,
-	>(
+	pub fn essence<AssetRegistry, AssetId, MaxTokenNameLength, MaxTokenSymbolLength>(
 		&self,
 	) -> Result<
 		PoolEssence<

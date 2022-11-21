@@ -11,7 +11,10 @@
 // GNU General Public License for more details.
 use cfg_primitives::{PoolId, TrancheId};
 use cfg_traits::Permissions;
-use cfg_types::{CurrencyId, PermissionScope, PoolRole, Role};
+use cfg_types::{
+	permissions::{PermissionScope, PoolRole, Role},
+	tokens::CurrencyId,
+};
 use frame_benchmarking::{account, benchmarks, Zero};
 use frame_support::traits::{fungibles, Get};
 use frame_system::RawOrigin;

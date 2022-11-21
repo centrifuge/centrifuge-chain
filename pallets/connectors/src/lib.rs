@@ -102,7 +102,10 @@ pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
-	use cfg_types::{CustomMetadata, PermissionScope, PoolRole, Role};
+	use cfg_types::{
+		permissions::{PermissionScope, PoolRole, Role},
+		tokens::CustomMetadata,
+	};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};

@@ -9,8 +9,9 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use cfg_types::tranches::{TrancheIndex, TrancheLoc, TrancheSolution};
 use codec::Codec;
-use pallet_pool_system::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
+use pallet_pool_system::EpochSolution;
 use sp_api::decl_runtime_apis;
 use sp_std::vec::Vec;
 

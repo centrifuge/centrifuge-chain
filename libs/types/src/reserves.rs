@@ -32,7 +32,7 @@ impl<Balance> ReserveDetails<Balance>
 where
 	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
 {
-	fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency>(
+	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency>(
 		&mut self,
 		epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		solution: &[TrancheSolution],

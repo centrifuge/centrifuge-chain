@@ -43,12 +43,12 @@ runtime-benchmarks = [
   'frame-system/runtime-benchmarks',
 ]
 std = [
-  'codec/std',
-  'sp-std/std',
-  'frame-support/std',
-  'cfg-traits/std',
-  'sp-runtime/std',
   'cfg-primitives/std',
+  'cfg-traits/std',
+  'codec/std',
+  'frame-support/std',
   'frame-system/std',
   'sp-runtime/std',
+  'sp-runtime/std',
+  'sp-std/std',
 ]

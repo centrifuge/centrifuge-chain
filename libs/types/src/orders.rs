@@ -16,34 +16,37 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::Zero;
-use sp_std::cmp::{Ord, PartialEq, PartialOrd};
+use sp_std::{
+	cmp::{Ord, PartialEq, PartialOrd},
+	vec::Vec,
+};
 
 /// A convenience struct to easily pass around the accumulated orders
 /// for all tranches, which is of sole interest to the pool.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-struct SummarizedOrders<Balance> {
+pub struct SummarizedOrders<Balance> {
 	// The accumulated order amounts of all investments
-	acc_invest_orders: Balance,
+	pub acc_invest_orders: Balance,
 	// The accumulated order amounts of all redemptions
 	//
 	// NOTE: Already denominated in the pool_currency!
-	acc_redeem_orders: Balance,
+	pub acc_redeem_orders: Balance,
 	// Invest orders per tranche
 	//
 	// NOTE: Sorted from residual-to-non-residual
-	invest_orders: Vec<Balance>,
+	pub invest_orders: Vec<Balance>,
 	// Redeem orders per tranche
 	//
 	// NOTE: Sorted from residual-to-non-residual
-	redeem_orders: Vec<Balance>,
+	pub redeem_orders: Vec<Balance>,
 }
 
 impl<Balance: Zero + PartialEq + Eq + Copy> SummarizedOrders<Balance> {
-	fn all_are_zero(&self) -> bool {
+	pub fn all_are_zero(&self) -> bool {
 		self.acc_invest_orders == Zero::zero() && self.acc_redeem_orders == Zero::zero()
 	}
 
-	fn invest_redeem_residual_top(&self) -> Vec<(Balance, Balance)> {
+	pub fn invest_redeem_residual_top(&self) -> Vec<(Balance, Balance)> {
 		self.invest_orders
 			.iter()
 			.zip(&self.redeem_orders)

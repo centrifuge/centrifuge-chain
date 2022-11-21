@@ -14,7 +14,12 @@
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::CFG as CURRENCY;
 use cfg_traits::Investment;
-use cfg_types::{CurrencyId, CustomMetadata, PoolLocator, Rate, TrancheCurrency};
+use cfg_types::{
+	fixed_point::Rate,
+	pools::PoolLocator,
+	tokens::{CurrencyId, CustomMetadata},
+	tranches::TrancheCurrency,
+};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
 	assert_ok,
@@ -308,7 +313,7 @@ benchmarks! {
 	where_clause {
 		where
 		T: pallet_pool_system::Config<
-			CurrencyId = cfg_types::CurrencyId,
+			CurrencyId = CurrencyId,
 			Balance = u128,
 		>,
 		<T as pallet_uniques::Config>::CollectionId: From<u64>,

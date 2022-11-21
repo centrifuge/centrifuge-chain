@@ -23,7 +23,7 @@
 /// ```ignore
 /// use cfg_traits::impl_mock_accountant;
 /// use cfg_primitives::{PoolId, TrancheId, Balance};
-/// use cfg_types::CurrencyId;
+/// use cfg_types::tokens::CurrencyId;
 /// use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 /// use frame_support::traits::GenesisBuild;
 ///

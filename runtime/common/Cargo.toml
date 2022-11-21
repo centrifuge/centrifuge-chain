@@ -75,6 +75,7 @@ std = [
   "frame-support/std",
   "frame-system/std",
   "cfg-primitives/std",
+  "cfg-types/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",

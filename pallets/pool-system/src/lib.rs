@@ -17,8 +17,14 @@
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
 use cfg_types::{
+	epoch::ScheduledUpdateDetails,
+	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::PoolLocator,
+	pools::{PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator},
+	tranches::{
+		EpochExecutionTranche, EpochExecutionTranches, Tranche, TrancheSolution, TrancheType,
+		TrancheUpdate, Tranches,
+	},
 };
 use codec::HasCompact;
 use frame_support::{
@@ -33,7 +39,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 pub use impls::*;
 use orml_traits::{
-	asset_registry::{AssetMetadata, Inspect as OrmlInspect, Mutate as OrmlMutate},
+	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
 	Change,
 };
 pub use pallet::*;
@@ -42,12 +48,12 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 pub use solution::*;
-use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
+use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Saturating, Zero,
 	},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
+	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
 pub use weights::*;
@@ -121,15 +127,6 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
 	<T as Config>::TrancheCurrency,
->;
-
-type PoolEssenceOf<T> = PoolEssence<
-	<T as Config>::CurrencyId,
-	<T as Config>::Balance,
-	<T as Config>::TrancheCurrency,
-	<T as Config>::Rate,
-	<T as Config>::MaxTokenNameLength,
-	<T as Config>::MaxTokenSymbolLength,
 >;
 
 /// Type alias for `struct PoolDepositInfo`
@@ -997,7 +994,9 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				// Prepare PoolEssence struct for sending out UpdateExecuted event
-				let old_pool = pool.essence::<T>()?;
+				let old_pool = pool
+					.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
+					)?;
 
 				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 					pool.parameters.min_epoch_time = min_epoch_time;
@@ -1051,7 +1050,9 @@ pub mod pallet {
 				Self::deposit_event(Event::PoolUpdated {
 					id: *pool_id,
 					old: old_pool,
-					new: pool.essence::<T>()?,
+					new: pool
+						.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
+						)?,
 				});
 
 				ScheduledUpdate::<T>::remove(pool_id);

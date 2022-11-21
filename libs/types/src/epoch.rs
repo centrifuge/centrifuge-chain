@@ -14,13 +14,8 @@ use cfg_primitives::Moment;
 use codec::{Decode, Encode};
 use frame_support::{traits::Get, RuntimeDebug};
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 
-use crate::{
-	pools::PoolChanges,
-	tranches::{EpochExecutionTranches, TrancheSolution},
-};
+use crate::pools::PoolChanges;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
@@ -33,15 +28,12 @@ where
 	pub scheduled_time: Moment,
 }
 
-/// The information for a currently executing epoch
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber, TrancheCurrency>
-{
-	epoch: EpochId,
-	nav: Balance,
-	reserve: Balance,
-	max_reserve: Balance,
-	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
-	best_submission: Option<EpochSolution<Balance>>,
-	challenge_period_end: Option<BlockNumber>,
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct EpochState<EpochId> {
+	/// Current epoch that is ongoing.
+	pub current: EpochId,
+	/// Time when the last epoch was closed.
+	pub last_closed: Moment,
+	/// Last epoch that was executed.
+	pub last_executed: EpochId,
 }

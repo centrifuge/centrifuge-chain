@@ -10,11 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use std::marker::PhantomData;
-
-#[cfg(test)]
 use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
-use cfg_primitives::{Moment, PoolId, TrancheId};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -28,12 +24,14 @@ use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;
 use rev_slice::{RevSlice, SliceExt};
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 use sp_runtime::{
 	traits::{ConstU32, Member, One, Zero},
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, WeakBoundedVec,
 };
+use sp_std::{marker::PhantomData, vec::Vec};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},

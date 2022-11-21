@@ -15,10 +15,12 @@ use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT,
 };
-pub use cfg_types::Rate;
+pub use cfg_types::fixed_point::Rate;
 use cfg_types::{
-	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider,
-	TrancheCurrency, UNION,
+	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
+	time::TimeProvider,
+	tokens::{CurrencyId, CustomMetadata},
+	tranches::TrancheCurrency,
 };
 use codec::Encode;
 use frame_support::{
