@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
@@ -24,12 +24,12 @@ use cfg_types::{
 	xcm::XcmMetadata,
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
-use orml_traits::asset_registry::AssetMetadata;
+use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
-use sp_core::storage::StateVersion;
+use sp_core::{storage::StateVersion, Encode};
 use sp_runtime::{
 	traits::{One, Zero},
-	Perquintill, TokenError, WeakBoundedVec,
+	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
 };
 use xcm::{
 	latest::MultiLocation,
@@ -38,8 +38,8 @@ use xcm::{
 };
 
 use crate::{
-	mock, mock::*, pallet, BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error,
-	PoolDeposit, PoolInspect, PoolState, UnhealthyState,
+	mock, mock::*, pallet, BoundedVec, Change, Config, ConstU32, EpochExecution,
+	EpochExecutionInfo, Error, Pool, PoolDeposit, PoolInspect, PoolState, UnhealthyState,
 };
 
 #[test]

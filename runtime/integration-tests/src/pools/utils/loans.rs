@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 
 use cfg_primitives::{AccountId, Address, Balance, CollectionId, ItemId, PoolId};
-use cfg_types::Rate;
+use cfg_types::fixed_point::Rate;
 use pallet_loans::{
 	loan_type::{BulletLoan, LoanType},
 	math::interest_rate_per_sec,

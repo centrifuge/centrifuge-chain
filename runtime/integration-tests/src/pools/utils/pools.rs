@@ -14,15 +14,19 @@
 
 use cfg_primitives::{AccountId, Balance, Moment, PoolId, TrancheId};
 use cfg_traits::Permissions as PermissionsT;
-use cfg_types::{consts::pools::*, CurrencyId, PermissionScope, PoolRole, Rate, Role};
+use cfg_types::{
+	consts::pools::*,
+	fixed_point::Rate,
+	permissions::{PermissionScope, PoolRole, Role},
+	tokens::CurrencyId,
+	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType},
+};
 use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pool_registry::Call as PoolRegistryCall;
-use pallet_pool_system::{
-	Call as PoolSystemCall, TrancheIndex, TrancheInput, TrancheMetadata, TrancheType,
-};
+use pallet_pool_system::Call as PoolSystemCall;
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{

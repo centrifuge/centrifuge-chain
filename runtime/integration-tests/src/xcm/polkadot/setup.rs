@@ -13,7 +13,7 @@
 use altair_runtime::constants;
 pub use centrifuge_runtime::{Origin, Runtime, System};
 use cfg_primitives::{constants::currency_decimals, parachains, AccountId, Balance};
-use cfg_types::{CurrencyId, CustomMetadata};
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use orml_traits::asset_registry::AssetMetadata;
 
