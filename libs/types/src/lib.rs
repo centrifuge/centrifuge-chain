@@ -16,6 +16,7 @@
 
 ///! Common-types of the Centrifuge chain.
 pub mod adjustments;
+pub mod consts;
 pub mod epoch;
 pub mod fee_keys;
 pub mod fixed_point;
