@@ -12,17 +12,17 @@ use super::{MoveCurrencyError, RewardMechanism};
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Group<Balance, Rate> {
-	total_stake: Balance,
-	rpt: Rate,
+	pub total_stake: Balance,
+	pub rpt: Rate,
 }
 
 /// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Account<Balance, IBalance> {
-	stake: Balance,
-	reward_tally: IBalance,
-	last_currency_movement: u32,
+	pub stake: Balance,
+	pub reward_tally: IBalance,
+	pub last_currency_movement: u32,
 }
 
 impl<Balance, IBalance> Account<Balance, IBalance>
@@ -58,8 +58,8 @@ where
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Currency<Balance, Rate, MaxMovements: Get<u32>> {
-	total_stake: Balance,
-	rpt_changes: BoundedVec<Rate, MaxMovements>,
+	pub total_stake: Balance,
+	pub rpt_changes: BoundedVec<Rate, MaxMovements>,
 }
 
 impl<Balance, Rate, MaxMovements> Default for Currency<Balance, Rate, MaxMovements>
@@ -155,13 +155,9 @@ where
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let rpt_changes_tally = account.get_tally_from_rpt_changes(&currency.rpt_changes)?;
-
-		let gross_reward: IBalance = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
-
-		gross_reward
+		IBalance::ensure_from(group.rpt.ensure_mul_int(account.stake)?)?
 			.ensure_sub(account.reward_tally)?
-			.ensure_sub(rpt_changes_tally)?
+			.ensure_sub(account.get_tally_from_rpt_changes(&currency.rpt_changes)?)?
 			.ensure_into()
 	}
 
