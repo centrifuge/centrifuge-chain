@@ -234,9 +234,15 @@ pub mod constants {
 	/// % of fee addressed to the Treasury. The reminder % will be for the block author.
 	pub const TREASURY_FEE_RATIO: Perbill = Perbill::from_percent(80);
 
-	// Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
+	/// Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
 	/// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
 	pub const NFTS_PREFIX: &[u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
+
+	/// The max length allowed for a tranche token name
+	pub const MAX_TOKEN_NAME_LENGTH_BYTES: u32 = 128;
+
+	/// The max length allowed for a tranche token symbol
+	pub const MAX_TOKEN_SYMBOL_LENGTH_BYTES: u32 = 32;
 
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG

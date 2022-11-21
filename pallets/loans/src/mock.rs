@@ -187,7 +187,7 @@ parameter_types! {
 	pub const MaxTokenNameLength: u32 = 128;
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = 128;
+	pub const MaxTokenSymbolLength: u32 = 32;
 
 	pub const ZeroDeposit: Balance = 0;
 

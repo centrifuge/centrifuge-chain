@@ -34,6 +34,7 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate", default-feat
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
+cfg-utils = { path = "../../libs/utils", default-features = false }
 runtime-common = { path = "../../runtime/common", default-features = false }
 
 # Polkadot
@@ -79,6 +80,7 @@ std = [
   'codec/std',
   'cfg-types/std',
   'cfg-traits/std',
+  'cfg-utils/std',
   'frame-support/std',
   'frame-system/std',
   'sp-std/std',

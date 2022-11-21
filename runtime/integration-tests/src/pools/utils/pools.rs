@@ -14,7 +14,7 @@
 
 use cfg_primitives::{AccountId, Balance, Moment, PoolId, TrancheId};
 use cfg_traits::Permissions as PermissionsT;
-use cfg_types::{CurrencyId, PermissionScope, PoolRole, Rate, Role};
+use cfg_types::{consts::pools::*, CurrencyId, PermissionScope, PoolRole, Rate, Role};
 use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
@@ -26,10 +26,7 @@ use pallet_pool_system::{
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{
-	chain::centrifuge::{
-		Call, Loans, MaxTokenNameLength, MaxTokenSymbolLength, OrmlTokens, Permissions, PoolSystem,
-		Timestamp, PARA_ID,
-	},
+	chain::centrifuge::{Call, Loans, OrmlTokens, Permissions, PoolSystem, Timestamp, PARA_ID},
 	pools::utils::{
 		accounts::Keyring,
 		env::TestEnv,
@@ -74,7 +71,7 @@ pub fn custom_pool(
 	pool_id: PoolId,
 	currency: CurrencyId,
 	max_reserve: Balance,
-	tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+	tranche_inputs: Vec<TrancheInput<Rate, MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes>>,
 ) -> Result<(), ()> {
 	let calls: Vec<Vec<u8>> = pool_setup_calls(
 		admin.to_account_id(),
@@ -145,7 +142,7 @@ pub fn pool_setup_calls(
 	pool_id: PoolId,
 	currency: CurrencyId,
 	max_reserve: Balance,
-	tranche_input: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+	tranche_input: Vec<TrancheInput<Rate, MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes>>,
 	nfts: &mut NftManager,
 ) -> Vec<Call> {
 	let mut calls = Vec::new();
@@ -175,7 +172,7 @@ pub fn create_tranche_input(
 	rates: Vec<Option<u64>>,
 	risk_buffs: Vec<Option<u64>>,
 	seniorities: Option<Vec<Option<u32>>>,
-) -> Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>> {
+) -> Vec<TrancheInput<Rate, MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes>> {
 	let interest_rates = rates
 		.into_iter()
 		.map(|rate| {
@@ -351,7 +348,7 @@ pub fn create_pool_call(
 	pool_id: PoolId,
 	currency: CurrencyId,
 	max_reserve: Balance,
-	tranche_inputs: Vec<TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
+	tranche_inputs: Vec<TrancheInput<Rate, MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes>>,
 ) -> Call {
 	Call::PoolRegistry(PoolRegistryCall::register {
 		admin,
