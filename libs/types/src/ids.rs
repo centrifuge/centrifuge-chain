@@ -15,7 +15,7 @@
 use frame_support::PalletId;
 use sp_runtime::TypeId;
 
-use crate::{InvestmentAccount, PoolLocator};
+use crate::{investments::InvestmentAccount, pools::PoolLocator};
 
 // The TypeId impl we derive pool-accounts from
 impl<PoolId> TypeId for PoolLocator<PoolId> {

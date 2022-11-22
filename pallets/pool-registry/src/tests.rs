@@ -9,9 +9,9 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use cfg_types::pools::PoolChanges;
 use frame_support::assert_ok;
 use orml_traits::Change;
-use pallet_pool_system::PoolChanges;
 
 use crate::mock::*;
 

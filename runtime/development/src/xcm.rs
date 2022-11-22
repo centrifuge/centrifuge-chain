@@ -15,7 +15,7 @@ use cfg_primitives::{
 	parachains,
 	types::{EnsureRootOr, HalfOfCouncil},
 };
-pub use cfg_types::CurrencyId;
+pub use cfg_types::tokens::CurrencyId;
 pub use cumulus_primitives_core::ParaId;
 pub use frame_support::{
 	parameter_types,

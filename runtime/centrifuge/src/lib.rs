@@ -19,7 +19,7 @@
 #![allow(clippy::identity_op)]
 
 pub use cfg_primitives::{constants::*, types::*};
-use cfg_types::{CustomMetadata, FeeKey};
+use cfg_types::{fee_keys::FeeKey, tokens::CustomMetadata};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,

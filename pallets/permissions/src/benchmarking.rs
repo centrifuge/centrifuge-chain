@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::Permissions as TPermissions;
-use cfg_types::{PoolRole, Role};
+use cfg_types::permissions::{PoolRole, Role};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;

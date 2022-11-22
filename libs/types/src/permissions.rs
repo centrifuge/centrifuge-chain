@@ -643,7 +643,7 @@ mod tests {
 	/// around which could have silent but serious negative consequences.
 	#[test]
 	fn currency_id_encode_sanity() {
-		use crate::CurrencyId::*;
+		use crate::tokens::CurrencyId::*;
 
 		// Verify that every variant encodes to what we would expect it to.
 		// If this breaks, we must have changed the order of a variant, added
@@ -658,7 +658,7 @@ mod tests {
 
 		/// Return the expected encoding.
 		/// This is useful to force at compile time that we handle all existing variants.
-		fn expected_encoding_value(id: crate::CurrencyId) -> Vec<u64> {
+		fn expected_encoding_value(id: crate::tokens::CurrencyId) -> Vec<u64> {
 			match id {
 				Native => vec![0],
 				Tranche(pool_id, tranche_id) => {

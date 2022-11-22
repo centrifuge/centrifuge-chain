@@ -30,8 +30,12 @@ use ::xcm::{
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::PoolMutate;
 use cfg_types::{
-	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, PermissionScope,
-	PoolRole, Rate, Role, XcmMetadata, UNION,
+	fixed_point::Rate,
+	permissions::{PermissionScope, PoolRole, Role, UNION},
+	pools::PoolDetails,
+	tokens::{CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId},
+	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
+	xcm::XcmMetadata,
 };
 use codec::Encode;
 use development_runtime::{
@@ -45,7 +49,6 @@ use pallet_connectors::{
 	encoded_contract_call, Domain, DomainAddress, DomainLocator, Error::UnauthorizedTransfer,
 	Message, ParachainId, Router, XcmDomain,
 };
-use pallet_pool_system::{PoolDetails, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType};
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::H160;
 use sp_runtime::{

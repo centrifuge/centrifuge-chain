@@ -183,6 +183,7 @@ impl<
 
 #[cfg(test)]
 mod tests {
+	use cfg_types::fixed_point::Rate;
 	use codec::Encode;
 	use hex::FromHex;
 	use sp_runtime::traits::One;
@@ -192,7 +193,6 @@ mod tests {
 	type PoolId = u64;
 	type TrancheId = [u8; 16];
 	type Balance = cfg_primitives::Balance;
-	type Rate = cfg_types::Rate;
 
 	const CURRENCY: Balance = 1_000_000_000_000_000_000;
 

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use cfg_primitives::{AccountId, Address, Balance, ItemId};
-use cfg_types::{PoolRole, Rate};
+use cfg_types::{fixed_point::Rate, permissions::PoolRole};
 use fudge::primitives::Chain;
 use pallet_loans::types::Asset;
 use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError};

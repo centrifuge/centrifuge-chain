@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Balance, CollectionId, ItemId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
-use cfg_types::CurrencyId;
+use cfg_types::tokens::CurrencyId;
 use frame_support::{
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, Everything, GenesisBuild},

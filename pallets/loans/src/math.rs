@@ -269,7 +269,7 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Balance: Fixe
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::CFG as USD;
-	use cfg_types::Rate;
+	use cfg_types::fixed_point::Rate;
 	use frame_support::assert_ok;
 	use sp_arithmetic::{PerThing, Percent};
 

@@ -18,6 +18,8 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
+use crate::xcm::XcmMetadata;
+
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
@@ -68,8 +70,8 @@ impl From<u32> for CurrencyId {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheCurrency {
-	pool_id: PoolId,
-	tranche_id: TrancheId,
+	pub(crate) pool_id: PoolId,
+	pub(crate) tranche_id: TrancheId,
 }
 
 impl From<TrancheCurrency> for CurrencyId {
@@ -113,7 +115,7 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 )]
 pub struct CustomMetadata {
 	/// XCM-related metadata.
-	pub xcm: super::XcmMetadata,
+	pub xcm: XcmMetadata,
 
 	/// Whether an asset can be minted.
 	/// When `true`, the right permissions will checked in the permissions

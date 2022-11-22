@@ -13,7 +13,13 @@
 use cfg_traits::{
 	CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue, TrancheCurrency, UpdateState,
 };
-use cfg_types::InvestmentInfo;
+use cfg_types::{
+	epoch::{EpochState, ScheduledUpdateDetails},
+	investments::InvestmentInfo,
+	pools::{PoolDetails, PoolParameters, PoolStatus},
+	reserves::ReserveDetails,
+	tranches::{TrancheInput, TrancheLoc, TrancheUpdate, Tranches},
+};
 use frame_support::traits::Contains;
 
 use super::*;
@@ -203,7 +209,9 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			admin: admin.clone(),
 			depositor,
 			pool_id,
-			essence: pool_details.essence::<T>()?,
+			essence: pool_details
+				.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
+				)?,
 		});
 
 		T::Permission::add(

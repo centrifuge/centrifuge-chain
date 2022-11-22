@@ -23,7 +23,10 @@
 
 use altair_runtime::{Balances, Call, Origin, PolkadotXcm, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
-use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
+use cfg_types::{
+	tokens::{CurrencyId, CustomMetadata},
+	xcm::XcmMetadata,
+};
 use frame_support::{assert_err, assert_noop, assert_ok, dispatch::Dispatchable};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};

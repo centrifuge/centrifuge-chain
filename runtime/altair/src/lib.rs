@@ -22,10 +22,17 @@ pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, TrancheCurrency as _,
 };
-pub use cfg_types::CurrencyId;
+pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
-	consts::pools::*, CustomMetadata, FeeKey, PermissionRoles, PermissionScope,
-	PermissionedCurrencyRole, PoolRole, Rate, Role, TimeProvider, TrancheCurrency,
+	consts::pools::*,
+	epoch::ScheduledUpdateDetails,
+	fee_keys::FeeKey,
+	fixed_point::Rate,
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
+	pools::PoolDetails,
+	time::TimeProvider,
+	tokens::{CustomMetadata, TrancheCurrency},
+	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 /// Constant values used within the runtime.
@@ -51,9 +58,7 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_investments::OrderType;
-use pallet_pool_system::{
-	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
-};
+use pallet_pool_system::EpochSolution;
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};

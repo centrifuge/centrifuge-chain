@@ -1,6 +1,6 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
-use cfg_types::CurrencyId;
+use cfg_types::tokens::CurrencyId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	sp_runtime::app_crypto::sp_core::U256,
@@ -166,7 +166,7 @@ pub mod asset_registry {
 }
 
 pub mod xcm {
-	use cfg_types::CurrencyId;
+	use cfg_types::tokens::CurrencyId;
 	use frame_support::sp_std::marker::PhantomData;
 	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
 	use xcm::latest::{Junction::GeneralKey, MultiLocation};

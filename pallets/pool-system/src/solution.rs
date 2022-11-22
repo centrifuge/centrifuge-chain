@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::tranches::{calculate_risk_buffers, EpochExecutionTranches, TrancheSolution};
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
@@ -97,6 +98,19 @@ pub enum UnhealthyState {
 pub enum EpochSolution<Balance> {
 	Healthy(HealthySolution<Balance>),
 	Unhealthy(UnhealthySolution<Balance>),
+}
+
+/// The information for a currently executing epoch
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber, TrancheCurrency>
+{
+	pub epoch: EpochId,
+	pub nav: Balance,
+	pub reserve: Balance,
+	pub max_reserve: Balance,
+	pub tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
+	pub best_submission: Option<EpochSolution<Balance>>,
+	pub challenge_period_end: Option<BlockNumber>,
 }
 
 impl<Balance> EpochSolution<Balance> {
@@ -384,14 +398,6 @@ where
 		// If both of the above rules to not apply, we value the solutions as equal
 		Some(Ordering::Equal)
 	}
-}
-
-// The solution struct for a specific tranche
-#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TrancheSolution {
-	pub invest_fulfillment: Perquintill,
-	pub redeem_fulfillment: Perquintill,
 }
 
 pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency>(
