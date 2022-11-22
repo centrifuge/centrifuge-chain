@@ -22,6 +22,12 @@ const STAKE_M: u64 = 400;
 
 const REWARD: u64 = 120;
 
+#[derive(Clone, Copy, PartialEq)]
+enum MechanismKind {
+	Base,
+	Deferred,
+}
+
 fn free_balance(currency_id: CurrencyId, account_id: &u64) -> u64 {
 	Tokens::reducible_balance(currency_id, account_id, true)
 }
@@ -47,14 +53,14 @@ mod mechanism {
 	mod base {
 		use super::*;
 
-		common_tests!(Rewards1, Instance1, "base");
-		currency_movement_tests!(Rewards1, Instance1, "base");
+		common_tests!(Rewards1, Instance1, MechanismKind::Base);
+		currency_movement_tests!(Rewards1, Instance1, MechanismKind::Base);
 	}
 
 	mod deferred {
 		use super::*;
 
-		common_tests!(Rewards2, Instance2, "deferred");
-		currency_movement_tests!(Rewards2, Instance2, "deferred");
+		common_tests!(Rewards2, Instance2, MechanismKind::Deferred);
+		currency_movement_tests!(Rewards2, Instance2, MechanismKind::Deferred);
 	}
 }
