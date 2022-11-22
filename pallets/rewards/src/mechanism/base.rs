@@ -22,7 +22,7 @@ pub struct Group<Balance, Rate> {
 pub struct Account<Balance, IBalance> {
 	pub stake: Balance,
 	pub reward_tally: IBalance,
-	pub last_currency_movement: u32,
+	pub last_currency_movement: u16,
 }
 
 impl<Balance, IBalance> Account<Balance, IBalance>
@@ -48,7 +48,10 @@ where
 		let tally_to_apply = self.get_tally_from_rpt_changes(rpt_changes)?;
 
 		self.reward_tally.ensure_add_assign(tally_to_apply)?;
-		self.last_currency_movement = rpt_changes.len() as u32;
+		self.last_currency_movement = rpt_changes
+			.len()
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
 
 		Ok(())
 	}
@@ -169,7 +172,11 @@ where
 		let reward = Self::compute_reward(account, currency, group)?;
 
 		account.reward_tally = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
-		account.last_currency_movement = currency.rpt_changes.len() as u32;
+		account.last_currency_movement = currency
+			.rpt_changes
+			.len()
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
 
 		Ok(reward)
 	}
