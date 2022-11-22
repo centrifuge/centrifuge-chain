@@ -26,8 +26,7 @@ use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, Role},
 	pools::{PoolDetails, PoolLocator},
 	time::TimeProvider,
-	tokens::{CurrencyId, CustomMetadata},
-	tranches::TrancheCurrency,
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
 	parameter_types,

@@ -15,7 +15,7 @@
 use cfg_primitives::{Balance, CollectionId, ItemId, PoolEpochId, PoolId, TrancheId, CFG as USD};
 use cfg_traits::{InvestmentAccountant, InvestmentProperties};
 use cfg_types::{
-	fixed_point::Rate, pools::PoolLocator, tokens::CurrencyId, tranches::TrancheCurrency,
+	fixed_point::Rate, pools::PoolLocator, tokens::{CurrencyId, TrancheCurrency}
 };
 use codec::MaxEncodedLen;
 use frame_support::{

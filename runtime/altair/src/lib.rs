@@ -31,8 +31,8 @@ use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	pools::PoolDetails,
 	time::TimeProvider,
-	tokens::CustomMetadata,
-	tranches::{TrancheCurrency, TrancheIndex, TrancheLoc, TrancheSolution},
+	tokens::{CustomMetadata, TrancheCurrency},
+	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 /// Constant values used within the runtime.

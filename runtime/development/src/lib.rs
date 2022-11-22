@@ -38,8 +38,8 @@ use cfg_types::{
 	},
 	pools::PoolDetails,
 	time::TimeProvider,
-	tokens::CustomMetadata,
-	tranches::{TrancheCurrency, TrancheIndex, TrancheLoc, TrancheSolution},
+	tokens::{CustomMetadata, TrancheCurrency},
+	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};

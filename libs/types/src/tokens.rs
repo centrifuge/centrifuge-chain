@@ -18,7 +18,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-use crate::{tranches::TrancheCurrency, xcm::XcmMetadata};
+use crate::xcm::XcmMetadata;
 
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
@@ -57,6 +57,21 @@ impl From<u32> for CurrencyId {
 	fn from(value: u32) -> Self {
 		CurrencyId::ForeignAsset(value)
 	}
+}
+
+/// A Currency that is solely used by tranches.
+///
+/// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
+/// in order to be able to have a clear separation of concerns. This enables us
+/// to use the `TrancheCurrency` type separately where solely this enum variant would be
+/// relevant. Most notably, in the `struct Tranche`.
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TrancheCurrency {
+	pub(crate) pool_id: PoolId,
+	pub(crate) tranche_id: TrancheId,
 }
 
 impl From<TrancheCurrency> for CurrencyId {

@@ -14,7 +14,7 @@
 use cfg_primitives::{Balance, TrancheWeight};
 use cfg_primitives::{Moment, PoolId, TrancheId};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
@@ -42,25 +42,13 @@ use xcm::{
 
 #[cfg(feature = "test-impls")]
 use crate::fixed_point::Rate;
-use crate::{tokens::CustomMetadata, xcm::XcmMetadata};
+use crate::{
+	tokens::{CustomMetadata, TrancheCurrency},
+	xcm::XcmMetadata,
+};
 
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
-
-/// A Currency that is solely used by tranches.
-///
-/// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
-/// in order to be able to have a clear separation of concerns. This enables us
-/// to use the `TrancheCurrency` type separately where solely this enum variant would be
-/// relevant. Most notably, in the `struct Tranche`.
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TrancheCurrency {
-	pub(crate) pool_id: PoolId,
-	pub(crate) tranche_id: TrancheId,
-}
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
 pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>

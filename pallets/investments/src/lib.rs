@@ -19,9 +19,8 @@ use cfg_traits::{
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
-	fulfillments::FulfillmentWithPrice,
 	investments::InvestmentAccount,
-	orders::{Order, TotalOrder},
+	orders::{FulfillmentWithPrice, Order, TotalOrder},
 };
 use frame_support::{
 	pallet_prelude::*,

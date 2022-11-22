@@ -15,11 +15,17 @@ use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::Zero;
+use sp_runtime::{traits::Zero, Perquintill};
 use sp_std::{
 	cmp::{Ord, PartialEq, PartialOrd},
 	vec::Vec,
 };
+
+#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct FulfillmentWithPrice<BalanceRatio> {
+	pub of_amount: Perquintill,
+	pub price: BalanceRatio,
+}
 
 /// A convenience struct to easily pass around the accumulated orders
 /// for all tranches, which is of sole interest to the pool.

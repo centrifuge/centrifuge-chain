@@ -400,14 +400,6 @@ where
 	}
 }
 
-// // The solution struct for a specific tranche
-// #[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo)]
-// #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-// pub struct TrancheSolution {
-// 	pub invest_fulfillment: Perquintill,
-// 	pub redeem_fulfillment: Perquintill,
-// }
-
 pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency>(
 	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, Currency>,
 	solution: &[TrancheSolution],

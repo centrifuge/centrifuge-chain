@@ -15,8 +15,8 @@
 use cfg_primitives::CFG as CURRENCY;
 use cfg_traits::{Investment, PoolMutate, PoolNAV, TrancheCurrency as _};
 use cfg_types::{
-	tokens::CurrencyId,
-	tranches::{TrancheCurrency, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
+	tokens::{CurrencyId, TrancheCurrency},
+	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
 };
 use codec::Encode;
 use frame_support::{

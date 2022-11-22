@@ -151,7 +151,8 @@ type PoolChangesOf<T> = PoolChanges<
 pub mod pallet {
 	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
 	use cfg_types::{
-		fulfillments::FulfillmentWithPrice, orders::TotalOrder, tokens::CustomMetadata,
+		orders::{FulfillmentWithPrice, TotalOrder},
+		tokens::CustomMetadata,
 	};
 	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};

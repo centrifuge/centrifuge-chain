@@ -52,5 +52,6 @@ std = [
   'sp-runtime/std',
   'sp-runtime/std',
   'sp-std/std',
+  'test-impls',
 ]
-try-runtime = ['frame-support/try-runtime', 'test-impls']
+try-runtime = ['frame-support/try-runtime']

@@ -16,10 +16,10 @@ use cfg_types::{
 	fixed_point::Rate,
 	pools::{PoolChanges, PoolDetails, PoolParameters, PoolStatus},
 	reserves::ReserveDetails,
-	tokens::{CurrencyId, CustomMetadata},
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 	tranches::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
-		TrancheCurrency, TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
+		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
 	},
 	xcm::XcmMetadata,
 };

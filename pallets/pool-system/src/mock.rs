@@ -19,8 +19,7 @@ pub use cfg_types::fixed_point::Rate;
 use cfg_types::{
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
 	time::TimeProvider,
-	tokens::{CurrencyId, CustomMetadata},
-	tranches::TrancheCurrency,
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use codec::Encode;
 use frame_support::{

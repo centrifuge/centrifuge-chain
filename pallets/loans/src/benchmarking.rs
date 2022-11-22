@@ -17,8 +17,7 @@ use cfg_traits::Investment;
 use cfg_types::{
 	fixed_point::Rate,
 	pools::PoolLocator,
-	tokens::{CurrencyId, CustomMetadata},
-	tranches::TrancheCurrency,
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
