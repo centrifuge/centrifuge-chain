@@ -11,7 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{base, deferred};
+use super::mechanism::{base, deferred, MaxCurrencyMovement, NoCurrencyMovement};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -32,6 +32,8 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens,
 		Rewards1: pallet_rewards::<Instance1>,
 		Rewards2: pallet_rewards::<Instance2>,
+		Rewards3: pallet_rewards::<Instance3>,
+		Rewards4: pallet_rewards::<Instance4>,
 	}
 );
 
@@ -113,9 +115,6 @@ impl orml_tokens::Config for Runtime {
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
 	pub const RewardCurrency: CurrencyId = CurrencyId::Reward;
-
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxCurrencyMovements: u32 = 3;
 }
 
 macro_rules! pallet_rewards_config {
@@ -133,8 +132,10 @@ macro_rules! pallet_rewards_config {
 	};
 }
 
-pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
-pallet_rewards_config!(Instance2, deferred::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64, NoCurrencyMovement>);
+pallet_rewards_config!(Instance2, base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovement<u8, 3>>);
+pallet_rewards_config!(Instance3, deferred::Mechanism<u64, i128, FixedI64, NoCurrencyMovement>);
+pallet_rewards_config!(Instance4, deferred::Mechanism<u64, i128, FixedI64, MaxCurrencyMovement<u8, 3>>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

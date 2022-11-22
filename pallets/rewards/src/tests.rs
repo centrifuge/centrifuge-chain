@@ -50,17 +50,29 @@ fn empty_distribution<Reward: DistributedRewards<GroupId = u32, Balance = u64>>(
 mod mechanism {
 	use super::*;
 
-	mod base {
+	mod base_no_movement {
 		use super::*;
 
 		common_tests!(Rewards1, Instance1, MechanismKind::Base);
-		currency_movement_tests!(Rewards1, Instance1, MechanismKind::Base);
+	}
+
+	mod base {
+		use super::*;
+
+		common_tests!(Rewards2, Instance2, MechanismKind::Base);
+		currency_movement_tests!(Rewards2, Instance2, MechanismKind::Base);
+	}
+
+	mod deferred_no_movement {
+		use super::*;
+
+		common_tests!(Rewards3, Instance3, MechanismKind::Deferred);
 	}
 
 	mod deferred {
 		use super::*;
 
-		common_tests!(Rewards2, Instance2, MechanismKind::Deferred);
-		currency_movement_tests!(Rewards2, Instance2, MechanismKind::Deferred);
+		common_tests!(Rewards4, Instance4, MechanismKind::Deferred);
+		currency_movement_tests!(Rewards4, Instance4, MechanismKind::Deferred);
 	}
 }

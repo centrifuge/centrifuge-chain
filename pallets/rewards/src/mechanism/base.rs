@@ -6,7 +6,7 @@ use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-use super::{MoveCurrencyError, RewardMechanism};
+use super::{CurrencyMovement, MoveCurrencyError, RewardMechanism};
 
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
@@ -19,22 +19,28 @@ pub struct Group<Balance, Rate> {
 /// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Account<Balance, IBalance> {
+pub struct Account<Balance, IBalance, Counter> {
 	pub stake: Balance,
 	pub reward_tally: IBalance,
-	last_currency_movement: u16,
+	last_currency_movement: Counter,
 }
 
-impl<Balance, IBalance> Account<Balance, IBalance>
+impl<Balance, IBalance, Counter> Account<Balance, IBalance, Counter>
 where
 	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<IBalance> + Copy,
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
+	Counter: TryInto<u32> + TryFrom<u32> + Copy,
 {
 	fn get_tally_from_rpt_changes<Rate: FixedPointNumber>(
 		&self,
 		rpt_changes: &[Rate],
 	) -> Result<IBalance, ArithmeticError> {
-		let rpt_to_apply = &rpt_changes[self.last_currency_movement as usize..]
+		let from: u32 = self
+			.last_currency_movement
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
+
+		let rpt_to_apply = &rpt_changes[from as usize..]
 			.iter()
 			.try_fold(Rate::zero(), |a, b| a.ensure_add(*b))?;
 
@@ -48,8 +54,7 @@ where
 		let tally_to_apply = self.get_tally_from_rpt_changes(rpt_changes)?;
 
 		self.reward_tally.ensure_add_assign(tally_to_apply)?;
-		self.last_currency_movement = rpt_changes
-			.len()
+		self.last_currency_movement = (rpt_changes.len() as u32)
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 
@@ -94,10 +99,10 @@ where
 		+ Signed
 		+ sp_std::fmt::Debug,
 	Rate: EnsureFixedPointNumber,
-	MaxCurrencyMovements: Get<u32>,
+	MaxCurrencyMovements: CurrencyMovement,
 	<Rate as FixedPointNumber>::Inner: Signed,
 {
-	type Account = Account<Self::Balance, IBalance>;
+	type Account = Account<Self::Balance, IBalance, MaxCurrencyMovements::Counter>;
 	type Balance = Balance;
 	type Currency = Currency<Balance, Rate, MaxCurrencyMovements>;
 	type DistributionId = ();
@@ -172,9 +177,7 @@ where
 		let reward = Self::compute_reward(account, currency, group)?;
 
 		account.reward_tally = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
-		account.last_currency_movement = currency
-			.rpt_changes
-			.len()
+		account.last_currency_movement = (currency.rpt_changes.len() as u32)
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?;
 

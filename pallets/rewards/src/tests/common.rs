@@ -220,13 +220,15 @@ macro_rules! currency_common_tests {
 					type Mechanism = <Runtime as crate::Config<crate::$instance>>::RewardMechanism;
 					type MaxMovements = <Mechanism as RewardMechanism>::MaxCurrencyMovements;
 
+					let max = <MaxMovements as Get<u32>>::get();
+
 					// Waste all correct movements.
-					for i in 0..<MaxMovements as TypedGet>::get() {
+					for i in 0..max {
 						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, i + 1));
 					}
 
 					assert_noop!(
-						$pallet::attach_currency(DOM_1_CURRENCY_A, MaxCurrencyMovements::get() + 1),
+						$pallet::attach_currency(DOM_1_CURRENCY_A, max + 1),
 						Error::<Runtime, $instance>::CurrencyMaxMovementsReached
 					);
 				});

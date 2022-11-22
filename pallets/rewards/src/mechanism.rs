@@ -5,40 +5,13 @@ use sp_runtime::{traits::Get, ArithmeticError};
 pub mod base;
 pub mod deferred;
 
-pub trait DistributionId: Sized {
-	fn next_id(&mut self) -> Result<Self, ArithmeticError>;
-}
-
-impl DistributionId for () {
-	fn next_id(&mut self) -> Result<Self, ArithmeticError> {
-		Ok(())
-	}
-}
-
-macro_rules! distribution_id_impl {
-	($number:ty) => {
-		impl DistributionId for $number {
-			fn next_id(&mut self) -> Result<Self, ArithmeticError> {
-				self.ensure_add_assign(1)?;
-				Ok(*self)
-			}
-		}
-	};
-}
-
-distribution_id_impl!(u8);
-distribution_id_impl!(u16);
-distribution_id_impl!(u32);
-distribution_id_impl!(u64);
-distribution_id_impl!(u128);
-
 pub trait RewardMechanism {
 	type Group;
 	type Account;
 	type Currency;
 	type Balance: Balance;
 	type DistributionId: DistributionId;
-	type MaxCurrencyMovements: Get<u32>;
+	type MaxCurrencyMovements: CurrencyMovement;
 
 	/// Reward the group mutating the group entity.
 	fn reward_group(
@@ -92,6 +65,7 @@ pub trait RewardMechanism {
 	fn group_stake(group: &Self::Group) -> Self::Balance;
 }
 
+/// Error to identify different possible errors when moving currencies
 #[derive(Clone, PartialEq, Debug)]
 pub enum MoveCurrencyError {
 	Arithmetic(ArithmeticError),
@@ -101,5 +75,91 @@ pub enum MoveCurrencyError {
 impl From<ArithmeticError> for MoveCurrencyError {
 	fn from(e: ArithmeticError) -> MoveCurrencyError {
 		Self::Arithmetic(e)
+	}
+}
+
+/// Type used to identify different distributions in groups.
+pub trait DistributionId: Sized {
+	fn next_id(&mut self) -> Result<Self, ArithmeticError>;
+}
+
+impl DistributionId for () {
+	fn next_id(&mut self) -> Result<Self, ArithmeticError> {
+		Ok(())
+	}
+}
+
+macro_rules! distribution_id_impl {
+	($number:ty) => {
+		impl DistributionId for $number {
+			fn next_id(&mut self) -> Result<Self, ArithmeticError> {
+				self.ensure_add_assign(1)?;
+				Ok(*self)
+			}
+		}
+	};
+}
+
+distribution_id_impl!(u8);
+distribution_id_impl!(u16);
+distribution_id_impl!(u32);
+distribution_id_impl!(u64);
+distribution_id_impl!(u128);
+
+/// Represent a currency movement counter in the mechanisms
+pub trait CurrencyMovement: Get<u32> {
+	type Counter: TryInto<u32> + TryFrom<u32> + Copy + Default;
+}
+
+#[derive(
+	Clone, Copy, Default, codec::Encode, codec::Decode, codec::MaxEncodedLen, scale_info::TypeInfo,
+)]
+pub struct ZeroCounter;
+
+impl TryFrom<u32> for ZeroCounter {
+	type Error = ();
+
+	fn try_from(_: u32) -> Result<Self, Self::Error> {
+		Ok(ZeroCounter)
+	}
+}
+
+impl TryInto<u32> for ZeroCounter {
+	type Error = ();
+
+	fn try_into(self) -> Result<u32, Self::Error> {
+		Ok(0)
+	}
+}
+
+/// Type to represent that the currency movements is not available.
+#[derive(scale_info::TypeInfo)]
+pub struct NoCurrencyMovement;
+
+impl Get<u32> for NoCurrencyMovement {
+	fn get() -> u32 {
+		0
+	}
+}
+
+impl CurrencyMovement for NoCurrencyMovement {
+	type Counter = ZeroCounter;
+}
+
+/// Type to represent the maximum currency movements and the type used to store the counter.
+/// The type must have enough precission to represent the MAX value.
+#[derive(Clone, Copy, scale_info::TypeInfo)]
+pub struct MaxCurrencyMovement<T, const MAX: u32>(T);
+
+impl<T: Default, const MAX: u32> CurrencyMovement for MaxCurrencyMovement<T, MAX>
+where
+	T: TryInto<u32> + TryFrom<u32> + Copy,
+{
+	type Counter = T;
+}
+
+impl<T, const MAX: u32> Get<u32> for MaxCurrencyMovement<T, MAX> {
+	fn get() -> u32 {
+		MAX
 	}
 }

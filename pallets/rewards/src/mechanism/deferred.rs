@@ -5,7 +5,7 @@ use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-use super::{base, MoveCurrencyError, RewardMechanism};
+use super::{base, CurrencyMovement, MoveCurrencyError, RewardMechanism};
 
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
@@ -20,7 +20,7 @@ pub struct Group<Balance, Rate, DistributionId> {
 impl<Balance, Rate, DistributionId> Group<Balance, Rate, DistributionId> {
 	fn get_last_rate<MaxMovements>(
 		&self,
-		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
+		currency: &Currency<Balance, Rate, MaxMovements, DistributionId>,
 	) -> Rate
 	where
 		MaxMovements: Get<u32>,
@@ -38,13 +38,13 @@ impl<Balance, Rate, DistributionId> Group<Balance, Rate, DistributionId> {
 /// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Account<Balance, IBalance, DistributionId> {
-	base: base::Account<Balance, IBalance>,
+pub struct Account<Balance, IBalance, Counter, DistributionId> {
+	base: base::Account<Balance, IBalance, Counter>,
 	distribution_id: DistributionId,
 	rewarded_stake: Balance,
 }
 
-impl<Balance, IBalance, DistributionId> Account<Balance, IBalance, DistributionId>
+impl<Balance, IBalance, Counter, DistributionId> Account<Balance, IBalance, Counter, DistributionId>
 where
 	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<IBalance> + Copy + Ord,
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
@@ -83,7 +83,7 @@ where
 	fn last_rewarded_stake<Rate: FixedPointNumber, MaxMovements>(
 		&self,
 		group: &Group<Balance, Rate, DistributionId>,
-		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
+		currency: &Currency<Balance, Rate, MaxMovements, DistributionId>,
 	) -> Result<Balance, ArithmeticError>
 	where
 		MaxMovements: Get<u32>,
@@ -101,20 +101,20 @@ where
 /// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Currency<Balance, Rate, DistributionId, MaxMovements: Get<u32>> {
+pub struct Currency<Balance, Rate, MaxMovements: Get<u32>, DistributionId> {
 	base: base::Currency<Balance, Rate, MaxMovements>,
 	prev_distribution_id: DistributionId,
 	next_distribution_id: DistributionId,
 	prev_last_rate: Rate,
 }
 
-impl<Balance, Rate, DistributionId, MaxMovements> Default
-	for Currency<Balance, Rate, DistributionId, MaxMovements>
+impl<Balance, Rate, MaxMovements, DistributionId> Default
+	for Currency<Balance, Rate, MaxMovements, DistributionId>
 where
 	Balance: Zero,
 	Rate: Default,
-	DistributionId: Default,
 	MaxMovements: Get<u32>,
+	DistributionId: Default,
 {
 	fn default() -> Self {
 		Self {
@@ -142,12 +142,13 @@ where
 		+ Signed
 		+ sp_std::fmt::Debug,
 	Rate: EnsureFixedPointNumber,
-	MaxCurrencyMovements: Get<u32>,
+	MaxCurrencyMovements: CurrencyMovement,
 	<Rate as FixedPointNumber>::Inner: Signed,
 {
-	type Account = Account<Self::Balance, IBalance, Self::DistributionId>;
+	type Account =
+		Account<Self::Balance, IBalance, MaxCurrencyMovements::Counter, Self::DistributionId>;
 	type Balance = Balance;
-	type Currency = Currency<Balance, Rate, Self::DistributionId, MaxCurrencyMovements>;
+	type Currency = Currency<Balance, Rate, MaxCurrencyMovements, Self::DistributionId>;
 	type DistributionId = u32;
 	type Group = Group<Balance, Rate, Self::DistributionId>;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
