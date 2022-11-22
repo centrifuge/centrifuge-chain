@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! currency_movement_tests {
-	($pallet:ident, $instance:ident, $mechanism:literal) => {
+	($pallet:ident, $instance:ident, $kind:expr) => {
 		mod movement_use_case {
 			use super::*;
 
@@ -22,30 +22,28 @@ macro_rules! currency_movement_tests {
 				Reward: DistributedRewards<GroupId = u32, Balance = u64>
 					+ AccountRewards<u64, Balance = u64, CurrencyId = (DomainId, CurrencyId)>,
 			>(
-				mechanism: &str,
+				kind: MechanismKind,
 				domain_currency_id: (DomainId, CurrencyId),
 				base_expected: u64,
 				deferred_expected: u64,
 			) {
 				assert_ok!(
 					Reward::claim_reward(domain_currency_id, &USER_A),
-					match mechanism {
-						"base" => base_expected,
-						"deferred" => 0,
-						_ => unreachable!(),
+					match kind {
+						MechanismKind::Base => base_expected,
+						MechanismKind::Deferred => 0,
 					}
 				);
 
-				match mechanism {
-					"base" => (),
-					"deferred" => {
+				match kind {
+					MechanismKind::Base => (),
+					MechanismKind::Deferred => {
 						empty_distribution::<Reward>();
 						assert_ok!(
 							Reward::claim_reward(domain_currency_id, &USER_A),
 							deferred_expected
 						);
 					}
-					_ => unreachable!(),
 				}
 			}
 
@@ -81,7 +79,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
@@ -111,7 +109,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
@@ -129,7 +127,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
@@ -146,7 +144,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
-					check_last_claim::<$pallet>($mechanism, DOM_1_CURRENCY_M, 0, 0);
+					check_last_claim::<$pallet>($kind, DOM_1_CURRENCY_M, 0, 0);
 				});
 			}
 
@@ -161,7 +159,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B),
 						REWARD * 2 * STAKE_M / (2 * STAKE_M + STAKE_B),
@@ -178,7 +176,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
-					check_last_claim::<$pallet>($mechanism, DOM_1_CURRENCY_M, 0, 0);
+					check_last_claim::<$pallet>($kind, DOM_1_CURRENCY_M, 0, 0);
 				});
 			}
 
@@ -193,7 +191,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						0,
@@ -212,7 +210,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 						0,
@@ -230,7 +228,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
-					check_last_claim::<$pallet>($mechanism, DOM_1_CURRENCY_M, 0, 0);
+					check_last_claim::<$pallet>($kind, DOM_1_CURRENCY_M, 0, 0);
 				});
 			}
 
@@ -243,7 +241,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 
-					check_last_claim::<$pallet>($mechanism, DOM_1_CURRENCY_M, 0, 0);
+					check_last_claim::<$pallet>($kind, DOM_1_CURRENCY_M, 0, 0);
 				});
 			}
 
@@ -258,7 +256,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
@@ -277,7 +275,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
@@ -296,7 +294,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_C]));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_C),
 						REWARD * STAKE_M / (STAKE_M + STAKE_C),
@@ -330,7 +328,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						0,
@@ -350,7 +348,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 						0,
@@ -370,7 +368,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_C),
 						0,
@@ -389,7 +387,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 
 					check_last_claim::<$pallet>(
-						$mechanism,
+						$kind,
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
