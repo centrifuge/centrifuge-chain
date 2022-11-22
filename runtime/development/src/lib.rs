@@ -71,6 +71,7 @@ use pallet_pool_system::EpochSolution;
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };
+use pallet_rewards::mechanism::{base, MaxCurrencyMovement};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -1533,9 +1534,6 @@ pub enum RewardDomain {
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
-
-	#[derive(scale_info::TypeInfo)]
-	pub const MaxCurrencyMovements: u32 = 50;
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
@@ -1546,12 +1544,8 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
-	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
-		Balance,
-		IBalance,
-		FixedI128,
-		MaxCurrencyMovements,
-	>;
+	type RewardMechanism =
+		base::Mechanism<Balance, IBalance, FixedI128, MaxCurrencyMovement<u8, 50>>;
 }
 
 frame_support::parameter_types! {
