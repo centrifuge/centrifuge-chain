@@ -10,9 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
-#[cfg(feature = "test")]
+#[cfg(feature = "test-impls")]
 use cfg_primitives::{Balance, TrancheWeight};
+use cfg_primitives::{Moment, PoolId, TrancheId};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -40,9 +40,9 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-#[cfg(feature = "test")]
+#[cfg(feature = "test-impls")]
 use crate::fixed_point::Rate;
-use crate::{fixed_point::Rate, tokens::CustomMetadata, xcm::XcmMetadata};
+use crate::{tokens::CustomMetadata, xcm::XcmMetadata};
 
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
@@ -167,6 +167,7 @@ pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 	pub _phantom: PhantomData<Weight>,
 }
 
+#[cfg(feature = "test-impls")]
 impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
 	fn default() -> Self {
 		Self {
@@ -330,6 +331,7 @@ pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
 	pub salt: TrancheSalt<PoolId>,
 }
 
+#[cfg(feature = "test-impls")]
 impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> {
 	pub fn new(
 		pool: PoolId,
@@ -1021,6 +1023,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>
 	pub _phantom: PhantomData<Weight>,
 }
 
+#[cfg(feature = "test-impls")]
 impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
 	fn default() -> Self {
 		Self {
