@@ -39,7 +39,7 @@ use xcm::{
 
 use crate::{
 	mock, mock::*, pallet, BoundedVec, Change, Config, ConstU32, EpochExecution,
-	EpochExecutionInfo, Error, Pool, PoolDeposit, PoolInspect, PoolState, UnhealthyState,
+	EpochExecutionInfo, Error, Pool, PoolInspect, PoolState, UnhealthyState,
 };
 
 #[test]
