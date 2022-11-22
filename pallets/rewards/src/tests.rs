@@ -1,19 +1,26 @@
-mod claiming;
 mod common;
+mod currency_movement;
 
 use cfg_traits::rewards::DistributedRewards;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
 
 use super::{mock::*, *};
 
-pub const GROUP_A: u32 = 1;
-pub const GROUP_B: u32 = 2;
+const GROUP_A: u32 = 1;
+const GROUP_B: u32 = 2;
+const GROUP_C: u32 = 3;
 
-pub const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
-pub const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
-pub const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
+const DOM_1_CURRENCY_A: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
+const DOM_1_CURRENCY_B: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
+const DOM_1_CURRENCY_C: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
+const DOM_1_CURRENCY_M: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::M);
 
-pub const REWARD: u64 = 120;
+const STAKE_A: u64 = 100;
+const STAKE_B: u64 = 200;
+const STAKE_C: u64 = 300;
+const STAKE_M: u64 = 400;
+
+const REWARD: u64 = 120;
 
 fn free_balance(currency_id: CurrencyId, account_id: &u64) -> u64 {
 	Tokens::reducible_balance(currency_id, account_id, true)
@@ -26,125 +33,40 @@ fn rewards_account() -> u64 {
 	)
 }
 
-mod base_mechanism {
-	use super::*;
-
-	common_tests!(Rewards1, Instance1);
-	base_claiming_tests!(Rewards1, Instance1);
+fn empty_distribution<Reward: DistributedRewards<GroupId = u32, Balance = u64>>() {
+	// This method adds an extra distribution with 0 reward to emulate one more epoch.
+	// This allow deferred mechanism to behave in the same way as base mechanism if
+	// called just before the claim method.
+	// It is only necessary if there was any distribute_reward call in the test.
+	assert_ok!(Reward::distribute_reward(0, [GROUP_A, GROUP_B, GROUP_C]));
 }
 
-mod base_with_currency_movement_mechanism {
+mod mechanism {
 	use super::*;
 
-	common_tests!(Rewards2, Instance2);
-	base_claiming_tests!(Rewards2, Instance2);
+	mod base_standalone {
+		use super::*;
 
-	use Rewards2 as Rewards;
-
-	#[test]
-	fn move_currency_one_move() {
-		const STAKE_A: u64 = 2000;
-		const STAKE_B: u64 = 2000;
-		const STAKE_C: u64 = 1000;
-
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-			// DISTRIBUTION 1
-			assert_ok!(
-				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD / 4
-			);
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(
-				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD / 4
-			);
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-			// DISTRIBUTION 2
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD / 4 + 2 * REWARD / 5
-			);
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
-			assert_ok!(Rewards::withdraw_stake(
-				DOM_1_CURRENCY_B,
-				&USER_A,
-				STAKE_B * 2
-			));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-			// DISTRIBUTION 3
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-				REWARD / 4 + REWARD / 2 + REWARD / 2
-			);
-			assert_ok!(Rewards::claim_reward(DOM_1_CURRENCY_B, &USER_A), 0);
-			assert_ok!(
-				Rewards::claim_reward(DOM_1_CURRENCY_C, &USER_A),
-				REWARD / 2 + REWARD / 10 + REWARD / 2
-			);
-		});
+		common_tests!(Rewards1, Instance1, "base");
 	}
 
-	/// Makes two movements without account interaction and the another move.
-	#[test]
-	fn move_currency_several_moves() {
-		const STAKE_A: u64 = 2000;
-		const STAKE_B: u64 = 2000;
-		const STAKE_C: u64 = 1000;
+	mod base_with_movement {
+		use super::*;
 
-		new_test_ext().execute_with(|| {
-			// DISTRIBUTION 0
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_C, GROUP_B));
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-			assert_ok!(Rewards::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_C));
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-			// DISTRIBUTION 1
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-			// DISTRIBUTION 2
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_A)); // MOVEMENT HERE!!
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-			// DISTRIBUTION 3
-			assert_ok!(
-				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD / 4 + REWARD / 3 + REWARD / 4
-			);
-			assert_ok!(Rewards::attach_currency(DOM_1_CURRENCY_B, GROUP_B)); // MOVEMENT HERE!!
-			assert_ok!(
-				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD / 4 + REWARD / 3 + REWARD / 4
-			);
-			assert_ok!(Rewards::distribute_reward(REWARD, [GROUP_A, GROUP_B]));
-
-			// DISTRIBUTION 4
-			assert_ok!(
-				Rewards::compute_reward(DOM_1_CURRENCY_B, &USER_A),
-				REWARD / 4 + REWARD / 3 + REWARD / 4 + REWARD / 3
-			);
-		});
+		common_tests!(Rewards2, Instance2, "base");
+		currency_movement_tests!(Rewards2, Instance2, "base");
 	}
-}
 
-mod deferred_mechanism {
-	use super::*;
+	mod deferred_standalone {
+		use super::*;
 
-	common_tests!(Rewards3, Instance3);
-	deferred_claiming_tests!(Rewards3, Instance3);
+		common_tests!(Rewards3, Instance3, "deferred");
+	}
+
+	mod deferred_with_movement {
+		use super::*;
+
+		common_tests!(Rewards4, Instance4, "deferred");
+		currency_movement_tests!(Rewards4, Instance4, "deferred");
+	}
 }

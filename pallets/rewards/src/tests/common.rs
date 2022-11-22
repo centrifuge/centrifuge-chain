@@ -1,71 +1,63 @@
-// ---------------------------------------------------------------
-//  Common tests that should behave identical with all mechanisms
-// ---------------------------------------------------------------
-
 #[macro_export]
 macro_rules! stake_common_tests {
 	($pallet:ident, $instance:ident) => {
-		#[test]
-		fn stake() {
-			const USER_A_STAKED_1: u64 = 5000;
-			const USER_A_STAKED_2: u64 = 1000;
+		mod stake {
+			use super::*;
 
-			new_test_ext().execute_with(|| {
-				// DISTRIBUTION 0
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!($pallet::deposit_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_STAKED_1
-				));
-				assert_eq!(
-					free_balance(CurrencyId::A, &USER_A),
-					USER_INITIAL_BALANCE - USER_A_STAKED_1
-				);
-				assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+			#[test]
+			fn basic() {
+				const STAKE_1: u64 = 5000;
+				const STAKE_2: u64 = 1000;
 
-				// DISTRIBUTION 1
-				assert_ok!($pallet::deposit_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_STAKED_2
-				));
-				assert_eq!(
-					free_balance(CurrencyId::A, &USER_A),
-					USER_INITIAL_BALANCE - (USER_A_STAKED_1 + USER_A_STAKED_2)
-				);
-			});
-		}
+				new_test_ext().execute_with(|| {
+					// DISTRIBUTION 0
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_1));
+					assert_eq!(
+						free_balance(CurrencyId::A, &USER_A),
+						USER_INITIAL_BALANCE - STAKE_1
+					);
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 
-		#[test]
-		fn stake_all() {
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!($pallet::deposit_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_INITIAL_BALANCE
-				));
-			});
-		}
+					// DISTRIBUTION 1
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_2));
+					assert_eq!(
+						free_balance(CurrencyId::A, &USER_A),
+						USER_INITIAL_BALANCE - (STAKE_1 + STAKE_2)
+					);
+				});
+			}
 
-		#[test]
-		fn stake_nothing() {
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0));
-			});
-		}
+			#[test]
+			fn all() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::deposit_stake(
+						DOM_1_CURRENCY_A,
+						&USER_A,
+						USER_INITIAL_BALANCE
+					));
+				});
+			}
 
-		#[test]
-		fn stake_insufficient_balance() {
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_noop!(
-					$pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, USER_INITIAL_BALANCE + 1),
-					TokenError::NoFunds
-				);
-			});
+			#[test]
+			fn nothing() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0));
+				});
+			}
+
+			#[test]
+			fn insufficient_balance() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_noop!(
+						$pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, USER_INITIAL_BALANCE + 1),
+						TokenError::NoFunds
+					);
+				});
+			}
 		}
 	};
 }
@@ -73,130 +65,109 @@ macro_rules! stake_common_tests {
 #[macro_export]
 macro_rules! unstake_common_tests {
 	($pallet:ident, $instance:ident) => {
-		#[test]
-		fn unstake() {
-			const USER_A_STAKED: u64 = 1000;
-			const USER_A_UNSTAKED_1: u64 = 250;
-			const USER_A_UNSTAKED_2: u64 = USER_A_STAKED - USER_A_UNSTAKED_1;
+		mod unstake {
+			use super::*;
 
-			new_test_ext().execute_with(|| {
-				// DISTRIBUTION 0
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!($pallet::deposit_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_STAKED
-				));
-				assert_ok!($pallet::withdraw_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_UNSTAKED_1
-				));
-				assert_eq!(
-					free_balance(CurrencyId::A, &USER_A),
-					USER_INITIAL_BALANCE - USER_A_STAKED + USER_A_UNSTAKED_1
-				);
-				assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+			#[test]
+			fn basic() {
+				const STAKE_1: u64 = 1000;
+				const UNSTAKE_1: u64 = 250;
+				const UNSTAKE_2: u64 = STAKE_1 - UNSTAKE_1;
 
-				// DISTRIBUTION 1
-				assert_ok!($pallet::withdraw_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_UNSTAKED_2
-				));
-				assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
-			});
-		}
+				new_test_ext().execute_with(|| {
+					// DISTRIBUTION 0
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_1));
+					assert_ok!($pallet::withdraw_stake(
+						DOM_1_CURRENCY_A,
+						&USER_A,
+						UNSTAKE_1
+					));
+					assert_eq!(
+						free_balance(CurrencyId::A, &USER_A),
+						USER_INITIAL_BALANCE - STAKE_1 + UNSTAKE_1
+					);
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 
-		#[test]
-		fn unstake_insufficient_balance() {
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_noop!(
-					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 1),
-					TokenError::NoFunds
-				);
+					// DISTRIBUTION 1
+					assert_ok!($pallet::withdraw_stake(
+						DOM_1_CURRENCY_A,
+						&USER_A,
+						UNSTAKE_2
+					));
+					assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
+				});
+			}
 
-				assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 1000));
+			#[test]
+			fn insufficient_balance() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_noop!(
+						$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 1),
+						TokenError::NoFunds
+					);
 
-				assert_noop!(
-					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 2000),
-					TokenError::NoFunds
-				);
-			});
-		}
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 1000));
 
-		#[test]
-		fn unstake_exact() {
-			const STAKE_A: u64 = 1000;
+					assert_noop!(
+						$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 2000),
+						TokenError::NoFunds
+					);
+				});
+			}
 
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-				assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
-			});
-		}
+			#[test]
+			fn exact() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+				});
+			}
 
-		#[test]
-		fn unstake_nothing() {
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0));
-			});
-		}
+			#[test]
+			fn nothing() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0));
+				});
+			}
 
-		#[test]
-		fn unstake_several_users() {
-			const USER_A_STAKED: u64 = 1000;
-			const USER_B_STAKED: u64 = 500;
+			#[test]
+			fn several_users() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_eq!(
+						free_balance(CurrencyId::A, &USER_A),
+						USER_INITIAL_BALANCE - STAKE_A
+					);
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_ok!($pallet::deposit_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_STAKED
-				));
-				assert_eq!(
-					free_balance(CurrencyId::A, &USER_A),
-					USER_INITIAL_BALANCE - USER_A_STAKED
-				);
-				assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+					// DISTRIBUTION 1
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_B));
+					assert_eq!(
+						free_balance(CurrencyId::A, &USER_B),
+						USER_INITIAL_BALANCE - STAKE_B
+					);
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_B));
+					assert_eq!(free_balance(CurrencyId::A, &USER_B), USER_INITIAL_BALANCE);
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 
-				// DISTRIBUTION 1
-				assert_ok!($pallet::deposit_stake(
-					DOM_1_CURRENCY_A,
-					&USER_B,
-					USER_B_STAKED
-				));
-				assert_eq!(
-					free_balance(CurrencyId::A, &USER_B),
-					USER_INITIAL_BALANCE - USER_B_STAKED
-				);
-				assert_ok!($pallet::withdraw_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_STAKED
-				));
-				assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
-				assert_ok!($pallet::withdraw_stake(
-					DOM_1_CURRENCY_A,
-					&USER_B,
-					USER_B_STAKED
-				));
-				assert_eq!(free_balance(CurrencyId::A, &USER_B), USER_INITIAL_BALANCE);
-				assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
-
-				// DISTRIBUTION 2
-				assert_noop!(
-					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 1),
-					TokenError::NoFunds
-				);
-				assert_noop!(
-					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_B, 1),
-					TokenError::NoFunds
-				);
-			});
+					// DISTRIBUTION 2
+					assert_noop!(
+						$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 1),
+						TokenError::NoFunds
+					);
+					assert_noop!(
+						$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_B, 1),
+						TokenError::NoFunds
+					);
+				});
+			}
 		}
 	};
 }
@@ -204,133 +175,277 @@ macro_rules! unstake_common_tests {
 #[macro_export]
 macro_rules! currency_common_tests {
 	($pallet:ident, $instance:ident) => {
-		#[test]
-		fn use_currency_without_group() {
-			new_test_ext().execute_with(|| {
-				assert_noop!(
-					$pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-					Error::<Runtime, $instance>::CurrencyWithoutGroup
-				);
-				assert_noop!(
-					$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0),
-					Error::<Runtime, $instance>::CurrencyWithoutGroup
-				);
-				assert_noop!(
-					$pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A),
-					Error::<Runtime, $instance>::CurrencyWithoutGroup
-				);
-				assert_noop!(
-					$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-					Error::<Runtime, $instance>::CurrencyWithoutGroup
-				);
-			});
-		}
+		mod currency {
+			use super::*;
 
-		#[test]
-		fn move_currency_same_group_error() {
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
-				assert_noop!(
-					$pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A),
-					Error::<Runtime, $instance>::CurrencyInSameGroup
-				);
-			});
-		}
+			#[test]
+			fn use_without_group() {
+				new_test_ext().execute_with(|| {
+					assert_noop!(
+						$pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, 0),
+						Error::<Runtime, $instance>::CurrencyWithoutGroup
+					);
+					assert_noop!(
+						$pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, 0),
+						Error::<Runtime, $instance>::CurrencyWithoutGroup
+					);
+					assert_noop!(
+						$pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A),
+						Error::<Runtime, $instance>::CurrencyWithoutGroup
+					);
+					assert_noop!(
+						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
+						Error::<Runtime, $instance>::CurrencyWithoutGroup
+					);
+				});
+			}
 
-		#[test]
-		fn move_currency_max_times() {
-			new_test_ext().execute_with(|| {
-				// First attach only attach the currency, does not move it.
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, 0));
+			#[test]
+			fn move_same_group_error() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_noop!(
+						$pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A),
+						Error::<Runtime, $instance>::CurrencyInSameGroup
+					);
+				});
+			}
 
-				type Mechanism = <Runtime as crate::Config<crate::$instance>>::RewardMechanism;
-				type MaxMovements = <Mechanism as RewardMechanism>::MaxCurrencyMovements;
+			#[test]
+			fn move_max_times() {
+				new_test_ext().execute_with(|| {
+					// First attach only attach the currency, does not move it.
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, 0));
 
-				// Waste all correct movements.
-				for i in 0..<MaxMovements as TypedGet>::get() {
-					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, i + 1));
-				}
+					type Mechanism = <Runtime as crate::Config<crate::$instance>>::RewardMechanism;
+					type MaxMovements = <Mechanism as RewardMechanism>::MaxCurrencyMovements;
 
-				assert_noop!(
-					$pallet::attach_currency(DOM_1_CURRENCY_A, MaxCurrencyMovements::get() + 1),
-					Error::<Runtime, $instance>::CurrencyMaxMovementsReached
-				);
-			});
-		}
+					// Waste all correct movements.
+					for i in 0..<MaxMovements as TypedGet>::get() {
+						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, i + 1));
+					}
 
-		#[test]
-		fn same_currency_different_domains() {
-			const STAKE_A: u64 = 1000;
+					assert_noop!(
+						$pallet::attach_currency(DOM_1_CURRENCY_A, MaxCurrencyMovements::get() + 1),
+						Error::<Runtime, $instance>::CurrencyMaxMovementsReached
+					);
+				});
+			}
 
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(
-					(DomainId::D1, CurrencyId::A),
-					GROUP_A
-				));
-				assert_ok!($pallet::attach_currency(
-					(DomainId::D2, CurrencyId::A),
-					GROUP_A
-				));
+			#[test]
+			fn different_domains() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(
+						(DomainId::D1, CurrencyId::A),
+						GROUP_A
+					));
+					assert_ok!($pallet::attach_currency(
+						(DomainId::D2, CurrencyId::A),
+						GROUP_A
+					));
 
-				assert_ok!($pallet::deposit_stake(
-					(DomainId::D1, CurrencyId::A),
-					&USER_A,
-					STAKE_A
-				));
+					assert_ok!($pallet::deposit_stake(
+						(DomainId::D1, CurrencyId::A),
+						&USER_A,
+						STAKE_A
+					));
 
-				// There is enough reserved CurrencyId::A for USER_A, but in other domain.
-				assert_noop!(
-					$pallet::withdraw_stake((DomainId::D2, CurrencyId::A), &USER_A, STAKE_A),
-					TokenError::NoFunds
-				);
-				assert_ok!($pallet::withdraw_stake(
-					(DomainId::D1, CurrencyId::A),
-					&USER_A,
-					STAKE_A
-				));
-			});
+					// There is enough reserved CurrencyId::A for USER_A, but in other domain.
+					assert_noop!(
+						$pallet::withdraw_stake((DomainId::D2, CurrencyId::A), &USER_A, STAKE_A),
+						TokenError::NoFunds
+					);
+					assert_ok!($pallet::withdraw_stake(
+						(DomainId::D1, CurrencyId::A),
+						&USER_A,
+						STAKE_A
+					));
+				});
+			}
 		}
 	};
 }
 
 #[macro_export]
 macro_rules! claim_common_tests {
-	($pallet:ident, $instance:ident) => {
-		#[test]
-		fn claim_nothing() {
-			const USER_A_STAKED: u64 = 1000;
+	($pallet:ident, $instance:ident, $mechanism:literal) => {
+		mod claiming {
+			use super::*;
 
-			new_test_ext().execute_with(|| {
-				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+			#[test]
+			fn nothing() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
 
-				assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A));
-				assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
-				assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
+					assert_eq!(
+						free_balance(CurrencyId::A, &USER_A),
+						USER_INITIAL_BALANCE - STAKE_A
+					);
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
 
-				assert_ok!($pallet::deposit_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_STAKED
-				));
-				assert_ok!($pallet::withdraw_stake(
-					DOM_1_CURRENCY_A,
-					&USER_A,
-					USER_A_STAKED
-				));
-				assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A));
-				assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
-				assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
-			});
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
+					assert_eq!(free_balance(CurrencyId::A, &USER_A), USER_INITIAL_BALANCE);
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_A), 0);
+				});
+			}
+
+			#[test]
+			fn basic() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+					assert_eq!(rewards_account(), REWARD);
+
+					empty_distribution::<$pallet>();
+					assert_ok!($pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A), REWARD);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), REWARD);
+
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD);
+					assert_eq!(rewards_account(), 0);
+
+					assert_ok!($pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A), 0);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
+				});
+			}
+
+			#[test]
+			fn basic_with_unstake() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+
+					let (reward, account) = match $mechanism {
+						"base" => (REWARD, 0),
+						"deferred" => (0, REWARD),
+						_ => unreachable!(),
+					};
+					empty_distribution::<$pallet>();
+					assert_ok!($pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A), reward);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), reward);
+
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_A), reward);
+					assert_eq!(rewards_account(), account);
+
+					assert_ok!($pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A), 0);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), 0);
+				});
+			}
+
+			#[test]
+			fn distribute_claim_distribute_claim() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+
+					for _ in 0..2 {
+						assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+						assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+						assert_eq!(rewards_account(), REWARD);
+
+						empty_distribution::<$pallet>();
+						assert_ok!($pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A), REWARD);
+						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), REWARD);
+					}
+
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD * 2);
+					assert_eq!(rewards_account(), 0);
+				});
+			}
+
+			#[test]
+			fn accumulative_claim() {
+				new_test_ext().execute_with(|| {
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+
+					for _ in 0..2 {
+						assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+						assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+					}
+					assert_eq!(rewards_account(), REWARD * 2);
+
+					empty_distribution::<$pallet>();
+					assert_ok!(
+						$pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A),
+						REWARD * 2
+					);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), REWARD * 2);
+
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD * 2);
+					assert_eq!(rewards_account(), 0);
+				});
+			}
+
+			#[test]
+			fn claim_several_users() {
+				new_test_ext().execute_with(|| {
+					// DISTRIBUTION 0
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+					// DISTRIBUTION 1
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_B));
+					empty_distribution::<$pallet>();
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A), REWARD);
+					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_A, &USER_B), 0);
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_A), REWARD);
+					assert_eq!(free_balance(CurrencyId::Reward, &USER_B), 0);
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+					// DISTRIBUTION 2
+					empty_distribution::<$pallet>();
+					assert_ok!(
+						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
+						REWARD * STAKE_A / (STAKE_A + STAKE_B)
+					);
+					assert_ok!(
+						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_B),
+						REWARD * STAKE_B / (STAKE_A + STAKE_B)
+					);
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+					// DISTRIBUTION 3
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
+
+					// DISTRIBUTION 4
+					empty_distribution::<$pallet>();
+					assert_ok!(
+						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
+						match $mechanism {
+							"base" => REWARD * STAKE_A / (STAKE_A + STAKE_B),
+							"deferred" => 0,
+							_ => unreachable!(),
+						}
+					);
+					assert_ok!(
+						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_B),
+						match $mechanism {
+							"base" => REWARD * STAKE_B / (STAKE_A + STAKE_B) + REWARD,
+							"deferred" => REWARD * 2,
+							_ => unreachable!(),
+						}
+					);
+				});
+			}
 		}
 	};
 }
 
 #[macro_export]
 macro_rules! common_tests {
-	($pallet:ident, $instance:ident) => {
+	($pallet:ident, $instance:ident, $mechanism:literal) => {
 		stake_common_tests!($pallet, $instance);
 		unstake_common_tests!($pallet, $instance);
 		currency_common_tests!($pallet, $instance);
-		claim_common_tests!($pallet, $instance);
+		claim_common_tests!($pallet, $instance, $mechanism);
 	};
 }
