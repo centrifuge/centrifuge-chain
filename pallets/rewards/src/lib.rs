@@ -15,8 +15,9 @@
 //! # Rewards Pallet
 //!
 //! The Rewards pallet provides functionality for distributing rewards to different accounts with
-//! different currencies. The user can stake an amount to claim a proportional reward.
+//! different currencies.
 //!
+//! The user can stake an amount to claim a proportional reward.
 //! The staked amount is reserved/hold from the user account for that currency when is deposited
 //! and unreserved/release when is withdrawed.
 //!
@@ -48,8 +49,12 @@
 //!
 //! ### Functionality
 //!
-//! The Rewards pallet is based on this [paper](https://solmaz.io/2019/02/24/scalable-reward-changing/)
-//! and extends that functionality to support different groups and currencies.
+//! The exact reward functionality of this pallet is given by the mechanism used when it's
+//! configured. Current mechanisms:
+//! - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
+//! currency movement.
+//! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
+//! currency movement.
 //!
 
 #[cfg(test)]
