@@ -14,7 +14,8 @@ The pallet stores three main entities:
 These currencies can also be moved from one group to another,
 in order to change the reward distribution of the associated accounts.
 
-The exact reward functionality of this pallet is given by the mechanism used when it's configured.
+The pallet itself can be understand as a wrapper for pull-based reward distributions,
+the exact reward functionality of this pallet is given by the mechanism used when it's configured.
 Current mechanisms:
 - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
 currency movement.
@@ -43,7 +44,7 @@ Add to your *Substrate* runtime or pallet `Cargo.toml`
 pallet-claims = { git = "https://github.com/centrifuge/centrifuge-chain.git", branch = "release-vX.X.X", default-features = false }
 ```
 
-modifying the `X.X.X` to a release that uses the same *Substrate* version as you uses.
+Modify the `X.X.X` to a release that uses the same *Substrate* version as you uses.
 
 You probably will want to use this pallet as a [*loosely coupled pallet*](https://docs.substrate.io/build/pallet-coupling/),
 for that, you need to add the interface traits as a dependency where you use them:
