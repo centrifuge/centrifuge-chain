@@ -621,25 +621,22 @@ pub mod pallet {
 			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 
 			// Convert percentage from a yearly rate to a per-second rate.
-			let WriteOffStateInput {
-				percentage,
-				overdue_days,
-				penalty_interest_rate_per_year,
-			} = group;
-			let penalty_interest_rate_per_sec =
-				T::InterestAccrual::convert_additive_rate_to_per_sec(
-					penalty_interest_rate_per_year,
-				)?;
-			let group = WriteOffState {
-				percentage,
-				overdue_days,
-				penalty_interest_rate_per_sec,
-			};
+			let mut write_off_policy: Vec<_> = policy
+				.map(|input| {
+					WriteOffState {
+						percentage: input.percentage,
+						overdue_days: input.overdue_days,
+						penalty_interest_rate_per_sec: T::InterestAccrual::convert_additive_rate_to_per_sec(
+							input.penalty_interest_rate_per_year,
+						)?,
+					};
+				})
+				.collect();
 
-			let write_off_group_index = Self::add_write_off_group_to_pool(pool_id, group)?;
-			Self::deposit_event(Event::<T>::WriteOffStateAdded {
+			Self::update_write_off_policy(pool_id, write_off_policy)?;
+			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated {
 				pool_id,
-				write_off_group_index,
+				write_off_policy,
 			});
 			Ok(())
 		}

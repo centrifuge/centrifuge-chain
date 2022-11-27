@@ -91,9 +91,8 @@ impl<T: Config> Pallet<T> {
 	) -> T::Rate {
 		match loan.write_off_status {
 			WriteOffStatus::None => loan.interest_rate_per_sec,
-			WriteOffStatus::WrittenDownByPolicy { write_off_index } => {
-				loan.interest_rate_per_sec
-					+ write_off_policy[write_off_index as usize].penalty_interest_rate_per_sec
+			WriteOffStatus::WrittenDownByPolicy { penalty_interest_rate_per_sec, .. } => {
+				loan.interest_rate_per_sec + penalty_interest_rate_per_sec
 			}
 			WriteOffStatus::WrittenDownByAdmin {
 				penalty_interest_rate_per_sec,
@@ -670,7 +669,7 @@ impl<T: Config> Pallet<T> {
 						// cannot be written off to the current group anymore.
 						let is_written_off_by_admin = matches!(
 							active_loan.write_off_status,
-							WriteOffStatus::WriteOffByAdmin { .. }
+							WriteOffStatus::WrittenDownByAdmin { .. }
 						);
 						ensure!(!is_written_off_by_admin, Error::<T>::WrittenDownByAdmin);
 
@@ -693,10 +692,10 @@ impl<T: Config> Pallet<T> {
 							Some(write_off_index),
 							group.percentage,
 							group.penalty_interest_rate_per_sec,
-							WriteOffStatus::WrittenDownByPolicy { write_off_index },
+							WriteOffStatus::WrittenDownByPolicy { percentage: group.percentage, penalty_interest_rate_per_sec: group.penalty_interest_rate_per_sec },
 						)
 					}
-					WriteOffAction::WriteOffAsAdmin {
+					WriteOffAction::WriteOffByAdmin {
 						percentage,
 						penalty_interest_rate_per_sec,
 					} => (
