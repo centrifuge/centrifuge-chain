@@ -12,21 +12,8 @@
 
 use cfg_primitives::Moment;
 use codec::{Decode, Encode};
-use frame_support::{traits::Get, RuntimeDebug};
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
-
-use crate::pools::PoolChanges;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
-where
-	MaxTokenNameLength: Get<u32>,
-	MaxTokenSymbolLength: Get<u32>,
-	MaxTranches: Get<u32>,
-{
-	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	pub scheduled_time: Moment,
-}
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochState<EpochId> {

@@ -10,10 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-#[cfg(feature = "test-impls")]
-use cfg_primitives::{Balance, TrancheWeight};
-use cfg_primitives::{Moment, PoolId, TrancheId};
+use cfg_primitives::Moment;
+#[cfg(test)]
+use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+#[cfg(test)]
+use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
+use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -38,13 +41,6 @@ use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
-};
-
-#[cfg(feature = "test-impls")]
-use crate::fixed_point::Rate;
-use crate::{
-	tokens::{CustomMetadata, TrancheCurrency},
-	xcm::XcmMetadata,
 };
 
 /// Type that indicates the seniority of a tranche
@@ -155,7 +151,7 @@ pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 	pub _phantom: PhantomData<Weight>,
 }
 
-#[cfg(feature = "test-impls")]
+#[cfg(test)]
 impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
 	fn default() -> Self {
 		Self {
@@ -319,7 +315,7 @@ pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
 	pub salt: TrancheSalt<PoolId>,
 }
 
-#[cfg(feature = "test-impls")]
+#[cfg(test)]
 impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> {
 	pub fn new(
 		pool: PoolId,
@@ -1011,7 +1007,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>
 	pub _phantom: PhantomData<Weight>,
 }
 
-#[cfg(feature = "test-impls")]
+#[cfg(test)]
 impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
 	fn default() -> Self {
 		Self {

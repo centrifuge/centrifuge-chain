@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
+use cfg_types::epoch::EpochState;
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
@@ -21,16 +22,78 @@ use orml_traits::{asset_registry::AssetMetadata, Change};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 use sp_runtime::{
-	traits::{One, Zero},
-	FixedPointNumber, FixedPointOperand,
+	traits::{AtLeast32BitUnsigned, One, Zero},
+	ArithmeticError, FixedPointNumber, FixedPointOperand, TypeId,
 };
 use sp_std::{cmp::PartialEq, vec::Vec};
 
-use crate::{
-	epoch::EpochState,
-	reserves::ReserveDetails,
-	tranches::{TrancheEssence, TrancheMetadata, TrancheUpdate, Tranches},
+use crate::tranches::{
+	EpochExecutionTranches, TrancheEssence, TrancheMetadata, TrancheSolution, TrancheUpdate,
+	Tranches,
 };
+
+// The TypeId impl we derive pool-accounts from
+impl<PoolId> TypeId for PoolLocator<PoolId> {
+	const TYPE_ID: [u8; 4] = *b"pool";
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct ReserveDetails<Balance> {
+	/// Investments will be allowed up to this amount.
+	pub max: Balance,
+	/// Current total amount of currency in the pool reserve.
+	pub total: Balance,
+	/// Current reserve that is available for originations.
+	pub available: Balance,
+}
+
+impl<Balance> ReserveDetails<Balance>
+where
+	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
+{
+	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency>(
+		&mut self,
+		epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
+		solution: &[TrancheSolution],
+	) -> DispatchResult
+	where
+		Weight: Copy + From<u128>,
+		BalanceRatio: Copy,
+	{
+		let executed_amounts = epoch_tranches.fulfillment_cash_flows(solution)?;
+
+		// Update the total/available reserve for the new total value of the pool
+		let mut acc_investments = Balance::zero();
+		let mut acc_redemptions = Balance::zero();
+		for (invest, redeem) in executed_amounts.iter() {
+			acc_investments = acc_investments
+				.checked_add(invest)
+				.ok_or(ArithmeticError::Overflow)?;
+			acc_redemptions = acc_redemptions
+				.checked_add(redeem)
+				.ok_or(ArithmeticError::Overflow)?;
+		}
+		self.total = self
+			.total
+			.checked_add(&acc_investments)
+			.ok_or(ArithmeticError::Overflow)?
+			.checked_sub(&acc_redemptions)
+			.ok_or(ArithmeticError::Underflow)?;
+
+		Ok(())
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
+{
+	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
+	pub scheduled_time: Moment,
+}
 
 /// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]

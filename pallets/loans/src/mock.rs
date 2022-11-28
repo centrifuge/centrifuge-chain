@@ -21,10 +21,8 @@ use cfg_primitives::{
 };
 use cfg_traits::PoolUpdateGuard;
 use cfg_types::{
-	epoch::ScheduledUpdateDetails,
 	fixed_point::Rate,
 	permissions::{PermissionRoles, PermissionScope, Role},
-	pools::{PoolDetails, PoolLocator},
 	time::TimeProvider,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
@@ -35,6 +33,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+use pallet_pool_system::pool_types::{PoolDetails, PoolLocator, ScheduledUpdateDetails};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
