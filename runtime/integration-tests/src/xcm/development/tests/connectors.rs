@@ -33,7 +33,6 @@ use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
 	tokens::{CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId},
-	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
 	xcm::XcmMetadata,
 };
 use codec::Encode;
@@ -48,7 +47,10 @@ use pallet_connectors::{
 	encoded_contract_call, Domain, DomainAddress, DomainLocator, Error::UnauthorizedTransfer,
 	Message, ParachainId, Router, XcmDomain,
 };
-use pallet_pool_system::pool_types::PoolDetails;
+use pallet_pool_system::{
+	pool_types::PoolDetails,
+	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
+};
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::H160;
 use sp_runtime::{

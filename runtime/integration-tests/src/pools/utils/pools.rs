@@ -19,14 +19,16 @@ use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, PoolRole, Role},
 	tokens::CurrencyId,
-	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType},
 };
 use codec::Encode;
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pool_registry::Call as PoolRegistryCall;
-use pallet_pool_system::Call as PoolSystemCall;
+use pallet_pool_system::{
+	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType},
+	Call as PoolSystemCall,
+};
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{
