@@ -6,7 +6,7 @@ name: Benchmark
 jobs:
   matrix_prep:
     name: matrix-prep
-    runs-on: ${{ matrix.runner }}
+    runs-on: 'ubuntu-latest-4-cores'
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
     name: benchmark
-    runs-on: ${{ matrix.runner }}
+    runs-on: 'ubuntu-latest-4-cores'
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
