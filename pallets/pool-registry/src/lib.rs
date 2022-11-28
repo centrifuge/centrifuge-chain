@@ -253,6 +253,16 @@ pub mod pallet {
 				Pools::<T>::insert(pool_id, PoolRegistrationStatus::Registered);
 			}
 
+			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
+				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
+
+			PoolMetadata::<T>::insert(
+				pool_id,
+				PoolMetadataOf::<T> {
+					metadata: checked_metadata.clone(),
+				},
+			);
+
 			T::ModifyPool::create(
 				admin.clone(),
 				depositor,

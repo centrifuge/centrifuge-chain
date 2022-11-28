@@ -9,6 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
 use cfg_types::pools::PoolChanges;
 use frame_support::assert_ok;
 use orml_traits::Change;
@@ -31,6 +32,41 @@ fn update_pool() {
 
 			assert_ok!(PoolRegistry::update(
 				Origin::signed(pool_owner),
+				pool_id,
+				changes,
+			));
+		})
+}
+
+#[test]
+fn register_pool_and_set_metadata() {
+
+	// 			origin: OriginFor<T>,
+	// 			admin: T::AccountId,
+	// 			pool_id: T::PoolId,
+	// 			tranche_inputs: Vec<TrancheInputOf<T>>,
+	// 			currency: T::CurrencyId,
+	// 			max_reserve: T::Balance,
+	// 			metadata: Option<Vec<u8>>,
+
+
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_owner = 9u64;
+			let pool_id = 0;
+			let changes = PoolChanges {
+				tranches: Change::NoChange,
+				tranche_metadata: Change::NoChange,
+				min_epoch_time: Change::NewValue(10),
+				max_nav_age: Change::NoChange,
+			};
+
+			let tranches_input = Tranches
+
+			assert_ok!(PoolRegistry::register(
+				Origin::signed(pool_owner),
+				pool_owner,
 				pool_id,
 				changes,
 			));
