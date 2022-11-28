@@ -29,8 +29,7 @@ run_benchmark() {
     --execution=wasm \
     --wasm-execution=compiled \
     --heap-pages=4096 \
-    --output="${output}" \
-    --template=./scripts/runtime-weight-template.hbs"
+    --output="${output}""
 
     echo "Running benchmark for pallet '${pallet}'"
     echo "${cmd}"
@@ -87,20 +86,17 @@ cat license-template-gplv3.txt >> "${build_path}/mod.rs"
 check $?
 
 # Collect all possible benchmarks the respective runtime provides
-all_pallets=$(sed -n -e '/add_benchmark!/p' "${runtime_path}/src/lib.rs" | tr -d '[:space:]' | tr -d '('| tr -d ')' | tr ';' ' ')
+all_pallets=$(
+  ./target/release/centrifuge-chain benchmark pallet --list --chain="${chain}" | tail -n+2 | cut -d',' -f1 | sort | uniq
+)
 for pallet in $all_pallets
 do
-    # Trim string into the final array
-    pallet=${pallet//"add_benchmark!"/}
-    IFS=', ' read -r -a array <<< $(echo $pallet | tr ',' ' ')
-
-    pallet=${array[2]}
-    output="${build_path}/${array[2]}.rs"
+    output="${build_path}/${pallet}.rs"
 
     run_benchmark $pallet $output
     check $?
 
-    echo "pub mod ${array[2]};" >> "${build_path}/mod.rs"
+    echo "pub mod ${pallet};" >> "${build_path}/mod.rs"
     check $?
 done
 
