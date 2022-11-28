@@ -3,10 +3,7 @@ use frame_support::traits::tokens::Balance;
 use sp_runtime::{traits::Get, ArithmeticError};
 
 pub mod base;
-pub mod base_with_currency_movement;
-
 pub mod deferred;
-pub mod deferred_with_currency_movement;
 
 pub trait DistributionId: Sized {
 	fn next_id(&mut self) -> Result<Self, ArithmeticError>;

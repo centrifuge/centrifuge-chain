@@ -268,7 +268,7 @@ macro_rules! currency_common_tests {
 
 #[macro_export]
 macro_rules! claim_common_tests {
-	($pallet:ident, $instance:ident, $mechanism:literal) => {
+	($pallet:ident, $instance:ident, $kind:expr) => {
 		mod claiming {
 			use super::*;
 
@@ -323,10 +323,9 @@ macro_rules! claim_common_tests {
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
 
-					let (reward, account) = match $mechanism {
-						"base" => (REWARD, 0),
-						"deferred" => (0, REWARD),
-						_ => unreachable!(),
+					let (reward, account) = match $kind {
+						MechanismKind::Base => (REWARD, 0),
+						MechanismKind::Deferred => (0, REWARD),
 					};
 					empty_distribution::<$pallet>();
 					assert_ok!($pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A), reward);
@@ -420,18 +419,16 @@ macro_rules! claim_common_tests {
 					empty_distribution::<$pallet>();
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_A),
-						match $mechanism {
-							"base" => REWARD * STAKE_A / (STAKE_A + STAKE_B),
-							"deferred" => 0,
-							_ => unreachable!(),
+						match $kind {
+							MechanismKind::Base => REWARD * STAKE_A / (STAKE_A + STAKE_B),
+							MechanismKind::Deferred => 0,
 						}
 					);
 					assert_ok!(
 						$pallet::claim_reward(DOM_1_CURRENCY_A, &USER_B),
-						match $mechanism {
-							"base" => REWARD * STAKE_B / (STAKE_A + STAKE_B) + REWARD,
-							"deferred" => REWARD * 2,
-							_ => unreachable!(),
+						match $kind {
+							MechanismKind::Base => REWARD * STAKE_B / (STAKE_A + STAKE_B) + REWARD,
+							MechanismKind::Deferred => REWARD * 2,
 						}
 					);
 				});
@@ -442,10 +439,10 @@ macro_rules! claim_common_tests {
 
 #[macro_export]
 macro_rules! common_tests {
-	($pallet:ident, $instance:ident, $mechanism:literal) => {
+	($pallet:ident, $instance:ident, $kind:expr) => {
 		stake_common_tests!($pallet, $instance);
 		unstake_common_tests!($pallet, $instance);
 		currency_common_tests!($pallet, $instance);
-		claim_common_tests!($pallet, $instance, $mechanism);
+		claim_common_tests!($pallet, $instance, $kind);
 	};
 }

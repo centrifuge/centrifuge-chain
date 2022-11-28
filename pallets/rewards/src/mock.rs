@@ -11,9 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{
-	base, base_with_currency_movement, deferred, deferred_with_currency_movement,
-};
+use super::mechanism::{base, deferred};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -34,8 +32,6 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens,
 		Rewards1: pallet_rewards::<Instance1>,
 		Rewards2: pallet_rewards::<Instance2>,
-		Rewards3: pallet_rewards::<Instance3>,
-		Rewards4: pallet_rewards::<Instance4>,
 	}
 );
 
@@ -137,10 +133,8 @@ macro_rules! pallet_rewards_config {
 	};
 }
 
-pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64>);
-pallet_rewards_config!(Instance2, base_with_currency_movement::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
-pallet_rewards_config!(Instance3, deferred::Mechanism<u64, i128, FixedI64>);
-pallet_rewards_config!(Instance4, deferred_with_currency_movement::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance2, deferred::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
