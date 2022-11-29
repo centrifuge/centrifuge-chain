@@ -1,16 +1,16 @@
-on:
-  pull_request:
 name: Benchmark
+on:
+  issue_comment:
+    types: [created]
 jobs:
   benchmark:
     name: benchmark
-#    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark') }}
-    runs-on: ubuntu-latest
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark ') }}
+    runs-on: ubuntu-latest-4-cores
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
       - name: Free space on Ubuntu
-#        if: startsWith(matrix.runner, 'ubuntu-latest')
         run: |
           echo "Pre cleanup"
           df -h
@@ -25,13 +25,23 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
+      - uses: actions/github-script@v6
+        name: Parse Runtime From Comment
+        id: parse-runtime
+        with:
+          result-encoding: string
+          script: |
+            console.log(context.payload.comment.body)
+            const [, , , runtime] = context.payload.comment.body.split(/\W+/)
+            if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime')
+            return `${runtime}`
       - name: Run Benchmark centrifuge
         run: ./ci/script.sh
         env:
           TARGET: benchmark
-          RUNTIME: centrifuge
+          RUNTIME: ${{steps.parse-runtime.outputs.result}}
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: centrifuge-weights
-          path: runtime/centrifuge/src/weights/
+          name: ${{steps.parse-runtime.outputs.result}}-weights
+          path: runtime/${{steps.parse-runtime.outputs.result}}/src/weights/
