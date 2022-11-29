@@ -163,12 +163,12 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_metadata)]
-	pub(super) type PoolMetadata<T: Config> =
+	pub(crate) type PoolMetadata<T: Config> =
 		StorageMap<_, Blake2_256, T::PoolId, PoolMetadataOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_pools)]
-	pub(super) type Pools<T: Config> = StorageMap<_, Blake2_256, T::PoolId, PoolRegistrationStatus>;
+	pub(crate) type Pools<T: Config> = StorageMap<_, Blake2_256, T::PoolId, PoolRegistrationStatus>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -253,15 +253,17 @@ pub mod pallet {
 				Pools::<T>::insert(pool_id, PoolRegistrationStatus::Registered);
 			}
 
-			let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
-				metadata.try_into().map_err(|_| Error::<T>::BadMetadata)?;
+			if let Some(m) = metadata.clone() {
+				let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
+					m.try_into().map_err(|_| Error::<T>::BadMetadata)?;
 
-			PoolMetadata::<T>::insert(
-				pool_id,
-				PoolMetadataOf::<T> {
-					metadata: checked_metadata.clone(),
-				},
-			);
+				PoolMetadata::<T>::insert(
+					pool_id,
+					PoolMetadataOf::<T> {
+						metadata: checked_metadata.clone(),
+					},
+				);
+			}
 
 			T::ModifyPool::create(
 				admin.clone(),

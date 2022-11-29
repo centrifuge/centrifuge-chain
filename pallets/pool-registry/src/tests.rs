@@ -10,8 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::pools::PoolChanges;
-use frame_support::assert_ok;
+use cfg_types::{
+	pools::PoolChanges,
+	tokens::CurrencyId,
+	tranches::{TrancheInput, TrancheMetadata, TrancheType},
+};
+use frame_support::{assert_ok, BoundedVec};
 use orml_traits::Change;
 
 use crate::mock::*;
@@ -40,36 +44,42 @@ fn update_pool() {
 
 #[test]
 fn register_pool_and_set_metadata() {
-
-	// 			origin: OriginFor<T>,
-	// 			admin: T::AccountId,
-	// 			pool_id: T::PoolId,
-	// 			tranche_inputs: Vec<TrancheInputOf<T>>,
-	// 			currency: T::CurrencyId,
-	// 			max_reserve: T::Balance,
-	// 			metadata: Option<Vec<u8>>,
-
-
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let pool_owner = 9u64;
 			let pool_id = 0;
-			let changes = PoolChanges {
-				tranches: Change::NoChange,
-				tranche_metadata: Change::NoChange,
-				min_epoch_time: Change::NewValue(10),
-				max_nav_age: Change::NoChange,
-			};
 
-			let tranches_input = Tranches
+			let tranches_inputs = vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			}];
+
+			let currency = CurrencyId::AUSD;
+			let max_reserve = 10;
+
+			let hash = "QmUTwA6RTUb1FbJCeM1D4G4JaWHAbPehK8WwCfykJixjm3" // random IPFS hash, for test purposes
+				.as_bytes()
+				.to_vec();
+			let metadata = Some(hash);
 
 			assert_ok!(PoolRegistry::register(
 				Origin::signed(pool_owner),
 				pool_owner,
 				pool_id,
-				changes,
+				tranches_inputs,
+				currency,
+				max_reserve,
+				metadata.clone(),
 			));
+
+			let registered_metadata = PoolRegistry::get_pool_metadata(pool_id);
+
+			assert_eq!(registered_metadata.unwrap().metadata, metadata.unwrap());
 		})
 }
 
