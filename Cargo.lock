@@ -7147,9 +7147,11 @@ dependencies = [
 name = "pallet-restricted-xtokens"
 version = "0.1.0"
 dependencies = [
- "cfg-primitives",
  "cfg-traits",
- "cfg-types",
+ "cumulus-pallet-dmp-queue",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
+ "cumulus-primitives-core",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -7157,14 +7159,18 @@ dependencies = [
  "orml-traits",
  "orml-xtokens",
  "pallet-balances",
- "pallet-permissions",
+ "parachain-info",
  "parity-scale-codec 3.2.1",
+ "polkadot-parachain",
+ "polkadot-runtime-parachains",
  "scale-info",
  "serde",
- "sp-io",
+ "sp-core",
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-builder",
+ "xcm-simulator",
 ]
 
 [[package]]
@@ -13141,7 +13147,7 @@ checksum = "e7141e445af09c8919f1d5f8a20dae0b20c3b57a45dee0d5823c6ed5d237f15a"
 dependencies = [
  "bitflags",
  "chrono",
- "rustc_version 0.4.0",
+ "rustc_version 0.2.3",
 ]
 
 [[package]]
@@ -13878,6 +13884,23 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "xcm-simulator"
+version = "0.9.29"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.29#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec 3.2.1",
+ "paste",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "polkadot-runtime-parachains",
+ "sp-io",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]

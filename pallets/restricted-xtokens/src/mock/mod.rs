@@ -1,16 +1,14 @@
 #![cfg(test)]
 
-use super::*;
-use crate as orml_xtokens;
-
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_io::TestExternalities;
 use sp_runtime::AccountId32;
-use xcm_executor::traits::WeightTrader;
-use xcm_executor::Assets;
-
+use xcm_executor::{traits::WeightTrader, Assets};
 use xcm_simulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
+
+use super::*;
+use crate as restricted_xtokens;
 
 pub mod para;
 pub mod para_relative_view;
@@ -21,7 +19,19 @@ pub mod teleport_currency_adapter;
 pub const ALICE: AccountId32 = AccountId32::new([0u8; 32]);
 pub const BOB: AccountId32 = AccountId32::new([1u8; 32]);
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, codec::MaxEncodedLen, TypeInfo)]
+#[derive(
+	Encode,
+	Decode,
+	Eq,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	codec::MaxEncodedLen,
+	TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	/// Relay chain token.
@@ -47,13 +57,62 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		match id {
 			CurrencyId::R => Some(Parent.into()),
-			CurrencyId::A => Some((Parent, Parachain(1), GeneralKey(b"A".to_vec().try_into().unwrap())).into()),
-			CurrencyId::A1 => Some((Parent, Parachain(1), GeneralKey(b"A1".to_vec().try_into().unwrap())).into()),
-			CurrencyId::B => Some((Parent, Parachain(2), GeneralKey(b"B".to_vec().try_into().unwrap())).into()),
-			CurrencyId::B1 => Some((Parent, Parachain(2), GeneralKey(b"B1".to_vec().try_into().unwrap())).into()),
-			CurrencyId::B2 => Some((Parent, Parachain(2), GeneralKey(b"B2".to_vec().try_into().unwrap())).into()),
-			CurrencyId::C => Some((Parent, Parachain(3), GeneralKey(b"C".to_vec().try_into().unwrap())).into()),
-			CurrencyId::D => Some((Parent, Parachain(4), GeneralKey(b"D".to_vec().try_into().unwrap())).into()),
+			CurrencyId::A => Some(
+				(
+					Parent,
+					Parachain(1),
+					GeneralKey(b"A".to_vec().try_into().unwrap()),
+				)
+					.into(),
+			),
+			CurrencyId::A1 => Some(
+				(
+					Parent,
+					Parachain(1),
+					GeneralKey(b"A1".to_vec().try_into().unwrap()),
+				)
+					.into(),
+			),
+			CurrencyId::B => Some(
+				(
+					Parent,
+					Parachain(2),
+					GeneralKey(b"B".to_vec().try_into().unwrap()),
+				)
+					.into(),
+			),
+			CurrencyId::B1 => Some(
+				(
+					Parent,
+					Parachain(2),
+					GeneralKey(b"B1".to_vec().try_into().unwrap()),
+				)
+					.into(),
+			),
+			CurrencyId::B2 => Some(
+				(
+					Parent,
+					Parachain(2),
+					GeneralKey(b"B2".to_vec().try_into().unwrap()),
+				)
+					.into(),
+			),
+			CurrencyId::C => Some(
+				(
+					Parent,
+					Parachain(3),
+					GeneralKey(b"C".to_vec().try_into().unwrap()),
+				)
+					.into(),
+			),
+			CurrencyId::D => Some(
+				(
+					Parent,
+					Parachain(4),
+					GeneralKey(b"D".to_vec().try_into().unwrap()),
+				)
+					.into(),
+			),
 		}
 	}
 }
@@ -171,10 +230,10 @@ decl_test_network! {
 
 pub type RelayBalances = pallet_balances::Pallet<relay::Runtime>;
 pub type ParaTokens = orml_tokens::Pallet<para::Runtime>;
-pub type ParaXTokens = orml_xtokens::Pallet<para::Runtime>;
+pub type ParaXTokens = restricted_xtokens::Pallet<para::Runtime>;
 
 pub type ParaRelativeTokens = orml_tokens::Pallet<para_relative_view::Runtime>;
-pub type ParaRelativeXTokens = orml_xtokens::Pallet<para_relative_view::Runtime>;
+pub type ParaRelativeXTokens = restricted_xtokens::Pallet<para_relative_view::Runtime>;
 
 pub type ParaTeleportTokens = orml_tokens::Pallet<para_teleport::Runtime>;
 
@@ -188,8 +247,11 @@ pub fn para_ext(para_id: u32) -> TestExternalities {
 	let parachain_info_config = parachain_info::GenesisConfig {
 		parachain_id: para_id.into(),
 	};
-	<parachain_info::GenesisConfig as GenesisBuild<Runtime, _>>::assimilate_storage(&parachain_info_config, &mut t)
-		.unwrap();
+	<parachain_info::GenesisConfig as GenesisBuild<Runtime, _>>::assimilate_storage(
+		&parachain_info_config,
+		&mut t,
+	)
+	.unwrap();
 
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: vec![(ALICE, CurrencyId::R, 1_000)],
@@ -212,8 +274,11 @@ pub fn para_teleport_ext(para_id: u32) -> TestExternalities {
 	let parachain_info_config = parachain_info::GenesisConfig {
 		parachain_id: para_id.into(),
 	};
-	<parachain_info::GenesisConfig as GenesisBuild<Runtime, _>>::assimilate_storage(&parachain_info_config, &mut t)
-		.unwrap();
+	<parachain_info::GenesisConfig as GenesisBuild<Runtime, _>>::assimilate_storage(
+		&parachain_info_config,
+		&mut t,
+	)
+	.unwrap();
 
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: vec![(ALICE, CurrencyId::R, 1_000)],
@@ -274,7 +339,9 @@ impl WeightTrader for AllTokensAreCreatedEqualToWeight {
 			self.0 = id.clone();
 		}
 
-		let unused = payment.checked_sub(required).map_err(|_| XcmError::TooExpensive)?;
+		let unused = payment
+			.checked_sub(required)
+			.map_err(|_| XcmError::TooExpensive)?;
 		Ok(unused)
 	}
 

@@ -1,73 +1,72 @@
-use super::{Amount, Balance, CurrencyId, CurrencyIdConvert, ParachainXcmRouter};
-use crate as orml_xtokens;
-
+use cumulus_primitives_core::{ChannelStatus, GetChannelInfo, ParaId};
 use frame_support::{
 	construct_runtime, match_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Everything, Get, Nothing},
 	weights::constants::WEIGHT_PER_SECOND,
 };
 use frame_system::EnsureRoot;
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
+use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use pallet_xcm::XcmPassthrough;
+use polkadot_parachain::primitives::Sibling;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{Convert, IdentityLookup},
 	AccountId32,
 };
-
-use cumulus_primitives_core::{ChannelStatus, GetChannelInfo, ParaId};
-use pallet_xcm::XcmPassthrough;
-use polkadot_parachain::primitives::Sibling;
 use xcm::latest::{prelude::*, Weight};
 use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds, LocationInverter,
-	NativeAsset, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
+	LocationInverter, NativeAsset, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32,
+	SovereignSignedViaLocation, TakeWeightCredit,
 };
 use xcm_executor::{Config, XcmExecutor};
 
+use super::{Amount, Balance, CurrencyId, CurrencyIdConvert, ParachainXcmRouter};
+use crate as restricted_xtokens;
 use crate::mock::AllTokensAreCreatedEqualToWeight;
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key};
-use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 
 pub type AccountId = AccountId32;
 
 impl frame_system::Config for Runtime {
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountId = AccountId;
+	type BaseCallFilter = Everything;
+	type BlockHashCount = ConstU64<250>;
+	type BlockLength = ();
 	type BlockNumber = u64;
+	type BlockWeights = ();
+	type Call = Call;
+	type DbWeight = ();
+	type Event = Event;
 	type Hash = H256;
 	type Hashing = ::sp_runtime::traits::BlakeTwo256;
-	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = ConstU64<250>;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
+	type Index = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type MaxConsumers = ConstU32<16>;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type Origin = Origin;
+	type PalletInfo = PalletInfo;
+	type SS58Prefix = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 impl pallet_balances::Config for Runtime {
-	type MaxLocks = ConstU32<50>;
-	type Balance = Balance;
-	type Event = Event;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
-	type WeightInfo = ();
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ConstU128<1>;
+	type MaxLocks = ConstU32<50>;
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
 }
 
 parameter_type_with_key! {
@@ -77,19 +76,19 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
-	type Balance = Balance;
 	type Amount = Amount;
+	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
+	type DustRemovalWhitelist = Everything;
+	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
 	type MaxLocks = ConstU32<50>;
 	type MaxReserves = ConstU32<50>;
-	type ReserveIdentifier = [u8; 8];
-	type DustRemovalWhitelist = Everything;
-	type OnNewTokenAccount = ();
+	type OnDust = ();
 	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -136,20 +135,20 @@ pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>
 
 pub struct XcmConfig;
 impl Config for XcmConfig {
-	type Call = Call;
-	type XcmSender = XcmRouter;
+	type AssetClaims = PolkadotXcm;
 	type AssetTransactor = LocalAssetTransactor;
-	type OriginConverter = XcmOriginToCallOrigin;
+	type AssetTrap = PolkadotXcm;
+	type Barrier = Barrier;
+	type Call = Call;
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = NativeAsset;
 	type LocationInverter = LocationInverter<Ancestry>;
-	type Barrier = Barrier;
-	type Weigher = FixedWeightBounds<ConstU64<10>, Call, ConstU32<100>>;
-	type Trader = AllTokensAreCreatedEqualToWeight;
+	type OriginConverter = XcmOriginToCallOrigin;
 	type ResponseHandler = ();
-	type AssetTrap = PolkadotXcm;
-	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
+	type Trader = AllTokensAreCreatedEqualToWeight;
+	type Weigher = FixedWeightBounds<ConstU64<10>, Call, ConstU32<100>>;
+	type XcmSender = XcmRouter;
 }
 
 pub struct ChannelInfo;
@@ -157,26 +156,27 @@ impl GetChannelInfo for ChannelInfo {
 	fn get_channel_status(_id: ParaId) -> ChannelStatus {
 		ChannelStatus::Ready(10, 10)
 	}
+
 	fn get_channel_max(_id: ParaId) -> Option<usize> {
 		Some(usize::max_value())
 	}
 }
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ChannelInfo;
-	type VersionWrapper = ();
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToCallOrigin;
+	type Event = Event;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type VersionWrapper = ();
 	type WeightInfo = ();
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -187,20 +187,21 @@ impl cumulus_pallet_xcm::Config for Runtime {
 pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNetwork>;
 
 impl pallet_xcm::Config for Runtime {
+	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type Call = Call;
 	type Event = Event;
-	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmRouter = XcmRouter;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmExecuteFilter = Everything;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmTeleportFilter = Nothing;
-	type XcmReserveTransferFilter = Everything;
-	type Weigher = FixedWeightBounds<ConstU64<10>, Call, ConstU32<100>>;
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Origin = Origin;
-	type Call = Call;
+	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
+	type Weigher = FixedWeightBounds<ConstU64<10>, Call, ConstU32<100>>;
+	type XcmExecuteFilter = Everything;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type XcmReserveTransferFilter = Everything;
+	type XcmRouter = XcmRouter;
+	type XcmTeleportFilter = Nothing;
+
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
-	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
 
 pub struct AccountIdToMultiLocation;
@@ -241,21 +242,34 @@ parameter_type_with_key! {
 	};
 }
 
+pub struct Restrictions;
+impl cfg_traits::PreConditions<crate::Effects<AccountId, CurrencyId, Balance>> for Restrictions {
+	type Result = DispatchResult;
+
+	fn check(effect: Effects<AccountId, CurrencyId, Balance>) -> Self::Result {
+		Ok(())
+	}
+}
+
+impl restricted_xtokens::Config for Runtime {
+	type PreExtrTransfer = Restrictions;
+}
+
 impl orml_xtokens::Config for Runtime {
-	type Event = Event;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type Balance = Balance;
+	type BaseXcmWeight = ConstU64<100_000_000>;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
-	type SelfLocation = SelfLocation;
-	type MultiLocationsFilter = ParentOrParachains;
-	type MinXcmFee = ParachainMinFee;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type Weigher = FixedWeightBounds<ConstU64<10>, Call, ConstU32<100>>;
-	type BaseXcmWeight = ConstU64<100_000_000>;
+	type Event = Event;
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
+	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = ParentOrParachains;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type SelfLocation = SelfLocation;
+	type Weigher = FixedWeightBounds<ConstU64<10>, Call, ConstU32<100>>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 impl orml_xcm::Config for Runtime {
@@ -281,7 +295,8 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin},
 
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>},
+		OrmlXTokens: orml_xtokens::{Pallet, Storage, Event<T>},
+		XTokens: restricted_xtokens::{Pallet, Call},
 
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
 		OrmlXcm: orml_xcm::{Pallet, Call, Event<T>},

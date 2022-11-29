@@ -21,7 +21,6 @@ pub use weights::*;
 mod mock;
 #[cfg(test)]
 mod tests;
-pub mod weights;
 
 use xcm::{latest::Weight, prelude::*};
 
@@ -83,8 +82,6 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + orml_xtokens::Config {
 		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
 		type PreExtrTransfer: PreConditions<EffectsOf<Self>, Result = DispatchResult>;
-
-		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -98,6 +95,9 @@ pub mod pallet {
 		/// The version of the `Versioned` value used is not able to be
 		/// interpreted.
 		BadVersion,
+		/// Some Preconditions where not met for the extrinsic.
+		/// Inner error gives more details
+		PreConditionsNotMet { reason: DispatchError },
 	}
 
 	#[pallet::call]
@@ -133,7 +133,8 @@ pub mod pallet {
 				id: currency_id.clone(),
 				amount,
 				dest_weight_limit,
-			})?;
+			})
+			.map_err(|reason| Error::<T>::PreConditionsNotMet { reason })?;
 
 			XTokens::<T>::transfer(origin, currency_id, amount, dest, dest_weight_limit)
 		}
@@ -170,7 +171,8 @@ pub mod pallet {
 				recv,
 				id,
 				dest_weight_limit,
-			})?;
+			})
+			.map_err(|reason| Error::<T>::PreConditionsNotMet { reason })?;
 
 			XTokens::<T>::transfer_multiasset(origin, asset, dest, dest_weight_limit)
 		}
@@ -217,7 +219,8 @@ pub mod pallet {
 				amount,
 				fee,
 				dest_weight_limit,
-			})?;
+			})
+			.map_err(|reason| Error::<T>::PreConditionsNotMet { reason })?;
 
 			XTokens::<T>::transfer_with_fee(
 				origin,
@@ -275,7 +278,8 @@ pub mod pallet {
 				id,
 				fee_asset,
 				dest_weight_limit,
-			})?;
+			})
+			.map_err(|reason| Error::<T>::PreConditionsNotMet { reason })?;
 
 			XTokens::<T>::transfer_multiasset_with_fee(origin, asset, fee, dest, dest_weight_limit)
 		}
@@ -314,7 +318,8 @@ pub mod pallet {
 				transfers: currencies.clone(),
 				fee_item,
 				dest_weight_limit,
-			})?;
+			})
+			.map_err(|reason| Error::<T>::PreConditionsNotMet { reason })?;
 
 			XTokens::<T>::transfer_multicurrencies(
 				origin,
