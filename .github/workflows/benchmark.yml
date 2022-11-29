@@ -4,7 +4,7 @@ name: Benchmark
 jobs:
   matrix_prep:
     name: matrix-prep
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
