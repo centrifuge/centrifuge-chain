@@ -13,7 +13,10 @@
 use cfg_types::tokens::CurrencyId;
 use frame_support::{assert_ok, BoundedVec};
 use orml_traits::Change;
-use pallet_pool_system::{tranches::{TrancheInput, TrancheMetadata, TrancheType}, pool_types::PoolChanges};
+use pallet_pool_system::{
+	pool_types::PoolChanges,
+	tranches::{TrancheInput, TrancheMetadata, TrancheType},
+};
 
 use crate::mock::*;
 
