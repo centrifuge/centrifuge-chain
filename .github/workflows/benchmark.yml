@@ -2,24 +2,7 @@ on:
   pull_request:
 name: Benchmark
 jobs:
-  matrix_prep:
-    name: matrix-prep
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      # Required as the JSON input file needs to be read
-      - uses: actions/checkout@v3
-      - id: set-matrix
-        uses: JoshuaTheMiller/conditional-build-matrix@77cdf28e0eb41dd691280520b0bddddbc4654318
-        with:
-          inputFile: '.github/workflows/benchmark-matrix.json'
-          # we run benchmark on every workflow run that matches the parent filter
-          filter: '[?run_on_event==`any`]'
   benchmark:
-    needs: matrix_prep
-    strategy:
-      matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
     name: benchmark
 #    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark') }}
     runs-on: ubuntu-latest
@@ -27,7 +10,7 @@ jobs:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
       - name: Free space on Ubuntu
-        if: startsWith(matrix.runner, 'ubuntu-latest')
+#        if: startsWith(matrix.runner, 'ubuntu-latest')
         run: |
           echo "Pre cleanup"
           df -h
@@ -42,14 +25,13 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      - name: Run Benchmark ${{matrix.runtime}}
+      - name: Run Benchmark centrifuge
         run: ./ci/scripts.sh
         env:
           TARGET: benchmark
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
-          RUNTIME: ${{matrix.runtime}}
+          RUNTIME: centrifuge
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{matrix.runtime}}-weights
-          path: runtime/${{matrix.runtime}}/src/weights/
+          name: centrifuge-weights
+          path: runtime/centrifuge/src/weights/
