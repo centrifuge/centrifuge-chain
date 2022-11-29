@@ -4,8 +4,8 @@ The Rewards pallet provides functionality for pull-based reward distributions,
 implementing [these traits](https://reference.centrifuge.io/cfg_traits/rewards/index.html) as interface.
 
 The user can stake an amount to claim a proportional reward.
-The staked amount is reserved/hold from the user account for that currency when it's deposited
-and unreserved/release when it's withdrawed.
+The staked amount is reserved/held from the user account for that currency when it's deposited
+and unreserved/released when it's withdrawed.
 
 The pallet stores three main entities:
 - Groups, where the reward is distributed.
@@ -14,15 +14,16 @@ The pallet stores three main entities:
 These currencies can also be moved from one group to another,
 in order to change the reward distribution of the associated accounts.
 
-The pallet itself can be understand as a wrapper for pull-based reward distributions,
-the exact reward functionality of this pallet is given by the mechanism used when it's configured.
-Current mechanisms:
+The pallet itself can be seen/understood as a wrapper for pull-based reward distributions.
+The exact reward functionality of this pallet is configurable using a mechanism.
+Mechanisms implement the reward methods. Current mechanisms:
 - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
 currency movement.
 - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
 currency movement.
 
-**NOTE**: This pallet does not export any extrinsics, it's supposed to use by other pallets.
+**NOTE**: This pallet does not export any extrinsics, it's supposed to be used by other pallets directly or through the
+[rewards traits](https://reference.centrifuge.io/cfg_traits/rewards/index.html) this pallet implements.
 
 ## Documentation
 
@@ -41,13 +42,13 @@ Add to your *Substrate* runtime or pallet `Cargo.toml`
 
 ```toml
 [dependencies]
-pallet-claims = { git = "https://github.com/centrifuge/centrifuge-chain.git", branch = "release-vX.X.X", default-features = false }
+pallet-rewards = { git = "https://github.com/centrifuge/centrifuge-chain.git", branch = "release-vX.X.X", default-features = false }
 ```
 
-Modify the `X.X.X` to a release that uses the same *Substrate* version as you uses.
+Modify the `X.X.X` to a release that uses the same *Substrate* version as you use.
 
-You probably will want to use this pallet as a [*loosely coupled pallet*](https://docs.substrate.io/build/pallet-coupling/),
-for that, you need to add the interface traits as a dependency where you use them:
+You probably will want to use this pallet as a [*loosely coupled pallet*](https://docs.substrate.io/build/pallet-coupling/).
+For that, you need to add the interface traits as a dependency where you use them:
 
 ```toml
 [dependencies]
