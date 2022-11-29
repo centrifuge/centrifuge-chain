@@ -1,12 +1,11 @@
 on:
-  push:
-    branches: [main, 'release-v**']
-  pull_request:
+  issue_comment:
+    types: [ created ]
 name: Benchmark
 jobs:
   matrix_prep:
     name: matrix-prep
-    runs-on: 'ubuntu-latest-4-cores'
+    runs-on: [ubuntu-latest-4-cores, linux]
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -23,7 +22,8 @@ jobs:
     strategy:
       matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
     name: benchmark
-    runs-on: 'ubuntu-latest-4-cores'
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark') }}
+    runs-on: [ubuntu-latest-4-cores, linux]
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
