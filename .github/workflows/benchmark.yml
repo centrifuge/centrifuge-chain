@@ -26,7 +26,7 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
       - name: Run Benchmark centrifuge
-        run: ./ci/scripts.sh
+        run: ./ci/script.sh
         env:
           TARGET: benchmark
           RUNTIME: centrifuge
