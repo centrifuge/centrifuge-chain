@@ -22,7 +22,7 @@ jobs:
       matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
     name: benchmark
 #    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark') }}
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
