@@ -7144,6 +7144,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-restricted-xtokens"
+version = "0.1.0"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "orml-xtokens",
+ "pallet-balances",
+ "pallet-permissions",
+ "parity-scale-codec 3.2.1",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "pallet-rewards"
 version = "0.1.0"
 dependencies = [
