@@ -157,14 +157,16 @@ where
 		amount: Self::Balance,
 		distribution_id: Self::DistributionId,
 	) -> Result<(), ArithmeticError> {
+		let reward = amount.ensure_add(group.lost_reward)?;
+
 		base::Mechanism::<Balance, IBalance, Rate, MaxCurrencyMovements>::reward_group(
 			&mut group.base,
-			amount + group.lost_reward,
+			reward,
 			(),
 		)?;
 
 		group.lost_reward = Balance::zero();
-		group.last_rate = Rate::ensure_from_rational(amount, group.base.total_stake)?;
+		group.last_rate = Rate::ensure_from_rational(reward, group.base.total_stake)?;
 		group.distribution_id = distribution_id;
 
 		Ok(())
