@@ -15,7 +15,7 @@ jobs:
         with:
           inputFile: '.github/workflows/benchmark-matrix.json'
           # we run benchmark on every workflow run that matches the parent filter
-          filter: '[?run_on_event==`any` || run_on_event==`${{ github.event_name }}`]'
+          filter: '[?run_on_event==`any`]'
   benchmark:
     needs: matrix_prep
     strategy:
