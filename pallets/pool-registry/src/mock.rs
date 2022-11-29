@@ -128,7 +128,7 @@ impl<T: Config + pallet_pool_registry::Config> PoolMutate<T::AccountId, T::PoolI
 		_max_reserve: T::Balance,
 		_metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
-		todo!()
+		Ok(())
 	}
 
 	fn update(
