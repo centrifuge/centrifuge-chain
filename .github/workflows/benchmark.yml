@@ -1,13 +1,11 @@
 name: Benchmark
 on:
-  pull_request:
-    types: [opened]
   issue_comment:
     types: [created]
 jobs:
   benchmark:
     name: benchmark
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark ') }}
+#    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark ') }}
     runs-on: ubuntu-latest-4-cores
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
