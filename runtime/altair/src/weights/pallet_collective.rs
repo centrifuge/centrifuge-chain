@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_collective::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_collective using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_collective::WeightInfo for WeightInfo<T> {
 	fn set_members(m: u32, n: u32, p: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 19_000
 			.saturating_add(Weight::from_ref_time(22_905_000).saturating_mul(m as u64)) // Standard Error: 19_000

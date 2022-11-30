@@ -1216,8 +1216,13 @@ name = "cfg-utils"
 version = "2.0.0"
 dependencies = [
  "frame-support",
+ "frame-system",
+ "pallet-aura",
+ "pallet-timestamp",
  "parity-scale-codec 3.2.1",
  "scale-info",
+ "sp-consensus-aura",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -6063,9 +6068,11 @@ name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
  "cfg-traits",
+ "cfg-utils",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
  "pallet-randomness-collective-flip",
@@ -6074,6 +6081,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-arithmetic",
+ "sp-consensus-aura",
  "sp-core",
  "sp-io",
  "sp-runtime",

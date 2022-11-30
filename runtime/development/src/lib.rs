@@ -203,7 +203,7 @@ impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type PalletInfo = PalletInfo;
 	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
+	type SystemWeightInfo = weights::frame_system::WeightInfo<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
 }
@@ -312,7 +312,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
-	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_balances::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -761,7 +761,7 @@ impl pallet_nft_sales::Config for Runtime {
 	type ItemId = ItemId;
 	type NonFungibles = Uniques;
 	type PalletId = NftSalesPalletId;
-	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_nft_sales::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -828,7 +828,7 @@ impl pallet_fees::Config for Runtime {
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
 	type FeeKey = FeeKey;
 	type Treasury = pallet_treasury::Pallet<Self>;
-	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -848,7 +848,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
-	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
 // Parameterize claims pallet
@@ -934,7 +934,7 @@ impl pallet_pool_system::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
-	type WeightInfo = weights::pallet_pool_system::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
 }
 
 impl pallet_pool_registry::Config for Runtime {
@@ -952,7 +952,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type TrancheId = TrancheId;
-	type WeightInfo = weights::pallet_pool_registry::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
 }
 
 pub struct PoolCurrency;
@@ -1079,7 +1079,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxAccounts = MigrationMaxAccounts;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type MigrationMaxVestings = MigrationMaxVestings;
-	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
 }
 
 // Parameterize crowdloan reward pallet configuration
@@ -1092,7 +1092,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_reward::WeightInfo<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -1109,7 +1109,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type PalletId = CrowdloanClaimPalletId;
 	type RelayChainAccountId = AccountId;
 	type RewardMechanism = CrowdloanReward;
-	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_claim::WeightInfo<Self>;
 }
 
 // Parameterize collator selection pallet
@@ -1200,7 +1200,7 @@ impl pallet_loans::Config for Runtime {
 	type Pool = PoolSystem;
 	type Rate = Rate;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1223,7 +1223,7 @@ impl pallet_permissions::Config for Runtime {
 	type Role = Role<TrancheId, Moment>;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
-	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
 }
 
 pub struct Editors;
@@ -1456,7 +1456,7 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type DefaultKeyDeposit = DefaultKeyDeposit;
 	type Event = Event;
 	type MaxKeys = MaxKeys;
-	type WeightInfo = weights::pallet_keystore::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_keystore::WeightInfo<Runtime>;
 }
 
 parameter_types! {

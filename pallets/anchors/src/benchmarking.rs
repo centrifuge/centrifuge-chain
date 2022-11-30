@@ -12,7 +12,6 @@
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::{traits::Hash, DispatchError};
 
 use super::*;
 
@@ -38,7 +37,7 @@ fn day<T: From<u64>>(n: u64) -> T {
 benchmarks! {
 	where_clause {
 		where
-		T: Config,
+		T: Config + pallet_aura::Config,
 		T::Hash: From<[u8; 32]>,
 		T::Moment: From<u64>,
 	}
@@ -125,7 +124,7 @@ benchmarks! {
 			)?;
 		}
 
-		pallet_timestamp::Pallet::<T>::set_timestamp(day(MAX_LOOP_IN_TX));
+		cfg_utils::set_block_number_timestamp::<T>(Default::default(), day(MAX_LOOP_IN_TX));
 
 	}: _(RawOrigin::Signed(caller))
 	verify {

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Test utilities that can be used accross multiple pallets.
+//! Test utilities that can be used across multiple pallets.
 //! Providing all sorts of mock implementations for traits the pallets
 //! need and which can be used for mock environments
 

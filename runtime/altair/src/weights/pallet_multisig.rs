@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_multisig::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_multisig using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_multisig::WeightInfo for WeightInfo<T> {
 	fn as_multi_threshold_1(z: u32) -> Weight {
 		Weight::from_ref_time(39_108_000) // Standard Error: 0
 			.saturating_add(Weight::from_ref_time(1_000).saturating_mul(z as u64))
