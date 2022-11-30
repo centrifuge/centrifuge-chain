@@ -42,6 +42,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Anchors: pallet_anchors::{Pallet, Call, Storage} = 5,
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 6,
+		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 	}
 );
 
@@ -112,8 +113,12 @@ impl pallet_authorship::Config for Runtime {
 	type UncleGenerations = ();
 }
 
+parameter_types! {
+	pub const MinimumPeriod: u64 = 6000;
+}
+
 impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ();
+	type MinimumPeriod = MinimumPeriod;
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
@@ -129,6 +134,16 @@ impl_mock_fees_state!(
 		_ => 0,
 	}
 );
+
+parameter_types! {
+	pub const MaxAuthorities: u32 = 32;
+}
+
+impl pallet_aura::Config for Runtime {
+	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
+	type DisabledValidators = ();
+	type MaxAuthorities = MaxAuthorities;
+}
 
 impl Config for Runtime {
 	type CommitAnchorFeeKey = ConstU8<1>;

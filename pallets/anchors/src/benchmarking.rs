@@ -10,11 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_support::traits::{Get, Hooks};
+use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_consensus_aura::AURA_ENGINE_ID;
-use sp_runtime::{traits::Hash, Digest, DigestItem, DispatchError};
-use sp_std::vec;
 
 use super::*;
 
@@ -35,20 +32,6 @@ const PROOF: [u8; 32] = [
 
 fn day<T: From<u64>>(n: u64) -> T {
 	T::from(common::MILLISECS_PER_DAY * n + 1)
-}
-
-// TODO: Move to common lib
-fn set_block_number_timestamp<T: Config>(block_number: T::BlockNumber, timestamp: T::Moment)
-where
-	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
-{
-	let slot = timestamp / pallet_aura::Pallet::<T>::slot_duration();
-	let digest = Digest {
-		logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
-	};
-	frame_system::Pallet::<T>::initialize(&block_number, &Default::default(), &digest);
-	pallet_aura::Pallet::<T>::on_initialize(block_number);
-	pallet_timestamp::Pallet::<T>::set_timestamp(timestamp);
 }
 
 benchmarks! {
@@ -141,7 +124,7 @@ benchmarks! {
 			)?;
 		}
 
-		set_block_number_timestamp::<T>(Default::default(), day(MAX_LOOP_IN_TX));
+		cfg_utils::set_block_number_timestamp::<T>(Default::default(), day(MAX_LOOP_IN_TX));
 
 	}: _(RawOrigin::Signed(caller))
 	verify {

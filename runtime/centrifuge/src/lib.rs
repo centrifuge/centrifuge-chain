@@ -145,7 +145,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxAccounts = MigrationMaxAccounts;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type MigrationMaxVestings = MigrationMaxVestings;
-	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
 }
 
 // system support impls
@@ -188,7 +188,7 @@ impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type PalletInfo = PalletInfo;
 	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
+	type SystemWeightInfo = weights::frame_system::WeightInfo<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
 }
@@ -343,7 +343,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = Aura;
-	type WeightInfo = weights::pallet_timestamp::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_timestamp::WeightInfo<Runtime>;
 }
 
 // money stuff
@@ -387,7 +387,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
-	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_balances::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -449,7 +449,7 @@ impl pallet_multisig::Config for Runtime {
 	type DepositFactor = DepositFactor;
 	type Event = Event;
 	type MaxSignatories = MaxSignatories;
-	type WeightInfo = weights::pallet_multisig::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -532,14 +532,14 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type ProxyType = ProxyType;
-	type WeightInfo = weights::pallet_proxy::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_proxy::WeightInfo<Runtime>;
 }
 
 impl pallet_utility::Config for Runtime {
 	type Call = Call;
 	type Event = Event;
 	type PalletsOrigin = OriginCaller;
-	type WeightInfo = weights::pallet_utility::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -560,7 +560,7 @@ impl pallet_scheduler::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type PreimageProvider = Preimage;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::pallet_scheduler::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_scheduler::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -576,7 +576,7 @@ impl pallet_preimage::Config for Runtime {
 	type Event = Event;
 	type ManagerOrigin = EnsureRoot<AccountId>;
 	type MaxSize = PreimageMaxSize;
-	type WeightInfo = weights::pallet_preimage::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_preimage::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -593,7 +593,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MotionDuration = CouncilMotionDuration;
 	type Origin = Origin;
 	type Proposal = Call;
-	type WeightInfo = weights::pallet_collective::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -699,7 +699,7 @@ impl pallet_democracy::Config for Runtime {
 	type VoteLockingPeriod = EnactmentPeriod;
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
-	type WeightInfo = weights::pallet_democracy::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_democracy::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -724,7 +724,7 @@ impl pallet_identity::Config for Runtime {
 		EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type Slashed = Treasury;
 	type SubAccountDeposit = SubAccountDeposit;
-	type WeightInfo = weights::pallet_identity::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_identity::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -736,7 +736,7 @@ impl pallet_vesting::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	type MinVestedTransfer = MinVestedTransfer;
-	type WeightInfo = weights::pallet_vesting::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_vesting::WeightInfo<Runtime>;
 
 	const MAX_VESTING_SCHEDULES: u32 = 3;
 }
@@ -788,7 +788,7 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
-	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Self>;
 }
 
 // our pallets
@@ -803,7 +803,7 @@ impl pallet_fees::Config for Runtime {
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
 	type FeeKey = FeeKey;
 	type Treasury = pallet_treasury::Pallet<Self>;
-	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -816,14 +816,14 @@ impl pallet_anchors::Config for Runtime {
 	type Currency = Balances;
 	type Fees = Fees;
 	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
-	type WeightInfo = weights::pallet_anchors::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_anchors::WeightInfo<Self>;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
-	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -901,7 +901,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_reward::WeightInfo<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -918,7 +918,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type PalletId = CrowdloanClaimPalletId;
 	type RelayChainAccountId = AccountId;
 	type RewardMechanism = CrowdloanReward;
-	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_claim::WeightInfo<Self>;
 }
 
 // Parameterize collator selection pallet

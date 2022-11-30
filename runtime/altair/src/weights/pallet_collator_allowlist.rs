@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_collator_allowlist::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_collator_allowlist using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_collator_allowlist::WeightInfo for WeightInfo<T> {
 	fn add() -> Weight {
 		Weight::from_ref_time(44_731_000)
 			.saturating_add(T::DbWeight::get().reads(2 as u64))

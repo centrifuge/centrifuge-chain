@@ -25,12 +25,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_migration_manager::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_migration_manager using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_migration_manager::weights::WeightInfo for WeightInfo<T> {
 	fn finalize() -> Weight {
 		Weight::from_ref_time(26_615_000)
 			.saturating_add(T::DbWeight::get().reads(1 as u64))

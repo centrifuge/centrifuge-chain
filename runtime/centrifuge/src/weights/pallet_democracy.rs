@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_democracy::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_democracy using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 	fn propose() -> Weight {
 		Weight::from_ref_time(116_040_000)
 			.saturating_add(T::DbWeight::get().reads(3 as u64))

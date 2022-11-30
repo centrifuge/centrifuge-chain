@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use frame_system::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for frame_system using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> frame_system::WeightInfo for WeightInfo<T> {
 	fn remark(b: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 0
 			.saturating_add(Weight::from_ref_time(1_000).saturating_mul(b as u64))
