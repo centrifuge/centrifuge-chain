@@ -75,7 +75,7 @@ use frame_support::{
 	},
 	PalletId,
 };
-use mechanism::{DistributionId, MoveCurrencyError, RewardMechanism};
+use mechanism::{DistributionId, History, MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
 use sp_std::fmt::Debug;
@@ -83,6 +83,8 @@ use sp_std::fmt::Debug;
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
 type RewardAccountOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Account;
+type RewardHistoryValueOf<T, I> =
+	<<T as Config<I>>::RewardMechanism as RewardMechanism>::HistoryValue;
 type DistributionIdOf<T, I> =
 	<<T as Config<I>>::RewardMechanism as RewardMechanism>::DistributionId;
 type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Balance;
@@ -163,6 +165,12 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
+	pub(super) type DistributionHistory<T: Config<I>, I: 'static = ()>
+	where
+		RewardHistoryValueOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
+	= StorageMap<_, Blake2_128Concat, DistributionIdOf<T, I>, RewardHistoryValueOf<T, I>>;
+
+	#[pallet::storage]
 	pub(super) type LastDistributionId<T: Config<I>, I: 'static = ()>
 	where
 		DistributionIdOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
@@ -221,6 +229,7 @@ pub mod pallet {
 	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
 		RewardGroupOf<T, I>: FullCodec + Default,
+		RewardHistoryValueOf<T, I>: FullCodec,
 		DistributionIdOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
@@ -229,7 +238,11 @@ pub mod pallet {
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
 			LastDistributionId::<T, I>::try_mutate(|distribution_id| {
 				Groups::<T, I>::try_mutate(group_id, |group| {
-					T::RewardMechanism::reward_group(group, reward, distribution_id.next_id()?)?;
+					T::RewardMechanism::reward_group::<DistributionHistory<T, I>>(
+						group,
+						reward,
+						distribution_id.next_id()?,
+					)?;
 
 					T::Currency::mint_into(
 						T::RewardCurrency::get(),
@@ -258,6 +271,8 @@ pub mod pallet {
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardAccountOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
+		RewardHistoryValueOf<T, I>: FullCodec,
+		DistributionIdOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
 		type CurrencyId = (T::DomainId, T::CurrencyId);
@@ -276,7 +291,9 @@ pub mod pallet {
 							Err(TokenError::NoFunds)?;
 						}
 
-						T::RewardMechanism::deposit_stake(account, currency, group, amount)?;
+						T::RewardMechanism::deposit_stake::<DistributionHistory<T, I>>(
+							account, currency, group, amount,
+						)?;
 
 						T::Currency::hold(currency_id.1, account_id, amount)?;
 
@@ -308,7 +325,9 @@ pub mod pallet {
 							Err(TokenError::NoFunds)?;
 						}
 
-						T::RewardMechanism::withdraw_stake(account, currency, group, amount)?;
+						T::RewardMechanism::withdraw_stake::<DistributionHistory<T, I>>(
+							account, currency, group, amount,
+						)?;
 
 						T::Currency::release(currency_id.1, account_id, amount, false)?;
 
@@ -336,7 +355,9 @@ pub mod pallet {
 			let group = Groups::<T, I>::get(group_id);
 			let account = StakeAccounts::<T, I>::get(account_id, currency_id);
 
-			let reward = T::RewardMechanism::compute_reward(&account, &currency, &group)?;
+			let reward = T::RewardMechanism::compute_reward::<DistributionHistory<T, I>>(
+				&account, &currency, &group,
+			)?;
 
 			Ok(reward)
 		}
@@ -350,7 +371,9 @@ pub mod pallet {
 
 			let group = Groups::<T, I>::get(group_id);
 			StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
-				let reward = T::RewardMechanism::claim_reward(account, &currency, &group)?;
+				let reward = T::RewardMechanism::claim_reward::<DistributionHistory<T, I>>(
+					account, &currency, &group,
+				)?;
 
 				T::Currency::transfer(
 					T::RewardCurrency::get(),

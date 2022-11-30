@@ -5,7 +5,7 @@ use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-use super::{base, MoveCurrencyError, RewardMechanism};
+use super::{base, History, MoveCurrencyError, RewardMechanism};
 
 /// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
@@ -150,16 +150,17 @@ where
 	type Currency = Currency<Balance, Rate, Self::DistributionId, MaxCurrencyMovements>;
 	type DistributionId = u32;
 	type Group = Group<Balance, Rate, Self::DistributionId>;
+	type HistoryValue = Rate;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 
-	fn reward_group(
+	fn reward_group<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		group: &mut Self::Group,
 		amount: Self::Balance,
 		distribution_id: Self::DistributionId,
 	) -> Result<(), ArithmeticError> {
 		let reward = amount.ensure_add(group.lost_reward)?;
 
-		base::Mechanism::<Balance, IBalance, Rate, MaxCurrencyMovements>::reward_group(
+		base::Mechanism::<Balance, IBalance, Rate, MaxCurrencyMovements>::reward_group::<()>(
 			&mut group.base,
 			reward,
 			(),
@@ -172,7 +173,7 @@ where
 		Ok(())
 	}
 
-	fn deposit_stake(
+	fn deposit_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -184,7 +185,7 @@ where
 			currency.next_distribution_id,
 		);
 
-		base::Mechanism::deposit_stake(
+		base::Mechanism::deposit_stake::<()>(
 			&mut account.base,
 			&mut currency.base,
 			&mut group.base,
@@ -192,7 +193,7 @@ where
 		)
 	}
 
-	fn withdraw_stake(
+	fn withdraw_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -210,7 +211,7 @@ where
 			amount.ensure_sub(unrewarded_amount)
 		}?;
 
-		base::Mechanism::withdraw_stake(
+		base::Mechanism::withdraw_stake::<()>(
 			&mut account.base,
 			&mut currency.base,
 			&mut group.base,
@@ -232,24 +233,25 @@ where
 		Ok(())
 	}
 
-	fn compute_reward(
+	fn compute_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		base::Mechanism::compute_reward(&account.base, &currency.base, &group.base)?
+		base::Mechanism::compute_reward::<()>(&account.base, &currency.base, &group.base)?
 			.ensure_sub(account.last_rewarded_stake(group, currency)?)
 	}
 
-	fn claim_reward(
+	fn claim_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &mut Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
 		let last_rewarded_stake = account.last_rewarded_stake(group, currency)?;
 
-		let reward = base::Mechanism::claim_reward(&mut account.base, &currency.base, &group.base)?
-			.ensure_sub(last_rewarded_stake)?;
+		let reward =
+			base::Mechanism::claim_reward::<()>(&mut account.base, &currency.base, &group.base)?
+				.ensure_sub(last_rewarded_stake)?;
 
 		account
 			.base

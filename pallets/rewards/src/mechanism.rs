@@ -26,6 +26,23 @@ macro_rules! distribution_id_impl {
 	};
 }
 
+pub trait History<D: DistributionId> {
+	type Value;
+
+	fn get(distribution_id: D) -> Option<Self::Value>;
+	fn insert(distribution_id: D, value: Self::Value);
+}
+
+impl<D: DistributionId> History<D> for () {
+	type Value = ();
+
+	fn get(_: D) -> Option<Self::Value> {
+		Some(())
+	}
+
+	fn insert(_: D, _: Self::Value) {}
+}
+
 distribution_id_impl!(u8);
 distribution_id_impl!(u16);
 distribution_id_impl!(u32);
@@ -39,16 +56,17 @@ pub trait RewardMechanism {
 	type Balance: Balance;
 	type DistributionId: DistributionId;
 	type MaxCurrencyMovements: Get<u32>;
+	type HistoryValue;
 
 	/// Reward the group mutating the group entity.
-	fn reward_group(
+	fn reward_group<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		group: &mut Self::Group,
 		amount: Self::Balance,
 		distribution_id: Self::DistributionId,
 	) -> Result<(), ArithmeticError>;
 
 	/// Add stake to the account and mutates currency and group to archieve that.
-	fn deposit_stake(
+	fn deposit_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -56,7 +74,7 @@ pub trait RewardMechanism {
 	) -> Result<(), ArithmeticError>;
 
 	/// Remove stake from the account and mutates currency and group to archieve that.
-	fn withdraw_stake(
+	fn withdraw_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -64,7 +82,7 @@ pub trait RewardMechanism {
 	) -> Result<(), ArithmeticError>;
 
 	/// Computes the reward for the account
-	fn compute_reward(
+	fn compute_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
@@ -72,7 +90,7 @@ pub trait RewardMechanism {
 
 	/// Claims the reward, mutating the account to reflect this action.
 	/// Once a reward is claimed, next calls will return 0 until the group will be rewarded again.
-	fn claim_reward(
+	fn claim_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
 		account: &mut Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
