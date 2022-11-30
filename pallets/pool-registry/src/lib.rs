@@ -164,7 +164,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_metadata)]
 	pub(crate) type PoolMetadata<T: Config> =
-		StorageMap<_, Blake2_256, T::PoolId, PoolMetadataOf<T>>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, PoolMetadataOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_pools)]
