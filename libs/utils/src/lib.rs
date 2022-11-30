@@ -27,7 +27,7 @@ pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
 }
 
 /// Function that initializes the frame system & Aura, so a timestamp can be set and pass validation
-#[cfg(any(test, feature = "runtime-benchmarks", feature = "test-benchmarks"))]
+#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
 where
 	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
