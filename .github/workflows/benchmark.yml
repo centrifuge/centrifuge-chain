@@ -15,10 +15,10 @@ jobs:
       with:
         result-encoding: string
         script: |
-          console.log("comment body", context.payload.comment.body)
+          console.log("comment body x", context.payload.comment.body)
           console.log("comment author role", context.payload.comment.author_association)
           console.log("Is Pull Request", context.payload.issue.pull_request)
-          if (context.payload.comment.body.includes('/benchmark ') && context.payload.issue.pull_request && context.payload.comment.author_association.includes('MEMBER')) {
+          if (context.payload.comment.body.includes('/benchmark ') && context.payload.issue.pull_request && context.payload.comment.author_association.includes('CONTRIBUTOR')) {
             return 'valid'
           }
   benchmark:
