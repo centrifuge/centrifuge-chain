@@ -5,7 +5,7 @@ on:
 jobs:
   benchmark:
     name: benchmark
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark ') && contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) }}
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark ') && contains(fromJson('["MEMBER"]'), github.event.comment.author_association) }}
     runs-on: ubuntu-latest-4-cores
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
@@ -31,7 +31,7 @@ jobs:
         with:
           result-encoding: string
           script: |
-            console.log(context.payload.comment.body)
+            console.log("test", context.payload.comment.body)
             const [, , , runtime] = context.payload.comment.body.split(/\W+/)
             if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime')
             return `${runtime}`
