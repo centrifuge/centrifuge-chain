@@ -5,7 +5,7 @@ on:
 jobs:
   benchmark:
     name: benchmark
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark ') && contains(fromJson('["MEMBER", "OWNER"]'), github.event.comment.author_association) }}
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/benchmark ') && contains(fromJson('["MEMBER", "AUTHOR"]'), github.event.comment.author_association) }}
     runs-on: ubuntu-latest-4-cores
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
