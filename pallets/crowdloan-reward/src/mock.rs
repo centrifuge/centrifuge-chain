@@ -67,11 +67,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -80,17 +80,17 @@ parameter_types! {
 	pub const MinVestedTransfer: u64 = 16;
 	pub const MaxVestingSchedules: u32 = 4;
 	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
-	    WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
+		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
 // Implement vesting pallet configuration for mock runtime
 impl pallet_vesting::Config for Runtime {
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
 	type Currency = Balances;
-	type RuntimeEvent = RuntimeEvent;
 	type MinVestedTransfer = MinVestedTransfer;
+	type RuntimeEvent = RuntimeEvent;
+	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 	type WeightInfo = ();
-  type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 
 	const MAX_VESTING_SCHEDULES: u32 = 1;
 }
@@ -104,8 +104,8 @@ parameter_types! {
 // Implement crowdloan reward pallet configuration for mock runtime
 impl pallet_crowdloan_reward::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type RuntimeEvent = RuntimeEvent;
 	type PalletId = CrowdloanRewardPalletId;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -132,9 +132,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type RuntimeCall = RuntimeCall;
 	type DbWeight = ();
-	type RuntimeEvent = RuntimeEvent;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -144,8 +142,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type RuntimeOrigin = RuntimeOrigin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();

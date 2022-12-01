@@ -352,7 +352,10 @@ fn test_set_contribution_root() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			assert_ok!(CrowdloanClaim::set_lease_start(RuntimeOrigin::signed(1), 999));
+			assert_ok!(CrowdloanClaim::set_lease_start(
+				RuntimeOrigin::signed(1),
+				999
+			));
 			assert_eq!(CrowdloanClaim::lease_start(), 999);
 		})
 }
@@ -386,7 +389,10 @@ fn test_set_lease_start() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			assert_ok!(CrowdloanClaim::set_lease_start(RuntimeOrigin::signed(1), 999));
+			assert_ok!(CrowdloanClaim::set_lease_start(
+				RuntimeOrigin::signed(1),
+				999
+			));
 			assert_eq!(CrowdloanClaim::lease_start(), 999);
 		})
 }
@@ -396,7 +402,10 @@ fn test_set_lease_period() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			assert_ok!(CrowdloanClaim::set_lease_period(RuntimeOrigin::signed(1), 999));
+			assert_ok!(CrowdloanClaim::set_lease_period(
+				RuntimeOrigin::signed(1),
+				999
+			));
 			assert_eq!(CrowdloanClaim::lease_period(), 999);
 		})
 }
@@ -458,8 +467,15 @@ fn test_valid_claim() {
 fn test_valid_claim_ext_signature() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {
-			CrowdloanClaim::initialize(RuntimeOrigin::signed(1), get_root_for_ext_sig(), 100, 0, 0, 400)
-				.unwrap();
+			CrowdloanClaim::initialize(
+				RuntimeOrigin::signed(1),
+				get_root_for_ext_sig(),
+				100,
+				0,
+				0,
+				400,
+			)
+			.unwrap();
 			pallet_crowdloan_reward::Pallet::<Runtime>::initialize(
 				RuntimeOrigin::signed(1),
 				Perbill::from_percent(20),

@@ -112,7 +112,8 @@ fn reward_participant() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
@@ -146,7 +147,8 @@ fn zero_direct_payout_reward() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(0), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(0), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
@@ -180,7 +182,8 @@ fn account_already_vesting() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			assert_noop!(
@@ -196,7 +199,8 @@ fn reward_amount_to_low_for_vesting() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			assert_noop!(
