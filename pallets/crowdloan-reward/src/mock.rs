@@ -24,7 +24,7 @@
 
 use frame_support::{
 	parameter_types,
-	traits::{Everything, SortedMembers},
+	traits::{Everything, SortedMembers, WithdrawReasons},
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -67,7 +67,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
@@ -85,9 +85,10 @@ parameter_types! {
 impl pallet_vesting::Config for Runtime {
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
 	type Currency = Balances;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type MinVestedTransfer = MinVestedTransfer;
 	type WeightInfo = ();
+  type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 
 	const MAX_VESTING_SCHEDULES: u32 = 1;
 }
@@ -101,7 +102,7 @@ parameter_types! {
 // Implement crowdloan reward pallet configuration for mock runtime
 impl pallet_crowdloan_reward::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type PalletId = CrowdloanRewardPalletId;
 	type WeightInfo = ();
 }
@@ -118,6 +119,8 @@ parameter_types! {
 	pub const MaximumBlockWeight: u64 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
+		  WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
 // Implement frame system pallet configuration for mock runtime
@@ -129,9 +132,9 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type DbWeight = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -141,7 +144,7 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type PalletInfo = PalletInfo;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
@@ -217,7 +220,7 @@ pub fn reward_events() -> Vec<pallet_crowdloan_reward::Event<Runtime>> {
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let Event::CrowdloanReward(inner) = e {
+			if let RuntimeEvent::CrowdloanReward(inner) = e {
 				Some(inner)
 			} else {
 				None
