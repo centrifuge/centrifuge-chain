@@ -102,7 +102,7 @@ pub mod pallet {
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.
 		type BridgeOrigin: EnsureOrigin<
-			<Self as frame_system::Config>::Origin,
+			<Self as frame_system::Config>::RuntimeOrigin,
 			Success = <Self as frame_system::Config>::AccountId,
 		>;
 
@@ -116,7 +116,7 @@ pub mod pallet {
 		type Currency: Currency<<Self as frame_system::Config>::AccountId>;
 
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		// Type for native token ID.
 		#[pallet::constant]
