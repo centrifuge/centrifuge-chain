@@ -7,7 +7,6 @@ use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOper
 
 use super::{base, History, MoveCurrencyError, RewardMechanism};
 
-/// Type that contains the stake properties of a stake group
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Group<Balance, Rate, DistributionId> {
@@ -35,7 +34,6 @@ impl<Balance, Rate, DistributionId> Group<Balance, Rate, DistributionId> {
 	}
 }
 
-/// Type that contains the stake properties of an account
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Account<Balance, IBalance, DistributionId> {
@@ -98,7 +96,6 @@ where
 	}
 }
 
-/// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Currency<Balance, Rate, DistributionId, MaxMovements: Get<u32>> {

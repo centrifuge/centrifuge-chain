@@ -1,60 +1,33 @@
-use cfg_traits::ops::ensure::EnsureAddAssign;
 use frame_support::traits::tokens::Balance;
 use sp_runtime::{traits::Get, ArithmeticError};
 
 pub mod base;
 pub mod deferred;
+pub mod gap;
 
-pub trait DistributionId: Sized {
-	fn next_id(&mut self) -> Result<Self, ArithmeticError>;
-}
-
-impl DistributionId for () {
-	fn next_id(&mut self) -> Result<Self, ArithmeticError> {
-		Ok(())
-	}
-}
-
-macro_rules! distribution_id_impl {
-	($number:ty) => {
-		impl DistributionId for $number {
-			fn next_id(&mut self) -> Result<Self, ArithmeticError> {
-				self.ensure_add_assign(1)?;
-				Ok(*self)
-			}
-		}
-	};
-}
-
-pub trait History<D: DistributionId> {
+pub trait History<K> {
 	type Value;
 
-	fn get(distribution_id: D) -> Option<Self::Value>;
-	fn insert(distribution_id: D, value: Self::Value);
+	fn get(distribution_id: K) -> Option<Self::Value>;
+	fn insert(distribution_id: K, value: Self::Value);
 }
 
-impl<D: DistributionId> History<D> for () {
+impl<K> History<K> for () {
 	type Value = ();
 
-	fn get(_: D) -> Option<Self::Value> {
+	fn get(_: K) -> Option<Self::Value> {
 		Some(())
 	}
 
-	fn insert(_: D, _: Self::Value) {}
+	fn insert(_: K, _: Self::Value) {}
 }
-
-distribution_id_impl!(u8);
-distribution_id_impl!(u16);
-distribution_id_impl!(u32);
-distribution_id_impl!(u64);
-distribution_id_impl!(u128);
 
 pub trait RewardMechanism {
 	type Group;
 	type Account;
 	type Currency;
 	type Balance: Balance;
-	type DistributionId: DistributionId;
+	type DistributionId: PartialEq + Copy;
 	type MaxCurrencyMovements: Get<u32>;
 	type HistoryValue;
 

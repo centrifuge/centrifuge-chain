@@ -65,7 +65,10 @@ mod tests;
 
 pub mod mechanism;
 
-use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
+use cfg_traits::{
+	ops::ensure::EnsureAdd,
+	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
+};
 use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
@@ -75,9 +78,12 @@ use frame_support::{
 	},
 	PalletId,
 };
-use mechanism::{DistributionId, History, MoveCurrencyError, RewardMechanism};
+use mechanism::{History, MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
-use sp_runtime::{traits::AccountIdConversion, TokenError};
+use sp_runtime::{
+	traits::{AccountIdConversion, One},
+	TokenError,
+};
 use sp_std::fmt::Debug;
 
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
@@ -230,7 +236,7 @@ pub mod pallet {
 	where
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardHistoryValueOf<T, I>: FullCodec,
-		DistributionIdOf<T, I>: FullCodec + Default,
+		DistributionIdOf<T, I>: FullCodec + Default + EnsureAdd + One,
 	{
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
@@ -241,7 +247,7 @@ pub mod pallet {
 					T::RewardMechanism::reward_group::<DistributionHistory<T, I>>(
 						group,
 						reward,
-						distribution_id.next_id()?,
+						distribution_id.ensure_add(One::one())?,
 					)?;
 
 					T::Currency::mint_into(
