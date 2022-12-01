@@ -79,6 +79,8 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	pub const MinVestedTransfer: u64 = 16;
 	pub const MaxVestingSchedules: u32 = 4;
+	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
+	    WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
 // Implement vesting pallet configuration for mock runtime
@@ -119,8 +121,6 @@ parameter_types! {
 	pub const MaximumBlockWeight: u64 = 1024;
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
-		  WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
 // Implement frame system pallet configuration for mock runtime
