@@ -26,6 +26,27 @@ pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
 	dest
 }
 
+/// Function that initializes the frame system & Aura, so a timestamp can be set and pass validation
+#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
+pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
+where
+	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
+{
+	use codec::Encode;
+	use frame_support::traits::Hooks;
+	use sp_consensus_aura::AURA_ENGINE_ID;
+	use sp_runtime::{Digest, DigestItem};
+	use sp_std::vec;
+
+	let slot = timestamp / pallet_aura::Pallet::<T>::slot_duration();
+	let digest = Digest {
+		logs: vec![DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())],
+	};
+	frame_system::Pallet::<T>::initialize(&block_number, &Default::default(), &digest);
+	pallet_aura::Pallet::<T>::on_initialize(block_number);
+	pallet_timestamp::Pallet::<T>::set_timestamp(timestamp);
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

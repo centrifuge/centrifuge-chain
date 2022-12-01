@@ -164,11 +164,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_metadata)]
 	pub(crate) type PoolMetadata<T: Config> =
-		StorageMap<_, Blake2_256, T::PoolId, PoolMetadataOf<T>>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, PoolMetadataOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_pools)]
-	pub(crate) type Pools<T: Config> = StorageMap<_, Blake2_256, T::PoolId, PoolRegistrationStatus>;
+	pub(crate) type Pools<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, PoolRegistrationStatus>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]

@@ -23,9 +23,8 @@ class DeferredPullBasedDistribution:
         if self.total_stake == 0:
             raise Exception("Cannot distribute to staking pool with 0 stake")
 
-        self.reward_per_token += (reward + self.lost_reward) / self.total_stake
-
-        self.last_rate = reward / self.total_stake
+        self.last_rate = (reward + self.lost_reward) / self.total_stake
+        self.reward_per_token += self.last_rate
         self.lost_reward = 0
         self.current_distribution_id += 1;
 
