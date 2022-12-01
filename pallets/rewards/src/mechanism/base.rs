@@ -97,7 +97,7 @@ where
 	type Account = Account<Self::Balance, IBalance>;
 	type Balance = Balance;
 	type Currency = Currency<Balance, Rate, MaxCurrencyMovements>;
-	type DistributionId = ();
+	type DistributionId = u32;
 	type Group = Group<Balance, Rate>;
 	type HistoryValue = ();
 	type MaxCurrencyMovements = MaxCurrencyMovements;

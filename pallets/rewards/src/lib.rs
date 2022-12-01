@@ -66,7 +66,7 @@ mod tests;
 pub mod mechanism;
 
 use cfg_traits::{
-	ops::ensure::EnsureAdd,
+	ops::ensure::EnsureAddAssign,
 	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
 };
 use codec::FullCodec;
@@ -236,7 +236,7 @@ pub mod pallet {
 	where
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardHistoryValueOf<T, I>: FullCodec,
-		DistributionIdOf<T, I>: FullCodec + Default + EnsureAdd + One,
+		DistributionIdOf<T, I>: FullCodec + Default + EnsureAddAssign + One,
 	{
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
@@ -247,7 +247,7 @@ pub mod pallet {
 					T::RewardMechanism::reward_group::<DistributionHistory<T, I>>(
 						group,
 						reward,
-						distribution_id.ensure_add(One::one())?,
+						*distribution_id.ensure_add_assign(One::one())?,
 					)?;
 
 					T::Currency::mint_into(

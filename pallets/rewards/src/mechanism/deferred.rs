@@ -160,7 +160,7 @@ where
 		base::Mechanism::<Balance, IBalance, Rate, MaxCurrencyMovements>::reward_group::<()>(
 			&mut group.base,
 			reward,
-			(),
+			0,
 		)?;
 
 		group.lost_reward = Balance::zero();
