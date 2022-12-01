@@ -16,7 +16,6 @@ use cfg_primitives::CFG as CURRENCY;
 use cfg_traits::Investment;
 use cfg_types::{
 	fixed_point::Rate,
-	pools::PoolLocator,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
@@ -29,6 +28,7 @@ use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
 use orml_traits::{asset_registry::Mutate, MultiCurrency};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_interest_accrual::{Config as InterestAccrualConfig, Pallet as InterestAccrualPallet};
+use pallet_pool_system::pool_types::PoolLocator;
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
 use sp_runtime::traits::{AccountIdConversion, CheckedDiv};
 use test_utils::{

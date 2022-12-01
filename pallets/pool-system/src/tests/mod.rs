@@ -14,13 +14,7 @@ use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT};
 use cfg_types::{
 	epoch::EpochState,
 	fixed_point::Rate,
-	pools::{PoolChanges, PoolDetails, PoolParameters, PoolStatus},
-	reserves::ReserveDetails,
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
-	tranches::{
-		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
-		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
-	},
 	xcm::XcmMetadata,
 };
 use frame_support::{assert_err, assert_noop, assert_ok};
@@ -38,8 +32,16 @@ use xcm::{
 };
 
 use crate::{
-	mock, mock::*, pallet, BoundedVec, Change, Config, ConstU32, EpochExecution,
-	EpochExecutionInfo, Error, Pool, PoolInspect, PoolState, UnhealthyState,
+	mock,
+	mock::*,
+	pallet,
+	pool_types::{PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails},
+	tranches::{
+		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
+		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
+	},
+	BoundedVec, Change, Config, ConstU32, EpochExecution, EpochExecutionInfo, Error, Pool,
+	PoolInspect, PoolState, UnhealthyState,
 };
 
 #[test]

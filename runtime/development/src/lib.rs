@@ -30,16 +30,13 @@ use cfg_traits::{
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
 	consts::pools::*,
-	epoch::ScheduledUpdateDetails,
 	fee_keys::FeeKey,
 	fixed_point::Rate,
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
-	pools::PoolDetails,
 	time::TimeProvider,
 	tokens::{CustomMetadata, TrancheCurrency},
-	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -67,7 +64,11 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
 use pallet_investments::OrderType;
-use pallet_pool_system::EpochSolution;
+use pallet_pool_system::{
+	pool_types::{PoolDetails, ScheduledUpdateDetails},
+	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
+	EpochSolution,
+};
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };

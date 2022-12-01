@@ -16,9 +16,7 @@ use cfg_traits::UpdateState;
 use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, Role},
-	pools::PoolChanges,
 	tokens::CurrencyId,
-	tranches::TrancheInput,
 };
 use frame_support::{
 	dispatch::{
@@ -28,6 +26,7 @@ use frame_support::{
 	traits::{Hooks, SortedMembers},
 };
 use frame_system::EnsureSigned;
+use pallet_pool_system::{pool_types::PoolChanges, tranches::TrancheInput};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,

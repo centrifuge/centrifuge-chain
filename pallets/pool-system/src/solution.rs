@@ -10,13 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::tranches::{calculate_risk_buffers, EpochExecutionTranches, TrancheSolution};
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
 use sp_std::vec;
 
 use super::*;
+use crate::tranches::{calculate_risk_buffers, EpochExecutionTranches, TrancheSolution};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum PoolState {

@@ -17,14 +17,8 @@
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
 use cfg_types::{
-	epoch::ScheduledUpdateDetails,
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
-	pools::{PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator},
-	tranches::{
-		EpochExecutionTranche, EpochExecutionTranches, Tranche, TrancheSolution, TrancheType,
-		TrancheUpdate, Tranches,
-	},
 };
 use codec::HasCompact;
 use frame_support::{
@@ -44,6 +38,9 @@ use orml_traits::{
 };
 pub use pallet::*;
 use polkadot_parachain::primitives::Id as ParachainId;
+use pool_types::{
+	PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator, ScheduledUpdateDetails,
+};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -56,6 +53,10 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
+use tranches::{
+	EpochExecutionTranche, EpochExecutionTranches, Tranche, TrancheSolution, TrancheType,
+	TrancheUpdate, Tranches,
+};
 pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -64,9 +65,11 @@ mod impls;
 
 #[cfg(test)]
 mod mock;
+pub mod pool_types;
 mod solution;
 #[cfg(test)]
 mod tests;
+pub mod tranches;
 pub mod weights;
 
 /// Types alias for EpochExecutionTranche
