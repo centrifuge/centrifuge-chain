@@ -1,6 +1,6 @@
 # Based from https://github.com/paritytech/substrate/blob/master/.maintain/Dockerfile
 
-FROM phusion/baseimage:focal-1.0.0 as builder
+FROM phusion/baseimage:focal-1.2.0 as builder
 LABEL maintainer="Centrifuge Team"
 LABEL description="This is the build stage for the Centrifuge Chain client. Here the binary is created."
 
@@ -26,7 +26,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 
 # ===== SECOND STAGE ======
 
-FROM phusion/baseimage:focal-1.0.0
+FROM phusion/baseimage:focal-1.2.0
 LABEL maintainer="Centrifuge Team"
 LABEL description="This is the 2nd stage: a very small image that contains the centrifuge-chain binary and will be used by users."
 ARG PROFILE=release

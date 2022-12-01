@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [main, 'release-v**']
+    branches: [main, 'release-v**', 'fix-docker-build']
   workflow_dispatch:
     inputs:
       docker_tag:
