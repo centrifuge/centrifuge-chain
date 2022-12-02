@@ -6,7 +6,7 @@ use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-use super::{History, MoveCurrencyError, RewardMechanism};
+use super::{MoveCurrencyError, RewardMechanism};
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
@@ -15,8 +15,8 @@ pub struct Group<Balance, Rate> {
 	pub rpt: Rate,
 }
 
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default, Clone)]
-#[cfg_attr(test, derive(PartialEq))]
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Account<Balance, IBalance> {
 	pub stake: Balance,
 	pub reward_tally: IBalance,
@@ -97,23 +97,18 @@ where
 	type Account = Account<Self::Balance, IBalance>;
 	type Balance = Balance;
 	type Currency = Currency<Balance, Rate, MaxCurrencyMovements>;
-	type DistributionId = u32;
 	type Group = Group<Balance, Rate>;
-	type HistoryValue = ();
+	type InitialGroup = GetDefault;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 
-	fn reward_group<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
-		group: &mut Self::Group,
-		amount: Self::Balance,
-		_distribution_id: Self::DistributionId,
-	) -> Result<(), ArithmeticError> {
+	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
 		let rate = Rate::ensure_from_rational(amount, group.total_stake)?;
 		group.rpt.ensure_add_assign(rate)?;
 
 		Ok(())
 	}
 
-	fn deposit_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn deposit_stake(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -132,7 +127,7 @@ where
 		Ok(())
 	}
 
-	fn withdraw_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn withdraw_stake(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -151,7 +146,7 @@ where
 		Ok(())
 	}
 
-	fn compute_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn compute_reward(
 		account: &Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
@@ -162,12 +157,12 @@ where
 			.ensure_into()
 	}
 
-	fn claim_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn claim_reward(
 		account: &mut Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
-		let reward = Self::compute_reward::<H>(account, currency, group)?;
+		let reward = Self::compute_reward(account, currency, group)?;
 
 		account.reward_tally = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
 		account.last_currency_movement = currency

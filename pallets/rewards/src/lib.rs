@@ -65,10 +65,7 @@ mod tests;
 
 pub mod mechanism;
 
-use cfg_traits::{
-	ops::ensure::EnsureAddAssign,
-	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
-};
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
 use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
@@ -78,21 +75,16 @@ use frame_support::{
 	},
 	PalletId,
 };
-use mechanism::{History, MoveCurrencyError, RewardMechanism};
+use mechanism::{MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
-use sp_runtime::{
-	traits::{AccountIdConversion, One},
-	TokenError,
-};
+use sp_runtime::{traits::AccountIdConversion, TokenError};
 use sp_std::fmt::Debug;
 
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
 type RewardAccountOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Account;
-type RewardHistoryValueOf<T, I> =
-	<<T as Config<I>>::RewardMechanism as RewardMechanism>::HistoryValue;
-type DistributionIdOf<T, I> =
-	<<T as Config<I>>::RewardMechanism as RewardMechanism>::DistributionId;
+type RewardInitialGroupOf<T, I> =
+	<<T as Config<I>>::RewardMechanism as RewardMechanism>::InitialGroup;
 type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Balance;
 
 #[frame_support::pallet]
@@ -154,7 +146,14 @@ pub mod pallet {
 	pub(super) type Groups<T: Config<I>, I: 'static = ()>
 	where
 		RewardGroupOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
-	= StorageMap<_, Blake2_128Concat, T::GroupId, RewardGroupOf<T, I>, ValueQuery>;
+	= StorageMap<
+		_,
+		Blake2_128Concat,
+		T::GroupId,
+		RewardGroupOf<T, I>,
+		ValueQuery,
+		//RewardInitialGroupOf<T, I>,
+	>;
 
 	#[pallet::storage]
 	pub(super) type StakeAccounts<T: Config<I>, I: 'static = ()>
@@ -169,18 +168,6 @@ pub mod pallet {
 		RewardAccountOf<T, I>,
 		ValueQuery,
 	>;
-
-	#[pallet::storage]
-	pub(super) type DistributionHistory<T: Config<I>, I: 'static = ()>
-	where
-		RewardHistoryValueOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
-	= StorageMap<_, Blake2_128Concat, DistributionIdOf<T, I>, RewardHistoryValueOf<T, I>>;
-
-	#[pallet::storage]
-	pub(super) type LastDistributionId<T: Config<I>, I: 'static = ()>
-	where
-		DistributionIdOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
-	= StorageValue<_, DistributionIdOf<T, I>, ValueQuery>;
 
 	// --------------------------
 
@@ -235,34 +222,26 @@ pub mod pallet {
 	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
 		RewardGroupOf<T, I>: FullCodec + Default,
-		RewardHistoryValueOf<T, I>: FullCodec,
-		DistributionIdOf<T, I>: FullCodec + Default + EnsureAddAssign + One,
 	{
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
 
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
-			LastDistributionId::<T, I>::try_mutate(|distribution_id| {
-				Groups::<T, I>::try_mutate(group_id, |group| {
-					T::RewardMechanism::reward_group::<DistributionHistory<T, I>>(
-						group,
-						reward,
-						*distribution_id.ensure_add_assign(One::one())?,
-					)?;
+			Groups::<T, I>::try_mutate(group_id, |group| {
+				T::RewardMechanism::reward_group(group, reward)?;
 
-					T::Currency::mint_into(
-						T::RewardCurrency::get(),
-						&T::PalletId::get().into_account_truncating(),
-						reward,
-					)?;
+				T::Currency::mint_into(
+					T::RewardCurrency::get(),
+					&T::PalletId::get().into_account_truncating(),
+					reward,
+				)?;
 
-					Self::deposit_event(Event::GroupRewarded {
-						group_id,
-						amount: reward,
-					});
+				Self::deposit_event(Event::GroupRewarded {
+					group_id,
+					amount: reward,
+				});
 
-					Ok(())
-				})
+				Ok(())
 			})
 		}
 
@@ -277,8 +256,6 @@ pub mod pallet {
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardAccountOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
-		RewardHistoryValueOf<T, I>: FullCodec,
-		DistributionIdOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
 		type CurrencyId = (T::DomainId, T::CurrencyId);
@@ -297,9 +274,7 @@ pub mod pallet {
 							Err(TokenError::NoFunds)?;
 						}
 
-						T::RewardMechanism::deposit_stake::<DistributionHistory<T, I>>(
-							account, currency, group, amount,
-						)?;
+						T::RewardMechanism::deposit_stake(account, currency, group, amount)?;
 
 						T::Currency::hold(currency_id.1, account_id, amount)?;
 
@@ -331,9 +306,7 @@ pub mod pallet {
 							Err(TokenError::NoFunds)?;
 						}
 
-						T::RewardMechanism::withdraw_stake::<DistributionHistory<T, I>>(
-							account, currency, group, amount,
-						)?;
+						T::RewardMechanism::withdraw_stake(account, currency, group, amount)?;
 
 						T::Currency::release(currency_id.1, account_id, amount, false)?;
 
@@ -361,9 +334,7 @@ pub mod pallet {
 			let group = Groups::<T, I>::get(group_id);
 			let account = StakeAccounts::<T, I>::get(account_id, currency_id);
 
-			let reward = T::RewardMechanism::compute_reward::<DistributionHistory<T, I>>(
-				&account, &currency, &group,
-			)?;
+			let reward = T::RewardMechanism::compute_reward(&account, &currency, &group)?;
 
 			Ok(reward)
 		}
@@ -377,9 +348,7 @@ pub mod pallet {
 
 			let group = Groups::<T, I>::get(group_id);
 			StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
-				let reward = T::RewardMechanism::claim_reward::<DistributionHistory<T, I>>(
-					account, &currency, &group,
-				)?;
+				let reward = T::RewardMechanism::claim_reward(account, &currency, &group)?;
 
 				T::Currency::transfer(
 					T::RewardCurrency::get(),

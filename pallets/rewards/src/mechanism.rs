@@ -4,41 +4,19 @@ use sp_runtime::{traits::Get, ArithmeticError};
 pub mod base;
 pub mod deferred;
 
-pub trait History<K> {
-	type Value;
-
-	fn get(distribution_id: K) -> Option<Self::Value>;
-	fn insert(distribution_id: K, value: Self::Value);
-}
-
-impl<K> History<K> for () {
-	type Value = ();
-
-	fn get(_: K) -> Option<Self::Value> {
-		Some(())
-	}
-
-	fn insert(_: K, _: Self::Value) {}
-}
-
 pub trait RewardMechanism {
 	type Group;
 	type Account;
 	type Currency;
 	type Balance: Balance;
-	type DistributionId: PartialEq + Copy;
 	type MaxCurrencyMovements: Get<u32>;
-	type HistoryValue;
+	type InitialGroup: Get<Self::Group>;
 
 	/// Reward the group mutating the group entity.
-	fn reward_group<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
-		group: &mut Self::Group,
-		amount: Self::Balance,
-		distribution_id: Self::DistributionId,
-	) -> Result<(), ArithmeticError>;
+	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError>;
 
 	/// Add stake to the account and mutates currency and group to archieve that.
-	fn deposit_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn deposit_stake(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -46,7 +24,7 @@ pub trait RewardMechanism {
 	) -> Result<(), ArithmeticError>;
 
 	/// Remove stake from the account and mutates currency and group to archieve that.
-	fn withdraw_stake<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn withdraw_stake(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
@@ -54,7 +32,7 @@ pub trait RewardMechanism {
 	) -> Result<(), ArithmeticError>;
 
 	/// Computes the reward for the account
-	fn compute_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn compute_reward(
 		account: &Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
@@ -62,7 +40,7 @@ pub trait RewardMechanism {
 
 	/// Claims the reward, mutating the account to reflect this action.
 	/// Once a reward is claimed, next calls will return 0 until the group will be rewarded again.
-	fn claim_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
+	fn claim_reward(
 		account: &mut Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
