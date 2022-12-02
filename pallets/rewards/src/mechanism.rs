@@ -3,6 +3,7 @@ use sp_runtime::{traits::Get, ArithmeticError};
 
 pub mod base;
 pub mod deferred;
+pub mod gap;
 
 pub trait RewardMechanism {
 	type Group;

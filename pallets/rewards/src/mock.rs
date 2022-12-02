@@ -11,7 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{base, deferred};
+use super::mechanism::{base, deferred, gap};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -32,7 +32,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens,
 		Rewards1: pallet_rewards::<Instance1>,
 		Rewards2: pallet_rewards::<Instance2>,
-		DeferredMechanism: deferred,
+		GapMechanism: gap,
 	}
 );
 
@@ -117,7 +117,7 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 3;
 }
 
-impl deferred::Config for Runtime {
+impl gap::Config for Runtime {
 	type Balance = u64;
 	type DistributionId = u32;
 	type IBalance = i64;
@@ -141,7 +141,7 @@ macro_rules! pallet_rewards_config {
 }
 
 pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
-pallet_rewards_config!(Instance2, deferred::Pallet<Runtime>);
+pallet_rewards_config!(Instance2, gap::Pallet<Runtime>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
