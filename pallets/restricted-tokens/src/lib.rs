@@ -74,7 +74,6 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::FixedPointOperand;
-	use sp_std::cmp::max;
 
 	use super::*;
 	use crate::{
@@ -244,7 +243,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(max(T::WeightInfo::transfer_native(), T::WeightInfo::transfer_other()))]
+		#[pallet::weight(T::WeightInfo::transfer_native().max(T::WeightInfo::transfer_other()))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -295,9 +294,9 @@ pub mod pallet {
 			}
 		}
 
-		#[pallet::weight(max(
-			T::WeightInfo::transfer_keep_alive_native(),
-			T::WeightInfo::transfer_keep_alive_other(),
+		#[pallet::weight(
+			T::WeightInfo::transfer_keep_alive_native().max(
+			T::WeightInfo::transfer_keep_alive_other()
 		))]
 		pub fn transfer_keep_alive(
 			origin: OriginFor<T>,
@@ -349,10 +348,10 @@ pub mod pallet {
 			}
 		}
 
-		#[pallet::weight(max(
-			T::WeightInfo::transfer_all_native(),
-			T::WeightInfo::transfer_all_other(),
-		))]
+		#[pallet::weight(
+			T::WeightInfo::transfer_all_native().max(
+			T::WeightInfo::transfer_all_other())
+		)]
 		pub fn transfer_all(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -418,10 +417,10 @@ pub mod pallet {
 			}
 		}
 
-		#[pallet::weight(max(
-			T::WeightInfo::force_transfer_native(),
-			T::WeightInfo::force_transfer_other(),
-		))]
+		#[pallet::weight(
+			    T::WeightInfo::force_transfer_native().max(
+			    T::WeightInfo::force_transfer_other())
+		  )]
 		pub fn force_transfer(
 			origin: OriginFor<T>,
 			source: <T::Lookup as StaticLookup>::Source,
@@ -464,10 +463,10 @@ pub mod pallet {
 			}
 		}
 
-		#[pallet::weight(max(
-			T::WeightInfo::set_balance_native(),
-			T::WeightInfo::set_balance_other(),
-		))]
+		#[pallet::weight(
+			    T::WeightInfo::set_balance_native().max(
+			    T::WeightInfo::set_balance_other())
+		  )]
 		pub fn set_balance(
 			origin: OriginFor<T>,
 			who: <T::Lookup as StaticLookup>::Source,
