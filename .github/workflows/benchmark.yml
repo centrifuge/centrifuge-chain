@@ -31,7 +31,7 @@ jobs:
         with:
           result-encoding: string
           script: |
-            console.log("Comment body:", context.payload.comment.body)
+            console.log("Comment body", context.payload.comment.body)
             const [, , runtime] = context.payload.comment.body.split(/\W+/)
             if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
             return `${runtime}`
