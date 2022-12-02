@@ -12,11 +12,11 @@ use super::{History, MoveCurrencyError, RewardMechanism};
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Group<Balance, Rate> {
 	pub total_stake: Balance,
-	rpt: Rate,
+	pub rpt: Rate,
 }
 
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Account<Balance, IBalance> {
 	pub stake: Balance,
 	pub reward_tally: IBalance,

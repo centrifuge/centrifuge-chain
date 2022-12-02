@@ -11,13 +11,14 @@ use super::{base, History, MoveCurrencyError, RewardMechanism};
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Group<Balance, Rate, DistributionId> {
 	base: base::Group<Balance, Rate>,
+	prev_total_stake: Balance,
 	distribution_id: DistributionId,
 	last_rate: Rate,
-	lost_reward: Balance,
+	lost_rewarded_stake: Balance,
 }
 
 impl<Balance, Rate, DistributionId> Group<Balance, Rate, DistributionId> {
-	fn get_last_rate<MaxMovements>(
+	fn correct_last_rate<MaxMovements>(
 		&self,
 		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
 	) -> Rate
@@ -46,36 +47,42 @@ impl<Balance, IBalance, DistributionId> Account<Balance, IBalance, DistributionI
 where
 	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<IBalance> + Copy + Ord,
 	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
-	DistributionId: Copy + PartialEq,
+	DistributionId: Copy + PartialEq + sp_std::fmt::Debug,
 {
-	fn get_rewarded_stake(
+	fn reward_tally_correction<
+		Rate: FixedPointNumber,
+		MaxMovements: Get<u32>,
+		H: History<DistributionId, Value = Rate>,
+	>(
 		&self,
-		group_distribution_id: DistributionId,
-		prev_distribution_id: DistributionId,
-		next_distribution_id: DistributionId,
+		group: &Group<Balance, Rate, DistributionId>,
+		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
+	) -> Result<Balance, ArithmeticError> {
+		if self.distribution_id != group.distribution_id
+			&& (self.distribution_id != currency.prev_distribution_id
+				|| group.distribution_id != currency.next_distribution_id)
+		{
+			let delta_stake = self.base.stake.ensure_sub(self.rewarded_stake)?;
+			let correct_rpt = H::get(self.distribution_id).unwrap();
+			Ok(correct_rpt.ensure_mul_int(delta_stake)?)
+		} else {
+			Ok(Zero::zero())
+		}
+	}
+
+	fn rewarded_stake_updated<Rate: FixedPointNumber, MaxMovements: Get<u32>>(
+		&self,
+		group: &Group<Balance, Rate, DistributionId>,
+		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
 	) -> Balance {
-		if self.distribution_id != group_distribution_id
-			&& (self.distribution_id != prev_distribution_id
-				|| group_distribution_id != next_distribution_id)
+		if self.distribution_id != group.distribution_id
+			&& (self.distribution_id != currency.prev_distribution_id
+				|| group.distribution_id != currency.next_distribution_id)
 		{
 			self.base.stake
 		} else {
 			self.rewarded_stake
 		}
-	}
-
-	fn safe_rewarded_stake(
-		&mut self,
-		group_distribution_id: DistributionId,
-		prev_distribution_id: DistributionId,
-		next_distribution_id: DistributionId,
-	) {
-		self.rewarded_stake = self.get_rewarded_stake(
-			group_distribution_id,
-			prev_distribution_id,
-			next_distribution_id,
-		);
-		self.distribution_id = group_distribution_id;
 	}
 
 	fn last_rewarded_stake<Rate: FixedPointNumber, MaxMovements>(
@@ -87,12 +94,32 @@ where
 		MaxMovements: Get<u32>,
 	{
 		group
-			.get_last_rate(currency)
-			.ensure_mul_int(self.get_rewarded_stake(
-				group.distribution_id,
-				currency.prev_distribution_id,
-				currency.next_distribution_id,
-			))
+			.correct_last_rate(currency)
+			.ensure_mul_int(self.rewarded_stake_updated(group, currency))
+	}
+
+	fn update<
+		Rate: FixedPointNumber,
+		MaxMovements: Get<u32>,
+		H: History<DistributionId, Value = Rate>,
+	>(
+		&mut self,
+		group: &Group<Balance, Rate, DistributionId>,
+		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
+	) -> Result<(), ArithmeticError> {
+		let reward_tally_correction = self
+			.reward_tally_correction::<_, _, H>(group, currency)?
+			.ensure_into()?;
+
+		let rewarded_stake = self.rewarded_stake_updated(group, currency);
+
+		self.base
+			.reward_tally
+			.ensure_add_assign(reward_tally_correction)?;
+		self.rewarded_stake = rewarded_stake;
+		self.distribution_id = group.distribution_id;
+
+		Ok(())
 	}
 }
 
@@ -155,17 +182,34 @@ where
 		amount: Self::Balance,
 		distribution_id: Self::DistributionId,
 	) -> Result<(), ArithmeticError> {
-		let reward = amount.ensure_add(group.lost_reward)?;
+		let mut rpt_correction = Rate::zero();
+		if group
+			.prev_total_stake
+			.ensure_sub(group.lost_rewarded_stake)?
+			> Balance::zero()
+		{
+			rpt_correction = Rate::ensure_from_rational(
+				group.last_rate.ensure_mul_int(group.lost_rewarded_stake)?,
+				group
+					.prev_total_stake
+					.ensure_sub(group.lost_rewarded_stake)?,
+			)?;
+		}
+
+		H::insert(group.distribution_id, rpt_correction);
+
+		group.base.rpt.ensure_add_assign(rpt_correction)?;
 
 		base::Mechanism::<Balance, IBalance, Rate, MaxCurrencyMovements>::reward_group::<()>(
 			&mut group.base,
-			reward,
+			amount,
 			0,
 		)?;
 
-		group.lost_reward = Balance::zero();
-		group.last_rate = Rate::ensure_from_rational(reward, group.base.total_stake)?;
+		group.last_rate = Rate::ensure_from_rational(amount, group.base.total_stake)?;
 		group.distribution_id = distribution_id;
+		group.lost_rewarded_stake = Balance::zero();
+		group.prev_total_stake = group.base.total_stake;
 
 		Ok(())
 	}
@@ -176,11 +220,7 @@ where
 		group: &mut Self::Group,
 		amount: Self::Balance,
 	) -> Result<(), ArithmeticError> {
-		account.safe_rewarded_stake(
-			group.distribution_id,
-			currency.prev_distribution_id,
-			currency.next_distribution_id,
-		);
+		account.update::<_, _, H>(group, currency)?;
 
 		base::Mechanism::deposit_stake::<()>(
 			&mut account.base,
@@ -196,11 +236,7 @@ where
 		group: &mut Self::Group,
 		amount: Self::Balance,
 	) -> Result<(), ArithmeticError> {
-		account.safe_rewarded_stake(
-			group.distribution_id,
-			currency.prev_distribution_id,
-			currency.next_distribution_id,
-		);
+		account.update::<_, _, H>(group, currency)?;
 
 		let rewarded_amount = {
 			let unrewarded_stake = account.base.stake.saturating_sub(account.rewarded_stake);
@@ -216,7 +252,7 @@ where
 		)?;
 
 		let lost_reward = group
-			.get_last_rate(currency)
+			.correct_last_rate(currency)
 			.ensure_mul_int(rewarded_amount)?;
 
 		account.rewarded_stake.ensure_sub_assign(rewarded_amount)?;
@@ -225,7 +261,9 @@ where
 			.reward_tally
 			.ensure_add_assign(lost_reward.ensure_into()?)?;
 
-		group.lost_reward.ensure_add_assign(lost_reward)?;
+		group
+			.lost_rewarded_stake
+			.ensure_add_assign(rewarded_amount)?;
 
 		Ok(())
 	}
@@ -236,7 +274,8 @@ where
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
 		base::Mechanism::compute_reward::<()>(&account.base, &currency.base, &group.base)?
-			.ensure_sub(account.last_rewarded_stake(group, currency)?)
+			.ensure_sub(account.last_rewarded_stake(group, currency)?)?
+			.ensure_add(account.reward_tally_correction::<_, _, H>(group, currency)?)
 	}
 
 	fn claim_reward<H: History<Self::DistributionId, Value = Self::HistoryValue>>(
@@ -245,6 +284,7 @@ where
 		group: &Self::Group,
 	) -> Result<Self::Balance, ArithmeticError> {
 		let last_rewarded_stake = account.last_rewarded_stake(group, currency)?;
+		let tally_correction = account.reward_tally_correction::<_, _, H>(group, currency)?;
 
 		let reward =
 			base::Mechanism::claim_reward::<()>(&mut account.base, &currency.base, &group.base)?
@@ -253,7 +293,8 @@ where
 		account
 			.base
 			.reward_tally
-			.ensure_sub_assign(last_rewarded_stake.ensure_into()?)?;
+			.ensure_sub_assign(last_rewarded_stake.ensure_into()?)?
+			.ensure_add_assign(tally_correction.ensure_into()?)?;
 
 		Ok(reward)
 	}

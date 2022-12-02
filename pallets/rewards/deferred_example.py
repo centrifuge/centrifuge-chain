@@ -2,11 +2,16 @@ class DeferredPullBasedDistribution:
     "Constant Time Deferred Reward Distribution with Changing Stake Sizes and Deferred Reward"
 
     def __init__(self):
+        # Per Group
         self.total_stake = 0
+        self.prev_total_stake = 0
         self.reward_per_token = 0
         self.last_rate = 0
-        self.lost_reward = 0
+        self.lost_rewarded_stake = 0
         self.current_distribution_id = 0
+        self.rpt_history = {}
+
+        # Per Account
         self.stake = {0x1: 0, 0x2: 0}
         self.reward_tally = {0x1: 0, 0x2: 0}
         self.rewarded_stake = {0x1: 0, 0x2: 0}
@@ -15,18 +20,27 @@ class DeferredPullBasedDistribution:
     def __update_rewarded_stake(self, address):
         "Ensure the `rewarded_stake` contains the last rewarded stake"
         if self.distribution_id[address] != self.current_distribution_id:
-            self.distribution_id[address] = self.current_distribution_id
+            delta_stake = self.stake[address] - self.rewarded_stake[address]
+            self.reward_tally[address] += delta_stake * self.rpt_history[self.distribution_id[address]]
             self.rewarded_stake[address] = self.stake[address]
+            self.distribution_id[address] = self.current_distribution_id
 
     def distribute(self, reward):
         "Distribute `reward` proportionally to active stakes"
         if self.total_stake == 0:
             raise Exception("Cannot distribute to staking pool with 0 stake")
 
-        self.last_rate = (reward + self.lost_reward) / self.total_stake
-        self.reward_per_token += self.last_rate
-        self.lost_reward = 0
-        self.current_distribution_id += 1;
+        correction = 0
+        if self.prev_total_stake - self.lost_rewarded_stake > 0:
+            correction = self.lost_rewarded_stake * self.last_rate / (self.prev_total_stake - self.lost_rewarded_stake)
+
+        self.rpt_history[self.current_distribution_id] = correction
+        self.reward_per_token += reward / self.total_stake + correction
+        self.last_rate = reward / self.total_stake
+
+        self.lost_rewarded_stake = 0
+        self.current_distribution_id += 1
+        self.prev_total_stake = self.total_stake
 
     def deposit_stake(self, address, amount):
         "Increase the stake of `address` by `amount`"
@@ -53,16 +67,19 @@ class DeferredPullBasedDistribution:
         self.total_stake -= amount
 
         self.rewarded_stake[address] -= rewarded_amount
-        self.lost_reward += lost_reward
+        self.lost_rewarded_stake += rewarded_amount
 
     def compute_reward(self, address):
         "Compute reward of `address`. Inmutable"
+        previous_tally = self.reward_tally[address]
         previous_stake = self.rewarded_stake[address]
         if self.distribution_id[address] != self.current_distribution_id:
+            delta_stake = self.stake[address] - self.rewarded_stake[address]
+            previous_tally = self.reward_tally[address] + delta_stake * self.rpt_history[self.distribution_id[address]]
             previous_stake = self.stake[address]
 
         return (self.stake[address] * self.reward_per_token
-                - self.reward_tally[address]
+                - previous_tally
                 - previous_stake * self.last_rate)
 
     def withdraw_reward(self, address):
@@ -83,6 +100,7 @@ contract.deposit_stake(addr2, 50)
 contract.distribute(10)
 
 contract.withdraw_stake(addr1, 100)
+contract.deposit_stake(addr1, 50)
 
 contract.distribute(10)
 
