@@ -3,29 +3,10 @@ on:
   issue_comment:
     types: [created]
 jobs:
-  validate-comment:
-    name: Validate Comment
-    runs-on: ubuntu-latest-4-cores
-    outputs:
-      result: ${{ steps.validate.outputs.result }}
-    steps:
-    - name: validate
-      id: validate
-      uses: actions/github-script@v6
-      with:
-        result-encoding: string
-        script: |
-          console.log("comment body x", context.payload.comment.body)
-          console.log("comment author role", context.payload.comment.author_association)
-          console.log("Is Pull Request", context.payload.issue.pull_request)
-          if (context.payload.comment.body.includes('/benchmark ') && context.payload.issue.pull_request && context.payload.comment.author_association.includes('CONTRIBUTOR')) {
-            return 'valid'
-          }
   benchmark:
     name: benchmark
     runs-on: ubuntu-latest-4-cores
-    needs: 'validate-comment'
-    if: ${{ needs.validate-comment.outputs.result == 'valid' }}
+    if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
@@ -50,9 +31,9 @@ jobs:
         with:
           result-encoding: string
           script: |
-            console.log("test1", context.payload.comment.body)
-            const [, , , runtime] = context.payload.comment.body.split(/\W+/)
-            if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime')
+            console.log("Comment body", context.payload.comment.body)
+            const [, , runtime] = context.payload.comment.body.split(/\W+/)
+            if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
             return `${runtime}`
       - name: Run Benchmark centrifuge
         run: ./ci/script.sh
