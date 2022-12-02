@@ -40,10 +40,10 @@ runtime-common = { path = "../../runtime/common", default-features = false }
 # Polkadot
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.29" }
 
-pallet-ethereum = { git = "https://github.com/NunoAlexandre/frontier", branch = "unfork-v0.9.29", default-features = false }
-pallet-ethereum-xcm = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, branch = "unfork-v0.9.29" }
-pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, branch = "unfork-v0.9.29" }
-xcm-primitives = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, branch = "unfork-v0.9.29" }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.29" }
+pallet-ethereum-xcm = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "52536ac32dd51cdd35d737fa83d6209bb0fcb3d4" }
+pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "52536ac32dd51cdd35d737fa83d6209bb0fcb3d4" }
+xcm-primitives = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "52536ac32dd51cdd35d737fa83d6209bb0fcb3d4" }
 
 [dev-dependencies]
 hex = "0.4.3"
