@@ -10,6 +10,28 @@ jobs:
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
+      - uses: actions/github-script@v6
+        name: Parse Runtime From Comment
+        id: parse-runtime
+        with:
+          result-encoding: string
+          script: |
+            console.log("Comment body", context.payload.comment.body)
+            const [, , runtime] = context.payload.comment.body.split(/\W+/)
+            if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
+            return `${runtime}`
+      - uses: actions/github-script@v6
+        name: Acknowledge Run Comment
+        id: ack-run-comment
+        with:
+          script: |
+            const comment = await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\``
+            })
+            return comment.data.id
       - name: Free space on Ubuntu
         run: |
           echo "Pre cleanup"
@@ -25,29 +47,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      - uses: actions/github-script@v6
-        name: Parse Runtime From Comment
-        id: parse-runtime
-        with:
-          result-encoding: string
-          script: |
-            console.log("Comment body:", context.payload.comment.body)
-            const [, , runtime] = context.payload.comment.body.split(/\W+/)
-            if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
-            return `${runtime}`
-      - uses: actions/github-script@v6
-        name: Acknowledge Run Comment
-        id: ack-run-comment
-        with:
-          script: |
-            const comment = await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `Running Benchmarks for \`${steps.parse-runtime.outputs.result}\``
-            })
-            return comment.data.id
-      - name: Run Benchmark centrifuge
+      - name: Run Benchmark ${{steps.parse-runtime.outputs.result}}
         run: ./ci/script.sh
         env:
           TARGET: benchmark
@@ -61,12 +61,26 @@ jobs:
         name: Notify Benchmark finished
         with:
           script: |
+            var artifactsResponse = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: context.runId
+            });
+            let artifactUrl = ''
+            for (var i = 0; i < artifactsResponse.total_count; i++) {
+              console.log(artifactsResponse.artifacts[i])
+              if (artifactsResponse.artifacts[i].name == '${{steps.parse-runtime.outputs.result}}-weights') {
+                artifactUrl = artifactsResponse.artifacts[i].archive_download_url
+              }
+            }
+            const id = `${{steps.ack-run-comment.outputs.result}}`
             await github.rest.issues.updateComment({
-              comment_id: steps.ack-run-comment.outputs.result,
+              comment_id: id,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `
-              Uploaded benchmarks for: \`${steps.parse-runtime.outputs.result}\`
-              Find the artifact here: https://github.com/centrifuge/centrifuge-chain/actions/runs/${context.runId}
+              Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\`
+              Find the artifact here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+              Download the artifact here (Using the Github API): ${artifactUrl}
               `
             })
