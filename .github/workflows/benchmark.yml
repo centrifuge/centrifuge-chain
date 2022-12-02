@@ -64,17 +64,15 @@ jobs:
             var artifactsResponse = await github.rest.actions.listWorkflowRunArtifacts({
                owner: context.repo.owner,
                repo: context.repo.repo,
-               run_id: ${{github.event.workflow_run.id }},
+               run_id: context.runId
             });
-            
-            let artifactUrl = '';
+            let artifactUrl = ''
             for (var i = 0; i < artifactsResponse.total_count; i++) {
-              console.log(artifactsResponse.artifacts[i]);
+              console.log(artifactsResponse.artifacts[i])
               if (artifactsResponse.artifacts[i].name == '${{steps.parse-runtime.outputs.result}}-weights') {
                 artifactUrl = artifactsResponse.artifacts[i].archive_download_url
               }
             }
-            
             const id = `${{steps.ack-run-comment.outputs.result}}`
             await github.rest.issues.updateComment({
               comment_id: id,
