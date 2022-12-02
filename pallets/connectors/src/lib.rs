@@ -98,6 +98,10 @@ pub type MessageOf<T> =
 
 pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 
+type OriginOf<T> = <T as frame_system::Config>::Origin;
+
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
@@ -137,12 +141,12 @@ pub mod pallet {
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
 		/// The origin allowed to make admin-like changes, such calling `set_domain_router`.
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		type AdminOrigin: EnsureOrigin<OriginOf<Self>>;
 
-		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
+		type PoolInspect: PoolInspect<AccountIdOf<Self>, CurrencyIdOf<Self>, Rate = Self::Rate>;
 
 		type Permission: Permissions<
-			Self::AccountId,
+			AccountIdOf<Self>,
 			Scope = PermissionScope<PoolIdOf<Self>, CurrencyIdOf<Self>>,
 			Role = Role<TrancheIdOf<Self>, Moment>,
 			Error = DispatchError,
@@ -150,12 +154,12 @@ pub mod pallet {
 
 		type Time: UnixTime;
 
-		type Tokens: Mutate<Self::AccountId>
+		type Tokens: Mutate<AccountIdOf<Self>>
 			+ Inspect<
-				Self::AccountId,
+				AccountIdOf<Self>,
 				AssetId = CurrencyIdOf<Self>,
 				Balance = <Self as pallet::Config>::Balance,
-			> + Transfer<Self::AccountId>;
+			> + Transfer<AccountIdOf<Self>>;
 
 		type TrancheCurrency: TrancheCurrency<PoolIdOf<Self>, TrancheIdOf<Self>>
 			+ Into<CurrencyIdOf<Self>>;
@@ -409,7 +413,7 @@ pub mod pallet {
 
 		/// Send the `message` to the given domain.
 		pub fn do_send_message(
-			fee_payer: T::AccountId,
+			fee_payer: AccountIdOf<T>,
 			message: MessageOf<T>,
 			domain: Domain,
 		) -> DispatchResult {
@@ -421,7 +425,7 @@ pub mod pallet {
 				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
 
 			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
-				T::Origin::root(),
+				OriginOf::<T>::root(),
 				// The destination to which the message should be sent
 				Box::new(xcm_domain.location),
 				fee_payer,
