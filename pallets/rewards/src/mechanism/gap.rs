@@ -108,6 +108,7 @@ pub struct Currency<Balance, Rate, DistributionId, MaxMovements: Get<u32>> {
 	rpt_changes: BoundedVec<Rate, MaxMovements>,
 	prev_distribution_id: DistributionId,
 	next_distribution_id: DistributionId,
+	distribution_id: DistributionId,
 }
 
 impl<Balance, Rate, DistributionId, MaxMovements> Default
