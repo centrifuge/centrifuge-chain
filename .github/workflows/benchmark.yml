@@ -5,7 +5,7 @@ on:
 jobs:
   benchmark:
     name: benchmark
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
