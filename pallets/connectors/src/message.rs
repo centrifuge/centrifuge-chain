@@ -3,6 +3,17 @@ use sp_std::{vec, vec::Vec};
 
 use crate::*;
 
+/// Address type
+/// Note: It can be used to represent any address type with a length <= 32 bytes;
+/// For example, it can represent an Ethereum address (20-bytes long) by padding it with 12 zeros.
+type Address = [u8; 32];
+
+/// The fixed size for the array representing a tranche token name
+pub const TOKEN_NAME_SIZE: usize = 128;
+
+// The fixed size for the array representing a tranche token symbol
+pub const TOKEN_SYMBOL_SIZE: usize = 32;
+
 #[derive(Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
@@ -20,8 +31,8 @@ where
 	AddTranche {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		token_name: [u8; 32],
-		token_symbol: [u8; 32],
+		token_name: [u8; TOKEN_NAME_SIZE],
+		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 	},
 	UpdateTokenPrice {
 		pool_id: PoolId,
@@ -31,14 +42,14 @@ where
 	UpdateMember {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: [u8; 32],
+		address: Address,
 		valid_until: Moment,
 	},
 	Transfer {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		domain: Domain,
-		destination: [u8; 32],
+		destination: Address,
 		amount: Balance,
 	},
 }
@@ -172,6 +183,7 @@ impl<
 
 #[cfg(test)]
 mod tests {
+	use cfg_types::fixed_point::Rate;
 	use codec::Encode;
 	use hex::FromHex;
 	use sp_runtime::traits::One;
@@ -181,7 +193,6 @@ mod tests {
 	type PoolId = u64;
 	type TrancheId = [u8; 16];
 	type Balance = cfg_primitives::Balance;
-	type Rate = cfg_types::Rate;
 
 	const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
@@ -222,14 +233,20 @@ mod tests {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddTranche {
 				pool_id: 12378532,
 				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				token_name: [0; 32],
-				token_symbol: [0; 32],
+				token_name: [5; 128],
+				token_symbol: [6; 32],
 			};
-			let encoded = msg.encode();
+			let encoded_bytes = msg.encode();
 
-			let expected_hex = "020000000000bce1a40000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-			let expected = <[u8; 89]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			// We encode the encoded bytes as hex to verify it's what we expect
+			let encoded_hex = hex::encode(encoded_bytes.clone());
+			let expected_hex = "020000000000bce1a40000000000000000000000000000000105050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050606060606060606060606060606060606060606060606060606060606060606";
+			assert_eq!(expected_hex, encoded_hex);
+
+			// Now decode the bytes encoded as hex back to bytes and verify it's the same as
+			// the original `encoded_bytes`
+			let hex_as_bytes = hex::decode(encoded_hex).expect("Should go vec -> hex -> vec");
+			assert_eq!(hex_as_bytes, encoded_bytes);
 		}
 
 		#[test]

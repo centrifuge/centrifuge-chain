@@ -16,7 +16,12 @@ use std::ops::Add;
 pub use cfg_primitives::CFG as CURRENCY;
 use cfg_primitives::*;
 use cfg_traits::{OrderManager, PreConditions};
-use cfg_types::{CurrencyId, FulfillmentWithPrice, InvestmentAccount, Rate, TotalOrder};
+use cfg_types::{
+	fixed_point::Rate,
+	investments::InvestmentAccount,
+	orders::{FulfillmentWithPrice, TotalOrder},
+	tokens::CurrencyId,
+};
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResultWithPostInfo,

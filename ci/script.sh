@@ -5,7 +5,7 @@ set -eux
 RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-08-05}"
 SRTOOL_VERSION="${SRTOOL_VERSION:-1.64.0}"
 PACKAGE="${PACKAGE:-centrifuge-runtime}" # Need to replicate job for all runtimes
-
+RUNTIME="${RUNTIME:-centrifuge}"
 
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
@@ -49,4 +49,9 @@ case $TARGET in
 
   clippy)
     cargo clippy
+    ;;
+
+  benchmark)
+    ./scripts/runtime_benchmarks.sh $RUNTIME
+
 esac

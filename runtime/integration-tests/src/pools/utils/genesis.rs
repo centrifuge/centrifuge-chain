@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 //! Utilitites around populating a genesis storage
-use cfg_types::{CurrencyId, CustomMetadata};
+use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};

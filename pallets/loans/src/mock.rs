@@ -21,8 +21,10 @@ use cfg_primitives::{
 };
 use cfg_traits::PoolUpdateGuard;
 use cfg_types::{
-	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolLocator, Rate, Role,
-	TimeProvider, TrancheCurrency,
+	fixed_point::Rate,
+	permissions::{PermissionRoles, PermissionScope, Role},
+	time::TimeProvider,
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
 	parameter_types,
@@ -31,7 +33,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pool_system::{PoolDetails, ScheduledUpdateDetails};
+use pallet_pool_system::pool_types::{PoolDetails, PoolLocator, ScheduledUpdateDetails};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -187,7 +189,7 @@ parameter_types! {
 	pub const MaxTokenNameLength: u32 = 128;
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = 128;
+	pub const MaxTokenSymbolLength: u32 = 32;
 
 	pub const ZeroDeposit: Balance = 0;
 

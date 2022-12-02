@@ -4,7 +4,7 @@ authors = ["Centrifuge <admin@centrifuge.io>"]
 description = 'Anchors pallet for runtime'
 edition = '2021'
 license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/anchors"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '2.0.0'
 
 [package.metadata.docs.rs]
@@ -26,12 +26,15 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 
 # optional dependencies for benchmarking
+cfg-utils = { path = "../../libs/utils", default-features = false, optional = true }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
 
 [dev-dependencies]
 pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 
 [features]
@@ -39,6 +42,7 @@ default = ['std']
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
+  'cfg-utils/runtime-benchmarks',
 ]
 try-runtime = ["frame-support/try-runtime"]
 std = [
@@ -51,4 +55,5 @@ std = [
   "sp-arithmetic/std",
   'pallet-timestamp/std',
   'cfg-traits/std',
+  'cfg-utils/std',
 ]

@@ -1,0 +1,72 @@
+name: Benchmark
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  benchmark:
+    name: benchmark
+    runs-on: ubuntu-latest-4-cores
+    if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-08-05"
+    steps:
+      - name: Free space on Ubuntu
+        run: |
+          echo "Pre cleanup"
+          df -h
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Post cleanup"
+          df -h
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          default: true
+      - uses: actions/github-script@v6
+        name: Parse Runtime From Comment
+        id: parse-runtime
+        with:
+          result-encoding: string
+          script: |
+            console.log("Comment body:", context.payload.comment.body)
+            const [, , runtime] = context.payload.comment.body.split(/\W+/)
+            if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
+            return `${runtime}`
+      - uses: actions/github-script@v6
+        name: Acknowledge Run Comment
+        id: ack-run-comment
+        with:
+          script: |
+            const comment = await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Running Benchmarks for \`${steps.parse-runtime.outputs.result}\``
+            })
+            return comment.data.id
+      - name: Run Benchmark centrifuge
+        run: ./ci/script.sh
+        env:
+          TARGET: benchmark
+          RUNTIME: ${{steps.parse-runtime.outputs.result}}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{steps.parse-runtime.outputs.result}}-weights
+          path: runtime/${{steps.parse-runtime.outputs.result}}/src/weights/
+      - uses: actions/github-script@v6
+        name: Notify Benchmark finished
+        with:
+          script: |
+            await github.rest.issues.updateComment({
+              comment_id: steps.ack-run-comment.outputs.result,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              Uploaded benchmarks for: \`${steps.parse-runtime.outputs.result}\`
+              Find the artifact here: https://github.com/centrifuge/centrifuge-chain/actions/runs/${context.runId}
+              `
+            })

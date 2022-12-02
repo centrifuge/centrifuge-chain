@@ -12,7 +12,10 @@
 
 use centrifuge_runtime::{Origin, OrmlAssetRegistry};
 use cfg_primitives::Balance;
-use cfg_types::{CustomMetadata, XcmMetadata};
+use cfg_types::{
+	tokens::{CurrencyId, CustomMetadata},
+	xcm::XcmMetadata,
+};
 use frame_support::assert_ok;
 use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::xcm_fees::ksm_per_second;

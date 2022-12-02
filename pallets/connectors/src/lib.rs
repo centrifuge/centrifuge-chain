@@ -1,4 +1,4 @@
-// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -14,6 +14,7 @@
 use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
+use cfg_utils::vec_to_fixed_array;
 use codec::{Decode, Encode};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
@@ -101,7 +102,10 @@ pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
-	use cfg_types::{CustomMetadata, PermissionScope, PoolRole, Role};
+	use cfg_types::{
+		permissions::{PermissionScope, PoolRole, Role},
+		tokens::CustomMetadata,
+	};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
@@ -191,10 +195,6 @@ pub mod pallet {
 		TrancheNotFound,
 		/// Could not find the metadata of a tranche token
 		TrancheMetadataNotFound,
-		/// The tranche token name can't be converted to the expected bounded size
-		InvalidTrancheMetadataName,
-		/// The tranche token symbol can't be converted to the expected bounded size
-		InvalidTrancheMetadataSymbol,
 		/// Failed to fetch a tranche token price.
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
@@ -263,16 +263,10 @@ pub mod pallet {
 			// Look up the metadata of the tranche token
 			let currency_id =
 				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into();
-			let tranche_metadata = T::AssetRegistry::metadata(&currency_id)
+			let metadata = T::AssetRegistry::metadata(&currency_id)
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
-			let token_name = tranche_metadata
-				.name
-				.try_into()
-				.map_err(|_| Error::<T>::InvalidTrancheMetadataName)?;
-			let token_symbol = tranche_metadata
-				.symbol
-				.try_into()
-				.map_err(|_| Error::<T>::InvalidTrancheMetadataSymbol)?;
+			let token_name = vec_to_fixed_array(metadata.name);
+			let token_symbol = vec_to_fixed_array(metadata.symbol);
 
 			// Send the message to the domain
 			Self::do_send_message(

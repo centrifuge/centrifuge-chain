@@ -12,7 +12,8 @@
 // GNU General Public License for more details.
 
 //! Module provides loan related functions
-use cfg_types::{Adjustment, PoolLocator};
+use cfg_types::adjustments::Adjustment;
+use pallet_pool_system::pool_types::PoolLocator;
 use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 use super::*;

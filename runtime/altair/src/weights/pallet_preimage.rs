@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_preimage::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_preimage using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_preimage::WeightInfo for WeightInfo<T> {
 	fn note_preimage(s: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 0
 			.saturating_add(Weight::from_ref_time(3_000).saturating_mul(s as u64))

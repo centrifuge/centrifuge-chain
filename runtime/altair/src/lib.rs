@@ -22,10 +22,14 @@ pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, TrancheCurrency as _,
 };
-pub use cfg_types::CurrencyId;
+pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
-	CustomMetadata, FeeKey, PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole,
-	Rate, Role, TimeProvider, TrancheCurrency,
+	consts::pools::*,
+	fee_keys::FeeKey,
+	fixed_point::Rate,
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
+	time::TimeProvider,
+	tokens::{CustomMetadata, TrancheCurrency},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 /// Constant values used within the runtime.
@@ -52,7 +56,9 @@ pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
-	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
+	pool_types::{PoolDetails, ScheduledUpdateDetails},
+	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
+	EpochSolution,
 };
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_timestamp::Call as TimestampCall;
@@ -189,7 +195,7 @@ impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type PalletInfo = PalletInfo;
 	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
+	type SystemWeightInfo = weights::frame_system::WeightInfo<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
 }
@@ -256,7 +262,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = Aura;
-	type WeightInfo = weights::pallet_timestamp::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_timestamp::WeightInfo<Self>;
 }
 
 // money stuff
@@ -300,7 +306,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
-	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_balances::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -362,7 +368,7 @@ impl pallet_multisig::Config for Runtime {
 	type DepositFactor = DepositFactor;
 	type Event = Event;
 	type MaxSignatories = MaxSignatories;
-	type WeightInfo = weights::pallet_multisig::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_multisig::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -444,14 +450,14 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type ProxyType = ProxyType;
-	type WeightInfo = weights::pallet_proxy::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_proxy::WeightInfo<Self>;
 }
 
 impl pallet_utility::Config for Runtime {
 	type Call = Call;
 	type Event = Event;
 	type PalletsOrigin = OriginCaller;
-	type WeightInfo = weights::pallet_utility::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_utility::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -472,7 +478,7 @@ impl pallet_scheduler::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type PreimageProvider = Preimage;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::pallet_scheduler::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_scheduler::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -488,7 +494,7 @@ impl pallet_preimage::Config for Runtime {
 	type Event = Event;
 	type ManagerOrigin = EnsureRoot<AccountId>;
 	type MaxSize = PreimageMaxSize;
-	type WeightInfo = weights::pallet_preimage::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_preimage::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -505,7 +511,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MotionDuration = CouncilMotionDuration;
 	type Origin = Origin;
 	type Proposal = Call;
-	type WeightInfo = weights::pallet_collective::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -611,7 +617,7 @@ impl pallet_democracy::Config for Runtime {
 	type VoteLockingPeriod = EnactmentPeriod;
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
-	type WeightInfo = weights::pallet_democracy::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_democracy::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -636,7 +642,7 @@ impl pallet_identity::Config for Runtime {
 		EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type Slashed = Treasury;
 	type SubAccountDeposit = SubAccountDeposit;
-	type WeightInfo = weights::pallet_identity::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_identity::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -648,7 +654,7 @@ impl pallet_vesting::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	type MinVestedTransfer = MinVestedTransfer;
-	type WeightInfo = weights::pallet_vesting::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_vesting::WeightInfo<Self>;
 
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
@@ -700,7 +706,7 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
-	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -737,7 +743,7 @@ impl pallet_uniques::Config for Runtime {
 	type MetadataDepositBase = MetadataDepositBase;
 	type StringLimit = Limit;
 	type ValueLimit = Limit;
-	type WeightInfo = weights::pallet_uniques::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_uniques::WeightInfo<Self>;
 }
 
 // our pallets
@@ -752,7 +758,7 @@ impl pallet_fees::Config for Runtime {
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
 	type FeeKey = FeeKey;
 	type Treasury = pallet_treasury::Pallet<Self>;
-	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -772,7 +778,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
-	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -788,7 +794,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxAccounts = MigrationMaxAccounts;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type MigrationMaxVestings = MigrationMaxVestings;
-	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_migration_manager::WeightInfo<Self>;
 }
 
 // Parameterize crowdloan reward pallet configuration
@@ -801,7 +807,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_reward::WeightInfo<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -818,7 +824,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type PalletId = CrowdloanClaimPalletId;
 	type RelayChainAccountId = AccountId;
 	type RewardMechanism = CrowdloanReward;
-	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_claim::WeightInfo<Self>;
 }
 
 // Parameterize collator selection pallet
@@ -868,7 +874,7 @@ impl pallet_permissions::Config for Runtime {
 	type Role = Role<TrancheId, Moment>;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
-	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_permissions::WeightInfo<Self>;
 }
 
 pub struct Editors;
@@ -991,7 +997,7 @@ impl pallet_nft_sales::Config for Runtime {
 	type ItemId = ItemId;
 	type NonFungibles = Uniques;
 	type PalletId = NftSalesPalletId;
-	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_nft_sales::WeightInfo<Self>;
 }
 
 // XCM
@@ -1040,7 +1046,7 @@ impl pallet_loans::Config for Runtime {
 	type Pool = PoolSystem;
 	type Rate = Rate;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1085,12 +1091,6 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenNameLength: u32 = 128;
-
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = 128;
-
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 0;
 }
@@ -1115,8 +1115,8 @@ impl pallet_pool_system::Config for Runtime {
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
-	type MaxTokenNameLength = MaxTokenNameLength;
-	type MaxTokenSymbolLength = MaxTokenSymbolLength;
+	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
+	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
@@ -1137,7 +1137,7 @@ impl pallet_pool_system::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
-	type WeightInfo = weights::pallet_pool_system::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
 }
 
 pub struct PoolCurrency;
@@ -1167,8 +1167,12 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheId,
 		PoolId,
 	>;
-	type ScheduledUpdateDetails =
-		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<
+		Rate,
+		MaxTrancheNameLengthBytes,
+		MaxTrancheSymbolLengthBytes,
+		MaxTranches,
+	>;
 
 	fn released(
 		pool: &Self::PoolDetails,

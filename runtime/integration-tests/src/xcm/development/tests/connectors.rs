@@ -30,22 +30,27 @@ use ::xcm::{
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::PoolMutate;
 use cfg_types::{
-	CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId, PermissionScope,
-	PoolRole, Rate, Role, XcmMetadata, UNION,
+	fixed_point::Rate,
+	permissions::{PermissionScope, PoolRole, Role, UNION},
+	tokens::{CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId},
+	xcm::XcmMetadata,
 };
 use codec::Encode;
 use development_runtime::{
 	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, XTokens,
 	XcmTransactor,
 };
-use frame_support::{assert_noop, assert_ok, dispatch::Weight};
+use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_connectors::{
 	encoded_contract_call, Domain, DomainAddress, DomainLocator, Error::UnauthorizedTransfer,
 	Message, ParachainId, Router, XcmDomain,
 };
-use pallet_pool_system::{PoolDetails, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType};
+use pallet_pool_system::{
+	pool_types::PoolDetails,
+	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
+};
 use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
 use sp_core::H160;
 use sp_runtime::{
@@ -238,6 +243,21 @@ fn transfer() {
 }
 
 #[test]
+fn test_vec_to_fixed_array() {
+	let src = "TrNcH".as_bytes().to_vec();
+	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src.clone());
+
+	assert!(symbol.starts_with("TrNcH".as_bytes()));
+	assert_eq!(
+		symbol,
+		[
+			84, 114, 78, 99, 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0
+		]
+	);
+}
+
+#[test]
 fn encoded_ethereum_xcm_add_pool() {
 	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was our first
 	// successfully ethereum_xcm encoded call tested in Moonbase.
@@ -268,6 +288,19 @@ fn encoded_ethereum_xcm_add_pool() {
 	let encoded_call_hex = hex::encode(encoded_call);
 
 	assert_eq!(encoded_call_hex, expected_encoded_hex);
+}
+
+// Verify that the max tranche token symbol and name lengths are what the Connectors pallet expects.
+#[test]
+fn verify_tranche_fields_sizes() {
+	assert_eq!(
+		cfg_types::consts::pools::MaxTrancheNameLengthBytes::get(),
+		pallet_connectors::TOKEN_NAME_SIZE as u32
+	);
+	assert_eq!(
+		cfg_types::consts::pools::MaxTrancheSymbolLengthBytes::get(),
+		pallet_connectors::TOKEN_SYMBOL_SIZE as u32
+	);
 }
 
 mod utils {
@@ -352,14 +385,6 @@ mod utils {
 		));
 	}
 
-	// admin: AccountId,
-	// depositor: AccountId,
-	// pool_id: PoolId,
-	// tranche_inputs: Vec<Self::TrancheInput>,
-	// currency: Self::CurrencyId,
-	// max_reserve: Self::Balance,
-	// metadata: Option<Vec<u8>>,
-
 	pub fn create_pool(pool_id: u64) {
 		assert_ok!(PoolSystem::create(
 			BOB.into(),
@@ -373,16 +398,16 @@ mod utils {
 						// NOTE: For now, we have to set these metadata fields of the first tranche
 						// to be convertible to the 32-byte size expected by the connectors AddTranche
 						// message.
-						token_name:
-							BoundedVec::<u8, development_runtime::MaxTokenNameLength>::try_from(
-								vec![1; 32]
-							)
-							.expect(""),
-						token_symbol:
-							BoundedVec::<u8, development_runtime::MaxTokenSymbolLength>::try_from(
-								vec![2; 32]
-							)
-							.expect(""),
+						token_name: BoundedVec::<
+							u8,
+							cfg_types::consts::pools::MaxTrancheNameLengthBytes,
+						>::try_from("A highly advanced tranche".as_bytes().to_vec(),)
+						.expect(""),
+						token_symbol: BoundedVec::<
+							u8,
+							cfg_types::consts::pools::MaxTrancheSymbolLengthBytes,
+						>::try_from("TrNcH".as_bytes().to_vec())
+						.expect(""),
 					}
 				},
 				TrancheInput {

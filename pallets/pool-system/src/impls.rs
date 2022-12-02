@@ -13,10 +13,14 @@
 use cfg_traits::{
 	CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue, TrancheCurrency, UpdateState,
 };
-use cfg_types::InvestmentInfo;
+use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
 use frame_support::traits::Contains;
 
 use super::*;
+use crate::{
+	pool_types::{PoolDetails, PoolParameters, PoolStatus, ReserveDetails, ScheduledUpdateDetails},
+	tranches::{TrancheInput, TrancheLoc, TrancheUpdate, Tranches},
+};
 
 impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 	type Moment = Moment;
@@ -203,7 +207,9 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			admin: admin.clone(),
 			depositor,
 			pool_id,
-			essence: pool_details.essence::<T>()?,
+			essence: pool_details
+				.essence::<T::AssetRegistry, T::Balance, T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
+				)?,
 		});
 
 		T::Permission::add(

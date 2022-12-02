@@ -10,71 +10,38 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::Moment;
 #[cfg(test)]
-use cfg_primitives::{Balance, Moment, PoolId, TrancheId, TrancheWeight};
+use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::{CustomMetadata, XcmMetadata};
 #[cfg(test)]
-use cfg_types::{Rate, TrancheCurrency};
-use frame_support::{sp_runtime::ArithmeticError, StorageHasher};
+use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
+use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
+use codec::{Decode, Encode};
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	sp_runtime::ArithmeticError,
+	traits::{fungibles::Inspect, Get},
+	Blake2_128, BoundedVec, Parameter, RuntimeDebug, StorageHasher,
+};
 use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;
 use rev_slice::{RevSlice, SliceExt};
+use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
-use sp_runtime::WeakBoundedVec;
+use sp_runtime::{
+	traits::{ConstU32, Member, One, Zero},
+	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, WeakBoundedVec,
+};
+use sp_std::{marker::PhantomData, vec::Vec};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
 };
-
-/// Trait for converting a pool+tranche ID pair to a CurrencyId
-///
-/// This should be implemented in the runtime to convert from the
-/// PoolId and TrancheId types to a CurrencyId that represents that
-/// tranche.
-///
-/// The pool epoch logic assumes that every tranche has a UNIQUE
-/// currency, but nothing enforces that. Failure to ensure currency
-/// uniqueness will almost certainly cause some wild bugs.
-use super::*;
-
-/// Types alias for EpochExecutionTranche
-#[allow(dead_code)]
-pub(super) type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
-	<T as Config>::Balance,
-	<T as Config>::Rate,
-	<T as Config>::TrancheWeight,
-	<T as Config>::TrancheCurrency,
->;
-
-#[allow(dead_code)]
-/// Type alias for EpochExecutionTranches
-pub(super) type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
-	<T as Config>::Balance,
-	<T as Config>::Rate,
-	<T as Config>::TrancheWeight,
-	<T as Config>::TrancheCurrency,
->;
-
-/// Types alias for Tranches
-pub(super) type TranchesOf<T> = Tranches<
-	<T as Config>::Balance,
-	<T as Config>::Rate,
-	<T as Config>::TrancheWeight,
-	<T as Config>::TrancheCurrency,
-	<T as Config>::TrancheId,
-	<T as Config>::PoolId,
->;
-
-#[allow(dead_code)]
-/// Types alias for Tranche
-pub(super) type TrancheOf<T> = Tranche<
-	<T as Config>::Balance,
-	<T as Config>::Rate,
-	<T as Config>::TrancheWeight,
-	<T as Config>::TrancheCurrency,
->;
 
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
@@ -101,6 +68,21 @@ pub struct TrancheUpdate<Rate> {
 pub enum TrancheLoc<TrancheId> {
 	Index(TrancheIndex),
 	Id(TrancheId),
+}
+
+/// The core metadata about a tranche which we can attach to an event
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+{
+	/// Currency that the tranche is denominated in
+	pub currency: TrancheCurrency,
+	/// Type of the tranche (Residual or NonResidual)
+	pub ty: TrancheType<Rate>,
+	/// Metadata of a Tranche
+	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
 
 #[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -156,17 +138,17 @@ where
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
-	pub(super) tranche_type: TrancheType<Rate>,
-	pub(super) seniority: Seniority,
+	pub tranche_type: TrancheType<Rate>,
+	pub seniority: Seniority,
 	pub currency: CurrencyId,
 
-	pub(super) debt: Balance,
-	pub(super) reserve: Balance,
-	pub(super) loss: Balance,
-	pub(super) ratio: Perquintill,
-	pub(super) last_updated_interest: Moment,
+	pub debt: Balance,
+	pub reserve: Balance,
+	pub loss: Balance,
+	pub ratio: Perquintill,
+	pub last_updated_interest: Moment,
 
-	pub(super) _phantom: PhantomData<Weight>,
+	pub _phantom: PhantomData<Weight>,
 }
 
 #[cfg(test)]
@@ -329,8 +311,8 @@ pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
 	pub tranches: Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>>,
-	pub(super) ids: Vec<TrancheId>,
-	pub(super) salt: TrancheSalt<PoolId>,
+	pub ids: Vec<TrancheId>,
+	pub salt: TrancheSalt<PoolId>,
 }
 
 #[cfg(test)]
@@ -365,6 +347,14 @@ impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> 
 			salt,
 		})
 	}
+}
+
+// The solution struct for a specific tranche
+#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TrancheSolution {
+	pub invest_fulfillment: Perquintill,
+	pub redeem_fulfillment: Perquintill,
 }
 
 impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>
@@ -1006,15 +996,15 @@ where
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency> {
-	pub(super) currency: TrancheCurrency,
-	pub(super) supply: Balance,
-	pub(super) price: BalanceRatio,
-	pub(super) invest: Balance,
-	pub(super) redeem: Balance,
-	pub(super) min_risk_buffer: Perquintill,
-	pub(super) seniority: Seniority,
+	pub currency: TrancheCurrency,
+	pub supply: Balance,
+	pub price: BalanceRatio,
+	pub invest: Balance,
+	pub redeem: Balance,
+	pub min_risk_buffer: Perquintill,
+	pub seniority: Seniority,
 
-	pub(super) _phantom: PhantomData<Weight>,
+	pub _phantom: PhantomData<Weight>,
 }
 
 #[cfg(test)]
@@ -1035,7 +1025,7 @@ impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurr
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency> {
-	pub(super) tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
+	pub tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
 }
 
 /// Utility implementations for `EpochExecutionTranches`
@@ -1354,7 +1344,7 @@ where
 	}
 }
 
-pub(crate) fn calculate_risk_buffers<Balance, BalanceRatio>(
+pub fn calculate_risk_buffers<Balance, BalanceRatio>(
 	tranche_supplies: &[Balance],
 	tranche_prices: &[BalanceRatio],
 ) -> Result<Vec<Perquintill>, DispatchError>

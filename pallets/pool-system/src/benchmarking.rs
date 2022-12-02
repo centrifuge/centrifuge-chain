@@ -14,7 +14,7 @@
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
-use cfg_types::{CurrencyId, CustomMetadata, TrancheCurrency};
+use cfg_types::tokens::{CurrencyId, CustomMetadata, TrancheCurrency};
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
@@ -22,6 +22,7 @@ use frame_system::RawOrigin;
 use sp_std::vec;
 
 use super::*;
+use crate::tranches::{TrancheIndex, TrancheInput, TrancheLoc, TrancheMetadata};
 
 const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;

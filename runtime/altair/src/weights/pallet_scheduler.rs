@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_scheduler::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_scheduler using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_scheduler::WeightInfo for WeightInfo<T> {
 	fn on_initialize_periodic_named_resolved(s: u32) -> Weight {
 		Weight::from_ref_time(0) // Standard Error: 1_658_000
 			.saturating_add(Weight::from_ref_time(68_895_000).saturating_mul(s as u64))

@@ -1,4 +1,4 @@
-// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolMutate, UpdateState};
-use cfg_types::{PermissionScope, PoolRole, Role};
+use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use codec::HasCompact;
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
@@ -163,12 +163,13 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_metadata)]
-	pub(super) type PoolMetadata<T: Config> =
-		StorageMap<_, Blake2_256, T::PoolId, PoolMetadataOf<T>>;
+	pub(crate) type PoolMetadata<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, PoolMetadataOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_pools)]
-	pub(super) type Pools<T: Config> = StorageMap<_, Blake2_256, T::PoolId, PoolRegistrationStatus>;
+	pub(crate) type Pools<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, PoolRegistrationStatus>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -251,6 +252,18 @@ pub mod pallet {
 				return Err(Error::<T>::PoolAlreadyRegistered.into());
 			} else {
 				Pools::<T>::insert(pool_id, PoolRegistrationStatus::Registered);
+			}
+
+			if let Some(m) = metadata.clone() {
+				let checked_metadata: BoundedVec<u8, T::MaxSizeMetadata> =
+					m.try_into().map_err(|_| Error::<T>::BadMetadata)?;
+
+				PoolMetadata::<T>::insert(
+					pool_id,
+					PoolMetadataOf::<T> {
+						metadata: checked_metadata.clone(),
+					},
+				);
 			}
 
 			T::ModifyPool::create(

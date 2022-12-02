@@ -4,7 +4,7 @@ authors = ["Centrifuge <admin@centrifuge.io>"]
 description = 'Keystore pallet for runtime'
 edition = '2021'
 license = "LGPL-3.0"
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/keystore"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '1.0.0'
 
 [package.metadata.docs.rs]

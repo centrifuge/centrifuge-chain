@@ -1199,14 +1199,31 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-asset-registry",
+ "orml-traits",
  "parity-scale-codec 3.2.1",
  "polkadot-parachain",
+ "rev_slice",
  "scale-info",
  "serde",
  "sp-arithmetic",
  "sp-runtime",
  "sp-std",
  "xcm",
+]
+
+[[package]]
+name = "cfg-utils"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-aura",
+ "pallet-timestamp",
+ "parity-scale-codec 3.2.1",
+ "scale-info",
+ "sp-consensus-aura",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -6051,9 +6068,11 @@ name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
  "cfg-traits",
+ "cfg-utils",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
  "pallet-randomness-collective-flip",
@@ -6062,6 +6081,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-arithmetic",
+ "sp-consensus-aura",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -6361,6 +6381,7 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
+ "cfg-utils",
  "ethabi",
  "frame-benchmarking",
  "frame-support",
@@ -9696,6 +9717,7 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
+ "cfg-utils",
  "cumulus-primitives-core",
  "development-runtime",
  "frame-benchmarking",

@@ -14,7 +14,10 @@
 //! Unit test cases for Loan pallet
 use cfg_primitives::{Balance, CollectionId, ItemId, PoolEpochId, PoolId, TrancheId, CFG as USD};
 use cfg_traits::{InvestmentAccountant, InvestmentProperties};
-use cfg_types::{CurrencyId, PoolLocator, Rate, TrancheCurrency};
+use cfg_types::{
+	fixed_point::Rate,
+	tokens::{CurrencyId, TrancheCurrency},
+};
 use codec::MaxEncodedLen;
 use frame_support::{
 	assert_err, assert_ok,
@@ -22,6 +25,7 @@ use frame_support::{
 };
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
+use pallet_pool_system::pool_types::PoolLocator;
 use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
 use sp_runtime::{
 	traits::{BadOrigin, MaybeSerializeDeserialize, StaticLookup},

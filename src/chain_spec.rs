@@ -16,7 +16,10 @@
 
 use altair_runtime::constants::currency::AIR;
 use cfg_primitives::{currency_decimals, parachains, Balance, CFG};
-use cfg_types::{AssetMetadata, CurrencyId, CustomMetadata, FeeKey};
+use cfg_types::{
+	fee_keys::FeeKey,
+	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
+};
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};

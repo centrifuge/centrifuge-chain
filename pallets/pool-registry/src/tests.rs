@@ -9,9 +9,14 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use frame_support::assert_ok;
+
+use cfg_types::tokens::CurrencyId;
+use frame_support::{assert_ok, BoundedVec};
 use orml_traits::Change;
-use pallet_pool_system::PoolChanges;
+use pallet_pool_system::{
+	pool_types::PoolChanges,
+	tranches::{TrancheInput, TrancheMetadata, TrancheType},
+};
 
 use crate::mock::*;
 
@@ -34,6 +39,47 @@ fn update_pool() {
 				pool_id,
 				changes,
 			));
+		})
+}
+
+#[test]
+fn register_pool_and_set_metadata() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_owner = 9u64;
+			let pool_id = 0;
+
+			let tranches_inputs = vec![TrancheInput {
+				tranche_type: TrancheType::Residual,
+				seniority: None,
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::default(),
+					token_symbol: BoundedVec::default(),
+				},
+			}];
+
+			let currency = CurrencyId::AUSD;
+			let max_reserve = 10;
+
+			let hash = "QmUTwA6RTUb1FbJCeM1D4G4JaWHAbPehK8WwCfykJixjm3" // random IPFS hash, for test purposes
+				.as_bytes()
+				.to_vec();
+			let metadata = Some(hash);
+
+			assert_ok!(PoolRegistry::register(
+				Origin::signed(pool_owner),
+				pool_owner,
+				pool_id,
+				tranches_inputs,
+				currency,
+				max_reserve,
+				metadata.clone(),
+			));
+
+			let registered_metadata = PoolRegistry::get_pool_metadata(pool_id);
+
+			assert_eq!(registered_metadata.unwrap().metadata, metadata.unwrap());
 		})
 }
 

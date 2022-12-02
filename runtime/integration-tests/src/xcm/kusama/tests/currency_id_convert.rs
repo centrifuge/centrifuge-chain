@@ -26,7 +26,10 @@ use altair_runtime::{
 	Balances, CurrencyIdConvert, Origin, OrmlAssetRegistry, OrmlTokens, PoolPalletIndex, XTokens,
 };
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
-use cfg_types::{CurrencyId, CustomMetadata, XcmMetadata};
+use cfg_types::{
+	tokens::{CurrencyId, CustomMetadata},
+	xcm::XcmMetadata,
+};
 use codec::Encode;
 use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};

@@ -14,7 +14,7 @@
 //! Module provides testing utilities for benchmarking and tests.
 use cfg_primitives::CFG as CURRENCY;
 use cfg_traits::{Investment, PoolMutate, PoolNAV, TrancheCurrency as _};
-use cfg_types::{CurrencyId, TrancheCurrency};
+use cfg_types::tokens::{CurrencyId, TrancheCurrency};
 use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
@@ -27,9 +27,9 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
-use pallet_pool_system::TrancheLoc;
 use pallet_pool_system::{
-	Pallet as PoolPallet, Pool as PoolStorage, TrancheInput, TrancheMetadata, TrancheType,
+	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
+	Pallet as PoolPallet, Pool as PoolStorage,
 };
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},

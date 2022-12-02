@@ -15,10 +15,11 @@ use cfg_traits::{
 	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT,
 };
-pub use cfg_types::Rate;
+pub use cfg_types::fixed_point::Rate;
 use cfg_types::{
-	CurrencyId, CustomMetadata, PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider,
-	TrancheCurrency, UNION,
+	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
+	time::TimeProvider,
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use codec::Encode;
 use frame_support::{
@@ -30,7 +31,6 @@ use frame_support::{
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pool_system::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
@@ -38,7 +38,11 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
-use crate::{self as pallet_pool_system, Config, DispatchResult};
+use crate::{
+	self as pallet_pool_system,
+	pool_types::{PoolDetails, ScheduledUpdateDetails},
+	Config, DispatchResult,
+};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -298,7 +302,7 @@ parameter_types! {
 	pub const MaxTokenNameLength: u32 = 128;
 
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxTokenSymbolLength: u32 = 128;
+	pub const MaxTokenSymbolLength: u32 = 32;
 
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }

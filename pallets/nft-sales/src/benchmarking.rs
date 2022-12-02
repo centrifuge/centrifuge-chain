@@ -1,6 +1,6 @@
 #![cfg(feature = "runtime-benchmarks")]
 use cfg_primitives::CFG as CURRENCY;
-use cfg_types::CurrencyId;
+use cfg_types::tokens::CurrencyId;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::tokens::nonfungibles::{Create, Mutate};
 use frame_system::RawOrigin;

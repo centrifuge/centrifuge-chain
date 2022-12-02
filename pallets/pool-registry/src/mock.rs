@@ -13,7 +13,11 @@ use std::marker::PhantomData;
 
 use cfg_primitives::Moment;
 use cfg_traits::UpdateState;
-use cfg_types::{CurrencyId, Rate};
+use cfg_types::{
+	fixed_point::Rate,
+	permissions::{PermissionScope, Role},
+	tokens::CurrencyId,
+};
 use frame_support::{
 	dispatch::{
 		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
@@ -22,7 +26,7 @@ use frame_support::{
 	traits::{Hooks, SortedMembers},
 };
 use frame_system::EnsureSigned;
-use pallet_pool_system::{PoolChanges, TrancheInput};
+use pallet_pool_system::{pool_types::PoolChanges, tranches::TrancheInput};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -123,7 +127,7 @@ impl<T: Config + pallet_pool_registry::Config> PoolMutate<T::AccountId, T::PoolI
 		_max_reserve: T::Balance,
 		_metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
-		todo!()
+		Ok(())
 	}
 
 	fn update(
@@ -181,8 +185,8 @@ pub struct PermissionsMock {}
 impl cfg_traits::Permissions<AccountId> for PermissionsMock {
 	type Error = sp_runtime::DispatchError;
 	type Ok = ();
-	type Role = cfg_types::Role;
-	type Scope = cfg_types::PermissionScope<PoolId, CurrencyId>;
+	type Role = Role;
+	type Scope = PermissionScope<PoolId, CurrencyId>;
 
 	fn has(_scope: Self::Scope, _who: AccountId, _role: Self::Role) -> bool {
 		true

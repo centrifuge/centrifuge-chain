@@ -1,4 +1,4 @@
-// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -15,8 +15,9 @@
 //! # Rewards Pallet
 //!
 //! The Rewards pallet provides functionality for distributing rewards to different accounts with
-//! different currencies. The user can stake an amount to claim a proportional reward.
+//! different currencies.
 //!
+//! The user can stake an amount to claim a proportional reward.
 //! The staked amount is reserved/hold from the user account for that currency when is deposited
 //! and unreserved/release when is withdrawed.
 //!
@@ -48,8 +49,12 @@
 //!
 //! ### Functionality
 //!
-//! The Rewards pallet is based on this [paper](https://solmaz.io/2019/02/24/scalable-reward-changing/)
-//! and extends that functionality to support different groups and currencies.
+//! The exact reward functionality of this pallet is given by the mechanism used when it's
+//! configured. Current mechanisms:
+//! - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
+//! currency movement.
+//! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
+//! currency movement.
 //!
 
 #[cfg(test)]
@@ -70,13 +75,15 @@ use frame_support::{
 	},
 	PalletId,
 };
-use mechanism::{MoveCurrencyError, RewardMechanism};
+use mechanism::{DistributionId, MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
 
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
 type RewardAccountOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Account;
+type DistributionIdOf<T, I> =
+	<<T as Config<I>>::RewardMechanism as RewardMechanism>::DistributionId;
 type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Balance;
 
 #[frame_support::pallet]
@@ -153,6 +160,12 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	#[pallet::storage]
+	pub(super) type LastDistributionId<T: Config<I>, I: 'static = ()>
+	where
+		DistributionIdOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
+	= StorageValue<_, DistributionIdOf<T, I>, ValueQuery>;
+
 	// --------------------------
 
 	#[pallet::event]
@@ -206,26 +219,29 @@ pub mod pallet {
 	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
 		RewardGroupOf<T, I>: FullCodec + Default,
+		DistributionIdOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
 
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
-			Groups::<T, I>::try_mutate(group_id, |group| {
-				T::RewardMechanism::reward_group(group, reward)?;
+			LastDistributionId::<T, I>::try_mutate(|distribution_id| {
+				Groups::<T, I>::try_mutate(group_id, |group| {
+					T::RewardMechanism::reward_group(group, reward, distribution_id.next_id()?)?;
 
-				T::Currency::mint_into(
-					T::RewardCurrency::get(),
-					&T::PalletId::get().into_account_truncating(),
-					reward,
-				)?;
+					T::Currency::mint_into(
+						T::RewardCurrency::get(),
+						&T::PalletId::get().into_account_truncating(),
+						reward,
+					)?;
 
-				Self::deposit_event(Event::GroupRewarded {
-					group_id,
-					amount: reward,
-				});
+					Self::deposit_event(Event::GroupRewarded {
+						group_id,
+						amount: reward,
+					});
 
-				Ok(())
+					Ok(())
+				})
 			})
 		}
 

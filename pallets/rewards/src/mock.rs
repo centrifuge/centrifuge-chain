@@ -11,7 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{base, base_with_currency_movement};
+use super::mechanism::{base, deferred};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -81,6 +81,7 @@ pub enum CurrencyId {
 	A,
 	B,
 	C,
+	M,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
@@ -117,28 +118,23 @@ frame_support::parameter_types! {
 	pub const MaxCurrencyMovements: u32 = 3;
 }
 
-impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
-	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type DomainId = DomainId;
-	type Event = Event;
-	type GroupId = u32;
-	type PalletId = RewardsPalletId;
-	type RewardCurrency = RewardCurrency;
-	type RewardMechanism = base::Mechanism<u64, i128, FixedI64>;
+macro_rules! pallet_rewards_config {
+	($instance:ident, $mechanism:ty) => {
+		impl pallet_rewards::Config<pallet_rewards::$instance> for Runtime {
+			type Currency = Tokens;
+			type CurrencyId = CurrencyId;
+			type DomainId = DomainId;
+			type Event = Event;
+			type GroupId = u32;
+			type PalletId = RewardsPalletId;
+			type RewardCurrency = RewardCurrency;
+			type RewardMechanism = $mechanism;
+		}
+	};
 }
 
-impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
-	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type DomainId = DomainId;
-	type Event = Event;
-	type GroupId = u32;
-	type PalletId = RewardsPalletId;
-	type RewardCurrency = RewardCurrency;
-	type RewardMechanism =
-		base_with_currency_movement::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>;
-}
+pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance2, deferred::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()
@@ -146,7 +142,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	let users = [USER_A, USER_B];
-	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C];
+	let currencies = [CurrencyId::A, CurrencyId::B, CurrencyId::C, CurrencyId::M];
 
 	orml_tokens::GenesisConfig::<Runtime> {
 		balances: users

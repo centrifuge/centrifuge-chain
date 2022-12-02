@@ -26,12 +26,11 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
-use pallet_vesting::weights::WeightInfo;
 use sp_std::marker::PhantomData;
 
 /// Weights for pallet_vesting using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
 	fn vest_locked(l: u32, s: u32) -> Weight {
 		Weight::from_ref_time(67_042_000) // Standard Error: 8_000
 			.saturating_add(Weight::from_ref_time(198_000).saturating_mul(l as u64)) // Standard Error: 410_000

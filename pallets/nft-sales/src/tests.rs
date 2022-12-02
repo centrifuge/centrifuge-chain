@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::ItemId;
-use cfg_types::CurrencyId;
+use cfg_types::tokens::CurrencyId;
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, traits::fungibles::Inspect};
 
 use crate::{mock::*, NftsBySeller, Price};

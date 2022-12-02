@@ -10,15 +10,20 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
-use cfg_types::{CurrencyId, CustomMetadata, Rate, TrancheCurrency};
+use cfg_traits::{PoolMutate, TrancheCurrency as TrancheCurrencyT};
+use cfg_types::{
+	epoch::EpochState,
+	fixed_point::Rate,
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
+	xcm::XcmMetadata,
+};
 use frame_support::{assert_err, assert_noop, assert_ok};
-use orml_traits::asset_registry::AssetMetadata;
+use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
-use sp_core::storage::StateVersion;
+use sp_core::{storage::StateVersion, Encode};
 use sp_runtime::{
 	traits::{One, Zero},
-	Perquintill, TokenError, WeakBoundedVec,
+	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
 };
 use xcm::{
 	latest::MultiLocation,
@@ -26,8 +31,18 @@ use xcm::{
 	VersionedMultiLocation,
 };
 
-use super::*;
-use crate::mock::*;
+use crate::{
+	mock,
+	mock::*,
+	pallet,
+	pool_types::{PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails},
+	tranches::{
+		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
+		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
+	},
+	BoundedVec, Change, Config, ConstU32, EpochExecution, EpochExecutionInfo, Error, Pool,
+	PoolInspect, PoolState, UnhealthyState,
+};
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
@@ -402,7 +417,7 @@ fn pool_constraints_pass() {
 		assert_ok!(PoolSystem::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			crate::calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
+			calculate_risk_buffers::<u128, Rate>(&vec![3, 1], &vec![One::one(), One::one()])
 				.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
@@ -2342,7 +2357,7 @@ fn create_tranche_token_metadata() {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
-					xcm: cfg_types::XcmMetadata {
+					xcm: XcmMetadata {
 						fee_per_second: None,
 					},
 				},
