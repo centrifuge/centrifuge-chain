@@ -10,21 +10,6 @@ jobs:
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
-      - name: Free space on Ubuntu
-        run: |
-          echo "Pre cleanup"
-          df -h
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          echo "Post cleanup"
-          df -h
-      - name: Check out code
-        uses: actions/checkout@v3
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          default: true
       - uses: actions/github-script@v6
         name: Parse Runtime From Comment
         id: parse-runtime
@@ -44,10 +29,25 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Running Benchmarks for \`${steps.parse-runtime.outputs.result}\``
+              body: `Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\``
             })
             return comment.data.id
-      - name: Run Benchmark centrifuge
+      - name: Free space on Ubuntu
+        run: |
+          echo "Pre cleanup"
+          df -h
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Post cleanup"
+          df -h
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          default: true
+      - name: Run Benchmark ${{steps.parse-runtime.outputs.result}}
         run: ./ci/script.sh
         env:
           TARGET: benchmark
@@ -61,12 +61,28 @@ jobs:
         name: Notify Benchmark finished
         with:
           script: |
+            var artifactsResponse = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: ${{github.event.workflow_run.id }},
+            });
+            
+            let artifactUrl = '';
+            for (var i = 0; i < artifactsResponse.total_count; i++) {
+              console.log(artifactsResponse.artifacts[i]);
+              if (artifactsResponse.artifacts[i].name == '${{steps.parse-runtime.outputs.result}}-weights') {
+                artifactUrl = artifactsResponse.artifacts[i].archive_download_url
+              }
+            }
+            
+            const id = `${{steps.ack-run-comment.outputs.result}}`
             await github.rest.issues.updateComment({
-              comment_id: steps.ack-run-comment.outputs.result,
+              comment_id: id,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `
-              Uploaded benchmarks for: \`${steps.parse-runtime.outputs.result}\`
-              Find the artifact here: https://github.com/centrifuge/centrifuge-chain/actions/runs/${context.runId}
+              Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\`
+              Find the artifact here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+              Download the artifact here (Using the Github API): ${artifactUrl}
               `
             })
