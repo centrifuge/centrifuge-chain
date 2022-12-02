@@ -31,10 +31,22 @@ jobs:
         with:
           result-encoding: string
           script: |
-            console.log("Comment body", context.payload.comment.body)
+            console.log("Comment body:", context.payload.comment.body)
             const [, , runtime] = context.payload.comment.body.split(/\W+/)
             if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
             return `${runtime}`
+      - uses: actions/github-script@v6
+        name: Acknowledge Run Comment
+        id: ack-run-comment
+        with:
+          script: |
+            const comment = await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `Running Benchmarks for \`${steps.parse-runtime.outputs.result}\``
+            })
+            return comment.data.id
       - name: Run Benchmark centrifuge
         run: ./ci/script.sh
         env:
@@ -45,3 +57,16 @@ jobs:
         with:
           name: ${{steps.parse-runtime.outputs.result}}-weights
           path: runtime/${{steps.parse-runtime.outputs.result}}/src/weights/
+      - uses: actions/github-script@v6
+        name: Notify Benchmark finished
+        with:
+          script: |
+            await github.rest.issues.updateComment({
+              comment_id: steps.ack-run-comment.outputs.result,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              Uploaded benchmarks for: \`${steps.parse-runtime.outputs.result}\`
+              Find the artifact here: https://github.com/centrifuge/centrifuge-chain/actions/runs/${context.runId}
+              `
+            })
