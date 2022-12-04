@@ -61,26 +61,13 @@ jobs:
         name: Notify Benchmark finished
         with:
           script: |
-            var artifactsResponse = await github.rest.actions.listWorkflowRunArtifacts({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               run_id: context.runId
-            });
-            let artifactUrl = ''
-            for (var i = 0; i < artifactsResponse.total_count; i++) {
-              console.log(artifactsResponse.artifacts[i])
-              if (artifactsResponse.artifacts[i].name == '${{steps.parse-runtime.outputs.result}}-weights') {
-                artifactUrl = artifactsResponse.artifacts[i].archive_download_url
-              }
-            }
             const id = `${{steps.ack-run-comment.outputs.result}}`
             await github.rest.issues.updateComment({
               comment_id: id,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `
-              Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\`
+              :white_check_mark: Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\` :white_check_mark: 
               Find the artifact here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
-              Download the artifact here (Using the Github API): ${artifactUrl}
               `
             })
