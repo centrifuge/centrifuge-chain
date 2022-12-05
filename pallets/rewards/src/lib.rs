@@ -55,6 +55,7 @@
 //! currency movement.
 //! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
 //! currency movement.
+//! - gap mechanism with support for currency movement.
 //!
 
 #[cfg(test)]

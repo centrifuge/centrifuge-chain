@@ -76,7 +76,7 @@ impl<T: Config> Account<T> {
 		}
 	}
 
-	fn safe_rewarded_stake(&mut self, group: &Group<T>, currency: &Currency<T>) {
+	fn update_rewarded_stake(&mut self, group: &Group<T>, currency: &Currency<T>) {
 		self.rewarded_stake = self.get_rewarded_stake(group, currency);
 		self.distribution_id = group.distribution_id;
 	}
@@ -205,7 +205,7 @@ pub mod pallet {
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<(), DispatchError> {
-			account.safe_rewarded_stake(group, currency);
+			account.update_rewarded_stake(group, currency);
 
 			base::Mechanism::deposit_stake(
 				&mut account.base,
@@ -221,7 +221,7 @@ pub mod pallet {
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<(), DispatchError> {
-			account.safe_rewarded_stake(group, currency);
+			account.update_rewarded_stake(group, currency);
 
 			let rewarded_amount = {
 				let unrewarded_stake = account.base.stake.saturating_sub(account.rewarded_stake);
