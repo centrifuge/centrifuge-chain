@@ -4,9 +4,11 @@ use cfg_traits::ops::ensure::{
 };
 use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
-use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{
+	traits::Zero, ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
+};
 
-use super::{MoveCurrencyError, RewardMechanism};
+use super::{MechanismError, RewardMechanism};
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
@@ -42,7 +44,7 @@ where
 	fn apply_rpt_changes<Rate: FixedPointNumber>(
 		&mut self,
 		rpt_changes: &[Rate],
-	) -> Result<(), ArithmeticError> {
+	) -> Result<(), DispatchError> {
 		let tally_to_apply = self.get_tally_from_rpt_changes(rpt_changes)?;
 
 		self.reward_tally.ensure_add_assign(tally_to_apply)?;
@@ -103,7 +105,7 @@ where
 	fn reward_group(
 		group: &mut Self::Group,
 		amount: Self::Balance,
-	) -> Result<Self::Balance, ArithmeticError> {
+	) -> Result<Self::Balance, DispatchError> {
 		let rate = Rate::ensure_from_rational(amount, group.total_stake)?;
 		group.rpt.ensure_add_assign(rate)?;
 
@@ -115,7 +117,7 @@ where
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
 		amount: Self::Balance,
-	) -> Result<(), ArithmeticError> {
+	) -> Result<(), DispatchError> {
 		account.apply_rpt_changes(&currency.rpt_changes)?;
 
 		account.stake.ensure_add_assign(amount)?;
@@ -134,7 +136,7 @@ where
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
 		amount: Self::Balance,
-	) -> Result<(), ArithmeticError> {
+	) -> Result<(), DispatchError> {
 		account.apply_rpt_changes(&currency.rpt_changes)?;
 
 		account.stake.ensure_sub_assign(amount)?;
@@ -152,18 +154,19 @@ where
 		account: &Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
-	) -> Result<Self::Balance, ArithmeticError> {
+	) -> Result<Self::Balance, DispatchError> {
 		IBalance::ensure_from(group.rpt.ensure_mul_int(account.stake)?)?
 			.ensure_sub(account.reward_tally)?
 			.ensure_sub(account.get_tally_from_rpt_changes(&currency.rpt_changes)?)?
 			.ensure_into()
+			.map_err(|e| e.into())
 	}
 
 	fn claim_reward(
 		account: &mut Self::Account,
 		currency: &Self::Currency,
 		group: &Self::Group,
-	) -> Result<Self::Balance, ArithmeticError> {
+	) -> Result<Self::Balance, DispatchError> {
 		let reward = Self::compute_reward(account, currency, group)?;
 
 		account.reward_tally = group.rpt.ensure_mul_int(account.stake)?.ensure_into()?;
@@ -180,13 +183,13 @@ where
 		currency: &mut Self::Currency,
 		prev_group: &mut Self::Group,
 		next_group: &mut Self::Group,
-	) -> Result<(), MoveCurrencyError> {
+	) -> Result<(), MechanismError> {
 		let rpt_change = next_group.rpt.ensure_sub(prev_group.rpt)?;
 
 		currency
 			.rpt_changes
 			.try_push(rpt_change)
-			.map_err(|_| MoveCurrencyError::MaxMovements)?;
+			.map_err(|_| MechanismError::MaxMovements)?;
 
 		prev_group
 			.total_stake

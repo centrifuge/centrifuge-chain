@@ -6,10 +6,10 @@ use num_traits::Signed;
 pub use pallet::*;
 use sp_runtime::{
 	traits::{One, Saturating, Zero},
-	ArithmeticError, FixedPointNumber, FixedPointOperand,
+	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
-use super::{base, MoveCurrencyError, RewardMechanism};
+use super::{base, MechanismError, RewardMechanism};
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
@@ -84,13 +84,15 @@ impl<T: Config> Account<T> {
 		&self,
 		group: &Group<T>,
 		currency: &Currency<T>,
-	) -> Result<T::Balance, ArithmeticError> {
+	) -> Result<T::Balance, DispatchError> {
 		if self.distribution_id != group.distribution_id
 			&& (self.distribution_id != currency.prev_distribution_id
 				|| group.distribution_id != currency.next_distribution_id)
 		{
 			let delta_stake = self.base.stake.ensure_sub(self.rewarded_stake)?;
-			let correct_rpt = RptHistory::<T>::get(self.distribution_id).unwrap();
+			let correct_rpt = RptHistory::<T>::get(self.distribution_id).ok_or(
+				DispatchError::Other("'DistributionId' not found in 'RptHistory'"),
+			);
 			Ok(correct_rpt.ensure_mul_int(delta_stake)?)
 		} else {
 			Ok(Zero::zero())
@@ -221,7 +223,7 @@ pub mod pallet {
 		fn reward_group(
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<Self::Balance, ArithmeticError> {
+		) -> Result<Self::Balance, DispatchError> {
 			let mut rpt_correction = T::Rate::zero();
 			if group
 				.prev_total_stake
@@ -262,7 +264,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), ArithmeticError> {
+		) -> Result<(), DispatchError> {
 			account.update(group, currency)?;
 
 			base::Mechanism::deposit_stake(
@@ -280,7 +282,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), ArithmeticError> {
+		) -> Result<(), DispatchError> {
 			account.update(group, currency)?;
 
 			let rewarded_amount = {
@@ -317,17 +319,18 @@ pub mod pallet {
 			account: &Self::Account,
 			currency: &Self::Currency,
 			group: &Self::Group,
-		) -> Result<Self::Balance, ArithmeticError> {
+		) -> Result<Self::Balance, DispatchError> {
 			base::Mechanism::compute_reward(&account.base, &currency.base, &group.base)?
 				.ensure_sub(account.last_rewarded_stake(group, currency)?)?
 				.ensure_add(account.reward_tally_correction(group, currency)?)
+				.map_err(|e| e.into())
 		}
 
 		fn claim_reward(
 			account: &mut Self::Account,
 			currency: &Self::Currency,
 			group: &Self::Group,
-		) -> Result<Self::Balance, ArithmeticError> {
+		) -> Result<Self::Balance, DispatchError> {
 			let last_rewarded_stake = account.last_rewarded_stake(group, currency)?;
 			let tally_correction = account.reward_tally_correction(group, currency)?;
 
@@ -348,7 +351,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			prev_group: &mut Self::Group,
 			next_group: &mut Self::Group,
-		) -> Result<(), MoveCurrencyError> {
+		) -> Result<(), MechanismError> {
 			base::Mechanism::<_, T::IBalance, _, _>::move_currency(
 				&mut currency.base,
 				&mut prev_group.base,
