@@ -10,7 +10,7 @@ use sp_runtime::{
 	ArithmeticError, FixedPointNumber, FixedPointOperand,
 };
 
-use super::{MechanismError, RewardMechanism};
+use super::{MoveCurrencyError, RewardMechanism};
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
@@ -252,8 +252,7 @@ pub mod pallet {
 
 			group.distribution_id = LastDistributionId::<T>::try_mutate(
 				|distribution_id| -> Result<T::DistributionId, DispatchError> {
-					distribution_id.ensure_add_assign(One::one())?;
-					Ok(*distribution_id)
+					Ok(*distribution_id.ensure_add_assign(One::one())?)
 				},
 			)?;
 
@@ -338,7 +337,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			prev_group: &mut Self::Group,
 			next_group: &mut Self::Group,
-		) -> Result<(), MechanismError> {
+		) -> Result<(), MoveCurrencyError> {
 			if prev_group.pending_total_stake > T::Balance::zero() {
 				Err(DispatchError::from(
 					Error::<T>::TryMovementAfterPendingState,
@@ -350,7 +349,7 @@ pub mod pallet {
 			currency
 				.rpt_changes
 				.try_push(rpt_change)
-				.map_err(|_| MechanismError::MaxMovements)?;
+				.map_err(|_| MoveCurrencyError::MaxMovements)?;
 
 			prev_group
 				.total_stake
@@ -360,6 +359,7 @@ pub mod pallet {
 				.total_stake
 				.ensure_add_assign(currency.total_stake)?;
 
+			// Only if there was a distribution from last move, we update the previous related data.
 			if currency.next_distribution_id != prev_group.distribution_id {
 				currency.prev_distribution_id = prev_group.distribution_id;
 			}

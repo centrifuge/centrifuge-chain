@@ -59,7 +59,7 @@ mod mechanism {
 	mod gap {
 		use super::*;
 
-		common_tests!(Rewards2, Instance2, MechanismKind::Gap);
-		currency_movement_tests!(Rewards2, Instance2, MechanismKind::Gap);
+		common_tests!(Rewards3, Instance3, MechanismKind::Gap);
+		currency_movement_tests!(Rewards3, Instance3, MechanismKind::Gap);
 	}
 }

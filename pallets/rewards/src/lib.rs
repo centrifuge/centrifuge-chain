@@ -75,7 +75,7 @@ use frame_support::{
 	},
 	PalletId,
 };
-use mechanism::{MechanismError, RewardMechanism};
+use mechanism::{MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
 use sp_std::fmt::Debug;
@@ -392,8 +392,8 @@ pub mod pallet {
 						Groups::<T, I>::try_mutate(next_group_id, |next_group| {
 							T::RewardMechanism::move_currency(currency, prev_group, next_group)
 								.map_err(|e| match e {
-									MechanismError::Internal(error) => error.into(),
-									MechanismError::MaxMovements => {
+									MoveCurrencyError::Internal(error) => error.into(),
+									MoveCurrencyError::MaxMovements => {
 										Error::<T, I>::CurrencyMaxMovementsReached.into()
 									}
 								})

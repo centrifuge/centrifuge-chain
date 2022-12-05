@@ -30,9 +30,11 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Tokens: orml_tokens,
+		DeferredRewardMechanism: mechanism::deferred,
+		GapRewardMechanism: mechanism::gap,
 		Rewards1: pallet_rewards::<Instance1>,
 		Rewards2: pallet_rewards::<Instance2>,
-		GapRewardMechanism: mechanism::gap,
+		Rewards3: pallet_rewards::<Instance3>,
 	}
 );
 
@@ -125,6 +127,14 @@ impl mechanism::gap::Config for Runtime {
 	type Rate = FixedI64;
 }
 
+impl mechanism::deferred::Config for Runtime {
+	type Balance = u64;
+	type DistributionId = u32;
+	type IBalance = i64;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI64;
+}
+
 macro_rules! pallet_rewards_config {
 	($instance:ident, $mechanism:ty) => {
 		impl pallet_rewards::Config<pallet_rewards::$instance> for Runtime {
@@ -141,7 +151,8 @@ macro_rules! pallet_rewards_config {
 }
 
 pallet_rewards_config!(Instance1, mechanism::base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
-pallet_rewards_config!(Instance2, mechanism::gap::Pallet<Runtime>);
+pallet_rewards_config!(Instance2, mechanism::deferred::Pallet<Runtime>);
+pallet_rewards_config!(Instance3, mechanism::gap::Pallet<Runtime>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

@@ -2,6 +2,7 @@ use frame_support::traits::tokens::Balance;
 use sp_runtime::{traits::Get, ArithmeticError, DispatchError, DispatchResult};
 
 pub mod base;
+pub mod deferred;
 pub mod gap;
 
 pub trait RewardMechanism {
@@ -53,7 +54,7 @@ pub trait RewardMechanism {
 		currency: &mut Self::Currency,
 		prev_group: &mut Self::Group,
 		next_group: &mut Self::Group,
-	) -> Result<(), MechanismError>;
+	) -> Result<(), MoveCurrencyError>;
 
 	/// Returns the balance of an account
 	fn account_stake(account: &Self::Account) -> Self::Balance;
@@ -63,19 +64,19 @@ pub trait RewardMechanism {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum MechanismError {
+pub enum MoveCurrencyError {
 	Internal(DispatchError),
 	MaxMovements,
 }
 
-impl From<DispatchError> for MechanismError {
-	fn from(e: DispatchError) -> MechanismError {
+impl From<DispatchError> for MoveCurrencyError {
+	fn from(e: DispatchError) -> MoveCurrencyError {
 		Self::Internal(e)
 	}
 }
 
-impl From<ArithmeticError> for MechanismError {
-	fn from(e: ArithmeticError) -> MechanismError {
+impl From<ArithmeticError> for MoveCurrencyError {
+	fn from(e: ArithmeticError) -> MoveCurrencyError {
 		Self::Internal(DispatchError::Arithmetic(e))
 	}
 }

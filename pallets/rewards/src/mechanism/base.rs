@@ -8,7 +8,7 @@ use sp_runtime::{
 	traits::Zero, ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
-use super::{MechanismError, RewardMechanism};
+use super::{MoveCurrencyError, RewardMechanism};
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
@@ -183,13 +183,13 @@ where
 		currency: &mut Self::Currency,
 		prev_group: &mut Self::Group,
 		next_group: &mut Self::Group,
-	) -> Result<(), MechanismError> {
+	) -> Result<(), MoveCurrencyError> {
 		let rpt_change = next_group.rpt.ensure_sub(prev_group.rpt)?;
 
 		currency
 			.rpt_changes
 			.try_push(rpt_change)
-			.map_err(|_| MechanismError::MaxMovements)?;
+			.map_err(|_| MoveCurrencyError::MaxMovements)?;
 
 		prev_group
 			.total_stake
