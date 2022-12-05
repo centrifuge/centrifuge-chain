@@ -247,7 +247,6 @@ pub mod pallet {
 		type Balance = T::Balance;
 		type Currency = Currency<T>;
 		type Group = Group<T>;
-		type InitialGroup = GetDefault;
 		type MaxCurrencyMovements = T::MaxCurrencyMovements;
 
 		fn reward_group(

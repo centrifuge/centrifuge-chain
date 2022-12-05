@@ -98,7 +98,6 @@ where
 	type Balance = Balance;
 	type Currency = Currency<Balance, Rate, MaxCurrencyMovements>;
 	type Group = Group<Balance, Rate>;
-	type InitialGroup = GetDefault;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 
 	fn reward_group(

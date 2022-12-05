@@ -11,7 +11,6 @@ pub trait RewardMechanism {
 	type Currency;
 	type Balance: Balance;
 	type MaxCurrencyMovements: Get<u32>;
-	type InitialGroup: Get<Self::Group>;
 
 	/// Reward the group mutating the group entity.
 	fn reward_group(

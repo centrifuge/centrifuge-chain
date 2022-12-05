@@ -83,8 +83,6 @@ use sp_std::fmt::Debug;
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
 type RewardAccountOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Account;
-type RewardInitialGroupOf<T, I> =
-	<<T as Config<I>>::RewardMechanism as RewardMechanism>::InitialGroup;
 type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Balance;
 
 #[frame_support::pallet]
@@ -145,15 +143,8 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type Groups<T: Config<I>, I: 'static = ()>
 	where
-		RewardGroupOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec,
-	= StorageMap<
-		_,
-		Blake2_128Concat,
-		T::GroupId,
-		RewardGroupOf<T, I>,
-		ValueQuery,
-		RewardInitialGroupOf<T, I>,
-	>;
+		RewardGroupOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
+	= StorageMap<_, Blake2_128Concat, T::GroupId, RewardGroupOf<T, I>, ValueQuery>;
 
 	#[pallet::storage]
 	pub(super) type StakeAccounts<T: Config<I>, I: 'static = ()>
@@ -221,7 +212,7 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
-		RewardGroupOf<T, I>: FullCodec,
+		RewardGroupOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
@@ -253,7 +244,7 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> AccountRewards<T::AccountId> for Pallet<T, I>
 	where
-		RewardGroupOf<T, I>: FullCodec,
+		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardAccountOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
@@ -381,7 +372,7 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> CurrencyGroupChange for Pallet<T, I>
 	where
-		RewardGroupOf<T, I>: FullCodec,
+		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
 		type CurrencyId = (T::DomainId, T::CurrencyId);
