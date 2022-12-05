@@ -72,14 +72,9 @@ impl<T: Config> Account<T> {
 		currency: &Currency<T>,
 	) -> Result<T::IBalance, DispatchError> {
 		let reward_tally = if self.was_distribution(group, currency) {
-			let mut distribution_id = self.distribution_id;
-			if self.distribution_id == currency.prev_distribution_id {
-				distribution_id = currency.next_distribution_id;
-			}
-
-			let correct_rpt = RptHistory::<T>::get(distribution_id).ok_or(DispatchError::Other(
-				"'DistributionId' not found in 'RptHistory'",
-			))?;
+			let correct_rpt = RptHistory::<T>::get(self.distribution_id).ok_or(
+				DispatchError::Other("'DistributionId' not found in 'RptHistory'"),
+			)?;
 
 			self.reward_tally.ensure_add(
 				correct_rpt
@@ -149,36 +144,19 @@ impl<T: Config> Account<T> {
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Currency<T: Config> {
 	total_stake: T::Balance,
-	pending_total_stake: T::Balance,
 	rpt_changes: BoundedVec<T::Rate, T::MaxCurrencyMovements>,
 	prev_distribution_id: T::DistributionId,
 	next_distribution_id: T::DistributionId,
-	distribution_id: T::DistributionId,
 }
 
 impl<T: Config> Default for Currency<T> {
 	fn default() -> Self {
 		Self {
 			total_stake: T::Balance::zero(),
-			pending_total_stake: T::Balance::zero(),
 			rpt_changes: BoundedVec::default(),
 			prev_distribution_id: T::DistributionId::default(),
 			next_distribution_id: T::DistributionId::default(),
-			distribution_id: T::DistributionId::default(),
 		}
-	}
-}
-
-impl<T: Config> Currency<T> {
-	fn update(&mut self, group: &Group<T>) -> Result<(), ArithmeticError> {
-		if self.distribution_id != group.distribution_id {
-			self.total_stake
-				.ensure_add_assign(self.pending_total_stake)?;
-			self.pending_total_stake = T::Balance::zero();
-			self.distribution_id = group.distribution_id;
-		}
-
-		Ok(())
 	}
 }
 
@@ -235,6 +213,14 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type LastDistributionId<T: Config> = StorageValue<_, T::DistributionId, ValueQuery>;
 
+	#[pallet::error]
+	pub enum Error<T> {
+		// Emits when a currency is moved but any account associated has pending stake.
+		// Currency movement is only allowed after a distribution, with no deposit/withdraw stake
+		// from any participant.
+		TryMovementAfterPendingState,
+	}
+
 	impl<T: Config> RewardMechanism for Pallet<T>
 	where
 		<T::Rate as FixedPointNumber>::Inner: Signed,
@@ -280,12 +266,12 @@ pub mod pallet {
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<(), DispatchError> {
-			currency.update(group)?;
 			account.update(group, currency)?;
 
 			account.pending_stake.ensure_add_assign(amount)?;
 			group.pending_total_stake.ensure_add_assign(amount)?;
-			currency.pending_total_stake.ensure_add_assign(amount)?;
+
+			currency.total_stake.ensure_add_assign(amount)?;
 
 			Ok(())
 		}
@@ -296,16 +282,12 @@ pub mod pallet {
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<(), DispatchError> {
-			currency.update(group)?;
 			account.update(group, currency)?;
 
 			let pending_amount = amount.min(account.pending_stake);
 
 			account.pending_stake.ensure_sub_assign(pending_amount)?;
 			group
-				.pending_total_stake
-				.ensure_sub_assign(pending_amount)?;
-			currency
 				.pending_total_stake
 				.ensure_sub_assign(pending_amount)?;
 
@@ -316,7 +298,8 @@ pub mod pallet {
 				.reward_tally
 				.ensure_sub_assign(group.rpt.ensure_mul_int(computed_amount)?.ensure_into()?)?;
 			group.total_stake.ensure_sub_assign(computed_amount)?;
-			currency.total_stake.ensure_sub_assign(computed_amount)?;
+
+			currency.total_stake.ensure_sub_assign(amount)?;
 
 			Ok(())
 		}
@@ -356,7 +339,11 @@ pub mod pallet {
 			prev_group: &mut Self::Group,
 			next_group: &mut Self::Group,
 		) -> Result<(), MechanismError> {
-			currency.update(prev_group)?;
+			if prev_group.pending_total_stake > T::Balance::zero() {
+				Err(DispatchError::from(
+					Error::<T>::TryMovementAfterPendingState,
+				))?;
+			}
 
 			let rpt_change = next_group.rpt.ensure_sub(prev_group.rpt)?;
 
@@ -369,24 +356,14 @@ pub mod pallet {
 				.total_stake
 				.ensure_sub_assign(currency.total_stake)?;
 
-			prev_group
-				.pending_total_stake
-				.ensure_sub_assign(currency.pending_total_stake)?;
-
 			next_group
 				.total_stake
 				.ensure_add_assign(currency.total_stake)?;
 
-			next_group
-				.pending_total_stake
-				.ensure_add_assign(currency.pending_total_stake)?;
-
-			// Only if there was a distribution from last move, we update the previous related data.
 			if currency.next_distribution_id != prev_group.distribution_id {
 				currency.prev_distribution_id = prev_group.distribution_id;
 			}
 			currency.next_distribution_id = next_group.distribution_id;
-			currency.distribution_id = next_group.distribution_id;
 
 			Ok(())
 		}
