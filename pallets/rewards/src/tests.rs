@@ -39,12 +39,11 @@ fn rewards_account() -> u64 {
 	)
 }
 
-fn empty_distribution<Reward: DistributedRewards<GroupId = u32, Balance = u64>>() {
-	// This method adds an extra distribution with 0 reward to emulate one more epoch.
-	// This allow deferred mechanism to behave in the same way as base mechanism if
-	// called just before the claim method.
-	// It is only necessary if there was any distribute_reward call in the test.
-	assert_ok!(Reward::distribute_reward(0, [GROUP_A, GROUP_B, GROUP_C]));
+fn choose_balance(kind: MechanismKind, base: u64, deferred: u64) -> u64 {
+	match kind {
+		MechanismKind::Base => base,
+		MechanismKind::Deferred => deferred,
+	}
 }
 
 mod mechanism {

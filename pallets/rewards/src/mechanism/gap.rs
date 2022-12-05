@@ -55,27 +55,47 @@ impl<T: Config> Default for Account<T> {
 }
 
 impl<T: Config> Account<T> {
-	fn reward_tally_correction(
+	fn was_movement(&self, currency: &Currency<T>) -> bool {
+		let currency_movements = currency
+			.rpt_changes
+			.len()
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)
+			.unwrap();
+
+		self.last_currency_movement < currency_movements
+	}
+
+	fn was_distribution(&self, group: &Group<T>, currency: &Currency<T>) -> bool {
+		self.distribution_id != group.distribution_id && !self.was_movement(currency)
+			|| self.was_movement(currency)
+				&& (self.distribution_id != currency.prev_distribution_id
+					|| group.distribution_id != currency.next_distribution_id)
+	}
+
+	fn reward_tally_updated(
 		&self,
 		group: &Group<T>,
 		currency: &Currency<T>,
-	) -> Result<T::Balance, ArithmeticError> {
-		if self.distribution_id != group.distribution_id
-			&& (self.distribution_id != currency.prev_distribution_id
-				|| group.distribution_id != currency.next_distribution_id)
-		{
-			println!(
-				"get => account: {:?}, group: {:?}, prev: {:?}, next: {:?}",
-				self.distribution_id,
-				group.distribution_id,
-				currency.prev_distribution_id,
-				currency.next_distribution_id
-			);
-			let correct_rpt = RptHistory::<T>::get(self.distribution_id).unwrap();
-			Ok(correct_rpt.ensure_mul_int(self.pending_stake)?)
+	) -> Result<T::IBalance, ArithmeticError> {
+		let reward_tally = if self.was_distribution(group, currency) {
+			let mut distribution_id = self.distribution_id;
+			if self.distribution_id == currency.prev_distribution_id {
+				distribution_id = currency.next_distribution_id;
+			}
+
+			let correct_rpt = RptHistory::<T>::get(distribution_id).unwrap();
+			self.reward_tally.ensure_add(
+				correct_rpt
+					.ensure_mul_int(self.pending_stake)?
+					.ensure_into()?,
+			)?
 		} else {
-			Ok(Zero::zero())
-		}
+			self.reward_tally
+		};
+
+		let tally_rpt_changes = self.get_tally_from_rpt_changes(&currency.rpt_changes)?;
+		reward_tally.ensure_add(tally_rpt_changes)
 	}
 
 	fn stake_updated(
@@ -83,10 +103,7 @@ impl<T: Config> Account<T> {
 		group: &Group<T>,
 		currency: &Currency<T>,
 	) -> Result<T::Balance, ArithmeticError> {
-		if self.distribution_id != group.distribution_id
-			&& (self.distribution_id != currency.prev_distribution_id
-				|| group.distribution_id != currency.next_distribution_id)
-		{
+		if self.was_distribution(group, currency) {
 			self.stake.ensure_add(self.pending_stake)
 		} else {
 			Ok(self.stake)
@@ -94,15 +111,15 @@ impl<T: Config> Account<T> {
 	}
 
 	fn update(&mut self, group: &Group<T>, currency: &Currency<T>) -> Result<(), ArithmeticError> {
-		let reward_tally_correction = self
-			.reward_tally_correction(group, currency)?
-			.ensure_into()?;
+		if self.was_distribution(group, currency) {
+			let stake = self.stake_updated(group, currency)?;
+			let reward_tally = self.reward_tally_updated(group, currency)?;
 
-		let stake = self.stake_updated(group, currency)?;
-
-		self.reward_tally
-			.ensure_add_assign(reward_tally_correction)?;
-		self.stake = stake;
+			self.stake = stake;
+			self.reward_tally = reward_tally;
+			self.pending_stake = T::Balance::zero();
+		}
+		self.apply_rpt_changes(&currency.rpt_changes)?;
 		self.distribution_id = group.distribution_id;
 
 		Ok(())
@@ -236,10 +253,13 @@ pub mod pallet {
 		fn reward_group(
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), ArithmeticError> {
+		) -> Result<Self::Balance, ArithmeticError> {
+			let mut reward = Self::Balance::zero();
+
 			if group.total_stake > T::Balance::zero() {
 				let rate = T::Rate::ensure_from_rational(amount, group.total_stake)?;
 				group.rpt.ensure_add_assign(rate)?;
+				reward = amount;
 			}
 
 			group
@@ -247,7 +267,6 @@ pub mod pallet {
 				.ensure_add_assign(group.pending_total_stake)?;
 			group.pending_total_stake = T::Balance::zero();
 
-			println!("insert: {:?}", group.distribution_id);
 			RptHistory::<T>::insert(group.distribution_id, group.rpt);
 
 			group.distribution_id = LastDistributionId::<T>::try_mutate(|distribution_id| {
@@ -255,7 +274,7 @@ pub mod pallet {
 				Ok(*distribution_id)
 			})?;
 
-			Ok(())
+			Ok(reward)
 		}
 
 		fn deposit_stake(
@@ -264,13 +283,12 @@ pub mod pallet {
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<(), ArithmeticError> {
-			account.update(group, currency)?;
-			account.apply_rpt_changes(&currency.rpt_changes)?;
 			currency.update(group)?;
+			account.update(group, currency)?;
 
 			account.pending_stake.ensure_add_assign(amount)?;
 			group.pending_total_stake.ensure_add_assign(amount)?;
-			currency.total_stake.ensure_add_assign(amount)?;
+			currency.pending_total_stake.ensure_add_assign(amount)?;
 
 			Ok(())
 		}
@@ -281,16 +299,18 @@ pub mod pallet {
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<(), ArithmeticError> {
-			account.update(group, currency)?;
-			account.apply_rpt_changes(&currency.rpt_changes)?;
 			currency.update(group)?;
+			account.update(group, currency)?;
 
 			let pending_amount = amount.min(account.pending_stake);
 
-			account.pending_stake.ensure_add_assign(pending_amount)?;
+			account.pending_stake.ensure_sub_assign(pending_amount)?;
 			group
 				.pending_total_stake
-				.ensure_add_assign(pending_amount)?;
+				.ensure_sub_assign(pending_amount)?;
+			currency
+				.pending_total_stake
+				.ensure_sub_assign(pending_amount)?;
 
 			let computed_amount = amount.ensure_sub(pending_amount)?;
 
@@ -299,8 +319,7 @@ pub mod pallet {
 				.reward_tally
 				.ensure_sub_assign(group.rpt.ensure_mul_int(computed_amount)?.ensure_into()?)?;
 			group.total_stake.ensure_sub_assign(computed_amount)?;
-
-			currency.total_stake.ensure_sub_assign(amount)?;
+			currency.total_stake.ensure_sub_assign(computed_amount)?;
 
 			Ok(())
 		}
@@ -311,15 +330,10 @@ pub mod pallet {
 			group: &Self::Group,
 		) -> Result<Self::Balance, ArithmeticError> {
 			let stake = account.stake_updated(group, currency)?;
-			let tally = account.reward_tally.ensure_add(
-				account
-					.reward_tally_correction(group, currency)?
-					.ensure_into()?,
-			)?;
+			let reward_tally = account.reward_tally_updated(group, currency)?;
 
 			T::IBalance::ensure_from(group.rpt.ensure_mul_int(stake)?)?
-				.ensure_add(tally)?
-				.ensure_sub(account.get_tally_from_rpt_changes(&currency.rpt_changes)?)?
+				.ensure_sub(reward_tally)?
 				.ensure_into()
 		}
 
@@ -329,7 +343,6 @@ pub mod pallet {
 			group: &Self::Group,
 		) -> Result<Self::Balance, ArithmeticError> {
 			account.update(group, currency)?;
-			account.apply_rpt_changes(&currency.rpt_changes)?;
 
 			let reward = Self::compute_reward(&account, currency, group)?;
 
@@ -345,11 +358,7 @@ pub mod pallet {
 			prev_group: &mut Self::Group,
 			next_group: &mut Self::Group,
 		) -> Result<(), MoveCurrencyError> {
-			if currency.distribution_id == prev_group.distribution_id {
-				currency.distribution_id = next_group.distribution_id;
-			} else {
-				currency.update(next_group)?;
-			}
+			currency.update(prev_group)?;
 
 			let rpt_change = next_group.rpt.ensure_sub(prev_group.rpt)?;
 
@@ -379,6 +388,7 @@ pub mod pallet {
 				currency.prev_distribution_id = prev_group.distribution_id;
 			}
 			currency.next_distribution_id = next_group.distribution_id;
+			currency.distribution_id = next_group.distribution_id;
 
 			Ok(())
 		}

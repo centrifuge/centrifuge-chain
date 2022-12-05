@@ -222,7 +222,7 @@ pub mod pallet {
 		fn reward_group(
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), ArithmeticError> {
+		) -> Result<Self::Balance, ArithmeticError> {
 			let mut rpt_correction = T::Rate::zero();
 			if group
 				.prev_total_stake
@@ -255,7 +255,7 @@ pub mod pallet {
 				Ok(*distribution_id)
 			})?;
 
-			Ok(())
+			Ok(amount) //TODO Fix in case everybody goes out.
 		}
 
 		fn deposit_stake(
@@ -271,7 +271,9 @@ pub mod pallet {
 				&mut currency.base,
 				&mut group.base,
 				amount,
-			)
+			)?;
+
+			Ok(())
 		}
 
 		fn withdraw_stake(

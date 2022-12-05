@@ -145,14 +145,14 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type Groups<T: Config<I>, I: 'static = ()>
 	where
-		RewardGroupOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
+		RewardGroupOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec,
 	= StorageMap<
 		_,
 		Blake2_128Concat,
 		T::GroupId,
 		RewardGroupOf<T, I>,
 		ValueQuery,
-		//RewardInitialGroupOf<T, I>,
+		RewardInitialGroupOf<T, I>,
 	>;
 
 	#[pallet::storage]
@@ -221,14 +221,14 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
-		RewardGroupOf<T, I>: FullCodec + Default,
+		RewardGroupOf<T, I>: FullCodec,
 	{
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
 
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
 			Groups::<T, I>::try_mutate(group_id, |group| {
-				T::RewardMechanism::reward_group(group, reward)?;
+				let reward = T::RewardMechanism::reward_group(group, reward)?;
 
 				T::Currency::mint_into(
 					T::RewardCurrency::get(),
@@ -253,7 +253,7 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> AccountRewards<T::AccountId> for Pallet<T, I>
 	where
-		RewardGroupOf<T, I>: FullCodec + Default,
+		RewardGroupOf<T, I>: FullCodec,
 		RewardAccountOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
@@ -381,7 +381,7 @@ pub mod pallet {
 
 	impl<T: Config<I>, I: 'static> CurrencyGroupChange for Pallet<T, I>
 	where
-		RewardGroupOf<T, I>: FullCodec + Default,
+		RewardGroupOf<T, I>: FullCodec,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
 		type CurrencyId = (T::DomainId, T::CurrencyId);

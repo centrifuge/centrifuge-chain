@@ -14,7 +14,10 @@ pub trait RewardMechanism {
 	type InitialGroup: Get<Self::Group>;
 
 	/// Reward the group mutating the group entity.
-	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError>;
+	fn reward_group(
+		group: &mut Self::Group,
+		amount: Self::Balance,
+	) -> Result<Self::Balance, ArithmeticError>;
 
 	/// Add stake to the account and mutates currency and group to archieve that.
 	fn deposit_stake(

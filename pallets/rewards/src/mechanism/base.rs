@@ -101,11 +101,14 @@ where
 	type InitialGroup = GetDefault;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 
-	fn reward_group(group: &mut Self::Group, amount: Self::Balance) -> Result<(), ArithmeticError> {
+	fn reward_group(
+		group: &mut Self::Group,
+		amount: Self::Balance,
+	) -> Result<Self::Balance, ArithmeticError> {
 		let rate = Rate::ensure_from_rational(amount, group.total_stake)?;
 		group.rpt.ensure_add_assign(rate)?;
 
-		Ok(())
+		Ok(amount)
 	}
 
 	fn deposit_stake(
