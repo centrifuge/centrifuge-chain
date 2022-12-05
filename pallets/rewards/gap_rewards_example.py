@@ -1,5 +1,5 @@
-class DeferredPullBasedDistribution:
-    "Constant Time Deferred Reward Distribution with Changing Stake Sizes and Deferred Reward"
+class PullBasedDistribution:
+    "Constant Time Gap Reward Distribution with Changing Stake Sizes"
 
     def __init__(self):
         # Per group
@@ -82,19 +82,19 @@ class DeferredPullBasedDistribution:
 addr1 = 0x1
 addr2 = 0x2
 
-contract = DeferredPullBasedDistribution()
+contract = PullBasedDistribution()
 
 contract.deposit_stake(addr1, 100)
 contract.deposit_stake(addr2, 50)
 
-contract.distribute(0)
+contract.distribute(0) # Still nothing to reward here
 
 contract.withdraw_stake(addr1, 100)
 contract.deposit_stake(addr1, 50)
 
 contract.distribute(10)
 
-# Expected to not be rewarded because the participant withdrawed stake before the second distribution
+# Expected to not be rewarded because the participant withdrawed stake before the second distribution (0)
 print(contract.withdraw_reward(addr1))
 
 # Expected to be rewarded with the entire first reward distribution (10)

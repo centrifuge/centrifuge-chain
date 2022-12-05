@@ -325,7 +325,7 @@ macro_rules! claim_common_tests {
 
 					let reward = match $kind {
 						MechanismKind::Base => REWARD,
-						MechanismKind::Deferred => 0,
+						MechanismKind::Gap => 0,
 					};
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					assert_ok!($pallet::compute_reward(DOM_1_CURRENCY_A, &USER_A), reward);

@@ -26,18 +26,18 @@ macro_rules! currency_movement_tests {
 				group_id: u32,
 				domain_currency_id: (DomainId, CurrencyId),
 				base_expected: u64,
-				deferred_expected: u64,
+				gap_expected: u64,
 			) {
 				assert_ok!(
 					Reward::claim_reward(domain_currency_id, &USER_A),
 					choose_balance(kind, base_expected, 0),
 				);
 
-				if kind == MechanismKind::Deferred {
+				if kind == MechanismKind::Gap {
 					assert_ok!(Reward::distribute_reward(REWARD, [group_id]));
 					assert_ok!(
 						Reward::claim_reward(domain_currency_id, &USER_A),
-						deferred_expected
+						gap_expected
 					);
 				}
 			}
@@ -419,7 +419,7 @@ macro_rules! currency_movement_tests {
 						REWARD,
 						[(GROUP_A, 1u32), (GROUP_B, 4u32)]
 					));
-					if $kind == MechanismKind::Deferred {
+					if $kind == MechanismKind::Gap {
 						assert_ok!($pallet::distribute_reward_with_weights(
 							REWARD,
 							[(GROUP_A, 1u32), (GROUP_B, 4u32)]
@@ -446,7 +446,7 @@ macro_rules! currency_movement_tests {
 						REWARD,
 						[(GROUP_A, 1u32), (GROUP_B, 4u32)]
 					));
-					if $kind == MechanismKind::Deferred {
+					if $kind == MechanismKind::Gap {
 						assert_ok!($pallet::distribute_reward_with_weights(
 							REWARD,
 							[(GROUP_A, 1u32), (GROUP_B, 4u32)]
@@ -474,7 +474,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
-					if $kind == MechanismKind::Deferred {
+					if $kind == MechanismKind::Gap {
 						assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					}
 

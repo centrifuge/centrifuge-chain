@@ -25,7 +25,7 @@ const REWARD: u64 = 120;
 #[derive(Clone, Copy, PartialEq)]
 enum MechanismKind {
 	Base,
-	Deferred,
+	Gap,
 }
 
 fn free_balance(currency_id: CurrencyId, account_id: &u64) -> u64 {
@@ -39,10 +39,10 @@ fn rewards_account() -> u64 {
 	)
 }
 
-fn choose_balance(kind: MechanismKind, base: u64, deferred: u64) -> u64 {
+fn choose_balance(kind: MechanismKind, base: u64, gap: u64) -> u64 {
 	match kind {
 		MechanismKind::Base => base,
-		MechanismKind::Deferred => deferred,
+		MechanismKind::Gap => gap,
 	}
 }
 
@@ -56,10 +56,10 @@ mod mechanism {
 		currency_movement_tests!(Rewards1, Instance1, MechanismKind::Base);
 	}
 
-	mod deferred {
+	mod gap {
 		use super::*;
 
-		common_tests!(Rewards2, Instance2, MechanismKind::Deferred);
-		currency_movement_tests!(Rewards2, Instance2, MechanismKind::Deferred);
+		common_tests!(Rewards2, Instance2, MechanismKind::Gap);
+		currency_movement_tests!(Rewards2, Instance2, MechanismKind::Gap);
 	}
 }
