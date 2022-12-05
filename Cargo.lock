@@ -2396,7 +2396,7 @@ dependencies = [
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
- "pallet-xcm-transactor",
+ "pallet-xcm-transactor 0.2.0 (git+https://github.com/NunoAlexandre/moonbeam?rev=b4ad8e6fa6dc30e48322ff01ec31a42413474c3c)",
  "parachain-info",
  "parity-scale-codec 3.2.1",
  "polkadot-parachain",
@@ -2428,7 +2428,7 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-executor",
- "xcm-primitives",
+ "xcm-primitives 0.1.0 (git+https://github.com/NunoAlexandre/moonbeam?rev=b4ad8e6fa6dc30e48322ff01ec31a42413474c3c)",
 ]
 
 [[package]]
@@ -6419,7 +6419,7 @@ dependencies = [
  "pallet-pool-system",
  "pallet-timestamp",
  "pallet-uniques",
- "pallet-xcm-transactor",
+ "pallet-xcm-transactor 0.2.0 (git+https://github.com/NunoAlexandre/moonbeam?rev=d503e3a931a33282c9561b8921c6c8e5d9b2250f)",
  "parity-scale-codec 3.2.1",
  "runtime-common",
  "scale-info",
@@ -6429,7 +6429,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
- "xcm-primitives",
+ "xcm-primitives 0.1.0 (git+https://github.com/NunoAlexandre/moonbeam?rev=d503e3a931a33282c9561b8921c6c8e5d9b2250f)",
 ]
 
 [[package]]
@@ -6565,7 +6565,7 @@ dependencies = [
 [[package]]
 name = "pallet-ethereum-xcm"
 version = "1.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/moonbeam?rev=b4ad8e6fa6dc30e48322ff01ec31a42413474c3c#b4ad8e6fa6dc30e48322ff01ec31a42413474c3c"
+source = "git+https://github.com/NunoAlexandre/moonbeam?rev=d503e3a931a33282c9561b8921c6c8e5d9b2250f#d503e3a931a33282c9561b8921c6c8e5d9b2250f"
 dependencies = [
  "ethereum",
  "ethereum-types 0.13.1",
@@ -6584,7 +6584,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xcm-primitives",
+ "xcm-primitives 0.1.0 (git+https://github.com/NunoAlexandre/moonbeam?rev=d503e3a931a33282c9561b8921c6c8e5d9b2250f)",
 ]
 
 [[package]]
@@ -7496,7 +7496,30 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-executor",
- "xcm-primitives",
+ "xcm-primitives 0.1.0 (git+https://github.com/NunoAlexandre/moonbeam?rev=b4ad8e6fa6dc30e48322ff01ec31a42413474c3c)",
+]
+
+[[package]]
+name = "pallet-xcm-transactor"
+version = "0.2.0"
+source = "git+https://github.com/NunoAlexandre/moonbeam?rev=d503e3a931a33282c9561b8921c6c8e5d9b2250f#d503e3a931a33282c9561b8921c6c8e5d9b2250f"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "orml-traits",
+ "parity-scale-codec 3.2.1",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+ "xcm-primitives 0.1.0 (git+https://github.com/NunoAlexandre/moonbeam?rev=d503e3a931a33282c9561b8921c6c8e5d9b2250f)",
 ]
 
 [[package]]
@@ -13905,6 +13928,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "xcm-primitives"
+version = "0.1.0"
+source = "git+https://github.com/NunoAlexandre/moonbeam?rev=d503e3a931a33282c9561b8921c6c8e5d9b2250f#d503e3a931a33282c9561b8921c6c8e5d9b2250f"
+dependencies = [
+ "ethereum",
+ "ethereum-types 0.13.1",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "log",
+ "orml-traits",
+ "parity-scale-codec 3.2.1",
+ "scale-info",
+ "serde",
+ "sha3 0.8.2",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
+]
+
+[[package]]
 name = "xcm-procedural"
 version = "0.9.29"
 source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
@@ -13980,121 +14027,6 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "pallet-assets"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "pallet-conviction-voting"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "pallet-offences-benchmarking"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "pallet-ranked-collective"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "pallet-referenda"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "sc-consensus-manual-seal"
-version = "0.10.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "substrate-test-utils"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "substrate-test-utils-derive"
-version = "0.10.0-dev"
-source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
-
-[[patch.unused]]
-name = "cumulus-relay-chain-rpc-interface"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
-
-[[patch.unused]]
-name = "cumulus-test-relay-validation-worker-provider"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
-
-[[patch.unused]]
-name = "parachains-common"
-version = "1.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
-
-[[patch.unused]]
-name = "statemine-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
-
-[[patch.unused]]
-name = "statemint-runtime"
-version = "1.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
-
-[[patch.unused]]
-name = "polkadot-test-runtime"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "polkadot-test-service"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "test-runtime-constants"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "westend-runtime"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "xcm-simulator"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "polkadot-test-runtime"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "polkadot-test-service"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "test-runtime-constants"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "westend-runtime"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
-name = "xcm-simulator"
-version = "0.9.29"
-source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
-
-[[patch.unused]]
 name = "cumulus-relay-chain-rpc-interface"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
@@ -14163,6 +14095,121 @@ source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35
 name = "pallet-evm-precompile-simple"
 version = "2.0.0-dev"
 source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+
+[[patch.unused]]
+name = "cumulus-relay-chain-rpc-interface"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
+
+[[patch.unused]]
+name = "cumulus-test-relay-validation-worker-provider"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
+
+[[patch.unused]]
+name = "parachains-common"
+version = "1.0.0"
+source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
+
+[[patch.unused]]
+name = "statemine-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
+
+[[patch.unused]]
+name = "statemint-runtime"
+version = "1.0.0"
+source = "git+https://github.com/paritytech//cumulus?rev=2fa95572487cfcf8dbe6941bf93545c39d47f784#2fa95572487cfcf8dbe6941bf93545c39d47f784"
+
+[[patch.unused]]
+name = "pallet-assets"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "pallet-conviction-voting"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "pallet-offences-benchmarking"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "pallet-ranked-collective"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "pallet-referenda"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "sc-consensus-manual-seal"
+version = "0.10.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "substrate-test-utils"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "substrate-test-utils-derive"
+version = "0.10.0-dev"
+source = "git+https://github.com/paritytech//substrate?rev=cc370aa61e15c18d23a2f686b812fd576a630afe#cc370aa61e15c18d23a2f686b812fd576a630afe"
+
+[[patch.unused]]
+name = "polkadot-test-runtime"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "polkadot-test-service"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "test-runtime-constants"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "westend-runtime"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "xcm-simulator"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "polkadot-test-runtime"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "polkadot-test-service"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "test-runtime-constants"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "westend-runtime"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
+
+[[patch.unused]]
+name = "xcm-simulator"
+version = "0.9.29"
+source = "git+https://github.com/paritytech//polkadot?rev=94078b44fb6c9767bf60ffcaaa3be40681be5a76#94078b44fb6c9767bf60ffcaaa3be40681be5a76"
 
 [[patch.unused]]
 name = "pallet-assets"
