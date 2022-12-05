@@ -137,8 +137,8 @@ pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-f
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 
 # Connectors 3rd-party dependencies
-pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "b4ad8e6fa6dc30e48322ff01ec31a42413474c3c" }
-xcm-primitives = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "b4ad8e6fa6dc30e48322ff01ec31a42413474c3c" }
+pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "d503e3a931a33282c9561b8921c6c8e5d9b2250f" }
+xcm-primitives = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "d503e3a931a33282c9561b8921c6c8e5d9b2250f" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
