@@ -90,7 +90,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The ClassId type
 		type ClassId: Parameter
@@ -739,7 +739,7 @@ pub mod pallet {
 
 impl<T: Config> TPoolNav<PoolIdOf<T>, T::Balance> for Pallet<T> {
 	type ClassId = T::ClassId;
-	type Origin = T::Origin;
+	type RuntimeOrigin = T::RuntimeOrigin;
 
 	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
 		PoolNAV::<T>::get(pool_id).map(|nav_details| (nav_details.latest, nav_details.last_updated))
