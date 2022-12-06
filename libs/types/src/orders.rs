@@ -21,7 +21,7 @@ use sp_std::{
 	vec::Vec,
 };
 
-#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct FulfillmentWithPrice<BalanceRatio> {
 	pub of_amount: Perquintill,
 	pub price: BalanceRatio,

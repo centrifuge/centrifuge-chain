@@ -12,7 +12,7 @@
 
 use cfg_primitives::Moment;
 use cfg_types::epoch::EpochState;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::Get,
@@ -37,7 +37,7 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 	const TYPE_ID: [u8; 4] = *b"pool";
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ReserveDetails<Balance> {
 	/// Investments will be allowed up to this amount.
 	pub max: Balance,
@@ -84,7 +84,7 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -101,7 +101,7 @@ pub struct PoolLocator<PoolId> {
 	pub pool_id: PoolId,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolDetails<
 	CurrencyId,
 	TrancheCurrency,
@@ -133,12 +133,12 @@ pub struct PoolDetails<
 	pub reserve: ReserveDetails<Balance>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum PoolStatus {
 	Open,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolParameters {
 	/// Minimum duration for an epoch.
 	pub min_epoch_time: Moment,
@@ -146,7 +146,7 @@ pub struct PoolParameters {
 	pub max_nav_age: Moment,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -161,7 +161,7 @@ where
 }
 
 /// Information about the deposit that has been taken to create a pool
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 pub struct PoolDepositInfo<AccountId, Balance> {
 	pub depositor: AccountId,
 	pub deposit: Balance,

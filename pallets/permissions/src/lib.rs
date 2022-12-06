@@ -48,11 +48,15 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		type Scope: Member + Parameter;
+		type Scope: Member + Parameter + MaxEncodedLen;
 
 		type Role: Member + Parameter;
 
-		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
+		type Storage: Member
+			+ Parameter
+			+ Properties<Property = Self::Role>
+			+ Default
+			+ MaxEncodedLen;
 
 		type Editors: Contains<(Self::AccountId, Option<Self::Role>, Self::Scope, Self::Role)>;
 
@@ -66,7 +70,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
