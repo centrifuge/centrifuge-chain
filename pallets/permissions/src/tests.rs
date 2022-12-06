@@ -23,7 +23,7 @@ fn add_ext_works() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -31,7 +31,7 @@ fn add_ext_works() {
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -39,7 +39,7 @@ fn add_ext_works() {
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -63,7 +63,7 @@ fn add_ext_fails() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -72,7 +72,7 @@ fn add_ext_fails() {
 
 			assert_noop!(
 				pallet_permissions::Pallet::<Runtime>::add(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
 					Scope::PalletA,
@@ -89,7 +89,7 @@ fn remove_ext_works() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -97,7 +97,7 @@ fn remove_ext_works() {
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::remove(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -115,7 +115,7 @@ fn remove_ext_fails() {
 		.execute_with(|| {
 			assert_noop!(
 				pallet_permissions::Pallet::<Runtime>::remove(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
 					Scope::PalletA,
@@ -125,7 +125,7 @@ fn remove_ext_fails() {
 			);
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -134,7 +134,7 @@ fn remove_ext_fails() {
 
 			assert_noop!(
 				pallet_permissions::Pallet::<Runtime>::remove(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
 					Scope::PalletA,
@@ -157,7 +157,7 @@ fn user_purge_permission_ext_works() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -165,7 +165,7 @@ fn user_purge_permission_ext_works() {
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -173,7 +173,7 @@ fn user_purge_permission_ext_works() {
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::purge(
-				Origin::signed(2),
+				RuntimeOrigin::signed(2),
 				Scope::PalletA
 			));
 
@@ -187,7 +187,10 @@ fn user_purge_permission_ext_fails() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_noop!(
-				pallet_permissions::Pallet::<Runtime>::purge(Origin::signed(2), Scope::PalletA),
+				pallet_permissions::Pallet::<Runtime>::purge(
+					RuntimeOrigin::signed(2),
+					Scope::PalletA
+				),
 				PermissionsError::<Runtime>::NoRoles
 			);
 
@@ -201,7 +204,7 @@ fn admin_purge_permission_ext_works() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -209,7 +212,7 @@ fn admin_purge_permission_ext_works() {
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
 				Scope::PalletA,
@@ -217,7 +220,7 @@ fn admin_purge_permission_ext_works() {
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<Runtime>::admin_purge(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				2,
 				Scope::PalletA,
 			));
@@ -233,7 +236,7 @@ fn admin_purge_permission_ext_fails() {
 		.execute_with(|| {
 			assert_noop!(
 				pallet_permissions::Pallet::<Runtime>::admin_purge(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					2,
 					Scope::PalletA,
 				),
@@ -274,7 +277,7 @@ fn trait_add_works() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(pallet_dummy::Pallet::<Runtime>::test_add(
-				Origin::signed(2),
+				RuntimeOrigin::signed(2),
 				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
@@ -297,7 +300,7 @@ fn trait_remove_fails() {
 		.execute_with(|| {
 			assert_noop!(
 				pallet_dummy::Pallet::<Runtime>::test_rm(
-					Origin::signed(2),
+					RuntimeOrigin::signed(2),
 					Scope::PalletA,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 				),
@@ -320,7 +323,7 @@ fn trait_remove_works() {
 			));
 
 			assert_ok!(pallet_dummy::Pallet::<Runtime>::test_rm(
-				Origin::signed(2),
+				RuntimeOrigin::signed(2),
 				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
@@ -365,7 +368,7 @@ fn add_too_many_permissions_fails() {
 		.execute_with(|| {
 			for who in 0..MaxRoles::get() {
 				assert_ok!(pallet_permissions::Pallet::<Runtime>::add(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					who.into(),
 					Scope::PalletA,
@@ -375,7 +378,7 @@ fn add_too_many_permissions_fails() {
 			let who = MaxRoles::get() + 1;
 			assert_noop!(
 				pallet_permissions::Pallet::<Runtime>::add(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					who.into(),
 					Scope::PalletA,
