@@ -176,10 +176,10 @@ pub mod pallet {
 			+ AccountRewards<
 				Self::AccountId,
 				Balance = Self::Balance,
-				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
+				RewardCurrencyId= (DomainIdOf<Self>, Self::CurrencyId),
 			> + CurrencyGroupChange<
 				GroupId = Self::GroupId,
-				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
+				RewardCurrencyId= (DomainIdOf<Self>, Self::CurrencyId),
 			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Max groups used by this pallet.
