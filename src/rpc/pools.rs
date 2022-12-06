@@ -1,5 +1,4 @@
 use std::{fmt::Debug, sync::Arc};
-
 use codec::Codec;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 use pallet_pool_system::{

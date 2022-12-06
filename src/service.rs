@@ -42,6 +42,7 @@ use crate::{
 		self,
 		anchors::{AnchorApiServer, Anchors},
 		pools::{Pools, PoolsApiServer},
+		rewards::{Rewards, RewardsApiServer}
 	},
 };
 
@@ -810,7 +811,10 @@ pub async fn start_development_node(
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client).into_rpc())
+				.merge(Pools::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(Rewards::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},

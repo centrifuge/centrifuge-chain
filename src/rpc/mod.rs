@@ -29,6 +29,7 @@ use substrate_frame_rpc_system::{System, SystemApiServer};
 
 pub mod anchors;
 pub mod pools;
+pub mod rewards;
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
