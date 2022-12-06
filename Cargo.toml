@@ -330,6 +330,7 @@ sp-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "c
 sp-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 sp-core = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+sp-database = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 sp-debug-derive = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 sp-externalities = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 sp-finality-grandpa = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
@@ -363,6 +364,14 @@ substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", rev
 substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 substrate-test-client = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+substrate-test-runtime = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+substrate-test-runtime-client = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+node-inspect = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+node-primitives = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+pallet-nomination-pools = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+pallet-randomness-collective-flip = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+sc-consensus-uncles = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
+sc-service-test = { git = "https://github.com/paritytech//substrate", rev = "cc370aa61e15c18d23a2f686b812fd576a630afe" }
 
 [patch."https://github.com/paritytech/polkadot"]
 kusama-runtime = { git = "https://github.com/paritytech//polkadot", rev = "94078b44fb6c9767bf60ffcaaa3be40681be5a76" }
