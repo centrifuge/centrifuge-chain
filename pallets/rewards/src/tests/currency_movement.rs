@@ -9,9 +9,18 @@ macro_rules! currency_movement_tests {
 				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_B, GROUP_B));
 				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_C, GROUP_C));
 				assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
+
+				assert_eq!($pallet::list_currencies(USER_B).len(), 0);
+
 				assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_B, STAKE_A));
+				assert_eq!($pallet::list_currencies(USER_B).len(), 1);
+
 				assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_B, &USER_B, STAKE_B));
+				assert_eq!($pallet::list_currencies(USER_B).len(), 2);
+
 				assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_C, &USER_B, STAKE_C));
+				assert_eq!($pallet::list_currencies(USER_B).len(), 3);
+
 				assert_ok!($pallet::distribute_reward(
 					REWARD,
 					[GROUP_A, GROUP_B, GROUP_C]
@@ -20,7 +29,7 @@ macro_rules! currency_movement_tests {
 
 			fn check_last_claim<
 				Reward: DistributedRewards<GroupId = u32, Balance = u64>
-					+ AccountRewards<u64, Balance = u64, CurrencyId = (DomainId, CurrencyId)>,
+					+ AccountRewards<u64, Balance = u64, RewardCurrencyId = (DomainId, CurrencyId)>,
 			>(
 				kind: MechanismKind,
 				domain_currency_id: (DomainId, CurrencyId),
@@ -47,6 +56,18 @@ macro_rules! currency_movement_tests {
 				}
 			}
 
+			fn has_currencies(
+				user: u64,
+				reward_currency_ids: &[(DomainId, CurrencyId)],
+			) {
+				let currencies = $pallet::list_currencies(user);
+				assert_eq!(currencies.len(), reward_currency_ids.len());
+
+				for i in 0..reward_currency_ids.len() {
+					assert_eq!(currencies[i], reward_currency_ids[i]);
+				}
+			}
+
 			#[test]
 			fn move_claim() {
 				new_test_ext().execute_with(|| {
@@ -65,6 +86,8 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
 			}
@@ -76,6 +99,7 @@ macro_rules! currency_movement_tests {
 
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
 					check_last_claim::<$pallet>(
@@ -93,6 +117,7 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 
 					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
@@ -105,6 +130,8 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 
@@ -123,6 +150,8 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
@@ -141,8 +170,12 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					check_last_claim::<$pallet>($kind, DOM_1_CURRENCY_M, 0, 0);
 				});
@@ -154,8 +187,13 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
 					check_last_claim::<$pallet>(
@@ -173,8 +211,12 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					check_last_claim::<$pallet>($kind, DOM_1_CURRENCY_M, 0, 0);
 				});
@@ -186,9 +228,13 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					check_last_claim::<$pallet>(
 						$kind,
@@ -205,9 +251,13 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					check_last_claim::<$pallet>(
 						$kind,
@@ -224,8 +274,13 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 
 					check_last_claim::<$pallet>($kind, DOM_1_CURRENCY_M, 0, 0);
@@ -238,6 +293,8 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 
@@ -251,6 +308,8 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
@@ -270,6 +329,8 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
@@ -289,6 +350,8 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_C]));
@@ -308,9 +371,13 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
 				});
@@ -322,10 +389,14 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					check_last_claim::<$pallet>(
 						$kind,
@@ -342,10 +413,14 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_B]));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					check_last_claim::<$pallet>(
 						$kind,
@@ -362,10 +437,14 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_C)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_C]));
+
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
 
 					check_last_claim::<$pallet>(
 						$kind,
@@ -382,6 +461,8 @@ macro_rules! currency_movement_tests {
 					currency_movement_initial_state();
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_A)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
@@ -402,7 +483,11 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_B, GROUP_B));
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A)]);
+
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::B)]);
+
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_B, GROUP_A)); // MOVEMENT HERE!!
 					assert_ok!($pallet::distribute_reward_with_weights(
@@ -426,7 +511,11 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_B, GROUP_B));
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A)]);
+
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::B)]);
+
 					assert_ok!($pallet::distribute_reward_with_weights(
 						REWARD,
 						[(GROUP_A, 1u32), (GROUP_B, 4u32)]
@@ -450,7 +539,11 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A)]);
+
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
+					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::M)]);
+
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_B)); // MOVEMENT HERE!!
