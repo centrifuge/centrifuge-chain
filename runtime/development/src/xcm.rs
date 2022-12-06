@@ -285,11 +285,11 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 /// and handle XCM messages.
 impl pallet_xcm::Config for Runtime {
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
-	type Call = Call;
-	type Event = Event;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
 	type LocationInverter = LocationInverter<Ancestry>;
-	type Origin = Origin;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type XcmExecuteFilter = Nothing;
@@ -376,19 +376,19 @@ impl orml_xtokens::Config for Runtime {
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type Event = Event;
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type MultiLocationsFilter = Everything;
 	type ReserveProvider = AbsoluteReserveProvider;
+	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
@@ -404,6 +404,6 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 impl orml_xcm::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type SovereignOrigin = EnsureRootOr<HalfOfCouncil>;
 }
