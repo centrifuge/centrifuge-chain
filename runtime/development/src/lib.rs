@@ -214,7 +214,7 @@ pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(c: &Call) -> bool {
 		match c {
-			Call::PolkadotXcm(method) => match method {
+			RuntimeCall::PolkadotXcm(method) => match method {
 				// Block these calls when called by a signed extrinsic.
 				// Root will still be able to execute these.
 				pallet_xcm::Call::send { .. }
@@ -1356,7 +1356,6 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();

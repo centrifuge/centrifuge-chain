@@ -44,8 +44,9 @@ use xcm_builder::{
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
-	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
-	ParachainSystem, PolkadotXcm, PoolPalletIndex, Runtime, Tokens, TreasuryAccount, XcmpQueue,
+	AccountId, Balance, OrmlAssetRegistry, OrmlTokens, ParachainInfo, ParachainSystem, PolkadotXcm,
+	PoolPalletIndex, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount,
+	XcmpQueue,
 };
 
 /// The main XCM config
@@ -58,12 +59,12 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTransactor = FungiblesTransactor;
 	type AssetTrap = PolkadotXcm;
 	type Barrier = Barrier;
-	type Call = Call;
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type ResponseHandler = PolkadotXcm;
+	type RuntimeCall = RuntimeCall;
 	type SubscriptionService = PolkadotXcm;
 	type Trader = Trader;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
