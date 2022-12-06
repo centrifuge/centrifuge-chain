@@ -26,6 +26,7 @@ pub use cfg_primitives::{
 use cfg_traits::{
 	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard,
 	PreConditions, PriceValue, TrancheCurrency as _,
+	rewards::AccountRewards,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -100,6 +101,8 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -1608,6 +1611,7 @@ impl<
 }
 
 #[derive(Clone, Copy, PartialEq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RewardDomain {
 	Liquidity,
 	Block,
@@ -1984,6 +1988,24 @@ impl_runtime_apis! {
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
+		}
+	}
+
+	// RewardsApi
+	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
+		fn list_currencies(account_id: AccountId) -> Option<Vec<(RewardDomain, CurrencyId)>> {
+			let currencies = pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id);
+
+			Some(currencies)
+		}
+
+		fn compute_reward(account_id: AccountId, rewards_currency_id: (RewardDomain, CurrencyId)) -> Option<Balance> {
+			let reward = <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(rewards_currency_id, &account_id);
+
+			match reward {
+				Ok(balance) => Some(balance),
+				Err(_) => None,
+			}
 		}
 	}
 
