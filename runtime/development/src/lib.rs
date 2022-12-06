@@ -1161,22 +1161,22 @@ impl xcm_primitives::XcmTransact for NullTransactor {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type Event = Event;
+	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
+	type AssetTransactor = xcm::FungiblesTransactor;
 	type Balance = Balance;
+	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
-	type Transactor = NullTransactor;
-	type AssetTransactor = xcm::FungiblesTransactor;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
-	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
-	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
+	type Event = Event;
 	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
-	type XcmSender = XcmRouter;
-	type BaseXcmWeight = BaseXcmWeight;
-	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type Transactor = NullTransactor;
+	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type WeightInfo = ();
+	type XcmSender = XcmRouter;
 }
 
 parameter_types! {
@@ -1377,17 +1377,17 @@ impl pallet_interest_accrual::Config for Runtime {
 }
 
 impl pallet_connectors::Config for Runtime {
-	type Event = Event;
-	type WeightInfo = ();
-	type Balance = Balance;
-	type Rate = Rate;
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type PoolInspect = PoolSystem;
+	type AssetRegistry = OrmlAssetRegistry;
+	type Balance = Balance;
+	type Event = Event;
 	type Permission = Permissions;
+	type PoolInspect = PoolSystem;
+	type Rate = Rate;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
-	type AssetRegistry = OrmlAssetRegistry;
+	type WeightInfo = ();
 }
 
 parameter_types! {
