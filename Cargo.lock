@@ -2813,7 +2813,7 @@ checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 [[package]]
 name = "evm"
 version = "0.35.0"
-source = "git+https://github.com/NunoAlexandre/evm?branch=unfork-v0.9.29#6534c1dd8ad77b53d05032f80e8a5f2de4d37fd2"
+source = "git+https://github.com/purestake/evm?branch=moonbeam-polkadot-v0.9.29#27ac63fadb6e716cfcc275b4ddf0aed5c0624b18"
 dependencies = [
  "auto_impl",
  "environmental",
@@ -2833,7 +2833,7 @@ dependencies = [
 [[package]]
 name = "evm-core"
 version = "0.35.0"
-source = "git+https://github.com/NunoAlexandre/evm?branch=unfork-v0.9.29#6534c1dd8ad77b53d05032f80e8a5f2de4d37fd2"
+source = "git+https://github.com/purestake/evm?branch=moonbeam-polkadot-v0.9.29#27ac63fadb6e716cfcc275b4ddf0aed5c0624b18"
 dependencies = [
  "parity-scale-codec 3.2.1",
  "primitive-types 0.11.1",
@@ -2844,7 +2844,7 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.35.0"
-source = "git+https://github.com/NunoAlexandre/evm?branch=unfork-v0.9.29#6534c1dd8ad77b53d05032f80e8a5f2de4d37fd2"
+source = "git+https://github.com/purestake/evm?branch=moonbeam-polkadot-v0.9.29#27ac63fadb6e716cfcc275b4ddf0aed5c0624b18"
 dependencies = [
  "environmental",
  "evm-core",
@@ -2855,7 +2855,7 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.35.0"
-source = "git+https://github.com/NunoAlexandre/evm?branch=unfork-v0.9.29#6534c1dd8ad77b53d05032f80e8a5f2de4d37fd2"
+source = "git+https://github.com/purestake/evm?branch=moonbeam-polkadot-v0.9.29#27ac63fadb6e716cfcc275b4ddf0aed5c0624b18"
 dependencies = [
  "auto_impl",
  "environmental",
@@ -3065,7 +3065,7 @@ dependencies = [
 [[package]]
 name = "fp-consensus"
 version = "2.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "ethereum",
  "parity-scale-codec 3.2.1",
@@ -3077,7 +3077,7 @@ dependencies = [
 [[package]]
 name = "fp-ethereum"
 version = "1.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "ethereum",
  "ethereum-types 0.13.1",
@@ -3092,7 +3092,7 @@ dependencies = [
 [[package]]
 name = "fp-evm"
 version = "3.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "evm",
  "frame-support",
@@ -3105,7 +3105,7 @@ dependencies = [
 [[package]]
 name = "fp-rpc"
 version = "3.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "ethereum",
  "ethereum-types 0.13.1",
@@ -3122,7 +3122,7 @@ dependencies = [
 [[package]]
 name = "fp-self-contained"
 version = "1.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "ethereum",
  "frame-support",
@@ -3136,7 +3136,7 @@ dependencies = [
 [[package]]
 name = "fp-storage"
 version = "2.0.0"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "parity-scale-codec 3.2.1",
  "serde",
@@ -6538,7 +6538,7 @@ dependencies = [
 [[package]]
 name = "pallet-ethereum"
 version = "4.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "ethereum",
  "ethereum-types 0.13.1",
@@ -6590,7 +6590,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm"
 version = "6.0.0-dev"
-source = "git+https://github.com/NunoAlexandre/frontier?branch=unfork-v0.9.29#35f18b27cbfbadee686234f5c5fefed115419579"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.29#b9d68661531d7e1bc5f04b70f5e263bc2cffb401"
 dependencies = [
  "environmental",
  "evm",
