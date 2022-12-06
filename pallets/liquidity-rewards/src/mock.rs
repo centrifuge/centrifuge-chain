@@ -32,9 +32,7 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -44,8 +42,10 @@ impl frame_system::Config for Test {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ConstU16<42>;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -68,12 +68,12 @@ impl pallet_liquidity_rewards::Config for Test {
 	type Balance = u64;
 	type CurrencyId = u32;
 	type Domain = LiquidityDomain;
-	type Event = Event;
 	type GroupId = u32;
 	type InitialEpochDuration = ConstU64<0>;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxGroups = MaxGroups;
 	type Rewards = MockRewards;
+	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
 	type WeightInfo = ();
 }
