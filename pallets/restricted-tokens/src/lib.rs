@@ -69,11 +69,10 @@ pub mod pallet {
 		scale_info::TypeInfo,
 		sp_runtime::{
 			traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup},
-			ArithmeticError,
+			ArithmeticError, FixedPointOperand,
 		},
 	};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::FixedPointOperand;
 
 	use super::*;
 	use crate::{
