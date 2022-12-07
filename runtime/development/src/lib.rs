@@ -211,8 +211,8 @@ impl frame_system::Config for Runtime {
 
 /// Base Call Filter
 pub struct BaseCallFilter;
-impl Contains<Call> for BaseCallFilter {
-	fn contains(c: &Call) -> bool {
+impl Contains<RuntimeCall> for BaseCallFilter {
+	fn contains(c: &RuntimeCall) -> bool {
 		match c {
 			RuntimeCall::PolkadotXcm(method) => match method {
 				// Block these calls when called by a signed extrinsic.
@@ -423,59 +423,64 @@ impl Default for ProxyType {
 	}
 }
 
-impl InstanceFilter<Call> for ProxyType {
-	fn filter(&self, c: &Call) -> bool {
+impl InstanceFilter<RuntimeCall> for ProxyType {
+	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, Call::Tokens(..)),
+			ProxyType::NonTransfer => !matches!(c, RuntimeCall::Tokens(..)),
 			ProxyType::Governance => matches!(
 				c,
-				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+				RuntimeCall::Democracy(..)
+					| RuntimeCall::Council(..)
+					| RuntimeCall::Elections(..)
+					| RuntimeCall::Utility(..)
 			),
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {
-				matches!(c, Call::Proxy(pallet_proxy::Call::proxy { .. }))
-					|| !matches!(c, Call::Proxy(..))
+				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
+					|| !matches!(c, RuntimeCall::Proxy(..))
 			}
 			ProxyType::Borrow => matches!(
 				c,
-				Call::Loans(pallet_loans::Call::create{..}) |
-				Call::Loans(pallet_loans::Call::borrow{..}) |
-				Call::Loans(pallet_loans::Call::repay{..}) |
-				Call::Loans(pallet_loans::Call::write_off{..}) |
-				Call::Loans(pallet_loans::Call::close{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::borrow{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::repay{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::close{..}) |
 				// Borrowers should be able to close and execute an epoch
 				// in order to get liquidity from repayments in previous epochs.
-				Call::Loans(pallet_loans::Call::update_nav{..}) |
-				Call::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
-				Call::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
-				Call::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
-				Call::Utility(pallet_utility::Call::batch_all{..}) |
-				Call::Utility(pallet_utility::Call::batch{..})
+				RuntimeCall::Loans(pallet_loans::Call::update_nav{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch{..})
 			),
 			ProxyType::Price => matches!(c, Call::Loans(pallet_loans::Call::price { .. })),
 			ProxyType::Invest => matches!(
 				c,
-				Call::Investments(pallet_investments::Call::update_invest_order{..}) |
-				Call::Investments(pallet_investments::Call::update_redeem_order{..}) |
-				Call::Investments(pallet_investments::Call::collect_investments{..}) |
-				Call::Investments(pallet_investments::Call::collect_redemptions{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::update_invest_order{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::update_redeem_order{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::collect_investments{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::collect_redemptions{..}) |
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
-				Call::Loans(pallet_loans::Call::update_nav{..}) |
-				Call::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
-				Call::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
-				Call::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
-				Call::Utility(pallet_utility::Call::batch_all{..}) |
-				Call::Utility(pallet_utility::Call::batch{..})
+				RuntimeCall::Loans(pallet_loans::Call::update_nav{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch{..})
 			),
-			ProxyType::ProxyManagement => matches!(c, Call::Proxy(..)),
+			ProxyType::ProxyManagement => matches!(c, RuntimeCall::Proxy(..)),
 			ProxyType::KeystoreManagement => matches!(
 				c,
-				Call::Keystore(pallet_keystore::Call::add_keys { .. })
-					| Call::Keystore(pallet_keystore::Call::revoke_keys { .. })
+				RuntimeCall::Keystore(pallet_keystore::Call::add_keys { .. })
+					| RuntimeCall::Keystore(pallet_keystore::Call::revoke_keys { .. })
 			),
-			ProxyType::PodOperation => matches!(c, Call::Uniques(..) | Call::Anchor(..)),
+			ProxyType::PodOperation => {
+				matches!(c, RuntimeCall::Uniques(..) | RuntimeCall::Anchor(..))
+			}
 			// This type of proxy is used only for authenticating with the centrifuge POD,
 			// having it here also allows us to validate authentication with on-chain data.
 			ProxyType::PodAuth => false,
@@ -1340,8 +1345,8 @@ parameter_types! {
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
-pub struct CurrencyHooks<R>(PhantomData<R>);
-impl<C: Config> MutationHooks for CurrencyHooks<C> {
+pub struct CurrencyHooks<R>(marker::PhantomData<R>);
+impl<C: orml_tockens::Config> MutationHooks for CurrencyHooks<C> {
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type OnKilledTokenAccount = ();
 	type OnNewTokenAccount = ();

@@ -965,17 +965,22 @@ parameter_types! {
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
+pub struct CurrencyHooks<R>(marker::PhantomData<R>);
+impl<C: orml_tockens::Config> MutationHooks for CurrencyHooks<C> {
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
+	type OnKilledTokenAccount = ();
+	type OnNewTokenAccount = ();
+}
+
 impl orml_tokens::Config for Runtime {
 	type Amount = IBalance;
 	type Balance = Balance;
+	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -1259,7 +1264,7 @@ impl pallet_investments::Config for Runtime {
 
 /// Checks whether the given `who` has the role
 /// of a `TrancehInvestor` for the given pool.
-pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
+pub struct IsTrancheInvestor<P, T>(marker::PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		T: UnixTime,
