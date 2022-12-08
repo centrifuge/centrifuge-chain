@@ -177,47 +177,4 @@ pub mod blocked {
 			);
 		});
 	}
-
-	// TODO (miguel): Remove this test case once we have migrated to substrate v0.9.31
-	#[test]
-	fn verify_multisig_filter_for_max_size_call() {
-		use centrifuge_runtime::{AccountId, Runtime};
-		use cfg_primitives::constants::MAX_MULTISIG_CALL_SIZE;
-
-		Centrifuge::execute_with(|| {
-			let under_limit_payload: Vec<u8> = vec![1; MAX_MULTISIG_CALL_SIZE - 1];
-			// Allowed under limit payload, goes through
-			assert_noop!(
-				Call::Multisig(pallet_multisig::Call::<Runtime>::as_multi {
-					threshold: 2,
-					other_signatories: vec![ALICE.into(), BOB.into()],
-					maybe_timepoint: None,
-					call: WrapperKeepOpaque::from_encoded(under_limit_payload.clone()),
-					store_call: false,
-					max_weight: Weight::zero()
-				})
-				.dispatch(<Runtime as frame_system::Config>::Origin::signed(
-					AccountId::from(ALICE)
-				)),
-				pallet_multisig::Error::<Runtime>::SenderInSignatories
-			);
-
-			let over_limit_payload: Vec<u8> = vec![1; MAX_MULTISIG_CALL_SIZE];
-			// Not allowed over limit payload, Call is Filtered
-			assert_noop!(
-				Call::Multisig(pallet_multisig::Call::<Runtime>::as_multi {
-					threshold: 2,
-					other_signatories: vec![ALICE.into(), BOB.into()],
-					maybe_timepoint: None,
-					call: WrapperKeepOpaque::from_encoded(over_limit_payload.clone()),
-					store_call: false,
-					max_weight: Weight::zero()
-				})
-				.dispatch(<Runtime as frame_system::Config>::Origin::signed(
-					AccountId::from(ALICE)
-				)),
-				frame_system::Error::<Runtime>::CallFiltered
-			);
-		});
-	}
 }

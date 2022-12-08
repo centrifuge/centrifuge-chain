@@ -222,12 +222,6 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
-			RuntimeCall::Multisig(method) => match method {
-				pallet_multisig::Call::as_multi { call, .. } => {
-					call.encoded_len() < MAX_MULTISIG_CALL_SIZE
-				}
-				_ => true,
-			},
 			_ => true,
 		}
 	}
