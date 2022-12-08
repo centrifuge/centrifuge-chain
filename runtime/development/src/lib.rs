@@ -1346,7 +1346,7 @@ parameter_types! {
 }
 
 pub struct CurrencyHooks<R>(marker::PhantomData<R>);
-impl<C: orml_tockens::Config> MutationHooks for CurrencyHooks<C> {
+impl<C: orml_tokens::Config> MutationHooks for CurrencyHooks<C> {
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type OnKilledTokenAccount = ();
 	type OnNewTokenAccount = ();
@@ -1563,7 +1563,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 		FixedI128,
 		MaxCurrencyMovements,
 	>;
-	type RntimeEvent = RuntimeEvent;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 frame_support::parameter_types! {

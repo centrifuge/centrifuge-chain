@@ -966,7 +966,7 @@ parameter_types! {
 }
 
 pub struct CurrencyHooks<R>(marker::PhantomData<R>);
-impl<C: orml_tockens::Config> MutationHooks for CurrencyHooks<C> {
+impl<C: orml_tokens::Config> MutationHooks for CurrencyHooks<C> {
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type OnKilledTokenAccount = ();
 	type OnNewTokenAccount = ();
