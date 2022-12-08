@@ -302,7 +302,6 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 	/// The overarching event type.
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
 	type WeightInfo = weights::pallet_balances::WeightInfo<Self>;
 }
 
@@ -365,7 +364,6 @@ impl pallet_multisig::Config for Runtime {
 	type MaxSignatories = MaxSignatories;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_multisig::SubstrateWeight<Self>;
 	type WeightInfo = weights::pallet_multisig::WeightInfo<Self>;
 }
 
@@ -1010,7 +1008,6 @@ impl pallet_nft_sales::Config for Runtime {
 	type PalletId = NftSalesPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_nft_sales::WeightInfo<Self>;
-	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
 }
 
 // XCM
