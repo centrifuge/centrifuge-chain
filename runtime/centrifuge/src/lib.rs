@@ -25,7 +25,10 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{
+		ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote,
+		WithdrawReasons,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, Weight,
@@ -736,6 +739,8 @@ impl pallet_identity::Config for Runtime {
 
 parameter_types! {
 	pub const MinVestedTransfer: Balance = MIN_VESTING * CFG;
+	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
+		 WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -743,6 +748,7 @@ impl pallet_vesting::Config for Runtime {
 	type Currency = Balances;
 	type MinVestedTransfer = MinVestedTransfer;
 	type RuntimeEvent = RuntimeEvent;
+	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 	type WeightInfo = weights::pallet_vesting::WeightInfo<Runtime>;
 
 	const MAX_VESTING_SCHEDULES: u32 = 3;
