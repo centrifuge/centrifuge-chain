@@ -42,6 +42,7 @@ use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime,
+	dispatch::DispatchClass,
 	pallet_prelude::{DispatchError, DispatchResult},
 	parameter_types,
 	sp_std::marker::PhantomData,
@@ -51,7 +52,7 @@ use frame_support::{
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		ConstantMultiplier, DispatchClass, Weight,
+		ConstantMultiplier, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -59,7 +60,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_traits::parameter_type_with_key;
+use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
@@ -456,7 +457,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
 				RuntimeCall::Utility(pallet_utility::Call::batch{..})
 			),
-			ProxyType::Price => matches!(c, Call::Loans(pallet_loans::Call::price { .. })),
+			ProxyType::Price => matches!(c, RuntimeCall::Loans(pallet_loans::Call::price { .. })),
 			ProxyType::Invest => matches!(
 				c,
 				RuntimeCall::Investments(pallet_investments::Call::update_invest_order{..}) |
@@ -1345,11 +1346,16 @@ parameter_types! {
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
-pub struct CurrencyHooks<R>(marker::PhantomData<R>);
-impl<C: orml_tokens::Config> MutationHooks for CurrencyHooks<C> {
+pub struct CurrencyHooks<R>(PhantomData<R>);
+impl<C: orml_tokens::Config> MutationHooks<AccountId, CurrencyId, Balance> for CurrencyHooks<C> {
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type OnKilledTokenAccount = ();
 	type OnNewTokenAccount = ();
+	type OnSlash = ();
+	type PostDeposit = ();
+	type PostTransfer = ();
+	type PreDeposit = ();
+	type PreTransfer = ();
 }
 
 impl orml_tokens::Config for Runtime {

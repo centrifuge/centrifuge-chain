@@ -35,14 +35,16 @@ use codec::{Decode, Encode, MaxEncodedLen};
 /// Constant values used within the runtime.
 use constants::currency::*;
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	dispatch::DispatchClass,
+	parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
 		PalletInfoAccess, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		ConstantMultiplier, DispatchClass, Weight,
+		ConstantMultiplier, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -50,7 +52,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_traits::parameter_type_with_key;
+use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
@@ -959,11 +961,16 @@ parameter_types! {
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
-pub struct CurrencyHooks<R>(marker::PhantomData<R>);
-impl<C: orml_tokens::Config> MutationHooks for CurrencyHooks<C> {
+pub struct CurrencyHooks<R>(PhantomData<R>);
+impl<C: orml_tokens::Config> MutationHooks<AccountId, CurrencyId, Balance> for CurrencyHooks<C> {
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type OnKilledTokenAccount = ();
 	type OnNewTokenAccount = ();
+	type OnSlash = ();
+	type PostDeposit = ();
+	type PostTransfer = ();
+	type PreDeposit = ();
+	type PreTransfer = ();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -1258,7 +1265,7 @@ impl pallet_investments::Config for Runtime {
 
 /// Checks whether the given `who` has the role
 /// of a `TrancehInvestor` for the given pool.
-pub struct IsTrancheInvestor<P, T>(marker::PhantomData<(P, T)>);
+pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		T: UnixTime,
