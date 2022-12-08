@@ -221,7 +221,7 @@ by the new versions will have to be dealt with manually afterwards.
    - etc
    
 
-5. **Build and test the project and migrate any introduced change**
+5. **Build and test the project and migrate any new introduced changes**
 
     Now that all dependencies are aligned with the latest version of Polkadot, run build and test commands and address 
     any compilation issue. 
