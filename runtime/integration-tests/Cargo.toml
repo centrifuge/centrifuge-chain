@@ -73,7 +73,7 @@ orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-modu
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.32" }
 
 # Misc
-xcm-emulator = { git = "https://github.com/NunoAlexandre/xcm-simulator", branch = "polkadot-v0.9.32" }
+xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "158a6bd2768c679563efa891aa17329635b2764b" }
 
 # Local
 altair-runtime = { path = "../altair" }
