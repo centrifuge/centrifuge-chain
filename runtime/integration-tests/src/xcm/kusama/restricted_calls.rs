@@ -34,7 +34,7 @@ use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 use xcm::{
 	latest::{
 		AssetId, Fungibility, Junction, Junction::*, Junctions::*, MultiAsset, MultiLocation,
-		NetworkId,
+		NetworkId, WeightLimit,
 	},
 	v2::{Instruction::WithdrawAsset, Xcm},
 	VersionedMultiLocation,
@@ -77,7 +77,7 @@ pub mod blocked {
 						)
 						.into()
 					),
-					8_000_000_000_000,
+					WeightLimit::Limited(8_000_000_000_000),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::NotCrossChainTransferableCurrency
 			);
@@ -120,7 +120,7 @@ pub mod blocked {
 						)
 						.into()
 					),
-					8_000_000_000_000,
+					WeightLimit::Limited(8_000_000_000_000),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
 			);
@@ -164,7 +164,7 @@ pub mod blocked {
 						)
 						.into()
 					),
-					8_000_000_000_000,
+					WeightLimit::Limited(8_000_000_000_000),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
 			);

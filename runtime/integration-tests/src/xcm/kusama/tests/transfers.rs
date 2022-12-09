@@ -36,7 +36,7 @@ use runtime_common::{
 };
 use sp_runtime::DispatchError::BadOrigin;
 use xcm::{
-	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId, WeightLimit},
 	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
@@ -110,7 +110,7 @@ fn transfer_air_to_sibling() {
 				)
 				.into()
 			),
-			8_000_000_000_000,
+			WeightLimit::Limited(8_000_000_000_000),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -179,7 +179,7 @@ fn transfer_air_sibling_to_altair() {
 				)
 				.into()
 			),
-			8_000_000_000_000,
+			WeightLimit::Limited(8_000_000_000_000),
 		));
 
 		// Confirm that Bobs's balance is initial balance - amount transferred
@@ -255,7 +255,7 @@ fn transfer_ausd_to_altair() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 
 		assert_eq!(
@@ -331,7 +331,7 @@ fn transfer_ksm_to_relay_chain() {
 				)
 				.into()
 			),
-			4_000_000_000
+			WeightLimit::Limited(4_000_000_000)
 		));
 	});
 
@@ -399,7 +399,7 @@ fn transfer_foreign_sibling_to_altair() {
 				)
 				.into()
 			),
-			8_000_000_000_000,
+			WeightLimit::Limited(8_000_000_000_000),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -490,7 +490,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 				)
 				.into()
 			),
-			8000000000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
