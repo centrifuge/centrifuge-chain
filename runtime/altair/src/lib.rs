@@ -1707,7 +1707,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
-			add_benchmark!(params, batches, pallet_pool_system, PoolRegistry);
+			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 
