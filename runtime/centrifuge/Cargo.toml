@@ -222,7 +222,7 @@ std = [
 runtime-benchmarks = [
   "hex-literal",
   "frame-benchmarking",
-  "frame-system-benchmarking",
+  "frame-system-benchmarking/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
