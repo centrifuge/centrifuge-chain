@@ -1209,7 +1209,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureSigned<AccountId>;
+	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type TrancheId = TrancheId;
