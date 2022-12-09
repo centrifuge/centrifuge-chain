@@ -434,7 +434,7 @@ pub mod pallet {
 	{
 		pub fn list_currencies(account_id: T::AccountId) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
 			StakeAccounts::<T, I>::iter_prefix(account_id)
-				.map(|(reward_currency_id, _) | {reward_currency_id})
+				.map(|(reward_currency_id, _) | reward_currency_id)
 				.collect::<sp_std::vec::Vec<(T::DomainId, T::CurrencyId)>>()
 		}
 	}

@@ -1999,8 +1999,8 @@ impl_runtime_apis! {
 			Some(currencies)
 		}
 
-		fn compute_reward(account_id: AccountId, rewards_currency_id: (RewardDomain, CurrencyId)) -> Option<Balance> {
-			let reward = <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(rewards_currency_id, &account_id);
+		fn compute_reward(reward_currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
+			let reward = <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(reward_currency_id, &account_id);
 
 			match reward {
 				Ok(balance) => Some(balance),

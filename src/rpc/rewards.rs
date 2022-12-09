@@ -15,8 +15,8 @@ pub trait RewardsApi<AccountId, Balance, RewardDomain, CurrencyId, BlockHash> {
     #[method(name = "rewards_computeReward")]
     fn compute_reward(
         &self,
-        account_id: AccountId,
         reward_currency_id: (RewardDomain, CurrencyId),
+        account_id: AccountId,
         at: Option<BlockHash>,
     ) -> RpcResult<Balance>;
 }
@@ -62,8 +62,8 @@ RewardsApiServer<AccountId, Balance, RewardDomain, CurrencyId, Block::Hash> for 
 
     fn compute_reward(
         &self,
-        account_id: AccountId,
         reward_currency_id: (RewardDomain, CurrencyId),
+        account_id: AccountId,
         at: Option<Block::Hash>,
     ) -> RpcResult<Balance> {
         let api = self.client.runtime_api();
@@ -74,7 +74,7 @@ RewardsApiServer<AccountId, Balance, RewardDomain, CurrencyId, Block::Hash> for 
             BlockId::hash(self.client.info().best_hash)
         };
 
-        api.compute_reward(&at, account_id, reward_currency_id)
+        api.compute_reward(&at, reward_currency_id, account_id)
             .map_err(|e| runtime_error("Unable to compute reward", e))?
             .ok_or_else(|| invalid_params_error("Reward not found"))
     }
