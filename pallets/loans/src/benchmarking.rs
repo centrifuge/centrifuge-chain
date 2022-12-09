@@ -349,7 +349,7 @@ benchmarks! {
 	verify {
 		// assert loan issue event
 		let loan_id: T::LoanId = 1u128.into();
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Created { pool_id, loan_id, collateral }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Created { pool_id, loan_id, collateral }.into());
 
 		// collateral owner must be pool account
 		let pool_account = pool_account::<T>(pool_id.into());
@@ -393,7 +393,7 @@ benchmarks! {
 		let interest_rate_per_sec: <T as pallet::Config>::Rate = math::interest_rate_per_sec(interest_rate_per_year).unwrap().into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_year, loan_type)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).expect("Active loan info should be present");
 		assert_eq!(active_loan.loan_type, loan_type);
@@ -412,7 +412,7 @@ benchmarks! {
 	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, write_off_group)
 	verify {
 		let write_off_group_index = 0u32;
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WriteOffGroupAdded { pool_id, write_off_group_index }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::WriteOffGroupAdded { pool_id, write_off_group_index }.into());
 	}
 
 	initial_borrow {
@@ -429,7 +429,7 @@ benchmarks! {
 		let amount = (100 * CURRENCY).into();
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Borrowed { pool_id, loan_id, amount }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Borrowed { pool_id, loan_id, amount }.into());
 		// pool reserve should have 100 USD less = 900 USD
 		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
@@ -461,7 +461,7 @@ benchmarks! {
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Borrowed { pool_id, loan_id, amount }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Borrowed { pool_id, loan_id, amount }.into());
 		// pool reserve should have 100 USD less = 900 USD
 		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (910 * CURRENCY).into();
@@ -493,7 +493,7 @@ benchmarks! {
 		let amount = (100 * CURRENCY).into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Repaid { pool_id, loan_id, amount }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Repaid { pool_id, loan_id, amount }.into());
 		// pool reserve should have 1000 USD
 		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
@@ -552,7 +552,7 @@ benchmarks! {
 			.expect("Rate is an integer after `trunc`. div by 10000 is safe")
 			.into();
 		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-sec");
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOff{write_off_index: index})
 	}
@@ -581,7 +581,7 @@ benchmarks! {
 		let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(penalty_interest_rate_per_year).expect("Rate should be convertible to per-second");
 	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, loan_id, percentage, penalty_interest_rate_per_year)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: None }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: None }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOffByAdmin{percentage, penalty_interest_rate_per_sec});
 	}
@@ -615,7 +615,7 @@ benchmarks! {
 		LoansPallet::<T>::repay(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("repay should not fail");
 	}:close(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Closed { pool_id, loan_id, collateral }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Closed { pool_id, loan_id, collateral }.into());
 		// pool reserve should have more 1000 USD. this is with interest
 		let pool_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
@@ -663,7 +663,7 @@ benchmarks! {
 		LoansPallet::<T>::write_off(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id).expect("write off should not fail");
 	}:close(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Closed { pool_id, loan_id, collateral }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Closed { pool_id, loan_id, collateral }.into());
 		// pool reserve should have 900 USD since loan is written off 100%
 		let pool_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
@@ -709,7 +709,7 @@ benchmarks! {
 		let pool_nav = PoolNAV::<T>::get(pool_id).expect("pool nav should be present");
 		// updated time should be after_one_years
 		assert_eq!(pool_nav.last_updated, after_one_month/1000);
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated { pool_id, nav: pool_nav.latest, update_type: NAVUpdateType::Exact }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::NAVUpdated { pool_id, nav: pool_nav.latest, update_type: NAVUpdateType::Exact }.into());
 	}
 }
 
