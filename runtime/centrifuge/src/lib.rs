@@ -495,7 +495,46 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
+			ProxyType::NonTransfer => {
+				matches!(
+					c,
+					Call::System(..) |
+					Call::ParachainSystem(..) |
+					Call::Timestamp(..) |
+					// Specifically omitting Balances
+					Call::CollatorSelection(..) |
+					Call::Authorship(..) |
+					Call::Session(..) |
+					Call::Multisig(..) |
+					// The internal logic prevents upgrading
+					// this proxy to a `ProxyType::Any` proxy
+					// as long as the `is_superset` is correctly
+					// configured
+					Call::Proxy(..) |
+					Call::Utility(..) |
+					Call::Scheduler(..) |
+					Call::Council(..) |
+					Call::Elections(..) |
+					Call::Democracy(..) |
+					Call::Identity(..) |
+					Call::Vesting(pallet_vesting::Call::vest {..}) |
+					Call::Vesting(pallet_vesting::Call::vest_other {..}) |
+					// Specifically omitting Vesting `vested_transfer`, and `force_vested_transfer`
+					Call::Treasury(..) |
+					Call::Preimage(..) |
+					Call::Fees(..) |
+					Call::Anchor(..) |
+					Call::CrowdloanClaim(..) |
+					Call::CrowdloanReward(..) |
+					// Specifically omitting Tokens
+					// Specifically omitting Bridge
+					// Specifically omitting ALL XCM related pallets
+					// Specifically omitting OrmlTokens
+					// Specifically omitting ChainBridge
+					// Specifically omitting Migration
+					Call::CollatorAllowlist(..)
+				)
+			}
 			ProxyType::Governance => matches!(
 				c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
