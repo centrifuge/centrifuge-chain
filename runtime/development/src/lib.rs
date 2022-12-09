@@ -427,7 +427,68 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, Call::Tokens(..)),
+			ProxyType::NonTransfer => {
+				matches!(
+					c,
+					Call::System(..) |
+					Call::ParachainSystem(..) |
+					Call::Timestamp(..) |
+					// Specifically omitting Balances
+					Call::CollatorSelection(..) |
+					Call::Authorship(..) |
+					Call::Session(..) |
+					Call::Multisig(..) |
+					// The internal logic prevents upgrading
+					// this proxy to a `ProxyType::Any` proxy
+					// as long as the `is_superset` is correctly
+					// configured
+					Call::Proxy(..) |
+					Call::Utility(..) |
+					Call::Scheduler(..) |
+					Call::Council(..) |
+					Call::Elections(..) |
+					Call::Democracy(..) |
+					Call::Identity(..) |
+					Call::Vesting(pallet_vesting::Call::vest {..}) |
+					Call::Vesting(pallet_vesting::Call::vest_other {..}) |
+					// Specifically omitting Vesting `vested_transfer`, and `force_vested_transfer`
+					Call::Treasury(..) |
+					Call::Uniques(..) |
+					Call::Preimage(..) |
+					Call::Fees(..) |
+					Call::Anchor(..) |
+					Call::Claims(..) |
+					Call::CrowdloanClaim(..) |
+					Call::CrowdloanReward(..) |
+					Call::PoolSystem(..) |
+					Call::Loans(pallet_loans::Call::create{..}) |
+					Call::Loans(pallet_loans::Call::write_off{..}) |
+					Call::Loans(pallet_loans::Call::close{..}) |
+					Call::Loans(pallet_loans::Call::update_nav{..}) |
+					// Specifically omitting Loans `repay` & `borrow`
+					Call::Permissions(..) |
+					Call::CollatorAllowlist(..) |
+					// Specifically omitting Tokens
+					Call::NftSales(pallet_nft_sales::Call::add {..}) |
+					Call::NftSales(pallet_nft_sales::Call::remove {..}) |
+					// Specifically omitting NftSales `buy`
+					// Specifically omitting Bridge
+					// Specifically omitting Nfts
+					Call::Keystore(..) |
+					Call::Investments(pallet_investments::Call::collect_investments_for {..}) |
+					Call::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
+					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
+					// `collect_investments`, `collect_redemptions`
+					Call::LiquidityRewards(..) |
+					// Specifically omitting Connectors
+					// Specifically omitting ALL XCM related pallets
+					// Specifically omitting OrmlTokens
+					// Specifically omitting ChainBridge
+					// Specifically omitting Migration
+					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
+					Call::PoolRegistry(pallet_pool_registry::Call::execute_update {..})
+				)
+			}
 			ProxyType::Governance => matches!(
 				c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
