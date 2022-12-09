@@ -68,7 +68,7 @@ fn register_pool_and_set_metadata() {
 			let metadata = Some(hash);
 
 			assert_ok!(PoolRegistry::register(
-				Origin::signed(pool_owner),
+				RuntimeOrigin::signed(pool_owner),
 				pool_owner,
 				pool_id,
 				tranches_inputs,

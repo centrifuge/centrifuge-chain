@@ -22,7 +22,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use altair_runtime::{Balances, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use altair_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
@@ -86,7 +86,7 @@ fn transfer_air_to_sibling() {
 			additional: CustomMetadata::default(),
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta,
 			Some(air_in_sibling.clone())
 		));
@@ -94,7 +94,7 @@ fn transfer_air_to_sibling() {
 
 	Altair::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			CurrencyId::Native,
 			transfer_amount,
 			Box::new(
@@ -163,7 +163,7 @@ fn transfer_air_sibling_to_altair() {
 
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			air_in_sibling.clone(),
 			transfer_amount,
 			Box::new(
@@ -239,7 +239,7 @@ fn transfer_ausd_to_altair() {
 
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			CurrencyId::AUSD,
 			transfer_amount,
 			Box::new(
@@ -291,7 +291,7 @@ fn transfer_ksm_from_relay_chain() {
 
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
-			kusama_runtime::Origin::signed(ALICE.into()),
+			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
 			Box::new(Parachain(parachains::kusama::altair::ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
@@ -318,7 +318,7 @@ fn transfer_ksm_from_relay_chain() {
 fn transfer_ksm_to_relay_chain() {
 	Altair::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			CurrencyId::KSM,
 			ksm(1),
 			Box::new(
@@ -375,7 +375,7 @@ fn transfer_foreign_sibling_to_altair() {
 	Altair::execute_with(|| {
 		// First, register the asset in altair
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta.clone(),
 			Some(sibling_asset_id)
 		));
@@ -383,7 +383,7 @@ fn transfer_foreign_sibling_to_altair() {
 
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			CurrencyId::Native,
 			transfer_amount,
 			Box::new(
@@ -447,7 +447,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 
 	Karura::execute_with(|| {
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta.clone(),
 			Some(usdc_asset_id)
 		));
@@ -466,7 +466,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 	Altair::execute_with(|| {
 		// First, register the asset in centrifuge
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta.clone(),
 			Some(usdc_asset_id)
 		));
@@ -474,7 +474,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			usdc_asset_id,
 			transfer_amount,
 			Box::new(

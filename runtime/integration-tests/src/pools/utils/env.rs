@@ -47,8 +47,8 @@ use crate::{
 	chain::{
 		centrifuge,
 		centrifuge::{
-			Block as CentrifugeBlock, Event, Runtime, RuntimeApi as CentrifugeRtApi, PARA_ID,
-			WASM_BINARY as CentrifugeCode,
+			Block as CentrifugeBlock, Runtime, RuntimeApi as CentrifugeRtApi, RuntimeEvent,
+			PARA_ID, WASM_BINARY as CentrifugeCode,
 		},
 		relay,
 		relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode},
@@ -72,13 +72,13 @@ pub mod macros {
 	/// 		Chain::Para(PARA_ID), //-> The chain where we fetch the events from
 	/// 		Event, //-> The event-enum type from the runtime
 	/// 		EventRange::All, //-> The range of blocks we check for the events
-	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..})
+	/// 		RuntimeEvent::System(frame_system::Event::ExtrinsicFailed{..})
 	/// 			if [count 0], // -> Ensures zero occurencies of the given event. Could also ensure n-occurencies
-	/// 		Event::PoolSystem(pallet_pool_system::Event::Created(id, ..)) if [id == 0], //-> matches only of the id matches to 0
-	/// 		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == 0],
-	/// 		Event::Loans(pallet_loans::Event::Created(id, loan, asset))
+	/// 		RuntimeEvent::PoolSystem(pallet_pool_system::RuntimeEvent::Created(id, ..)) if [id == 0], //-> matches only of the id matches to 0
+	/// 		RuntimeEvent::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == 0],
+	/// 		RuntimeEvent::Loans(pallet_loans::Event::Created(id, loan, asset))
 	/// 			if [id == 0 && loan == InstanceId(1) && asset == Asset(4294967296, InstanceId(1))], //-> matches only of the clause matches
-	/// 		Event::Loans(pallet_loans::Event::Priced(id, loan)) if [id == 0 && loan == InstanceId(1)],
+	/// 		RuntimeEvent::Loans(pallet_loans::Event::Priced(id, loan)) if [id == 0 && loan == InstanceId(1)],
 	///	);
 	/// ```
 	macro_rules! assert_events {
@@ -99,7 +99,7 @@ pub mod macros {
 			let mut msg = "Failed asserting event clause of: ".to_owned();
 
 			$(
-				let matches = |event: &Event| {
+				let matches = |event: &RuntimeEvent| {
 					match *event {
 						$pattern $(if extra_guards!($extra) )? => true,
 						_ => false
@@ -156,9 +156,9 @@ pub mod macros {
 	/// 		Chain::Para(PARA_ID), //-> The chain where we fetch the events from
 	/// 		Event, //-> The event-enum type from the runtime
 	/// 		EventRange::All, //-> The range of blocks we check for the events
-	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..}) //-> The list of events that should be matched
-	/// 			| Event::PoolSystem(pallet_pool_system::Event::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
-	/// 			| Event::Loans(..)
+	/// 		RuntimeEvent::System(frame_system::Event::ExtrinsicFailed{..}) //-> The list of events that should be matched
+	/// 			| RuntimeEvent::PoolSystem(pallet_pool_system::RuntimeEvent::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
+	/// 			| RuntimeEvent::Loans(..)
 	///	);
 	/// ```
 	macro_rules! events {
@@ -168,13 +168,13 @@ pub mod macros {
 			use codec::Decode as _;
 
 			let scale_events = $env.events($chain, $range).expect("Failed fetching events");
-			let event_records: Vec<__hidden_EventRecord<Event, __hidden_H256>> = scale_events
+			let event_records: Vec<__hidden_EventRecord<RuntimeEvent, __hidden_H256>> = scale_events
 				.into_iter()
 				.map(|scale_record| __hidden_EventRecord::<$event, __hidden_H256>::decode(&mut scale_record.as_slice())
 					.expect("Decoding from chain data does not fail. qed"))
 				.collect();
 
-			let matches = |event: &Event| {
+			let matches = |event: &RuntimeEvent| {
 				match *event {
             		$( $pattern )|+ $( if $guard )? => true,
             		_ => false
@@ -320,7 +320,7 @@ type RelayDp = Box<dyn DigestCreator<RelayBlock> + Send + Sync>;
 /// A struct that stores all events that have been generated
 /// since we are building blocks locally here.
 pub struct EventsStorage {
-	pub centrifuge: HashMap<BlockNumber, Vec<EventRecord<Event, H256>>>,
+	pub centrifuge: HashMap<BlockNumber, Vec<EventRecord<RuntimeEvent, H256>>>,
 }
 
 impl EventsStorage {
@@ -341,14 +341,14 @@ pub enum EventRange {
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
-	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, RelayDp, HF>,
+	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, RelayDp>,
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge: ParachainBuilder<
 		CentrifugeBlock,
 		CentrifugeRtApi,
 		CentrifugeCidp,
 		CentrifugeDp,
-		CentrifugeHF,
+		// CentrifugeHF,
 	>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
 	pub events: Arc<Mutex<EventsStorage>>,

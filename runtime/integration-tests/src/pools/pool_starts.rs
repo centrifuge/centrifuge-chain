@@ -17,7 +17,7 @@ use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError
 use tokio::runtime::Handle;
 
 use crate::{
-	chain::centrifuge::{Call, Event, Runtime, PARA_ID},
+	chain::centrifuge::{Runtime, RuntimeCall, RuntimeEvent, PARA_ID},
 	pools::utils::{
 		accounts::Keyring,
 		env::{ChainState, EventRange},
@@ -48,7 +48,7 @@ async fn create_init_and_price() {
 	env::run!(
 		env,
 		Chain::Para(PARA_ID),
-		Call,
+		RuntimeCall,
 		ChainState::PoolEmpty,
 		Keyring::Admin => default_pool_calls(Keyring::Admin.into(), pool_id, &mut nft_manager),
 			issue_default_loan(
@@ -63,13 +63,13 @@ async fn create_init_and_price() {
 	env::assert_events!(
 		env,
 		Chain::Para(PARA_ID),
-		Event,
+		RuntimeEvent,
 		EventRange::All,
-		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
-		Event::PoolRegistry(pallet_pool_registry::Event::Registered { pool_id, .. }) if [pool_id == 0],
-		Event::Loans(pallet_loans::Event::PoolInitialised{pool_id}) if [pool_id == 0],
-		Event::Loans(pallet_loans::Event::Created{pool_id, loan_id, collateral})
+		RuntimeEvent::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
+		RuntimeEvent::PoolRegistry(pallet_pool_registry::Event::Registered { pool_id, .. }) if [pool_id == 0],
+		RuntimeEvent::Loans(pallet_loans::Event::PoolInitialised{pool_id}) if [pool_id == 0],
+		RuntimeEvent::Loans(pallet_loans::Event::Created{pool_id, loan_id, collateral})
 			if [pool_id == 0 && loan_id == ItemId(1) && collateral == Asset(4294967296, ItemId(1))],
-		Event::Loans(pallet_loans::Event::Priced{pool_id, loan_id, ..}) if [pool_id == 0 && loan_id == ItemId(1)],
+		RuntimeEvent::Loans(pallet_loans::Event::Priced{pool_id, loan_id, ..}) if [pool_id == 0 && loan_id == ItemId(1)],
 	);
 }

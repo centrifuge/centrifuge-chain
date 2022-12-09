@@ -67,8 +67,8 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeOrigin = Origin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();

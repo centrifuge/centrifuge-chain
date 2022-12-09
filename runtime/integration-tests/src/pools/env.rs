@@ -62,7 +62,7 @@ async fn extrinsics_works() {
 		&env,
 		Keyring::Alice,
 		nonce_centrifuge(&env, Keyring::Alice),
-		centrifuge::Call::Balances(BalancesCall::transfer {
+		centrifuge::RuntimeCall::Balances(BalancesCall::transfer {
 			dest: to,
 			value: 100 * cfg_primitives::constants::CFG,
 		}),

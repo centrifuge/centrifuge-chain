@@ -21,7 +21,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use centrifuge_runtime::{Balances, Call, Multisig, Origin, PolkadotXcm, XTokens};
+use centrifuge_runtime::{Balances, Multisig, PolkadotXcm, RuntimeCall, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
@@ -68,7 +68,7 @@ pub mod blocked {
 		Centrifuge::execute_with(|| {
 			assert_noop!(
 				XTokens::transfer(
-					Origin::signed(ALICE.into()),
+					RuntimeOrigin::signed(ALICE.into()),
 					CurrencyId::Tranche(401, [0; 16]),
 					42,
 					Box::new(
@@ -112,7 +112,7 @@ pub mod blocked {
 		Centrifuge::execute_with(|| {
 			assert_noop!(
 				XTokens::transfer_multiasset(
-					Origin::signed(ALICE.into()),
+					RuntimeOrigin::signed(ALICE.into()),
 					Box::new(tranche_multi_asset),
 					Box::new(
 						MultiLocation::new(
@@ -153,7 +153,7 @@ pub mod blocked {
 		Centrifuge::execute_with(|| {
 			assert_noop!(
 				XTokens::transfer_multiassets(
-					Origin::signed(ALICE.into()),
+					RuntimeOrigin::signed(ALICE.into()),
 					Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
 						tranche_multi_asset
 					]))),
