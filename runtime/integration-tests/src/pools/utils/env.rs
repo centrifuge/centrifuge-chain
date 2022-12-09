@@ -47,8 +47,8 @@ use crate::{
 	chain::{
 		centrifuge,
 		centrifuge::{
-			Block as CentrifugeBlock, Runtime, RuntimeApi as CentrifugeRtApi, RuntimeEvent,
-			PARA_ID, WASM_BINARY as CentrifugeCode,
+			Block as CentrifugeBlock, RuntimeEvent, Runtime, RuntimeApi as CentrifugeRtApi, PARA_ID,
+			WASM_BINARY as CentrifugeCode,
 		},
 		relay,
 		relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode},
@@ -341,6 +341,7 @@ pub enum EventRange {
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
+	//TODO(miguel): this type had another arg, `HF` at the end.
 	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, RelayDp>,
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge: ParachainBuilder<
@@ -348,7 +349,7 @@ pub struct TestEnv {
 		CentrifugeRtApi,
 		CentrifugeCidp,
 		CentrifugeDp,
-		// CentrifugeHF,
+		// CentrifugeHF, TODO(miguel): this type dropped one arg, not sure which would to drop tho
 	>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
 	pub events: Arc<Mutex<EventsStorage>>,
