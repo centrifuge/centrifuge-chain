@@ -63,7 +63,6 @@ impl<T: frame_system::Config> pallet_proxy::WeightInfo for WeightInfo<T> {
 		todo!()
 	}
 
-
 	fn create_pure(p: u32) -> Weight {
 		todo!()
 	}
