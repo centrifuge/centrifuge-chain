@@ -413,7 +413,65 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
+			ProxyType::NonTransfer => {
+				matches!(
+					c,
+					Call::System(..) |
+					Call::ParachainSystem(..) |
+					Call::Timestamp(..) |
+					// Specifically omitting Balances
+					Call::CollatorSelection(..) |
+					Call::Authorship(..) |
+					Call::Session(..) |
+					Call::Multisig(..) |
+					// The internal logic prevents upgrading
+					// this proxy to a `ProxyType::Any` proxy
+					// as long as the `is_superset` is correctly
+					// configured
+					Call::Proxy(..) |
+					Call::Utility(..) |
+					Call::Scheduler(..) |
+					Call::Council(..) |
+					Call::Elections(..) |
+					Call::Democracy(..) |
+					Call::Identity(..) |
+					Call::Vesting(pallet_vesting::Call::vest {..}) |
+					Call::Vesting(pallet_vesting::Call::vest_other {..}) |
+					// Specifically omitting Vesting `vested_transfer`, and `force_vested_transfer`
+					Call::Treasury(..) |
+					Call::Uniques(..) |
+					Call::Preimage(..) |
+					Call::Fees(..) |
+					Call::Anchor(..) |
+					Call::CrowdloanClaim(..) |
+					Call::CrowdloanReward(..) |
+					Call::PoolSystem(..) |
+					Call::Loans(pallet_loans::Call::create{..}) |
+					Call::Loans(pallet_loans::Call::write_off{..}) |
+					Call::Loans(pallet_loans::Call::close{..}) |
+					Call::Loans(pallet_loans::Call::update_nav{..}) |
+					// Specifically omitting Loans `repay` & `borrow`
+					Call::Permissions(..) |
+					Call::CollatorAllowlist(..) |
+					// Specifically omitting Tokens
+					Call::NftSales(pallet_nft_sales::Call::add {..}) |
+					Call::NftSales(pallet_nft_sales::Call::remove {..}) |
+					// Specifically omitting NftSales `buy`
+					// Specifically omitting Bridge
+					// Specifically omitting Nfts
+					Call::Investments(pallet_investments::Call::collect_investments_for {..}) |
+					Call::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
+					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
+					// `collect_investments`, `collect_redemptions`
+					// Specifically omitting Connectors
+					// Specifically omitting ALL XCM related pallets
+					// Specifically omitting OrmlTokens
+					// Specifically omitting ChainBridge
+					// Specifically omitting Migration
+					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
+					Call::PoolRegistry(pallet_pool_registry::Call::execute_update {..})
+				)
+			}
 			ProxyType::Governance => matches!(
 				c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
@@ -1140,6 +1198,24 @@ impl pallet_pool_system::Config for Runtime {
 	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
 }
 
+impl pallet_pool_registry::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Event = Event;
+	type InterestRate = Rate;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
+	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
+	type MaxTranches = MaxTranches;
+	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type Permission = Permissions;
+	type PoolCreateOrigin = EnsureSigned<AccountId>;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type TrancheId = TrancheId;
+	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
+}
+
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
@@ -1355,6 +1431,7 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 102,
+		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
