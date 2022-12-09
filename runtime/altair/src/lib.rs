@@ -1140,6 +1140,24 @@ impl pallet_pool_system::Config for Runtime {
 	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
 }
 
+impl pallet_pool_registry::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Event = Event;
+	type InterestRate = Rate;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
+	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
+	type MaxTranches = MaxTranches;
+	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type Permission = Permissions;
+	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type TrancheId = TrancheId;
+	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
+}
+
 pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
@@ -1355,6 +1373,7 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 102,
+		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1620,6 +1639,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
+			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 
@@ -1687,6 +1707,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
+			add_benchmark!(params, batches, pallet_pool_system, PoolRegistry);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 
