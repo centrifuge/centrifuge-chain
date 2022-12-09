@@ -101,7 +101,7 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", default-feature
 
 [features]
 default = ["runtime-development"]
-runtime-benchmarks = ["default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = ["default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks", "kusama-runtime/runtime-benchmarks"]
 runtime-development = []
 runtime-altair = []
 runtime-centrifuge = []
