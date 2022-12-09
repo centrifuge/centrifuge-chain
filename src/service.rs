@@ -17,7 +17,6 @@
 use std::{sync::Arc, time::Duration};
 
 use cfg_primitives::{Block, Hash};
-use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::BlockAnnounceValidator;
@@ -27,7 +26,6 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
-use sc_client_api::ExecutorProvider;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::{NetworkBlock, NetworkService};
 use sc_rpc_api::DenyUnsafe;
@@ -232,7 +230,7 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
-	rpc_config: RpcConfig,
+	_rpc_config: RpcConfig,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
@@ -459,7 +457,7 @@ pub fn build_altair_import_queue(
 					slot_duration,
 				);
 
-			Ok((time, slot))
+			Ok((slot, time))
 		},
 		registry: config.prometheus_registry(),
 		spawner: &task_manager.spawn_essential_handle(),
@@ -553,7 +551,7 @@ pub async fn start_altair_node(
 								"Failed to create parachain inherent",
 							)
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, time, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
@@ -619,7 +617,7 @@ pub fn build_centrifuge_import_queue(
 					slot_duration,
 				);
 
-			Ok((time, slot))
+			Ok((slot, time))
 		},
 		registry: config.prometheus_registry(),
 		spawner: &task_manager.spawn_essential_handle(),
@@ -710,7 +708,7 @@ pub async fn start_centrifuge_node(
 								"Failed to create parachain inherent",
 							)
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, time, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
@@ -776,7 +774,7 @@ pub fn build_development_import_queue(
 					slot_duration,
 				);
 
-			Ok((time, slot))
+			Ok((slot, time))
 		},
 		registry: config.prometheus_registry(),
 		spawner: &task_manager.spawn_essential_handle(),
@@ -870,7 +868,7 @@ pub async fn start_development_node(
 								"Failed to create parachain inherent",
 							)
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, time, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
