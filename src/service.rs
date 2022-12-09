@@ -43,6 +43,7 @@ use crate::{
 	rpc::{
 		self,
 		anchors::{AnchorApiServer, Anchors},
+		loans::{Loans, LoansApiServer},
 		pools::{Pools, PoolsApiServer},
 	},
 };
@@ -499,7 +500,10 @@ pub async fn start_altair_node(
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client).into_rpc())
+				.merge(Pools::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(Loans::new(client).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},

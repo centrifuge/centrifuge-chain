@@ -1914,6 +1914,15 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl runtime_common::apis::LoansApi<Block, PoolId, Balance> for Runtime {
+		fn pool_valuation(pool_id: PoolId) -> Option<Balance>{
+			match pallet_loans::PoolNAV::<Runtime>::get(pool_id) {
+				Some(value) => Some(value.latest),
+				None => None,
+			}
+		}
+	}
+
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn dispatch_benchmark(
