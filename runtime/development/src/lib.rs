@@ -24,9 +24,8 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard,
-	PreConditions, PriceValue, TrancheCurrency as _,
-	rewards::AccountRewards,
+	rewards::AccountRewards, CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect,
+	PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -83,6 +82,8 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
@@ -101,8 +102,6 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 
 pub mod xcm;
 pub use crate::xcm::*;

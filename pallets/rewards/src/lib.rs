@@ -385,8 +385,8 @@ pub mod pallet {
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
-		type RewardCurrencyId = (T::DomainId, T::CurrencyId);
 		type GroupId = T::GroupId;
+		type RewardCurrencyId = (T::DomainId, T::CurrencyId);
 
 		fn attach_currency(
 			currency_id: Self::RewardCurrencyId,
@@ -430,11 +430,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config<I>, I: 'static> Pallet<T, I>
-	where RewardAccountOf<T, I>: FullCodec + Default,
+	where
+		RewardAccountOf<T, I>: FullCodec + Default,
 	{
-		pub fn list_currencies(account_id: T::AccountId) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
+		pub fn list_currencies(
+			account_id: T::AccountId,
+		) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
 			StakeAccounts::<T, I>::iter_prefix(account_id)
-				.map(|(reward_currency_id, _) | reward_currency_id)
+				.map(|(reward_currency_id, _)| reward_currency_id)
 				.collect::<sp_std::vec::Vec<(T::DomainId, T::CurrencyId)>>()
 		}
 	}

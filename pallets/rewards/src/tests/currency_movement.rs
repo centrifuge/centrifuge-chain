@@ -56,10 +56,7 @@ macro_rules! currency_movement_tests {
 				}
 			}
 
-			fn has_currencies(
-				user: u64,
-				reward_currency_ids: &[(DomainId, CurrencyId)],
-			) {
+			fn has_currencies(user: u64, reward_currency_ids: &[(DomainId, CurrencyId)]) {
 				let currencies = $pallet::list_currencies(user);
 				assert_eq!(currencies.len(), reward_currency_ids.len());
 
@@ -486,7 +483,10 @@ macro_rules! currency_movement_tests {
 					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A)]);
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::B)]);
+					has_currencies(
+						USER_A,
+						&[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::B)],
+					);
 
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_B)); // MOVEMENT HERE!!
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_B, GROUP_A)); // MOVEMENT HERE!!
@@ -514,7 +514,10 @@ macro_rules! currency_movement_tests {
 					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A)]);
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_B));
-					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::B)]);
+					has_currencies(
+						USER_A,
+						&[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::B)],
+					);
 
 					assert_ok!($pallet::distribute_reward_with_weights(
 						REWARD,
@@ -542,7 +545,10 @@ macro_rules! currency_movement_tests {
 					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A)]);
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
-					has_currencies(USER_A, &[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::M)]);
+					has_currencies(
+						USER_A,
+						&[(DomainId::D1, CurrencyId::A), (DomainId::D1, CurrencyId::M)],
+					);
 
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 

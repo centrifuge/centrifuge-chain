@@ -42,7 +42,7 @@ use crate::{
 		self,
 		anchors::{AnchorApiServer, Anchors},
 		pools::{Pools, PoolsApiServer},
-		rewards::{Rewards, RewardsApiServer}
+		rewards::{Rewards, RewardsApiServer},
 	},
 };
 
