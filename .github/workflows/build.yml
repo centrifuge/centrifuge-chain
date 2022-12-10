@@ -36,7 +36,7 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Post cleanup"
           df -h
-          apt-get install protobuf-compiler
+          sudo apt-get install protobuf-compiler
       - name: Check out code
         uses: actions/checkout@v3
       - name: Install latest nightly
