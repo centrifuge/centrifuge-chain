@@ -31,43 +31,43 @@ use sp_std::marker::PhantomData;
 /// Weights for pallet_proxy using the Substrate node and recommended hardware.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_proxy::WeightInfo for WeightInfo<T> {
-	fn proxy(p: u32) -> Weight {
+	fn proxy(_p: u32) -> Weight {
 		todo!()
 	}
 
-	fn proxy_announced(a: u32, p: u32) -> Weight {
+	fn proxy_announced(_a: u32, _p: u32) -> Weight {
 		todo!()
 	}
 
-	fn remove_announcement(a: u32, p: u32) -> Weight {
+	fn remove_announcement(_a: u32, _p: u32) -> Weight {
 		todo!()
 	}
 
-	fn reject_announcement(a: u32, p: u32) -> Weight {
+	fn reject_announcement(_a: u32, _p: u32) -> Weight {
 		todo!()
 	}
 
-	fn announce(a: u32, p: u32) -> Weight {
+	fn announce(_a: u32, _p: u32) -> Weight {
 		todo!()
 	}
 
-	fn add_proxy(p: u32) -> Weight {
+	fn add_proxy(_p: u32) -> Weight {
 		todo!()
 	}
 
-	fn remove_proxy(p: u32) -> Weight {
+	fn remove_proxy(_p: u32) -> Weight {
 		todo!()
 	}
 
-	fn remove_proxies(p: u32) -> Weight {
+	fn remove_proxies(_p: u32) -> Weight {
 		todo!()
 	}
 
-	fn create_pure(p: u32) -> Weight {
+	fn create_pure(_p: u32) -> Weight {
 		todo!()
 	}
 
-	fn kill_pure(p: u32) -> Weight {
+	fn kill_pure(_p: u32) -> Weight {
 		todo!()
 	}
 }

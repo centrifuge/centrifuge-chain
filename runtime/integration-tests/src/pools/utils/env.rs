@@ -20,6 +20,7 @@ use cfg_primitives::{AuraId, BlockNumber, Index};
 use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
+use fudge_core::provider::{TWasmExecutor, state::StateProvider};
 use fudge::{
 	digest::{DigestCreator, DigestProvider, FudgeAuraDigest, FudgeBabeDigest},
 	inherent::{
@@ -27,7 +28,7 @@ use fudge::{
 		FudgeInherentTimestamp,
 	},
 	primitives::{Chain, PoolState},
-	EnvProvider, ParachainBuilder, RelaychainBuilder,
+	ParachainBuilder, RelaychainBuilder,
 };
 use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
@@ -36,7 +37,7 @@ use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use rand::Rng;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
-use sc_service::TaskManager;
+use sc_service::{TaskManager, TFullClient};
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
@@ -668,6 +669,50 @@ pub fn test_env_with_both_storage(
 	test_env(manager, Some(relay_storage), Some(centrifuge_storage))
 }
 
+fn test_env_cidp_and_dp_relay_builder(
+	client: Arc<TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>>,
+) -> (
+	impl CreateInherentDataProviders<RelayBlock, ()>,
+	impl DigestCreator<RelayBlock>,
+) {
+	let instance_id = FudgeInherentTimestamp::create_instance(
+		std::time::Duration::from_secs(6),
+		Some(std::time::Duration::from_millis(START_DATE)),
+	);
+
+	let cidp = Box::new(move |parent: H256, ()| {
+		let parent_header = client
+			.header(&BlockId::Hash(parent.clone()))
+			.expect("ESSENTIAL: Relay CIDP must not fail.")
+			.expect("ESSENTIAL: Relay CIDP must not fail.");
+
+		async move {
+			let uncles =
+				sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
+
+			let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
+				.expect("Instances is initialized");
+
+			let slot =
+				sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+					timestamp.current_time(),
+					SlotDuration::from_millis(std::time::Duration::from_secs(6).as_millis() as u64),
+				);
+
+			let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
+			Ok((timestamp, slot, uncles, relay_para_inherent))
+		}
+	});
+
+	let dp = Box::new(move |parent, inherents| async move {
+		let babe = FudgeBabeDigest::<RelayBlock>::new();
+		let digest = babe.build_digest(&parent, &inherents).await?;
+		Ok(digest)
+	});
+
+	(cidp(client), dp)
+}
+
 fn test_env(
 	manager: &TaskManager,
 	relay_storage: Option<Storage>,
@@ -679,20 +724,16 @@ fn test_env(
 	// Build relay-chain builder
 	let relay = {
 		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Relay - StartUp");
-		let mut provider = EnvProvider::<
-			RelayBlock,
-			RelayRtApi,
-			WasmExecutor<sp_io::SubstrateHostFunctions>,
-		>::empty();
+		let mut state = StateProvider::new(RelayCode.expect("Wasm is build. Qed."));
 
 		// We need to HostConfiguration and use the default here.
-		provider.insert_storage(
+		state.insert_storage(
 			polkadot_runtime_parachains::configuration::GenesisConfig::<RelayRt>::default()
 				.build_storage()
 				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 
-		provider.insert_storage(
+		state.insert_storage(
 			frame_system::GenesisConfig {
 				code: RelayCode.expect("ESSENTIAL: Relay WASM is some.").to_vec(),
 			}
@@ -701,66 +742,23 @@ fn test_env(
 		);
 
 		if let Some(storage) = relay_storage {
-			provider.insert_storage(storage);
+			state.insert_storage(storage);
 		}
 
-		let (client, backend) = provider.init_default(
-			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(manager.spawn_handle()),
-		);
-		let client = Arc::new(client);
-		let clone_client = client.clone();
-
-		let instance_id = FudgeInherentTimestamp::create_instance(
-			std::time::Duration::from_secs(6),
-			Some(std::time::Duration::from_millis(START_DATE)),
-		);
-
-		let cidp = Box::new(move |parent: H256, ()| {
-			let client = clone_client.clone();
-			let parent_header = client
-				.header(&BlockId::Hash(parent.clone()))
-				.expect("ESSENTIAL: Relay CIDP must not fail.")
-				.expect("ESSENTIAL: Relay CIDP must not fail.");
-
-			async move {
-				let uncles =
-					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
-
-				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
-					.expect("Instances is initialized");
-
-				let slot =
-					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						timestamp.current_time(),
-						SlotDuration::from_millis(std::time::Duration::from_secs(6).as_millis() as u64),
-					);
-
-				let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
-				Ok((timestamp, slot, uncles, relay_para_inherent))
-			}
-		});
-
-		let dp = Box::new(move |parent, inherents| async move {
-			let babe = FudgeBabeDigest::<RelayBlock>::new();
-			let digest = babe.build_digest(&parent, &inherents).await?;
-			Ok(digest)
-		});
+		let mut init = fudge_core::provider::initiator::default(manager.spawn_handle().into());
+		init.with_genesis(Box::new(state));
 
 		RelaychainBuilder::<_, _, RelayRt, RelayCidp, RelayDp, HF>::new(
-			manager, backend, client, cidp, dp,
+			init, test_env_cidp_and_dp_relay_builder
 		)
 	};
 
 	// Build parachain-builder
 	let centrifuge = {
 		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Centrifuge - StartUp");
-		let mut provider =
-			EnvProvider::<CentrifugeBlock, CentrifugeRtApi, WasmExecutor<CentrifugeHF>>::with_code(
-				CentrifugeCode.unwrap(),
-			);
+		let mut state = StateProvider::new(CentrifugeCode.expect("Wasm is build. Qed."));
 
-		provider.insert_storage(
+		state.insert_storage(
 			frame_system::GenesisConfig {
 				code: CentrifugeCode
 					.expect("ESSENTIAL: Centrifuge WASM is some.")
@@ -769,7 +767,7 @@ fn test_env(
 			.build_storage::<Runtime>()
 			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
-		provider.insert_storage(
+		state.insert_storage(
 			pallet_aura::GenesisConfig::<Runtime> {
 				authorities: vec![AuraId::from(sp_core::sr25519::Public([0u8; 32]))],
 			}
@@ -778,14 +776,12 @@ fn test_env(
 		);
 
 		if let Some(storage) = centrifuge_storage {
-			provider.insert_storage(storage);
+			state.insert_storage(storage);
 		}
 
-		let (client, backend) = provider.init_default(
-			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(manager.spawn_handle()),
-		);
-		let client = Arc::new(client);
+		let mut init = fudge_core::provider::initiator::default(manager.spawn_handle().into());
+		init.with_genesis(Box::new(state));
+
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
 		let instance_id = FudgeInherentTimestamp::create_instance(
@@ -807,7 +803,7 @@ fn test_env(
 				let inherent = inherent_builder_clone
 					.parachain_inherent()
 					.await
-					.expect("ESSENTIAL: ParachainInherent from RelayBuilder must not fail.");
+					.unwrap();
 				let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
 				Ok((timestamp, slot, relay_para_inherent))
 			}
@@ -835,10 +831,8 @@ fn test_env(
 		};
 
 		ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp>::new(
-			manager,
-			backend,
-			client.clone(),
-			cidp,
+			init,
+			|client| (cidp, dp(client)),
 		)
 	};
 

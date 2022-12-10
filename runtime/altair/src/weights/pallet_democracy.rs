@@ -85,19 +85,19 @@ impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 		todo!()
 	}
 
-	fn on_initialize_base(r: u32) -> Weight {
+	fn on_initialize_base(_r: u32) -> Weight {
 		todo!()
 	}
 
-	fn on_initialize_base_with_launch_period(r: u32) -> Weight {
+	fn on_initialize_base_with_launch_period(_r: u32) -> Weight {
 		todo!()
 	}
 
-	fn delegate(r: u32) -> Weight {
+	fn delegate(_r: u32) -> Weight {
 		todo!()
 	}
 
-	fn undelegate(r: u32) -> Weight {
+	fn undelegate(_r: u32) -> Weight {
 		todo!()
 	}
 
@@ -105,19 +105,19 @@ impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 		todo!()
 	}
 
-	fn unlock_remove(r: u32) -> Weight {
+	fn unlock_remove(_r: u32) -> Weight {
 		todo!()
 	}
 
-	fn unlock_set(r: u32) -> Weight {
+	fn unlock_set(_r: u32) -> Weight {
 		todo!()
 	}
 
-	fn remove_vote(r: u32) -> Weight {
+	fn remove_vote(_r: u32) -> Weight {
 		todo!()
 	}
 
-	fn remove_other_vote(r: u32) -> Weight {
+	fn remove_other_vote(_r: u32) -> Weight {
 		todo!()
 	}
 }

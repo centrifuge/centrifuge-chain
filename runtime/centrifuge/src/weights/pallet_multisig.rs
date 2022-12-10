@@ -31,31 +31,31 @@ use sp_std::marker::PhantomData;
 /// Weights for pallet_multisig using the Substrate node and recommended hardware.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_multisig::WeightInfo for WeightInfo<T> {
-	fn as_multi_threshold_1(z: u32) -> Weight {
+	fn as_multi_threshold_1(_z: u32) -> Weight {
 		todo!()
 	}
 
-	fn as_multi_create(s: u32, z: u32) -> Weight {
+	fn as_multi_create(_s: u32, _z: u32) -> Weight {
 		todo!()
 	}
 
-	fn as_multi_approve(s: u32, z: u32) -> Weight {
+	fn as_multi_approve(_s: u32, _z: u32) -> Weight {
 		todo!()
 	}
 
-	fn as_multi_complete(s: u32, z: u32) -> Weight {
+	fn as_multi_complete(_s: u32, _z: u32) -> Weight {
 		todo!()
 	}
 
-	fn approve_as_multi_create(s: u32) -> Weight {
+	fn approve_as_multi_create(_s: u32) -> Weight {
 		todo!()
 	}
 
-	fn approve_as_multi_approve(s: u32) -> Weight {
+	fn approve_as_multi_approve(_s: u32) -> Weight {
 		todo!()
 	}
 
-	fn cancel_as_multi(s: u32) -> Weight {
+	fn cancel_as_multi(_s: u32) -> Weight {
 		todo!()
 	}
 }

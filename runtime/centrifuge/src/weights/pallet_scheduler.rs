@@ -35,7 +35,7 @@ impl<T: frame_system::Config> pallet_scheduler::WeightInfo for WeightInfo<T> {
 		todo!()
 	}
 
-	fn service_agenda_base(s: u32) -> Weight {
+	fn service_agenda_base(_s: u32) -> Weight {
 		todo!()
 	}
 
@@ -43,7 +43,7 @@ impl<T: frame_system::Config> pallet_scheduler::WeightInfo for WeightInfo<T> {
 		todo!()
 	}
 
-	fn service_task_fetched(s: u32) -> Weight {
+	fn service_task_fetched(_s: u32) -> Weight {
 		todo!()
 	}
 
@@ -63,19 +63,19 @@ impl<T: frame_system::Config> pallet_scheduler::WeightInfo for WeightInfo<T> {
 		todo!()
 	}
 
-	fn schedule(s: u32) -> Weight {
+	fn schedule(_s: u32) -> Weight {
 		todo!()
 	}
 
-	fn cancel(s: u32) -> Weight {
+	fn cancel(_s: u32) -> Weight {
 		todo!()
 	}
 
-	fn schedule_named(s: u32) -> Weight {
+	fn schedule_named(_s: u32) -> Weight {
 		todo!()
 	}
 
-	fn cancel_named(s: u32) -> Weight {
+	fn cancel_named(_s: u32) -> Weight {
 		todo!()
 	}
 }
