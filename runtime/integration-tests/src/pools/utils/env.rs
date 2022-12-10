@@ -680,27 +680,29 @@ fn test_env_cidp_and_dp_relay_builder(
 		Some(std::time::Duration::from_millis(START_DATE)),
 	);
 
-	let cidp = Box::new(move |parent: H256, ()| {
-		let parent_header = client
-			.header(&BlockId::Hash(parent.clone()))
-			.expect("ESSENTIAL: Relay CIDP must not fail.")
-			.expect("ESSENTIAL: Relay CIDP must not fail.");
+	let cidp = Box::new(move |clone_client: Arc<TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>>| {
+		move |parent: H256, ()| {
+			let parent_header = client
+				.header(&BlockId::Hash(parent.clone()))
+				.expect("ESSENTIAL: Relay CIDP must not fail.")
+				.expect("ESSENTIAL: Relay CIDP must not fail.");
 
-		async move {
-			let uncles =
-				sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
+			async move {
+				let uncles =
+					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
 
-			let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
-				.expect("Instances is initialized");
+				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
+					.expect("Instances is initialized");
 
-			let slot =
-				sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-					timestamp.current_time(),
-					SlotDuration::from_millis(std::time::Duration::from_secs(6).as_millis() as u64),
-				);
+				let slot =
+					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+						timestamp.current_time(),
+						SlotDuration::from_millis(std::time::Duration::from_secs(6).as_millis() as u64),
+					);
 
-			let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
-			Ok((timestamp, slot, uncles, relay_para_inherent))
+				let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
+				Ok((timestamp, slot, uncles, relay_para_inherent))
+			}
 		}
 	});
 
