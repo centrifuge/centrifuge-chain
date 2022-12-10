@@ -4404,7 +4404,7 @@ dependencies = [
  "pallet-conviction-voting",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
- "pallet-election-provider-support-benchmarking 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.32)",
+ "pallet-election-provider-support-benchmarking",
  "pallet-elections-phragmen",
  "pallet-fast-unstake",
  "pallet-gilt",
@@ -6300,7 +6300,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "pallet-election-provider-support-benchmarking 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=5ea6d95309aaccfa399c5f72e5a14a4b7c6c4ca1)",
+ "pallet-election-provider-support-benchmarking",
  "parity-scale-codec 3.2.1",
  "rand 0.7.3",
  "scale-info",
@@ -6312,19 +6312,6 @@ dependencies = [
  "sp-std",
  "static_assertions",
  "strum",
-]
-
-[[package]]
-name = "pallet-election-provider-support-benchmarking"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.32#5ea6d95309aaccfa399c5f72e5a14a4b7c6c4ca1"
-dependencies = [
- "frame-benchmarking",
- "frame-election-provider-support",
- "frame-system",
- "parity-scale-codec 3.2.1",
- "sp-npos-elections",
- "sp-runtime",
 ]
 
 [[package]]
