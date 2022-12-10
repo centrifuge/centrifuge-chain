@@ -57,7 +57,7 @@ members = [
   "runtime/altair",
   "runtime/centrifuge",
   "runtime/common",
-#  "runtime/integration-tests",
+  #  "runtime/integration-tests",
 ]
 
 [dependencies]

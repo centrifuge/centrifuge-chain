@@ -55,9 +55,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = BlockLength;
 	type BlockNumber = u64;
 	type BlockWeights = BlockWeights;
-	type RuntimeCall = RuntimeCall;
 	type DbWeight = ();
-	type RuntimeEvent = RuntimeEvent;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -68,6 +66,8 @@ impl frame_system::Config for Runtime {
 	type OnNewAccount = ();
 	type OnSetCode = ();
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
@@ -78,11 +78,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = u64;
 	type DustRemoval = ();
-	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -96,7 +96,6 @@ impl pallet_treasury::Config for Runtime {
 	type Burn = ();
 	type BurnDestination = ();
 	type Currency = pallet_balances::Pallet<Runtime>;
-	type RuntimeEvent = RuntimeEvent;
 	type MaxApprovals = MaxApprovals;
 	type OnSlash = ();
 	type PalletId = TreasuryPalletId;
@@ -104,6 +103,7 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ();
 	type ProposalBondMinimum = ();
 	type RejectOrigin = frame_system::EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<u64>;
 	type SpendPeriod = ();
