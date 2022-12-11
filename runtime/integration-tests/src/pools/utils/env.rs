@@ -682,6 +682,7 @@ fn test_env_cidp_and_dp_relay_builder(
 
 	let cidp = Box::new(move |clone_client: Arc<TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>>| {
 		move |parent: H256, ()| {
+			let client = clone_client.clone();
 			let parent_header = client
 				.header(&BlockId::Hash(parent.clone()))
 				.expect("ESSENTIAL: Relay CIDP must not fail.")
@@ -750,7 +751,7 @@ fn test_env(
 		let mut init = fudge_core::provider::initiator::default(manager.spawn_handle().into());
 		init.with_genesis(Box::new(state));
 
-		RelaychainBuilder::<_, _, RelayRt, RelayCidp, RelayDp, HF>::new(
+		RelaychainBuilder::<_, _, RelayRt, RelayCidp, RelayDp>::new(
 			init, test_env_cidp_and_dp_relay_builder
 		)
 	};
