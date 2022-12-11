@@ -20,6 +20,7 @@
 
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
+	PoolNAV,
 	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, TrancheCurrency as _,
 };
 pub use cfg_types::tokens::CurrencyId;
@@ -1575,8 +1576,8 @@ impl_runtime_apis! {
 
 	impl runtime_common::apis::LoansApi<Block, PoolId, Balance> for Runtime {
 		fn pool_valuation(pool_id: PoolId) -> Option<Balance>{
-			match pallet_loans::PoolNAV::<Runtime>::get(pool_id) {
-				Some(value) => Some(value.latest),
+			match <pallet_loans::Loan as PoolNav<PoolId, Balance>>::update_nav(pool_id) {
+				Ok(value) => Some(value.latest),
 				None => None,
 			}
 		}
