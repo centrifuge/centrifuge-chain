@@ -40,6 +40,7 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Post cleanup"
           df -h
+          sudo apt-get install protobuf-compiler
       - name: Get PR Hash
         id: get_pr_hash
         uses: actions/github-script@v6
