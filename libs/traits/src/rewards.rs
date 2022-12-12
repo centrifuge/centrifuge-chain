@@ -121,7 +121,7 @@ pub trait AccountRewards<AccountId> {
 	/// Type used as balance for all currencies and reward.
 	type Balance;
 
-	/// Type used to identify the reward currency.
+	/// Type used to identify the currency.
 	type CurrencyId;
 
 	/// Deposit a stake amount for a account_id associated to a currency_id.
@@ -165,7 +165,7 @@ pub trait CurrencyGroupChange {
 	/// Type used to identify the group.
 	type GroupId;
 
-	/// Type used to identify the reward currency.
+	/// Type used to identify the currency.
 	type CurrencyId;
 
 	/// Associate the currency to a group.
