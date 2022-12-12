@@ -60,7 +60,7 @@ impl<T: Config> Account<T> {
 	}
 
 	fn was_distribution(&self, group: &Group<T>, currency: &Currency<T>) -> bool {
-		self.distribution_id != group.distribution_id && !self.was_movement(currency)
+		!self.was_movement(currency) && self.distribution_id != group.distribution_id
 			|| self.was_movement(currency)
 				&& (self.distribution_id != currency.prev_distribution_id
 					|| group.distribution_id != currency.next_distribution_id)

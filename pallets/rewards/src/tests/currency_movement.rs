@@ -26,18 +26,23 @@ macro_rules! currency_movement_tests {
 				group_id: u32,
 				domain_currency_id: (DomainId, CurrencyId),
 				base_expected: u64,
+				deferred_expected: u64,
 				gap_expected: u64,
 			) {
 				assert_ok!(
 					Reward::claim_reward(domain_currency_id, &USER_A),
-					choose_balance(kind, base_expected, 0),
+					choose_balance(kind, base_expected, 0, 0),
 				);
 
-				if kind == MechanismKind::Gap {
+				if kind != MechanismKind::Base {
 					assert_ok!(Reward::distribute_reward(REWARD, [group_id]));
 					assert_ok!(
 						Reward::claim_reward(domain_currency_id, &USER_A),
-						gap_expected
+						match kind {
+							MechanismKind::Base => unreachable!(),
+							MechanismKind::Deferred => deferred_expected,
+							MechanismKind::Gap => gap_expected,
+						}
 					);
 				}
 			}
@@ -79,6 +84,7 @@ macro_rules! currency_movement_tests {
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
+						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 					);
 				});
 			}
@@ -96,6 +102,7 @@ macro_rules! currency_movement_tests {
 						$kind,
 						GROUP_B,
 						DOM_1_CURRENCY_M,
+						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						REWARD * STAKE_M / (STAKE_M + STAKE_B),
 					);
@@ -118,6 +125,7 @@ macro_rules! currency_movement_tests {
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						0,
+						0,
 					);
 				});
 			}
@@ -136,6 +144,7 @@ macro_rules! currency_movement_tests {
 						$kind,
 						GROUP_C,
 						DOM_1_CURRENCY_M,
+						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						REWARD * STAKE_M / (STAKE_M + STAKE_C),
 					);
@@ -159,6 +168,7 @@ macro_rules! currency_movement_tests {
 						DOM_1_CURRENCY_M,
 						REWARD * STAKE_M / (STAKE_M + STAKE_A),
 						0,
+						0,
 					);
 				});
 			}
@@ -175,7 +185,7 @@ macro_rules! currency_movement_tests {
 						REWARD,
 						[(GROUP_A, 1u32), (GROUP_B, 4u32)]
 					));
-					if $kind == MechanismKind::Gap {
+					if $kind != MechanismKind::Base {
 						assert_ok!($pallet::distribute_reward_with_weights(
 							REWARD,
 							[(GROUP_A, 1u32), (GROUP_B, 4u32)]
@@ -194,7 +204,7 @@ macro_rules! currency_movement_tests {
 			}
 
 			#[test]
-			fn no_lost_reward_after_move() {
+			fn correct_lost_reward_after_move() {
 				new_test_ext().execute_with(|| {
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
@@ -203,7 +213,7 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_M));
 
 					assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
-					if $kind == MechanismKind::Gap {
+					if $kind != MechanismKind::Base {
 						assert_ok!($pallet::distribute_reward(REWARD, [GROUP_A]));
 					}
 
@@ -227,7 +237,7 @@ macro_rules! currency_movement_tests {
 						REWARD * STAKE_M / (STAKE_M + STAKE_A)
 					);
 
-					assert_eq!(rewards_account(), 0);
+					assert_eq!(rewards_account(), choose_balance($kind, 0, REWARD, 0));
 				});
 			}
 

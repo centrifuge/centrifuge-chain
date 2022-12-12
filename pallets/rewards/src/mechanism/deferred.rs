@@ -62,10 +62,15 @@ impl<T: Config> Default for Account<T> {
 }
 
 impl<T: Config> Account<T> {
+	fn was_movement(&self, currency: &Currency<T>) -> bool {
+		(self.base.last_currency_movement as usize) < currency.base.rpt_changes.len()
+	}
+
 	fn was_distribution(&self, group: &Group<T>, currency: &Currency<T>) -> bool {
-		self.distribution_id != group.distribution_id
-			&& (self.distribution_id != currency.prev_distribution_id
-				|| group.distribution_id != currency.next_distribution_id)
+		!self.was_movement(currency) && self.distribution_id != group.distribution_id
+			|| self.was_movement(currency)
+				&& (self.distribution_id != currency.prev_distribution_id
+					|| group.distribution_id != currency.next_distribution_id)
 	}
 
 	fn get_rewarded_stake(&self, group: &Group<T>, currency: &Currency<T>) -> T::Balance {

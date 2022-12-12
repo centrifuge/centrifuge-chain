@@ -22,7 +22,7 @@ pub struct Group<Balance, Rate> {
 pub struct Account<Balance, IBalance> {
 	pub stake: Balance,
 	pub reward_tally: IBalance,
-	last_currency_movement: u16,
+	pub last_currency_movement: u16,
 }
 
 impl<Balance, IBalance> Account<Balance, IBalance>
@@ -60,8 +60,8 @@ where
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Currency<Balance, Rate, MaxMovements: Get<u32>> {
-	total_stake: Balance,
-	rpt_changes: BoundedVec<Rate, MaxMovements>,
+	pub total_stake: Balance,
+	pub rpt_changes: BoundedVec<Rate, MaxMovements>,
 }
 
 impl<Balance, Rate, MaxMovements> Default for Currency<Balance, Rate, MaxMovements>
