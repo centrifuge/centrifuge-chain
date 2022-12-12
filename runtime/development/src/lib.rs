@@ -1916,9 +1916,9 @@ impl_runtime_apis! {
 
 	impl runtime_common::apis::LoansApi<Block, PoolId, Balance> for Runtime {
 		fn pool_valuation(pool_id: PoolId) -> Option<Balance>{
-			match <pallet_loans::Loan as PoolNav<PoolId, Balance>>::update_nav(pool_id) {
-				Ok(value) => Some(value.latest),
-				None => None,
+			match pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id) {
+				Ok((_, value)) => Some(value),
+				Err(_) => None,
 			}
 		}
 	}
