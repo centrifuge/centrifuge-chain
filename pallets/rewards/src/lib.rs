@@ -438,7 +438,7 @@ pub mod pallet {
 		) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
 			StakeAccounts::<T, I>::iter_prefix(account_id)
 				.map(|(currency_id, _)| currency_id)
-				.collect::<sp_std::vec::Vec<(T::DomainId, T::CurrencyId)>>()
+				.collect()
 		}
 	}
 }
