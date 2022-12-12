@@ -806,11 +806,7 @@ fn test_env(
 				async move {
 					let aura = FudgeAuraDigest::<
 						CentrifugeBlock,
-						sc_service::TFullClient<
-							CentrifugeBlock,
-							CentrifugeRtApi,
-							TWasmExecutor,
-						>,
+						sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
 					>::new(&*client);
 
 					let digest = aura.build_digest(&parent, &inherents).await?;
