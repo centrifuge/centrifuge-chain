@@ -66,8 +66,7 @@ where
 		};
 
 		api.list_currencies(&at, account_id)
-			.map_err(|e| runtime_error("Unable to list currencies", e))?
-			.ok_or_else(|| invalid_params_error("Currencies for account not found"))
+			.map_err(|e| runtime_error("Unable to list currencies", e))
 	}
 
 	fn compute_reward(

@@ -23,7 +23,7 @@ decl_runtime_apis! {
 		DomainId: Codec,
 		CurrencyId: Codec,
 	{
-		fn list_currencies(account_id: AccountId) -> Option<Vec<(DomainId, CurrencyId)>>;
+		fn list_currencies(account_id: AccountId) -> Vec<(DomainId, CurrencyId)>;
 
 		fn compute_reward(currency_id: (DomainId, CurrencyId), account_id: AccountId) -> Option<Balance>;
 	}

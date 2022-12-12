@@ -1992,10 +1992,8 @@ impl_runtime_apis! {
 
 	// RewardsApi
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
-		fn list_currencies(account_id: AccountId) -> Option<Vec<(RewardDomain, CurrencyId)>> {
-			let currencies = pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id);
-
-			Some(currencies)
+		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
+			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id)
 		}
 
 		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
