@@ -31,13 +31,11 @@ use crate::{
 
 #[tokio::test]
 async fn create_init_and_price() {
-	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
-	let manager = env::task_manager(Handle::current());
 	let mut env = {
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
 		genesis::register_default_asset::<Runtime>(&mut genesis);
-		env::test_env_with_centrifuge_storage(&manager, genesis)
+		env::test_env_with_centrifuge_storage(Handle::current(), genesis)
 	};
 
 	let mut nft_manager = NftManager::new();

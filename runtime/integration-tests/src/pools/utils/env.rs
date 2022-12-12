@@ -20,7 +20,6 @@ use cfg_primitives::{AuraId, BlockNumber, Index};
 use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
-use fudge_core::provider::{TWasmExecutor, state::StateProvider};
 use fudge::{
 	digest::{DigestCreator, DigestProvider, FudgeAuraDigest, FudgeBabeDigest},
 	inherent::{
@@ -30,6 +29,7 @@ use fudge::{
 	primitives::{Chain, PoolState},
 	ParachainBuilder, RelaychainBuilder,
 };
+use fudge_core::provider::{state::StateProvider, TWasmExecutor};
 use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
@@ -37,7 +37,7 @@ use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use rand::Rng;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
-use sc_service::{TaskManager, TFullClient};
+use sc_service::{TFullClient, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_consensus_slots::SlotDuration;
 use sp_core::H256;
@@ -48,8 +48,8 @@ use crate::{
 	chain::{
 		centrifuge,
 		centrifuge::{
-			Block as CentrifugeBlock, RuntimeEvent, Runtime, RuntimeApi as CentrifugeRtApi, PARA_ID,
-			WASM_BINARY as CentrifugeCode,
+			Block as CentrifugeBlock, Runtime, RuntimeApi as CentrifugeRtApi, RuntimeEvent,
+			PARA_ID, WASM_BINARY as CentrifugeCode,
 		},
 		relay,
 		relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode},
@@ -344,12 +344,8 @@ pub struct TestEnv {
 	#[fudge::relaychain]
 	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, RelayDp>,
 	#[fudge::parachain(PARA_ID)]
-	pub centrifuge: ParachainBuilder<
-		CentrifugeBlock,
-		CentrifugeRtApi,
-		CentrifugeCidp,
-		CentrifugeDp,
-	>,
+	pub centrifuge:
+		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, CentrifugeDp>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
 	pub events: Arc<Mutex<EventsStorage>>,
 }
@@ -646,87 +642,39 @@ impl TestEnv {
 }
 
 #[allow(unused)]
-pub fn test_env_default(manager: &TaskManager) -> TestEnv {
-	test_env(manager, None, None)
+pub fn test_env_default(handle: Handle) -> TestEnv {
+	test_env(handle, None, None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_relay_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
-	test_env(manager, Some(storage), None)
+pub fn test_env_with_relay_storage(handle: Handle, storage: Storage) -> TestEnv {
+	test_env(handle, Some(storage), None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_centrifuge_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
-	test_env(manager, None, Some(storage))
+pub fn test_env_with_centrifuge_storage(handle: Handle, storage: Storage) -> TestEnv {
+	test_env(handle, None, Some(storage))
 }
 
 #[allow(unused)]
 pub fn test_env_with_both_storage(
-	manager: &TaskManager,
+	handle: Handle,
 	relay_storage: Storage,
 	centrifuge_storage: Storage,
 ) -> TestEnv {
-	test_env(manager, Some(relay_storage), Some(centrifuge_storage))
-}
-
-fn test_env_cidp_and_dp_relay_builder(
-	client: Arc<TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>>,
-) -> (
-	impl CreateInherentDataProviders<RelayBlock, ()>,
-	impl DigestCreator<RelayBlock>,
-) {
-	let instance_id = FudgeInherentTimestamp::create_instance(
-		std::time::Duration::from_secs(6),
-		Some(std::time::Duration::from_millis(START_DATE)),
-	);
-
-	let cidp = Box::new(move |clone_client: Arc<TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>>| {
-		move |parent: H256, ()| {
-			let client = clone_client.clone();
-			let parent_header = client
-				.header(&BlockId::Hash(parent.clone()))
-				.expect("ESSENTIAL: Relay CIDP must not fail.")
-				.expect("ESSENTIAL: Relay CIDP must not fail.");
-
-			async move {
-				let uncles =
-					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
-
-				let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
-					.expect("Instances is initialized");
-
-				let slot =
-					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-						timestamp.current_time(),
-						SlotDuration::from_millis(std::time::Duration::from_secs(6).as_millis() as u64),
-					);
-
-				let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
-				Ok((timestamp, slot, uncles, relay_para_inherent))
-			}
-		}
-	});
-
-	let dp = Box::new(move |parent, inherents| async move {
-		let babe = FudgeBabeDigest::<RelayBlock>::new();
-		let digest = babe.build_digest(&parent, &inherents).await?;
-		Ok(digest)
-	});
-
-	(cidp(client), dp)
+	test_env(handle, Some(relay_storage), Some(centrifuge_storage))
 }
 
 fn test_env(
-	manager: &TaskManager,
+	handle: Handle,
 	relay_storage: Option<Storage>,
 	centrifuge_storage: Option<Storage>,
 ) -> TestEnv {
 	logs::init_logs();
-	let mut rng = rand::thread_rng();
 
 	// Build relay-chain builder
 	let relay = {
-		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Relay - StartUp");
+		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
 		let mut state = StateProvider::new(RelayCode.expect("Wasm is build. Qed."));
 
 		// We need to HostConfiguration and use the default here.
@@ -748,17 +696,58 @@ fn test_env(
 			state.insert_storage(storage);
 		}
 
-		let mut init = fudge_core::provider::initiator::default(manager.spawn_handle().into());
+		let mut init = fudge_core::provider::initiator::default(handle.clone());
 		init.with_genesis(Box::new(state));
 
-		RelaychainBuilder::<_, _, RelayRt, RelayCidp, RelayDp>::new(
-			init, test_env_cidp_and_dp_relay_builder
-		)
+		let cidp: fn(Arc<_>) -> RelayCidp = |clone_client: Arc<
+			TFullClient<RelayBlock, RelayRtApi, TWasmExecutor>,
+		>| {
+			let instance_id = FudgeInherentTimestamp::create_instance(
+				std::time::Duration::from_secs(6),
+				Some(std::time::Duration::from_millis(START_DATE)),
+			);
+
+			Box::new(move |parent: H256, ()| {
+				let client = clone_client.clone();
+				let parent_header = client
+					.header(&BlockId::Hash(parent.clone()))
+					.expect("ESSENTIAL: Relay CIDP must not fail.")
+					.expect("ESSENTIAL: Relay CIDP must not fail.");
+
+				async move {
+					let uncles = sc_consensus_uncles::create_uncles_inherent_data_provider(
+						&*client, parent,
+					)?;
+
+					let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
+						.expect("Instances is initialized");
+
+					let slot =
+							sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+								timestamp.current_time(),
+								SlotDuration::from_millis(std::time::Duration::from_secs(6).as_millis() as u64),
+							);
+
+					let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
+					Ok((timestamp, slot, uncles, relay_para_inherent))
+				}
+			})
+		};
+
+		let dp: RelayDp = Box::new(move |parent, inherents| async move {
+			let babe = FudgeBabeDigest::<RelayBlock>::new();
+			let digest = babe.build_digest(&parent, &inherents).await?;
+			Ok(digest)
+		});
+
+		RelaychainBuilder::<_, _, RelayRt, RelayCidp, RelayDp>::new(init, |client| {
+			(cidp(client), dp)
+		})
 	};
 
 	// Build parachain-builder
 	let centrifuge = {
-		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Centrifuge - StartUp");
+		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Centrifuge - StartUp");
 		let mut state = StateProvider::new(CentrifugeCode.expect("Wasm is build. Qed."));
 
 		state.insert_storage(
@@ -782,7 +771,7 @@ fn test_env(
 			state.insert_storage(storage);
 		}
 
-		let mut init = fudge_core::provider::initiator::default(manager.spawn_handle().into());
+		let mut init = fudge_core::provider::initiator::default(handle);
 		init.with_genesis(Box::new(state));
 
 		let para_id = ParaId::from(PARA_ID);
@@ -803,10 +792,7 @@ fn test_env(
 						timestamp.current_time(),
 						SlotDuration::from_millis(std::time::Duration::from_secs(12).as_millis() as u64),
 					);
-				let inherent = inherent_builder_clone
-					.parachain_inherent()
-					.await
-					.unwrap();
+				let inherent = inherent_builder_clone.parachain_inherent().await.unwrap();
 				let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
 				Ok((timestamp, slot, relay_para_inherent))
 			}
@@ -833,10 +819,9 @@ fn test_env(
 			})
 		};
 
-		ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp>::new(
-			init,
-			|client| (cidp, dp(client)),
-		)
+		ParachainBuilder::<_, _, CentrifugeCidp, CentrifugeDp>::new(init, |client| {
+			(cidp, dp(client))
+		})
 	};
 
 	TestEnv::new(
@@ -846,10 +831,6 @@ fn test_env(
 		Arc::new(Mutex::new(EventsStorage::new())),
 	)
 	.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
-}
-
-pub fn task_manager(tokio_handle: Handle) -> TaskManager {
-	TaskManager::new(tokio_handle, None).expect("ESSENTIAL: TaskManager must exist for tests.")
 }
 
 /// Pass n_blocks on the parachain-side!
