@@ -56,12 +56,12 @@ macro_rules! currency_movement_tests {
 				}
 			}
 
-			fn has_currencies(user: u64, reward_currency_ids: &[(DomainId, CurrencyId)]) {
+			fn has_currencies(user: u64, currency_ids: &[(DomainId, CurrencyId)]) {
 				let currencies = $pallet::list_currencies(user);
-				assert_eq!(currencies.len(), reward_currency_ids.len());
+				assert_eq!(currencies.len(), currency_ids.len());
 
-				for i in 0..reward_currency_ids.len() {
-					assert_eq!(currencies[i], reward_currency_ids[i]);
+				for i in 0..currency_ids.len() {
+					assert_eq!(currencies[i], currency_ids[i]);
 				}
 			}
 

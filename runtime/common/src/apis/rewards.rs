@@ -25,6 +25,6 @@ decl_runtime_apis! {
 	{
 		fn list_currencies(account_id: AccountId) -> Option<Vec<(DomainId, CurrencyId)>>;
 
-		fn compute_reward(reward_currency_id: (DomainId, CurrencyId), account_id: AccountId) -> Option<Balance>;
+		fn compute_reward(currency_id: (DomainId, CurrencyId), account_id: AccountId) -> Option<Balance>;
 	}
 }

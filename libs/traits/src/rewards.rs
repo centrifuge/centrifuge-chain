@@ -122,13 +122,13 @@ pub trait AccountRewards<AccountId> {
 	type Balance;
 
 	/// Type used to identify the reward currency.
-	type RewardCurrencyId;
+	type CurrencyId;
 
 	/// Deposit a stake amount for a account_id associated to a currency_id.
 	/// The account_id must have enough currency to make the deposit,
 	/// if not, an Err will be returned.
 	fn deposit_stake(
-		currency_id: Self::RewardCurrencyId,
+		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
@@ -137,7 +137,7 @@ pub trait AccountRewards<AccountId> {
 	/// The account_id must have enough currency staked to perform a withdraw,
 	/// if not, an Err will be returned.
 	fn withdraw_stake(
-		currency_id: Self::RewardCurrencyId,
+		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
@@ -145,19 +145,19 @@ pub trait AccountRewards<AccountId> {
 	/// Computes the reward the account_id can receive for a currency_id.
 	/// This action does not modify the account currency balance.
 	fn compute_reward(
-		currency_id: Self::RewardCurrencyId,
+		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Computes the reward the account_id can receive for a currency_id and claim it.
 	/// A reward using the native currency will be sent to the account_id.
 	fn claim_reward(
-		currency_id: Self::RewardCurrencyId,
+		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Retrieve the total staked amount of currency in an account.
-	fn account_stake(currency_id: Self::RewardCurrencyId, account_id: &AccountId) -> Self::Balance;
+	fn account_stake(currency_id: Self::CurrencyId, account_id: &AccountId) -> Self::Balance;
 }
 
 /// Support for change currencies among groups.
@@ -166,18 +166,15 @@ pub trait CurrencyGroupChange {
 	type GroupId;
 
 	/// Type used to identify the reward currency.
-	type RewardCurrencyId;
+	type CurrencyId;
 
 	/// Associate the currency to a group.
 	/// If the currency was previously associated to another group, the associated stake is moved
 	/// to the new group.
-	fn attach_currency(
-		currency_id: Self::RewardCurrencyId,
-		group_id: Self::GroupId,
-	) -> DispatchResult;
+	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
 
 	/// Returns the associated group of a currency.
-	fn currency_group(currency_id: Self::RewardCurrencyId) -> Option<Self::GroupId>;
+	fn currency_group(currency_id: Self::CurrencyId) -> Option<Self::GroupId>;
 }
 
 #[cfg(feature = "std")]
@@ -219,32 +216,32 @@ pub mod mock {
 			for Rewards<Balance, GroupId, CurrencyId, AccountId>
 		{
 			type Balance = Balance;
-			type RewardCurrencyId = CurrencyId;
+			type CurrencyId = CurrencyId;
 
 			fn deposit_stake(
-				currency_id: <Self as AccountRewards<AccountId>>::RewardCurrencyId,
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 				amount: <Self as AccountRewards<AccountId>>::Balance,
 			) -> DispatchResult;
 
 			fn withdraw_stake(
-				currency_id: <Self as AccountRewards<AccountId>>::RewardCurrencyId,
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 				amount: <Self as AccountRewards<AccountId>>::Balance,
 			) -> DispatchResult;
 
 			fn compute_reward(
-				currency_id: <Self as AccountRewards<AccountId>>::RewardCurrencyId,
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 			) -> Result<<Self as AccountRewards<AccountId>>::Balance, DispatchError>;
 
 			fn claim_reward(
-				currency_id: <Self as AccountRewards<AccountId>>::RewardCurrencyId,
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 			) -> Result<<Self as AccountRewards<AccountId>>::Balance, DispatchError>;
 
 			fn account_stake(
-				currency_id: <Self as AccountRewards<AccountId>>::RewardCurrencyId,
+				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId
 			) -> <Self as AccountRewards<AccountId>>::Balance;
 		}
@@ -253,15 +250,15 @@ pub mod mock {
 			for Rewards<Balance, GroupId, CurrencyId, AccountId>
 		{
 			type GroupId = GroupId;
-			type RewardCurrencyId = CurrencyId;
+			type CurrencyId = CurrencyId;
 
 			fn attach_currency(
-				currency_id: <Self as CurrencyGroupChange>::RewardCurrencyId,
+				currency_id: <Self as CurrencyGroupChange>::CurrencyId,
 				group_id: <Self as CurrencyGroupChange>::GroupId
 			) -> DispatchResult;
 
 			fn currency_group(
-				currency_id: <Self as CurrencyGroupChange>::RewardCurrencyId,
+				currency_id: <Self as CurrencyGroupChange>::CurrencyId,
 			) -> Option<<Self as CurrencyGroupChange>::GroupId>;
 		}
 	}

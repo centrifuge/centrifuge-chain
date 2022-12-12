@@ -21,7 +21,7 @@ pub trait RewardsApi<AccountId, Balance, RewardDomain, CurrencyId, BlockHash> {
 	#[method(name = "rewards_computeReward")]
 	fn compute_reward(
 		&self,
-		reward_currency_id: (RewardDomain, CurrencyId),
+		currency_id: (RewardDomain, CurrencyId),
 		account_id: AccountId,
 		at: Option<BlockHash>,
 	) -> RpcResult<Balance>;
@@ -72,7 +72,7 @@ where
 
 	fn compute_reward(
 		&self,
-		reward_currency_id: (RewardDomain, CurrencyId),
+		currency_id: (RewardDomain, CurrencyId),
 		account_id: AccountId,
 		at: Option<Block::Hash>,
 	) -> RpcResult<Balance> {
@@ -84,7 +84,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.compute_reward(&at, reward_currency_id, account_id)
+		api.compute_reward(&at, currency_id, account_id)
 			.map_err(|e| runtime_error("Unable to compute reward", e))?
 			.ok_or_else(|| invalid_params_error("Reward not found"))
 	}

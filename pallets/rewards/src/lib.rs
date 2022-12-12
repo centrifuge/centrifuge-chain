@@ -259,10 +259,10 @@ pub mod pallet {
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
-		type RewardCurrencyId = (T::DomainId, T::CurrencyId);
+		type CurrencyId = (T::DomainId, T::CurrencyId);
 
 		fn deposit_stake(
-			currency_id: Self::RewardCurrencyId,
+			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
@@ -294,7 +294,7 @@ pub mod pallet {
 		}
 
 		fn withdraw_stake(
-			currency_id: Self::RewardCurrencyId,
+			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 			amount: Self::Balance,
 		) -> DispatchResult {
@@ -326,7 +326,7 @@ pub mod pallet {
 		}
 
 		fn compute_reward(
-			currency_id: Self::RewardCurrencyId,
+			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
 			let (group_id, currency) = Currencies::<T, I>::get(currency_id);
@@ -341,7 +341,7 @@ pub mod pallet {
 		}
 
 		fn claim_reward(
-			currency_id: Self::RewardCurrencyId,
+			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Result<Self::Balance, DispatchError> {
 			let (group_id, currency) = Currencies::<T, I>::get(currency_id);
@@ -372,7 +372,7 @@ pub mod pallet {
 		}
 
 		fn account_stake(
-			currency_id: Self::RewardCurrencyId,
+			currency_id: Self::CurrencyId,
 			account_id: &T::AccountId,
 		) -> Self::Balance {
 			let account = StakeAccounts::<T, I>::get(account_id, currency_id);
@@ -385,11 +385,11 @@ pub mod pallet {
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
+		type CurrencyId = (T::DomainId, T::CurrencyId);
 		type GroupId = T::GroupId;
-		type RewardCurrencyId = (T::DomainId, T::CurrencyId);
 
 		fn attach_currency(
-			currency_id: Self::RewardCurrencyId,
+			currency_id: Self::CurrencyId,
 			next_group_id: Self::GroupId,
 		) -> DispatchResult {
 			Currencies::<T, I>::try_mutate(currency_id, |(group_id, currency)| {
@@ -424,7 +424,7 @@ pub mod pallet {
 			})
 		}
 
-		fn currency_group(currency_id: Self::RewardCurrencyId) -> Option<Self::GroupId> {
+		fn currency_group(currency_id: Self::CurrencyId) -> Option<Self::GroupId> {
 			Currencies::<T, I>::get(currency_id).0
 		}
 	}
@@ -437,7 +437,7 @@ pub mod pallet {
 			account_id: T::AccountId,
 		) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
 			StakeAccounts::<T, I>::iter_prefix(account_id)
-				.map(|(reward_currency_id, _)| reward_currency_id)
+				.map(|(currency_id, _)| currency_id)
 				.collect::<sp_std::vec::Vec<(T::DomainId, T::CurrencyId)>>()
 		}
 	}
