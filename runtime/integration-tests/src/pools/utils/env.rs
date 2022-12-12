@@ -798,7 +798,7 @@ fn test_env(
 			}
 		});
 		let dp = |clone_client: Arc<
-			sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, WasmExecutor<CentrifugeHF>>,
+			sc_service::TFullClient<CentrifugeBlock, CentrifugeRtApi, TWasmExecutor>,
 		>| {
 			Box::new(move |parent, inherents| {
 				let client = clone_client.clone();
@@ -809,7 +809,7 @@ fn test_env(
 						sc_service::TFullClient<
 							CentrifugeBlock,
 							CentrifugeRtApi,
-							WasmExecutor<CentrifugeHF>,
+							TWasmExecutor,
 						>,
 					>::new(&*client);
 
