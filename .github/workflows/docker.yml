@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [main, 'release-v**']
+    branches: [main, 'release-v**', 'prep-v0.10.24-release']
   workflow_dispatch:
     inputs:
       docker_tag:
@@ -33,7 +33,7 @@ jobs:
           sudo apt-get remove -y '^llvm-.*'
           sudo apt-get remove -y 'php.*'
           sudo apt-get remove -y 'mysql.*'
-          sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell
+          sudo apt-get remove -y azure-cli google-cloud-sdk google-chrome-stable firefox powershell
           sudo apt-get autoremove -y
           sudo apt-get clean
           df -h
@@ -53,18 +53,18 @@ jobs:
       - if: matrix.target == 'test'
         name: Build docker test
         run: docker build --build-arg RUST_TOOLCHAIN=${{ env.RUST_TOOLCHAIN }} --build-arg OPTS="--features=fast-runtime" -t centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-latest .
-      - name: Login to Docker Hub
-        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - if: matrix.target == 'release'
-        name: Tag image release
-        run: docker tag centrifugeio/centrifuge-chain:${{ env.DOCKER_TAG }}-latest "centrifugeio/centrifuge-chain:${{ env.DOCKER_TAG }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
-      - if: matrix.target == 'test'
-        name: Tag image test
-        run: docker tag centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-latest "centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
-      - name: List images
-        run: docker images
-      - name: Push image to Docker Hub
-        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
+#      - name: Login to Docker Hub
+#        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7
+#        with:
+#          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+#      - if: matrix.target == 'release'
+#        name: Tag image release
+#        run: docker tag centrifugeio/centrifuge-chain:${{ env.DOCKER_TAG }}-latest "centrifugeio/centrifuge-chain:${{ env.DOCKER_TAG }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
+#      - if: matrix.target == 'test'
+#        name: Tag image test
+#        run: docker tag centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-latest "centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
+#      - name: List images
+#        run: docker images
+#      - name: Push image to Docker Hub
+#        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
