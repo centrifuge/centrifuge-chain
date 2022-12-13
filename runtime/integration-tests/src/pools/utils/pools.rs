@@ -32,7 +32,9 @@ use pallet_pool_system::{
 use sp_runtime::{traits::One, BoundedVec, FixedPointNumber, Perquintill};
 
 use crate::{
-	chain::centrifuge::{Call, Loans, OrmlTokens, Permissions, PoolSystem, Timestamp, PARA_ID},
+	chain::centrifuge::{
+		Loans, OrmlTokens, Permissions, PoolSystem, RuntimeCall, Timestamp, PARA_ID,
+	},
 	pools::utils::{
 		accounts::Keyring,
 		env::TestEnv,
@@ -123,7 +125,11 @@ pub fn custom_pool(
 /// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche with id 4
 /// * Currency: CurrencyId::AUSD,
 /// * MaxReserve: 100_000 AUSD
-pub fn default_pool_calls(admin: AccountId, pool_id: PoolId, nfts: &mut NftManager) -> Vec<Call> {
+pub fn default_pool_calls(
+	admin: AccountId,
+	pool_id: PoolId,
+	nfts: &mut NftManager,
+) -> Vec<RuntimeCall> {
 	pool_setup_calls(
 		admin,
 		pool_id,
@@ -150,7 +156,7 @@ pub fn pool_setup_calls(
 	max_reserve: Balance,
 	tranche_input: Vec<TrancheInput<Rate, MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes>>,
 	nfts: &mut NftManager,
-) -> Vec<Call> {
+) -> Vec<RuntimeCall> {
 	let mut calls = Vec::new();
 	let num_tranches = tranche_input.len();
 	calls.push(create_pool_call(
@@ -240,7 +246,7 @@ pub fn create_tranche_input(
 
 /// Enables permission for all existing `PoolRole` variants
 /// (except for PoolRole::TrancheInvestor) for the given account
-pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
+pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<RuntimeCall> {
 	let mut calls = Vec::new();
 	calls.push(permission_call(
 		PoolRole::PoolAdmin,
@@ -306,7 +312,7 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 ///       * Keyring::TrancheInvestor(18)
 ///       * Keyring::TrancheInvestor(19)
 ///       * Keyring::TrancheInvestor(20)
-pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> Vec<Call> {
+pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> Vec<RuntimeCall> {
 	let mut calls = Vec::with_capacity(10 * num_tranches as usize);
 
 	let mut x: u32 = 0;
@@ -325,7 +331,7 @@ pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> V
 }
 
 /// Whitelist a given investor for a fiven pool and tranche for 1 year of time
-pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: TrancheId) -> Call {
+pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: TrancheId) -> RuntimeCall {
 	permission_call(
 		PoolRole::MemberListAdmin,
 		investor.to_account_id(),
@@ -340,8 +346,8 @@ pub fn permission_call(
 	to: AccountId,
 	pool_id: PoolId,
 	role: PoolRole<TrancheId, Moment>,
-) -> Call {
-	Call::Permissions(PermissionsCall::add {
+) -> RuntimeCall {
+	RuntimeCall::Permissions(PermissionsCall::add {
 		to,
 		scope: PermissionScope::Pool(pool_id),
 		with_role: Role::PoolRole(with_role),
@@ -355,8 +361,8 @@ pub fn create_pool_call(
 	currency: CurrencyId,
 	max_reserve: Balance,
 	tranche_inputs: Vec<TrancheInput<Rate, MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes>>,
-) -> Call {
-	Call::PoolRegistry(PoolRegistryCall::register {
+) -> RuntimeCall {
+	RuntimeCall::PoolRegistry(PoolRegistryCall::register {
 		admin,
 		pool_id,
 		tranche_inputs,

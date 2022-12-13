@@ -34,17 +34,6 @@ frame_support::construct_runtime!(
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
-		.base_block(Weight::from_ref_time(10))
-		.for_class(DispatchClass::all(), |weight| {
-			weight.base_extrinsic = Weight::from_ref_time(100);
-		})
-		.for_class(DispatchClass::non_mandatory(), |weight| {
-			weight.max_total = Some(Weight::from_ref_time(1024));
-		})
-		.build_or_panic();
-	pub BlockLength: limits::BlockLength = limits::BlockLength::max(2 * 1024);
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
 impl frame_system::Config for Runtime {
@@ -52,12 +41,10 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = BlockHashCount;
-	type BlockLength = BlockLength;
+	type BlockLength = ();
 	type BlockNumber = u64;
-	type BlockWeights = BlockWeights;
-	type Call = Call;
+	type BlockWeights = ();
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -67,8 +54,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -78,11 +67,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = u64;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -96,7 +85,6 @@ impl pallet_treasury::Config for Runtime {
 	type Burn = ();
 	type BurnDestination = ();
 	type Currency = pallet_balances::Pallet<Runtime>;
-	type Event = Event;
 	type MaxApprovals = MaxApprovals;
 	type OnSlash = ();
 	type PalletId = TreasuryPalletId;
@@ -104,6 +92,7 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ();
 	type ProposalBondMinimum = ();
 	type RejectOrigin = frame_system::EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<u64>;
 	type SpendPeriod = ();

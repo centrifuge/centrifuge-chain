@@ -428,7 +428,7 @@ fn pool_constraints_pass() {
 fn epoch() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 		let borrower = 3;
 
 		// Initialize pool with initial investments
@@ -466,12 +466,12 @@ fn epoch() {
 			None
 		));
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
@@ -513,11 +513,11 @@ fn epoch() {
 
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));
 		assert_ok!(Investments::collect_investments(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 		));
 
@@ -618,7 +618,7 @@ fn epoch() {
 		// Senior investor tries to redeem
 		next_block();
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			250 * CURRENCY
 		));
@@ -664,7 +664,7 @@ fn epoch() {
 fn submission_period() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -701,12 +701,12 @@ fn submission_period() {
 			None
 		));
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
@@ -723,13 +723,13 @@ fn submission_period() {
 
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));
 
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
@@ -852,7 +852,7 @@ fn submission_period() {
 fn execute_info_removed_after_epoch_execute() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -910,7 +910,7 @@ fn execute_info_removed_after_epoch_execute() {
 
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
@@ -942,7 +942,7 @@ fn execute_info_removed_after_epoch_execute() {
 fn pool_updates_should_be_constrained() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 0_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 		let pool_id = 0;
 
 		assert_ok!(PoolSystem::create(
@@ -969,14 +969,14 @@ fn pool_updates_should_be_constrained() {
 		.unwrap();
 
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			100 * CURRENCY
 		));
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_investments(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));
 
@@ -1010,7 +1010,7 @@ fn pool_updates_should_be_constrained() {
 		);
 
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			100 * CURRENCY
 		));
@@ -1473,7 +1473,7 @@ fn valid_tranche_structure_is_enforced() {
 fn triger_challange_period_with_zero_solution() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1531,7 +1531,7 @@ fn triger_challange_period_with_zero_solution() {
 
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
@@ -1568,7 +1568,7 @@ fn triger_challange_period_with_zero_solution() {
 fn min_challenge_time_is_respected() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1626,7 +1626,7 @@ fn min_challenge_time_is_respected() {
 
 		// Attempt to redeem everything
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
@@ -1666,7 +1666,7 @@ fn min_challenge_time_is_respected() {
 fn only_zero_solution_is_accepted_max_reserve_violated() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1723,14 +1723,14 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		);
 		// Attempt to invest above reserve
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			1 * CURRENCY
 		));
 
 		// Attempt to invest above reserve
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			TrancheCurrency::generate(0, SeniorTrancheId::get()),
 			1 * CURRENCY
 		));
@@ -1868,7 +1868,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 2_u64;
-		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_owner_origin = RuntimeOrigin::signed(pool_owner);
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1926,17 +1926,17 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 
 		// Redeem so that we are exactly at 10 percent risk buffer
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			88_888_888_888_888_888_799
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Investments::collect_redemptions(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 		));
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(0),
+			RuntimeOrigin::signed(0),
 			TrancheCurrency::generate(0, JuniorTrancheId::get()),
 			1 * CURRENCY
 		));

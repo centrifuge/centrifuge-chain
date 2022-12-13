@@ -43,9 +43,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -55,8 +53,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ConstU16<42>;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -97,16 +97,14 @@ orml_traits::parameter_type_with_key! {
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = u64;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = ();
 	type MaxReserves = ();
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -124,11 +122,11 @@ macro_rules! pallet_rewards_config {
 			type Currency = Tokens;
 			type CurrencyId = CurrencyId;
 			type DomainId = DomainId;
-			type Event = Event;
 			type GroupId = u32;
 			type PalletId = RewardsPalletId;
 			type RewardCurrency = RewardCurrency;
 			type RewardMechanism = $mechanism;
+			type RuntimeEvent = RuntimeEvent;
 		}
 	};
 }

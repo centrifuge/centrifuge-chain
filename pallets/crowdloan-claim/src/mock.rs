@@ -25,7 +25,7 @@
 
 use frame_support::{
 	parameter_types,
-	traits::{Everything, GenesisBuild, SortedMembers},
+	traits::{Everything, GenesisBuild, SortedMembers, WithdrawReasons},
 	weights::Weight,
 	PalletId,
 };
@@ -70,7 +70,7 @@ frame_support::construct_runtime!(
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024));
+	  pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024).set_proof_size(u64::MAX).into());
 }
 
 // Implement frame system configuration for the mock runtime
@@ -82,9 +82,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = BlockWeights;
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -94,8 +92,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -112,25 +112,28 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
 parameter_types! {
 	pub const TestMinVestedTransfer: u64 = 16;
 	pub const MaxVestingSchedules: u32 = 4;
+	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
+		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
 // Parameterize vesting pallet configuration
 impl pallet_vesting::Config for Runtime {
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
 	type Currency = Balances;
-	type Event = Event;
 	type MinVestedTransfer = TestMinVestedTransfer;
+	type RuntimeEvent = RuntimeEvent;
+	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 	type WeightInfo = ();
 
 	const MAX_VESTING_SCHEDULES: u32 = 1;
@@ -145,8 +148,8 @@ parameter_types! {
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -159,11 +162,11 @@ parameter_types! {
 // Implement crowdloan claim pallet configuration trait for the mock runtime
 impl Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Event = Event;
 	type MaxProofLength = MaxProofLength;
 	type PalletId = CrowdloanClaimPalletId;
 	type RelayChainAccountId = AccountId32;
 	type RewardMechanism = CrowdloanReward;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 

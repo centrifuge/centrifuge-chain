@@ -17,7 +17,6 @@
 use std::{sync::Arc, time::Duration};
 
 use cfg_primitives::{Block, Hash};
-use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::BlockAnnounceValidator;
@@ -27,7 +26,6 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
-use sc_client_api::ExecutorProvider;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::{NetworkBlock, NetworkService};
 use sc_rpc_api::DenyUnsafe;
@@ -232,7 +230,7 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
-	rpc_config: RpcConfig,
+	_rpc_config: RpcConfig,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
@@ -325,7 +323,7 @@ where
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
-	let (network, system_rpc_tx, start_network) =
+	let (network, system_rpc_tx, tx_handler_controller, start_network) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &parachain_config,
 			client: client.clone(),
@@ -352,6 +350,7 @@ where
 		backend: backend.clone(),
 		network: network.clone(),
 		system_rpc_tx,
+		tx_handler_controller,
 		telemetry: telemetry.as_mut(),
 	})?;
 
@@ -403,9 +402,6 @@ where
 			relay_chain_interface,
 			relay_chain_slot_duration,
 			import_queue,
-			collator_options: CollatorOptions {
-				relay_chain_rpc_url: rpc_config.relay_chain_rpc_url,
-			},
 		};
 
 		start_full_node(params)?;
@@ -449,10 +445,9 @@ pub fn build_altair_import_queue(
 		_,
 		_,
 		_,
-		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
 		block_import: client.clone(),
-		client: client.clone(),
+		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
@@ -462,10 +457,9 @@ pub fn build_altair_import_queue(
 					slot_duration,
 				);
 
-			Ok((time, slot))
+			Ok((slot, time))
 		},
 		registry: config.prometheus_registry(),
-		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
 	})
@@ -557,7 +551,7 @@ pub async fn start_altair_node(
 								"Failed to create parachain inherent",
 							)
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, time, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
@@ -567,11 +561,11 @@ pub async fn start_altair_node(
 				keystore,
 				force_authoring,
 				slot_duration,
+				telemetry,
 				// We got around 500ms for proposing
 				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
 				// And a maximum of 750ms if slots are skipped
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-				telemetry,
 			}))
 		},
 	)
@@ -611,10 +605,9 @@ pub fn build_centrifuge_import_queue(
 		_,
 		_,
 		_,
-		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
 		block_import: client.clone(),
-		client: client.clone(),
+		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
@@ -624,10 +617,9 @@ pub fn build_centrifuge_import_queue(
 					slot_duration,
 				);
 
-			Ok((time, slot))
+			Ok((slot, time))
 		},
 		registry: config.prometheus_registry(),
-		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
 	})
@@ -716,7 +708,7 @@ pub async fn start_centrifuge_node(
 								"Failed to create parachain inherent",
 							)
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, time, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
@@ -770,10 +762,9 @@ pub fn build_development_import_queue(
 		_,
 		_,
 		_,
-		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
 		block_import: client.clone(),
-		client: client.clone(),
+		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
@@ -783,10 +774,9 @@ pub fn build_development_import_queue(
 					slot_duration,
 				);
 
-			Ok((time, slot))
+			Ok((slot, time))
 		},
 		registry: config.prometheus_registry(),
-		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
 	})
@@ -878,7 +868,7 @@ pub async fn start_development_node(
 								"Failed to create parachain inherent",
 							)
 						})?;
-						Ok((time, slot, parachain_inherent))
+						Ok((slot, time, parachain_inherent))
 					}
 				},
 				block_import: client.clone(),
