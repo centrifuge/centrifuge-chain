@@ -1,5 +1,5 @@
 class PullBasedDistribution:
-    "Constant Time Gap Reward Distribution with Changing Stake Sizes"
+    "Constant Time Reward Distribution with Changing Stake Sizes and Required Gap"
 
     def __init__(self):
         # Per group
