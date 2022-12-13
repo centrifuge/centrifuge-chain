@@ -55,15 +55,13 @@ impl<T: Config> Default for Account<T> {
 }
 
 impl<T: Config> Account<T> {
-	fn was_movement(&self, currency: &Currency<T>) -> bool {
-		(self.last_currency_movement as usize) < currency.rpt_changes.len()
-	}
-
 	fn was_distribution(&self, group: &Group<T>, currency: &Currency<T>) -> bool {
-		!self.was_movement(currency) && self.distribution_id != group.distribution_id
-			|| self.was_movement(currency)
-				&& (self.distribution_id != currency.prev_distribution_id
-					|| group.distribution_id != currency.next_distribution_id)
+		if self.last_currency_movement as usize == currency.rpt_changes.len() {
+			self.distribution_id != group.distribution_id
+		} else {
+			self.distribution_id != currency.prev_distribution_id
+				|| group.distribution_id != currency.next_distribution_id
+		}
 	}
 
 	fn reward_tally_updated(
