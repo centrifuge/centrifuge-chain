@@ -78,6 +78,7 @@ use frame_support::{
 use mechanism::{DistributionId, MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
+use sp_std::fmt::Debug;
 
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
@@ -101,7 +102,7 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		/// Type used to identify domains.
-		type DomainId: TypeInfo + MaxEncodedLen + FullCodec + Copy + PartialEq + sp_std::fmt::Debug;
+		type DomainId: TypeInfo + MaxEncodedLen + FullCodec + Copy + PartialEq + Debug;
 
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen;
@@ -110,7 +111,7 @@ pub mod pallet {
 		type RewardCurrency: Get<Self::CurrencyId>;
 
 		/// Type used to identify groups.
-		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + sp_std::fmt::Debug;
+		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + Debug;
 
 		/// Type used to handle currency transfers and reservations.
 		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>

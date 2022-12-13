@@ -9764,6 +9764,7 @@ dependencies = [
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
+ "pallet-rewards",
  "pallet-transaction-payment",
  "pallet-uniques",
  "pallet-xcm",

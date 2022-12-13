@@ -10,7 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use altair_runtime::apis::AnchorApi;
+use cfg_primitives::{AccountId, CFG};
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards};
+use development_runtime::apis::RewardsApi;
+use frame_support::assert_ok;
+use sp_core::{sr25519, Pair};
+use sp_runtime::traits::IdentifyAccount;
 use tokio::runtime::Handle;
 
 use super::ApiEnv;
@@ -19,15 +24,69 @@ use super::ApiEnv;
 async fn test() {
 	ApiEnv::new(Handle::current())
 		.startup(|| {
-			// Code used in rewards GenesisConfig
-			// to actually set-up the state you need
+			let currencies = vec![(
+				(
+					development_runtime::RewardDomain::Block,
+					development_runtime::CurrencyId::Native,
+				),
+				1,
+			)];
+			let stake_accounts = vec![(
+				sp_runtime::AccountId32::from(
+					<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
+						.unwrap()
+						.public()
+						.into_account(),
+				),
+				(
+					development_runtime::RewardDomain::Block,
+					development_runtime::CurrencyId::Native,
+				),
+				100 * CFG,
+			)];
+			let rewards = vec![(1, 200 * CFG)];
+
+			for ((domain_id, currency_id), group_id) in currencies {
+				<development_runtime::Rewards as CurrencyGroupChange>::attach_currency(
+					(domain_id, currency_id),
+					group_id,
+				)
+				.unwrap();
+			}
+
+			for (account_id, (domain_id, currency_id), amount) in stake_accounts {
+				<development_runtime::Rewards as AccountRewards<AccountId>>::deposit_stake(
+					(domain_id, currency_id),
+					&account_id,
+					amount,
+				)
+				.unwrap();
+			}
+
+			for (group_id, amount) in rewards {
+				<development_runtime::Rewards as DistributedRewards>::distribute_reward(
+					amount,
+					[group_id],
+				)
+				.unwrap();
+			}
 		})
 		.with_api(|api, latest| {
-			// Do actually call your api. Using anchor here for the sake of an example
-			//
-			// First argument, is expanded by the macro to be the block to call the api at.
-			// The env simply passes on the latest block. We could also have a macro
-			// proxying the api calls, but kinda big overhead.
-			let _ = api.get_anchor_by_id(&latest, Default::default());
+			let account_id = sp_runtime::AccountId32::from(
+				<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
+					.unwrap()
+					.public()
+					.into_account(),
+			);
+
+			let currencies = api.list_currencies(&latest, account_id.clone()).unwrap();
+			assert_eq!(currencies.clone().len(), 1);
+
+			let currency_id = currencies[0];
+
+			let reward = api
+				.compute_reward(&latest, currency_id, account_id)
+				.unwrap();
+			assert_eq!(reward, Some(200 * CFG));
 		});
 }
