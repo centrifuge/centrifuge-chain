@@ -51,11 +51,11 @@
 //!
 //! The exact reward functionality of this pallet is given by the mechanism used when it's
 //! configured. Current mechanisms:
-//! - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
+//! - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism.
 //! currency movement.
-//! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
+//! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism.
 //! currency movement.
-//! - gap mechanism with support for currency movement.
+//! - [gap](https://centrifuge.hackmd.io/@Luis/rkJXBz08s) mechanism.
 //!
 
 #[cfg(test)]

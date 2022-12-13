@@ -27,14 +27,11 @@ Mechanisms implement the reward methods.
 
 - [`pallet-rewards` API documentation](https://reference.centrifuge.io/pallet_rewards/)
 - [Rewards traits API documentation](https://reference.centrifuge.io/cfg_traits/rewards/index.html)
-- [Deferred rewards python example](deferred_rewards_example.py)
-- [Gap rewards python example](gap_rewards_example.py)
+- [The specifications](https://centrifuge.hackmd.io/@Luis/BJz0Ur2Mo) of the reward system.
 - Mechanisms:
-    - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
-    currency movement.
-    - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
-    currency movement.
-    - gap mechanism with support for currency movement.
+    - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism.
+    - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism.
+    - [gap](https://centrifuge.hackmd.io/@Luis/rkJXBz08s) mechanism
 
 ## Getting started
 
