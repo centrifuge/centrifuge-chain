@@ -1924,10 +1924,8 @@ impl_runtime_apis! {
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
 		}
-	}
 
-	impl runtime_common::apis::LoansApi<Block, PoolId, Balance> for Runtime {
-		fn pool_valuation(pool_id: PoolId) -> Option<Balance> {
+		fn portfolio_valuation(pool_id: PoolId) -> Option<Balance> {
 			if !pallet_pool_system::Pool::<Runtime>::get(pool_id).is_some() {
 				return None;
 			}

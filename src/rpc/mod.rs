@@ -28,7 +28,6 @@ use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use substrate_frame_rpc_system::{System, SystemApiServer};
 
 pub mod anchors;
-pub mod loans;
 pub mod pools;
 
 /// A type representing all RPC extensions.

@@ -44,5 +44,9 @@ decl_runtime_apis! {
 		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>;
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<Currency>;
+
+		fn portfolio_valuation(pool_id: PoolId) -> Option<Balance>;
+
+		fn max_borrow_amount(pool_id: PoolId) -> Option<Balance>;
 	}
 }
