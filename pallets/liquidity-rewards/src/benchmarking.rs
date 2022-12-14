@@ -97,7 +97,7 @@ benchmarks! {
 		let mock = init_test_mock_with_expectations();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
-		Pallet::<T>::on_initialize(T::BlockNumber::zero());
+		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into(), T::Balance::zero())
 	verify {
@@ -110,7 +110,7 @@ benchmarks! {
 		let mock = init_test_mock_with_expectations();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
-		Pallet::<T>::on_initialize(T::BlockNumber::zero());
+		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into(), T::Balance::zero())
 	verify {
@@ -123,7 +123,7 @@ benchmarks! {
 		let mock = init_test_mock_with_expectations();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
-		Pallet::<T>::on_initialize(T::BlockNumber::one());
+		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into())
 	verify {
