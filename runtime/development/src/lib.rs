@@ -24,8 +24,8 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard,
-	PreConditions, PriceValue, TrancheCurrency as _,
+	rewards::AccountRewards, CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect,
+	PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -82,6 +82,8 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
@@ -1608,6 +1610,7 @@ impl<
 }
 
 #[derive(Clone, Copy, PartialEq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RewardDomain {
 	Liquidity,
 	Block,
@@ -1984,6 +1987,17 @@ impl_runtime_apis! {
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
+		}
+	}
+
+	// RewardsApi
+	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
+		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
+			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id)
+		}
+
+		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
+			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok()
 		}
 	}
 

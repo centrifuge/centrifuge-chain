@@ -32,6 +32,7 @@ pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", 
 pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 ## Substrate-Primitives
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
@@ -95,6 +96,7 @@ pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
+pallet-rewards = { path = "../../pallets/rewards" }
 
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }

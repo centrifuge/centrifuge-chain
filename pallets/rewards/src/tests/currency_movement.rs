@@ -468,6 +468,46 @@ macro_rules! currency_movement_tests {
 					assert_eq!(rewards_account(), 0);
 				});
 			}
+
+			#[test]
+			fn associate_different_currencies() {
+				new_test_ext().execute_with(|| {
+					let expected_currency_ids = vec![
+						&(DomainId::D1, CurrencyId::A),
+						&(DomainId::D1, CurrencyId::B),
+						&(DomainId::D1, CurrencyId::C),
+						&(DomainId::D1, CurrencyId::M),
+					];
+
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_A, GROUP_A));
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_B, GROUP_A));
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_C, GROUP_A));
+					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_A));
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert!(expected_currency_ids[0..1]
+						.iter()
+						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_B, &USER_A, STAKE_A));
+					assert!(expected_currency_ids[0..2]
+						.iter()
+						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_C, &USER_A, STAKE_A));
+					assert!(expected_currency_ids[0..3]
+						.iter()
+						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+
+					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_A));
+					assert!(expected_currency_ids
+						.iter()
+						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+
+					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_A, &USER_A, STAKE_A));
+					assert_eq!($pallet::list_currencies(USER_A).len(), 4);
+				});
+			}
 		}
 	};
 }
