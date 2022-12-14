@@ -13,6 +13,9 @@ use crate::rpc::{invalid_params_error, runtime_error};
 pub trait LoansApi<PoolId, Balance, BlockHash> {
 	#[method(name = "loans_pool_valuation")]
 	fn pool_valuation(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Balance>;
+
+	#[method(name = "loans_max_borrow_amount")]
+	fn max_borrow_amount(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Balance>;
 }
 
 pub struct Loans<C, P> {
@@ -46,6 +49,19 @@ where
 		};
 
 		api.pool_valuation(&at, pool_id)
+			.map_err(|e| runtime_error("Unable to query pool valuation.", e))?
+			.ok_or_else(|| invalid_params_error("Pool not found."))
+	}
+
+	fn max_borrow_amount(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Balance> {
+		let api = self.client.runtime_api();
+		let at = if let Some(hash) = at {
+			BlockId::hash(hash)
+		} else {
+			BlockId::hash(self.client.info().best_hash)
+		};
+
+		api.max_borrow_amount(&at, pool_id)
 			.map_err(|e| runtime_error("Unable to query pool valuation.", e))?
 			.ok_or_else(|| invalid_params_error("Pool not found."))
 	}

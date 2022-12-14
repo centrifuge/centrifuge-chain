@@ -23,5 +23,7 @@ decl_runtime_apis! {
 		Balance: Codec,
 	{
 		fn pool_valuation(pool_id: PoolId) -> Option<Balance>;
+
+		fn max_borrow_amount(pool_id: PoolId) -> Option<Balance>;
 	}
 }

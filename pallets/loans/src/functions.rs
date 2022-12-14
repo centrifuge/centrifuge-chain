@@ -14,6 +14,7 @@
 //! Module provides loan related functions
 use cfg_types::adjustments::Adjustment;
 use pallet_pool_system::pool_types::PoolLocator;
+use sp_arithmetic::traits::Saturating;
 use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 use super::*;
@@ -765,5 +766,36 @@ impl<T: Config> Pallet<T> {
 				))
 			},
 		)
+	}
+
+	pub fn get_max_borrow_amount(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+		let now = Self::now();
+
+		let sum: T::Balance = Zero::zero();
+
+		let active_loans = ActiveLoans::<T>::get(pool_id);
+		for active_loan in active_loans.iter() {
+			ensure!(
+				active_loan.write_off_status == WriteOffStatus::None,
+				Error::<T>::WrittenOffByAdmin
+			);
+
+			// make sure maturity date has not passed if the loan has a maturity date
+			let valid = match active_loan.loan_type.maturity_date() {
+				Some(md) => md > now,
+				None => true,
+			};
+			ensure!(valid, Error::<T>::LoanMaturityDatePassed);
+
+			// check for max borrow amount
+			let current_debt = T::InterestAccrual::current_debt(
+				active_loan.interest_rate_per_sec,
+				active_loan.normalized_debt,
+			)?;
+
+			sum.saturating_add(active_loan.max_borrow_amount(current_debt));
+		}
+
+		Ok(sum)
 	}
 }

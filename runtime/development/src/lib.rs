@@ -1915,9 +1915,25 @@ impl_runtime_apis! {
 	}
 
 	impl runtime_common::apis::LoansApi<Block, PoolId, Balance> for Runtime {
-		fn pool_valuation(pool_id: PoolId) -> Option<Balance>{
+		fn pool_valuation(pool_id: PoolId) -> Option<Balance> {
+			if !pallet_pool_system::Pool::<Runtime>::get(pool_id).is_some() {
+				return None;
+			}
+
 			match pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id) {
 				Ok((_, value)) => Some(value),
+				Err(_) => None,
+			}
+		}
+
+
+		fn max_borrow_amount(pool_id: PoolId) -> Option<Balance> {
+			if !pallet_pool_system::Pool::<Runtime>::get(pool_id).is_some() {
+				return None;
+			}
+
+			match pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id) {
+				Ok(value) => Some(value),
 				Err(_) => None,
 			}
 		}
