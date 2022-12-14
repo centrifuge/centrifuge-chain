@@ -32,7 +32,7 @@ jobs:
               body: `:clock1: Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\` :clock1:`
             })
             return comment.data.id
-      - name: Free space on Ubuntu
+      - name: Prep build on Ubuntu
         run: |
           echo "Pre cleanup"
           df -h
