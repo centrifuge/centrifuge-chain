@@ -1866,7 +1866,7 @@ impl_runtime_apis! {
 	}
 
 	// PoolsApi
-	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
+	impl runtime_common::apis::PoolsApi<Block, PoolId, ItemId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pool_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
@@ -1937,12 +1937,12 @@ impl_runtime_apis! {
 		}
 
 
-		fn max_borrow_amount(pool_id: PoolId) -> Option<Balance> {
+		fn max_borrow_amount(pool_id: PoolId, loan_id: ItemId) -> Option<Balance> {
 			if !pallet_pool_system::Pool::<Runtime>::get(pool_id).is_some() {
 				return None;
 			}
 
-			match pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id) {
+			match pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id, loan_id) {
 				Ok(value) => Some(value),
 				Err(_) => None,
 			}

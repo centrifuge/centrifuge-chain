@@ -14,7 +14,6 @@
 //! Module provides loan related functions
 use cfg_types::adjustments::Adjustment;
 use pallet_pool_system::pool_types::PoolLocator;
-use sp_arithmetic::traits::Saturating;
 use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 use super::*;
@@ -768,34 +767,36 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
-	pub fn get_max_borrow_amount(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+	pub fn get_max_borrow_amount(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+	) -> Result<T::Balance, DispatchError> {
 		let now = Self::now();
-
-		let sum: T::Balance = Zero::zero();
-
 		let active_loans = ActiveLoans::<T>::get(pool_id);
-		for active_loan in active_loans.iter() {
-			ensure!(
-				active_loan.write_off_status == WriteOffStatus::None,
-				Error::<T>::WrittenOffByAdmin
-			);
+		let active_loan = active_loans
+			.into_iter()
+			.find(|active_loan| active_loan.loan_id == loan_id)
+			.ok_or(Error::<T>::LoanNotActive)?;
 
-			// make sure maturity date has not passed if the loan has a maturity date
-			let valid = match active_loan.loan_type.maturity_date() {
-				Some(md) => md > now,
-				None => true,
-			};
-			ensure!(valid, Error::<T>::LoanMaturityDatePassed);
+		// ensure loan is not written off
+		ensure!(
+			active_loan.write_off_status == WriteOffStatus::None,
+			Error::<T>::WrittenOffByAdmin
+		);
 
-			// check for max borrow amount
-			let current_debt = T::InterestAccrual::current_debt(
-				active_loan.interest_rate_per_sec,
-				active_loan.normalized_debt,
-			)?;
+		// make sure maturity date has not passed if the loan has a maturity date
+		let valid = match active_loan.loan_type.maturity_date() {
+			Some(md) => md > now,
+			None => true,
+		};
 
-			sum.saturating_add(active_loan.max_borrow_amount(current_debt));
-		}
+		ensure!(valid, Error::<T>::LoanMaturityDatePassed);
 
-		Ok(sum)
+		let current_debt = T::InterestAccrual::current_debt(
+			active_loan.interest_rate_per_sec,
+			active_loan.normalized_debt,
+		)?;
+
+		Ok(active_loan.max_borrow_amount(current_debt))
 	}
 }

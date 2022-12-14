@@ -14,7 +14,7 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use crate::rpc::{invalid_params_error, runtime_error};
 
 #[rpc(client, server)]
-pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, BlockHash> {
+pub trait PoolsApi<PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio, BlockHash> {
 	#[method(name = "pools_currency")]
 	fn currency(&self, poold_id: PoolId, at: Option<BlockHash>) -> RpcResult<Currency>;
 
@@ -64,7 +64,12 @@ pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, BlockHash
 	fn portfolio_valuation(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Balance>;
 
 	#[method(name = "pools_maxBorrowAmount")]
-	fn max_borrow_amount(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Balance>;
+	fn max_borrow_amount(
+		&self,
+		pool_id: PoolId,
+		loan_id: LoanId,
+		at: Option<BlockHash>,
+	) -> RpcResult<Balance>;
 }
 
 pub struct Pools<C, P> {
@@ -81,14 +86,16 @@ impl<C, P> Pools<C, P> {
 	}
 }
 
-impl<C, Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>
-	PoolsApiServer<PoolId, TrancheId, Balance, Currency, BalanceRatio, Block::Hash> for Pools<C, Block>
+impl<C, Block, PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio>
+	PoolsApiServer<PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio, Block::Hash>
+	for Pools<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: PoolsRuntimeApi<Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>,
+	C::Api: PoolsRuntimeApi<Block, PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio>,
 	Balance: Codec + Copy,
 	PoolId: Codec + Copy + Debug,
+	LoanId: Codec + Copy + Debug,
 	TrancheId: Codec + Clone + Debug,
 	Currency: Codec,
 	BalanceRatio: Codec,
@@ -221,7 +228,12 @@ where
 			.ok_or_else(|| invalid_params_error("Pool not found."))
 	}
 
-	fn max_borrow_amount(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Balance> {
+	fn max_borrow_amount(
+		&self,
+		pool_id: PoolId,
+		loan_id: LoanId,
+		at: Option<Block::Hash>,
+	) -> RpcResult<Balance> {
 		let api = self.client.runtime_api();
 		let at = if let Some(hash) = at {
 			BlockId::hash(hash)
@@ -229,7 +241,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.max_borrow_amount(&at, pool_id)
+		api.max_borrow_amount(&at, pool_id, loan_id)
 			.map_err(|e| runtime_error("Unable to query pool valuation.", e))?
 			.ok_or_else(|| invalid_params_error("Pool not found."))
 	}
