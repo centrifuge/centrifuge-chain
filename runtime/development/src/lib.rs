@@ -432,7 +432,68 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, RuntimeCall::Tokens(..)),
+			ProxyType::NonTransfer => {
+				matches!(
+					c,
+					RuntimeCall::System(..) |
+					RuntimeCall::ParachainSystem(..) |
+					RuntimeCall::Timestamp(..) |
+					// Specifically omitting Balances
+					RuntimeCall::CollatorSelection(..) |
+					RuntimeCall::Authorship(..) |
+					RuntimeCall::Session(..) |
+					RuntimeCall::Multisig(..) |
+					// The internal logic prevents upgrading
+					// this proxy to a `ProxyType::Any` proxy
+					// as long as the `is_superset` is correctly
+					// configured
+					RuntimeCall::Proxy(..) |
+					RuntimeCall::Utility(..) |
+					RuntimeCall::Scheduler(..) |
+					RuntimeCall::Council(..) |
+					RuntimeCall::Elections(..) |
+					RuntimeCall::Democracy(..) |
+					RuntimeCall::Identity(..) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vest {..}) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vest_other {..}) |
+					// Specifically omitting Vesting `vested_transfer`, and `force_vested_transfer`
+					RuntimeCall::Treasury(..) |
+					RuntimeCall::Uniques(..) |
+					RuntimeCall::Preimage(..) |
+					RuntimeCall::Fees(..) |
+					RuntimeCall::Anchor(..) |
+					RuntimeCall::Claims(..) |
+					RuntimeCall::CrowdloanClaim(..) |
+					RuntimeCall::CrowdloanReward(..) |
+					RuntimeCall::PoolSystem(..) |
+					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::update_nav{..}) |
+					// Specifically omitting Loans `repay` & `borrow`
+					RuntimeCall::Permissions(..) |
+					RuntimeCall::CollatorAllowlist(..) |
+					// Specifically omitting Tokens
+					RuntimeCall::NftSales(pallet_nft_sales::Call::add {..}) |
+					RuntimeCall::NftSales(pallet_nft_sales::Call::remove {..}) |
+					// Specifically omitting NftSales `buy`
+					// Specifically omitting Bridge
+					// Specifically omitting Nfts
+					RuntimeCall::Keystore(..) |
+					RuntimeCall::Investments(pallet_investments::Call::collect_investments_for {..}) |
+					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
+					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
+					// `collect_investments`, `collect_redemptions`
+					RuntimeCall::LiquidityRewards(..) |
+					// Specifically omitting Connectors
+					// Specifically omitting ALL XCM related pallets
+					// Specifically omitting OrmlTokens
+					// Specifically omitting ChainBridge
+					// Specifically omitting Migration
+					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
+					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..})
+				)
+			}
 			ProxyType::Governance => matches!(
 				c,
 				RuntimeCall::Democracy(..)
