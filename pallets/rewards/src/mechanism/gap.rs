@@ -56,12 +56,8 @@ impl<T: Config> Default for Account<T> {
 
 impl<T: Config> Account<T> {
 	fn was_distribution(&self, group: &Group<T>, currency: &Currency<T>) -> bool {
-		if self.last_currency_movement as usize == currency.rpt_changes.len() {
-			self.distribution_id != group.distribution_id
-		} else {
-			self.distribution_id != currency.prev_distribution_id
-				|| group.distribution_id != currency.next_distribution_id
-		}
+		self.distribution_id != group.distribution_id
+			|| (self.last_currency_movement as usize) < currency.rpt_changes.len()
 	}
 
 	fn reward_tally_updated(
@@ -143,8 +139,6 @@ impl<T: Config> Account<T> {
 pub struct Currency<T: Config> {
 	total_stake: T::Balance,
 	rpt_changes: BoundedVec<T::Rate, T::MaxCurrencyMovements>,
-	prev_distribution_id: T::DistributionId,
-	next_distribution_id: T::DistributionId,
 }
 
 impl<T: Config> Default for Currency<T> {
@@ -152,8 +146,6 @@ impl<T: Config> Default for Currency<T> {
 		Self {
 			total_stake: T::Balance::zero(),
 			rpt_changes: BoundedVec::default(),
-			prev_distribution_id: T::DistributionId::default(),
-			next_distribution_id: T::DistributionId::default(),
 		}
 	}
 }
@@ -356,12 +348,6 @@ pub mod pallet {
 			next_group
 				.total_stake
 				.ensure_add_assign(currency.total_stake)?;
-
-			// Only if there was a distribution from last move, we update the previous related data.
-			if currency.next_distribution_id != prev_group.distribution_id {
-				currency.prev_distribution_id = prev_group.distribution_id;
-			}
-			currency.next_distribution_id = next_group.distribution_id;
 
 			Ok(())
 		}
