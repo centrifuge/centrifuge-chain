@@ -285,21 +285,21 @@ pub mod pallet {
 
 		fn move_currency(
 			currency: &mut Self::Currency,
-			prev_group: &mut Self::Group,
-			next_group: &mut Self::Group,
+			from_group: &mut Self::Group,
+			to_group: &mut Self::Group,
 		) -> Result<(), MoveCurrencyError> {
 			base::Mechanism::<_, T::IBalance, _, _>::move_currency(
 				&mut currency.base,
-				&mut prev_group.base,
-				&mut next_group.base,
+				&mut from_group.base,
+				&mut to_group.base,
 			)?;
 
 			// Only if there was a distribution from last move, we update the previous related data.
-			if currency.next_distribution_id != prev_group.distribution_id {
-				currency.prev_distribution_id = prev_group.distribution_id;
-				currency.prev_last_rate = prev_group.last_rate;
+			if currency.next_distribution_id != from_group.distribution_id {
+				currency.prev_distribution_id = from_group.distribution_id;
+				currency.prev_last_rate = from_group.last_rate;
 			}
-			currency.next_distribution_id = next_group.distribution_id;
+			currency.next_distribution_id = to_group.distribution_id;
 
 			Ok(())
 		}

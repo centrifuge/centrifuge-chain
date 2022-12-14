@@ -52,8 +52,8 @@ pub trait RewardMechanism {
 	/// Move a currency from one group to another one.
 	fn move_currency(
 		currency: &mut Self::Currency,
-		prev_group: &mut Self::Group,
-		next_group: &mut Self::Group,
+		from_group: &mut Self::Group,
+		to_group: &mut Self::Group,
 	) -> Result<(), MoveCurrencyError>;
 
 	/// Returns the balance of an account

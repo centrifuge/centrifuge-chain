@@ -181,21 +181,21 @@ where
 
 	fn move_currency(
 		currency: &mut Self::Currency,
-		prev_group: &mut Self::Group,
-		next_group: &mut Self::Group,
+		from_group: &mut Self::Group,
+		to_group: &mut Self::Group,
 	) -> Result<(), MoveCurrencyError> {
-		let rpt_change = next_group.rpt.ensure_sub(prev_group.rpt)?;
+		let rpt_change = to_group.rpt.ensure_sub(from_group.rpt)?;
 
 		currency
 			.rpt_changes
 			.try_push(rpt_change)
 			.map_err(|_| MoveCurrencyError::MaxMovements)?;
 
-		prev_group
+		from_group
 			.total_stake
 			.ensure_sub_assign(currency.total_stake)?;
 
-		next_group
+		to_group
 			.total_stake
 			.ensure_add_assign(currency.total_stake)?;
 

@@ -389,9 +389,9 @@ pub mod pallet {
 						Err(Error::<T, I>::CurrencyInSameGroup)?;
 					}
 
-					Groups::<T, I>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
-						Groups::<T, I>::try_mutate(next_group_id, |next_group| {
-							T::RewardMechanism::move_currency(currency, prev_group, next_group)
+					Groups::<T, I>::try_mutate(prev_group_id, |from_group| -> DispatchResult {
+						Groups::<T, I>::try_mutate(next_group_id, |to_group| {
+							T::RewardMechanism::move_currency(currency, from_group, to_group)
 								.map_err(|e| match e {
 									MoveCurrencyError::Internal(error) => error.into(),
 									MoveCurrencyError::MaxMovements => {
