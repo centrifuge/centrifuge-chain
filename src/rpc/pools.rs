@@ -59,6 +59,12 @@ pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, BlockHash
 		tranche_id: TrancheId,
 		at: Option<BlockHash>,
 	) -> RpcResult<Currency>;
+
+	#[method(name = "pools_portfolioValuation")]
+	fn portfolio_valuation(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Balance>;
+
+	#[method(name = "pools_maxBorrowAmount")]
+	fn max_borrow_amount(&self, pool_id: PoolId, at: Option<BlockHash>) -> RpcResult<Balance>;
 }
 
 pub struct Pools<C, P> {
@@ -210,7 +216,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.pool_valuation(&at, pool_id)
+		api.portfolio_valuation(&at, pool_id)
 			.map_err(|e| runtime_error("Unable to query pool valuation.", e))?
 			.ok_or_else(|| invalid_params_error("Pool not found."))
 	}
