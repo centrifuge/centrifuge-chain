@@ -11,7 +11,7 @@ if [  -z "${output}" ]; then
 fi
 
 echo "Benchmarking ${pallet} for runtime $chain..."
-cargo run --release --features runtime-benchmarks -- benchmark pallet \
+cargo run --release --features runtime-benchmarks,test-benchmarks -- benchmark pallet \
   --chain="${chain}" \
   --steps=50 \
   --repeat=20 \

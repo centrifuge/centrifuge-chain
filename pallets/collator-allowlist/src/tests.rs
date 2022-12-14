@@ -25,7 +25,7 @@ use crate::mock::*;
 #[test]
 fn happy_path() {
 	new_test_ext().execute_with(|| {
-		let sudo: Origin = frame_system::RawOrigin::Root.into();
+		let sudo: RuntimeOrigin = frame_system::RawOrigin::Root.into();
 		let collator_id = 1;
 
 		// 1. Check that despite the collator being 'registered' in the mock session,
@@ -52,7 +52,7 @@ fn happy_path() {
 #[test]
 fn requires_sudo() {
 	new_test_ext().execute_with(|| {
-		let bad_origin: Origin = Origin::signed(33);
+		let bad_origin: RuntimeOrigin = RuntimeOrigin::signed(33);
 		let collator_id = 42;
 
 		assert_noop!(
@@ -72,7 +72,7 @@ fn requires_sudo() {
 #[test]
 fn not_registered_in_mock_session() {
 	new_test_ext().execute_with(|| {
-		let sudo: Origin = frame_system::RawOrigin::Root.into();
+		let sudo: RuntimeOrigin = frame_system::RawOrigin::Root.into();
 		let collator_id = 99;
 
 		assert_noop!(
@@ -87,7 +87,7 @@ fn not_registered_in_mock_session() {
 #[test]
 fn already_allowlisted() {
 	new_test_ext().execute_with(|| {
-		let sudo: Origin = frame_system::RawOrigin::Root.into();
+		let sudo: RuntimeOrigin = frame_system::RawOrigin::Root.into();
 		let collator_id = 1;
 
 		// We add it for the first time
@@ -107,7 +107,7 @@ fn already_allowlisted() {
 #[test]
 fn remove_not_present() {
 	new_test_ext().execute_with(|| {
-		let sudo: Origin = frame_system::RawOrigin::Root.into();
+		let sudo: RuntimeOrigin = frame_system::RawOrigin::Root.into();
 		let collator_id = 1;
 
 		assert_noop!(

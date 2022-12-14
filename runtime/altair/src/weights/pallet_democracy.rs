@@ -37,170 +37,87 @@ impl<T: frame_system::Config> pallet_democracy::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(3 as u64))
 	}
 
-	fn second(s: u32) -> Weight {
-		Weight::from_ref_time(69_081_000) // Standard Error: 5_000
-			.saturating_add(Weight::from_ref_time(319_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn second() -> Weight {
+		todo!()
 	}
 
-	fn vote_new(r: u32) -> Weight {
-		Weight::from_ref_time(84_588_000) // Standard Error: 3_000
-			.saturating_add(Weight::from_ref_time(425_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+	fn vote_new() -> Weight {
+		todo!()
 	}
 
-	fn vote_existing(r: u32) -> Weight {
-		Weight::from_ref_time(84_586_000) // Standard Error: 4_000
-			.saturating_add(Weight::from_ref_time(420_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+	fn vote_existing() -> Weight {
+		todo!()
 	}
 
 	fn emergency_cancel() -> Weight {
-		Weight::from_ref_time(42_041_000)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+		todo!()
 	}
 
-	fn blacklist(p: u32) -> Weight {
-		Weight::from_ref_time(123_377_000) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(642_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(6 as u64))
-			.saturating_add(T::DbWeight::get().writes(7 as u64))
+	fn blacklist() -> Weight {
+		todo!()
 	}
 
-	fn external_propose(v: u32) -> Weight {
-		Weight::from_ref_time(24_435_000) // Standard Error: 0
-			.saturating_add(Weight::from_ref_time(51_000).saturating_mul(v as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn external_propose() -> Weight {
+		todo!()
 	}
 
 	fn external_propose_majority() -> Weight {
-		Weight::from_ref_time(9_770_000).saturating_add(T::DbWeight::get().writes(1 as u64))
+		todo!()
 	}
 
 	fn external_propose_default() -> Weight {
-		Weight::from_ref_time(9_539_000).saturating_add(T::DbWeight::get().writes(1 as u64))
+		todo!()
 	}
 
 	fn fast_track() -> Weight {
-		Weight::from_ref_time(44_536_000)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+		todo!()
 	}
 
-	fn veto_external(v: u32) -> Weight {
-		Weight::from_ref_time(46_696_000) // Standard Error: 1_000
-			.saturating_add(Weight::from_ref_time(69_000).saturating_mul(v as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn veto_external() -> Weight {
+		todo!()
 	}
 
-	fn cancel_proposal(p: u32) -> Weight {
-		Weight::from_ref_time(101_475_000) // Standard Error: 5_000
-			.saturating_add(Weight::from_ref_time(587_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
-			.saturating_add(T::DbWeight::get().writes(4 as u64))
+	fn cancel_proposal() -> Weight {
+		todo!()
 	}
 
 	fn cancel_referendum() -> Weight {
-		Weight::from_ref_time(29_694_000).saturating_add(T::DbWeight::get().writes(1 as u64))
+		todo!()
 	}
 
-	fn cancel_queued(r: u32) -> Weight {
-		Weight::from_ref_time(49_726_000) // Standard Error: 6_000
-			.saturating_add(Weight::from_ref_time(3_164_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn on_initialize_base(_r: u32) -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_base(r: u32) -> Weight {
-		Weight::from_ref_time(1_048_000) // Standard Error: 41_000
-			.saturating_add(Weight::from_ref_time(7_099_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(r as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn on_initialize_base_with_launch_period(_r: u32) -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_base_with_launch_period(r: u32) -> Weight {
-		Weight::from_ref_time(17_712_000) // Standard Error: 7_000
-			.saturating_add(Weight::from_ref_time(6_908_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(5 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(r as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn delegate(_r: u32) -> Weight {
+		todo!()
 	}
 
-	fn delegate(r: u32) -> Weight {
-		Weight::from_ref_time(87_677_000) // Standard Error: 15_000
-			.saturating_add(Weight::from_ref_time(9_660_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(r as u64)))
-			.saturating_add(T::DbWeight::get().writes(4 as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(r as u64)))
-	}
-
-	fn undelegate(r: u32) -> Weight {
-		Weight::from_ref_time(45_698_000) // Standard Error: 14_000
-			.saturating_add(Weight::from_ref_time(9_597_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(r as u64)))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(r as u64)))
+	fn undelegate(_r: u32) -> Weight {
+		todo!()
 	}
 
 	fn clear_public_proposals() -> Weight {
-		Weight::from_ref_time(12_249_000).saturating_add(T::DbWeight::get().writes(1 as u64))
+		todo!()
 	}
 
-	fn note_preimage(b: u32) -> Weight {
-		Weight::from_ref_time(62_546_000) // Standard Error: 0
-			.saturating_add(Weight::from_ref_time(3_000).saturating_mul(b as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn unlock_remove(_r: u32) -> Weight {
+		todo!()
 	}
 
-	fn note_imminent_preimage(b: u32) -> Weight {
-		Weight::from_ref_time(47_734_000) // Standard Error: 0
-			.saturating_add(Weight::from_ref_time(3_000).saturating_mul(b as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn unlock_set(_r: u32) -> Weight {
+		todo!()
 	}
 
-	fn reap_preimage(b: u32) -> Weight {
-		Weight::from_ref_time(61_900_000) // Standard Error: 0
-			.saturating_add(Weight::from_ref_time(2_000).saturating_mul(b as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn remove_vote(_r: u32) -> Weight {
+		todo!()
 	}
 
-	fn unlock_remove(r: u32) -> Weight {
-		Weight::from_ref_time(56_608_000) // Standard Error: 3_000
-			.saturating_add(Weight::from_ref_time(200_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
-	}
-
-	fn unlock_set(r: u32) -> Weight {
-		Weight::from_ref_time(55_461_000) // Standard Error: 3_000
-			.saturating_add(Weight::from_ref_time(350_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
-	}
-
-	fn remove_vote(r: u32) -> Weight {
-		Weight::from_ref_time(35_116_000) // Standard Error: 3_000
-			.saturating_add(Weight::from_ref_time(99_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
-	}
-
-	fn remove_other_vote(r: u32) -> Weight {
-		Weight::from_ref_time(35_271_000) // Standard Error: 3_000
-			.saturating_add(Weight::from_ref_time(327_000).saturating_mul(r as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn remove_other_vote(_r: u32) -> Weight {
+		todo!()
 	}
 }

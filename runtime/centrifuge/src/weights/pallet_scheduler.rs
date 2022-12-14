@@ -31,117 +31,51 @@ use sp_std::marker::PhantomData;
 /// Weights for pallet_scheduler using the Substrate node and recommended hardware.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_scheduler::WeightInfo for WeightInfo<T> {
-	fn on_initialize_periodic_named_resolved(s: u32) -> Weight {
-		Weight::from_ref_time(39_776_000) // Standard Error: 153_000
-			.saturating_add(Weight::from_ref_time(55_105_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().reads((3 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-			.saturating_add(T::DbWeight::get().writes((4 as u64).saturating_mul(s as u64)))
+	fn service_agendas_base() -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_named_resolved(s: u32) -> Weight {
-		Weight::from_ref_time(22_239_000) // Standard Error: 85_000
-			.saturating_add(Weight::from_ref_time(44_288_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(s as u64)))
+	fn service_agenda_base(_s: u32) -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_periodic_resolved(s: u32) -> Weight {
-		Weight::from_ref_time(23_148_000) // Standard Error: 90_000
-			.saturating_add(Weight::from_ref_time(47_908_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().reads((3 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-			.saturating_add(T::DbWeight::get().writes((3 as u64).saturating_mul(s as u64)))
+	fn service_task_base() -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_resolved(s: u32) -> Weight {
-		Weight::from_ref_time(18_651_000) // Standard Error: 94_000
-			.saturating_add(Weight::from_ref_time(41_272_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().reads((2 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(s as u64)))
+	fn service_task_fetched(_s: u32) -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_named_aborted(s: u32) -> Weight {
-		Weight::from_ref_time(13_214_000) // Standard Error: 31_000
-			.saturating_add(Weight::from_ref_time(17_985_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(s as u64)))
+	fn service_task_named() -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_aborted(s: u32) -> Weight {
-		Weight::from_ref_time(14_049_000) // Standard Error: 19_000
-			.saturating_add(Weight::from_ref_time(11_292_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn service_task_periodic() -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_periodic_named(s: u32) -> Weight {
-		Weight::from_ref_time(16_211_000) // Standard Error: 476_000
-			.saturating_add(Weight::from_ref_time(32_761_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-			.saturating_add(T::DbWeight::get().writes((2 as u64).saturating_mul(s as u64)))
+	fn execute_dispatch_signed() -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_periodic(s: u32) -> Weight {
-		Weight::from_ref_time(26_025_000) // Standard Error: 26_000
-			.saturating_add(Weight::from_ref_time(23_523_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(s as u64)))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(s as u64)))
+	fn execute_dispatch_unsigned() -> Weight {
+		todo!()
 	}
 
-	fn on_initialize_named(s: u32) -> Weight {
-		Weight::from_ref_time(31_868_000) // Standard Error: 43_000
-			.saturating_add(Weight::from_ref_time(19_663_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(s as u64)))
+	fn schedule(_s: u32) -> Weight {
+		todo!()
 	}
 
-	fn on_initialize(s: u32) -> Weight {
-		Weight::from_ref_time(25_731_000) // Standard Error: 36_000
-			.saturating_add(Weight::from_ref_time(16_908_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn cancel(_s: u32) -> Weight {
+		todo!()
 	}
 
-	fn schedule(s: u32) -> Weight {
-		Weight::from_ref_time(42_236_000) // Standard Error: 4_000
-			.saturating_add(Weight::from_ref_time(221_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn schedule_named(_s: u32) -> Weight {
+		todo!()
 	}
 
-	fn cancel(s: u32) -> Weight {
-		Weight::from_ref_time(42_679_000) // Standard Error: 9_000
-			.saturating_add(Weight::from_ref_time(3_155_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
-	}
-
-	fn schedule_named(s: u32) -> Weight {
-		Weight::from_ref_time(54_172_000) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(164_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
-	}
-
-	fn cancel_named(s: u32) -> Weight {
-		Weight::from_ref_time(46_294_000) // Standard Error: 10_000
-			.saturating_add(Weight::from_ref_time(3_133_000).saturating_mul(s as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn cancel_named(_s: u32) -> Weight {
+		todo!()
 	}
 }

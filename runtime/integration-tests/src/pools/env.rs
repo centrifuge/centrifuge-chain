@@ -29,8 +29,7 @@ use crate::{
 
 #[tokio::test]
 async fn env_works() {
-	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(&manager);
+	let mut env = env::test_env_default(Handle::current());
 
 	let num_blocks = 10;
 	let block_before = env
@@ -52,17 +51,16 @@ async fn env_works() {
 
 #[tokio::test]
 async fn extrinsics_works() {
-	let manager = env::task_manager(Handle::current());
 	let mut genesis = Storage::default();
 	genesis::default_balances::<Runtime>(&mut genesis);
-	let mut env = env::test_env_with_centrifuge_storage(&manager, genesis);
+	let mut env = env::test_env_with_centrifuge_storage(Handle::current(), genesis);
 
 	let to: cfg_primitives::Address = Keyring::Bob.into();
 	let xt = xt_centrifuge(
 		&env,
 		Keyring::Alice,
 		nonce_centrifuge(&env, Keyring::Alice),
-		centrifuge::Call::Balances(BalancesCall::transfer {
+		centrifuge::RuntimeCall::Balances(BalancesCall::transfer {
 			dest: to,
 			value: 100 * cfg_primitives::constants::CFG,
 		}),

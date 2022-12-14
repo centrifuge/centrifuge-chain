@@ -300,9 +300,9 @@ fn get_false_proof() -> proofs::Proof<H256> {
 }
 
 fn init_module() {
-	CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 0, 400).unwrap();
+	CrowdloanClaim::initialize(RuntimeOrigin::signed(1), get_root(), 100, 0, 0, 400).unwrap();
 	pallet_crowdloan_reward::Pallet::<Runtime>::initialize(
-		Origin::signed(1),
+		RuntimeOrigin::signed(1),
 		Perbill::from_percent(20),
 		500,
 		100,
@@ -329,7 +329,7 @@ fn test_init_double() {
 		.build(Some(init_module))
 		.execute_with(|| {
 			assert_noop!(
-				CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 200, 400),
+				CrowdloanClaim::initialize(RuntimeOrigin::signed(1), get_root(), 100, 0, 200, 400),
 				CrowdloanClaimError::<Runtime>::PalletAlreadyInitialized
 			);
 		})
@@ -341,7 +341,7 @@ fn test_init_non_admin() {
 		.build(Some(init_module))
 		.execute_with(|| {
 			assert_noop!(
-				CrowdloanClaim::initialize(Origin::signed(2), get_root(), 100, 0, 200, 400),
+				CrowdloanClaim::initialize(RuntimeOrigin::signed(2), get_root(), 100, 0, 200, 400),
 				CrowdloanClaimError::<Runtime>::MustBeAdministrator
 			);
 		})
@@ -352,7 +352,10 @@ fn test_set_contribution_root() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			assert_ok!(CrowdloanClaim::set_lease_start(Origin::signed(1), 999));
+			assert_ok!(CrowdloanClaim::set_lease_start(
+				RuntimeOrigin::signed(1),
+				999
+			));
 			assert_eq!(CrowdloanClaim::lease_start(), 999);
 		})
 }
@@ -362,7 +365,7 @@ fn test_set_locked_at() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			assert_ok!(CrowdloanClaim::set_locked_at(Origin::signed(1), 999));
+			assert_ok!(CrowdloanClaim::set_locked_at(RuntimeOrigin::signed(1), 999));
 			assert_eq!(CrowdloanClaim::locked_at(), Some(999));
 		})
 }
@@ -374,7 +377,7 @@ fn test_set_contributions_trie_index() {
 		.execute_with(|| {
 			let root = H256::zero();
 			assert_ok!(CrowdloanClaim::set_contributions_root(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				root
 			));
 			assert_eq!(CrowdloanClaim::contributions(), Some(root));
@@ -386,7 +389,10 @@ fn test_set_lease_start() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			assert_ok!(CrowdloanClaim::set_lease_start(Origin::signed(1), 999));
+			assert_ok!(CrowdloanClaim::set_lease_start(
+				RuntimeOrigin::signed(1),
+				999
+			));
 			assert_eq!(CrowdloanClaim::lease_start(), 999);
 		})
 }
@@ -396,7 +402,10 @@ fn test_set_lease_period() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			assert_ok!(CrowdloanClaim::set_lease_period(Origin::signed(1), 999));
+			assert_ok!(CrowdloanClaim::set_lease_period(
+				RuntimeOrigin::signed(1),
+				999
+			));
 			assert_eq!(CrowdloanClaim::lease_period(), 999);
 		})
 }
@@ -410,7 +419,7 @@ fn test_invalid_signed_claim_transaction() {
 
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					alice.relaychain_account,
 					alice.parachain_account,
 					get_false_signature(),
@@ -431,7 +440,7 @@ fn test_valid_claim() {
 			let bob_balance = Balances::free_balance(&bob.parachain_account);
 
 			assert_ok!(CrowdloanClaim::claim_reward(
-				Origin::signed(0),
+				RuntimeOrigin::signed(0),
 				bob.relaychain_account.clone(),
 				bob.parachain_account,
 				bob.signature,
@@ -458,10 +467,17 @@ fn test_valid_claim() {
 fn test_valid_claim_ext_signature() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {
-			CrowdloanClaim::initialize(Origin::signed(1), get_root_for_ext_sig(), 100, 0, 0, 400)
-				.unwrap();
+			CrowdloanClaim::initialize(
+				RuntimeOrigin::signed(1),
+				get_root_for_ext_sig(),
+				100,
+				0,
+				0,
+				400,
+			)
+			.unwrap();
 			pallet_crowdloan_reward::Pallet::<Runtime>::initialize(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Perbill::from_percent(20),
 				500,
 				100,
@@ -473,7 +489,7 @@ fn test_valid_claim_ext_signature() {
 			let bob_balance = Balances::free_balance(&bob.parachain_account);
 
 			assert_ok!(CrowdloanClaim::claim_reward(
-				Origin::signed(0),
+				RuntimeOrigin::signed(0),
 				bob.relaychain_account.clone(),
 				bob.parachain_account,
 				bob.signature,
@@ -506,7 +522,7 @@ fn test_valid_claim_but_lease_elapsed() {
 			let bob = get_contributor();
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					bob.relaychain_account.clone(),
 					bob.parachain_account,
 					bob.signature,
@@ -525,7 +541,7 @@ fn test_valid_claim_claimed_twice() {
 		.execute_with(|| {
 			let bob = get_contributor();
 			assert_ok!(CrowdloanClaim::claim_reward(
-				Origin::signed(0),
+				RuntimeOrigin::signed(0),
 				bob.relaychain_account.clone(),
 				bob.parachain_account,
 				bob.signature,
@@ -540,7 +556,7 @@ fn test_valid_claim_claimed_twice() {
 			let bob = get_contributor();
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					bob.relaychain_account.clone(),
 					bob.parachain_account,
 					bob.signature,
@@ -561,7 +577,7 @@ fn test_invalid_claim_invalid_proof() {
 
 			assert_noop!(
 				Pallet::<Runtime>::claim_reward(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					alice.relaychain_account,
 					alice.parachain_account,
 					alice.signature,
@@ -582,7 +598,7 @@ fn test_invalid_claim_mod_not_initialized() {
 
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					alice.relaychain_account,
 					alice.parachain_account,
 					alice.signature,
@@ -603,7 +619,7 @@ fn test_claim_reward_requires_origin() {
 
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::none(),
+					RuntimeOrigin::none(),
 					alice.relaychain_account,
 					alice.parachain_account,
 					alice.signature,

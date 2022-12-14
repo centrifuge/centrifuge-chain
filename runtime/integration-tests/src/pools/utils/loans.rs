@@ -23,7 +23,7 @@ use pallet_loans::{
 };
 use pallet_uniques::Call as UniquesCall;
 
-use crate::{chain::centrifuge::Call, pools::utils::tokens::rate_from_percent};
+use crate::{chain::centrifuge::RuntimeCall, pools::utils::tokens::rate_from_percent};
 
 /// Structure that manages collateral and loan nft ids
 pub struct NftManager {
@@ -97,7 +97,7 @@ pub fn init_loans_for_pool(
 	owner: AccountId,
 	pool_id: PoolId,
 	manager: &mut NftManager,
-) -> Vec<Call> {
+) -> Vec<RuntimeCall> {
 	let loan_class = manager.loan_class_id(pool_id);
 	let collateral_class = manager.collateral_class_id(pool_id);
 	let mut calls = Vec::new();
@@ -122,7 +122,7 @@ pub fn issue_default_loan(
 	amount: Balance,
 	maturity: u64,
 	manager: &mut NftManager,
-) -> Vec<Call> {
+) -> Vec<RuntimeCall> {
 	let loan_type = LoanType::BulletLoan(BulletLoan::new(
 		rate_from_percent(90),
 		rate_from_percent(5),
@@ -153,7 +153,7 @@ pub fn issue_loan(
 	interest_rate_per_year: Rate,
 	loan_type: LoanType<Rate, Balance>,
 	manager: &mut NftManager,
-) -> Vec<Call> {
+) -> Vec<RuntimeCall> {
 	let mut calls = Vec::new();
 	calls.push(mint_nft_call(
 		manager.collateral_class_id(pool_id),
@@ -176,15 +176,15 @@ pub fn issue_loan(
 	calls
 }
 
-pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: CollectionId) -> Call {
-	Call::Loans(LoansCall::initialise_pool {
+pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: CollectionId) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::initialise_pool {
 		pool_id,
 		loan_nft_class_id,
 	})
 }
 
-pub fn create_loan_call(pool_id: PoolId, collateral: Asset<CollectionId, ItemId>) -> Call {
-	Call::Loans(LoansCall::create {
+pub fn create_loan_call(pool_id: PoolId, collateral: Asset<CollectionId, ItemId>) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::create {
 		pool_id,
 		collateral,
 	})
@@ -195,8 +195,8 @@ pub fn price_loan_call(
 	loan_id: LoanId,
 	interest_rate_per_year: Rate,
 	loan_type: LoanType<Rate, Balance>,
-) -> Call {
-	Call::Loans(LoansCall::price {
+) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::price {
 		pool_id,
 		loan_id,
 		interest_rate_per_year,
@@ -204,35 +204,35 @@ pub fn price_loan_call(
 	})
 }
 
-pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Call {
-	Call::Loans(LoansCall::borrow {
+pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::borrow {
 		pool_id,
 		loan_id,
 		amount,
 	})
 }
 
-pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> Call {
-	Call::Loans(LoansCall::repay {
+pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::repay {
 		pool_id,
 		loan_id,
 		amount,
 	})
 }
 
-pub fn close_loan_call(pool_id: PoolId, loan_id: LoanId) -> Call {
-	Call::Loans(LoansCall::close { pool_id, loan_id })
+pub fn close_loan_call(pool_id: PoolId, loan_id: LoanId) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::close { pool_id, loan_id })
 }
 
-pub fn create_nft_call(admin: AccountId, collection: CollectionId) -> Call {
-	Call::Uniques(UniquesCall::create {
+pub fn create_nft_call(admin: AccountId, collection: CollectionId) -> RuntimeCall {
+	RuntimeCall::Uniques(UniquesCall::create {
 		admin: Address::Id(admin),
 		collection,
 	})
 }
 
-pub fn mint_nft_call(collection: CollectionId, item: ItemId, owner: AccountId) -> Call {
-	Call::Uniques(UniquesCall::mint {
+pub fn mint_nft_call(collection: CollectionId, item: ItemId, owner: AccountId) -> RuntimeCall {
+	RuntimeCall::Uniques(UniquesCall::mint {
 		collection,
 		item,
 		owner: Address::Id(owner),

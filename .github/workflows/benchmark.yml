@@ -40,8 +40,24 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Post cleanup"
           df -h
-      - name: Check out code
+          sudo apt-get install protobuf-compiler
+      - name: Get PR Hash
+        id: get_pr_hash
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const number = context.payload.issue.number;
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: number
+            });
+            return pr.data.head.sha
+      - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.get_pr_hash.outputs.result }}
       - name: Install latest nightly
         uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
