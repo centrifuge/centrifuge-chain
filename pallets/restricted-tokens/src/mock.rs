@@ -346,7 +346,7 @@ frame_support::construct_runtime!(
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024));
+	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024).set_proof_size(u64::MAX).into());
 }
 
 // Implement frame system configuration for the mock runtime
@@ -358,9 +358,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = BlockWeights;
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -370,8 +368,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -395,11 +395,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -410,16 +410,14 @@ parameter_types! {
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -429,7 +427,6 @@ parameter_types! {
 impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type Event = Event;
 	type Fungibles = OrmlTokens;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
@@ -446,6 +443,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesMutateHold = filter::fungibles::MutateHoldFilter;
 	type PreFungiblesTransfer = filter::fungibles::TransferFilter;
 	type PreReservableCurrency = cfg_traits::Always;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 

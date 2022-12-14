@@ -164,7 +164,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Balance: Member
 			+ Parameter
@@ -323,7 +323,7 @@ pub mod pallet {
 		type PoolDeposit: Get<Self::Balance>;
 
 		/// The origin permitted to create pools
-		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
+		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight Information
 		type WeightInfo: WeightInfo;

@@ -32,13 +32,13 @@ fn transfer_works() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				2,
 				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			));
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer(
-				Origin::signed(100),
+				RuntimeOrigin::signed(100),
 				101,
 				CurrencyId::RestrictedCoin,
 				DISTR_PER_ACCOUNT
@@ -53,7 +53,7 @@ fn transfer_fails() {
 		.execute_with(|| {
 			assert_noop!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
-					Origin::signed(10),
+					RuntimeOrigin::signed(10),
 					2,
 					CurrencyId::AUSD,
 					100
@@ -62,7 +62,7 @@ fn transfer_fails() {
 			);
 			assert_noop!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
-					Origin::signed(10),
+					RuntimeOrigin::signed(10),
 					2,
 					CurrencyId::AUSD,
 					100
@@ -71,7 +71,7 @@ fn transfer_fails() {
 			);
 			assert_noop!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
-					Origin::signed(10),
+					RuntimeOrigin::signed(10),
 					100,
 					CurrencyId::RestrictedCoin,
 					100
@@ -80,7 +80,7 @@ fn transfer_fails() {
 			);
 			assert_noop!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer(
-					Origin::signed(100),
+					RuntimeOrigin::signed(100),
 					10,
 					CurrencyId::RestrictedCoin,
 					100
@@ -97,7 +97,7 @@ fn transfer_keep_alive_fails() {
 		.execute_with(|| {
 			assert_noop!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					2,
 					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
@@ -106,7 +106,7 @@ fn transfer_keep_alive_fails() {
 			);
 			assert_noop!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					2,
 					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
@@ -115,7 +115,7 @@ fn transfer_keep_alive_fails() {
 			);
 			assert_noop!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
-					Origin::signed(100),
+					RuntimeOrigin::signed(100),
 					101,
 					CurrencyId::RestrictedCoin,
 					DISTR_PER_ACCOUNT
@@ -132,7 +132,7 @@ fn transfer_keep_alive_works() {
 		.execute_with(|| {
 			assert_ok!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
-					Origin::signed(1),
+					RuntimeOrigin::signed(1),
 					2,
 					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT - 1
@@ -140,7 +140,7 @@ fn transfer_keep_alive_works() {
 			);
 			assert_ok!(
 				pallet_restricted_tokens::Pallet::<Runtime>::transfer_keep_alive(
-					Origin::signed(100),
+					RuntimeOrigin::signed(100),
 					101,
 					CurrencyId::RestrictedCoin,
 					DISTR_PER_ACCOUNT - 1
@@ -155,21 +155,21 @@ fn transfer_all_works() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				2,
 				CurrencyId::AUSD,
 				false
 			));
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				2,
 				CurrencyId::AUSD,
 				false
 			));
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::transfer_all(
-				Origin::signed(100),
+				RuntimeOrigin::signed(100),
 				101,
 				CurrencyId::RestrictedCoin,
 				false
@@ -187,14 +187,14 @@ fn force_transfer_works() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				1,
 				2,
 				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			));
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				1,
 				2,
 				CurrencyId::RestrictedCoin,
@@ -209,7 +209,7 @@ fn force_transfer_fails() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				1,
 				2,
 				CurrencyId::AUSD,
@@ -217,7 +217,7 @@ fn force_transfer_fails() {
 			)
 			.is_err());
 			assert!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				1,
 				2,
 				CurrencyId::AUSD,
@@ -225,7 +225,7 @@ fn force_transfer_fails() {
 			)
 			.is_err());
 			assert!(pallet_restricted_tokens::Pallet::<Runtime>::force_transfer(
-				Origin::signed(100),
+				RuntimeOrigin::signed(100),
 				100,
 				101,
 				CurrencyId::RestrictedCoin,
@@ -241,7 +241,7 @@ fn set_balance_works() {
 		.build(Some(|| {}))
 		.execute_with(|| {
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				1,
 				CurrencyId::AUSD,
 				200,
@@ -251,7 +251,7 @@ fn set_balance_works() {
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 100);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				1,
 				CurrencyId::AUSD,
 				400,
@@ -261,7 +261,7 @@ fn set_balance_works() {
 			assert!(orml_tokens::Pallet::<Runtime>::accounts(1, CurrencyId::AUSD).reserved == 200);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				1111,
 				CurrencyId::RestrictedCoin,
 				999,
@@ -277,7 +277,7 @@ fn set_balance_works() {
 			);
 
 			assert_ok!(pallet_restricted_tokens::Pallet::<Runtime>::set_balance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				101,
 				CurrencyId::RestrictedCoin,
 				0,

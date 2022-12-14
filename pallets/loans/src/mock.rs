@@ -91,9 +91,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -103,8 +101,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -139,16 +139,14 @@ parameter_types! {
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -212,7 +210,6 @@ impl pallet_pool_system::Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
-	type Event = Event;
 	type Investments = OrderManager;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
@@ -232,6 +229,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolDeposit = ZeroDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
@@ -272,11 +270,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -302,7 +300,6 @@ impl pallet_uniques::Config for Runtime {
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Currency = Balances;
 	type DepositPerByte = DepositPerByte;
-	type Event = Event;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
@@ -311,6 +308,7 @@ impl pallet_uniques::Config for Runtime {
 	type KeyLimit = Limit;
 	type Locker = ();
 	type MetadataDepositBase = MetadataDepositBase;
+	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
@@ -318,9 +316,9 @@ impl pallet_uniques::Config for Runtime {
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	type Event = Event;
 	type InterestRate = Rate;
 	type MaxRateCount = MaxActiveLoansPerPool;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = ();
 }
@@ -337,9 +335,9 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Everything;
-	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
 	type Role = Role;
+	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type WeightInfo = ();
@@ -356,7 +354,6 @@ impl pallet_loans::Config for Runtime {
 	type BlockNumberProvider = System;
 	type ClassId = CollectionId;
 	type CurrencyId = CurrencyId;
-	type Event = Event;
 	type InterestAccrual = InterestAccrual;
 	type LoanId = ItemId;
 	type LoansPalletId = LoansPalletId;
@@ -366,6 +363,7 @@ impl pallet_loans::Config for Runtime {
 	type Permission = Permissions;
 	type Pool = PoolSystem;
 	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = ();
 }

@@ -37,10 +37,12 @@ fn can_upload_account() {
 		.build()
 		.execute_with(|| {
 			assert_noop!(
-				Claims::can_update_upload_account(Origin::signed(USER_A)),
+				Claims::can_update_upload_account(RuntimeOrigin::signed(USER_A)),
 				BadOrigin
 			);
-			assert_ok!(Claims::can_update_upload_account(Origin::signed(ADMIN)));
+			assert_ok!(Claims::can_update_upload_account(RuntimeOrigin::signed(
+				ADMIN
+			)));
 		});
 }
 
@@ -101,14 +103,23 @@ fn verify_proofs() {
 			v.extend(amount.encode());
 
 			// Single-leaf tree
-			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+			assert_ok!(Claims::set_upload_account(
+				RuntimeOrigin::signed(ADMIN),
+				ADMIN
+			));
 			let leaf_hash = <Runtime as frame_system::Config>::Hashing::hash(&v);
-			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
+			assert_ok!(Claims::store_root_hash(
+				RuntimeOrigin::signed(ADMIN),
+				leaf_hash
+			));
 			assert_eq!(Claims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
 
 			// Two-leaf tree
 			let root_hash = Claims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
-			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
+			assert_ok!(Claims::store_root_hash(
+				RuntimeOrigin::signed(ADMIN),
+				root_hash
+			));
 			assert_eq!(
 				Claims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()),
 				true
@@ -141,7 +152,10 @@ fn verify_proofs() {
 				node_01.into(),
 				node_4.into(),
 			];
-			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), node_root));
+			assert_ok!(Claims::store_root_hash(
+				RuntimeOrigin::signed(ADMIN),
+				node_root
+			));
 			assert_eq!(
 				Claims::verify_proofs(&USER_B, &amount, &four_sorted_hashes.to_vec()),
 				true
@@ -156,10 +170,13 @@ fn set_upload_account() {
 		.execute_with(|| {
 			assert_eq!(Claims::get_upload_account(), None);
 			assert_noop!(
-				Claims::set_upload_account(Origin::signed(USER_A), USER_A),
+				Claims::set_upload_account(RuntimeOrigin::signed(USER_A), USER_A),
 				BadOrigin
 			);
-			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), USER_A));
+			assert_ok!(Claims::set_upload_account(
+				RuntimeOrigin::signed(ADMIN),
+				USER_A
+			));
 			assert_eq!(Claims::get_upload_account(), Some(USER_A));
 		});
 }
@@ -173,13 +190,19 @@ fn store_root_hash() {
 			// USER_A not allowed to upload hash
 			let root_hash = <Runtime as frame_system::Config>::Hashing::hash(&[0; 32]);
 			assert_noop!(
-				Claims::store_root_hash(Origin::signed(USER_A), root_hash),
+				Claims::store_root_hash(RuntimeOrigin::signed(USER_A), root_hash),
 				Error::<Runtime>::MustBeAdmin
 			);
 			// Adding ADMIN as allowed upload account
-			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+			assert_ok!(Claims::set_upload_account(
+				RuntimeOrigin::signed(ADMIN),
+				ADMIN
+			));
 			assert_eq!(Claims::get_upload_account(), Some(ADMIN));
-			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
+			assert_ok!(Claims::store_root_hash(
+				RuntimeOrigin::signed(ADMIN),
+				root_hash
+			));
 			assert_eq!(Claims::get_root_hash(), Some(root_hash));
 		});
 }
@@ -208,7 +231,7 @@ fn claim() {
 			// proof validation error - roothash not stored
 			assert_noop!(
 				Claims::claim(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					USER_B,
 					amount,
 					one_sorted_hashes.to_vec()
@@ -217,19 +240,22 @@ fn claim() {
 			);
 
 			// Set valid proofs
-			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+			assert_ok!(Claims::set_upload_account(
+				RuntimeOrigin::signed(ADMIN),
+				ADMIN
+			));
 
 			let short_root_hash =
 				pre_calculate_single_root(&USER_B, &(4 * CFG), &one_sorted_hashes[0]);
 			assert_ok!(Claims::store_root_hash(
-				Origin::signed(ADMIN),
+				RuntimeOrigin::signed(ADMIN),
 				short_root_hash
 			));
 
 			// Minimum payout not met
 			assert_noop!(
 				Claims::claim(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					USER_B,
 					4 * CFG,
 					one_sorted_hashes.to_vec()
@@ -240,14 +266,14 @@ fn claim() {
 			let long_root_hash =
 				pre_calculate_single_root(&USER_B, &(10001 * CFG), &one_sorted_hashes[0]);
 			assert_ok!(Claims::store_root_hash(
-				Origin::signed(ADMIN),
+				RuntimeOrigin::signed(ADMIN),
 				long_root_hash
 			));
 
 			// Claims Module Account does not have enough balance
 			assert_noop!(
 				Claims::claim(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					USER_B,
 					10001 * CFG,
 					one_sorted_hashes.to_vec()
@@ -257,11 +283,14 @@ fn claim() {
 
 			// Ok
 			let ok_root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
-			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), ok_root_hash));
+			assert_ok!(Claims::store_root_hash(
+				RuntimeOrigin::signed(ADMIN),
+				ok_root_hash
+			));
 
 			let account_balance = <pallet_balances::Pallet<Runtime>>::free_balance(USER_B);
 			assert_ok!(Claims::claim(
-				Origin::signed(0),
+				RuntimeOrigin::signed(0),
 				USER_B,
 				amount,
 				one_sorted_hashes.to_vec()
@@ -275,12 +304,12 @@ fn claim() {
 			let past_root_hash =
 				pre_calculate_single_root(&USER_B, &(50 * CFG), &one_sorted_hashes[0]);
 			assert_ok!(Claims::store_root_hash(
-				Origin::signed(ADMIN),
+				RuntimeOrigin::signed(ADMIN),
 				past_root_hash
 			));
 			assert_noop!(
 				Claims::claim(
-					Origin::signed(0),
+					RuntimeOrigin::signed(0),
 					USER_B,
 					50 * CFG,
 					one_sorted_hashes.to_vec()

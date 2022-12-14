@@ -47,9 +47,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -59,8 +57,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = ();
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -74,11 +74,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = ();
 	type WeightInfo = ();
 }
 
@@ -89,7 +89,7 @@ parameter_types! {
 type ValidatorId = u64;
 
 impl Config for Runtime {
-	type Event = ();
+	type RuntimeEvent = ();
 	type ValidatorId = ValidatorId;
 	type ValidatorRegistration = MockSession;
 	type WeightInfo = ();

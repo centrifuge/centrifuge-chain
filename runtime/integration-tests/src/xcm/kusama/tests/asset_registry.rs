@@ -22,7 +22,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use altair_runtime::{Balances, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use altair_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
@@ -66,7 +66,7 @@ fn register_air_works() {
 		};
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta,
 			Some(CurrencyId::Native)
 		));
@@ -92,7 +92,7 @@ fn register_foreign_asset_works() {
 		};
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta,
 			Some(CurrencyId::ForeignAsset(42))
 		));
@@ -119,7 +119,11 @@ fn register_tranche_asset_blocked() {
 		// allow for tranche tokens to be registered through the pools pallet.
 		let asset_id = CurrencyId::Tranche(42, [42u8; 16]);
 		assert_noop!(
-			OrmlAssetRegistry::register_asset(Origin::root(), meta.clone(), Some(asset_id.clone())),
+			OrmlAssetRegistry::register_asset(
+				RuntimeOrigin::root(),
+				meta.clone(),
+				Some(asset_id.clone())
+			),
 			BadOrigin
 		);
 	});

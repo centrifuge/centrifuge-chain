@@ -22,7 +22,7 @@ use crate::{mock::*, NftsBySeller, Price};
 #[test]
 fn add_nft_not_found() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let unknown_nft = (0, ItemId(1));
 
 		assert_noop!(
@@ -44,10 +44,10 @@ fn add_nft_not_found() {
 #[test]
 fn add_nft_not_owner() {
 	new_test_ext().execute_with(|| {
-		let owner: Origin = Origin::signed(SELLER);
+		let owner: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&owner);
 
-		let bad_actor = Origin::signed(BAD_ACTOR);
+		let bad_actor = RuntimeOrigin::signed(BAD_ACTOR);
 		assert_noop!(
 			NftSales::add(
 				bad_actor,
@@ -73,7 +73,7 @@ fn add_nft_not_owner() {
 #[test]
 fn add_nft_works() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::AUSD,
@@ -115,7 +115,7 @@ fn add_nft_works() {
 #[test]
 fn remove_nft_bad_actor() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::AUSD,
@@ -133,7 +133,7 @@ fn remove_nft_bad_actor() {
 		)));
 
 		// Have a bad actor trying to remove it
-		let bad_actor = Origin::signed(BUYER);
+		let bad_actor = RuntimeOrigin::signed(BUYER);
 		assert_noop!(
 			NftSales::remove(bad_actor, collection_id, item_id),
 			DispatchError::from(nft_sales::Error::<Runtime>::NotOwner)
@@ -151,7 +151,7 @@ fn remove_nft_bad_actor() {
 #[test]
 fn remove_nft_works() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::AUSD,
@@ -189,7 +189,7 @@ fn remove_nft_works() {
 #[test]
 fn buy_nft_seller() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::AUSD,
@@ -210,7 +210,7 @@ fn buy_nft_seller() {
 #[test]
 fn buy_nft_not_for_sale() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let offer = Price {
 			currency: CurrencyId::AUSD,
@@ -218,7 +218,7 @@ fn buy_nft_not_for_sale() {
 		};
 
 		// Verify that the buyer cannot buy the nft because it's not for sale
-		let buyer: Origin = Origin::signed(BUYER);
+		let buyer: RuntimeOrigin = RuntimeOrigin::signed(BUYER);
 		assert_noop!(
 			NftSales::buy(buyer, collection_id, item_id, offer),
 			DispatchError::from(nft_sales::Error::<Runtime>::NotForSale)
@@ -229,7 +229,7 @@ fn buy_nft_not_for_sale() {
 #[test]
 fn buy_nft_insufficient_balance() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::AUSD,
@@ -246,7 +246,7 @@ fn buy_nft_insufficient_balance() {
 
 		// Verify that the buyer cannot buy the nft because its asking price
 		// exceeds the seller's balance.
-		let buyer: Origin = Origin::signed(BUYER);
+		let buyer: RuntimeOrigin = RuntimeOrigin::signed(BUYER);
 		assert_noop!(
 			NftSales::buy(buyer, collection_id, item_id, price),
 			DispatchError::from(orml_tokens::Error::<Runtime>::BalanceTooLow)
@@ -257,7 +257,7 @@ fn buy_nft_insufficient_balance() {
 #[test]
 fn buy_nft_works() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let seller_initial_balance = OrmlTokens::balance(CurrencyId::AUSD, &1);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
@@ -281,7 +281,7 @@ fn buy_nft_works() {
 		)));
 
 		// Verify that the buyer can buy the nft
-		let buyer: Origin = Origin::signed(BUYER);
+		let buyer: RuntimeOrigin = RuntimeOrigin::signed(BUYER);
 		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::AUSD, &BUYER);
 		assert_ok!(NftSales::buy(
 			buyer.clone(),
@@ -325,7 +325,7 @@ fn buy_nft_works() {
 #[test]
 fn buy_nft_respects_max_offer_amount() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::AUSD,
@@ -340,7 +340,7 @@ fn buy_nft_respects_max_offer_amount() {
 			price.clone(),
 		));
 
-		let buyer: Origin = Origin::signed(BUYER);
+		let buyer: RuntimeOrigin = RuntimeOrigin::signed(BUYER);
 		let offer = Price {
 			currency: price.currency,
 			amount: price.amount - 1,
@@ -357,7 +357,7 @@ fn buy_nft_respects_max_offer_amount() {
 #[test]
 fn buy_nft_respects_max_offer_currency() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(SELLER);
+		let seller: RuntimeOrigin = RuntimeOrigin::signed(SELLER);
 		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::AUSD,
@@ -372,7 +372,7 @@ fn buy_nft_respects_max_offer_currency() {
 			price.clone(),
 		));
 
-		let buyer: Origin = Origin::signed(BUYER);
+		let buyer: RuntimeOrigin = RuntimeOrigin::signed(BUYER);
 		let offer = Price {
 			currency: CurrencyId::Native, // <- mismatching currency
 			amount: price.amount,
@@ -386,7 +386,7 @@ fn buy_nft_respects_max_offer_currency() {
 }
 
 /// Mint an NFT class and instance and return its `(collection_id, item_id)`
-fn prepared_nft(owner: &Origin) -> (u64, ItemId) {
+fn prepared_nft(owner: &RuntimeOrigin) -> (u64, ItemId) {
 	let (collection_id, item_id) = (0, ItemId(1));
 
 	assert_ok!(Uniques::create(owner.clone(), collection_id, SELLER));

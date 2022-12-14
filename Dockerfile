@@ -16,7 +16,7 @@ COPY . /centrifuge-chain
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
-	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
+	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev protobuf-compiler
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \

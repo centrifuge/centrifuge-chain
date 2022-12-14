@@ -22,7 +22,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use centrifuge_runtime::{Balances, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use centrifuge_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
@@ -36,7 +36,7 @@ use runtime_common::{
 };
 use sp_runtime::traits::BadOrigin;
 use xcm::{
-	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId, WeightLimit},
 	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
@@ -87,7 +87,7 @@ fn transfer_cfg_to_sibling() {
 			additional: CustomMetadata::default(),
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta,
 			Some(cfg_in_sibling.clone())
 		));
@@ -95,7 +95,7 @@ fn transfer_cfg_to_sibling() {
 
 	Centrifuge::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			CurrencyId::Native,
 			transfer_amount,
 			Box::new(
@@ -111,7 +111,7 @@ fn transfer_cfg_to_sibling() {
 				)
 				.into()
 			),
-			8_000_000_000_000,
+			WeightLimit::Limited(8_000_000_000_000),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -164,7 +164,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			cfg_in_sibling.clone(),
 			transfer_amount,
 			Box::new(
@@ -180,7 +180,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 				)
 				.into()
 			),
-			8_000_000_000_000,
+			WeightLimit::Limited(8_000_000_000_000),
 		));
 
 		// Confirm that Bobs's balance is initial balance - amount transferred
@@ -240,7 +240,7 @@ fn transfer_ausd_to_centrifuge() {
 
 	Acala::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			CurrencyId::AUSD,
 			transfer_amount,
 			Box::new(
@@ -256,7 +256,7 @@ fn transfer_ausd_to_centrifuge() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 
 		assert_eq!(
@@ -294,7 +294,7 @@ fn transfer_dot_from_relay_chain() {
 
 	PolkadotNet::execute_with(|| {
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
-			polkadot_runtime::Origin::signed(ALICE.into()),
+			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
 			Box::new(
 				Parachain(parachains::polkadot::centrifuge::ID)
 					.into()
@@ -327,7 +327,7 @@ fn transfer_dot_to_relay_chain() {
 		register_dot();
 
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			DOT_ASSET_ID,
 			dot(1),
 			Box::new(
@@ -340,14 +340,14 @@ fn transfer_dot_to_relay_chain() {
 				)
 				.into()
 			),
-			4_000_000_000
+			WeightLimit::Limited(4_000_000_000)
 		));
 	});
 
 	PolkadotNet::execute_with(|| {
 		assert_eq!(
 			polkadot_runtime::Balances::free_balance(&BOB.into()),
-			999530582548
+			999573469824
 		);
 	});
 }
@@ -384,7 +384,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 	Centrifuge::execute_with(|| {
 		// First, register the asset in centrifuge
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta.clone(),
 			Some(sibling_asset_id)
 		));
@@ -392,7 +392,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			CurrencyId::Native,
 			transfer_amount,
 			Box::new(
@@ -408,7 +408,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 				)
 				.into()
 			),
-			8_000_000_000_000,
+			WeightLimit::Limited(8_000_000_000_000),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -456,7 +456,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 
 	Acala::execute_with(|| {
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta.clone(),
 			Some(usdc_asset_id)
 		));
@@ -474,7 +474,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 
 	Centrifuge::execute_with(|| {
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta.clone(),
 			Some(usdc_asset_id)
 		));
@@ -482,7 +482,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 
 	Acala::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			usdc_asset_id,
 			transfer_amount,
 			Box::new(
@@ -498,7 +498,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 				)
 				.into()
 			),
-			8_000_000_000,
+			WeightLimit::Limited(8_000_000_000),
 		));
 		// Confirm that Alice's balance is initial balance - amount transferred
 		assert_eq!(
