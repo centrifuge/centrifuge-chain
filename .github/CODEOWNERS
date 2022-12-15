@@ -4,13 +4,13 @@
 
 # These owners will be the default owners for everything in
 # the repo. Unless a later match takes precedence,
-*       @offerijns @mikiquantum @mustermeiszer
+*       @branan @mikiquantum @mustermeiszer @offerijns
 
 # Changes to the service of our chain.
 src/*    @mikiquantum
 
 # Changes to pallets
-pallets/*  @mustermeiszer
+pallets/*  @branan @mikiquantum @mustermeiszer
 
 ## Changes to specific pallets
 ### Connectors related logic
@@ -20,12 +20,17 @@ pallets/connectors/* @NunoAlexandre
 pallets/rewards/* @lemunozm
 pallets/liquidity-rewards/* @lemunozm
 
+### Nft-sales related logic
+pallets/nft-sales/* @NunoAlexandre
+
+### Pallet Keystore
+pallets/keystore/* @cdamian
 
 # Changes to libs
-libs/* @mikiquantum @mustermeiszer @branan
+libs/* @branan @mikiquantum @mustermeiszer
 
 # Changes to runtime
-runtime/* @mikiquantum @mustermeiszer
+runtime/* @branan @mikiquantum @mustermeiszer
 
 ## Changes to folders inside runtime
 ### Changes to runtime/integration-tests
