@@ -43,6 +43,7 @@ cfg-types = { path = "../../libs/types", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
+pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }

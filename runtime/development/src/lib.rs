@@ -24,8 +24,8 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolUpdateGuard,
-	PreConditions, PriceValue, TrancheCurrency as _,
+	rewards::AccountRewards, CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect,
+	PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -82,6 +82,8 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
@@ -432,7 +434,68 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, RuntimeCall::Tokens(..)),
+			ProxyType::NonTransfer => {
+				matches!(
+					c,
+					RuntimeCall::System(..) |
+					RuntimeCall::ParachainSystem(..) |
+					RuntimeCall::Timestamp(..) |
+					// Specifically omitting Balances
+					RuntimeCall::CollatorSelection(..) |
+					RuntimeCall::Authorship(..) |
+					RuntimeCall::Session(..) |
+					RuntimeCall::Multisig(..) |
+					// The internal logic prevents upgrading
+					// this proxy to a `ProxyType::Any` proxy
+					// as long as the `is_superset` is correctly
+					// configured
+					RuntimeCall::Proxy(..) |
+					RuntimeCall::Utility(..) |
+					RuntimeCall::Scheduler(..) |
+					RuntimeCall::Council(..) |
+					RuntimeCall::Elections(..) |
+					RuntimeCall::Democracy(..) |
+					RuntimeCall::Identity(..) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vest {..}) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vest_other {..}) |
+					// Specifically omitting Vesting `vested_transfer`, and `force_vested_transfer`
+					RuntimeCall::Treasury(..) |
+					RuntimeCall::Uniques(..) |
+					RuntimeCall::Preimage(..) |
+					RuntimeCall::Fees(..) |
+					RuntimeCall::Anchor(..) |
+					RuntimeCall::Claims(..) |
+					RuntimeCall::CrowdloanClaim(..) |
+					RuntimeCall::CrowdloanReward(..) |
+					RuntimeCall::PoolSystem(..) |
+					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::update_nav{..}) |
+					// Specifically omitting Loans `repay` & `borrow`
+					RuntimeCall::Permissions(..) |
+					RuntimeCall::CollatorAllowlist(..) |
+					// Specifically omitting Tokens
+					RuntimeCall::NftSales(pallet_nft_sales::Call::add {..}) |
+					RuntimeCall::NftSales(pallet_nft_sales::Call::remove {..}) |
+					// Specifically omitting NftSales `buy`
+					// Specifically omitting Bridge
+					// Specifically omitting Nfts
+					RuntimeCall::Keystore(..) |
+					RuntimeCall::Investments(pallet_investments::Call::collect_investments_for {..}) |
+					RuntimeCall::Investments(pallet_investments::Call::collect_redemptions_for {..}) |
+					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
+					// `collect_investments`, `collect_redemptions`
+					RuntimeCall::LiquidityRewards(..) |
+					// Specifically omitting Connectors
+					// Specifically omitting ALL XCM related pallets
+					// Specifically omitting OrmlTokens
+					// Specifically omitting ChainBridge
+					// Specifically omitting Migration
+					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
+					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..})
+				)
+			}
 			ProxyType::Governance => matches!(
 				c,
 				RuntimeCall::Democracy(..)
@@ -1547,6 +1610,7 @@ impl<
 }
 
 #[derive(Clone, Copy, PartialEq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RewardDomain {
 	Liquidity,
 	Block,
@@ -1946,6 +2010,17 @@ impl_runtime_apis! {
 				Ok(value) => Some(value),
 				Err(_) => None,
 			}
+		}
+	}
+
+	// RewardsApi
+	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
+		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
+			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id)
+		}
+
+		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
+			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok()
 		}
 	}
 

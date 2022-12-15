@@ -508,7 +508,46 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, RuntimeCall::Balances(..)),
+			ProxyType::NonTransfer => {
+				matches!(
+					c,
+					RuntimeCall::System(..) |
+					RuntimeCall::ParachainSystem(..) |
+					RuntimeCall::Timestamp(..) |
+					// Specifically omitting Balances
+					RuntimeCall::CollatorSelection(..) |
+					RuntimeCall::Authorship(..) |
+					RuntimeCall::Session(..) |
+					RuntimeCall::Multisig(..) |
+					// The internal logic prevents upgrading
+					// this proxy to a `ProxyType::Any` proxy
+					// as long as the `is_superset` is correctly
+					// configured
+					RuntimeCall::Proxy(..) |
+					RuntimeCall::Utility(..) |
+					RuntimeCall::Scheduler(..) |
+					RuntimeCall::Council(..) |
+					RuntimeCall::Elections(..) |
+					RuntimeCall::Democracy(..) |
+					RuntimeCall::Identity(..) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vest {..}) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vest_other {..}) |
+					// Specifically omitting Vesting `vested_transfer`, and `force_vested_transfer`
+					RuntimeCall::Treasury(..) |
+					RuntimeCall::Preimage(..) |
+					RuntimeCall::Fees(..) |
+					RuntimeCall::Anchor(..) |
+					RuntimeCall::CrowdloanClaim(..) |
+					RuntimeCall::CrowdloanReward(..) |
+					// Specifically omitting Tokens
+					// Specifically omitting Bridge
+					// Specifically omitting ALL XCM related pallets
+					// Specifically omitting OrmlTokens
+					// Specifically omitting ChainBridge
+					// Specifically omitting Migration
+					RuntimeCall::CollatorAllowlist(..)
+				)
+			}
 			ProxyType::Governance => matches!(
 				c,
 				RuntimeCall::Democracy(..)
