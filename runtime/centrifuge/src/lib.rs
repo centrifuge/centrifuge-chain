@@ -113,29 +113,56 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
+pub struct CalculateBlockWeights;
+
+impl Get<BlockWeights> for CalculateBlockWeights {
+	fn get() -> BlockWeights {
+		let max_weight = MaxBlockWeight::get();
+
+		BlockWeights::builder()
+			.base_block(BlockExecutionWeight::get())
+			.for_class(DispatchClass::all(), |weights| {
+				weights.base_extrinsic = ExtrinsicBaseWeight::get();
+			})
+			.for_class(DispatchClass::Normal, |weights| {
+				weights.max_total = Some(NORMAL_DISPATCH_RATIO * max_weight);
+			})
+			.for_class(DispatchClass::Operational, |weights| {
+				weights.max_total = Some(max_weight);
+				// Operational transactions have some extra reserved space, so that they
+				// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
+				weights.reserved = Some(max_weight - NORMAL_DISPATCH_RATIO * max_weight);
+			})
+			.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
+			// NOTE: We could think about chaning this to something that is sane default with a
+			//       error log. As we now depend on some dynamic state from the relay-chain
+			.build_or_panic()
+	}
+}
+
+pub struct MaxBlockWeight;
+
+impl Get<Weight> for MaxBlockWeight {
+	fn get() -> Weight {
+		let max_pov_size = if cfg!(test) {
+			MAX_POV_SIZE
+		} else {
+			cumulus_pallet_parachain_system::Pallet::<Runtime>::validation_data()
+				.map(|x| x.max_pov_size)
+				.unwrap_or(MAX_POV_SIZE)
+		};
+
+		MAXIMUM_BLOCK_WEIGHT
+			.set_proof_size(max_pov_size.into())
+			.into()
+	}
+}
+
 parameter_types! {
 	pub const MaximumBlockWeight: Weight = MAXIMUM_BLOCK_WEIGHT;
 	pub const Version: RuntimeVersion = VERSION;
 	pub RuntimeBlockLength: BlockLength =
 		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
-		.base_block(BlockExecutionWeight::get())
-		.for_class(DispatchClass::all(), |weights| {
-			weights.base_extrinsic = ExtrinsicBaseWeight::get();
-		})
-		.for_class(DispatchClass::Normal, |weights| {
-			  weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
-		})
-		.for_class(DispatchClass::Operational, |weights| {
-			 weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
-			// Operational transactions have some extra reserved space, so that they
-			// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
-			weights.reserved = Some(
-				  MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
-			);
-		})
-		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
-		.build_or_panic();
 	pub const SS58Prefix: u8 = 36;
 }
 
@@ -166,7 +193,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = RuntimeBlockLength;
 	/// The index type for blocks.
 	type BlockNumber = BlockNumber;
-	type BlockWeights = RuntimeBlockWeights;
+	type BlockWeights = CalculateBlockWeights;
 	type DbWeight = RocksDbWeight;
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
@@ -595,7 +622,7 @@ impl pallet_utility::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaxBlockWeight::get();
 	pub const MaxScheduledPerBlock: u32 = 50;
 	// Retry a scheduled item every 10 blocks (2 minutes) until the preimage exists.
 	pub const NoPreimagePostponement: Option<u32> = Some(10);
@@ -1309,7 +1336,7 @@ impl_runtime_apis! {
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
 		fn on_runtime_upgrade() -> (Weight, Weight) {
 			let weight = Executive::try_runtime_upgrade().unwrap();
-			(weight, RuntimeBlockWeights::get().max_block)
+			(weight, CalculateBlockWeights::get().max_block)
 		}
 		fn execute_block(block: Block, state_root_check: bool, select: frame_try_runtime::TryStateSelect) -> Weight {
 			Executive::try_execute_block(block, state_root_check, select).expect("execute-block failed")

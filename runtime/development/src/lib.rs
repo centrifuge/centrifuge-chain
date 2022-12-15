@@ -613,6 +613,7 @@ impl pallet_utility::Config for Runtime {
 }
 
 parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaxBlockWeight::get();
 	pub const MaxScheduledPerBlock: u32 = 50;
 	// Retry a scheduled item every 10 blocks (2 minutes) until the preimage exists.
 	pub const NoPreimagePostponement: Option<u32> = Some(10);
@@ -620,7 +621,7 @@ parameter_types! {
 
 impl pallet_scheduler::Config for Runtime {
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
-	type MaximumWeight = MaxBlockWeight;
+	type MaximumWeight = MaximumSchedulerWeight;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type PalletsOrigin = OriginCaller;
 	type Preimages = Preimage;
