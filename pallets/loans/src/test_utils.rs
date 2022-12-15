@@ -13,8 +13,11 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use cfg_primitives::CFG as CURRENCY;
-use cfg_traits::{Investment, PoolMutate, PoolNAV, TrancheCurrency as _};
-use cfg_types::tokens::{CurrencyId, TrancheCurrency};
+use cfg_traits::{Investment, Permissions, PoolMutate, PoolNAV, TrancheCurrency as _};
+use cfg_types::{
+	permissions::{PermissionScope, PoolRole, Role},
+	tokens::{CurrencyId, TrancheCurrency},
+};
 use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
@@ -164,13 +167,35 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 		None
 	));
 
+	let account: <T as frame_system::Config>::AccountId =
+		FundsAccount::get().into_account_truncating();
+	let scope = PermissionScope::Pool(pool_id.into());
+	let role = Role::PoolRole(PoolRole::TrancheInvestor(
+		JuniorTrancheId::get().into(),
+		u64::MAX,
+	));
+	assert_ok!(<T as pallet_loans::Config>::Permission::add(
+		scope,
+		account.clone(),
+		role
+	));
+	let role = Role::PoolRole(PoolRole::TrancheInvestor(
+		SeniorTrancheId::get().into(),
+		u64::MAX,
+	));
+	assert_ok!(<T as pallet_loans::Config>::Permission::add(
+		scope,
+		account.clone(),
+		role
+	));
+
 	assert_ok!(OM::update_investment(
-		&FundsAccount::get().into_account_truncating(),
+		&account,
 		TrancheCurrency::generate(pool_id.into(), JuniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
 	assert_ok!(OM::update_investment(
-		&FundsAccount::get().into_account_truncating(),
+		&account,
 		TrancheCurrency::generate(pool_id.into(), SeniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));

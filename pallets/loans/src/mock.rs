@@ -63,7 +63,8 @@ frame_support::construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>},
-		OrderManager: cfg_test_utils::mocks::order_manager::{Pallet, Storage}
+		OrderManager: cfg_test_utils::mocks::order_manager::{Pallet, Storage},
+		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 	}
 );
 
@@ -110,14 +111,23 @@ impl frame_system::Config for Runtime {
 	type Version = ();
 }
 
-// Parameterize FRAME balances pallet
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	pub const MaxAuthorities: u32 = 32;
+}
+
+impl pallet_aura::Config for Runtime {
+	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
+	type DisabledValidators = ();
+	type MaxAuthorities = MaxAuthorities;
+}
+
+parameter_types! {
+	pub const MinimumPeriod: u64 = 6000;
 }
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime
 impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ();
+	type MinimumPeriod = MinimumPeriod;
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
@@ -263,6 +273,11 @@ impl PoolUpdateGuard for UpdateGuard {
 	) -> bool {
 		true
 	}
+}
+
+// Parameterize FRAME balances pallet
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime

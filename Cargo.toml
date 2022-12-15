@@ -197,6 +197,7 @@ runtime-benchmarks = [
   "centrifuge-runtime/runtime-benchmarks",
   "development-runtime/runtime-benchmarks",
   "runtime-common/runtime-benchmarks",
+  "polkadot-cli/runtime-benchmarks",
 ]
 test-benchmarks = [
   "runtime-benchmarks",
