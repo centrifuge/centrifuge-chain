@@ -131,6 +131,7 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
+/// Strut for Get impl of BlockWeights with BlockWeight generation with relay max_pov_size as proof size
 pub struct CalculateBlockWeights;
 
 impl Get<BlockWeights> for CalculateBlockWeights {
@@ -158,6 +159,7 @@ impl Get<BlockWeights> for CalculateBlockWeights {
 	}
 }
 
+/// Strut for Get impl of MaxBlockWeight with Weight using relay max_pov_size as proof size
 pub struct MaxBlockWeight;
 
 impl Get<Weight> for MaxBlockWeight {
