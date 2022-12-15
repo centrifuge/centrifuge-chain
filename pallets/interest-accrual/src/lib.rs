@@ -54,10 +54,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::InterestAccrual;
+use cfg_traits::{InterestAccrual, RateCollection};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode};
-use frame_support::{traits::UnixTime, RuntimeDebug};
+use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
 use sp_runtime::{
@@ -352,7 +352,7 @@ pub mod pallet {
 		}
 
 		/// Calculates the debt using debt = normalized_debt * accumulated_rate
-		fn calculate_debt(
+		pub(crate) fn calculate_debt(
 			normalized_debt: T::Balance,
 			accumulated_rate: T::InterestRate,
 		) -> Option<T::Balance> {
@@ -460,6 +460,7 @@ pub mod pallet {
 
 impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balance>> for Pallet<T> {
 	type NormalizedDebt = T::Balance;
+	type Rates = RateVec<T>;
 
 	fn current_debt(
 		interest_rate_per_sec: T::InterestRate,
@@ -514,5 +515,29 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 			.checked_div(&T::InterestRate::saturating_from_integer(SECONDS_PER_YEAR))
 			.ok_or(ArithmeticError::Underflow)?;
 		Ok(interest_rate_per_sec)
+	}
+
+	fn rates() -> Self::Rates {
+		RateVec(Rates::<T>::get())
+	}
+}
+
+pub struct RateVec<T: Config>(BoundedVec<RateDetailsOf<T>, T::MaxRateCount>);
+
+impl<T: Config> RateCollection<T::InterestRate, T::Balance, T::Balance> for RateVec<T> {
+	fn current_debt(
+		&self,
+		interest_rate_per_sec: T::InterestRate,
+		normalized_debt: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		self.0
+			.iter()
+			.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
+			.ok_or(Error::<T>::NoSuchRate)
+			.and_then(|rate| {
+				Pallet::<T>::calculate_debt(normalized_debt, rate.accumulated_rate)
+					.ok_or(Error::<T>::DebtCalculationFailed)
+			})
+			.map_err(Into::into)
 	}
 }

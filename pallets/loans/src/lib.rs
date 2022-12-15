@@ -22,7 +22,7 @@ use std::fmt::Debug;
 use cfg_primitives::Moment;
 use cfg_traits::{
 	InterestAccrual as InterestAccrualT, Permissions as PermissionsT, PoolInspect,
-	PoolNAV as TPoolNav, PoolReserve,
+	PoolNAV as TPoolNav, PoolReserve, RateCollection,
 };
 pub use cfg_types::{
 	adjustments::Adjustment,
