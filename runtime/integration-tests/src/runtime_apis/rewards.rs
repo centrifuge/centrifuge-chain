@@ -17,7 +17,7 @@ use frame_support::assert_ok;
 use sp_api::ApiRef;
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::IdentifyAccount;
-use tokio::runtime::{Handle, Runtime};
+use tokio::runtime::Handle;
 
 use super::ApiEnv;
 
