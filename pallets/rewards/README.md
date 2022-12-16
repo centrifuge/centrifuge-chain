@@ -3,6 +3,8 @@
 The Rewards pallet provides functionality for pull-based reward distributions,
 implementing [these traits](https://reference.centrifuge.io/cfg_traits/rewards/index.html) as interface.
 
+![image](https://user-images.githubusercontent.com/15687891/205727900-d578e336-5355-4b6a-8644-bbba004b2387.png)
+
 The user can stake an amount to claim a proportional reward.
 The staked amount is reserved/held from the user account for that currency when it's deposited
 and unreserved/released when it's withdrawed.
@@ -16,11 +18,7 @@ in order to change the reward distribution of the associated accounts.
 
 The pallet itself can be seen/understood as a wrapper for pull-based reward distributions.
 The exact reward functionality of this pallet is configurable using a mechanism.
-Mechanisms implement the reward methods. Current mechanisms:
-- [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
-currency movement.
-- [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
-currency movement.
+Mechanisms implement the reward methods.
 
 **NOTE**: This pallet does not export any extrinsics, it's supposed to be used by other pallets directly or through the
 [rewards traits](https://reference.centrifuge.io/cfg_traits/rewards/index.html) this pallet implements.
@@ -29,12 +27,11 @@ currency movement.
 
 - [`pallet-rewards` API documentation](https://reference.centrifuge.io/pallet_rewards/)
 - [Rewards traits API documentation](https://reference.centrifuge.io/cfg_traits/rewards/index.html)
-- [Python example](deferred_python_example.py) for the deferred mechanism.
+- [The specifications](https://centrifuge.hackmd.io/@Luis/BJz0Ur2Mo) of the reward system.
 - Mechanisms:
-    - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
-    currency movement.
-    - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
-    currency movement.
+    - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism.
+    - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism.
+    - [gap](https://centrifuge.hackmd.io/@Luis/rkJXBz08s) mechanism
 
 ## Getting started
 
