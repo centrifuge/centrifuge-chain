@@ -34,7 +34,6 @@ use cfg_types::{
 use codec::{Decode, Encode, MaxEncodedLen};
 /// Constant values used within the runtime.
 use constants::currency::*;
-use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
