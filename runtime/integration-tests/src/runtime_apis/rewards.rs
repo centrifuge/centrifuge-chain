@@ -14,7 +14,6 @@ use cfg_primitives::{AccountId, CFG};
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards};
 use development_runtime::apis::RewardsApi;
 use frame_support::assert_ok;
-use sp_api::ApiRef;
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::IdentifyAccount;
 use tokio::runtime::Handle;
