@@ -3405,7 +3405,7 @@ dependencies = [
 [[package]]
 name = "fudge-companion"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.32#3ea53b4e8a238f468b7564afea72953dc323ae70"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.32#c0fb59cf9a4ff4afa763a0e76f1b5398de35bd32"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3416,11 +3416,12 @@ dependencies = [
 [[package]]
 name = "fudge-core"
 version = "0.0.10"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.32#3ea53b4e8a238f468b7564afea72953dc323ae70"
+source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.32#c0fb59cf9a4ff4afa763a0e76f1b5398de35bd32"
 dependencies = [
  "async-trait",
  "cumulus-primitives-parachain-inherent",
  "cumulus-relay-chain-inprocess-interface",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "fudge-companion",
