@@ -27,9 +27,9 @@ use fudge::{
 		FudgeInherentTimestamp,
 	},
 	primitives::{Chain, PoolState},
+	provider::{state::StateProvider, TWasmExecutor},
 	ParachainBuilder, RelaychainBuilder,
 };
-use fudge_core::provider::{state::StateProvider, TWasmExecutor};
 use lazy_static::lazy_static;
 //pub use macros::{assert_events, events, run};
 pub use macros::*;
@@ -696,7 +696,7 @@ fn test_env(
 			state.insert_storage(storage);
 		}
 
-		let mut init = fudge_core::provider::initiator::default(handle.clone());
+		let mut init = fudge::provider::initiator::default(handle.clone());
 		init.with_genesis(Box::new(state));
 
 		let cidp: fn(Arc<_>) -> RelayCidp = |clone_client: Arc<
@@ -771,7 +771,7 @@ fn test_env(
 			state.insert_storage(storage);
 		}
 
-		let mut init = fudge_core::provider::initiator::default(handle);
+		let mut init = fudge::provider::initiator::default(handle);
 		init.with_genesis(Box::new(state));
 
 		let para_id = ParaId::from(PARA_ID);
