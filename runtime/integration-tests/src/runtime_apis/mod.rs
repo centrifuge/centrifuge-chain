@@ -19,8 +19,8 @@ use fudge::{
 	digest::{DigestCreator, DigestProvider, FudgeAuraDigest},
 	inherent::{FudgeInherentParaParachain, FudgeInherentTimestamp},
 	primitives::ParaId,
-	provider::{state::StateProvider, TWasmExecutor},
-	StandaloneBuilder,
+	state::StateProvider,
+	StandaloneBuilder, TWasmExecutor,
 };
 use sc_client_api::{HeaderBackend, StorageProof};
 use sc_executor::WasmExecutor;
@@ -101,7 +101,7 @@ fn create_builder(
 		state.insert_storage(storage);
 	}
 
-	let mut init = fudge::provider::initiator::default(handle);
+	let mut init = fudge::initiator::default(handle);
 	init.with_genesis(Box::new(state));
 
 	let para_id = ParaId::from(centrifuge::PARA_ID);
