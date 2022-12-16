@@ -29,6 +29,14 @@ pallets/keystore/* @cdamian
 # Changes to libs
 libs/* @branan @mikiquantum @mustermeiszer
 
+## Changes to specific libraries
+### cfg-traits crate
+#### rewards module
+libs/traits/src/rewards.rs
+
+#### ensure module
+libs/traits/src/ops.rs
+
 # Changes to runtime
 runtime/* @branan @mikiquantum @mustermeiszer
 
