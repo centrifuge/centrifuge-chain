@@ -272,18 +272,26 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 	}
 }
 
-parameter_types! {
-	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+pub struct MessagingReservedWeight;
+
+impl Get<Weight> for MessagingReservedWeight {
+	fn get() -> Weight {
+		MaxBlockWeight::get().saturating_div(4)
+	}
 }
+
+// parameter_types! {
+// 	pub const ReservedXcmpWeight: Weight = MaxBlockWeight::get().saturating_div(4);
+// 	pub const ReservedDmpWeight: Weight = MaxBlockWeight::get().saturating_div(4);
+// }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 	type DmpMessageHandler = DmpQueue;
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
-	type ReservedDmpWeight = ReservedDmpWeight;
-	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type ReservedDmpWeight = MessagingReservedWeight;
+	type ReservedXcmpWeight = MessagingReservedWeight;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
