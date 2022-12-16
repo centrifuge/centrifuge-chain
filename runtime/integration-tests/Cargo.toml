@@ -10,7 +10,6 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.32" }
-fudge-core = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.32" }
 lazy_static = "1.4.0"
 rand = "0.8.5"
 serde = { version = "1.0.119" }
@@ -104,7 +103,13 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", default-feature
 
 [features]
 default = ["runtime-development"]
-runtime-benchmarks = ["default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks", "kusama-runtime/runtime-benchmarks"]
+runtime-benchmarks = [
+  "default",
+  "development-runtime/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "kusama-runtime/runtime-benchmarks",
+  "fudge/runtime-benchmarks",
+]
 runtime-development = []
 runtime-altair = []
 runtime-centrifuge = []

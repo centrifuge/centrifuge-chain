@@ -15,11 +15,12 @@ use std::sync::Arc;
 
 use cfg_primitives::{AuraId, CFG};
 use frame_support::traits::GenesisBuild;
-use fudge::{primitives::ParaId, StandaloneBuilder};
-use fudge_core::{
+use fudge::{
 	digest::{DigestCreator, DigestProvider, FudgeAuraDigest},
 	inherent::{FudgeInherentParaParachain, FudgeInherentTimestamp},
-	provider::{state::StateProvider, TWasmExecutor},
+	primitives::ParaId,
+	state::StateProvider,
+	StandaloneBuilder, TWasmExecutor,
 };
 use sc_client_api::{HeaderBackend, StorageProof};
 use sc_executor::WasmExecutor;
@@ -100,7 +101,7 @@ fn create_builder(
 		state.insert_storage(storage);
 	}
 
-	let mut init = fudge_core::provider::initiator::default(handle);
+	let mut init = fudge::initiator::default(handle);
 	init.with_genesis(Box::new(state));
 
 	let para_id = ParaId::from(centrifuge::PARA_ID);

@@ -40,7 +40,6 @@ use cfg_types::{
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
-use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
