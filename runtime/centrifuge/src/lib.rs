@@ -21,7 +21,6 @@
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_types::{fee_keys::FeeKey, tokens::CustomMetadata};
 use codec::{Decode, Encode, MaxEncodedLen};
-use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
