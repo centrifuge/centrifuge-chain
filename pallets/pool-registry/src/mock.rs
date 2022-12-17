@@ -19,9 +19,7 @@ use cfg_types::{
 	tokens::CurrencyId,
 };
 use frame_support::{
-	dispatch::{
-		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
-	},
+	dispatch::{DispatchError, DispatchResult},
 	parameter_types,
 	traits::{Hooks, SortedMembers},
 };
@@ -33,7 +31,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::{self as pallet_pool_registry, Config, PoolMutate, WeightInfo};
+use crate::{self as pallet_pool_registry, Config, PoolMutate};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -133,14 +131,11 @@ impl<T: Config + pallet_pool_registry::Config> PoolMutate<T::AccountId, T::PoolI
 	fn update(
 		_pool_id: T::PoolId,
 		_changes: Self::PoolChanges,
-	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
-		Ok((
-			UpdateState::Executed,
-			Some(T::WeightInfo::update_and_execute(5)).into(),
-		))
+	) -> Result<UpdateState, DispatchError> {
+		Ok(UpdateState::Executed(5))
 	}
 
-	fn execute_update(_: T::PoolId) -> DispatchResultWithPostInfo {
+	fn execute_update(_: T::PoolId) -> Result<u32, DispatchError> {
 		todo!()
 	}
 }
