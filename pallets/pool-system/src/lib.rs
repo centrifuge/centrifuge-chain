@@ -22,7 +22,7 @@ use cfg_types::{
 };
 use codec::HasCompact;
 use frame_support::{
-	dispatch::{DispatchErrorWithPostInfo, DispatchResult, PostDispatchInfo},
+	dispatch::DispatchResult,
 	pallet_prelude::*,
 	traits::{
 		fungibles::{Inspect, Mutate, Transfer},
