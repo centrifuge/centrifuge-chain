@@ -1,37 +1,53 @@
 # Centrifudge Code Owners
-#
-# Order is important; the last matching pattern takes the most
 
-# These owners will be the default owners for everything in
-# the repo. Unless a later match takes precedence,
-* @branan @mikiquantum @mustermeiszer @offerijns
+# Changes to .github
+.github/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @offerjins
+
+# Changes to ci
+ci/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @offerjins
 
 # Changes to the service of our chain.
-src/* @mikiquantum @mustermeiszer
+src/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
-# Changes to pallets
-pallets/* @branan @mikiquantum @mustermeiszer
+# Changes to chain-specs
+res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
-## Changes to specific pallets
-### Connectors related logic
+# Changes to specific pallets
+## Connectors related logic
 pallets/connectors/* @NunoAlexandre
 
-### Rewards related logic
+## Rewards related logic
 pallets/rewards/* @lemunozm
 pallets/liquidity-rewards/* @lemunozm
 
-### Nft-sales related logic
+## Nft-sales related logic
 pallets/nft-sales/* @NunoAlexandre
 
-### Pallet Keystore
+## Pallet Keystore
 pallets/keystore/* @cdamian
 
-### Pallet Registry
-pallets/registry/* @gruberb
+## Pallet Registry
+pallets/pool-registry/* @gruberb @mustermeiszer
+
+## Pallet Pool-System
+pallets/pool-system/* @mustermeiszer @branan @offerjins
+
+## Pallet Pool-System
+pallets/loans/* @mustermeiszer @branan @offerjins
+
+## Pallet Interest-Accrual
+pallets/interest-accrual/* @branan
+
+## Pallet Investments
+pallets/investments/* @mustermeiszer
+
+## Pallet Permissions
+pallets/permissions/* @mustermeiszer
+
+## Pallet Restricted-Tokens
+pallets/restricted-tokens/* @mustermeiszer
 
 # Changes to libs
-libs/* @branan @mikiquantum @mustermeiszer
-
 ## Changes to specific libraries
 ### cfg-traits crate
 #### rewards module
@@ -41,7 +57,11 @@ libs/traits/src/rewards.rs @lemunozm
 libs/traits/src/ops.rs @lemunozm
 
 # Changes to runtime
-runtime/* @branan @mikiquantum @mustermeiszer
+## Changes to centrifuge-runtime
+runtime/altair/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerjins
+
+## Changes to altair-runtime
+runtime/centrifuge/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerjins
 
 ## Changes to folders inside runtime
 ### Changes to runtime/integration-tests
