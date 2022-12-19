@@ -64,34 +64,38 @@ pub enum MinStake<Balance> {
 pub enum ProposerSet {
 	/// Accounts with the Borrower role on the pool can propose a loan
 	Borrowers,
-	/// Accounts with the PricingAdmin role on the pool can propose a loan
-	PricingAdmins,
-	/// Only external stakers can also propose pricing for new loans
+	/// Only external stakers can propose pricing for new loans
 	ExternalStakers,
 }
 
-pub enum StakerRestrictions {
+pub enum StakerSet {
   OnlyProposer,
-  OnlyExternal,
   Combined { min_proposer_stake: Perquintill, min_external_stake: Perquintill }
 }
 
+pub enum AccepterSet {
+	/// Once a loan has sufficient stake, anyone can accept the loan.
+	Everyone,
+	/// Accounts with the PricingAdmin role on the pool can accept a loan.
+	/// Can be used to allow third-parties to verify any pricing, without staking themselves.
+	PricingAdmins,
+}
+
 pub struct PoolStakingParameters<Balance> {
-	proposer_set: ProposerSet,
-	external_staker_set: MemberlistId, // TODO
+	proposers: ProposerSet,
+  stakers: StakerSet,
+	accepters: AccepterSet,
 	min_stake_per_loan: MinStake<Balance>,
-  staker_restrictions: StakerRestrictions,
 	/// % of the repaid amount that is minted in residual tranche tokens for the stakers
 	reward_rate: Rate,
 }
 
 /**
- * Three configurable options:
- * - Centralized pricing: proposer_set = Borrowers, min_proposer_stake = 100%, min_external_stake = 0%
- * - Centralized pricing w/ verification agent: ??? (verification agent shouldn't need to stake)
- * - Decentralized pricing: min_external_stake > 0
- * 
- * Accept == PricingAdmin equivalent action
+ * Multiple configurations:
+ * - Centralized pricing: proposer_set = Borrowers, staker_restrictions = OnlyProposer, accepter_set = Everyone
+ * - Centralized pricing w/ verification agent: proposer_set = Borrowers, staker_restrictions = OnlyProposer, accepter_set = PricingAdmins
+ * - Decentralized pricing: staker_restrictions = Combined { min_external_stake > 0 }, accepter_set = Everyone
+ * - Decentralized pricing w/ verification agent: staker_restrictions = Combined { min_external_stake > 0 }, accepter_set = PricingAdmins
  */
 
 #[frame_support::pallet]
@@ -129,6 +133,8 @@ pub mod pallet {
 			+ TypeInfo
 			+ From<u128>
 			+ IsType<InstanceIdOf<Self>>;
+
+		type ExternalStakers: SortedMembers<Self::AccountId>;
 
     // TODO: type LoanInfo
 

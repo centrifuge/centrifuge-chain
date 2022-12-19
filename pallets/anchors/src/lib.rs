@@ -19,7 +19,7 @@
 #![allow(clippy::all)]
 
 use cfg_traits::fees::{Fee, Fees};
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
@@ -81,7 +81,7 @@ const ANCHOR_PREFIX: &[u8; 6] = b"anchor";
 const EVICT_PRE_COMMIT_LIST_SIZE: u32 = 100;
 
 /// The data structure for storing pre-committed anchors.
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PreCommitData<Hash, AccountId, BlockNumber, Balance> {
 	signing_root: Hash,
@@ -112,7 +112,6 @@ pub mod pallet {
 	// method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
