@@ -11,37 +11,64 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Module provides benchmarking for the Pools Pallet
+//! Module provides benchmarking for Loan Pallet
+use cfg_primitives::{PoolEpochId, Balance};
+use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
+use cfg_types::{fixed_point::Rate, tokens::{CurrencyId, CustomMetadata, TrancheCurrency}};
+use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_support::traits::Currency;
 use frame_system::RawOrigin;
+use orml_traits::{
+	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
+	Change,
+};
+use pallet_pool_system::{
+	pool_types::{PoolDetails, ScheduledUpdateDetails},
+	tranches::{
+		Tranche, TrancheIndex, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType,
+		TrancheUpdate,
+	},
+	Pool,
+};
+use sp_runtime::{Perquintill, traits::{One, Zero}};
 use sp_std::vec;
 
 use super::*;
+
+const CURRENCY: u128 = 1_000_000_000_000_000;
+const MAX_RESERVE: u128 = 10_000 * CURRENCY;
+const MINT_AMOUNT: u128 = 1_000_000 * CURRENCY;
+
+const SECS_PER_HOUR: u64 = 60 * 60;
+const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
+const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
+
+const TRANCHE: TrancheIndex = 0;
 
 const POOL: u64 = 0;
 
 benchmarks! {
 	where_clause {
 	where
-		T: Config<PoolId = u64>,
+		T: Config<PoolId = u64> + pallet_pool_system::Config,
 	}
-
-	// create {
-	// 	let n in 1..T::MaxTranches::get();
-	// 	let caller: T::AccountId = create_admin::<T>(0);
-	// 	let tranches = build_bench_input_tranches::<T>(n);
-	// 	let origin = RawOrigin::Signed(caller.clone());
-	// 	prepare_asset_registry::<T>();
-	// }: create(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
-	// verify {
-	// 	let pool = get_pool::<T>();
-	// 	assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-	// 	assert_eq!(pool.reserve.available, Zero::zero());
-	// 	assert_eq!(pool.reserve.total, Zero::zero());
-	// 	assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
-	// 	assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
-	// 	assert_eq!(pool.metadata, None);
-	// }
+	register {
+		let n in 1..T::MaxTranches::get();
+		let caller: T::AccountId = create_admin::<T>(0);
+		let tranches = build_bench_input_tranches::<T>(n);
+		let origin = RawOrigin::Signed(caller.clone());
+		prepare_asset_registry::<T>();
+	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
+	verify {
+		let pool = get_pool::<T>();
+		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_eq!(pool.reserve.available, Zero::zero());
+		assert_eq!(pool.reserve.total, Zero::zero());
+		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
+		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
+		assert_eq!(pool.metadata, None);
+	}
 
 	// update_no_execution {
 	// 	let admin: T::AccountId = create_admin::<T>(0);
@@ -137,20 +164,221 @@ benchmarks! {
 	// 	assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
 	// 	assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	// }
+	//
+	// set_metadata {
+	// 	let n in 0..T::MaxSizeMetadata::get();
+	// 	let caller: T::AccountId = account("admin", 1, 0);
+	// 	let metadata = vec![0u8; n as usize];
+	// }: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
+	// verify {
+	// 	let metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata.try_into().unwrap();
+	// 	assert_eq!(get_pool_metadata::<T>().metadata, metadata);
+	// }
+}
 
-	set_metadata {
-		let n in 0..T::MaxSizeMetadata::get();
-		let caller: T::AccountId = account("admin", 1, 0);
-		let metadata = vec![0u8; n as usize];
-	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
-	verify {
-		let metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata.try_into().unwrap();
-		assert_eq!(get_pool_metadata::<T>().metadata, metadata);
+fn prepare_asset_registry<T: Config>()
+where
+	pallet_pool_system::Pool::<T>::AssetRegistry:
+		OrmlMutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
+{
+	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
+		Some(_) => (),
+		None => {
+			T::AssetRegistry::register_asset(
+				Some(CurrencyId::AUSD),
+				orml_asset_registry::AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN".as_bytes().to_vec(),
+					symbol: "MOCK".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			)
+			.expect("Registering Pool asset must work");
+		}
 	}
 }
 
-fn get_pool_metadata<T: Config<PoolId = u64>>() -> PoolMetadataOf<T> {
-	Pallet::<T>::get_pool_metadata(T::PoolId::from(POOL)).unwrap()
+fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
+	Pool::<T>::mutate(POOL, |pool| {
+		let pool = pool.as_mut().unwrap();
+		pool.parameters.min_epoch_time = 0;
+		pool.parameters.max_nav_age = u64::MAX;
+	});
+}
+
+fn assert_input_tranches_match<T: Config>(
+	chain: &[Tranche<Balance, Rate, Weight, CurrencyId>],
+	target: &[TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
+) {
+	assert_eq!(chain.len(), target.len());
+	for (chain, target) in chain.iter().zip(target.iter()) {
+		assert_eq!(chain.tranche_type, target.tranche_type);
+	}
+}
+
+fn assert_update_tranches_match<T: Config>(
+	chain: &[Tranche<Balance, Rate, Weight, CurrencyId>],
+	target: &[TrancheUpdate<T::InterestRate>],
+) {
+	assert_eq!(chain.len(), target.len());
+	for (chain, target) in chain.iter().zip(target.iter()) {
+		assert_eq!(chain.tranche_type, target.tranche_type);
+	}
+}
+
+fn get_pool<T: Config<PoolId = u64>>() -> PoolDetails<T> {
+	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
+}
+
+fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<
+	T::InterestRate,
+	T::MaxTokenNameLength,
+	T::MaxTokenSymbolLength,
+	T::MaxTranches,
+> {
+	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
+}
+
+fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
+	get_pool::<T>()
+		.tranches
+		.tranche_id(TrancheLoc::Index(index))
+		.unwrap()
+}
+
+fn create_investor<
+	T: Config<PoolId = u64, TrancheId = [u8; 16], Balance = u128, CurrencyId = CurrencyId>,
+>(
+	id: u32,
+	tranche: TrancheIndex,
+) -> Result<T::AccountId, DispatchError>
+where
+	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
+		From<<T as frame_system::Config>::AccountId>,
+	T::Permission: Permissions<T::AccountId, Ok = ()>,
+{
+	let investor: T::AccountId = account("investor", id, 0);
+	let tranche_id = get_tranche_id::<T>(tranche);
+	T::Permission::add(
+		PermissionScope::Pool(POOL),
+		investor.clone(),
+		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
+	)?;
+	T::Tokens::mint_into(CurrencyId::AUSD, &investor.clone().into(), MINT_AMOUNT)?;
+	T::Tokens::mint_into(
+		CurrencyId::Tranche(POOL, tranche_id),
+		&investor.clone().into(),
+		MINT_AMOUNT,
+	)?;
+	Ok(investor)
+}
+
+fn create_admin<T: Config<CurrencyId = CurrencyId, Balance = u128>>(id: u32) -> T::AccountId
+where
+	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
+		From<<T as frame_system::Config>::AccountId>,
+{
+	let admin: T::AccountId = account("admin", id, 0);
+	let mint_amount = T::PoolDeposit::get() * 2;
+	T::Currency::deposit_creating(&admin.clone().into(), mint_amount);
+	admin
+}
+
+fn build_update_tranche_metadata<T: Config>(
+) -> BoundedVec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>, T::MaxTranches> {
+	vec![TrancheMetadata {
+		token_name: BoundedVec::default(),
+		token_symbol: BoundedVec::default(),
+	}]
+	.try_into()
+	.expect("T::MaxTranches > 0")
+}
+
+fn build_update_tranches<T: Config>(
+	num_tranches: u32,
+) -> BoundedVec<TrancheUpdate<T::InterestRate>, T::MaxTranches> {
+	let mut tranches = build_bench_update_tranches::<T>(num_tranches);
+
+	for tranche in &mut tranches {
+		tranche.tranche_type = match tranche.tranche_type {
+			TrancheType::Residual => TrancheType::Residual,
+			TrancheType::NonResidual {
+				interest_rate_per_sec,
+				min_risk_buffer,
+			} => {
+				let min_risk_buffer = Perquintill::from_parts(min_risk_buffer.deconstruct() * 2);
+				TrancheType::NonResidual {
+					interest_rate_per_sec,
+					min_risk_buffer,
+				}
+			}
+		}
+	}
+	tranches
+}
+
+fn build_bench_update_tranches<T: Config>(
+	num_tranches: u32,
+) -> BoundedVec<TrancheUpdate<T::InterestRate>, T::MaxTranches> {
+	let senior_interest_rate = T::InterestRate::saturating_from_rational(5, 100)
+		/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR);
+	let mut tranches: Vec<_> = (1..num_tranches)
+		.map(|tranche_id| TrancheUpdate {
+			tranche_type: TrancheType::NonResidual {
+				interest_rate_per_sec: senior_interest_rate
+					/ T::InterestRate::saturating_from_integer(tranche_id)
+					+ One::one(),
+				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+			},
+			seniority: None,
+		})
+		.collect();
+	tranches.insert(
+		0,
+		TrancheUpdate {
+			tranche_type: TrancheType::Residual,
+			seniority: None,
+		},
+	);
+
+	tranches.try_into().expect("num_tranches <= T::MaxTranches")
+}
+
+fn build_bench_input_tranches<T: Config>(
+	num_tranches: u32,
+) -> Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
+	let senior_interest_rate =
+		T::Rate::saturating_from_rational(5, 100) / T::Rate::saturating_from_integer(SECS_PER_YEAR);
+	let mut tranches: Vec<_> = (1..num_tranches)
+		.map(|tranche_id| TrancheInput {
+			tranche_type: TrancheType::NonResidual {
+				interest_rate_per_sec: senior_interest_rate
+					/ T::Rate::saturating_from_integer(tranche_id)
+					+ One::one(),
+				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+			},
+			seniority: None,
+			metadata: TrancheMetadata {
+				token_name: BoundedVec::default(),
+				token_symbol: BoundedVec::default(),
+			},
+		})
+		.collect();
+	tranches.insert(
+		0,
+		TrancheInput {
+			tranche_type: TrancheType::Residual,
+			seniority: None,
+			metadata: TrancheMetadata {
+				token_name: BoundedVec::default(),
+				token_symbol: BoundedVec::default(),
+			},
+		},
+	);
+
+	tranches
 }
 
 impl_benchmark_test_suite!(
