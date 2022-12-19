@@ -102,14 +102,24 @@ where
 	type Group = Group<Balance, Rate>;
 	type MaxCurrencyMovements = MaxCurrencyMovements;
 
+	fn is_ready(group: &Self::Group) -> bool {
+		group.total_stake > Self::Balance::zero()
+	}
+
 	fn reward_group(
 		group: &mut Self::Group,
 		amount: Self::Balance,
 	) -> Result<Self::Balance, DispatchError> {
-		let rate = Rate::ensure_from_rational(amount, group.total_stake)?;
-		group.rpt.ensure_add_assign(rate)?;
+		let mut reward_used = Self::Balance::zero();
 
-		Ok(amount)
+		if group.total_stake > Self::Balance::zero() {
+			let rate = Rate::ensure_from_rational(amount, group.total_stake)?;
+			group.rpt.ensure_add_assign(rate)?;
+
+			reward_used = amount;
+		}
+
+		Ok(reward_used)
 	}
 
 	fn deposit_stake(
@@ -117,7 +127,7 @@ where
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
 		amount: Self::Balance,
-	) -> Result<(), DispatchError> {
+	) -> DispatchResult {
 		account.apply_rpt_changes(&currency.rpt_changes)?;
 
 		account.stake.ensure_add_assign(amount)?;
@@ -136,7 +146,7 @@ where
 		currency: &mut Self::Currency,
 		group: &mut Self::Group,
 		amount: Self::Balance,
-	) -> Result<(), DispatchError> {
+	) -> DispatchResult {
 		account.apply_rpt_changes(&currency.rpt_changes)?;
 
 		account.stake.ensure_sub_assign(amount)?;

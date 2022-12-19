@@ -179,19 +179,28 @@ pub mod pallet {
 		type Group = Group<T>;
 		type MaxCurrencyMovements = T::MaxCurrencyMovements;
 
+		fn is_ready(group: &Self::Group) -> bool {
+			group.base.total_stake > Self::Balance::zero()
+		}
+
 		fn reward_group(
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<Self::Balance, DispatchError> {
-			let reward = amount.ensure_add(group.lost_reward)?;
+			let mut reward_used = Self::Balance::zero();
 
-			base::Mechanism::<T::Balance, T::IBalance, T::Rate, T::MaxCurrencyMovements>::reward_group(
-				&mut group.base,
-				reward,
-			)?;
+			if group.base.total_stake > Self::Balance::zero() {
+				let reward = amount.ensure_add(group.lost_reward)?;
+				base::Mechanism::<T::Balance, T::IBalance, T::Rate, T::MaxCurrencyMovements>::reward_group(
+                    &mut group.base,
+                    reward,
+                )?;
 
-			group.lost_reward = T::Balance::zero();
-			group.last_rate = T::Rate::ensure_from_rational(reward, group.base.total_stake)?;
+				group.lost_reward = T::Balance::zero();
+				group.last_rate = T::Rate::ensure_from_rational(reward, group.base.total_stake)?;
+
+				reward_used = reward
+			}
 
 			group.distribution_id = LastDistributionId::<T>::try_mutate(
 				|distribution_id| -> Result<T::DistributionId, DispatchError> {
@@ -199,7 +208,7 @@ pub mod pallet {
 				},
 			)?;
 
-			Ok(amount)
+			Ok(reward_used)
 		}
 
 		fn deposit_stake(
@@ -207,7 +216,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			account.update_rewarded_stake(group, currency);
 
 			base::Mechanism::deposit_stake(
@@ -223,7 +232,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			account.update_rewarded_stake(group, currency);
 
 			let rewarded_amount = {

@@ -221,16 +221,21 @@ pub mod pallet {
 		type Group = Group<T>;
 		type MaxCurrencyMovements = T::MaxCurrencyMovements;
 
+		fn is_ready(group: &Self::Group) -> bool {
+			group.total_stake > Self::Balance::zero()
+		}
+
 		fn reward_group(
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<Self::Balance, DispatchError> {
-			let mut reward = Self::Balance::zero();
+			let mut reward_used = Self::Balance::zero();
 
 			if group.total_stake > T::Balance::zero() {
 				let rate = T::Rate::ensure_from_rational(amount, group.total_stake)?;
 				group.rpt.ensure_add_assign(rate)?;
-				reward = amount;
+
+				reward_used = amount;
 			}
 
 			group
@@ -246,7 +251,7 @@ pub mod pallet {
 				},
 			)?;
 
-			Ok(reward)
+			Ok(reward_used)
 		}
 
 		fn deposit_stake(
@@ -254,7 +259,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			account.update(group, currency)?;
 
 			account.pending_stake.ensure_add_assign(amount)?;
@@ -270,7 +275,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			account.update(group, currency)?;
 
 			let pending_amount = amount.min(account.pending_stake);
