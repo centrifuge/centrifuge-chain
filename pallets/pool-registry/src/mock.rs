@@ -11,28 +11,34 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
-use cfg_primitives::{BlockNumber, PoolEpochId, Moment, TrancheWeight};
-use cfg_traits::{UpdateState, TrancheCurrency as TrancheCurrencyT, PreConditions, PoolUpdateGuard, Permissions as PermissionsT};
+use cfg_primitives::{BlockNumber, Moment, PoolEpochId, TrancheWeight};
+use cfg_traits::{
+	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	TrancheCurrency as TrancheCurrencyT, UpdateState,
+};
 use cfg_types::{
 	fixed_point::Rate,
-	permissions::{PermissionScope, PermissionRoles, Role, PoolRole, UNION},
+	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
 	time::TimeProvider,
-	tokens::{CustomMetadata, CurrencyId, TrancheCurrency},
+	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
-use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	parameter_types,
-	traits::{Contains, Hooks, SortedMembers, PalletInfoAccess},
+	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
-use pallet_pool_system::{pool_types::{PoolDetails, ScheduledUpdateDetails, PoolChanges}, tranches::TrancheInput};
+use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+use pallet_pool_system::{
+	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
+	tranches::TrancheInput,
+	*,
+};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
-use pallet_pool_system::*;
 
 use crate::{self as pallet_pool_registry, Config, PoolMutate};
 
@@ -227,7 +233,6 @@ impl<T> PreConditions<T> for Always {
 	}
 }
 
-
 impl Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -301,7 +306,6 @@ impl Contains<CurrencyId> for PoolCurrency {
 	}
 }
 
-
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Moment;
@@ -317,13 +321,9 @@ impl PoolUpdateGuard for UpdateGuard {
 		u64,
 	>;
 	type ScheduledUpdateDetails =
-	ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
+		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
 
-	fn released(
-		_: &Self::PoolDetails,
-		_: &Self::ScheduledUpdateDetails,
-		_: Self::Moment,
-	) -> bool {
+	fn released(_: &Self::PoolDetails, _: &Self::ScheduledUpdateDetails, _: Self::Moment) -> bool {
 		return true;
 	}
 }
@@ -332,7 +332,6 @@ impl PoolUpdateGuard for UpdateGuard {
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
-
 
 // Implement balances pallet configuration for mock runtime
 impl pallet_balances::Config for Test {

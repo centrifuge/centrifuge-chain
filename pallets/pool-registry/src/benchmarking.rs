@@ -19,7 +19,8 @@ use frame_system::RawOrigin;
 use orml_traits::asset_registry::Inspect as OrmlInspect;
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_pool_system::benchmarking::{
-	build_bench_input_tranches, create_admin, get_pool, prepare_asset_registry, assert_input_tranches_match, assert_update_tranches_match,
+	assert_input_tranches_match, assert_update_tranches_match, build_bench_input_tranches,
+	create_admin, get_pool, prepare_asset_registry,
 };
 use pallet_pool_system::{
 	pool_types::ScheduledUpdateDetails,
