@@ -284,10 +284,29 @@ pub fn get_scheduled_update<T: Config<PoolId = u64>>(
 	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
 }
 
+pub fn assert_input_tranches_match<T: Config>(
+	chain: &[TrancheOf<T>],
+	target: &[TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
+) {
+	assert_eq!(chain.len(), target.len());
+	for (chain, target) in chain.iter().zip(target.iter()) {
+		assert_eq!(chain.tranche_type, target.tranche_type);
+	}
+}
+
+pub fn assert_update_tranches_match<T: Config>(
+	chain: &[TrancheOf<T>],
+	target: &[TrancheUpdate<T::Rate>],
+) {
+	assert_eq!(chain.len(), target.len());
+	for (chain, target) in chain.iter().zip(target.iter()) {
+		assert_eq!(chain.tranche_type, target.tranche_type);
+	}
+}
+
 pub fn build_bench_input_tranches<T: Config>(
 	num_tranches: u32,
-) -> Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>
-{
+) -> Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
 	let senior_interest_rate =
 		T::Rate::saturating_from_rational(5, 100) / T::Rate::saturating_from_integer(SECS_PER_YEAR);
 	let mut tranches: Vec<_> = (1..num_tranches)

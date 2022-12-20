@@ -19,7 +19,7 @@ use frame_system::RawOrigin;
 use orml_traits::asset_registry::Inspect as OrmlInspect;
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_pool_system::benchmarking::{
-	build_bench_input_tranches, create_admin, get_pool, prepare_asset_registry,
+	build_bench_input_tranches, create_admin, get_pool, prepare_asset_registry, assert_input_tranches_match, assert_update_tranches_match,
 };
 use pallet_pool_system::{
 	pool_types::ScheduledUpdateDetails,
@@ -61,6 +61,7 @@ benchmarks! {
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
 		<T as pallet_pool_system::Config>::Permission: Permissions<T::AccountId, Ok = ()>,
+		<T as Config>::ModifyPool: PoolMutate<<T as frame_system::Config>::AccountId, <T as pallet::Config>::PoolId, TrancheInput = TrancheInput<<T as pallet_pool_system::Config>::Rate, <T as pallet_pool_system::Config>::MaxTokenNameLength, <T as pallet_pool_system::Config>::MaxTokenSymbolLength>>,
 	}
 	register {
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
@@ -68,7 +69,7 @@ benchmarks! {
 		let tranches = build_bench_input_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
 		prepare_asset_registry::<T>();
-	}: register(origin, caller, POOL, tranches, CurrencyId::AUSD, MAX_RESERVE, None)
+	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
 		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
@@ -183,26 +184,6 @@ benchmarks! {
 	// 	let metadata: BoundedVec<u8, T::MaxSizeMetadata> = metadata.try_into().unwrap();
 	// 	assert_eq!(get_pool_metadata::<T>().metadata, metadata);
 	// }
-}
-
-fn assert_input_tranches_match<T: pallet_pool_system::Config>(
-	chain: &[TrancheOf<T>],
-	target: &[TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
-) {
-	assert_eq!(chain.len(), target.len());
-	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.tranche_type);
-	}
-}
-
-fn assert_update_tranches_match<T: pallet_pool_system::Config>(
-	chain: &[TrancheOf<T>],
-	target: &[TrancheUpdate<T::Rate>],
-) {
-	assert_eq!(chain.len(), target.len());
-	for (chain, target) in chain.iter().zip(target.iter()) {
-		assert_eq!(chain.tranche_type, target.tranche_type);
-	}
 }
 
 fn build_update_tranche_metadata<T: Config>(
