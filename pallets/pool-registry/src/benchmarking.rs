@@ -12,26 +12,24 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
-use cfg_primitives::{PoolEpochId, Balance};
-use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
-use cfg_types::{fixed_point::Rate, tokens::{CurrencyId, CustomMetadata, TrancheCurrency}};
-use codec::EncodeLike;
+use cfg_primitives::PoolEpochId;
+use cfg_types::tokens::CurrencyId;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::traits::Currency;
 use frame_system::RawOrigin;
-use orml_traits::{
-	asset_registry::{Inspect as OrmlInspect, Mutate as OrmlMutate},
-	Change,
+use orml_traits::asset_registry::Inspect as OrmlInspect;
+#[cfg(feature = "runtime-benchmarks")]
+use pallet_pool_system::benchmarking::{
+	build_bench_input_tranches, create_admin, get_pool, prepare_asset_registry,
 };
 use pallet_pool_system::{
-	pool_types::{PoolDetails, ScheduledUpdateDetails},
-	tranches::{
-		Tranche, TrancheIndex, TrancheInput, TrancheLoc, TrancheMetadata, TrancheType,
-		TrancheUpdate,
-	},
-	Pool,
+	pool_types::ScheduledUpdateDetails,
+	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType, TrancheUpdate},
+	Pool, PoolDetailsOf, TrancheOf,
 };
-use sp_runtime::{Perquintill, traits::{One, Zero}};
+use sp_runtime::{
+	traits::{One, Zero},
+	Perquintill,
+};
 use sp_std::vec;
 
 use super::*;
@@ -51,15 +49,26 @@ const POOL: u64 = 0;
 benchmarks! {
 	where_clause {
 	where
-		T: Config<PoolId = u64> + pallet_pool_system::Config,
+		T: Config<PoolId = u64,
+			  TrancheId = [u8; 16],
+			  Balance = u128,
+			  CurrencyId = CurrencyId>,
+		T: pallet_pool_system::Config<PoolId = u64,
+			  TrancheId = [u8; 16],
+			  Balance = u128,
+			  CurrencyId = CurrencyId,
+			  EpochId = PoolEpochId>,
+		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
+			From<<T as frame_system::Config>::AccountId>,
+		<T as pallet_pool_system::Config>::Permission: Permissions<T::AccountId, Ok = ()>,
 	}
 	register {
-		let n in 1..T::MaxTranches::get();
-		let caller: T::AccountId = create_admin::<T>(0);
+		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
+		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_input_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
 		prepare_asset_registry::<T>();
-	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
+	}: register(origin, caller, POOL, tranches, CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
 		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
@@ -176,41 +185,9 @@ benchmarks! {
 	// }
 }
 
-fn prepare_asset_registry<T: Config>()
-where
-	pallet_pool_system::Pool::<T>::AssetRegistry:
-		OrmlMutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
-{
-	match T::AssetRegistry::metadata(&CurrencyId::AUSD) {
-		Some(_) => (),
-		None => {
-			T::AssetRegistry::register_asset(
-				Some(CurrencyId::AUSD),
-				orml_asset_registry::AssetMetadata {
-					decimals: 18,
-					name: "MOCK TOKEN".as_bytes().to_vec(),
-					symbol: "MOCK".as_bytes().to_vec(),
-					existential_deposit: 0,
-					location: None,
-					additional: CustomMetadata::default(),
-				},
-			)
-			.expect("Registering Pool asset must work");
-		}
-	}
-}
-
-fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
-	Pool::<T>::mutate(POOL, |pool| {
-		let pool = pool.as_mut().unwrap();
-		pool.parameters.min_epoch_time = 0;
-		pool.parameters.max_nav_age = u64::MAX;
-	});
-}
-
-fn assert_input_tranches_match<T: Config>(
-	chain: &[Tranche<Balance, Rate, Weight, CurrencyId>],
-	target: &[TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
+fn assert_input_tranches_match<T: pallet_pool_system::Config>(
+	chain: &[TrancheOf<T>],
+	target: &[TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
 ) {
 	assert_eq!(chain.len(), target.len());
 	for (chain, target) in chain.iter().zip(target.iter()) {
@@ -218,72 +195,14 @@ fn assert_input_tranches_match<T: Config>(
 	}
 }
 
-fn assert_update_tranches_match<T: Config>(
-	chain: &[Tranche<Balance, Rate, Weight, CurrencyId>],
-	target: &[TrancheUpdate<T::InterestRate>],
+fn assert_update_tranches_match<T: pallet_pool_system::Config>(
+	chain: &[TrancheOf<T>],
+	target: &[TrancheUpdate<T::Rate>],
 ) {
 	assert_eq!(chain.len(), target.len());
 	for (chain, target) in chain.iter().zip(target.iter()) {
 		assert_eq!(chain.tranche_type, target.tranche_type);
 	}
-}
-
-fn get_pool<T: Config<PoolId = u64>>() -> PoolDetails<T> {
-	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
-}
-
-fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<
-	T::InterestRate,
-	T::MaxTokenNameLength,
-	T::MaxTokenSymbolLength,
-	T::MaxTranches,
-> {
-	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
-}
-
-fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
-	get_pool::<T>()
-		.tranches
-		.tranche_id(TrancheLoc::Index(index))
-		.unwrap()
-}
-
-fn create_investor<
-	T: Config<PoolId = u64, TrancheId = [u8; 16], Balance = u128, CurrencyId = CurrencyId>,
->(
-	id: u32,
-	tranche: TrancheIndex,
-) -> Result<T::AccountId, DispatchError>
-where
-	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
-		From<<T as frame_system::Config>::AccountId>,
-	T::Permission: Permissions<T::AccountId, Ok = ()>,
-{
-	let investor: T::AccountId = account("investor", id, 0);
-	let tranche_id = get_tranche_id::<T>(tranche);
-	T::Permission::add(
-		PermissionScope::Pool(POOL),
-		investor.clone(),
-		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
-	)?;
-	T::Tokens::mint_into(CurrencyId::AUSD, &investor.clone().into(), MINT_AMOUNT)?;
-	T::Tokens::mint_into(
-		CurrencyId::Tranche(POOL, tranche_id),
-		&investor.clone().into(),
-		MINT_AMOUNT,
-	)?;
-	Ok(investor)
-}
-
-fn create_admin<T: Config<CurrencyId = CurrencyId, Balance = u128>>(id: u32) -> T::AccountId
-where
-	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
-		From<<T as frame_system::Config>::AccountId>,
-{
-	let admin: T::AccountId = account("admin", id, 0);
-	let mint_amount = T::PoolDeposit::get() * 2;
-	T::Currency::deposit_creating(&admin.clone().into(), mint_amount);
-	admin
 }
 
 fn build_update_tranche_metadata<T: Config>(
@@ -344,41 +263,6 @@ fn build_bench_update_tranches<T: Config>(
 	);
 
 	tranches.try_into().expect("num_tranches <= T::MaxTranches")
-}
-
-fn build_bench_input_tranches<T: Config>(
-	num_tranches: u32,
-) -> Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
-	let senior_interest_rate =
-		T::Rate::saturating_from_rational(5, 100) / T::Rate::saturating_from_integer(SECS_PER_YEAR);
-	let mut tranches: Vec<_> = (1..num_tranches)
-		.map(|tranche_id| TrancheInput {
-			tranche_type: TrancheType::NonResidual {
-				interest_rate_per_sec: senior_interest_rate
-					/ T::Rate::saturating_from_integer(tranche_id)
-					+ One::one(),
-				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
-			},
-			seniority: None,
-			metadata: TrancheMetadata {
-				token_name: BoundedVec::default(),
-				token_symbol: BoundedVec::default(),
-			},
-		})
-		.collect();
-	tranches.insert(
-		0,
-		TrancheInput {
-			tranche_type: TrancheType::Residual,
-			seniority: None,
-			metadata: TrancheMetadata {
-				token_name: BoundedVec::default(),
-				token_symbol: BoundedVec::default(),
-			},
-		},
-	);
-
-	tranches
 }
 
 impl_benchmark_test_suite!(
