@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
-use cfg_primitives::{BlockNumber, PoolEpochId, Moment};
-use cfg_traits::{OrderManager, UpdateState, TrancheCurrency as TrancheCurrencyT, PreConditions, Permissions as PermissionsT};
+use cfg_primitives::{BlockNumber, PoolEpochId, Moment, TrancheWeight};
+use cfg_traits::{OrderManager, UpdateState, TrancheCurrency as TrancheCurrencyT, PreConditions, PoolUpdateGuard, Permissions as PermissionsT};
 use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, PermissionRoles, Role, PoolRole, UNION},
@@ -24,14 +24,14 @@ use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	parameter_types,
-	traits::{Hooks, SortedMembers, PalletInfoAccess},
+	traits::{Contains, Hooks, SortedMembers, PalletInfoAccess},
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
-use pallet_pool_system::{pool_types::PoolChanges, tranches::TrancheInput};
+use pallet_pool_system::{pool_types::{PoolDetails, ScheduledUpdateDetails, PoolChanges}, tranches::TrancheInput};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 use pallet_pool_system::*;
 
