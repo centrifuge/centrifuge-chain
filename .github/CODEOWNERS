@@ -1,10 +1,10 @@
 # Centrifudge Code Owners
 
 # Changes to .github
-.github/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @offerijns
+.github/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
 # Changes to ci
-ci/* @mikiquantum @mustermeiszer @branan @NunoAlexandre @offerijns
+ci/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
 # Changes to the service of our chain.
 src/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
@@ -14,17 +14,17 @@ res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
 
 # Changes to specific pallets
 ## Connectors related logic
-pallets/connectors/* @NunoAlexandre
+pallets/connectors/* @NunoAlexandre @offerijns
 
 ## Rewards related logic
-pallets/rewards/* @lemunozm
-pallets/liquidity-rewards/* @lemunozm
+pallets/rewards/* @lemunozm @mikiquantum
+pallets/liquidity-rewards/* @lemunozm @mikiquantum
 
 ## Nft-sales related logic
 pallets/nft-sales/* @NunoAlexandre
 
 ## Pallet Keystore
-pallets/keystore/* @cdamian
+pallets/keystore/* @cdamian @mikiquantum
 
 ## Pallet Registry
 pallets/pool-registry/* @gruberb @mustermeiszer
