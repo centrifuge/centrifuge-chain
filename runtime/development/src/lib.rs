@@ -37,7 +37,6 @@ use cfg_types::{
 	},
 	time::TimeProvider,
 	tokens::{CustomMetadata, TrancheCurrency},
-	weights::{BlockWeightsWithRelayProof, MaximumSchedulerWeight, MessagingReservedWeight},
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -75,8 +74,11 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
-use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
+use runtime_common::{
+	fees::{DealWithFees, WeightToFee},
+	weights::{BlockWeightsWithRelayProof, MaximumSchedulerWeight, MessagingReservedWeight},
+};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

@@ -26,5 +26,4 @@ pub mod orders;
 pub mod permissions;
 pub mod time;
 pub mod tokens;
-pub mod weights;
 pub mod xcm;

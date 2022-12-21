@@ -1,10 +1,11 @@
 // Copyright 2022 Centrifuge Foundation (centrifuge.io).
-//
-// This file is part of the Centrifuge chain project.
+// This file is part of Centrifuge chain project.
+
 // Centrifuge is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version (see http://www.gnu.org/licenses).
+
 // Centrifuge is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -16,21 +17,21 @@ use cfg_primitives::constants::{
 use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
 use frame_support::{
 	dispatch::DispatchClass,
+	sp_std::marker::PhantomData,
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		Weight,
 	},
 };
 use frame_system::limits::BlockWeights;
-use sp_arithmetic::per_things::Perbill;
+use sp_arithmetic::Perbill;
 use sp_core::Get;
 
 /// Strut for Get impl of BlockWeights with BlockWeight generation with relay max_pov_size as proof size
-pub struct BlockWeightsWithRelayProof<Runtime>(sp_std::marker::PhantomData<Runtime>);
+pub struct BlockWeightsWithRelayProof<Runtime>(PhantomData<Runtime>);
 
 impl<Runtime> Get<BlockWeights> for BlockWeightsWithRelayProof<Runtime>
 where
-	Runtime: frame_system::Config,
 	Runtime: cumulus_pallet_parachain_system::Config,
 {
 	fn get() -> BlockWeights {
@@ -58,25 +59,24 @@ where
 }
 
 /// Strut for Get impl of MaximumBlockWeight with Weight using relay max_pov_size as proof size
-pub struct MaximumBlockWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
+pub struct MaximumBlockWeight<Runtime>(PhantomData<Runtime>);
 
 impl<Runtime> Get<Weight> for MaximumBlockWeight<Runtime>
 where
-	Runtime: frame_system::Config,
 	Runtime: cumulus_pallet_parachain_system::Config,
 {
 	fn get() -> Weight {
-		let max_pov_size = if cfg!(test) {
-			MAX_POV_SIZE
+		if cfg!(test) {
+			MAXIMUM_BLOCK_WEIGHT
 		} else {
-			cumulus_pallet_parachain_system::Pallet::<Runtime>::validation_data()
-				.map(|x| x.max_pov_size)
-				.unwrap_or(MAX_POV_SIZE)
-		};
-
-		MAXIMUM_BLOCK_WEIGHT
-			.set_proof_size(max_pov_size.into())
-			.into()
+			let max_pov_size =
+				cumulus_pallet_parachain_system::Pallet::<Runtime>::validation_data()
+					.map(|x| x.max_pov_size)
+					.unwrap_or(MAX_POV_SIZE);
+			MAXIMUM_BLOCK_WEIGHT
+				.set_proof_size(max_pov_size.into())
+				.into()
+		}
 	}
 }
 
@@ -84,7 +84,6 @@ pub struct MessagingReservedWeight<Runtime>(sp_std::marker::PhantomData<Runtime>
 
 impl<Runtime> Get<Weight> for MessagingReservedWeight<Runtime>
 where
-	Runtime: frame_system::Config,
 	Runtime: cumulus_pallet_parachain_system::Config,
 {
 	fn get() -> Weight {
@@ -95,7 +94,6 @@ where
 pub struct MaximumSchedulerWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
 impl<Runtime> Get<Weight> for MaximumSchedulerWeight<Runtime>
 where
-	Runtime: frame_system::Config,
 	Runtime: cumulus_pallet_parachain_system::Config,
 {
 	fn get() -> Weight {
