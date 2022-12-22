@@ -19,7 +19,7 @@
 mod tests;
 
 pub mod apis;
-pub mod weights;
+pub mod weight_params;
 
 pub mod xcm_fees {
 	use cfg_primitives::{constants::currency_decimals, types::Balance};
