@@ -29,7 +29,6 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 
-
 # local dependencies
 cfg-primitives = { path = '../primitives', default-features = false }
 cfg-traits = { path = '../traits', default-features = false }

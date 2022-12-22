@@ -42,10 +42,7 @@ use frame_support::{
 		AsEnsureOriginWithArg, ConstU32, Contains, EqualPrivilegeOnly, InstanceFilter,
 		LockIdentifier, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
 	},
-	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		ConstantMultiplier, Weight,
-	},
+	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
 	PalletId, RuntimeDebug,
 };
 use frame_system::{
@@ -79,7 +76,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, Perbill, Permill,
+	ApplyExtrinsicResult, DispatchError, DispatchResult, Permill,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]

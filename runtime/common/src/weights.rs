@@ -28,12 +28,13 @@ macro_rules! gen_weight_parameters {
 		// externalities provided... which panics.  Works for tests with provided externalities env & execute_with
 
 		// Curently have Runtime generic as we would need this to switch back from macro, though we could technically
-		// remove now, though it does provide context for the validation data source.
+		// remove now, though the impl where does provide context for which config would need to be impl for runtime
+		// to fetch the validation data for the relay max proof size.
 
 		/// Struct for Get impl of MaximumBlockWeight with Weight using relay max_pov_size as proof size.
 		pub struct MaximumBlockWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
 
-		impl<Runtime> Get<frame_support::weights::Weight> for MaximumBlockWeight<Runtime>
+		impl<Runtime> sp_core::Get<frame_support::weights::Weight> for MaximumBlockWeight<Runtime>
 		where
 			Runtime: cumulus_pallet_parachain_system::Config,
 		{
@@ -55,7 +56,7 @@ macro_rules! gen_weight_parameters {
 		/// Struct for Get impl of BlockWeights with BlockWeight generation using MaximumBlockWeight with relay proof size set.
 		pub struct BlockWeightsWithRelayProof<Runtime>(sp_std::marker::PhantomData<Runtime>);
 
-		impl<Runtime> Get<BlockWeights> for BlockWeightsWithRelayProof<Runtime>
+		impl<Runtime> sp_core::Get<BlockWeights> for BlockWeightsWithRelayProof<Runtime>
 		where
 			Runtime: cumulus_pallet_parachain_system::Config,
 		{
@@ -96,7 +97,8 @@ macro_rules! gen_weight_parameters {
 		/// Struct for Get impl of MessageingReservedWeight Weight generation using MaximumBlockWeight with relay proof size set.
 		pub struct MessagingReservedWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
 
-		impl<Runtime> Get<frame_support::weights::Weight> for MessagingReservedWeight<Runtime>
+		impl<Runtime> sp_core::Get<frame_support::weights::Weight>
+			for MessagingReservedWeight<Runtime>
 		where
 			Runtime: cumulus_pallet_parachain_system::Config,
 		{
@@ -107,7 +109,8 @@ macro_rules! gen_weight_parameters {
 
 		/// Struct for Get impl of MaximumSchedulerWeight Weight generation using MaximumBlockWeight with relay proof set.
 		pub struct MaximumSchedulerWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
-		impl<Runtime> Get<frame_support::weights::Weight> for MaximumSchedulerWeight<Runtime>
+		impl<Runtime> sp_core::Get<frame_support::weights::Weight>
+			for MaximumSchedulerWeight<Runtime>
 		where
 			Runtime: cumulus_pallet_parachain_system::Config,
 		{

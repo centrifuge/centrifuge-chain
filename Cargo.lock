@@ -9721,8 +9721,6 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
- "cumulus-pallet-parachain-system",
- "cumulus-primitives-core",
  "frame-support",
  "frame-system",
  "node-primitives",
