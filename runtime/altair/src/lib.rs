@@ -131,59 +131,21 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-/// Strut for Get impl of BlockWeights with BlockWeight generation with relay max_pov_size as proof size
-pub struct CalculateBlockWeights;
-
-impl Get<BlockWeights> for CalculateBlockWeights {
-	fn get() -> BlockWeights {
-		let max_weight = MaxBlockWeight::get();
-
-		BlockWeights::builder()
-			.base_block(BlockExecutionWeight::get())
-			.for_class(DispatchClass::all(), |weights| {
-				weights.base_extrinsic = ExtrinsicBaseWeight::get();
-			})
-			.for_class(DispatchClass::Normal, |weights| {
-				weights.max_total = Some(NORMAL_DISPATCH_RATIO * max_weight);
-			})
-			.for_class(DispatchClass::Operational, |weights| {
-				weights.max_total = Some(max_weight);
-				// Operational transactions have some extra reserved space, so that they
-				// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
-				weights.reserved = Some(max_weight - NORMAL_DISPATCH_RATIO * max_weight);
-			})
-			.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
-			// NOTE: We could think about chaning this to something that is sane default with a
-			//       error log. As we now depend on some dynamic state from the relay-chain
-			.build_or_panic()
-	}
-}
-
-/// Strut for Get impl of MaxBlockWeight with Weight using relay max_pov_size as proof size
-pub struct MaxBlockWeight;
-
-impl Get<Weight> for MaxBlockWeight {
-	fn get() -> Weight {
-		let max_pov_size = if cfg!(test) {
-			MAX_POV_SIZE
-		} else {
-			cumulus_pallet_parachain_system::Pallet::<Runtime>::validation_data()
-				.map(|x| x.max_pov_size)
-				.unwrap_or(MAX_POV_SIZE)
-		};
-
-		MAXIMUM_BLOCK_WEIGHT
-			.set_proof_size(max_pov_size.into())
-			.into()
-	}
-}
-
 parameter_types! {
-	pub const Version: RuntimeVersion = VERSION;
-	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	pub const SS58Prefix: u8 = 136;
+	  pub const Version: RuntimeVersion = VERSION;
+	  pub RuntimeBlockLength: BlockLength =
+			BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+	  pub const SS58Prefix: u8 = 136;
 }
+
+// Generates Weight params (Get impl) for Runtimes with the max proof size pulled from the relay if in an externalities provided
+// environment, and the max proof size for relay chains as defined by polkadot used if not.
+// Provides:
+// - MaximumBlockWeight: MAXIMIM_BLOCK_WEIGHT with proof size adjusted for relay chain val.
+// - BlockWeightsWithRelayProof: BlockWeights generated with using MaximumBlockWeight with relay proof size set.
+// - MessagingReservedWeight: chain messaging reserved weight using MaximumBlockWeight with relay proof size set.
+// - MaximumSchedulerWeight: max scheduler weight using MaximumBlockWeight with relay proof size set.
+gen_weight_parameters!();
 
 // system support impls
 impl frame_system::Config for Runtime {
@@ -198,7 +160,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = RuntimeBlockLength;
 	/// The index type for blocks.
 	type BlockNumber = BlockNumber;
-	type BlockWeights = CalculateBlockWeights;
+	type BlockWeights = BlockWeightsWithRelayProof<Runtime>;
 	type DbWeight = RocksDbWeight;
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
@@ -257,18 +219,13 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 	}
 }
 
-parameter_types! {
-	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-}
-
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 	type DmpMessageHandler = DmpQueue;
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
-	type ReservedDmpWeight = ReservedDmpWeight;
-	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type ReservedDmpWeight = MessagingReservedWeight<Runtime>;
+	type ReservedXcmpWeight = MessagingReservedWeight<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
@@ -546,7 +503,6 @@ impl pallet_utility::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaxBlockWeight::get();
 	pub const MaxScheduledPerBlock: u32 = 50;
 	// Retry a scheduled item every 10 blocks (2 minutes) until the preimage exists.
 	pub const NoPreimagePostponement: Option<u32> = Some(10);
@@ -554,7 +510,7 @@ parameter_types! {
 
 impl pallet_scheduler::Config for Runtime {
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
-	type MaximumWeight = MaximumSchedulerWeight;
+	type MaximumWeight = MaximumSchedulerWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type PalletsOrigin = OriginCaller;
 	type Preimages = Preimage;

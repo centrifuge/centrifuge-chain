@@ -153,13 +153,13 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 36;
 }
 
-/// Generates Weight params (Get impl) for Runtimes with the max proof size pulled from the relay if in an externalities provided
-/// environment, and the max proof size for relay chains as defined by polkadot used if not.
-/// Provides:
-/// - MaximumBlockWeight: MAXIMIM_BLOCK_WEIGHT with proof size adjusted for relay chain val.
-/// - BlockWeightsWithRelayProof: BlockWeights generated with using MaximumBlockWeight with relay proof size set.
-/// - MessagingReservedWeight: chain messaging reserved weight using MaximumBlockWeight with relay proof size set.
-/// - MaximumSchedulerWeight: max scheduler weight using MaximumBlockWeight with relay proof size set.
+// Generates Weight params (Get impl) for Runtimes with the max proof size pulled from the relay if in an externalities provided
+// environment, and the max proof size for relay chains as defined by polkadot used if not.
+// Provides:
+// - MaximumBlockWeight: MAXIMIM_BLOCK_WEIGHT with proof size adjusted for relay chain val.
+// - BlockWeightsWithRelayProof: BlockWeights generated with using MaximumBlockWeight with relay proof size set.
+// - MessagingReservedWeight: chain messaging reserved weight using MaximumBlockWeight with relay proof size set.
+// - MaximumSchedulerWeight: max scheduler weight using MaximumBlockWeight with relay proof size set.
 gen_weight_parameters!();
 
 // system support impls
