@@ -11,6 +11,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Prep build on Ubuntu
+        run: |
+          sudo apt-get install protobuf-compiler
+
       - name: Install latest nightly
         uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
