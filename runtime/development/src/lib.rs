@@ -40,8 +40,10 @@ use cfg_types::{
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
+use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
 use frame_support::{
 	construct_runtime,
+	dispatch::DispatchClass,
 	pallet_prelude::{DispatchError, DispatchResult},
 	parameter_types,
 	sp_std::marker::PhantomData,
@@ -50,7 +52,10 @@ use frame_support::{
 		InstanceFilter, LockIdentifier, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
-	weights::{constants::RocksDbWeight, ConstantMultiplier, Weight},
+	weights::{
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
+		ConstantMultiplier, Weight,
+	},
 	PalletId, RuntimeDebug,
 };
 use frame_system::{
@@ -77,13 +82,13 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use runtime_common::*;
 use runtime_common::{
 	fees::{DealWithFees, WeightToFee},
-	weights::{BlockWeightsWithRelayProof, MaximumSchedulerWeight, MessagingReservedWeight},
+	gen_weight_parameters,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_api::impl_runtime_apis;
-use sp_core::OpaqueMetadata;
+use sp_core::{Get, OpaqueMetadata};
 use sp_inherents::{CheckInherentsResult, InherentData};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -147,6 +152,15 @@ parameter_types! {
 		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub const SS58Prefix: u8 = 36;
 }
+
+/// Generates Weight params (Get impl) for Runtimes with the max proof size pulled from the relay if in an externalities provided
+/// environment, and the max proof size for relay chains as defined by polkadot used if not.
+/// Provides:
+/// - MaximumBlockWeight: MAXIMIM_BLOCK_WEIGHT with proof size adjusted for relay chain val.
+/// - BlockWeightsWithRelayProof: BlockWeights generated with using MaximumBlockWeight with relay proof size set.
+/// - MessagingReservedWeight: chain messaging reserved weight using MaximumBlockWeight with relay proof size set.
+/// - MaximumSchedulerWeight: max scheduler weight using MaximumBlockWeight with relay proof size set.
+gen_weight_parameters!();
 
 // system support impls
 impl frame_system::Config for Runtime {

@@ -11,92 +11,91 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::constants::{
-	AVERAGE_ON_INITIALIZE_RATIO, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
-};
-use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
-use frame_support::{
-	dispatch::DispatchClass,
-	sp_std::marker::PhantomData,
-	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
-		Weight,
-	},
-};
-use frame_system::limits::BlockWeights;
-use sp_arithmetic::Perbill;
-use sp_core::Get;
+/// Generates Weight params (Get impl) for Runtimes with the max proof size pulled from the relay if in an externalities provided
+/// environment, and the max proof size for relay chains as defined by polkadot used if not.
+/// Provides:
+/// - MaximumBlockWeight: MAXIMIM_BLOCK_WEIGHT with proof size adjusted for relay chain val.
+/// - BlockWeightsWithRelayProof: BlockWeights generated with using MaximumBlockWeight with relay proof size set.
+/// - MessagingReservedWeight: chain messaging reserved weight using MaximumBlockWeight with relay proof size set.
+/// - MaximumSchedulerWeight: max scheduler weight using MaximumBlockWeight with relay proof size set.
 
-/// Strut for Get impl of BlockWeights with BlockWeight generation with relay max_pov_size as proof size
-pub struct BlockWeightsWithRelayProof<Runtime>(PhantomData<Runtime>);
+#[macro_export]
+macro_rules! gen_weight_parameters {
+	() => {
+		/// Struct for Get impl of MaximumBlockWeight with Weight using relay max_pov_size as proof size.
+		pub struct MaximumBlockWeight<Runtime>(PhantomData<Runtime>);
 
-impl<Runtime> Get<BlockWeights> for BlockWeightsWithRelayProof<Runtime>
-where
-	Runtime: cumulus_pallet_parachain_system::Config,
-{
-	fn get() -> BlockWeights {
-		let max_weight = MaximumBlockWeight::<Runtime>::get();
-
-		BlockWeights::builder()
-			.base_block(BlockExecutionWeight::get())
-			.for_class(DispatchClass::all(), |weights| {
-				weights.base_extrinsic = ExtrinsicBaseWeight::get();
-			})
-			.for_class(DispatchClass::Normal, |weights| {
-				weights.max_total = Some(NORMAL_DISPATCH_RATIO * max_weight);
-			})
-			.for_class(DispatchClass::Operational, |weights| {
-				weights.max_total = Some(max_weight);
-				// Operational transactions have some extra reserved space, so that they
-				// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
-				weights.reserved = Some(max_weight - NORMAL_DISPATCH_RATIO * max_weight);
-			})
-			.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
-			// NOTE: We could think about chaning this to something that is sane default with a
-			//       error log. As we now depend on some dynamic state from the relay-chain
-			.build_or_panic()
-	}
-}
-
-/// Strut for Get impl of MaximumBlockWeight with Weight using relay max_pov_size as proof size
-pub struct MaximumBlockWeight<Runtime>(PhantomData<Runtime>);
-
-impl<Runtime> Get<Weight> for MaximumBlockWeight<Runtime>
-where
-	Runtime: cumulus_pallet_parachain_system::Config,
-{
-	fn get() -> Weight {
-		if cfg!(test) {
-			MAXIMUM_BLOCK_WEIGHT
-		} else {
-			let max_pov_size =
-				cumulus_pallet_parachain_system::Pallet::<Runtime>::validation_data()
-					.map(|x| x.max_pov_size)
-					.unwrap_or(MAX_POV_SIZE);
-			MAXIMUM_BLOCK_WEIGHT
-				.set_proof_size(max_pov_size.into())
-				.into()
+		impl<Runtime> Get<Weight> for MaximumBlockWeight<Runtime>
+		where
+			Runtime: cumulus_pallet_parachain_system::Config,
+		{
+			fn get() -> Weight {
+				if cfg!(test) {
+					MAXIMUM_BLOCK_WEIGHT
+				} else {
+					let max_pov_size =
+						cumulus_pallet_parachain_system::Pallet::<Runtime>::validation_data()
+							.map(|x| x.max_pov_size)
+							.unwrap_or(MAX_POV_SIZE);
+					MAXIMUM_BLOCK_WEIGHT
+						.set_proof_size(max_pov_size.into())
+						.into()
+				}
+			}
 		}
-	}
-}
 
-pub struct MessagingReservedWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
+		/// Struct for Get impl of BlockWeights with BlockWeight generation using MaximumBlockWeight with relay proof size set.
+		pub struct BlockWeightsWithRelayProof<Runtime>(PhantomData<Runtime>);
 
-impl<Runtime> Get<Weight> for MessagingReservedWeight<Runtime>
-where
-	Runtime: cumulus_pallet_parachain_system::Config,
-{
-	fn get() -> Weight {
-		MaximumBlockWeight::<Runtime>::get().saturating_div(4)
-	}
-}
+		impl<Runtime> Get<BlockWeights> for BlockWeightsWithRelayProof<Runtime>
+		where
+			Runtime: cumulus_pallet_parachain_system::Config,
+		{
+			fn get() -> BlockWeights {
+				let max_weight = MaximumBlockWeight::<Runtime>::get();
 
-pub struct MaximumSchedulerWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
-impl<Runtime> Get<Weight> for MaximumSchedulerWeight<Runtime>
-where
-	Runtime: cumulus_pallet_parachain_system::Config,
-{
-	fn get() -> Weight {
-		(Perbill::from_percent(80) * MaximumBlockWeight::<Runtime>::get()).into()
-	}
+				BlockWeights::builder()
+					.base_block(BlockExecutionWeight::get())
+					.for_class(DispatchClass::all(), |weights| {
+						weights.base_extrinsic = ExtrinsicBaseWeight::get();
+					})
+					.for_class(DispatchClass::Normal, |weights| {
+						weights.max_total = Some(NORMAL_DISPATCH_RATIO * max_weight);
+					})
+					.for_class(DispatchClass::Operational, |weights| {
+						weights.max_total = Some(max_weight);
+						// Operational transactions have some extra reserved space, so that they
+						// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
+						weights.reserved = Some(max_weight - NORMAL_DISPATCH_RATIO * max_weight);
+					})
+					.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
+					// NOTE: We could think about chaning this to something that is sane default with a
+					//       error log. As we now depend on some dynamic state from the relay-chain
+					.build_or_panic()
+			}
+		}
+
+		/// Struct for Get impl of MessageingReservedWeight Weight generation using MaximumBlockWeight with relay proof size set.
+		pub struct MessagingReservedWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
+
+		impl<Runtime> Get<Weight> for MessagingReservedWeight<Runtime>
+		where
+			Runtime: cumulus_pallet_parachain_system::Config,
+		{
+			fn get() -> Weight {
+				MaximumBlockWeight::<Runtime>::get().saturating_div(4)
+			}
+		}
+
+		/// Struct for Get impl of MaximumSchedulerWeight Weight generation using MaximumBlockWeight with relay proof set.
+		pub struct MaximumSchedulerWeight<Runtime>(sp_std::marker::PhantomData<Runtime>);
+		impl<Runtime> Get<Weight> for MaximumSchedulerWeight<Runtime>
+		where
+			Runtime: cumulus_pallet_parachain_system::Config,
+		{
+			fn get() -> Weight {
+				(Perbill::from_percent(80) * MaximumBlockWeight::<Runtime>::get()).into()
+			}
+		}
+	};
 }
