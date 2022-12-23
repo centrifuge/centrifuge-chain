@@ -820,6 +820,7 @@ pub mod pallet {
 						.expect("Solution exists. qed.")
 						.solution();
 
+					// Requires transactional because of this.
 					Self::do_execute_epoch(pool_id, pool, epoch, solution)?;
 					Self::deposit_event(Event::EpochExecuted {
 						pool_id,
@@ -835,7 +836,7 @@ pub mod pallet {
 					.expect("MaxTranches is u32. qed.");
 
 				// This kills the epoch info in storage.
-				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
+				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284 // Broken link
 				*epoch_info = None;
 				Ok(Some(T::WeightInfo::execute_epoch(num_tranches)).into())
 			})
@@ -943,15 +944,9 @@ pub mod pallet {
 				.checked_add(&epoch.reserve)
 				.ok_or(Error::<T>::InvalidSolution)?;
 
-			// Mostly a sanity check. This is catched above.
-			ensure!(
-				currency_available.checked_sub(&acc_redeem).is_some(),
-				Error::<T>::InsufficientCurrency
-			);
-
 			let new_reserve = currency_available
 				.checked_sub(&acc_redeem)
-				.expect("Ensures ensures there is enough liquidity in the reserve. qed.");
+				.ok_or(Error::<T>::InsufficientCurrency)?;
 
 			Self::validate_pool_constraints(
 				PoolState::Healthy,
@@ -1114,6 +1109,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// This method have to be always called from a transaction
 		fn do_execute_epoch(
 			pool_id: T::PoolId,
 			pool: &mut PoolDetailsOf<T>,

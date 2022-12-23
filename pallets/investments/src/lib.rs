@@ -459,7 +459,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(80_000_000)]
+		#[pallet::weight(80_000_000)] // Should we use a computed weights here?
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -1071,6 +1071,7 @@ where
 	}
 }
 
+// This impl seems to only be used for testing purposes.
 impl<T: Config> Investment<T::AccountId> for Pallet<T>
 where
 	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:

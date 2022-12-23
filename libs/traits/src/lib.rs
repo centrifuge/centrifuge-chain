@@ -488,6 +488,7 @@ pub trait InvestmentAccountant<AccountId> {
 	) -> Result<(), Self::Error>;
 }
 
+// This trait seems to be used only by the own Investment pallet in production.
 /// A trait that allows to retrieve information
 /// about an investment class.
 pub trait InvestmentProperties<AccountId> {
