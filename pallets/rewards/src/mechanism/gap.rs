@@ -79,7 +79,7 @@ impl<T: Config> Account<T> {
 			self.reward_tally
 		};
 
-		let tally_rpt_changes = self.get_tally_from_rpt_changes(&currency.rpt_changes)?;
+		let tally_rpt_changes = self.get_tally_from_rpt_changes(group, currency)?;
 		Ok(reward_tally.ensure_add(tally_rpt_changes)?)
 	}
 
@@ -104,7 +104,12 @@ impl<T: Config> Account<T> {
 			self.reward_tally = reward_tally;
 			self.pending_stake = T::Balance::zero();
 		}
-		self.apply_rpt_changes(&currency.rpt_changes)?;
+
+		self.last_currency_movement = currency
+			.rpt_changes
+			.len()
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
 		self.distribution_id = group.distribution_id;
 
 		Ok(())
@@ -112,25 +117,16 @@ impl<T: Config> Account<T> {
 
 	fn get_tally_from_rpt_changes(
 		&self,
-		rpt_changes: &[T::Rate],
+		group: &Group<T>,
+		currency: &Currency<T>,
 	) -> Result<T::IBalance, ArithmeticError> {
-		let rpt_to_apply = &rpt_changes[self.last_currency_movement as usize..]
+		let rpt_to_apply = &currency.rpt_changes[self.last_currency_movement as usize..]
 			.iter()
 			.try_fold(T::Rate::zero(), |a, b| a.ensure_add(*b))?;
 
-		rpt_to_apply.ensure_mul_int(T::IBalance::ensure_from(self.stake)?)
-	}
+		let stake = self.stake_updated(group, currency)?;
 
-	fn apply_rpt_changes(&mut self, rpt_changes: &[T::Rate]) -> Result<(), ArithmeticError> {
-		let tally_to_apply = self.get_tally_from_rpt_changes(rpt_changes)?;
-
-		self.reward_tally.ensure_add_assign(tally_to_apply)?;
-		self.last_currency_movement = rpt_changes
-			.len()
-			.try_into()
-			.map_err(|_| ArithmeticError::Overflow)?;
-
-		Ok(())
+		rpt_to_apply.ensure_mul_int(T::IBalance::ensure_from(stake)?)
 	}
 }
 
@@ -221,16 +217,21 @@ pub mod pallet {
 		type Group = Group<T>;
 		type MaxCurrencyMovements = T::MaxCurrencyMovements;
 
+		fn is_ready(group: &Self::Group) -> bool {
+			group.total_stake > Self::Balance::zero()
+		}
+
 		fn reward_group(
 			group: &mut Self::Group,
 			amount: Self::Balance,
 		) -> Result<Self::Balance, DispatchError> {
-			let mut reward = Self::Balance::zero();
+			let mut reward_used = Self::Balance::zero();
 
 			if group.total_stake > T::Balance::zero() {
 				let rate = T::Rate::ensure_from_rational(amount, group.total_stake)?;
 				group.rpt.ensure_add_assign(rate)?;
-				reward = amount;
+
+				reward_used = amount;
 			}
 
 			group
@@ -246,7 +247,7 @@ pub mod pallet {
 				},
 			)?;
 
-			Ok(reward)
+			Ok(reward_used)
 		}
 
 		fn deposit_stake(
@@ -254,7 +255,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			account.update(group, currency)?;
 
 			account.pending_stake.ensure_add_assign(amount)?;
@@ -270,7 +271,7 @@ pub mod pallet {
 			currency: &mut Self::Currency,
 			group: &mut Self::Group,
 			amount: Self::Balance,
-		) -> Result<(), DispatchError> {
+		) -> DispatchResult {
 			account.update(group, currency)?;
 
 			let pending_amount = amount.min(account.pending_stake);
