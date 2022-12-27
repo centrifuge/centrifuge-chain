@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 use std::marker::PhantomData;
 
-use cfg_primitives::{BlockNumber, Moment, PoolEpochId, TrancheWeight};
+use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
 use cfg_traits::{
 	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT, UpdateState,
@@ -26,6 +26,7 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	parameter_types,
 	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
+	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
@@ -54,7 +55,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = u64;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = BlockHashCount;
@@ -127,6 +128,12 @@ parameter_types! {
 	pub const MaxTokenSymbolLength: u32 = 32;
 
 	pub const PoolDeposit: Balance = 1 * CURRENCY;
+}
+
+impl cfg_test_utils::mocks::nav::Config for Test {
+	type Balance = Balance;
+	type ClassId = CollectionId;
+	type PoolId = PoolId;
 }
 
 impl pallet_pool_system::Config for Test {
@@ -306,6 +313,8 @@ impl Contains<CurrencyId> for PoolCurrency {
 	}
 }
 
+impl parachain_info::Config for Test {}
+
 pub struct UpdateGuard;
 impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Moment;
@@ -328,9 +337,20 @@ impl PoolUpdateGuard for UpdateGuard {
 	}
 }
 
+impl cfg_test_utils::mocks::order_manager::Config for Test {
+	type Accountant = PoolSystem;
+	type FundsAccount = FundsAccount;
+	type InvestmentId = TrancheCurrency;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type Tokens = OrmlTokens;
+	type TrancheId = TrancheId;
+}
+
 // Parameterize balances pallet
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
+	pub const FundsAccount: PalletId = cfg_test_utils::TEST_PALLET_ID;
 }
 
 // Implement balances pallet configuration for mock runtime
