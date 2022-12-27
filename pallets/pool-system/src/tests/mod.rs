@@ -47,7 +47,7 @@ use crate::{
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches = Tranches::new::<TT>(
+		let tranches = Tranches::new(
 			0,
 			std::iter::repeat(Tranche {
 				..Default::default()
@@ -138,8 +138,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			currency: TrancheCurrency::generate(0, [3u8; 16]),
 			..Default::default()
 		};
-		let tranches =
-			Tranches::new::<TT>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
+		let tranches = Tranches::new(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
@@ -242,8 +241,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			tranche_type: TrancheType::Residual,
 			..Default::default()
 		};
-		let tranches =
-			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+		let tranches = Tranches::new(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
@@ -345,8 +343,7 @@ fn pool_constraints_pass() {
 			currency: TrancheCurrency::generate(0, [0u8; 16]),
 			..Default::default()
 		};
-		let tranches =
-			Tranches::new::<TT>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
+		let tranches = Tranches::new(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()

@@ -816,7 +816,9 @@ where
 		self.tranches
 	}
 
-	pub fn non_residual_tranches(&self) -> Option<&[Tranche<Balance, Rate, Weight, CurrencyId>]> {
+	pub fn non_residual_tranches(
+		&self,
+	) -> Option<&[Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
 		if let Some((_head, tail)) = self.residual_top_slice().split_first() {
 			Some(tail)
 		} else {
@@ -826,7 +828,7 @@ where
 
 	pub fn non_residual_tranches_mut(
 		&mut self,
-	) -> Option<&mut [Tranche<Balance, Rate, Weight, CurrencyId>]> {
+	) -> Option<&mut [Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
 		if let Some((_head, tail)) = self.residual_top_slice_mut().split_first_mut() {
 			Some(tail)
 		} else {
@@ -834,7 +836,7 @@ where
 		}
 	}
 
-	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, CurrencyId>> {
+	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		if let Some((head, _tail)) = self.residual_top_slice().split_first() {
 			Some(head)
 		} else {
@@ -844,7 +846,7 @@ where
 
 	pub fn residual_tranche_mut(
 		&mut self,
-	) -> Option<&mut Tranche<Balance, Rate, Weight, CurrencyId>> {
+	) -> Option<&mut Tranche<Balance, Rate, Weight, TrancheCurrency>> {
 		if let Some((head, _tail)) = self.residual_top_slice_mut().split_first_mut() {
 			Some(head)
 		} else {
@@ -889,38 +891,6 @@ where
 			.try_fold(Balance::zero(), |sum, tranche| {
 				sum.ensure_add(tranche.debt)?.ensure_add(tranche.reserve)
 			})?)
-	}
-
-	pub fn outstanding_investments(&self) -> Vec<Balance> {
-		self.residual_top_slice()
-			.iter()
-			.map(|tranche| tranche.outstanding_invest_orders)
-			.collect()
-	}
-
-	pub fn acc_outstanding_investments(&self) -> Result<Balance, DispatchError> {
-		self.residual_top_slice()
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_invest_orders))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn outstanding_redemptions(&self) -> Vec<Balance> {
-		self.residual_top_slice()
-			.iter()
-			.map(|tranche| tranche.outstanding_redeem_orders)
-			.collect()
-	}
-
-	pub fn acc_outstanding_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.residual_top_slice()
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_redeem_orders))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
 	}
 
 	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
@@ -1565,8 +1535,8 @@ pub mod test {
 	type Rate = sp_arithmetic::FixedU128;
 	type Weight = u128;
 	type TTrancheType = TrancheType<Rate>;
-	type TTranche = Tranche<Balance, Rate, Weight, CurrencyId>;
-	type TTranches = Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>;
+	type TTranche = Tranche<Balance, Rate, Weight, TrancheCurrency>;
+	type TTranches = Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>;
 
 	const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1575,11 +1545,11 @@ pub mod test {
 
 	struct TrancheTokenImpl;
 
-	impl TrancheTokenT<PoolId, TrancheId, CurrencyId> for TrancheTokenImpl {
-		fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId {
-			CurrencyId::Tranche(pool, tranche)
-		}
-	}
+	// impl TrancheCurrencyT<PoolId, TrancheId> for TrancheTokenImpl {
+	// 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> TrancheCurrency {
+	// 		TrancheCurrencyT::Tranche(pool, tranche)
+	// 	}
+	// }
 
 	fn residual(id: u8) -> TTranche {
 		residual_base(id, 0)
@@ -1589,9 +1559,7 @@ pub mod test {
 		TTranche {
 			tranche_type: TrancheType::Residual,
 			seniority: seniority,
-			currency: CurrencyId::Tranche(DEFAULT_POOL_ID, [id; 16]),
-			outstanding_invest_orders: 0,
-			outstanding_redeem_orders: 0,
+			currency: TrancheCurrency::generate(DEFAULT_POOL_ID, [id; 16]),
 			debt: 0,
 			reserve: 0,
 			loss: 0,
@@ -1633,9 +1601,7 @@ pub mod test {
 				min_risk_buffer,
 			},
 			seniority: seniority,
-			currency: CurrencyId::Tranche(DEFAULT_POOL_ID, [id; 16]),
-			outstanding_invest_orders: 0,
-			outstanding_redeem_orders: 0,
+			currency: TrancheCurrency::generate(DEFAULT_POOL_ID, [id; 16]),
 			debt: 0,
 			reserve: 0,
 			loss: 0,
@@ -1670,22 +1636,23 @@ pub mod test {
 	}
 
 	fn tranche_to_epoch_execution_tranche(
-		tranche: Tranche<Balance, Rate, Weight, CurrencyId>,
-	) -> EpochExecutionTranche<Balance, BalanceRatio, Weight> {
+		tranche: Tranche<Balance, Rate, Weight, TrancheCurrency>,
+	) -> EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency> {
 		EpochExecutionTranche {
 			supply: tranche
 				.reserve
 				.checked_add(tranche.debt)
 				.expect("Test EpochExecutionTranche supply calc overflow"),
 			price: One::one(),
-			invest: tranche.outstanding_invest_orders,
-			redeem: tranche.outstanding_redeem_orders,
+			invest: 0,
+			redeem: 0,
 			seniority: tranche.seniority,
 			..Default::default()
 		}
 	}
 
-	fn default_epoch_tranches() -> EpochExecutionTranches<Balance, BalanceRatio, Weight> {
+	fn default_epoch_tranches(
+	) -> EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency> {
 		let epoch_tranches = default_tranches_with_seniority()
 			.into_tranches()
 			.into_iter()
@@ -1850,15 +1817,15 @@ pub mod test {
 			let tranches = default_tranches();
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(0)),
-				Some(CurrencyId::Tranche(DEFAULT_POOL_ID, [0u8; 16]))
+				Some(TrancheCurrency::Tranche(DEFAULT_POOL_ID, [0u8; 16]))
 			);
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(1)),
-				Some(CurrencyId::Tranche(DEFAULT_POOL_ID, [1u8; 16]))
+				Some(TrancheCurrency::Tranche(DEFAULT_POOL_ID, [1u8; 16]))
 			);
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(2)),
-				Some(CurrencyId::Tranche(DEFAULT_POOL_ID, [2u8; 16]))
+				Some(TrancheCurrency::Tranche(DEFAULT_POOL_ID, [2u8; 16]))
 			);
 			assert_eq!(tranches.tranche_currency(TrancheLoc::Index(3)), None);
 		}
