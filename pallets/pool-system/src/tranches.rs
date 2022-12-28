@@ -124,7 +124,7 @@ where
 					interest_rate_per_sec: ref interest_next,
 					..
 				},
-			) => interest_next >= interest_prev,
+			) => interest_prev >= interest_next,
 		}
 	}
 }
