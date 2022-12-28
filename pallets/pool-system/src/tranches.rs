@@ -334,7 +334,9 @@ impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> 
 				PoolId,
 			>::id_from_salt(salt));
 			salt = (
-				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
+				index
+					.checked_add(1)
+					.ok_or(ArithmeticError::Overflow)?
 					.try_into()
 					.map_err(|_| ArithmeticError::Overflow)?,
 				pool,
