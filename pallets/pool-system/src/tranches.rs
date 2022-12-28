@@ -1712,21 +1712,6 @@ pub mod test {
 		use super::*;
 
 		#[test]
-		fn tranche_order_as_currency_works() {
-			let mut tranche = TTranche::default();
-			tranche.outstanding_redeem_orders = 100 * ONE_IN_CURRENCY;
-			tranche.outstanding_invest_orders = 50 * ONE_IN_CURRENCY;
-
-			// Tranche token cost a tenth 1.1 per pool currency each.
-			let price_per_tranche_token = Rate::saturating_from_rational(110, 100);
-
-			let (invest, redeem) = tranche.order_as_currency(&price_per_tranche_token).unwrap();
-
-			assert_eq!(invest, 50 * ONE_IN_CURRENCY);
-			assert_eq!(redeem, 110 * ONE_IN_CURRENCY)
-		}
-
-		#[test]
 		fn tranche_balance_is_debt_and_reserve() {
 			let mut tranche = TTranche::default();
 			tranche.debt = 100;
@@ -1825,15 +1810,15 @@ pub mod test {
 			let tranches = default_tranches();
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(0)),
-				Some(TrancheCurrency::Tranche(DEFAULT_POOL_ID, [0u8; 16]))
+				Some(TrancheCurrency::generate(DEFAULT_POOL_ID, [0u8; 16]))
 			);
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(1)),
-				Some(TrancheCurrency::Tranche(DEFAULT_POOL_ID, [1u8; 16]))
+				Some(TrancheCurrency::generate(DEFAULT_POOL_ID, [1u8; 16]))
 			);
 			assert_eq!(
 				tranches.tranche_currency(TrancheLoc::Index(2)),
-				Some(TrancheCurrency::Tranche(DEFAULT_POOL_ID, [2u8; 16]))
+				Some(TrancheCurrency::generate(DEFAULT_POOL_ID, [2u8; 16]))
 			);
 			assert_eq!(tranches.tranche_currency(TrancheLoc::Index(3)), None);
 		}
