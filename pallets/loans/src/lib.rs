@@ -41,7 +41,7 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::OriginFor;
-use loan_type::LoanType;
+use valuation_method::ValuationMethod;
 pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ pub mod benchmarking;
 pub(crate) mod test_utils;
 
 pub mod functions;
-pub mod loan_type;
+pub mod valuation_method;
 pub mod math;
 pub mod types;
 pub mod weights;
@@ -261,7 +261,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			interest_rate_per_sec: T::Rate,
-			loan_type: LoanType<T::Rate, T::Balance>,
+			valuation_method: ValuationMethod<T::Rate, T::Balance>,
 		},
 		/// An amount was borrowed for a loan.
 		Borrowed {
@@ -315,7 +315,7 @@ pub mod pallet {
 		/// Emits when tries to price a closed loan
 		LoanIsClosed,
 		/// Emits when loan type given is not valid
-		LoanTypeInvalid,
+		ValuationMethodInvalid,
 		/// Emits when operation is done on an inactive loan
 		LoanNotActive,
 		/// Emits when borrow and repay happens in the same block
@@ -537,7 +537,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			interest_rate_per_year: T::Rate,
-			loan_type: LoanType<T::Rate, T::Balance>,
+			valuation_method: ValuationMethod<T::Rate, T::Balance>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
@@ -554,7 +554,7 @@ pub mod pallet {
 								pool_id,
 								loan_id,
 								interest_rate_per_year,
-								loan_type,
+								valuation_method,
 							);
 
 							loan.status = LoanStatus::Active;
@@ -566,7 +566,7 @@ pub mod pallet {
 								pool_id,
 								loan_id,
 								interest_rate_per_year,
-								loan_type,
+								valuation_method,
 							)
 						}
 						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsClosed)?,
@@ -578,7 +578,7 @@ pub mod pallet {
 				pool_id,
 				loan_id,
 				interest_rate_per_sec,
-				loan_type,
+				valuation_method,
 			});
 
 			Ok(Some(T::WeightInfo::price(active_count)).into())

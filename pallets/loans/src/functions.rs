@@ -158,16 +158,16 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		interest_rate_per_year: T::Rate,
-		loan_type: LoanType<T::Rate, T::Balance>,
+		valuation_method: ValuationMethod<T::Rate, T::Balance>,
 	) -> Result<(u32, T::Rate), DispatchError> {
 		let now = Self::now();
-		ensure!(loan_type.is_valid(now), Error::<T>::LoanValueInvalid);
+		ensure!(valuation_method.is_valid(now), Error::<T>::LoanValueInvalid);
 
 		let interest_rate_per_sec =
 			T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?;
 		let active_loan = PricedLoanDetails {
 			loan_id,
-			loan_type,
+			valuation_method,
 			interest_rate_per_sec,
 			origination_date: None,
 			normalized_debt: Zero::zero(),
@@ -196,10 +196,10 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		interest_rate_per_year: T::Rate,
-		loan_type: LoanType<T::Rate, T::Balance>,
+		valuation_method: ValuationMethod<T::Rate, T::Balance>,
 	) -> Result<(u32, T::Rate), DispatchError> {
 		let now = Self::now();
-		ensure!(loan_type.is_valid(now), Error::<T>::LoanValueInvalid);
+		ensure!(valuation_method.is_valid(now), Error::<T>::LoanValueInvalid);
 
 		let interest_rate_per_sec =
 			T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?;
@@ -228,7 +228,7 @@ impl<T: Config> Pallet<T> {
 
 				T::InterestAccrual::unreference_rate(active_loan.interest_rate_per_sec)?;
 
-				active_loan.loan_type = loan_type;
+				active_loan.valuation_method = valuation_method;
 				active_loan.interest_rate_per_sec = interest_rate_per_sec;
 				active_loan.normalized_debt = normalized_debt;
 				active_loan.last_updated = now;
@@ -369,7 +369,7 @@ impl<T: Config> Pallet<T> {
 
 				// ensure maturity date has not passed if the loan has a maturity date
 				let now: Moment = Self::now();
-				let valid = match active_loan.loan_type.maturity_date() {
+				let valid = match active_loan.valuation_method.maturity_date() {
 					Some(md) => md > now,
 					None => true,
 				};
@@ -679,9 +679,9 @@ impl<T: Config> Pallet<T> {
 						ensure!(!is_written_off_by_admin, Error::<T>::WrittenOffByAdmin);
 
 						let maturity_date = active_loan
-							.loan_type
+							.valuation_method
 							.maturity_date()
-							.ok_or(Error::<T>::LoanTypeInvalid)?;
+							.ok_or(Error::<T>::ValuationMethodInvalid)?;
 
 						// ensure loan's maturity date has passed
 						let now = Self::now();

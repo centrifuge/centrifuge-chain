@@ -23,7 +23,7 @@ use frame_support::{
 	assert_err, assert_ok,
 	traits::{fungibles::Inspect, Hooks},
 };
-use loan_type::{BulletLoan, LoanType};
+use valuation_method::{DiscountedCashFlows, ValuationMethod};
 use pallet_loans::Event as LoanEvent;
 use pallet_pool_system::pool_types::PoolLocator;
 use sp_arithmetic::{traits::checked_pow, FixedPointNumber};
@@ -35,7 +35,7 @@ use sp_runtime::{
 use super::*;
 use crate as pallet_loans;
 use crate::{
-	loan_type::{CreditLine, CreditLineWithMaturity},
+	valuation_method::{OutstandingDebt, OutstandingDebtWithMaturity},
 	mock::{
 		Borrower, InterestAccrual, LoanAdmin, Loans, OrderManager, PoolAdmin, Runtime,
 		RuntimeEvent as MockEvents, RuntimeOrigin, TestExternalitiesBuilder, Timestamp, Tokens,
@@ -167,8 +167,8 @@ where
 	(pool_id, Asset(loan_nft_class_id, loan_id), collateral)
 }
 
-fn default_bullet_loan_params() -> LoanType<Rate, Balance> {
-	LoanType::BulletLoan(BulletLoan::new(
+fn default_bullet_loan_params() -> ValuationMethod<Rate, Balance> {
+	ValuationMethod::DiscountedCashFlows(DiscountedCashFlows::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100),
 		// probability of default is 4%
@@ -184,8 +184,8 @@ fn default_bullet_loan_params() -> LoanType<Rate, Balance> {
 	))
 }
 
-fn default_credit_line_params() -> LoanType<Rate, Balance> {
-	LoanType::CreditLine(CreditLine::new(
+fn default_credit_line_params() -> ValuationMethod<Rate, Balance> {
+	ValuationMethod::OutstandingDebt(OutstandingDebt::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100),
 		// collateral value
@@ -193,8 +193,8 @@ fn default_credit_line_params() -> LoanType<Rate, Balance> {
 	))
 }
 
-fn default_credit_line_with_maturity_params() -> LoanType<Rate, Balance> {
-	LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
+fn default_credit_line_with_maturity_params() -> ValuationMethod<Rate, Balance> {
+	ValuationMethod::OutstandingDebtWithMaturity(OutstandingDebtWithMaturity::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100),
 		// probability of default is 4%
@@ -216,7 +216,7 @@ fn price_test_loan<T>(
 	loan_id: T::LoanId,
 	rpy: Rate,
 	rps: Rate,
-	loan_type: LoanType<Rate, Balance>,
+	valuation_method: ValuationMethod<Rate, Balance>,
 ) where
 	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
@@ -227,7 +227,7 @@ fn price_test_loan<T>(
 		pool_id,
 		loan_id,
 		rpy,
-		loan_type,
+		valuation_method,
 	);
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
@@ -247,7 +247,7 @@ fn price_test_loan<T>(
 		Loans::get_active_loan(pool_id, loan_id).expect("PricedLoanDetails should be present");
 	assert_eq!(loan.status, LoanStatus::Active);
 	assert_eq!(active_loan.interest_rate_per_sec, rps);
-	assert_eq!(active_loan.loan_type, loan_type);
+	assert_eq!(active_loan.valuation_method, valuation_method);
 	assert_eq!(active_loan.max_borrow_amount(0), 100 * USD);
 	assert_eq!(active_loan.write_off_status, WriteOffStatus::None);
 }
@@ -256,54 +256,54 @@ fn price_bullet_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, Rate, LoanType<Rate, Balance>)
+) -> (Rate, Rate, ValuationMethod<Rate, Balance>)
 where
 	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
-	let loan_type = default_bullet_loan_params();
+	let valuation_method = default_bullet_loan_params();
 	// interest rate is 5%
 	let rpy = Rate::saturating_from_rational(5, 100);
 	let rps = math::interest_rate_per_sec(rpy).unwrap();
-	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, loan_type);
-	(rpy, rps, loan_type)
+	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, valuation_method);
+	(rpy, rps, valuation_method)
 }
 
 fn price_credit_line_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, Rate, LoanType<Rate, Balance>)
+) -> (Rate, Rate, ValuationMethod<Rate, Balance>)
 where
 	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
-	let loan_type = default_credit_line_params();
+	let valuation_method = default_credit_line_params();
 	// interest rate is 5%
 	let rpy = Rate::saturating_from_rational(5, 100);
 	let rps = math::interest_rate_per_sec(rpy).unwrap();
-	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, loan_type);
-	(rpy, rps, loan_type)
+	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, valuation_method);
+	(rpy, rps, valuation_method)
 }
 
 fn price_credit_line_with_maturity_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, Rate, LoanType<Rate, Balance>)
+) -> (Rate, Rate, ValuationMethod<Rate, Balance>)
 where
 	T: pallet_pool_system::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
-	let loan_type = default_credit_line_with_maturity_params();
+	let valuation_method = default_credit_line_with_maturity_params();
 	// interest rate is 5%
 	let rpy = Rate::saturating_from_rational(5, 100);
 	let rps = math::interest_rate_per_sec(rpy).unwrap();
-	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, loan_type);
-	(rpy, rps, loan_type)
+	price_test_loan::<T>(admin, pool_id, loan_id, rpy, rps, valuation_method);
+	(rpy, rps, valuation_method)
 }
 
 fn close_test_loan<T>(
@@ -391,7 +391,7 @@ fn test_price_and_reprice_loan() {
 			let (pool_id, loan, _collateral) = issue_test_loan::<Runtime>(0, borrower);
 
 			// successful pricing
-			let (rate, _, loan_type) = price_bullet_loan::<Runtime>(borrower, pool_id, loan.1);
+			let (rate, _, valuation_method) = price_bullet_loan::<Runtime>(borrower, pool_id, loan.1);
 
 			// princing an active loan must be done only with LoanAdmin permission.
 			let res = Loans::price(
@@ -399,7 +399,7 @@ fn test_price_and_reprice_loan() {
 				pool_id,
 				loan.1,
 				rate,
-				loan_type,
+				valuation_method,
 			);
 			assert_err!(res, BadOrigin);
 
@@ -419,7 +419,7 @@ fn test_price_and_reprice_loan() {
 				pool_id,
 				loan.1,
 				rate,
-				loan_type,
+				valuation_method,
 			);
 			assert_ok!(res);
 		});
@@ -437,7 +437,7 @@ fn test_price_bullet_loan() {
 			let loan_id = loan.1;
 
 			// maturity date in the past
-			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+			let valuation_method = ValuationMethod::DiscountedCashFlows(DiscountedCashFlows::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
 				// probability of default is 4%
@@ -459,12 +459,12 @@ fn test_price_bullet_loan() {
 				pool_id,
 				loan_id,
 				rp,
-				loan_type,
+				valuation_method,
 			);
 			assert_err!(res, Error::<Runtime>::LoanValueInvalid);
 
 			// interest_rate_per_sec is invalid
-			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+			let valuation_method = ValuationMethod::DiscountedCashFlows(DiscountedCashFlows::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
 				// probability of default is 4%
@@ -484,7 +484,7 @@ fn test_price_bullet_loan() {
 				pool_id,
 				loan_id,
 				rp,
-				loan_type,
+				valuation_method,
 			);
 			assert_err!(res, pallet_interest_accrual::Error::<Runtime>::InvalidRate);
 		})
@@ -503,7 +503,7 @@ fn test_price_credit_line_with_maturity_loan() {
 			let loan_id = loan.1;
 
 			// maturity date in the past
-			let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
+			let valuation_method = ValuationMethod::OutstandingDebtWithMaturity(OutstandingDebtWithMaturity::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
 				// probability of default is 4%
@@ -525,12 +525,12 @@ fn test_price_credit_line_with_maturity_loan() {
 				pool_id,
 				loan_id,
 				rp,
-				loan_type,
+				valuation_method,
 			);
 			assert_err!(res, Error::<Runtime>::LoanValueInvalid);
 
 			// interest_rate_per_sec is invalid
-			let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
+			let valuation_method = ValuationMethod::OutstandingDebtWithMaturity(OutstandingDebtWithMaturity::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
 				// probability of default is 4%
@@ -550,7 +550,7 @@ fn test_price_credit_line_with_maturity_loan() {
 				pool_id,
 				loan_id,
 				rp,
-				loan_type,
+				valuation_method,
 			);
 			assert_err!(res, pallet_interest_accrual::Error::<Runtime>::InvalidRate);
 		})
@@ -569,7 +569,7 @@ fn test_price_credit_line_loan() {
 			let loan_id = loan.1;
 
 			// interest_rate_per_sec is invalid
-			let loan_type = LoanType::CreditLine(CreditLine::new(
+			let valuation_method = ValuationMethod::OutstandingDebt(OutstandingDebt::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
 				// collateral value
@@ -581,7 +581,7 @@ fn test_price_credit_line_loan() {
 				pool_id,
 				loan_id,
 				rp,
-				loan_type,
+				valuation_method,
 			);
 			assert_err!(res, pallet_interest_accrual::Error::<Runtime>::InvalidRate);
 		})
@@ -638,7 +638,7 @@ macro_rules! test_borrow_loan {
 
 				// successful pricing
 				let loan_id = loan.1;
-				let (_, rate, loan_type) = $price_loan::<Runtime>(borrower, pool_id, loan_id);
+				let (_, rate, valuation_method) = $price_loan::<Runtime>(borrower, pool_id, loan_id);
 
 				// borrow 50 first
 				Timestamp::set_timestamp(1 * 1000);
@@ -732,7 +732,7 @@ macro_rules! test_borrow_loan {
 
 				// try to borrow after maturity date
 				if $maturity_check {
-					let now = loan_type.maturity_date().unwrap() + 1;
+					let now = valuation_method.maturity_date().unwrap() + 1;
 					Timestamp::set_timestamp(now * 1000);
 					InterestAccrual::on_initialize(0);
 					let res = Loans::borrow(
@@ -1665,7 +1665,7 @@ fn test_write_off_credit_line_with_maturity_loan() {
 	test_write_off_maturity_loan!(price_credit_line_with_maturity_loan)
 }
 
-macro_rules! test_admin_write_off_loan_type {
+macro_rules! test_admin_write_off_valuation_method {
 	($price_loan:ident) => {
 		TestExternalitiesBuilder::default()
 			.build()
@@ -1786,20 +1786,20 @@ macro_rules! test_admin_write_off_loan_type {
 
 #[test]
 fn test_admin_write_off_bullet_loan() {
-	test_admin_write_off_loan_type!(price_bullet_loan)
+	test_admin_write_off_valuation_method!(price_bullet_loan)
 }
 
 #[test]
 fn test_admin_write_off_credit_line_with_maturity_loan() {
-	test_admin_write_off_loan_type!(price_credit_line_with_maturity_loan)
+	test_admin_write_off_valuation_method!(price_credit_line_with_maturity_loan)
 }
 
 #[test]
 fn test_admin_write_off_credit_line_loan() {
-	test_admin_write_off_loan_type!(price_credit_line_loan)
+	test_admin_write_off_valuation_method!(price_credit_line_loan)
 }
 
-macro_rules! test_close_written_off_loan_type {
+macro_rules! test_close_written_off_valuation_method {
 	($price_loan:ident, $maturity_checks:expr) => {
 		TestExternalitiesBuilder::default()
 			.build()
@@ -1952,17 +1952,17 @@ macro_rules! test_close_written_off_loan_type {
 
 #[test]
 fn test_close_written_off_bullet_loan() {
-	test_close_written_off_loan_type!(price_bullet_loan, true)
+	test_close_written_off_valuation_method!(price_bullet_loan, true)
 }
 
 #[test]
 fn test_close_written_off_credit_line_with_maturity_loan() {
-	test_close_written_off_loan_type!(price_credit_line_with_maturity_loan, true)
+	test_close_written_off_valuation_method!(price_credit_line_with_maturity_loan, true)
 }
 
 #[test]
 fn test_close_written_off_credit_line_loan() {
-	test_close_written_off_loan_type!(price_credit_line_loan, false)
+	test_close_written_off_valuation_method!(price_credit_line_loan, false)
 }
 
 macro_rules! repay_too_early {

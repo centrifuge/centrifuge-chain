@@ -39,7 +39,7 @@ use test_utils::{
 
 use super::*;
 use crate::{
-	loan_type::{BulletLoan, CreditLineWithMaturity},
+	valuation_method::{DiscountedCashFlows, OutstandingDebtWithMaturity},
 	test_utils::{initialise_test_pool, FundsAccount},
 	types::WriteOffGroupInput,
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
@@ -261,7 +261,7 @@ fn activate_test_loan_with_rate<T: Config>(
 	<T as LoanConfig>::Rate: From<Rate>,
 	<T as LoanConfig>::Balance: From<u128>,
 {
-	let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
+	let valuation_method = ValuationMethod::OutstandingDebtWithMaturity(OutstandingDebtWithMaturity::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100).into(),
 		// probability of default is 4%
@@ -283,7 +283,7 @@ fn activate_test_loan_with_rate<T: Config>(
 		pool_id,
 		loan_id,
 		rp,
-		loan_type,
+		valuation_method,
 	)
 	.expect("loan activation should not fail");
 }
@@ -376,7 +376,7 @@ benchmarks! {
 		// very end of the list.
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
-		let loan_type = LoanType::BulletLoan(BulletLoan::new(
+		let valuation_method = ValuationMethod::DiscountedCashFlows(DiscountedCashFlows::new(
 			// advance rate 80%
 			Rate::saturating_from_rational(80, 100).into(),
 			// probability of default is 4%
@@ -393,12 +393,12 @@ benchmarks! {
 		// interest rate is 5%
 		let interest_rate_per_year: <T as pallet::Config>::Rate = Rate::saturating_from_rational(5, 100).into();
 		let interest_rate_per_sec: <T as pallet::Config>::Rate = math::interest_rate_per_sec(interest_rate_per_year).unwrap().into();
-	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_year, loan_type)
+	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_year, valuation_method)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
+		assert_last_event::<T, <T as LoanConfig>::RuntimeEvent>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, valuation_method }.into());
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).expect("Active loan info should be present");
-		assert_eq!(active_loan.loan_type, loan_type);
+		assert_eq!(active_loan.valuation_method, valuation_method);
 		assert_eq!(loan.status, LoanStatus::Active);
 		assert_eq!(active_loan.interest_rate_per_sec, interest_rate_per_sec);
 	}

@@ -143,11 +143,74 @@ pub struct LoanDetails<Asset, BlockNumber> {
 	pub(crate) status: LoanStatus<BlockNumber>,
 }
 
+// TODO: implement Yearly, Quarterly, Daily
+pub enum InterestPeriod {
+	None,
+	// Monthly
+}
+
+// TODO: implement Mid
+pub enum InterestEvent {
+	End
+}
+
+// TODO: implement StraightLine, Annuity
+enum AmortizationSchedule {
+  None
+}
+
+pub struct RepaymentSchedule<Moment> {
+	/// Expected repayment date for remaining debt
+	maturity_date: Moment,
+	/// Period at which interest is paid
+	interest_period: InterestPeriod,
+	/// Time of the interest period when the payment is made
+  interest_event: Option<InterestEvent>,
+	/// How much of the initially borrowed amount is paid back during interest payments
+	amortization_schedule: AmortizationSchedule
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub enum OnceOrMultiple {
+	Once,
+	Multiple
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub enum MaxBorrowAmount {
+	CumulativeBorrowedAmount,
+	OutstandingDebt,
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub struct LoanRestrictions<Rate> {
+  borrows: OnceOrMultiple,
+  repayments: OnceOrMultiple,
+	advance_rate: Rate,
+  max_borrow_amount: MaxBorrowAmount
+}
+
+impl Default for LoanRestrictions {
+	fn default() -> Self {
+		Self {
+			borrows: OnceOrMultiple::Multiple,
+			repayments: OnceOrMultiple::Multiple,
+			advance_rate: Rate::one(),
+			max_borrow_amount: MaxBorrowAmount::CumulativeBorrowedAmount
+		}
+	}
+}
+
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
-	pub(crate) loan_type: LoanType<Rate, Balance>,
+
+	pub(crate) schedule: RepaymentSchedule<Moment>,
+	pub(crate) valuation_method: ValuationMethod<Rate, Balance>,
+	pub(crate) restrictions: LoanRestrictions,
+
+	pub(crate) collateral_value: Balance,
 
 	// interest rate per second
 	pub(crate) interest_rate_per_sec: Rate,
@@ -196,22 +259,22 @@ where
 				debt.checked_sub(&write_off_amount)?
 			}
 		};
-		match self.loan_type {
-			LoanType::BulletLoan(bl) => {
+		match self.valuation_method {
+			ValuationMethod::DiscountedCashFlows(bl) => {
 				bl.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
 			}
-			LoanType::CreditLine(cl) => cl.present_value(debt),
-			LoanType::CreditLineWithMaturity(clm) => {
+			ValuationMethod::OutstandingDebt(cl) => cl.present_value(debt),
+			ValuationMethod::OutstandingDebtWithMaturity(clm) => {
 				clm.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
 			}
 		}
 	}
 
 	pub fn max_borrow_amount(&self, debt: Balance) -> Balance {
-		match self.loan_type {
-			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
-			LoanType::CreditLine(cl) => cl.max_borrow_amount(debt),
-			LoanType::CreditLineWithMaturity(clm) => clm.max_borrow_amount(debt),
+		match self.valuation_method {
+			ValuationMethod::DiscountedCashFlows(bl) => bl.max_borrow_amount(self.total_borrowed),
+			ValuationMethod::OutstandingDebt(cl) => cl.max_borrow_amount(debt),
+			ValuationMethod::OutstandingDebtWithMaturity(clm) => clm.max_borrow_amount(debt),
 		}
 		// always fallback to zero max_borrow_amount
 		.unwrap_or_else(Zero::zero)

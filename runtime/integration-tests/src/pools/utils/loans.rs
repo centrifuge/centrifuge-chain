@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use cfg_primitives::{AccountId, Address, Balance, CollectionId, ItemId, PoolId};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
-	loan_type::{BulletLoan, LoanType},
+	valuation_method::{DiscountedCashFlows, ValuationMethod},
 	math::interest_rate_per_sec,
 	types::Asset,
 	Call as LoansCall,
@@ -111,7 +111,7 @@ pub fn init_loans_for_pool(
 /// * 15% APR
 /// * value with amount
 /// * maturity as given
-/// * Type: BulletLoan
+/// * Type: DiscountedCashFlows
 /// 	* advance_rate: 90%,
 ///     * probability_of_default: 5%,
 ///     * loss_given_default: 50%,
@@ -123,7 +123,7 @@ pub fn issue_default_loan(
 	maturity: u64,
 	manager: &mut NftManager,
 ) -> Vec<RuntimeCall> {
-	let loan_type = LoanType::BulletLoan(BulletLoan::new(
+	let valuation_method = ValuationMethod::DiscountedCashFlows(DiscountedCashFlows::new(
 		rate_from_percent(90),
 		rate_from_percent(5),
 		rate_from_percent(50),
@@ -133,7 +133,7 @@ pub fn issue_default_loan(
 		maturity,
 	));
 
-	issue_loan(owner, pool_id, rate_from_percent(15), loan_type, manager)
+	issue_loan(owner, pool_id, rate_from_percent(15), valuation_method, manager)
 }
 
 /// Issues a loan.
@@ -151,7 +151,7 @@ pub fn issue_loan(
 	owner: AccountId,
 	pool_id: PoolId,
 	interest_rate_per_year: Rate,
-	loan_type: LoanType<Rate, Balance>,
+	valuation_method: ValuationMethod<Rate, Balance>,
 	manager: &mut NftManager,
 ) -> Vec<RuntimeCall> {
 	let mut calls = Vec::new();
@@ -171,7 +171,7 @@ pub fn issue_loan(
 		pool_id,
 		manager.next_loan_id(pool_id),
 		interest_rate_per_year,
-		loan_type,
+		valuation_method,
 	));
 	calls
 }
@@ -194,13 +194,13 @@ pub fn price_loan_call(
 	pool_id: PoolId,
 	loan_id: LoanId,
 	interest_rate_per_year: Rate,
-	loan_type: LoanType<Rate, Balance>,
+	valuation_method: ValuationMethod<Rate, Balance>,
 ) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::price {
 		pool_id,
 		loan_id,
 		interest_rate_per_year,
-		loan_type,
+		valuation_method,
 	})
 }
 
