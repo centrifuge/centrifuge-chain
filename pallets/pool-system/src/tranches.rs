@@ -112,11 +112,6 @@ where
 	///
 	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
 		match (self, next) {
-			// NOTE: If we change this: I.e. allowing multiple residual
-			//       tranches. One MUST be cautious to check ALL places
-			//       were we assume a single residual tranche.
-			//
-			//       E.g. Tranches.non_residual_tranches()
 			(TrancheType::Residual, TrancheType::Residual) => false,
 			(TrancheType::Residual, TrancheType::NonResidual { .. }) => true,
 			(TrancheType::NonResidual { .. }, TrancheType::Residual) => false,
@@ -129,7 +124,7 @@ where
 					interest_rate_per_sec: ref interest_next,
 					..
 				},
-			) => interest_next <= interest_prev,
+			) => interest_next >= interest_prev,
 		}
 	}
 }
@@ -1523,33 +1518,46 @@ where
 
 #[cfg(test)]
 pub mod test {
-	use cfg_primitives::{PoolId, TrancheId};
+	use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
+	use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
 
 	use super::*;
 
 	// NOTE: We currently expose types in runtime-common. As we do not want
 	//       this dependecy in our pallets, we generate the types manually here.
 	//       Not sure, if we should rather allow dev-dependency to runtime-common.
-	type Balance = u128;
+	// type Balance = u128;
 	type BalanceRatio = Rate;
-	type Rate = sp_arithmetic::FixedU128;
-	type Weight = u128;
+	// type Rate = sp_arithmetic::FixedU128;
 	type TTrancheType = TrancheType<Rate>;
-	type TTranche = Tranche<Balance, Rate, Weight, TrancheCurrency>;
-	type TTranches = Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>;
+	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
+	type TTranches = Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId>;
 
 	const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 	const DEFAULT_POOL_ID: PoolId = 0;
 	const _DEFAULT_TIME_NOW: Moment = 0;
 
-	struct TrancheTokenImpl;
+	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
 
-	// impl TrancheCurrencyT<PoolId, TrancheId> for TrancheTokenImpl {
-	// 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> TrancheCurrency {
-	// 		TrancheCurrencyT::Tranche(pool, tranche)
-	// 	}
-	// }
+	impl PartialEq for TrancheWeights {
+		fn eq(&self, other: &Self) -> bool {
+			let len_s = self.0.len();
+			let len_o = other.0.len();
+			if len_s != len_o {
+				false
+			} else {
+				for i in 0..len_s {
+					let (s1, s2) = self.0[i];
+					let (o1, o2) = other.0[i];
+					if !(s1 == o1 && s2 == o2) {
+						return false;
+					}
+				}
+				true
+			}
+		}
+	}
 
 	fn residual(id: u8) -> TTranche {
 		residual_base(id, 0)
@@ -1612,7 +1620,7 @@ pub mod test {
 	}
 
 	fn default_tranches() -> TTranches {
-		TTranches::new::<TrancheTokenImpl>(
+		TTranches::new(
 			DEFAULT_POOL_ID,
 			vec![
 				residual(0),
@@ -1624,7 +1632,7 @@ pub mod test {
 	}
 
 	fn default_tranches_with_seniority() -> TTranches {
-		TTranches::new::<TrancheTokenImpl>(
+		TTranches::new(
 			DEFAULT_POOL_ID,
 			vec![
 				residual_base(0, 0),
@@ -1636,8 +1644,8 @@ pub mod test {
 	}
 
 	fn tranche_to_epoch_execution_tranche(
-		tranche: Tranche<Balance, Rate, Weight, TrancheCurrency>,
-	) -> EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency> {
+		tranche: Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>,
+	) -> EpochExecutionTranche<Balance, BalanceRatio, TrancheWeight, TrancheCurrency> {
 		EpochExecutionTranche {
 			supply: tranche
 				.reserve
@@ -1652,7 +1660,7 @@ pub mod test {
 	}
 
 	fn default_epoch_tranches(
-	) -> EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency> {
+	) -> EpochExecutionTranches<Balance, BalanceRatio, TrancheWeight, TrancheCurrency> {
 		let epoch_tranches = default_tranches_with_seniority()
 			.into_tranches()
 			.into_iter()
@@ -2591,7 +2599,11 @@ pub mod test {
 			// ]
 			assert_eq!(
 				default_epoch_tranches().calculate_weights(),
-				vec![(1000, 10000), (100, 100000), (10, 1000000)]
+				vec![
+					(TrancheWeight::from(1000), TrancheWeight::from(10000)),
+					(TrancheWeight::from(100), TrancheWeight::from(100000)),
+					(TrancheWeight::from(10), TrancheWeight::from(1000000))
+				]
 			);
 
 			let mut e_e_tranches = default_epoch_tranches();
@@ -2606,9 +2618,18 @@ pub mod test {
 			assert_eq!(
 				e_e_tranches.calculate_weights(),
 				vec![
-					(u128::MAX, u128::MAX),
-					(u128::MAX, u128::MAX),
-					(u128::MAX, u128::MAX)
+					(
+						TrancheWeight::from(u128::MAX),
+						TrancheWeight::from(u128::MAX)
+					),
+					(
+						TrancheWeight::from(u128::MAX),
+						TrancheWeight::from(u128::MAX)
+					),
+					(
+						TrancheWeight::from(u128::MAX),
+						TrancheWeight::from(u128::MAX)
+					)
 				]
 			)
 			// Verification of too many tranches unsurprisingly taking too long to run for tests
