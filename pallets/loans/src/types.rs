@@ -152,7 +152,7 @@ pub enum InterestEvent {
 
 // TODO: implement Yearly, Quarterly, Daily
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum InterestPeriod {
+pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
 	None,
 	/// Interest payments are expected monthly
@@ -161,7 +161,7 @@ pub enum InterestPeriod {
 
 // TODO: implement StraightLine, Annuity
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-enum AmortizationSchedule {
+enum PayDownSchedule {
 	/// The borrowed amount is expected to be paid back at the maturity date
   None
 }
@@ -171,9 +171,9 @@ pub struct RepaymentSchedule<Moment> {
 	/// Expected repayment date for remaining debt
 	maturity_date: Moment,
 	/// Period at which interest is paid
-	interest_period: InterestPeriod,
+	interest_payments: InterestPayments,
 	/// How much of the initially borrowed amount is paid back during interest payments
-	amortization_schedule: AmortizationSchedule
+	pay_down_schedule: PayDownSchedule
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -216,9 +216,10 @@ pub struct LoanRestrictions<Rate> {
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
 
+	pub(crate) schedule: RepaymentSchedule<Moment>,
+
 	// Pricing
 	pub(crate) collateral_value: Balance,
-	pub(crate) schedule: RepaymentSchedule<Moment>,
 	pub(crate) valuation_method: ValuationMethod<Rate>,
 	pub(crate) restrictions: LoanRestrictions<Rate>,
 

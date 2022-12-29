@@ -70,9 +70,7 @@ where
 		}
 	}
 
-	/// calculates the present value of the bullet loan.
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
-	/// The debt = current outstanding debt * (1 - written off percentage)
+	/// Calculate the present value based on the discounted future cash flows
 	pub fn present_value(
 		&self,
 		debt: Balance,
@@ -80,16 +78,34 @@ where
 		now: Moment,
 		interest_rate_per_sec: Rate,
 	) -> Option<Balance> {
-		math::maturity_based_present_value(
-			debt,
-			interest_rate_per_sec,
-			self.discount_rate,
-			self.probability_of_default,
-			self.loss_given_default,
-			origination_date,
-			self.maturity_date,
-			now,
-		)
+		if debt.is_zero() {
+			return Some(Balance::zero());
+		}
+	
+		// If the loan is overdue, there are no future cash flows to discount,
+		// hence we use the outstanding debt as the value.
+		if now > maturity_date {
+			return Some(debt);
+		}
+	
+		// Calculate the expected loss over the term of the loan
+		let tel = term_expected_loss(
+			probability_of_default,
+			loss_given_default,
+			origination_date.expect("Origination date should be set"),
+			maturity_date,
+		)?;
+		let tel_inv = Rate::one().checked_sub(&tel)?;
+
+		// Calculate the risk-adjusted expected cash flows
+		let acc_rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
+		let ecf = acc_rate.checked_mul_int(debt)?;
+		let ra_ecf = tel_inv.checked_mul_int(ecf)?;
+
+		// Discount the risk-adjust expected cash flows
+		let rate = checked_pow(discount_rate, (maturity - now) as usize)?;
+		let d = rate.reciprocal()?;
+		d.checked_mul_int(ra_ecf)
 	}
 
 	/// validates the bullet loan parameters
