@@ -193,8 +193,10 @@ pub enum RepricingSchedule {
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum MaxBorrowAmount<Rate> {
-	CumulativeBorrowedAmount { advance_rate: Rate },
-	OutstandingDebt { advance_rate: Rate },
+	/// Collateral value - advance rate * total borrowed
+	UpToTotalBorrowed { advance_rate: Rate },
+	/// Collateral value - advance rate * outstanding debt
+	UpToOutstandingDebt { advance_rate: Rate },
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
