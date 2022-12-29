@@ -29,13 +29,6 @@ impl<Rate> ValuationMethod<Rate>
 where
 	Rate: FixedPointNumber,
 {
-	pub(crate) fn maturity_date(&self) -> Option<Moment> {
-		match self {
-			ValuationMethod::DiscountedCashFlows(bl) => Some(bl.maturity_date),
-			ValuationMethod::OutstandingDebt(_) => None,
-		}
-	}
-
 	pub(crate) fn is_valid(&self, now: Moment) -> bool {
 		match self {
 			ValuationMethod::DiscountedCashFlows(bl) => bl.is_valid(now),
@@ -143,17 +136,6 @@ impl OutstandingDebt {
 	pub fn is_valid(&self) -> bool {
 		true
 	}
-
-	/// calculates max_borrow_amount for credit line loan,
-	/// max_borrow_amount = advance_rate * collateral_value - debt
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub fn max_borrow_amount(&self, debt: Balance) -> Option<Balance>
-	where
-		Rate: FixedPointNumber,
-		Balance: FixedPointOperand + BaseArithmetic,
-	{
-		math::max_borrow_amount(self.advance_rate, self.value, debt)
-	}
 }
 
 #[cfg(test)]
@@ -192,24 +174,5 @@ mod tests {
 		let md = 500;
 		let bl = DiscountedCashFlows::new(ad, pd, lgd, cv, dr, md);
 		assert!(bl.is_valid(now));
-	}
-
-	#[test]
-	fn test_credit_line_max_borrow_amount() {
-		let ad = Rate::saturating_from_rational(80, 100);
-		let value: u128 = 100 * CURRENCY;
-		let cl = OutstandingDebt::new(ad, value);
-
-		// debt can be more
-		let debt: u128 = 120 * CURRENCY;
-		assert_eq!(cl.max_borrow_amount(debt), None);
-
-		// debt can be same
-		let debt: u128 = 80 * CURRENCY;
-		assert_eq!(cl.max_borrow_amount(debt), Some(0));
-
-		// debt can be less
-		let debt: u128 = 70 * CURRENCY;
-		assert_eq!(cl.max_borrow_amount(debt), Some(10 * CURRENCY));
 	}
 }

@@ -162,7 +162,7 @@ pub enum InterestPayments {
 // TODO: implement StraightLine, Annuity
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 enum PayDownSchedule {
-	/// The borrowed amount is expected to be paid back at the maturity date
+	/// The entire borrowed amount is expected to be paid back at the maturity date
   None
 }
 
@@ -177,18 +177,18 @@ pub struct RepaymentSchedule<Moment> {
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum BorrowSchedule {
-	Multiple
+pub enum BorrowRestrictions {
+	None
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum RepaySchedule {
-	Multiple
+pub enum RepayRestrictions {
+	None
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum RepricingSchedule {
-	Multiple
+pub enum RepricingRestrictions {
+	None
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -202,11 +202,11 @@ pub enum MaxBorrowAmount<Rate> {
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub struct LoanRestrictions<Rate> {
 	/// How often can be borrowed
-  borrows: BorrowSchedule,
+  borrows: BorrowRestrictions,
 	/// How often can be repaid
-  repayments: RepaySchedule,
+  repayments: RepayRestrictions,
 	/// How often can be priced after the initial pricing
-  repricing: RepricingSchedule,
+  repricing: RepricingRestrictions,
 	/// How much can be borrowed
   max_borrow_amount: MaxBorrowAmount<Rate>
 }
@@ -249,8 +249,6 @@ where
 	Balance: FixedPointOperand + BaseArithmetic,
 {
 	/// returns the present value of the loan
-	/// note: this will use the accumulated_rate and last_updated from self
-	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
 	pub(crate) fn present_value(
 		&self,
 		debt: Balance,
@@ -270,22 +268,19 @@ where
 				debt.checked_sub(&write_off_amount)?
 			}
 		};
+		
 		match self.valuation_method {
 			ValuationMethod::DiscountedCashFlows(bl) => {
 				bl.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
 			}
-			ValuationMethod::OutstandingDebt(cl) => cl.present_value(debt),
-			ValuationMethod::OutstandingDebtWithMaturity(clm) => {
-				clm.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
-			}
+			ValuationMethod::OutstandingDebt(cl) => cl.present_value(debt)
 		}
 	}
 
 	pub fn max_borrow_amount(&self, debt: Balance) -> Balance {
-		match self.valuation_method {
-			ValuationMethod::DiscountedCashFlows(bl) => bl.max_borrow_amount(self.total_borrowed),
-			ValuationMethod::OutstandingDebt(cl) => cl.max_borrow_amount(debt),
-			ValuationMethod::OutstandingDebtWithMaturity(clm) => clm.max_borrow_amount(debt),
+		match self.restrictions.max_borrow_amount {
+			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate.checked_mul_int(self.collateral_value)?.checked_sub(&self.total_borrowed),
+			ValuationMethod::UpToOutstandingDebt { advance_rate } => advance_rate.checked_mul_int(self.collateral_value)?.checked_sub(&debt)
 		}
 		// always fallback to zero max_borrow_amount
 		.unwrap_or_else(Zero::zero)
