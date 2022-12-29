@@ -144,21 +144,25 @@ pub struct LoanDetails<Asset, BlockNumber> {
 }
 
 // TODO: implement Yearly, Quarterly, Daily
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum InterestPeriod {
 	None,
 	// Monthly
 }
 
 // TODO: implement Mid
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum InterestEvent {
 	End
 }
 
 // TODO: implement StraightLine, Annuity
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 enum AmortizationSchedule {
   None
 }
 
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub struct RepaymentSchedule<Moment> {
 	/// Expected repayment date for remaining debt
 	maturity_date: Moment,
@@ -171,34 +175,36 @@ pub struct RepaymentSchedule<Moment> {
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum OnceOrMultiple {
-	Once,
+pub enum BorrowSchedule {
 	Multiple
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum MaxBorrowAmount {
-	CumulativeBorrowedAmount,
-	OutstandingDebt,
+pub enum RepaySchedule {
+	Multiple
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub enum RepricingSchedule {
+	Multiple
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub enum MaxBorrowAmount<Rate> {
+	CumulativeBorrowedAmount { advance_rate: Rate },
+	OutstandingDebt { advance_rate: Rate },
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub struct LoanRestrictions<Rate> {
-  borrows: OnceOrMultiple,
-  repayments: OnceOrMultiple,
-	advance_rate: Rate,
-  max_borrow_amount: MaxBorrowAmount
-}
-
-impl Default for LoanRestrictions {
-	fn default() -> Self {
-		Self {
-			borrows: OnceOrMultiple::Multiple,
-			repayments: OnceOrMultiple::Multiple,
-			advance_rate: Rate::one(),
-			max_borrow_amount: MaxBorrowAmount::CumulativeBorrowedAmount
-		}
-	}
+	/// How often can be borrowed
+  borrows: BorrowSchedule,
+	/// How often can be repaid
+  repayments: RepaySchedule,
+	/// How often can be priced after the initial pricing
+  repricing: RepricingSchedule,
+	/// How much can be borrowed
+  max_borrow_amount: MaxBorrowAmount<Rate>
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -206,11 +212,11 @@ impl Default for LoanRestrictions {
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
 
-	pub(crate) schedule: RepaymentSchedule<Moment>,
-	pub(crate) valuation_method: ValuationMethod<Rate, Balance>,
-	pub(crate) restrictions: LoanRestrictions,
-
+	// Pricing
 	pub(crate) collateral_value: Balance,
+	pub(crate) schedule: RepaymentSchedule<Moment>,
+	pub(crate) valuation_method: ValuationMethod<Rate>,
+	pub(crate) restrictions: LoanRestrictions<Rate>,
 
 	// interest rate per second
 	pub(crate) interest_rate_per_sec: Rate,

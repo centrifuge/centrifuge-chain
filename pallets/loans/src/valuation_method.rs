@@ -20,15 +20,14 @@ use super::*;
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum ValuationMethod<Rate, Balance> {
-	DiscountedCashFlows(DiscountedCashFlows<Rate, Balance>),
-	OutstandingDebt(OutstandingDebt<Rate, Balance>),
+pub enum ValuationMethod<Rate> {
+	DiscountedCashFlows(DiscountedCashFlows<Rate>),
+	OutstandingDebt(OutstandingDebt),
 }
 
-impl<Rate, Balance> ValuationMethod<Rate, Balance>
+impl<Rate> ValuationMethod<Rate>
 where
 	Rate: FixedPointNumber,
-	Balance: FixedPointOperand + BaseArithmetic,
 {
 	pub(crate) fn maturity_date(&self) -> Option<Moment> {
 		match self {
@@ -49,16 +48,15 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct DiscountedCashFlows<Rate, Balance> {
+pub struct DiscountedCashFlows<Rate> {
 	probability_of_default: Rate,
 	loss_given_default: Rate,
 	discount_rate: Rate,
 }
 
-impl<Rate, Balance> DiscountedCashFlows<Rate, Balance>
+impl<Rate> DiscountedCashFlows<Rate>
 where
 	Rate: FixedPointNumber,
-	Balance: FixedPointOperand + BaseArithmetic,
 {
 	pub fn new(
 		probability_of_default: Rate,
@@ -111,18 +109,13 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OutstandingDebt<Rate, Balance> {
-	advance_rate: Rate,
-	value: Balance,
+pub struct OutstandingDebt {
 }
 
-impl<Rate, Balance> OutstandingDebt<Rate, Balance> {
+impl OutstandingDebt {
 	#[allow(dead_code)]
-	pub fn new(advance_rate: Rate, value: Balance) -> Self {
-		Self {
-			advance_rate,
-			value,
-		}
+	pub fn new() -> Self {
+		Self { }
 	}
 
 	/// calculates the present value of the credit line loan
