@@ -143,22 +143,26 @@ pub struct LoanDetails<Asset, BlockNumber> {
 	pub(crate) status: LoanStatus<BlockNumber>,
 }
 
-// TODO: implement Yearly, Quarterly, Daily
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum InterestPeriod {
-	None,
-	// Monthly
-}
-
 // TODO: implement Mid
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum InterestEvent {
+	/// At the end of the period, e.g. the last day of the month for a monthly period
 	End
+}
+
+// TODO: implement Yearly, Quarterly, Daily
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub enum InterestPeriod {
+	/// All interest is expected to be paid at the maturity date
+	None,
+	/// Interest payments are expected monthly
+	Monthly { event: InterestEvent }
 }
 
 // TODO: implement StraightLine, Annuity
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 enum AmortizationSchedule {
+	/// The borrowed amount is expected to be paid back at the maturity date
   None
 }
 
@@ -168,8 +172,6 @@ pub struct RepaymentSchedule<Moment> {
 	maturity_date: Moment,
 	/// Period at which interest is paid
 	interest_period: InterestPeriod,
-	/// Time of the interest period when the payment is made
-  interest_event: Option<InterestEvent>,
 	/// How much of the initially borrowed amount is paid back during interest payments
 	amortization_schedule: AmortizationSchedule
 }
