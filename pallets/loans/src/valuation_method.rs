@@ -89,12 +89,10 @@ where
 		}
 	
 		// Calculate the expected loss over the term of the loan
-		let tel = term_expected_loss(
-			probability_of_default,
-			loss_given_default,
-			origination_date.expect("Origination date should be set"),
-			maturity_date,
-		)?;
+		let tel = Rate::saturating_from_rational(maturity_date - origination_date, seconds_per_year())
+			.checked_mul(&pd)
+			.and_then(|val| val.checked_mul(&lgd))
+			.map(|tel| tel.min(One::one()))?;
 		let tel_inv = Rate::one().checked_sub(&tel)?;
 
 		// Calculate the risk-adjusted expected cash flows

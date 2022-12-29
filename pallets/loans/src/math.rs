@@ -21,18 +21,6 @@ use sp_runtime::{ArithmeticError, DispatchError};
 
 use crate::WriteOffGroup;
 
-/// calculates the latest accumulated rate since the last
-pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
-	interest_rate_per_sec: Rate,
-	current_accumulated_rate: Rate,
-	now: Moment,
-	last_updated: Moment,
-) -> Option<Rate> {
-	let pow = now - last_updated;
-	checked_pow(interest_rate_per_sec, pow as usize)
-		.and_then(|v| v.checked_mul(&current_accumulated_rate))
-}
-
 /// calculates the debt using debt=principal_debt * cumulative_rate
 pub fn debt<Balance: FixedPointOperand, Rate: FixedPointNumber>(
 	normalized_debt: Balance,
@@ -45,25 +33,6 @@ pub fn debt<Balance: FixedPointOperand, Rate: FixedPointNumber>(
 pub enum Adjustment<Balance> {
 	Inc(Balance),
 	Dec(Balance),
-}
-
-/// calculates the principal debt after the adjustment
-/// current_debt and cumulative_rate must be latest
-pub fn calculate_normalized_debt<
-	Balance: FixedPointOperand + BaseArithmetic,
-	Rate: FixedPointNumber,
->(
-	current_debt: Balance,
-	adjustment: Adjustment<Balance>,
-	cumulative_rate: Rate,
-) -> Option<Balance> {
-	use Adjustment::*;
-	let current_debt = match adjustment {
-		Inc(amount) => current_debt.checked_add(&amount),
-		Dec(amount) => current_debt.checked_sub(&amount),
-	}?;
-	let rate = cumulative_rate.reciprocal()?;
-	rate.checked_mul_int(current_debt)
 }
 
 /// returns the seconds in a given normal day
@@ -91,59 +60,6 @@ pub fn interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Op
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
 pub fn penalty_interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
 	rate_per_annum.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
-}
-
-/// calculates the risk adjusted expected cash flow for bullet loan type
-/// assumes maturity date has not passed
-/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
-pub fn bullet_loan_risk_adjusted_expected_cash_flow<Balance, Rate>(
-	debt: Balance,
-	now: Moment,
-	maturity_date: Moment,
-	interest_rate_per_sec: Rate,
-	expected_loss_over_asset_maturity: Rate,
-) -> Option<Balance>
-where
-	Balance: FixedPointOperand,
-	Rate: FixedPointNumber + One,
-{
-	// check to be sure if the maturity date has not passed
-	if now > maturity_date {
-		return None;
-	}
-
-	// calculate the rate^(m-now)
-	let rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
-	// calculate expected cash flow
-	let cf = rate.checked_mul_int(debt)?;
-	// calculate risk-adjusted cash flow
-	// cf * (1 - expected_loss)
-	let rr = Rate::one().checked_sub(&expected_loss_over_asset_maturity)?;
-	rr.checked_mul_int(cf)
-}
-
-/// calculates present value for bullet loan
-/// assumes maturity date has not passed
-/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
-pub fn bullet_loan_present_value<Balance, Rate>(
-	expected_cash_flow: Balance,
-	now: Moment,
-	maturity_date: Moment,
-	discount_rate: Rate,
-) -> Option<Balance>
-where
-	Balance: FixedPointOperand,
-	Rate: FixedPointNumber,
-{
-	if now > maturity_date {
-		return None;
-	}
-
-	// calculate total discount rate
-	let rate = checked_pow(discount_rate, (maturity_date - now) as usize)?;
-	let d = rate.reciprocal()?;
-	// calculate the present value
-	d.checked_mul_int(expected_cash_flow)
 }
 
 /// returns the valid write off group given the maturity date and current time
@@ -188,84 +104,6 @@ pub(crate) fn max_borrow_amount<
 	val.checked_sub(&debt)
 }
 
-/// calculates the expected loss over term
-/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
-/// we cap the term expected loss to 100%
-#[inline]
-pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
-	pd: Rate,
-	lgd: Rate,
-	origination_date: Moment,
-	maturity_date: Moment,
-) -> Option<Rate> {
-	Rate::saturating_from_rational(maturity_date - origination_date, seconds_per_year())
-		.checked_mul(&pd)
-		.and_then(|val| val.checked_mul(&lgd))
-		.map(|tel| tel.min(One::one()))
-}
-
-/// calculates expected cash flow from current debt till maturity at the given rate per second
-#[inline]
-pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOperand>(
-	debt: Balance,
-	now: Moment,
-	maturity_date: Moment,
-	interest_rate_per_sec: Rate,
-) -> Option<Balance> {
-	let acc_rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
-	acc_rate.checked_mul_int(debt)
-}
-
-/// calculates discounted cash flow given the discount rate until maturity
-#[inline]
-pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOperand>(
-	ra_ecf: Balance,
-	discount_rate: Rate,
-	maturity: Moment,
-	now: Moment,
-) -> Option<Balance> {
-	// calculate accumulated discount rate
-	let rate = checked_pow(discount_rate, (maturity - now) as usize)?;
-	let d = rate.reciprocal()?;
-	d.checked_mul_int(ra_ecf)
-}
-
-// These arguments are all passed from struct fields of the loan
-// types, so this pile of arguments are well-hidden from the main
-// logic of the code.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Balance: FixedPointOperand>(
-	debt: Balance,
-	interest_rate_per_sec: Rate,
-	discount_rate: Rate,
-	probability_of_default: Rate,
-	loss_given_default: Rate,
-	origination_date: Option<Moment>,
-	maturity_date: Moment,
-	now: Moment,
-) -> Option<Balance> {
-	if origination_date.is_none() {
-		return Some(Balance::zero());
-	}
-
-	// check if maturity is in the past
-	if now > maturity_date {
-		return Some(debt);
-	}
-
-	// calculate term expected loss
-	let tel = term_expected_loss(
-		probability_of_default,
-		loss_given_default,
-		origination_date.expect("Origination date should be set"),
-		maturity_date,
-	)?;
-	let diff = Rate::one().checked_sub(&tel)?;
-	let ecf = expected_cash_flow(debt, now, maturity_date, interest_rate_per_sec)?;
-	let ra_ecf = diff.checked_mul_int(ecf)?;
-	discounted_cash_flow(ra_ecf, discount_rate, maturity_date, now)
-}
-
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::CFG as USD;
@@ -274,6 +112,59 @@ mod tests {
 	use sp_arithmetic::{PerThing, Percent};
 
 	use super::*;
+
+	/// calculates the risk adjusted expected cash flow for bullet loan type
+	/// assumes maturity date has not passed
+	/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+	pub fn bullet_loan_risk_adjusted_expected_cash_flow<Balance, Rate>(
+		debt: Balance,
+		now: Moment,
+		maturity_date: Moment,
+		interest_rate_per_sec: Rate,
+		expected_loss_over_asset_maturity: Rate,
+	) -> Option<Balance>
+	where
+		Balance: FixedPointOperand,
+		Rate: FixedPointNumber + One,
+	{
+		// check to be sure if the maturity date has not passed
+		if now > maturity_date {
+			return None;
+		}
+	
+		// calculate the rate^(m-now)
+		let rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
+		// calculate expected cash flow
+		let cf = rate.checked_mul_int(debt)?;
+		// calculate risk-adjusted cash flow
+		// cf * (1 - expected_loss)
+		let rr = Rate::one().checked_sub(&expected_loss_over_asset_maturity)?;
+		rr.checked_mul_int(cf)
+	}
+
+	/// calculates present value for bullet loan
+	/// assumes maturity date has not passed
+	/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+	pub fn bullet_loan_present_value<Balance, Rate>(
+		expected_cash_flow: Balance,
+		now: Moment,
+		maturity_date: Moment,
+		discount_rate: Rate,
+	) -> Option<Balance>
+	where
+		Balance: FixedPointOperand,
+		Rate: FixedPointNumber,
+	{
+		if now > maturity_date {
+			return None;
+		}
+
+		// calculate total discount rate
+		let rate = checked_pow(discount_rate, (maturity_date - now) as usize)?;
+		let d = rate.reciprocal()?;
+		// calculate the present value
+		d.checked_mul_int(expected_cash_flow)
+	}
 
 	#[test]
 	fn test_calculate_accumulated_rate() {
