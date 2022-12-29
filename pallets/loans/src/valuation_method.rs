@@ -15,19 +15,21 @@
 use scale_info::TypeInfo;
 
 use super::*;
+use sp_arithmetic::traits::checked_pow;
 
 /// different types of loans
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum ValuationMethod<Rate> {
-	DiscountedCashFlows(DiscountedCashFlows<Rate>),
-	OutstandingDebt(OutstandingDebt),
+pub enum ValuationMethod<Rate, Balance> {
+	DiscountedCashFlows(DiscountedCashFlows<Rate, Balance>),
+	OutstandingDebt(OutstandingDebt<Balance>),
 }
 
-impl<Rate> ValuationMethod<Rate>
+impl<Rate, Balance> ValuationMethod<Rate, Balance>
 where
 	Rate: FixedPointNumber,
+	Balance: FixedPointOperand + BaseArithmetic,
 {
 	pub(crate) fn is_valid(&self, now: Moment) -> bool {
 		match self {
@@ -41,15 +43,16 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct DiscountedCashFlows<Rate> {
+pub struct DiscountedCashFlows<Rate, Balance> {
 	probability_of_default: Rate,
 	loss_given_default: Rate,
 	discount_rate: Rate,
 }
 
-impl<Rate> DiscountedCashFlows<Rate>
+impl<Rate, Balance> DiscountedCashFlows<Rate, Balance>
 where
 	Rate: FixedPointNumber,
+	Balance: FixedPointOperand + BaseArithmetic,
 {
 	pub fn new(
 		probability_of_default: Rate,
@@ -67,6 +70,7 @@ where
 	pub fn present_value(
 		&self,
 		debt: Balance,
+		maturity_date: Moment,
 		origination_date: Option<Moment>,
 		now: Moment,
 		interest_rate_per_sec: Rate,
@@ -82,9 +86,9 @@ where
 		}
 	
 		// Calculate the expected loss over the term of the loan
-		let tel = Rate::saturating_from_rational(maturity_date - origination_date, seconds_per_year())
-			.checked_mul(&pd)
-			.and_then(|val| val.checked_mul(&lgd))
+		let tel = Rate::saturating_from_rational(maturity_date - origination_date, math::seconds_per_year())
+			.checked_mul(&self.probability_of_default)
+			.and_then(|val| val.checked_mul(&self.loss_given_default))
 			.map(|tel| tel.min(One::one()))?;
 		let tel_inv = Rate::one().checked_sub(&tel)?;
 
@@ -94,7 +98,7 @@ where
 		let ra_ecf = tel_inv.checked_mul_int(ecf)?;
 
 		// Discount the risk-adjust expected cash flows
-		let rate = checked_pow(discount_rate, (maturity - now) as usize)?;
+		let rate = checked_pow(self.discount_rate, (maturity_date - now) as usize)?;
 		let d = rate.reciprocal()?;
 		d.checked_mul_int(ra_ecf)
 	}
@@ -116,11 +120,13 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OutstandingDebt {
+pub struct OutstandingDebt<Balance> {
 }
 
-impl OutstandingDebt {
-	#[allow(dead_code)]
+impl<Balance> OutstandingDebt<Balance>
+where
+	Balance: FixedPointOperand + BaseArithmetic,
+{	#[allow(dead_code)]
 	pub fn new() -> Self {
 		Self { }
 	}

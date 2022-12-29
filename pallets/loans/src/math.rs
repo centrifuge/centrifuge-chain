@@ -90,20 +90,6 @@ pub(crate) fn valid_write_off_group<Rate>(
 	Ok(current_group)
 }
 
-/// calculates max_borrow_amount for a loan,
-/// max_borrow_amount = advance_rate * collateral_value - debt
-pub(crate) fn max_borrow_amount<
-	Rate: FixedPointNumber,
-	Balance: FixedPointOperand + BaseArithmetic,
->(
-	advance_rate: Rate,
-	value: Balance,
-	debt: Balance,
-) -> Option<Balance> {
-	let val = advance_rate.checked_mul_int(value)?;
-	val.checked_sub(&debt)
-}
-
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::CFG as USD;
@@ -164,47 +150,6 @@ mod tests {
 		let d = rate.reciprocal()?;
 		// calculate the present value
 		d.checked_mul_int(expected_cash_flow)
-	}
-
-	#[test]
-	fn test_calculate_accumulated_rate() {
-		// 5% interest rate
-		let nir = Percent::from_percent(5);
-		let rate = Rate::saturating_from_rational(nir.deconstruct(), Percent::ACCURACY);
-		let interest_rate_per_sec = interest_rate_per_sec(rate).unwrap_or_default();
-		assert!(interest_rate_per_sec.is_positive(), "should not be zero");
-
-		// initial accumulated_rate
-		let accumulated_rate = Rate::from(1);
-
-		// moment values
-		let last_updated: Moment = 0u64 as Moment;
-		// after half a year
-		let now = (3600 * 24 * 365) / 2;
-
-		// calculate cumulative rate after half a year with compounding in seconds
-		let maybe_new_cumulative_rate =
-			calculate_accumulated_rate(interest_rate_per_sec, accumulated_rate, now, last_updated);
-		assert!(
-			maybe_new_cumulative_rate.is_some(),
-			"expect value to not overflow"
-		);
-		let cumulative_rate = maybe_new_cumulative_rate.unwrap();
-		let expected_accumulated_rate = Rate::saturating_from_rational(
-			1025315120504108509948668518u128,
-			1000000000000000000000000000u128,
-		);
-		assert_eq!(expected_accumulated_rate, cumulative_rate);
-
-		// calculate debt after half a year if the principal amount is 100
-		let principal = 100u128;
-		let maybe_debt = debt(principal, cumulative_rate);
-		assert!(maybe_debt.is_some(), "expect not to overflow");
-
-		let expected_debt = expected_accumulated_rate
-			.checked_mul_int(principal)
-			.unwrap();
-		assert_eq!(expected_debt, maybe_debt.unwrap())
 	}
 
 	#[test]

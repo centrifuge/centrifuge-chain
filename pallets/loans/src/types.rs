@@ -217,13 +217,11 @@ pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
 
 	pub(crate) schedule: RepaymentSchedule<Moment>,
+	pub(crate) restrictions: LoanRestrictions<Rate>,
 
 	// Pricing
 	pub(crate) collateral_value: Balance,
-	pub(crate) valuation_method: ValuationMethod<Rate>,
-	pub(crate) restrictions: LoanRestrictions<Rate>,
-
-	// interest rate per second
+	pub(crate) valuation_method: ValuationMethod<Rate, Balance>,
 	pub(crate) interest_rate_per_sec: Rate,
 
 	// time at which first borrow occurred
@@ -271,7 +269,7 @@ where
 		
 		match self.valuation_method {
 			ValuationMethod::DiscountedCashFlows(bl) => {
-				bl.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
+				bl.present_value(debt, self.schedule.maturity_date, self.origination_date, now, self.interest_rate_per_sec)
 			}
 			ValuationMethod::OutstandingDebt(cl) => cl.present_value(debt)
 		}
