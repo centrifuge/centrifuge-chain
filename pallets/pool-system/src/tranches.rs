@@ -1526,17 +1526,14 @@ pub mod test {
 	// NOTE: We currently expose types in runtime-common. As we do not want
 	//       this dependecy in our pallets, we generate the types manually here.
 	//       Not sure, if we should rather allow dev-dependency to runtime-common.
-	// type Balance = u128;
+
 	type BalanceRatio = Rate;
-	// type Rate = sp_arithmetic::FixedU128;
 	type TTrancheType = TrancheType<Rate>;
 	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
 	type TTranches = Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId>;
 
-	const ONE_IN_CURRENCY: Balance = 1_000_000_000_000u128;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 	const DEFAULT_POOL_ID: PoolId = 0;
-	const _DEFAULT_TIME_NOW: Moment = 0;
 
 	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
 
@@ -1732,11 +1729,11 @@ pub mod test {
 		#[test]
 		fn tranche_accures_correctly() {
 			let mut tranche = non_residual(1, Some(10), None);
-			tranche.debt = 100;
+			tranche.debt = 100000000;
 			tranche.accrue(SECS_PER_YEAR).unwrap();
 
-			// After one year, we have 10% of interest
-			assert_eq!(110, tranche.debt)
+			// After one year, we have 10% of interest, using APY and RPS compounding
+			assert_eq!(110517092, tranche.debt)
 		}
 
 		#[test]
@@ -1760,10 +1757,10 @@ pub mod test {
 		#[test]
 		fn tranche_accrues_debt_on_debt_call() {
 			let mut tranche = non_residual(1, Some(10), None);
-			tranche.debt = 100;
+			tranche.debt = 100000000;
 
-			// After one year, we have 10% of interest
-			assert_eq!(110, tranche.debt(SECS_PER_YEAR).unwrap())
+			// After one year, we have 10% of interest, using APY and RPS compounding
+			assert_eq!(110517092, tranche.debt(SECS_PER_YEAR).unwrap())
 		}
 
 		#[test]
