@@ -698,6 +698,7 @@ where
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
+		// Why not self.tranches.iter().map(f)?
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in self.tranches.iter() {
 			let r = f(tranche)?;
