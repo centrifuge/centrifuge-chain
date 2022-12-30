@@ -1535,26 +1535,8 @@ pub mod test {
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 	const DEFAULT_POOL_ID: PoolId = 0;
 
+	#[derive(PartialEq)]
 	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
-
-	impl PartialEq for TrancheWeights {
-		fn eq(&self, other: &Self) -> bool {
-			let len_s = self.0.len();
-			let len_o = other.0.len();
-			if len_s != len_o {
-				false
-			} else {
-				for i in 0..len_s {
-					let (s1, s2) = self.0[i];
-					let (o1, o2) = other.0[i];
-					if !(s1 == o1 && s2 == o2) {
-						return false;
-					}
-				}
-				true
-			}
-		}
-	}
 
 	fn residual(id: u8) -> TTranche {
 		residual_base(id, 0)
@@ -2638,6 +2620,76 @@ pub mod test {
 		}
 
 		#[test]
-		fn epoch_execution_min_risk_buffers() {}
+		fn epoch_execution_min_risk_buffers() {
+			let epoch_execution_tranches = default_epoch_tranches();
+
+			let z = Perquintill::zero();
+
+			assert_eq!(epoch_execution_tranches.min_risk_buffers(), vec![z, z, z]);
+
+			let mut e_e_tranches = default_epoch_tranches();
+			e_e_tranches
+				.combine_with_mut_residual_top(
+					[z, Perquintill::from_rational(5u64, 100), Perquintill::one()],
+					|e, s| {
+						e.min_risk_buffer = s;
+						Ok(())
+					},
+				)
+				.unwrap();
+
+			assert_eq!(
+				e_e_tranches.min_risk_buffers(),
+				vec![z, Perquintill::from_rational(1u64, 20), Perquintill::one()]
+			);
+		}
+
+		#[test]
+		fn epoch_execution_tranches_prices() {
+			let epoch_execution_tranches = default_epoch_tranches();
+			let r = Rate::one();
+			assert_eq!(epoch_execution_tranches.prices(), vec![r, r, r])
+		}
+	}
+
+	#[test]
+	fn epoch_execution_tranches_fulfillment_cash_flows_works() {
+		let mut e_e_tranches = default_epoch_tranches();
+		let b = |x: u128| Balance::from(x);
+
+		let full = Perquintill::one();
+		let half = Perquintill::from_rational(1u128, 2u128);
+		let default_solution = TrancheSolution {
+			invest_fulfillment: full,
+			redeem_fulfillment: full,
+		};
+		let half_invest = TrancheSolution {
+			invest_fulfillment: half,
+			redeem_fulfillment: full,
+		};
+
+		let half_redeem = TrancheSolution {
+			invest_fulfillment: full,
+			redeem_fulfillment: half,
+		};
+		let s_tranches = [default_solution, half_invest, half_redeem];
+
+		let epoch_tranche_invest_redeem_vals =
+			[(b(10000), b(1000)), (b(2000), (530)), (b(3000), 2995)];
+
+		let expected_cash_flow_vals = vec![(b(10000), b(1000)), (b(1000), (530)), (b(3000), 1497)];
+
+		e_e_tranches
+			.combine_with_mut_residual_top(epoch_tranche_invest_redeem_vals, |e, (i, r)| {
+				e.invest = i;
+				e.redeem = r;
+				Ok(())
+			})
+			.unwrap();
+
+		assert_eq!(
+			e_e_tranches.fulfillment_cash_flows(&s_tranches).unwrap(),
+			expected_cash_flow_vals
+		)
 	}
 }
