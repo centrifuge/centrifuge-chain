@@ -888,39 +888,6 @@ where
 			})?)
 	}
 
-	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
-		let n_tranches: u32 = self.tranches.len().try_into().expect("MaxTranches is u32");
-		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
-
-		// The desired order priority is:
-		// - Senior redemptions
-		// - Junior redemptions
-		// - Junior investments
-		// - Senior investments
-		// We ensure this by having a higher base weight for redemptions,
-		// increasing the redemption weights by seniority,
-		// and decreasing the investment weight by seniority.
-		self.residual_top_slice()
-			.iter()
-			.map(|tranche| {
-				(
-					10u128
-						.checked_pow(
-							n_tranches
-								.checked_sub(tranche.seniority)
-								.unwrap_or(u32::MAX),
-						)
-						.unwrap_or(u128::MAX)
-						.into(),
-					redeem_starts
-						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)))
-						.unwrap_or(u128::MAX)
-						.into(),
-				)
-			})
-			.collect()
-	}
-
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
 		self.residual_top_slice()
 			.iter()
@@ -1370,65 +1337,65 @@ where
 		})
 	}
 
-	pub fn acc_supply_with_fulfillment(
-		&self,
-		fulfillments: &[TrancheSolution],
-	) -> Result<Balance, DispatchError> {
-		self.supplies_with_fulfillment(fulfillments)?
-			.iter()
-			.fold(Some(Balance::zero()), |acc, add| {
-				acc.and_then(|sum| sum.checked_add(add))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
+	// pub fn acc_supply_with_fulfillment(
+	// 	&self,
+	// 	fulfillments: &[TrancheSolution],
+	// ) -> Result<Balance, DispatchError> {
+	// 	self.supplies_with_fulfillment(fulfillments)?
+	// 		.iter()
+	// 		.fold(Some(Balance::zero()), |acc, add| {
+	// 			acc.and_then(|sum| sum.checked_add(add))
+	// 		})
+	// 		.ok_or(ArithmeticError::Overflow.into())
+	// }
 
-	pub fn supplies(&self) -> Vec<Balance> {
-		self.residual_top_slice()
-			.iter()
-			.map(|tranche| tranche.supply)
-			.collect()
-	}
+	// pub fn supplies(&self) -> Vec<Balance> {
+	// 	self.residual_top_slice()
+	// 		.iter()
+	// 		.map(|tranche| tranche.supply)
+	// 		.collect()
+	// }
 
-	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
-		self.residual_top_slice()
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.supply))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
+	// pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
+	// 	self.residual_top_slice()
+	// 		.iter()
+	// 		.fold(Some(Balance::zero()), |sum, tranche| {
+	// 			sum.and_then(|acc| acc.checked_add(&tranche.supply))
+	// 		})
+	// 		.ok_or(ArithmeticError::Overflow.into())
+	// }
 
-	pub fn investments(&self) -> Vec<Balance> {
-		self.residual_top_slice()
-			.iter()
-			.map(|tranche| tranche.invest)
-			.collect()
-	}
+	// pub fn investments(&self) -> Vec<Balance> {
+	// 	self.residual_top_slice()
+	// 		.iter()
+	// 		.map(|tranche| tranche.invest)
+	// 		.collect()
+	// }
 
-	pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
-		self.residual_top_slice()
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.invest))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
+	// pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
+	// 	self.residual_top_slice()
+	// 		.iter()
+	// 		.fold(Some(Balance::zero()), |sum, tranche| {
+	// 			sum.and_then(|acc| acc.checked_add(&tranche.invest))
+	// 		})
+	// 		.ok_or(ArithmeticError::Overflow.into())
+	// }
 
-	pub fn redemptions(&self) -> Vec<Balance> {
-		self.residual_top_slice()
-			.iter()
-			.map(|tranche| tranche.redeem)
-			.collect()
-	}
+	// pub fn redemptions(&self) -> Vec<Balance> {
+	// 	self.residual_top_slice()
+	// 		.iter()
+	// 		.map(|tranche| tranche.redeem)
+	// 		.collect()
+	// }
 
-	pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.residual_top_slice()
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.redeem))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
+	// pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
+	// 	self.residual_top_slice()
+	// 		.iter()
+	// 		.fold(Some(Balance::zero()), |sum, tranche| {
+	// 			sum.and_then(|acc| acc.checked_add(&tranche.redeem))
+	// 		})
+	// 		.ok_or(ArithmeticError::Overflow.into())
+	// }
 
 	// Note: weight tuple contains (investment_weight, redemption weight)
 	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
@@ -2394,163 +2361,163 @@ pub mod test {
 			);
 		}
 
-		#[test]
-		fn epoch_execution_acc_supply_with_fulfillment_works() {
-			assert_eq!(
-				default_epoch_tranches().acc_supply_with_fulfillment(&[
-					default_tranche_solution(),
-					default_tranche_solution()
-				]),
-				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements"
-				))
-			);
+		// #[test]
+		// fn epoch_execution_acc_supply_with_fulfillment_works() {
+		// 	assert_eq!(
+		// 		default_epoch_tranches().acc_supply_with_fulfillment(&[
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution()
+		// 		]),
+		// 		Err(DispatchError::Other(
+		// 			"EpochExecutionTranches contains more tranches than iterables elements"
+		// 		))
+		// 	);
 
-			assert_eq!(
-				default_epoch_tranches().acc_supply_with_fulfillment(&[
-					default_tranche_solution(),
-					default_tranche_solution(),
-					default_tranche_solution(),
-					default_tranche_solution()
-				]),
-				Err(DispatchError::Other(
-					"Iterable contains more elements than EpochExecutionTranches tranche count"
-				))
-			);
+		// 	assert_eq!(
+		// 		default_epoch_tranches().acc_supply_with_fulfillment(&[
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution()
+		// 		]),
+		// 		Err(DispatchError::Other(
+		// 			"Iterable contains more elements than EpochExecutionTranches tranche count"
+		// 		))
+		// 	);
 
-			let mut e_e_tranches = default_epoch_tranches();
+		// 	let mut e_e_tranches = default_epoch_tranches();
 
-			e_e_tranches
-				.combine_with_mut_residual_top(
-					[
-						(200, u128::MAX / 2, 100),
-						(200, u128::MAX / 2, 200),
-						(300, 200, 300),
-					],
-					|e, (i, s, r)| {
-						e.invest = i;
-						e.supply = s;
-						e.redeem = r;
-						Ok(())
-					},
-				)
-				.unwrap();
-			// Verify overflow error when accum overflows
-			assert_eq!(
-				Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
-				e_e_tranches.acc_supply_with_fulfillment(&[
-					default_tranche_solution(),
-					default_tranche_solution(),
-					default_tranche_solution()
-				])
-			);
+		// 	e_e_tranches
+		// 		.combine_with_mut_residual_top(
+		// 			[
+		// 				(200, u128::MAX / 2, 100),
+		// 				(200, u128::MAX / 2, 200),
+		// 				(300, 200, 300),
+		// 			],
+		// 			|e, (i, s, r)| {
+		// 				e.invest = i;
+		// 				e.supply = s;
+		// 				e.redeem = r;
+		// 				Ok(())
+		// 			},
+		// 		)
+		// 		.unwrap();
+		// 	// Verify overflow error when accum overflows
+		// 	assert_eq!(
+		// 		Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
+		// 		e_e_tranches.acc_supply_with_fulfillment(&[
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution()
+		// 		])
+		// 	);
 
-			e_e_tranches
-				.combine_with_mut_residual_top(
-					[(200, u128::MAX, 100), (200, 100, 200), (300, 200, 300)],
-					|e, (i, s, r)| {
-						e.invest = i;
-						e.supply = s;
-						e.redeem = r;
-						Ok(())
-					},
-				)
-				.unwrap();
-			// Verify overflow error when a supply fulfillment overflows
-			assert_eq!(
-				Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
-				e_e_tranches.acc_supply_with_fulfillment(&[
-					default_tranche_solution(),
-					default_tranche_solution(),
-					default_tranche_solution()
-				])
-			);
+		// 	e_e_tranches
+		// 		.combine_with_mut_residual_top(
+		// 			[(200, u128::MAX, 100), (200, 100, 200), (300, 200, 300)],
+		// 			|e, (i, s, r)| {
+		// 				e.invest = i;
+		// 				e.supply = s;
+		// 				e.redeem = r;
+		// 				Ok(())
+		// 			},
+		// 		)
+		// 		.unwrap();
+		// 	// Verify overflow error when a supply fulfillment overflows
+		// 	assert_eq!(
+		// 		Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
+		// 		e_e_tranches.acc_supply_with_fulfillment(&[
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution()
+		// 		])
+		// 	);
 
-			let mut e_e_tranches = default_epoch_tranches();
+		// 	let mut e_e_tranches = default_epoch_tranches();
 
-			e_e_tranches
-				.combine_with_mut_residual_top([(100, 100), (200, 200), (300, 300)], |e, (i, r)| {
-					e.invest = i;
-					e.redeem = r;
-					Ok(())
-				})
-				.unwrap();
+		// 	e_e_tranches
+		// 		.combine_with_mut_residual_top([(100, 100), (200, 200), (300, 300)], |e, (i, r)| {
+		// 			e.invest = i;
+		// 			e.redeem = r;
+		// 			Ok(())
+		// 		})
+		// 		.unwrap();
 
-			// Verify underflow when a supply fulfillment has an underflow
-			assert_eq!(
-				Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
-				e_e_tranches.acc_supply_with_fulfillment(&[
-					tranche_solution(Perquintill::from_percent(50), Perquintill::one()),
-					default_tranche_solution(),
-					default_tranche_solution()
-				])
-			);
+		// 	// Verify underflow when a supply fulfillment has an underflow
+		// 	assert_eq!(
+		// 		Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+		// 		e_e_tranches.acc_supply_with_fulfillment(&[
+		// 			tranche_solution(Perquintill::from_percent(50), Perquintill::one()),
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution()
+		// 		])
+		// 	);
 
-			let mut e_e_tranches = default_epoch_tranches();
-			e_e_tranches
-				.combine_with_mut_residual_top(
-					[(200, 100, 100), (200, 100, 200), (300, 200, 300)],
-					|e, (i, s, r)| {
-						e.invest = i;
-						e.supply = s;
-						e.redeem = r;
-						Ok(())
-					},
-				)
-				.unwrap();
-			// Verify accum
-			assert_eq!(
-				Ok(500),
-				e_e_tranches.acc_supply_with_fulfillment(&[
-					default_tranche_solution(),
-					default_tranche_solution(),
-					default_tranche_solution()
-				])
-			);
-		}
+		// 	let mut e_e_tranches = default_epoch_tranches();
+		// 	e_e_tranches
+		// 		.combine_with_mut_residual_top(
+		// 			[(200, 100, 100), (200, 100, 200), (300, 200, 300)],
+		// 			|e, (i, s, r)| {
+		// 				e.invest = i;
+		// 				e.supply = s;
+		// 				e.redeem = r;
+		// 				Ok(())
+		// 			},
+		// 		)
+		// 		.unwrap();
+		// 	// Verify accum
+		// 	assert_eq!(
+		// 		Ok(500),
+		// 		e_e_tranches.acc_supply_with_fulfillment(&[
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution(),
+		// 			default_tranche_solution()
+		// 		])
+		// 	);
+		// }
 
-		#[test]
-		fn epoch_execution_tranches_redemptions_works() {
-			assert_eq!(default_epoch_tranches().redemptions(), [0, 0, 0]);
+		// #[test]
+		// fn epoch_execution_tranches_redemptions_works() {
+		// 	assert_eq!(default_epoch_tranches().redemptions(), [0, 0, 0]);
 
-			let mut e_e_tranches = default_epoch_tranches();
+		// 	let mut e_e_tranches = default_epoch_tranches();
 
-			e_e_tranches
-				.combine_with_mut_residual_top([100, 200, 300], |e, r| {
-					e.redeem = r;
-					Ok(())
-				})
-				.unwrap();
-			assert_eq!(e_e_tranches.redemptions(), [100, 200, 300])
-		}
+		// 	e_e_tranches
+		// 		.combine_with_mut_residual_top([100, 200, 300], |e, r| {
+		// 			e.redeem = r;
+		// 			Ok(())
+		// 		})
+		// 		.unwrap();
+		// 	assert_eq!(e_e_tranches.redemptions(), [100, 200, 300])
+		// }
 
-		#[test]
-		fn epoch_execution_tranches_acc_redemptions_works() {
-			let mut e_e_tranches = default_epoch_tranches();
+		// #[test]
+		// fn epoch_execution_tranches_acc_redemptions_works() {
+		// 	let mut e_e_tranches = default_epoch_tranches();
 
-			e_e_tranches
-				.combine_with_mut_residual_top([100, u128::MAX, 300], |e, r| {
-					e.redeem = r;
-					Ok(())
-				})
-				.unwrap();
-			assert_eq!(
-				e_e_tranches.acc_redemptions(),
-				Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
-			);
+		// 	e_e_tranches
+		// 		.combine_with_mut_residual_top([100, u128::MAX, 300], |e, r| {
+		// 			e.redeem = r;
+		// 			Ok(())
+		// 		})
+		// 		.unwrap();
+		// 	assert_eq!(
+		// 		e_e_tranches.acc_redemptions(),
+		// 		Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+		// 	);
 
-			assert_eq!(default_epoch_tranches().acc_redemptions(), Ok(0));
+		// 	assert_eq!(default_epoch_tranches().acc_redemptions(), Ok(0));
 
-			let mut e_e_tranches = default_epoch_tranches();
+		// 	let mut e_e_tranches = default_epoch_tranches();
 
-			e_e_tranches
-				.combine_with_mut_residual_top([100, 200, 300], |e, r| {
-					e.redeem = r;
-					Ok(())
-				})
-				.unwrap();
-			assert_eq!(e_e_tranches.acc_redemptions(), Ok(600))
-		}
+		// 	e_e_tranches
+		// 		.combine_with_mut_residual_top([100, 200, 300], |e, r| {
+		// 			e.redeem = r;
+		// 			Ok(())
+		// 		})
+		// 		.unwrap();
+		// 	assert_eq!(e_e_tranches.acc_redemptions(), Ok(600))
+		// }
 
 		#[test]
 		fn epoch_execution_calculate_weights_works() {
@@ -2675,9 +2642,10 @@ pub mod test {
 		let s_tranches = [default_solution, half_invest, half_redeem];
 
 		let epoch_tranche_invest_redeem_vals =
-			[(b(10000), b(1000)), (b(2000), (530)), (b(3000), 2995)];
+			[(b(10000), b(1000)), (b(2000), b(530)), (b(3000), b(2995))];
 
-		let expected_cash_flow_vals = vec![(b(10000), b(1000)), (b(1000), (530)), (b(3000), 1497)];
+		let expected_cash_flow_vals =
+			vec![(b(10000), b(1000)), (b(1000), b(530)), (b(3000), b(1497))];
 
 		e_e_tranches
 			.combine_with_mut_residual_top(epoch_tranche_invest_redeem_vals, |e, (i, r)| {
