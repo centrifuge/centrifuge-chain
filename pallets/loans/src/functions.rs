@@ -250,6 +250,25 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
+	pub(crate) fn extend_loan(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+		added_time: Moment,
+	) -> Result<u32, DispatchError> {
+		Self::try_mutate_active_loan(
+			pool_id,
+			loan_id,
+			|active_loan| -> Result<(), DispatchError> {
+				let new_maturity_date = active_loan.pricing.schedule.maturity_date.checked_add(added_time)?;
+				active_loan.pricing.schedule.maturity_date = new_maturity_date;
+			},
+		)?;
+
+		Ok(
+			ActiveLoans::<T>::get(pool_id).len().try_into().unwrap(),
+		)
+	}
+
 	// try to close a given loan.
 	// returns the asset/collateral loan is associated with along with bool that says whether loan was completely written off.
 	pub(crate) fn close_loan(

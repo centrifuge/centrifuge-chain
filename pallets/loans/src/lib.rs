@@ -586,6 +586,31 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::price(active_count)).into())
 		}
 
+		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
+		pub fn extend(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			added_time: Moment
+		) -> DispatchResultWithPostInfo {
+			let owner = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
+
+			let res = Self::extend_loan(
+				pool_id,
+				loan_id,
+				added_time
+			);
+
+			Self::deposit_event(Event::<T>::Extended {
+				pool_id,
+				loan_id,
+				
+			});
+
+			Ok(Some(T::WeightInfo::price(active_count)).into())
+		}
+
 		/// Updates the NAV for a given pool
 		///
 		/// Iterate through each loan and calculate the present value of each active loan.
