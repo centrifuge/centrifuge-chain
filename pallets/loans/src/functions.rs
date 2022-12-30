@@ -158,15 +158,17 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		pricing: LoanPricingInput<T::Rate, T::Balance>,
+		schedule: RepaymentSchedule<Moment>,
 	) -> Result<u32, DispatchError> {
 		let now = Self::now();
-		ensure!(valuation_method.is_valid(now), Error::<T>::LoanValueInvalid);
+		ensure!(pricing.is_valid(now), Error::<T>::LoanValueInvalid);
 
 		let interest_rate_per_sec =
 			T::InterestAccrual::reference_yearly_rate(pricing.interest_rate_per_year)?;
 		
 		let active_loan = PricedLoanDetails {
 			loan_id,
+			schedule,
 			pricing: LoanPricing::from_input(pricing, interest_rate_per_sec),
 			origination_date: None,
 			normalized_debt: Zero::zero(),

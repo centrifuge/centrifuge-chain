@@ -18,6 +18,7 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
 
 use super::*;
+use valuation_method::ValuationMethod;
 
 /// Asset that represents a non fungible
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
@@ -201,14 +202,14 @@ pub enum MaxBorrowAmount<Rate> {
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub struct LoanRestrictions<Rate> {
+	/// How much can be borrowed
+  max_borrow_amount: MaxBorrowAmount<Rate>,
 	/// How often can be borrowed
   borrows: BorrowRestrictions,
 	/// How often can be repaid
   repayments: RepayRestrictions,
 	/// How often can be priced after the initial pricing
-  repricing: RepricingRestrictions,
-	/// How much can be borrowed
-  max_borrow_amount: MaxBorrowAmount<Rate>
+  repricing: RepricingRestrictions
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -233,10 +234,12 @@ where
 	Balance: FixedPointOperand + BaseArithmetic,
 {
 	fn from_input(&self, input: LoanPricingInput<Rate, Balance>, interest_rate_per_sec: Rate) -> Self {
-		interest_rate_per_sec,
-		collateral_value: input.collateral_value,
-		valuation_method: input.valuation_method,
-		restrictions: input.restrictions
+		Self {
+			interest_rate_per_sec,
+			collateral_value: input.collateral_value,
+			valuation_method: input.valuation_method,
+			restrictions: input.restrictions
+		}
 	}
 
 	fn is_valid(&self, now: Moment) -> bool {

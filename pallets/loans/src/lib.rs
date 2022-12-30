@@ -260,6 +260,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			pricing: LoanPricingInput<T::Rate, T::Balance>,
+			schedule: RepaymentSchedule<Moment>,
 		},
 		/// An amount was borrowed for a loan.
 		Borrowed {
@@ -350,6 +351,8 @@ pub mod pallet {
 		TooManyWriteOffGroups,
 		/// Emits when the max number of active loans was reached
 		TooManyActiveLoans,
+		/// Emits when a new loan is priced without a schedule
+		RepaymentScheduleRequired,
 	}
 
 	#[pallet::call]
@@ -535,6 +538,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			pricing: LoanPricingInput<T::Rate, T::Balance>,
+			schedule: Option<RepaymentSchedule<Moment>>
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
@@ -547,10 +551,13 @@ pub mod pallet {
 					match loan.status {
 						LoanStatus::Created => {
 							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
+							ensure!(schedule.is_some(), Error::<T>::RepaymentScheduleRequired);
+
 							let res = Self::price_created_loan(
 								pool_id,
 								loan_id,
-								pricing
+								pricing,
+								schedule
 							);
 
 							loan.status = LoanStatus::Active;
@@ -573,6 +580,7 @@ pub mod pallet {
 				pool_id,
 				loan_id,
 				pricing,
+				schedule
 			});
 
 			Ok(Some(T::WeightInfo::price(active_count)).into())
