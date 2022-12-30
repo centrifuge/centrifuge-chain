@@ -157,18 +157,17 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn price_created_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		interest_rate_per_year: T::Rate,
-		valuation_method: ValuationMethod<T::Rate, T::Balance>,
-	) -> Result<(u32, T::Rate), DispatchError> {
+		pricing: LoanPricingInput<T::Rate, T::Balance>,
+	) -> Result<u32, DispatchError> {
 		let now = Self::now();
 		ensure!(valuation_method.is_valid(now), Error::<T>::LoanValueInvalid);
 
 		let interest_rate_per_sec =
-			T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?;
+			T::InterestAccrual::reference_yearly_rate(pricing.interest_rate_per_year)?;
+		
 		let active_loan = PricedLoanDetails {
 			loan_id,
-			valuation_method,
-			interest_rate_per_sec,
+			pricing: LoanPricing::from_input(pricing, interest_rate_per_sec),
 			origination_date: None,
 			normalized_debt: Zero::zero(),
 			total_borrowed: Zero::zero(),
@@ -184,25 +183,23 @@ impl<T: Config> Pallet<T> {
 		let count = active_loans.len();
 		ActiveLoans::<T>::insert(pool_id, active_loans);
 
-		Ok((
+		Ok(
 			count
 				.try_into()
 				.expect("len is 32-bit in WASM, this cannot panic"),
-			interest_rate_per_sec,
-		))
+		)
 	}
 
 	pub(crate) fn price_active_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		interest_rate_per_year: T::Rate,
-		valuation_method: ValuationMethod<T::Rate, T::Balance>,
-	) -> Result<(u32, T::Rate), DispatchError> {
+		pricing: LoanPricingInput<T::Rate, T::Balance>,
+	) -> Result<u32, DispatchError> {
 		let now = Self::now();
-		ensure!(valuation_method.is_valid(now), Error::<T>::LoanValueInvalid);
+		ensure!(pricing.is_valid(now), Error::<T>::LoanValueInvalid);
 
 		let interest_rate_per_sec =
-			T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?;
+			T::InterestAccrual::reference_yearly_rate(pricing.interest_rate_per_year)?;
 		Self::try_mutate_active_loan(
 			pool_id,
 			loan_id,
@@ -228,8 +225,7 @@ impl<T: Config> Pallet<T> {
 
 				T::InterestAccrual::unreference_rate(active_loan.interest_rate_per_sec)?;
 
-				active_loan.valuation_method = valuation_method;
-				active_loan.interest_rate_per_sec = interest_rate_per_sec;
+				active_loan.pricing = LoanPricing::from_input(pricing, interest_rate_per_sec);
 				active_loan.normalized_debt = normalized_debt;
 				active_loan.last_updated = now;
 
@@ -247,10 +243,9 @@ impl<T: Config> Pallet<T> {
 			},
 		)?;
 
-		Ok((
+		Ok(
 			ActiveLoans::<T>::get(pool_id).len().try_into().unwrap(),
-			interest_rate_per_sec,
-		))
+		)
 	}
 
 	// try to close a given loan.

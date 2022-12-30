@@ -41,7 +41,6 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::OriginFor;
-use valuation_method::ValuationMethod;
 pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -260,8 +259,7 @@ pub mod pallet {
 		Priced {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			interest_rate_per_sec: T::Rate,
-			valuation_method: ValuationMethod<T::Rate, T::Balance>,
+			pricing: LoanPricingInput<T::Rate, T::Balance>,
 		},
 		/// An amount was borrowed for a loan.
 		Borrowed {
@@ -536,15 +534,14 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			interest_rate_per_year: T::Rate,
-			valuation_method: ValuationMethod<T::Rate, T::Balance>,
+			pricing: LoanPricingInput<T::Rate, T::Balance>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
-			let (active_count, interest_rate_per_sec) = Loan::<T>::try_mutate(
+			let active_count = Loan::<T>::try_mutate(
 				pool_id,
 				loan_id,
-				|loan| -> Result<(u32, T::Rate), DispatchError> {
+				|loan| -> Result<u32, DispatchError> {
 					let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 					match loan.status {
@@ -553,8 +550,7 @@ pub mod pallet {
 							let res = Self::price_created_loan(
 								pool_id,
 								loan_id,
-								interest_rate_per_year,
-								valuation_method,
+								pricing
 							);
 
 							loan.status = LoanStatus::Active;
@@ -565,8 +561,7 @@ pub mod pallet {
 							Self::price_active_loan(
 								pool_id,
 								loan_id,
-								interest_rate_per_year,
-								valuation_method,
+								pricing
 							)
 						}
 						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsClosed)?,
@@ -577,8 +572,7 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
 				loan_id,
-				interest_rate_per_sec,
-				valuation_method,
+				pricing,
 			});
 
 			Ok(Some(T::WeightInfo::price(active_count)).into())

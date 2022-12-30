@@ -212,18 +212,50 @@ pub struct LoanRestrictions<Rate> {
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub struct LoanPricingInput<Rate, Balance> {
+	pub(crate) collateral_value: Balance,
+	pub(crate) interest_rate_per_year: Rate,
+	pub(crate) valuation_method: ValuationMethod<Rate, Balance>,
+	pub(crate) restrictions: LoanRestrictions<Rate>,
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub struct LoanPricing<Rate, Balance> {
+	pub(crate) collateral_value: Balance,
+	pub(crate) interest_rate_per_sec: Rate,
+	pub(crate) valuation_method: ValuationMethod<Rate, Balance>,
+	pub(crate) restrictions: LoanRestrictions<Rate>,
+}
+
+impl<Rate, Balance> LoanPricing<Rate, Balance>
+where
+	Rate: FixedPointNumber,
+	Balance: FixedPointOperand + BaseArithmetic,
+{
+	fn from_input(&self, input: LoanPricingInput<Rate, Balance>, interest_rate_per_sec: Rate) -> Self {
+		interest_rate_per_sec,
+		collateral_value: input.collateral_value,
+		valuation_method: input.valuation_method,
+		restrictions: input.restrictions
+	}
+
+	fn is_valid(&self, now: Moment) -> bool {
+		match self.valuation_method {
+			ValuationMethod::DiscountedCashFlows(bl) => bl.is_valid(now),
+			ValuationMethod::OutstandingDebt(cl) => cl.is_valid(),
+		}
+	}
+}
+
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
 
+	pub(crate) pricing: LoanPricing<Rate, Balance>,
 	pub(crate) schedule: RepaymentSchedule<Moment>,
-	pub(crate) restrictions: LoanRestrictions<Rate>,
-
-	// Pricing
-	pub(crate) collateral_value: Balance,
-	pub(crate) valuation_method: ValuationMethod<Rate, Balance>,
-	pub(crate) interest_rate_per_sec: Rate,
-
+	
 	// time at which first borrow occurred
 	pub(crate) origination_date: Option<Moment>,
 
