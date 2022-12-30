@@ -18,7 +18,7 @@ use sp_runtime::{
 };
 use sp_std::vec::Vec;
 
-use crate::ops::ensure::{EnsureAdd, EnsureFixedPointNumber};
+use crate::ops::{EnsureAdd, EnsureFixedPointNumber};
 
 /// Abstraction over a distribution reward groups.
 pub trait GroupRewards {

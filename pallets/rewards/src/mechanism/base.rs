@@ -1,4 +1,4 @@
-use cfg_traits::ops::ensure::{
+use cfg_traits::ops::{
 	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureFrom, EnsureInto, EnsureSub,
 	EnsureSubAssign,
 };
@@ -48,10 +48,7 @@ where
 		let tally_to_apply = self.get_tally_from_rpt_changes(rpt_changes)?;
 
 		self.reward_tally.ensure_add_assign(tally_to_apply)?;
-		self.last_currency_movement = rpt_changes
-			.len()
-			.try_into()
-			.map_err(|_| ArithmeticError::Overflow)?;
+		self.last_currency_movement = rpt_changes.len().ensure_into()?;
 
 		Ok(())
 	}
