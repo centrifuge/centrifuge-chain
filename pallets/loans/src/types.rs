@@ -116,12 +116,13 @@ pub enum WriteOffAction<Rate> {
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanStatus<BlockNumber> {
-	// this when asset is locked and loan nft is created.
+	/// Loan was created by a borrower and the collateral NFT was locked.
 	Created,
-	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
-	// by providing information like discount rates etc.. to loan
+	/// Loan has been priced and optionally has been financed already.
+	/// The number of active loans in a pool is limited as all active loans
+	/// are looped over to calculate the portfolio valuation.
 	Active,
-	// loan is closed and collateral nft is transferred back to borrower and loan nft is burned
+	/// Loan has been closed and the collateral NFT was transferred back to the borrower.
 	Closed { closed_at: BlockNumber },
 }
 
@@ -141,7 +142,10 @@ pub enum NAVUpdateType {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct LoanDetails<Asset, BlockNumber> {
 	pub(crate) collateral: Asset,
+
 	pub(crate) status: LoanStatus<BlockNumber>,
+
+	pub(crate) schedule: RepaymentSchedule<Moment>,
 }
 
 // TODO: implement Mid
@@ -257,7 +261,6 @@ pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
 
 	pub(crate) pricing: LoanPricing<Rate, Balance>,
-	pub(crate) schedule: RepaymentSchedule<Moment>,
 	
 	// time at which first borrow occurred
 	pub(crate) origination_date: Option<Moment>,

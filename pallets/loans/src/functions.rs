@@ -108,6 +108,7 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		collateral_owner: T::AccountId,
 		collateral: AssetOf<T>,
+		schedule: RepaymentSchedule<Moment>,
 	) -> Result<T::LoanId, sp_runtime::DispatchError> {
 		// check if the nft belongs to owner
 		let (collateral_class_id, instance_id) = collateral.destruct();
@@ -148,6 +149,7 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			LoanDetails {
 				collateral,
+				schedule,
 				status: LoanStatus::Created,
 			},
 		);
@@ -158,7 +160,6 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		pricing: LoanPricingInput<T::Rate, T::Balance>,
-		schedule: RepaymentSchedule<Moment>,
 	) -> Result<u32, DispatchError> {
 		let now = Self::now();
 		ensure!(pricing.is_valid(now), Error::<T>::LoanValueInvalid);
@@ -168,7 +169,6 @@ impl<T: Config> Pallet<T> {
 		
 		let active_loan = PricedLoanDetails {
 			loan_id,
-			schedule,
 			pricing: LoanPricing::from_input(pricing, interest_rate_per_sec),
 			origination_date: None,
 			normalized_debt: Zero::zero(),
@@ -261,6 +261,8 @@ impl<T: Config> Pallet<T> {
 			|active_loan| -> Result<(), DispatchError> {
 				let new_maturity_date = active_loan.pricing.schedule.maturity_date.checked_add(added_time)?;
 				active_loan.pricing.schedule.maturity_date = new_maturity_date;
+
+				// TODO: should update PV of loan
 			},
 		)?;
 

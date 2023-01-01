@@ -248,6 +248,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			collateral: AssetOf<T>,
+			schedule: RepaymentSchedule<Moment>,
 		},
 		/// A loan was closed.
 		Closed {
@@ -260,7 +261,6 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			pricing: LoanPricingInput<T::Rate, T::Balance>,
-			schedule: RepaymentSchedule<Moment>,
 		},
 		/// An amount was borrowed for a loan.
 		Borrowed {
@@ -311,8 +311,8 @@ pub mod pallet {
 		ValueOverflow,
 		/// Emits when principal debt calculation failed due to overflow
 		NormalizedDebtOverflow,
-		/// Emits when tries to price a closed loan
-		LoanIsClosed,
+		/// Emits when tries to price an already priced loan
+		LoanIsAlreadyPriced,
 		/// Emits when loan type given is not valid
 		ValuationMethodInvalid,
 		/// Emits when operation is done on an inactive loan
@@ -408,11 +408,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			collateral: AssetOf<T>,
+			schedule: RepaymentSchedule<Moment>
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
 			let owner = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, owner.clone(), PoolRole::Borrower)?;
-			let loan_id = Self::create_loan(pool_id, owner, collateral)?;
+			let loan_id = Self::create_loan(pool_id, owner, collateral, schedule)?;
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
 				loan_id,
@@ -527,9 +528,9 @@ pub mod pallet {
 
 		/// Set pricing for the loan with loan specific details like Rate, Loan type
 		///
-		/// LoanStatus must be in Created or Active state.
+		/// LoanStatus must be in Created state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
-		/// `interset_rate_per_year` is the anual interest rate, in the form 0.XXXX,
+		/// `interest_rate_per_year` is the anual interest rate, in the form 0.XXXX,
 		///     such that an APR of XX.YY% becomes 0.XXYY. Valid values are 0.0001
 		///     through 0.9999, with no more than four significant figures.
 		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
@@ -537,8 +538,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			pricing: LoanPricingInput<T::Rate, T::Balance>,
-			schedule: Option<RepaymentSchedule<Moment>>
+			pricing: LoanPricingInput<T::Rate, T::Balance>
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
@@ -551,27 +551,17 @@ pub mod pallet {
 					match loan.status {
 						LoanStatus::Created => {
 							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
-							ensure!(schedule.is_some(), Error::<T>::RepaymentScheduleRequired);
 
 							let res = Self::price_created_loan(
 								pool_id,
 								loan_id,
-								pricing,
-								schedule
+								pricing
 							);
 
 							loan.status = LoanStatus::Active;
 							res
 						}
-						LoanStatus::Active => {
-							Self::ensure_role(pool_id, owner, PoolRole::LoanAdmin)?;
-							Self::price_active_loan(
-								pool_id,
-								loan_id,
-								pricing
-							)
-						}
-						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsClosed)?,
+						.. => Err(Error::<T>::LoanIsAlreadyPriced)?,
 					}
 				},
 			)?;
@@ -579,8 +569,7 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
 				loan_id,
-				pricing,
-				schedule
+				pricing
 			});
 
 			Ok(Some(T::WeightInfo::price(active_count)).into())
