@@ -1,4 +1,4 @@
-use cfg_traits::ops::ensure::{
+use cfg_traits::ops::{
 	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureFrom, EnsureInto, EnsureSub,
 	EnsureSubAssign,
 };
@@ -105,11 +105,7 @@ impl<T: Config> Account<T> {
 			self.pending_stake = T::Balance::zero();
 		}
 
-		self.last_currency_movement = currency
-			.rpt_changes
-			.len()
-			.try_into()
-			.map_err(|_| ArithmeticError::Overflow)?;
+		self.last_currency_movement = currency.rpt_changes.len().ensure_into()?;
 		self.distribution_id = group.distribution_id;
 
 		Ok(())
@@ -243,7 +239,8 @@ pub mod pallet {
 
 			group.distribution_id = LastDistributionId::<T>::try_mutate(
 				|distribution_id| -> Result<T::DistributionId, DispatchError> {
-					Ok(*distribution_id.ensure_add_assign(One::one())?)
+					distribution_id.ensure_add_assign(One::one())?;
+					Ok(*distribution_id)
 				},
 			)?;
 
