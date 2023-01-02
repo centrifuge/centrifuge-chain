@@ -238,7 +238,7 @@ impl<Balance> EpochSolution<Balance> {
 					.ensure_add_assign(solution.invest_fulfillment.mul_floor(tranche.invest))?;
 
 				acc_redeem
-					.ensure_add_assign(solution.invest_fulfillment.mul_floor(tranche.redeem))?;
+					.ensure_add_assign(solution.redeem_fulfillment.mul_floor(tranche.redeem))?;
 
 				Ok(())
 			})?;
