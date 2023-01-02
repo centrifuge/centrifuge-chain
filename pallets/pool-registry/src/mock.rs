@@ -32,7 +32,7 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pool_system::{
 	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
-	tranches::TrancheInput,
+	tranches::{Tranche, TrancheInput},
 	*,
 };
 use sp_core::H256;
@@ -194,39 +194,47 @@ pub struct ModifyPoolMock<T> {
 	phantom: PhantomData<T>,
 }
 
-impl<T: Config + pallet_pool_registry::Config> PoolMutate<T::AccountId, T::PoolId>
-	for ModifyPoolMock<T>
+impl<T: Config + pallet_pool_registry::Config + pallet_pool_system::Config>
+	PoolMutate<T::AccountId, <T as pallet_pool_system::Config>::PoolId> for ModifyPoolMock<T>
 {
-	type Balance = T::Balance;
-	type CurrencyId = T::CurrencyId;
-	type MaxTokenNameLength = T::MaxTokenNameLength;
-	type MaxTokenSymbolLength = T::MaxTokenSymbolLength;
-	type MaxTranches = T::MaxTranches;
-	type PoolChanges =
-		PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>;
-	type Rate = T::Rate;
-	type TrancheInput = TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>;
+	type Balance = <T as pallet_pool_registry::Config>::Balance;
+	type CurrencyId = <T as pallet_pool_registry::Config>::CurrencyId;
+	type MaxTokenNameLength = <T as pallet_pool_registry::Config>::MaxTokenNameLength;
+	type MaxTokenSymbolLength = <T as pallet_pool_registry::Config>::MaxTokenSymbolLength;
+	type MaxTranches = <T as pallet_pool_registry::Config>::MaxTranches;
+	type PoolChanges = PoolChanges<
+		<T as pallet_pool_registry::Config>::Rate,
+		<T as pallet_pool_registry::Config>::MaxTokenNameLength,
+		<T as pallet_pool_registry::Config>::MaxTokenSymbolLength,
+		<T as pallet_pool_registry::Config>::MaxTranches,
+	>;
+	type Rate = <T as pallet_pool_registry::Config>::Rate;
+	type TrancheInput = TrancheInput<
+		<T as pallet_pool_system::Config>::Rate,
+		<T as pallet_pool_system::Config>::MaxTokenNameLength,
+		<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
+	>;
 
 	fn create(
 		_admin: T::AccountId,
 		_depositor: T::AccountId,
-		_pool_id: T::PoolId,
+		_pool_id: <T as pallet_pool_system::Config>::PoolId,
 		_tranche_inputs: Vec<Self::TrancheInput>,
-		_currency: T::CurrencyId,
-		_max_reserve: T::Balance,
+		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
+		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
 		_metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
 		Ok(())
 	}
 
 	fn update(
-		_pool_id: T::PoolId,
+		_pool_id: <T as pallet_pool_system::Config>::PoolId,
 		_changes: Self::PoolChanges,
 	) -> Result<UpdateState, DispatchError> {
 		Ok(UpdateState::Executed(5))
 	}
 
-	fn execute_update(_: T::PoolId) -> Result<u32, DispatchError> {
+	fn execute_update(_: <T as pallet_pool_system::Config>::PoolId) -> Result<u32, DispatchError> {
 		todo!()
 	}
 }
