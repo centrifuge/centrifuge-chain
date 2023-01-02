@@ -1326,7 +1326,7 @@ where
 						.checked_pow(
 							n_tranches
 								.checked_sub(tranche.seniority)
-								.unwrap_or(u32::MAX),
+								.unwrap_or(u32::MAX), //u32::MAX sure?
 						)
 						.unwrap_or(u128::MAX)
 						.into(),
