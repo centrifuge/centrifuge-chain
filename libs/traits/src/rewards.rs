@@ -18,7 +18,7 @@ use sp_runtime::{
 };
 use sp_std::vec::Vec;
 
-use crate::ops::ensure::{EnsureAdd, EnsureFixedPointNumber};
+use crate::ops::{EnsureAdd, EnsureFixedPointNumber};
 
 /// Abstraction over a distribution reward groups.
 pub trait GroupRewards {
@@ -27,6 +27,10 @@ pub trait GroupRewards {
 
 	/// Type used to identify the group
 	type GroupId;
+
+	/// Check if the group is ready to be rewarded.
+	/// Most of the cases it means that the group has stake that should be rewarded.
+	fn is_ready(group_id: Self::GroupId) -> bool;
 
 	/// Reward a group distributing the reward amount proportionally to all associated accounts.
 	/// This method is called by distribution method only when the group has some stake.
@@ -82,22 +86,21 @@ where
 		let groups = groups.into_iter();
 		let total_weight = groups
 			.clone()
-			.filter(|(group_id, _)| !Self::group_stake(group_id.clone()).is_zero())
+			.filter(|(group_id, _)| Self::is_ready(group_id.clone()))
 			.map(|(_, weight)| weight)
 			.try_fold(Weight::zero(), |a, b| a.ensure_add(b))?;
 
-		if total_weight.is_zero() {
-			return Ok(Vec::default());
-		}
-
 		Ok(groups
-			.filter(|(group_id, _)| !Self::group_stake(group_id.clone()).is_zero())
 			.map(|(group_id, weight)| {
 				let result = (|| {
-					let reward_rate = FixedU128::checked_from_rational(weight, total_weight)
-						.ok_or(ArithmeticError::DivisionByZero)?;
+					let group_reward = if Self::is_ready(group_id.clone()) {
+						let reward_rate = FixedU128::checked_from_rational(weight, total_weight)
+							.ok_or(ArithmeticError::DivisionByZero)?;
 
-					let group_reward = reward_rate.ensure_mul_int(reward)?;
+						reward_rate.ensure_mul_int(reward)?
+					} else {
+						Self::Balance::zero()
+					};
 
 					Self::reward_group(group_id.clone(), group_reward)
 				})();
@@ -205,10 +208,13 @@ pub mod mock {
 			type Balance = Balance;
 			type GroupId = GroupId;
 
+			fn is_ready(group_id: <Self as GroupRewards>::GroupId) -> bool;
+
 			fn reward_group(
 				group_id: <Self as GroupRewards>::GroupId,
 				reward: <Self as GroupRewards>::Balance
 			) -> DispatchResult;
+
 			fn group_stake(group_id: <Self as GroupRewards>::GroupId) -> <Self as GroupRewards>::Balance;
 		}
 
@@ -287,18 +293,21 @@ mod test {
 	fn distribute_zero() {
 		let _m = mock::lock();
 
-		let ctx1 = MockDistributionRewards::group_stake_context();
-		ctx1.expect().times(8).returning(|group_id| match group_id {
-			GroupId::Empty => 0,
-			_ => 100,
+		let ctx0 = MockDistributionRewards::is_ready_context();
+		ctx0.expect().times(8).returning(|group_id| match group_id {
+			GroupId::Empty => false,
+			_ => true,
 		});
+
+		let ctx1 = MockDistributionRewards::group_stake_context();
+		ctx1.expect().never();
 
 		let ctx2 = MockDistributionRewards::reward_group_context();
 		ctx2.expect()
-			.times(3)
+			.times(4)
 			.withf(|_, reward| *reward == REWARD_ZERO)
 			.returning(|group_id, _| match group_id {
-				GroupId::Err => Err(ArithmeticError::DivisionByZero.into()),
+				GroupId::Err => Err(DispatchError::Other("issue")),
 				_ => Ok(()),
 			});
 
@@ -307,13 +316,16 @@ mod test {
 				REWARD_ZERO,
 				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
 			),
-			vec![(GroupId::Err, ArithmeticError::DivisionByZero.into())]
+			vec![(GroupId::Err, DispatchError::Other("issue"))]
 		);
 	}
 
 	#[test]
 	fn distribute_to_nothing() {
 		let _m = mock::lock();
+
+		let ctx0 = MockDistributionRewards::is_ready_context();
+		ctx0.expect().never();
 
 		let ctx1 = MockDistributionRewards::group_stake_context();
 		ctx1.expect().never();
@@ -328,30 +340,32 @@ mod test {
 	}
 
 	#[test]
-	fn distribute() {
+	fn distribute_same() {
 		let _m = mock::lock();
 
-		let ctx1 = MockDistributionRewards::group_stake_context();
-		ctx1.expect().times(8).returning(|group_id| match group_id {
-			GroupId::Empty => 0,
-			_ => 100,
+		let ctx0 = MockDistributionRewards::is_ready_context();
+		ctx0.expect().times(8).returning(|group_id| match group_id {
+			GroupId::Empty => false,
+			_ => true,
 		});
+
+		let ctx1 = MockDistributionRewards::group_stake_context();
+		ctx1.expect().never();
 
 		let ctx2 = MockDistributionRewards::reward_group_context();
 		ctx2.expect()
-			.times(3)
+			.times(4)
 			.withf(|group_id, reward| {
 				*reward
 					== match group_id {
-						GroupId::Empty => unreachable!(),
+						GroupId::Empty => 0,
 						GroupId::Err => REWARD / 3,
 						GroupId::A => REWARD / 3,
 						GroupId::B => REWARD / 3,
 					}
 			})
 			.returning(|group_id, _| match group_id {
-				GroupId::Empty => unreachable!(),
-				GroupId::Err => Err(ArithmeticError::DivisionByZero.into()),
+				GroupId::Err => Err(DispatchError::Other("issue")),
 				_ => Ok(()),
 			});
 
@@ -360,7 +374,7 @@ mod test {
 				REWARD,
 				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
 			),
-			vec![(GroupId::Err, ArithmeticError::DivisionByZero.into())]
+			vec![(GroupId::Err, DispatchError::Other("issue"))]
 		);
 	}
 
@@ -368,27 +382,29 @@ mod test {
 	fn distribute_with_weights() {
 		let _m = mock::lock();
 
-		let ctx1 = MockDistributionRewards::group_stake_context();
-		ctx1.expect().times(8).returning(|group_id| match group_id {
-			GroupId::Empty => 0,
-			_ => 100,
+		let ctx0 = MockDistributionRewards::is_ready_context();
+		ctx0.expect().times(8).returning(|group_id| match group_id {
+			GroupId::Empty => false,
+			_ => true,
 		});
+
+		let ctx1 = MockDistributionRewards::group_stake_context();
+		ctx1.expect().never();
 
 		let ctx2 = MockDistributionRewards::reward_group_context();
 		ctx2.expect()
-			.times(3)
+			.times(4)
 			.withf(|group_id, reward| {
 				*reward
 					== match group_id {
-						GroupId::Empty => unreachable!(),
+						GroupId::Empty => 0,
 						GroupId::Err => 20 * REWARD / 90,
 						GroupId::A => 30 * REWARD / 90,
 						GroupId::B => 40 * REWARD / 90,
 					}
 			})
 			.returning(|group_id, _| match group_id {
-				GroupId::Empty => unreachable!(),
-				GroupId::Err => Err(ArithmeticError::DivisionByZero.into()),
+				GroupId::Err => Err(DispatchError::Other("issue")),
 				_ => Ok(()),
 			});
 
@@ -402,7 +418,7 @@ mod test {
 					(GroupId::B, 40u32)
 				]
 			),
-			vec![(GroupId::Err, ArithmeticError::DivisionByZero.into())]
+			vec![(GroupId::Err, DispatchError::Other("issue"))]
 		);
 	}
 }

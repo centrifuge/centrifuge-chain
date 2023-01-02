@@ -183,8 +183,8 @@ fn weight_changes() {
 			Some(&WEIGHT_2)
 		);
 
-		let ctx1 = MockRewards::group_stake_context();
-		ctx1.expect().return_const(100u64);
+		let ctx1 = MockRewards::is_ready_context();
+		ctx1.expect().return_const(true);
 
 		let ctx2 = MockRewards::reward_group_context();
 		ctx2.expect()

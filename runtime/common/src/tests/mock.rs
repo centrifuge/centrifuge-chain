@@ -1,17 +1,10 @@
 use cfg_primitives::AccountId;
-use frame_support::{
-	parameter_types,
-	traits::FindAuthor,
-	weights::{DispatchClass, Weight},
-	PalletId,
-};
-use frame_system::limits;
+use frame_support::{parameter_types, traits::FindAuthor, PalletId};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
 };
 use sp_std::convert::{TryFrom, TryInto};
 

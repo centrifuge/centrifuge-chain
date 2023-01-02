@@ -40,7 +40,6 @@ use cfg_types::{
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
-use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
@@ -143,10 +142,9 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-const MAX_BLOCK_WEIGHT: Weight = MAXIMUM_BLOCK_WEIGHT.set_proof_size(MAX_POV_SIZE as u64);
-
 parameter_types! {
-	pub const MaximumBlockWeight: Weight = MAXIMUM_BLOCK_WEIGHT;
+  // we'll pull the max pov size from the relay chain in the near future
+  pub const MaximumBlockWeight: Weight = MAXIMUM_BLOCK_WEIGHT;
 	pub const Version: RuntimeVersion = VERSION;
 	pub RuntimeBlockLength: BlockLength =
 		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
@@ -156,14 +154,14 @@ parameter_types! {
 			weights.base_extrinsic = ExtrinsicBaseWeight::get();
 		})
 		.for_class(DispatchClass::Normal, |weights| {
-			  weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAX_BLOCK_WEIGHT);
+			  weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
 		})
 		.for_class(DispatchClass::Operational, |weights| {
-			  weights.max_total = Some(MAX_BLOCK_WEIGHT);
+			  weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
 			// Operational transactions have some extra reserved space, so that they
 			// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
 			weights.reserved = Some(
-				  MAX_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAX_BLOCK_WEIGHT
+				  MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
 			);
 		})
 		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)

@@ -11,7 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{base, deferred};
+use super::mechanism::{self};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -30,8 +30,11 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Tokens: orml_tokens,
+		DeferredRewardMechanism: mechanism::deferred,
+		GapRewardMechanism: mechanism::gap,
 		Rewards1: pallet_rewards::<Instance1>,
 		Rewards2: pallet_rewards::<Instance2>,
+		Rewards3: pallet_rewards::<Instance3>,
 	}
 );
 
@@ -112,8 +115,24 @@ frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
 	pub const RewardCurrency: CurrencyId = CurrencyId::Reward;
 
-	#[derive(scale_info::TypeInfo)]
+	#[derive(scale_info::TypeInfo, Default, RuntimeDebug)]
 	pub const MaxCurrencyMovements: u32 = 3;
+}
+
+impl mechanism::gap::Config for Runtime {
+	type Balance = u64;
+	type DistributionId = u32;
+	type IBalance = i64;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI64;
+}
+
+impl mechanism::deferred::Config for Runtime {
+	type Balance = u64;
+	type DistributionId = u32;
+	type IBalance = i64;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI64;
 }
 
 macro_rules! pallet_rewards_config {
@@ -131,8 +150,9 @@ macro_rules! pallet_rewards_config {
 	};
 }
 
-pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
-pallet_rewards_config!(Instance2, deferred::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance1, mechanism::base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance2, mechanism::deferred::Pallet<Runtime>);
+pallet_rewards_config!(Instance3, mechanism::gap::Pallet<Runtime>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

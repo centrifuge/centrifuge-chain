@@ -22,6 +22,9 @@ fn init_test_mock_with_expectations() -> impl Sized {
 	let mock = {
 		let lock = cfg_traits::rewards::mock::lock();
 
+		let ctx0 = MockRewards::is_ready_context();
+		ctx0.expect().return_const(true);
+
 		let ctx1 = MockRewards::group_stake_context();
 		ctx1.expect().return_const(100u64);
 
@@ -40,7 +43,7 @@ fn init_test_mock_with_expectations() -> impl Sized {
 		let ctx6 = MockRewards::attach_currency_context();
 		ctx6.expect().return_const(Ok(()));
 
-		(lock, ctx1, ctx2, ctx3, ctx4, ctx5, ctx6)
+		(lock, ctx0, ctx1, ctx2, ctx3, ctx4, ctx5, ctx6)
 	};
 
 	mock
