@@ -1,4 +1,4 @@
-use cfg_traits::ops::ensure::{
+use cfg_traits::ops::{
 	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
 };
 use frame_support::{pallet_prelude::*, traits::tokens};
@@ -204,7 +204,8 @@ pub mod pallet {
 
 			group.distribution_id = LastDistributionId::<T>::try_mutate(
 				|distribution_id| -> Result<T::DistributionId, DispatchError> {
-					Ok(*distribution_id.ensure_add_assign(One::one())?)
+					distribution_id.ensure_add_assign(One::one())?;
+					Ok(*distribution_id)
 				},
 			)?;
 
