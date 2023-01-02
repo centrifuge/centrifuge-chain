@@ -944,9 +944,15 @@ pub mod pallet {
 				.checked_add(&epoch.reserve)
 				.ok_or(Error::<T>::InvalidSolution)?;
 
+			// Mostly a sanity check. This is catched above.
+			ensure!(
+				currency_available.checked_sub(&acc_redeem).is_some(),
+				Error::<T>::InsufficientCurrency
+			);
+
 			let new_reserve = currency_available
 				.checked_sub(&acc_redeem)
-				.ok_or(Error::<T>::InsufficientCurrency)?;
+				.expect("Ensures ensures there is enough liquidity in the reserve. qed.");
 
 			Self::validate_pool_constraints(
 				PoolState::Healthy,
