@@ -1337,66 +1337,6 @@ where
 		})
 	}
 
-	// pub fn acc_supply_with_fulfillment(
-	// 	&self,
-	// 	fulfillments: &[TrancheSolution],
-	// ) -> Result<Balance, DispatchError> {
-	// 	self.supplies_with_fulfillment(fulfillments)?
-	// 		.iter()
-	// 		.fold(Some(Balance::zero()), |acc, add| {
-	// 			acc.and_then(|sum| sum.checked_add(add))
-	// 		})
-	// 		.ok_or(ArithmeticError::Overflow.into())
-	// }
-
-	// pub fn supplies(&self) -> Vec<Balance> {
-	// 	self.residual_top_slice()
-	// 		.iter()
-	// 		.map(|tranche| tranche.supply)
-	// 		.collect()
-	// }
-
-	// pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
-	// 	self.residual_top_slice()
-	// 		.iter()
-	// 		.fold(Some(Balance::zero()), |sum, tranche| {
-	// 			sum.and_then(|acc| acc.checked_add(&tranche.supply))
-	// 		})
-	// 		.ok_or(ArithmeticError::Overflow.into())
-	// }
-
-	// pub fn investments(&self) -> Vec<Balance> {
-	// 	self.residual_top_slice()
-	// 		.iter()
-	// 		.map(|tranche| tranche.invest)
-	// 		.collect()
-	// }
-
-	// pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
-	// 	self.residual_top_slice()
-	// 		.iter()
-	// 		.fold(Some(Balance::zero()), |sum, tranche| {
-	// 			sum.and_then(|acc| acc.checked_add(&tranche.invest))
-	// 		})
-	// 		.ok_or(ArithmeticError::Overflow.into())
-	// }
-
-	// pub fn redemptions(&self) -> Vec<Balance> {
-	// 	self.residual_top_slice()
-	// 		.iter()
-	// 		.map(|tranche| tranche.redeem)
-	// 		.collect()
-	// }
-
-	// pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
-	// 	self.residual_top_slice()
-	// 		.iter()
-	// 		.fold(Some(Balance::zero()), |sum, tranche| {
-	// 			sum.and_then(|acc| acc.checked_add(&tranche.redeem))
-	// 		})
-	// 		.ok_or(ArithmeticError::Overflow.into())
-	// }
-
 	// Note: weight tuple contains (investment_weight, redemption weight)
 	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
 		let n_tranches: u32 = self.tranches.len().try_into().expect("MaxTranches is u32");
@@ -2361,164 +2301,6 @@ pub mod test {
 			);
 		}
 
-		// #[test]
-		// fn epoch_execution_acc_supply_with_fulfillment_works() {
-		// 	assert_eq!(
-		// 		default_epoch_tranches().acc_supply_with_fulfillment(&[
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution()
-		// 		]),
-		// 		Err(DispatchError::Other(
-		// 			"EpochExecutionTranches contains more tranches than iterables elements"
-		// 		))
-		// 	);
-
-		// 	assert_eq!(
-		// 		default_epoch_tranches().acc_supply_with_fulfillment(&[
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution()
-		// 		]),
-		// 		Err(DispatchError::Other(
-		// 			"Iterable contains more elements than EpochExecutionTranches tranche count"
-		// 		))
-		// 	);
-
-		// 	let mut e_e_tranches = default_epoch_tranches();
-
-		// 	e_e_tranches
-		// 		.combine_with_mut_residual_top(
-		// 			[
-		// 				(200, u128::MAX / 2, 100),
-		// 				(200, u128::MAX / 2, 200),
-		// 				(300, 200, 300),
-		// 			],
-		// 			|e, (i, s, r)| {
-		// 				e.invest = i;
-		// 				e.supply = s;
-		// 				e.redeem = r;
-		// 				Ok(())
-		// 			},
-		// 		)
-		// 		.unwrap();
-		// 	// Verify overflow error when accum overflows
-		// 	assert_eq!(
-		// 		Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
-		// 		e_e_tranches.acc_supply_with_fulfillment(&[
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution()
-		// 		])
-		// 	);
-
-		// 	e_e_tranches
-		// 		.combine_with_mut_residual_top(
-		// 			[(200, u128::MAX, 100), (200, 100, 200), (300, 200, 300)],
-		// 			|e, (i, s, r)| {
-		// 				e.invest = i;
-		// 				e.supply = s;
-		// 				e.redeem = r;
-		// 				Ok(())
-		// 			},
-		// 		)
-		// 		.unwrap();
-		// 	// Verify overflow error when a supply fulfillment overflows
-		// 	assert_eq!(
-		// 		Err(DispatchError::Arithmetic(ArithmeticError::Overflow)),
-		// 		e_e_tranches.acc_supply_with_fulfillment(&[
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution()
-		// 		])
-		// 	);
-
-		// 	let mut e_e_tranches = default_epoch_tranches();
-
-		// 	e_e_tranches
-		// 		.combine_with_mut_residual_top([(100, 100), (200, 200), (300, 300)], |e, (i, r)| {
-		// 			e.invest = i;
-		// 			e.redeem = r;
-		// 			Ok(())
-		// 		})
-		// 		.unwrap();
-
-		// 	// Verify underflow when a supply fulfillment has an underflow
-		// 	assert_eq!(
-		// 		Err(DispatchError::Arithmetic(ArithmeticError::Underflow)),
-		// 		e_e_tranches.acc_supply_with_fulfillment(&[
-		// 			tranche_solution(Perquintill::from_percent(50), Perquintill::one()),
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution()
-		// 		])
-		// 	);
-
-		// 	let mut e_e_tranches = default_epoch_tranches();
-		// 	e_e_tranches
-		// 		.combine_with_mut_residual_top(
-		// 			[(200, 100, 100), (200, 100, 200), (300, 200, 300)],
-		// 			|e, (i, s, r)| {
-		// 				e.invest = i;
-		// 				e.supply = s;
-		// 				e.redeem = r;
-		// 				Ok(())
-		// 			},
-		// 		)
-		// 		.unwrap();
-		// 	// Verify accum
-		// 	assert_eq!(
-		// 		Ok(500),
-		// 		e_e_tranches.acc_supply_with_fulfillment(&[
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution(),
-		// 			default_tranche_solution()
-		// 		])
-		// 	);
-		// }
-
-		// #[test]
-		// fn epoch_execution_tranches_redemptions_works() {
-		// 	assert_eq!(default_epoch_tranches().redemptions(), [0, 0, 0]);
-
-		// 	let mut e_e_tranches = default_epoch_tranches();
-
-		// 	e_e_tranches
-		// 		.combine_with_mut_residual_top([100, 200, 300], |e, r| {
-		// 			e.redeem = r;
-		// 			Ok(())
-		// 		})
-		// 		.unwrap();
-		// 	assert_eq!(e_e_tranches.redemptions(), [100, 200, 300])
-		// }
-
-		// #[test]
-		// fn epoch_execution_tranches_acc_redemptions_works() {
-		// 	let mut e_e_tranches = default_epoch_tranches();
-
-		// 	e_e_tranches
-		// 		.combine_with_mut_residual_top([100, u128::MAX, 300], |e, r| {
-		// 			e.redeem = r;
-		// 			Ok(())
-		// 		})
-		// 		.unwrap();
-		// 	assert_eq!(
-		// 		e_e_tranches.acc_redemptions(),
-		// 		Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
-		// 	);
-
-		// 	assert_eq!(default_epoch_tranches().acc_redemptions(), Ok(0));
-
-		// 	let mut e_e_tranches = default_epoch_tranches();
-
-		// 	e_e_tranches
-		// 		.combine_with_mut_residual_top([100, 200, 300], |e, r| {
-		// 			e.redeem = r;
-		// 			Ok(())
-		// 		})
-		// 		.unwrap();
-		// 	assert_eq!(e_e_tranches.acc_redemptions(), Ok(600))
-		// }
-
 		#[test]
 		fn epoch_execution_calculate_weights_works() {
 			// Note: weight tuple containss: (investment_weight, redemption_weight)
@@ -2659,5 +2441,51 @@ pub mod test {
 			e_e_tranches.fulfillment_cash_flows(&s_tranches).unwrap(),
 			expected_cash_flow_vals
 		)
+	}
+
+	mod risk_buffers {
+		use super::*;
+
+		#[test]
+		fn calculate_risk_buffers_works() {
+			// note: this is basicallly taking the price and supply fields from the epoch tranches in an epoch tranches struct.
+			// we're basically obtaining the pool value from the price and supply of all epoch tranches
+			// then determining how much buffer the tranches have based on the ratio of pool value
+			// remaining after subtracting tranche pool value going from senior to junior tranches
+			// note that we have 0 for the residual tranche, and 80% for the senior tranche in this scenario
+			let b = |x: u128| Balance::from(x);
+			let supplies = [b(5), b(3), b(2)];
+			let prices = [
+				BalanceRatio::one(),
+				BalanceRatio::one(),
+				BalanceRatio::one(),
+			];
+
+			assert_eq!(
+				calculate_risk_buffers(&supplies, &prices).unwrap(),
+				vec![
+					Perquintill::zero(),
+					Perquintill::from_rational(1, 2u64),
+					Perquintill::from_rational(4, 5u64)
+				]
+			);
+
+			// verify that price is taken into account for pool value/risk buffers
+			let supplies = [b(20), b(15), b(8)];
+			let prices = [
+				BalanceRatio::from(10),
+				BalanceRatio::from(8),
+				BalanceRatio::from(10),
+			];
+
+			assert_eq!(
+				calculate_risk_buffers(&supplies, &prices).unwrap(),
+				vec![
+					Perquintill::zero(),
+					Perquintill::from_rational(1, 2u64),
+					Perquintill::from_rational(4, 5u64)
+				]
+			)
+		}
 	}
 }
