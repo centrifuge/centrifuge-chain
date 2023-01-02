@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use cfg_traits::ops::{EnsureAdd, EnsureSub};
+use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub};
 use cfg_types::epoch::EpochState;
 use codec::{Decode, Encode};
 use frame_support::{
@@ -67,8 +67,8 @@ where
 		let mut acc_investments = Balance::zero();
 		let mut acc_redemptions = Balance::zero();
 		for &(invest, redeem) in executed_amounts.iter() {
-			acc_investments = acc_investments.ensure_add(invest)?;
-			acc_redemptions = acc_redemptions.ensure_add(redeem)?;
+			acc_investments.ensure_add_assign(invest)?;
+			acc_redemptions.ensure_add_assign(redeem)?;
 		}
 		self.total = self
 			.total
@@ -212,7 +212,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 	Weight: Copy + From<u128>,
 {
 	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
-		self.epoch.current.ensure_add(One::one())?;
+		self.epoch.current.ensure_add_assign(One::one())?;
 		self.epoch.last_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
 		// Set available reserve to 0 to disable originations while the epoch is closed but not executed
