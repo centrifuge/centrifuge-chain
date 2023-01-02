@@ -13,10 +13,11 @@ use std::marker::PhantomData;
 
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
 use cfg_traits::{
-	Permissions as PermissionsT, PoolUpdateGuard, PreConditions,
+	Permissions as PermissionsT, PoolMutate, PoolUpdateGuard, PreConditions,
 	TrancheCurrency as TrancheCurrencyT, UpdateState,
 };
 use cfg_types::{
+	epoch::EpochState,
 	fixed_point::Rate,
 	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
 	time::TimeProvider,
@@ -31,17 +32,21 @@ use frame_support::{
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pool_system::{
-	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
-	tranches::{Tranche, TrancheInput},
+	pool_types::{
+		PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
+		ScheduledUpdateDetails,
+	},
+	tranches::{Tranche, TrancheInput, TrancheType, Tranches},
 	*,
 };
+use sp_arithmetic::Perquintill;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
-use crate::{self as pallet_pool_registry, Config, PoolMutate};
+use crate::{self as pallet_pool_registry, Config};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -224,7 +229,47 @@ impl<T: Config + pallet_pool_registry::Config + pallet_pool_system::Config>
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
 		_metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
-		Ok(())
+		let tranches = Tranches::new(
+			0,
+			std::iter::repeat(Tranche {
+				tranche_type: TrancheType::Residual,
+				seniority: 0,
+				currency: (),
+				debt: (),
+				reserve: (),
+				loss: (),
+				ratio: Default::default(),
+				last_updated_interest: 0,
+				_phantom: Default::default(),
+			})
+			.take(4)
+			.collect(),
+		)
+		.unwrap();
+
+		Ok(pallet_pool_system::Pool::<T>::insert(
+			POOL,
+			PoolDetails {
+				currency: CurrencyId::default(),
+				tranches,
+				status: PoolStatus::Open,
+				epoch: EpochState {
+					current: Zero::zero(),
+					last_closed: 0,
+					last_executed: Zero::zero(),
+				},
+				reserve: ReserveDetails {
+					max: 40,
+					available: Zero::zero(),
+					total: 39,
+				},
+				parameters: PoolParameters {
+					min_epoch_time: 0,
+					max_nav_age: 60,
+				},
+				metadata: None,
+			},
+		))
 	}
 
 	fn update(
