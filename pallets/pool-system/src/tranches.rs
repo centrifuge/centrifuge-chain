@@ -1686,6 +1686,44 @@ pub mod test {
 				Err(ArithmeticError::Overflow.into())
 			)
 		}
+
+		#[test]
+		fn create_asset_metadata_works() {
+			let tranche = non_residual(3, Some(10), None);
+			let decimals: u32 = 10;
+			let name: Vec<u8> = "Glimmer".into();
+			let symbol: Vec<u8> = "GLMR".into();
+			let asset_metadata = tranche.create_asset_metadata(
+				decimals,
+				// fake parachain id
+				ParachainId::from(42),
+				// fake pallet index
+				42u8,
+				name,
+				symbol,
+			);
+
+			assert_eq!(asset_metadata.existential_deposit, 0);
+			assert_eq!(asset_metadata.name[..], [71, 108, 105, 109, 109, 101, 114]);
+			assert_eq!(asset_metadata.symbol[..], [71, 76, 77, 82]);
+			assert_eq!(asset_metadata.decimals, decimals);
+
+			// assert!(match asset_metadata {
+			// 	AssetMetadata {
+			// 		decimals,
+			// 		name,
+			// 		symbol,
+			// 		existential_deposit: 0,
+			// 		location:
+			// 			Some(VersionedMultiLocation::V1(xcm::v1::MultiLocation {
+			// 				parents: 1,
+			// 				interior: X3(Parachain(42), PalletInstance(42), GeneralKey(_)),
+			// 			})),
+			// 		additional: _,
+			// 	} => true,
+			// 	_ => false,
+			// })
+		}
 	}
 
 	mod tranches {
