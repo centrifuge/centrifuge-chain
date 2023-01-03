@@ -13,7 +13,10 @@
 use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::{
+	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, EnsureSub},
+	TrancheCurrency as TrancheCurrencyT,
+};
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
 use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
@@ -170,36 +173,28 @@ impl Default for Tranche<Balance, Rate, TrancheWeight, TrancheCurrency> {
 
 impl<Balance, Rate, Weight, Currency> Tranche<Balance, Rate, Weight, Currency>
 where
-	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
+	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	Rate: FixedPointNumber<Inner = Balance> + One + Copy,
 	Balance: FixedPointOperand,
 	Weight: Copy + From<u128>,
 {
-	pub fn balance(&self) -> Result<Balance, DispatchError> {
-		self.debt
-			.checked_add(&self.reserve)
-			.ok_or(ArithmeticError::Overflow.into())
+	pub fn balance(&self) -> Result<Balance, ArithmeticError> {
+		self.debt.ensure_add(self.reserve)
 	}
 
-	pub fn free_balance(&self) -> Result<Balance, DispatchError> {
+	pub fn free_balance(&self) -> Result<Balance, ArithmeticError> {
 		Ok(self.reserve)
 	}
 
-	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
+	pub fn accrue(&mut self, now: Moment) -> Result<(), ArithmeticError> {
 		let delta = now - self.last_updated_interest;
 		let interest = self.interest_rate_per_sec();
 		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
 		//       for us, as we simply have the same debt if this happens
-		let total_interest = checked_pow(
-			interest,
-			delta
-				.try_into()
-				.map_err(|_| DispatchError::Other("Usize should be at least 64 bits."))?,
-		)
-		.ok_or(ArithmeticError::Overflow)?;
-		self.debt = total_interest
-			.checked_mul_int(self.debt)
-			.ok_or(ArithmeticError::Overflow)?;
+		let total_interest =
+			checked_pow(interest, delta.ensure_into()?).ok_or(ArithmeticError::Overflow)?;
+
+		self.debt = total_interest.ensure_mul_int(self.debt)?;
 		self.last_updated_interest = now;
 
 		Ok(())
@@ -333,12 +328,7 @@ impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> 
 				TrancheId,
 				PoolId,
 			>::id_from_salt(salt));
-			salt = (
-				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
-					.try_into()
-					.map_err(|_| ArithmeticError::Overflow)?,
-				pool,
-			);
+			salt = (index.ensure_add(1)?.ensure_into()?, pool);
 		}
 
 		Ok(Self {
@@ -387,7 +377,7 @@ where
 
 		for (index, tranche_input) in tranche_inputs.into_iter().enumerate() {
 			tranches.add::<MaxTokenNameLength, MaxTokenSymbolLength>(
-				index.try_into().map_err(|_| ArithmeticError::Overflow)?,
+				index.ensure_into()?,
 				tranche_input,
 				now,
 			)?;
@@ -496,13 +486,7 @@ where
 			Tranches::<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>::id_from_salt(
 				self.salt,
 			);
-		self.salt = (
-			self.salt
-				.0
-				.checked_add(1)
-				.ok_or(ArithmeticError::Overflow)?,
-			self.salt.1,
-		);
+		self.salt = (self.salt.0.ensure_add(1)?, self.salt.1);
 		Ok(id)
 	}
 
@@ -517,8 +501,7 @@ where
 		let tranche = Tranche {
 			tranche_type,
 			// seniority increases as index since the order is from junior to senior
-			seniority: seniority
-				.unwrap_or(index.try_into().map_err(|_| ArithmeticError::Overflow)?),
+			seniority: seniority.unwrap_or(index.ensure_into()?),
 			currency: TrancheCurrency::generate(self.salt.1, id),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
@@ -555,7 +538,7 @@ where
 		MaxTokenSymbolLength: Get<u32>,
 	{
 		let at_idx = at;
-		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		let at: usize = at.ensure_into()?;
 		ensure!(
 			at <= self.tranches.len(),
 			DispatchError::Other(
@@ -597,7 +580,7 @@ where
 	}
 
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
-		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		let at: usize = at.ensure_into()?;
 		ensure!(
 			at < self.tranches.len(),
 			DispatchError::Other(
@@ -782,8 +765,10 @@ where
 			if pool_is_zero || total_issuance == Zero::zero() {
 				Ok(One::one())
 			} else if tranche.tranche_type == TrancheType::Residual {
-				BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
-					.ok_or(ArithmeticError::Overflow.into())
+				Ok(BalanceRatio::ensure_from_rational(
+					remaining_assets,
+					total_issuance,
+				)?)
 			} else {
 				tranche.accrue(now)?;
 				let tranche_balance = tranche.balance()?;
@@ -800,8 +785,10 @@ where
 						.expect("Tranche value smaller equal remaining assets. qed.");
 					tranche_balance
 				};
-				BalanceRatio::checked_from_rational(tranche_value, total_issuance)
-					.ok_or(ArithmeticError::Overflow.into())
+				Ok(BalanceRatio::ensure_from_rational(
+					tranche_value,
+					total_issuance,
+				)?)
 			}
 		})?;
 
@@ -880,23 +867,20 @@ where
 	}
 
 	pub fn supplies(&self) -> Result<Vec<Balance>, DispatchError> {
-		self.tranches
+		Ok(self
+			.tranches
 			.iter()
-			.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
-			.collect::<Option<Vec<_>>>()
-			.ok_or(ArithmeticError::Overflow.into())
+			.map(|tranche| tranche.debt.ensure_add(tranche.reserve))
+			.collect::<Result<_, _>>()?)
 	}
 
 	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
-		self.tranches
+		Ok(self
+			.tranches
 			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| {
-					acc.checked_add(&tranche.debt)
-						.and_then(|acc| acc.checked_add(&tranche.reserve))
-				})
-			})
-			.ok_or(ArithmeticError::Overflow.into())
+			.try_fold(Balance::zero(), |sum, tranche| {
+				sum.ensure_add(tranche.debt)?.ensure_add(tranche.reserve)
+			})?)
 	}
 
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
@@ -923,38 +907,30 @@ where
 	) -> DispatchResult {
 		// Calculate the new fraction of the total pool value that each tranche contains
 		// This is based on the tranche values at time of epoch close.
-		let total_assets = pool_total_reserve
-			.checked_add(&pool_nav)
-			.ok_or(ArithmeticError::Overflow)?;
+		let total_assets = pool_total_reserve.ensure_add(pool_nav)?;
 
 		// Calculate the new total asset value for each tranche
 		// This uses the current state of the tranches, rather than the cached epoch-close-time values.
 		let mut total_assets = total_assets;
 		let tranche_assets = self.combine_with_mut_non_residual_top(
 			executed_amounts.iter().rev(),
-			|tranche, (invest, redeem)| {
+			|tranche, &(invest, redeem)| {
 				tranche.accrue(now)?;
 
-				tranche
+				let value = tranche
 					.debt
-					.checked_add(&tranche.reserve)
-					.ok_or(ArithmeticError::Overflow)?
-					.checked_add(invest)
-					.ok_or(ArithmeticError::Overflow)?
-					.checked_sub(redeem)
-					.ok_or(ArithmeticError::Underflow.into())
-					.map(|value| {
-						if value > total_assets {
-							let assets = total_assets;
-							total_assets = Zero::zero();
-							assets
-						} else {
-							total_assets = total_assets
-								.checked_sub(&value)
-								.expect("total_assets greater equal value. qed.");
-							value
-						}
-					})
+					.ensure_add(tranche.reserve)?
+					.ensure_add(invest)?
+					.ensure_sub(redeem)?;
+
+				if value > total_assets {
+					let assets = total_assets;
+					total_assets = Zero::zero();
+					Ok(assets)
+				} else {
+					total_assets = total_assets.ensure_sub(value)?;
+					Ok(value)
+				}
 			},
 		)?;
 
@@ -1294,12 +1270,10 @@ where
 		fulfillments: &[TrancheSolution],
 	) -> Result<Vec<Balance>, DispatchError> {
 		self.combine_with_residual_top(fulfillments, |tranche, solution| {
-			tranche
+			Ok(tranche
 				.supply
-				.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-				.ok_or(ArithmeticError::Overflow)?
-				.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
-				.ok_or(ArithmeticError::Underflow.into())
+				.ensure_add(solution.invest_fulfillment.mul_floor(tranche.invest))?
+				.ensure_sub(solution.redeem_fulfillment.mul_floor(tranche.redeem))?)
 		})
 	}
 
@@ -1355,16 +1329,14 @@ where
 	let tranche_values: Vec<_> = tranche_supplies
 		.iter()
 		.zip(tranche_prices)
-		.map(|(supply, price)| price.checked_mul_int(*supply))
-		.collect::<Option<Vec<_>>>()
-		.ok_or(ArithmeticError::Overflow)?;
+		.map(|(supply, price)| price.ensure_mul_int(*supply))
+		.collect::<Result<_, _>>()?;
 
 	let pool_value = tranche_values
 		.iter()
-		.fold(Some(Zero::zero()), |sum: Option<Balance>, tranche_value| {
-			sum.and_then(|sum| sum.checked_add(tranche_value))
-		})
-		.ok_or(ArithmeticError::Overflow)?;
+		.try_fold(Balance::zero(), |sum, tranche_value| {
+			sum.ensure_add(*tranche_value)
+		})?;
 
 	// Iterate over the tranches senior => junior.
 	// Buffer of most senior tranche is pool value -y senior tranche value.
@@ -1375,9 +1347,8 @@ where
 		.iter()
 		.rev()
 		.map(|tranche_value| {
-			remaining_subordinate_value = remaining_subordinate_value
-				.checked_sub(tranche_value)
-				.unwrap_or(Zero::zero());
+			remaining_subordinate_value =
+				remaining_subordinate_value.saturating_sub(*tranche_value);
 			Perquintill::from_rational(remaining_subordinate_value, pool_value)
 		})
 		.collect::<Vec<Perquintill>>();
