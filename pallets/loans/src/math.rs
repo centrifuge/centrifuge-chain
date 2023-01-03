@@ -117,7 +117,7 @@ mod tests {
 		if now > maturity_date {
 			return None;
 		}
-	
+
 		// calculate the rate^(m-now)
 		let rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
 		// calculate expected cash flow

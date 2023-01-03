@@ -16,9 +16,9 @@ use std::collections::HashMap;
 use cfg_primitives::{AccountId, Address, Balance, CollectionId, ItemId, PoolId};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
-	valuation_method::{DiscountedCashFlows, ValuationMethod},
 	math::interest_rate_per_sec,
 	types::Asset,
+	valuation_method::{DiscountedCashFlows, ValuationMethod},
 	Call as LoansCall,
 };
 use pallet_uniques::Call as UniquesCall;
@@ -133,7 +133,13 @@ pub fn issue_default_loan(
 		maturity,
 	));
 
-	issue_loan(owner, pool_id, rate_from_percent(15), valuation_method, manager)
+	issue_loan(
+		owner,
+		pool_id,
+		rate_from_percent(15),
+		valuation_method,
+		manager,
+	)
 }
 
 /// Issues a loan.

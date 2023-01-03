@@ -39,9 +39,9 @@ use test_utils::{
 
 use super::*;
 use crate::{
-	valuation_method::{DiscountedCashFlows, OutstandingDebtWithMaturity},
 	test_utils::{initialise_test_pool, FundsAccount},
 	types::WriteOffGroupInput,
+	valuation_method::{DiscountedCashFlows, OutstandingDebtWithMaturity},
 	Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet,
 };
 
@@ -261,22 +261,23 @@ fn activate_test_loan_with_rate<T: Config>(
 	<T as LoanConfig>::Rate: From<Rate>,
 	<T as LoanConfig>::Balance: From<u128>,
 {
-	let valuation_method = ValuationMethod::OutstandingDebtWithMaturity(OutstandingDebtWithMaturity::new(
-		// advance rate 80%
-		Rate::saturating_from_rational(80, 100).into(),
-		// probability of default is 4%
-		Rate::saturating_from_rational(4, 100).into(),
-		// loss given default is 50%
-		Rate::saturating_from_rational(50, 100).into(),
-		// collateral value
-		(125 * CURRENCY).into(),
-		// 4%
-		math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100))
-			.unwrap()
-			.into(),
-		// 2 years
-		math::seconds_per_year() * 2,
-	));
+	let valuation_method =
+		ValuationMethod::OutstandingDebtWithMaturity(OutstandingDebtWithMaturity::new(
+			// advance rate 80%
+			Rate::saturating_from_rational(80, 100).into(),
+			// probability of default is 4%
+			Rate::saturating_from_rational(4, 100).into(),
+			// loss given default is 50%
+			Rate::saturating_from_rational(50, 100).into(),
+			// collateral value
+			(125 * CURRENCY).into(),
+			// 4%
+			math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100))
+				.unwrap()
+				.into(),
+			// 2 years
+			math::seconds_per_year() * 2,
+		));
 	let rp: <T as pallet::Config>::Rate = Rate::saturating_from_rational(rate, 5000).into();
 	LoansPallet::<T>::price(
 		RawOrigin::Signed(borrower).into(),

@@ -65,9 +65,9 @@ pub mod benchmarking;
 pub(crate) mod test_utils;
 
 pub mod functions;
-pub mod valuation_method;
 pub mod math;
 pub mod types;
+pub mod valuation_method;
 pub mod weights;
 
 #[frame_support::pallet]
@@ -408,7 +408,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			collateral: AssetOf<T>,
-			schedule: RepaymentSchedule<Moment>
+			schedule: RepaymentSchedule<Moment>,
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
 			let owner = ensure_signed(origin)?;
@@ -538,38 +538,31 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			pricing: LoanPricingInput<T::Rate, T::Balance>
+			pricing: LoanPricingInput<T::Rate, T::Balance>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
-			let active_count = Loan::<T>::try_mutate(
-				pool_id,
-				loan_id,
-				|loan| -> Result<u32, DispatchError> {
+			let active_count =
+				Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
 					let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 					match loan.status {
 						LoanStatus::Created => {
 							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
 
-							let res = Self::price_created_loan(
-								pool_id,
-								loan_id,
-								pricing
-							);
+							let res = Self::price_created_loan(pool_id, loan_id, pricing);
 
 							loan.status = LoanStatus::Active;
 							res
 						}
 						.. => Err(Error::<T>::LoanIsAlreadyPriced)?,
 					}
-				},
-			)?;
+				})?;
 
 			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
 				loan_id,
-				pricing
+				pricing,
 			});
 
 			Ok(Some(T::WeightInfo::price(active_count)).into())
@@ -580,22 +573,14 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			added_time: Moment
+			added_time: Moment,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
 
-			let res = Self::extend_loan(
-				pool_id,
-				loan_id,
-				added_time
-			);
+			let res = Self::extend_loan(pool_id, loan_id, added_time);
 
-			Self::deposit_event(Event::<T>::Extended {
-				pool_id,
-				loan_id,
-				
-			});
+			Self::deposit_event(Event::<T>::Extended { pool_id, loan_id });
 
 			Ok(Some(T::WeightInfo::price(active_count)).into())
 		}

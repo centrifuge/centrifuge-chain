@@ -16,9 +16,9 @@ use cfg_traits::PoolInspect;
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
+use valuation_method::ValuationMethod;
 
 use super::*;
-use valuation_method::ValuationMethod;
 
 /// Asset that represents a non fungible
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
@@ -152,7 +152,7 @@ pub struct LoanDetails<Asset, BlockNumber> {
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum InterestEvent {
 	/// At the end of the period, e.g. the last day of the month for a monthly period
-	End
+	End,
 }
 
 // TODO: implement Yearly, Quarterly, Daily
@@ -161,14 +161,14 @@ pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
 	None,
 	/// Interest payments are expected monthly
-	Monthly { event: InterestEvent }
+	Monthly { event: InterestEvent },
 }
 
 // TODO: implement StraightLine, Annuity
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum PayDownSchedule {
 	/// The entire borrowed amount is expected to be paid back at the maturity date
-  None
+	None,
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -183,22 +183,22 @@ pub struct RepaymentSchedule<Moment> {
 	/// Period at which interest is paid
 	interest_payments: InterestPayments,
 	/// How much of the initially borrowed amount is paid back during interest payments
-	pay_down_schedule: PayDownSchedule
+	pay_down_schedule: PayDownSchedule,
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum BorrowRestrictions {
-	None
+	None,
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum RepayRestrictions {
-	None
+	None,
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub enum RepricingRestrictions {
-	None
+	None,
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -212,13 +212,13 @@ pub enum MaxBorrowAmount<Rate> {
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub struct LoanRestrictions<Rate> {
 	/// How much can be borrowed
-  max_borrow_amount: MaxBorrowAmount<Rate>,
+	max_borrow_amount: MaxBorrowAmount<Rate>,
 	/// How often can be borrowed
-  borrows: BorrowRestrictions,
+	borrows: BorrowRestrictions,
 	/// How often can be repaid
-  repayments: RepayRestrictions,
+	repayments: RepayRestrictions,
 	/// How often can be priced after the initial pricing
-  repricing: RepricingRestrictions
+	repricing: RepricingRestrictions,
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -242,12 +242,16 @@ where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
 {
-	fn from_input(&self, input: LoanPricingInput<Rate, Balance>, interest_rate_per_sec: Rate) -> Self {
+	fn from_input(
+		&self,
+		input: LoanPricingInput<Rate, Balance>,
+		interest_rate_per_sec: Rate,
+	) -> Self {
 		Self {
 			interest_rate_per_sec,
 			collateral_value: input.collateral_value,
 			valuation_method: input.valuation_method,
-			restrictions: input.restrictions
+			restrictions: input.restrictions,
 		}
 	}
 
@@ -259,16 +263,14 @@ where
 	}
 }
 
-
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
 	// Why not:
 	// pub(crate) loan: LoanDetails
-
 	pub(crate) pricing: LoanPricing<Rate, Balance>,
-	
+
 	// time at which first borrow occurred
 	pub(crate) origination_date: Option<Moment>,
 
@@ -311,19 +313,27 @@ where
 				debt.checked_sub(&write_off_amount)?
 			}
 		};
-		
+
 		match self.valuation_method {
-			ValuationMethod::DiscountedCashFlows(bl) => {
-				bl.present_value(debt, self.schedule.maturity_date, self.origination_date, now, self.interest_rate_per_sec)
-			}
-			ValuationMethod::OutstandingDebt(cl) => cl.present_value(debt)
+			ValuationMethod::DiscountedCashFlows(bl) => bl.present_value(
+				debt,
+				self.schedule.maturity_date,
+				self.origination_date,
+				now,
+				self.interest_rate_per_sec,
+			),
+			ValuationMethod::OutstandingDebt(cl) => cl.present_value(debt),
 		}
 	}
 
 	pub fn max_borrow_amount(&self, debt: Balance) -> Balance {
 		match self.restrictions.max_borrow_amount {
-			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate.checked_mul_int(self.collateral_value)?.checked_sub(&self.total_borrowed),
-			ValuationMethod::UpToOutstandingDebt { advance_rate } => advance_rate.checked_mul_int(self.collateral_value)?.checked_sub(&debt)
+			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
+				.checked_mul_int(self.collateral_value)?
+				.checked_sub(&self.total_borrowed),
+			ValuationMethod::UpToOutstandingDebt { advance_rate } => advance_rate
+				.checked_mul_int(self.collateral_value)?
+				.checked_sub(&debt),
 		}
 		// always fallback to zero max_borrow_amount
 		.unwrap_or_else(Zero::zero)

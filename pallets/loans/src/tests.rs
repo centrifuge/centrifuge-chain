@@ -34,7 +34,6 @@ use sp_runtime::{
 use super::*;
 use crate as pallet_loans;
 use crate::{
-	valuation_method::{OutstandingDebt, DiscountedCashFlows, ValuationMethod},
 	mock::{
 		Borrower, InterestAccrual, LoanAdmin, Loans, OrderManager, PoolAdmin, Runtime,
 		RuntimeEvent as MockEvents, RuntimeOrigin, TestExternalitiesBuilder, Timestamp, Tokens,
@@ -43,6 +42,7 @@ use crate::{
 		assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
 		initialise_test_pool, mint_nft,
 	},
+	valuation_method::{DiscountedCashFlows, OutstandingDebt, ValuationMethod},
 };
 
 // Return last triggered event
@@ -355,7 +355,8 @@ fn test_price_and_reprice_loan() {
 			let (pool_id, loan, _collateral) = issue_test_loan::<Runtime>(0, borrower);
 
 			// successful pricing
-			let (rate, _, valuation_method) = price_bullet_loan::<Runtime>(borrower, pool_id, loan.1);
+			let (rate, _, valuation_method) =
+				price_bullet_loan::<Runtime>(borrower, pool_id, loan.1);
 
 			// princing an active loan must be done only with LoanAdmin permission.
 			let res = Loans::price(
@@ -531,7 +532,8 @@ macro_rules! test_borrow_loan {
 
 				// successful pricing
 				let loan_id = loan.1;
-				let (_, rate, valuation_method) = $price_loan::<Runtime>(borrower, pool_id, loan_id);
+				let (_, rate, valuation_method) =
+					$price_loan::<Runtime>(borrower, pool_id, loan_id);
 
 				// borrow 50 first
 				Timestamp::set_timestamp(1 * 1000);

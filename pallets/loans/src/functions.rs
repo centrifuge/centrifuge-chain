@@ -166,7 +166,7 @@ impl<T: Config> Pallet<T> {
 
 		let interest_rate_per_sec =
 			T::InterestAccrual::reference_yearly_rate(pricing.interest_rate_per_year)?;
-		
+
 		let active_loan = PricedLoanDetails {
 			loan_id,
 			pricing: LoanPricing::from_input(pricing, interest_rate_per_sec),
@@ -185,11 +185,9 @@ impl<T: Config> Pallet<T> {
 		let count = active_loans.len();
 		ActiveLoans::<T>::insert(pool_id, active_loans);
 
-		Ok(
-			count
-				.try_into()
-				.expect("len is 32-bit in WASM, this cannot panic"),
-		)
+		Ok(count
+			.try_into()
+			.expect("len is 32-bit in WASM, this cannot panic"))
 	}
 
 	pub(crate) fn price_active_loan(
@@ -245,9 +243,7 @@ impl<T: Config> Pallet<T> {
 			},
 		)?;
 
-		Ok(
-			ActiveLoans::<T>::get(pool_id).len().try_into().unwrap(),
-		)
+		Ok(ActiveLoans::<T>::get(pool_id).len().try_into().unwrap())
 	}
 
 	pub(crate) fn extend_loan(
@@ -259,16 +255,18 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			|active_loan| -> Result<(), DispatchError> {
-				let new_maturity_date = active_loan.pricing.schedule.maturity_date.checked_add(added_time)?;
+				let new_maturity_date = active_loan
+					.pricing
+					.schedule
+					.maturity_date
+					.checked_add(added_time)?;
 				active_loan.pricing.schedule.maturity_date = new_maturity_date;
 
 				// TODO: should update PV of loan
 			},
 		)?;
 
-		Ok(
-			ActiveLoans::<T>::get(pool_id).len().try_into().unwrap(),
-		)
+		Ok(ActiveLoans::<T>::get(pool_id).len().try_into().unwrap())
 	}
 
 	// try to close a given loan.

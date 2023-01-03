@@ -13,9 +13,9 @@
 
 //! Module provides functionality for different loan types
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::checked_pow;
 
 use super::*;
-use sp_arithmetic::traits::checked_pow;
 
 /// different types of loans
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
@@ -78,18 +78,21 @@ where
 		if debt.is_zero() {
 			return Some(Balance::zero());
 		}
-	
+
 		// If the loan is overdue, there are no future cash flows to discount,
 		// hence we use the outstanding debt as the value.
 		if now > maturity_date {
 			return Some(debt);
 		}
-	
+
 		// Calculate the expected loss over the term of the loan
-		let tel = Rate::saturating_from_rational(maturity_date - origination_date, math::seconds_per_year())
-			.checked_mul(&self.probability_of_default)
-			.and_then(|val| val.checked_mul(&self.loss_given_default))
-			.map(|tel| tel.min(One::one()))?;
+		let tel = Rate::saturating_from_rational(
+			maturity_date - origination_date,
+			math::seconds_per_year(),
+		)
+		.checked_mul(&self.probability_of_default)
+		.and_then(|val| val.checked_mul(&self.loss_given_default))
+		.map(|tel| tel.min(One::one()))?;
 		let tel_inv = Rate::one().checked_sub(&tel)?;
 
 		// Calculate the risk-adjusted expected cash flows
@@ -120,15 +123,15 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OutstandingDebt<Balance> {
-}
+pub struct OutstandingDebt<Balance> {}
 
 impl<Balance> OutstandingDebt<Balance>
 where
 	Balance: FixedPointOperand + BaseArithmetic,
-{	#[allow(dead_code)]
+{
+	#[allow(dead_code)]
 	pub fn new() -> Self {
-		Self { }
+		Self {}
 	}
 
 	/// calculates the present value of the credit line loan
