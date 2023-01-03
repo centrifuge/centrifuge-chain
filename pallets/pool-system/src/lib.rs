@@ -383,7 +383,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
 		},
-		/// An Pool was created.
+		/// A pool was created.
 		Created {
 			admin: T::AccountId,
 			depositor: T::AccountId,
