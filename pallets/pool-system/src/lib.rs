@@ -384,7 +384,7 @@ pub mod pallet {
 			epoch_id: T::EpochId,
 		},
 		/// An Pool was created.
-		PoolCreated {
+		Created {
 			admin: T::AccountId,
 			depositor: T::AccountId,
 			pool_id: T::PoolId,
@@ -398,7 +398,7 @@ pub mod pallet {
 			>,
 		},
 		/// An Pool was updated.
-		PoolUpdated {
+		Updated {
 			id: T::PoolId,
 			old: PoolEssence<
 				T::CurrencyId,
@@ -1040,7 +1040,7 @@ pub mod pallet {
 					}
 				}
 
-				Self::deposit_event(Event::PoolUpdated {
+				Self::deposit_event(Event::Updated {
 					id: *pool_id,
 					old: old_pool,
 					new: pool
