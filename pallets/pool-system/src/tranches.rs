@@ -392,7 +392,8 @@ where
 
 	pub fn tranche_id(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheId> {
 		match id {
-			TrancheLoc::Id(id) => Some(id),
+			// to provide same validating behaviour as given by index tranche_id
+			TrancheLoc::Id(id) => self.ids.iter().find(|x| **x == id).and_then(|_| Some(id)),
 			TrancheLoc::Index(index) => index
 				.try_into()
 				.ok()
@@ -1707,22 +1708,13 @@ pub mod test {
 			assert_eq!(asset_metadata.name[..], [71, 108, 105, 109, 109, 101, 114]);
 			assert_eq!(asset_metadata.symbol[..], [71, 76, 77, 82]);
 			assert_eq!(asset_metadata.decimals, decimals);
-
-			// assert!(match asset_metadata {
-			// 	AssetMetadata {
-			// 		decimals,
-			// 		name,
-			// 		symbol,
-			// 		existential_deposit: 0,
-			// 		location:
-			// 			Some(VersionedMultiLocation::V1(xcm::v1::MultiLocation {
-			// 				parents: 1,
-			// 				interior: X3(Parachain(42), PalletInstance(42), GeneralKey(_)),
-			// 			})),
-			// 		additional: _,
-			// 	} => true,
-			// 	_ => false,
-			// })
+			assert!(match asset_metadata.location {
+				Some(VersionedMultiLocation::V1(xcm::v1::MultiLocation {
+					parents: 1,
+					interior: X3(Parachain(42), PalletInstance(42), GeneralKey(_)),
+				})) => true,
+				_ => false,
+			})
 		}
 	}
 
@@ -1745,6 +1737,59 @@ pub mod test {
 				Some(TrancheCurrency::generate(DEFAULT_POOL_ID, [2u8; 16]))
 			);
 			assert_eq!(tranches.tranche_currency(TrancheLoc::Index(3)), None);
+		}
+
+		#[test]
+		fn tranche_id_from_tranches() {
+			let tranches = default_tranches();
+
+			// valid tranche id
+			let expecte_tranche_id: TrancheId = [
+				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
+			];
+
+			// get by id with valid id
+			assert_eq!(
+				tranches.tranche_id(TrancheLoc::Id(expecte_tranche_id)),
+				Some(expecte_tranche_id)
+			);
+
+			// invalid tranche id
+			let invalid_tranche_id: TrancheId = [
+				59u8, 0, 10, 0, 120, 240, 10, 191, 69, 232, 6, 10, 154, 5, 32, 37,
+			];
+			// get by id for nonexistent tranche
+			assert_eq!(
+				tranches.tranche_id(TrancheLoc::Id(invalid_tranche_id)),
+				None
+			);
+
+			// get by index with valid index
+			assert_eq!(
+				tranches.tranche_id(TrancheLoc::Index(1)),
+				Some(expecte_tranche_id)
+			);
+
+			// get by invalid index
+			assert_eq!(tranches.tranche_id(TrancheLoc::Index(3)), None)
+		}
+	}
+
+	mod tranche_id_gen {
+		use super::*;
+
+		#[test]
+		fn id_from_salt_works() {
+			// let pool_id: PoolId = 8u64;
+			let index: TrancheIndex = 1u64;
+			let salt: TrancheSalt<PoolId> = (index, DEFAULT_POOL_ID);
+			let expected_txt_vec = [
+				192u8, 50, 9, 127, 130, 29, 150, 182, 178, 210, 117, 99, 2, 243, 223, 149,
+			];
+			assert_eq!(
+				Tranches::<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId>::id_from_salt(salt),
+          expected_txt_vec
+			)
 		}
 	}
 
