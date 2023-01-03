@@ -1799,6 +1799,37 @@ pub mod test {
 			assert_eq!(tranches.tranche_index(&TrancheLoc::Index(2)), Some(2));
 			assert_eq!(tranches.tranche_index(&TrancheLoc::Index(3)), None);
 		}
+
+		#[test]
+		fn get_mut_tranche_works() {
+			let mut tranches = default_tranches_with_seniority();
+
+			let mut tranche = tranches.get_mut_tranche(TrancheLoc::Index(2)).unwrap();
+			tranche.debt = 25000;
+			// ensure both correct tranche fetched, and tranche mutable
+			assert_eq!((tranche.debt, tranche.seniority), (25000, 2));
+			assert_eq!(tranches.get_mut_tranche(TrancheLoc::Index(3)), None);
+
+			// test with id as opposed to index using ID of tranche at index 1
+			let valid_tranche_id: TrancheId = [
+				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
+			];
+			let mut tranche = tranches
+				.get_mut_tranche(TrancheLoc::Id(valid_tranche_id))
+				.unwrap();
+
+			tranche.debt = 25000;
+			// ensure both correct tranche fetched, and tranche mutable
+			assert_eq!((tranche.debt, tranche.seniority), (25000, 1));
+
+			let invalid_tranche_id: TrancheId = [
+				59u8, 168, 10, 10, 10, 10, 10, 191, 69, 232, 6, 209, 154, 5, 32, 37,
+			];
+			assert_eq!(
+				tranches.get_mut_tranche(TrancheLoc::Id(invalid_tranche_id)),
+				None
+			);
+		}
 	}
 
 	mod tranche_id_gen {
