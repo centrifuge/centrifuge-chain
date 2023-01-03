@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
+use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _, UpdateState};
 use cfg_types::tokens::{CurrencyId, CustomMetadata, TrancheCurrency};
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
@@ -276,6 +276,12 @@ pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = Currency
 		MAX_RESERVE,
 		None,
 	)
+}
+
+pub fn update_pool<T: Config<PoolId = u64>>(
+	changes: PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>,
+) -> Result<UpdateState, DispatchError> {
+	Pallet::<T>::update(POOL, changes)
 }
 
 pub fn get_scheduled_update<T: Config<PoolId = u64>>(

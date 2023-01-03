@@ -23,7 +23,8 @@ use orml_traits::{asset_registry::Inspect as OrmlInspect, Change};
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_pool_system::benchmarking::{
 	assert_input_tranches_match, assert_update_tranches_match, build_bench_input_tranches,
-	create_admin, create_investor, create_pool, get_pool, get_tranche_id, prepare_asset_registry,
+	create_admin, create_investor, create_pool, get_pool, get_scheduled_update, get_tranche_id,
+	prepare_asset_registry, update_pool,
 };
 use pallet_pool_system::{
 	pool_types::{PoolChanges, ScheduledUpdateDetails},
@@ -88,15 +89,16 @@ benchmarks! {
 		let tranches = build_bench_input_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
 		prepare_asset_registry::<T>();
+		create_pool::<T>(n, caller.clone())?;
 	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
-		// let pool = get_pool::<T>();
-		// assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-		// assert_eq!(pool.reserve.available, Zero::zero());
-		// assert_eq!(pool.reserve.total, Zero::zero());
-		// assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
-		// assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
-		// assert_eq!(pool.metadata, None);
+		let pool = get_pool::<T>();
+		assert_input_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_eq!(pool.reserve.available, Zero::zero());
+		assert_eq!(pool.reserve.total, Zero::zero());
+		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
+		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
+		assert_eq!(pool.metadata, None);
 	}
 
 	update_no_execution {
@@ -121,17 +123,21 @@ benchmarks! {
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
 			tranche_metadata: Change::NoChange,
 		};
+
+		// Call Update on pool_system::Pallet because of the Mock
+		update_pool::<T>(changes.clone());
 	}: update(RawOrigin::Signed(admin), POOL, changes.clone())
 	verify {
 		// Should be the old values
+		//todo: Why? The MinUpdateDelay is 0, so should be updated right away?
 		// let pool = get_pool::<T>();
 		// assert_eq!(pool.parameters.min_epoch_time, default_min_epoch_time);
 		// assert_eq!(pool.parameters.max_nav_age, default_max_nav_age);
-		//
-		// let actual_update = get_scheduled_update::<T>();
-		// assert_eq!(actual_update.changes, changes);
+
+		let actual_update = get_scheduled_update::<T>();
+		assert_eq!(actual_update.changes, changes);
 	}
-	//
+
 	// update_and_execute {
 	// 	let admin: T::AccountId = create_admin::<T>(0);
 	// 	let n in 1..T::MaxTranches::get();
