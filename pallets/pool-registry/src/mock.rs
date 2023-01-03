@@ -208,10 +208,10 @@ impl<T: Config + pallet_pool_registry::Config + pallet_pool_system::Config>
 	type MaxTokenSymbolLength = <T as pallet_pool_registry::Config>::MaxTokenSymbolLength;
 	type MaxTranches = <T as pallet_pool_registry::Config>::MaxTranches;
 	type PoolChanges = PoolChanges<
-		<T as pallet_pool_registry::Config>::Rate,
-		<T as pallet_pool_registry::Config>::MaxTokenNameLength,
-		<T as pallet_pool_registry::Config>::MaxTokenSymbolLength,
-		<T as pallet_pool_registry::Config>::MaxTranches,
+		<T as pallet_pool_system::Config>::Rate,
+		<T as pallet_pool_system::Config>::MaxTokenNameLength,
+		<T as pallet_pool_system::Config>::MaxTokenSymbolLength,
+		<T as pallet_pool_system::Config>::MaxTranches,
 	>;
 	type Rate = <T as pallet_pool_registry::Config>::Rate;
 	type TrancheInput = TrancheInput<
@@ -258,9 +258,9 @@ impl Config for Test {
 	type CurrencyId = CurrencyId;
 	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
-	type MaxTokenNameLength = ();
-	type MaxTokenSymbolLength = ();
-	type MaxTranches = ();
+	type MaxTokenNameLength = MaxTokenNameLength;
+	type MaxTokenSymbolLength = MaxTokenSymbolLength;
+	type MaxTranches = MaxTranches;
 	type ModifyPool = ModifyPoolMock<Self>;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
@@ -296,6 +296,21 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxOutstandingCollects: u32 = 10;
+}
+impl pallet_investments::Config for Test {
+	type Accountant = PoolSystem;
+	type Amount = Balance;
+	type BalanceRatio = Rate;
+	type InvestmentId = TrancheCurrency;
+	type MaxOutstandingCollects = MaxOutstandingCollects;
+	type PreConditions = Always;
+	type RuntimeEvent = RuntimeEvent;
+	type Tokens = OrmlTokens;
+	type WeightInfo = ();
+}
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test
@@ -313,6 +328,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		OrderManager: cfg_test_utils::mocks::order_manager::{Pallet, Storage},
+		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -399,7 +415,7 @@ impl cfg_traits::Permissions<AccountId> for PermissionsMock {
 		_who: AccountId,
 		_role: Self::Role,
 	) -> Result<Self::Ok, Self::Error> {
-		todo!()
+		Ok(())
 	}
 
 	fn remove(
@@ -407,7 +423,7 @@ impl cfg_traits::Permissions<AccountId> for PermissionsMock {
 		_who: AccountId,
 		_role: Self::Role,
 	) -> Result<Self::Ok, Self::Error> {
-		todo!()
+		Ok(())
 	}
 }
 
