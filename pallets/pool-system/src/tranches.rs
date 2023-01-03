@@ -1745,14 +1745,14 @@ pub mod test {
 			let tranches = default_tranches();
 
 			// valid tranche id
-			let expecte_tranche_id: TrancheId = [
+			let expected_tranche_id: TrancheId = [
 				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
 			];
 
 			// get by id with valid id
 			assert_eq!(
-				tranches.tranche_id(TrancheLoc::Id(expecte_tranche_id)),
-				Some(expecte_tranche_id)
+				tranches.tranche_id(TrancheLoc::Id(expected_tranche_id)),
+				Some(expected_tranche_id)
 			);
 
 			let invalid_tranche_id: TrancheId = [
@@ -1767,7 +1767,7 @@ pub mod test {
 			// get by index with valid index
 			assert_eq!(
 				tranches.tranche_id(TrancheLoc::Index(1)),
-				Some(expecte_tranche_id)
+				Some(expected_tranche_id)
 			);
 
 			// get by invalid index
@@ -1830,6 +1830,41 @@ pub mod test {
 				None
 			);
 		}
+
+		#[test]
+		fn get_tranche_works() {
+			let tranches = default_tranches_with_seniority();
+
+			let tranche = tranches.get_tranche(TrancheLoc::Index(2)).unwrap();
+			assert_eq!(tranche.seniority, 2);
+			assert_eq!(tranches.get_tranche(TrancheLoc::Index(3)), None);
+
+			// id for tranche at index 1, w/ seniority 1
+			let valid_tranche_id: TrancheId = [
+				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
+			];
+			let tranche = tranches
+				.get_tranche(TrancheLoc::Id(valid_tranche_id))
+				.unwrap();
+			assert_eq!(tranche.seniority, 1);
+
+			let invalid_tranche_id: TrancheId = [
+				59u8, 168, 10, 10, 10, 10, 10, 191, 69, 232, 6, 209, 154, 5, 32, 37,
+			];
+			assert_eq!(
+				tranches.get_tranche(TrancheLoc::Id(invalid_tranche_id)),
+				None
+			)
+		}
+
+		#[test]
+		fn next_id_works() {
+			let mut tranches = default_tranches();
+			let next = tranches.next_id();
+			let next_again = tranches.next_id();
+
+			assert_ne!(next, next_again)
+		}
 	}
 
 	mod tranche_id_gen {
@@ -1837,7 +1872,6 @@ pub mod test {
 
 		#[test]
 		fn id_from_salt_works() {
-			// let pool_id: PoolId = 8u64;
 			let index: TrancheIndex = 1u64;
 			let salt: TrancheSalt<PoolId> = (index, DEFAULT_POOL_ID);
 			let expected_txt_vec = [
