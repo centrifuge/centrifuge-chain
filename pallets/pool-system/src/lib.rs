@@ -397,7 +397,7 @@ pub mod pallet {
 				T::MaxTokenSymbolLength,
 			>,
 		},
-		/// An Pool was updated.
+		/// A pool was updated.
 		Updated {
 			id: T::PoolId,
 			old: PoolEssence<
