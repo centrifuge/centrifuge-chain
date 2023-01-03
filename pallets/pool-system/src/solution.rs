@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureMul, EnsureSub};
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
@@ -135,7 +136,7 @@ impl<Balance> EpochSolution<Balance> {
 		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
 	) -> Result<Balance, DispatchError>
 	where
-		Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
+		Balance: Copy + BaseArithmetic + Unsigned + From<u64>,
 		Weight: Copy + From<u128> + Convert<Weight, Balance>,
 		BalanceRatio: Copy,
 	{
@@ -143,33 +144,27 @@ impl<Balance> EpochSolution<Balance> {
 			.iter()
 			.zip(tranches.residual_top_slice())
 			.zip(tranches.calculate_weights())
-			.fold(
-				(Some(Balance::zero()), Some(Balance::zero())),
+			.try_fold(
+				(Balance::zero(), Balance::zero()),
 				|(invest_score, redeem_score),
-				 ((solution, tranches), (invest_weight, redeem_weight))| {
-					(
-						invest_score.and_then(|score| {
-							solution
-								.invest_fulfillment
-								.mul_floor(tranches.invest)
-								.checked_mul(&Weight::convert(invest_weight))
-								.and_then(|score_tranche| score.checked_add(&score_tranche))
-						}),
-						redeem_score.and_then(|score| {
-							solution
-								.redeem_fulfillment
-								.mul_floor(tranches.redeem)
-								.checked_mul(&Weight::convert(redeem_weight))
-								.and_then(|score_tranche| score.checked_add(&score_tranche))
-						}),
-					)
+				 ((solution, tranches), (invest_weight, redeem_weight))|
+				 -> Result<_, DispatchError> {
+					Ok((
+						solution
+							.invest_fulfillment
+							.mul_floor(tranches.invest)
+							.ensure_mul(Weight::convert(invest_weight))?
+							.ensure_add(invest_score)?,
+						solution
+							.redeem_fulfillment
+							.mul_floor(tranches.redeem)
+							.ensure_mul(Weight::convert(redeem_weight))?
+							.ensure_add(redeem_score)?,
+					))
 				},
-			);
+			)?;
 
-		invest_score
-			.zip(redeem_score)
-			.and_then(|(invest_score, redeem_score)| invest_score.checked_add(&redeem_score))
-			.ok_or(ArithmeticError::Overflow.into())
+		Ok(invest_score.ensure_add(redeem_score)?)
 	}
 
 	/// Scores a solution and returns a healthy solution as a result.
@@ -224,12 +219,12 @@ impl<Balance> EpochSolution<Balance> {
 						.iter()
 						.zip(risk_buffers)
 						.map(|(tranche, risk_buffer)| {
-							tranche.min_risk_buffer.checked_sub(&risk_buffer).map(
-								|div: Perquintill| div.saturating_reciprocal_mul(Balance::one()),
-							)
+							Ok(tranche
+								.min_risk_buffer
+								.ensure_sub(risk_buffer)?
+								.saturating_reciprocal_mul(Balance::one()))
 						})
-						.collect::<Option<Vec<_>>>()
-						.ok_or(ArithmeticError::Overflow)?,
+						.collect::<Result<Vec<_>, ArithmeticError>>()?,
 				)
 			} else {
 				None
@@ -239,34 +234,21 @@ impl<Balance> EpochSolution<Balance> {
 			let mut acc_invest = Balance::zero();
 			let mut acc_redeem = Balance::zero();
 			tranches.combine_with_residual_top(solution, |tranche, solution| {
-				acc_invest = solution
-					.invest_fulfillment
-					.mul_floor(tranche.invest)
-					.checked_add(&acc_invest)
-					.ok_or(ArithmeticError::Overflow)?;
+				acc_invest
+					.ensure_add_assign(solution.invest_fulfillment.mul_floor(tranche.invest))?;
 
-				acc_redeem = solution
-					.invest_fulfillment
-					.mul_floor(tranche.redeem)
-					.checked_add(&acc_redeem)
-					.ok_or(ArithmeticError::Overflow)?;
+				acc_redeem
+					.ensure_add_assign(solution.redeem_fulfillment.mul_floor(tranche.redeem))?;
+
 				Ok(())
 			})?;
 
-			let new_reserve = reserve
-				.checked_add(&acc_invest)
-				.ok_or(ArithmeticError::Overflow)?
-				.checked_sub(&acc_redeem)
-				.ok_or(ArithmeticError::Underflow)?;
+			let new_reserve = reserve.ensure_add(acc_invest)?.ensure_sub(acc_redeem)?;
 
 			// Score: 1 / (new reserve - max reserve)
 			// A higher score means the distance to the max reserve is smaller
-			let reserve_diff = new_reserve
-				.checked_sub(&max_reserve)
-				.ok_or(ArithmeticError::Underflow)?;
-			let score = BalanceRatio::one()
-				.checked_div_int(reserve_diff)
-				.ok_or(ArithmeticError::Overflow)?;
+			let reserve_diff = new_reserve.ensure_sub(max_reserve)?;
+			let score = BalanceRatio::one().ensure_div_int(reserve_diff)?;
 
 			Some(score)
 		} else {
@@ -413,23 +395,17 @@ where
 		.residual_top_slice()
 		.iter()
 		.zip(solution)
-		.fold(Some(Balance::zero()), |sum, (tranche, solution)| {
-			sum.and_then(|sum| {
-				sum.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-			})
-		})
-		.ok_or(ArithmeticError::Overflow)?;
+		.try_fold(Balance::zero(), |sum, (tranche, solution)| {
+			sum.ensure_add(solution.invest_fulfillment.mul_floor(tranche.invest))
+		})?;
 
 	let acc_redeem: Balance = epoch_tranches
 		.residual_top_slice()
 		.iter()
 		.zip(solution)
-		.fold(Some(Balance::zero()), |sum, (tranche, solution)| {
-			sum.and_then(|sum| {
-				sum.checked_add(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
-			})
-		})
-		.ok_or(ArithmeticError::Overflow)?;
+		.try_fold(Balance::zero(), |sum, (tranche, solution)| {
+			sum.ensure_add(solution.redeem_fulfillment.mul_floor(tranche.redeem))
+		})?;
 
 	let new_tranche_supplies = epoch_tranches.supplies_with_fulfillment(solution)?;
 	let tranche_prices = epoch_tranches.prices();
