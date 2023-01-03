@@ -166,15 +166,20 @@ pub enum InterestPayments {
 
 // TODO: implement StraightLine, Annuity
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-enum PayDownSchedule {
+pub enum PayDownSchedule {
 	/// The entire borrowed amount is expected to be paid back at the maturity date
   None
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+pub enum Maturity<Moment> {
+	Fixed(Moment),
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub struct RepaymentSchedule<Moment> {
 	/// Expected repayment date for remaining debt
-	maturity_date: Moment,
+	maturity: Maturity<Moment>,
 	/// Period at which interest is paid
 	interest_payments: InterestPayments,
 	/// How much of the initially borrowed amount is paid back during interest payments
@@ -259,6 +264,8 @@ where
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
+	// Why not:
+	// pub(crate) loan: LoanDetails
 
 	pub(crate) pricing: LoanPricing<Rate, Balance>,
 	
