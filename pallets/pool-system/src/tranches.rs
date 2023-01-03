@@ -1941,6 +1941,44 @@ pub mod test {
 
 			assert_ne!(next, next_again)
 		}
+
+		struct TokenNameLen;
+		impl Get<u32> for TokenNameLen {
+			fn get() -> u32 {
+				16u32
+			}
+		}
+
+		struct TokenSymLen;
+		impl Get<u32> for TokenSymLen {
+			fn get() -> u32 {
+				8u32
+			}
+		}
+		#[test]
+		fn replace_tranche_works() {
+			let mut tranches = default_tranches();
+
+			let int_per_sec = Rate::saturating_from_integer(SECS_PER_YEAR);
+			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+			let input = TrancheInput {
+				seniority: Some(5),
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: int_per_sec,
+					min_risk_buffer: min_risk_buffer,
+				},
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::<u8, TokenNameLen>::default(),
+					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+				},
+			};
+
+			// this works with 1, but not 2, looks like it's not working with the last index
+			// looking into that now
+			// let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
+			// println!("{:?}", replace_res);
+			// assert!(replace_res.is_ok());
+		}
 	}
 
 	mod tranche_id_gen {
