@@ -403,7 +403,8 @@ where
 
 	pub fn tranche_index(&self, id: &TrancheLoc<TrancheId>) -> Option<TrancheIndex> {
 		match id {
-			TrancheLoc::Index(index) => Some(*index),
+			TrancheLoc::Index(index) if *index < self.ids.len() as u64 => Some(*index),
+			TrancheLoc::Index(_) => None,
 			TrancheLoc::Id(id) => self
 				.ids
 				.iter()
@@ -1754,7 +1755,6 @@ pub mod test {
 				Some(expecte_tranche_id)
 			);
 
-			// invalid tranche id
 			let invalid_tranche_id: TrancheId = [
 				59u8, 0, 10, 0, 120, 240, 10, 191, 69, 232, 6, 10, 154, 5, 32, 37,
 			];
@@ -1772,6 +1772,32 @@ pub mod test {
 
 			// get by invalid index
 			assert_eq!(tranches.tranche_id(TrancheLoc::Index(3)), None)
+		}
+
+		#[test]
+		fn tranche_index_from_tranches() {
+			let tranches = default_tranches();
+
+			let valid_tranche_id: TrancheId = [
+				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
+			];
+
+			assert_eq!(
+				tranches.tranche_index(&TrancheLoc::Id(valid_tranche_id)),
+				Some(1)
+			);
+
+			let invalid_tranche_id: TrancheId = [
+				59u8, 0, 10, 0, 120, 240, 10, 191, 69, 232, 6, 10, 154, 5, 32, 37,
+			];
+
+			assert_eq!(
+				tranches.tranche_index(&TrancheLoc::Id(invalid_tranche_id)),
+				None
+			);
+
+			assert_eq!(tranches.tranche_index(&TrancheLoc::Index(2)), Some(2));
+			assert_eq!(tranches.tranche_index(&TrancheLoc::Index(3)), None);
 		}
 	}
 
