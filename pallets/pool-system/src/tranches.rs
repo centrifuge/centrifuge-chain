@@ -1858,6 +1858,82 @@ pub mod test {
 		}
 
 		#[test]
+		fn create_tranche_works() {
+			let mut tranches = default_tranches_with_seniority();
+			let tranche_id: TrancheId = [
+				103u8, 57, 22, 242, 127, 45, 18, 102, 173, 154, 105, 163, 156, 150, 75, 194,
+			];
+			let int_per_sec = Rate::saturating_from_integer(SECS_PER_YEAR);
+			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+			let new_tranche = tranches
+				.create_tranche(
+					3,
+					tranche_id,
+					TrancheType::NonResidual {
+						interest_rate_per_sec: int_per_sec,
+						min_risk_buffer: min_risk_buffer,
+					},
+					Some(5u32),
+					// arbitrary static time val for "now"
+					SECS_PER_YEAR,
+				)
+				.unwrap();
+
+			assert!(match new_tranche {
+				Tranche {
+					tranche_type:
+						TrancheType::NonResidual {
+							interest_rate_per_sec: ir,
+							min_risk_buffer: b,
+						},
+					debt: 0,
+					reserve: 0,
+					loss: 0,
+					seniority: 5,
+					currency: TrancheCurrency { .. },
+					last_updated_interest: SECS_PER_YEAR,
+					..
+				} if b == min_risk_buffer && int_per_sec == ir => true,
+				_ => false,
+			});
+			assert_eq!(
+				new_tranche.currency,
+				TrancheCurrency::generate(DEFAULT_POOL_ID, tranche_id)
+			);
+			assert_eq!(new_tranche.ratio, Perquintill::zero());
+
+			let new_tranche = tranches
+				.create_tranche(
+					3,
+					tranche_id,
+					TrancheType::NonResidual {
+						interest_rate_per_sec: int_per_sec,
+						min_risk_buffer: min_risk_buffer,
+					},
+					None,
+					SECS_PER_YEAR,
+				)
+				.unwrap();
+
+			assert_eq!(new_tranche.seniority, 3);
+
+			let new_tranche = tranches.create_tranche(
+				u64::MAX,
+				tranche_id,
+				TrancheType::NonResidual {
+					interest_rate_per_sec: int_per_sec,
+					min_risk_buffer: min_risk_buffer,
+				},
+				None,
+				SECS_PER_YEAR,
+			);
+			assert_eq!(
+				new_tranche,
+				Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+			);
+		}
+
+		#[test]
 		fn next_id_works() {
 			let mut tranches = default_tranches();
 			let next = tranches.next_id();
@@ -1875,7 +1951,7 @@ pub mod test {
 			let index: TrancheIndex = 1u64;
 			let salt: TrancheSalt<PoolId> = (index, DEFAULT_POOL_ID);
 			let expected_txt_vec = [
-				192u8, 50, 9, 127, 130, 29, 150, 182, 178, 210, 117, 99, 2, 243, 223, 149,
+				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
 			];
 			assert_eq!(
 				Tranches::<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId>::id_from_salt(salt),
