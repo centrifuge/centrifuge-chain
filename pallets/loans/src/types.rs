@@ -221,6 +221,7 @@ pub struct LoanRestrictions<Rate> {
 	repricing: RepricingRestrictions,
 }
 
+// Matches LoanPricing except interest rate input should be per year while stored per second
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 pub struct LoanPricingInput<Rate, Balance> {
 	pub(crate) collateral_value: Balance,
