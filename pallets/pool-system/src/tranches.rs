@@ -1959,7 +1959,7 @@ pub mod test {
 		fn replace_tranche_works() {
 			let mut tranches = default_tranches();
 
-			let int_per_sec = Rate::saturating_from_integer(SECS_PER_YEAR);
+			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 			let input = TrancheInput {
 				seniority: Some(5),
@@ -1973,11 +1973,8 @@ pub mod test {
 				},
 			};
 
-			// this works with 1, but not 2, looks like it's not working with the last index
-			// looking into that now
-			// let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
-			// println!("{:?}", replace_res);
-			// assert!(replace_res.is_ok());
+			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
+			assert!(replace_res.is_ok());
 		}
 	}
 
