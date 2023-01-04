@@ -1973,8 +1973,69 @@ pub mod test {
 				},
 			};
 
+			// verify replace tranche works with interest less than prev tranch as expected
+			// replacing last tranche
 			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
 			assert!(replace_res.is_ok());
+
+			// verify replace doesn't work if interest is greater than tranche w/ lower index ("next")
+			let mut tranches = default_tranches();
+			// ensure we have a interest rate larger than prev tranche from defaults
+			let int_per_sec = Rate::saturating_from_integer(2)
+				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				+ One::one();
+			let input = TrancheInput {
+				seniority: Some(5),
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: int_per_sec,
+					min_risk_buffer: min_risk_buffer,
+				},
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::<u8, TokenNameLen>::default(),
+					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+				},
+			};
+
+			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
+			assert!(replace_res.is_err());
+
+			// verify replacing tranche works when interest rate higher than senior tranche following it
+			let mut tranches = default_tranches();
+			let input = TrancheInput {
+				seniority: Some(5),
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: int_per_sec,
+					min_risk_buffer: min_risk_buffer,
+				},
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::<u8, TokenNameLen>::default(),
+					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+				},
+			};
+
+			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
+			assert!(replace_res.is_ok());
+
+			// verify replacing tranche errors if tranche following it has a higher interest rate
+			// let mut tranches = default_tranches();
+
+			// let int_per_sec = Rate::saturating_from_integer(2)
+			// 	/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			// 	+ One::one();
+			// let input = TrancheInput {
+			// 	seniority: Some(5),
+			// 	tranche_type: TrancheType::NonResidual {
+			// 		interest_rate_per_sec: int_per_sec,
+			// 		min_risk_buffer: min_risk_buffer,
+			// 	},
+			// 	metadata: TrancheMetadata {
+			// 		token_name: BoundedVec::<u8, TokenNameLen>::default(),
+			// 		token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+			// 	},
+			// };
+
+			// let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
+			// assert!(replace_res.is_err());
 		}
 	}
 
