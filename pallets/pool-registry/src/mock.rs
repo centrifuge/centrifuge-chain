@@ -115,7 +115,7 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
-	pub const MinUpdateDelay: u64 = 0; // for testing purposes
+	pub const MinUpdateDelay: u64 = 1; // for testing purposes
 	pub const ChallengeTime: BlockNumber = 0;
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
