@@ -525,8 +525,57 @@ where
 		MaxTokenNameLength: Get<u32>,
 		MaxTokenSymbolLength: Get<u32>,
 	{
+		let at_idx = at;
+		let i_at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		ensure!(
+			    i_at <= self.tranches.len(),
+			    DispatchError::Other(
+				      "Must add tranches either in between others or at the end. This should be catched somewhere else."
+			    )
+		  );
+
+		let id = self.next_id()?;
+		let new_tranche = self.create_tranche(
+			at_idx,
+			id.clone(),
+			tranche.tranche_type,
+			tranche.seniority,
+			now,
+		)?;
+
+		self.validate_insert(at, &new_tranche)?;
 		self.remove(at)?;
-		self.add::<MaxTokenNameLength, MaxTokenSymbolLength>(at, tranche, now)
+		self.tranches.insert(i_at, new_tranche);
+		self.ids.insert(i_at, id);
+		Ok(())
+	}
+
+	pub fn validate_insert(
+		&self,
+		at: TrancheIndex,
+		tranche: &Tranche<Balance, Rate, Weight, TrancheCurrency>,
+	) -> DispatchResult {
+		let i_at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		if i_at == 0 {
+			ensure!(
+				tranche.tranche_type == TrancheType::Residual,
+				DispatchError::Other(
+					"Top tranche must be a residual one. This should be catched somewhere else"
+				)
+			);
+		} else {
+			ensure!(
+				self.tranches
+					.get(i_at - 1)
+					.expect("at is <= len and is not zero. An element before at must exist. qed.")
+					.tranche_type
+					.valid_next_tranche(&tranche.tranche_type),
+				DispatchError::Other(
+					"Invalid next tranche type. This should be catched somewhere else."
+				)
+			);
+		};
+		Ok(())
 	}
 
 	pub fn add<MaxTokenNameLength, MaxTokenSymbolLength>(
@@ -540,9 +589,9 @@ where
 		MaxTokenSymbolLength: Get<u32>,
 	{
 		let at_idx = at;
-		let at: usize = at.ensure_into()?;
+		let i_at: usize = at.ensure_into()?;
 		ensure!(
-			at <= self.tranches.len(),
+			i_at <= self.tranches.len(),
 			DispatchError::Other(
 				"Must add tranches either in between others or at the end. This should be catched somewhere else."
 			)
@@ -556,27 +605,10 @@ where
 			tranche.seniority,
 			now,
 		)?;
-		if at == 0 {
-			ensure!(
-				tranche.tranche_type == TrancheType::Residual,
-				DispatchError::Other(
-					"Top tranche must be a residual one. This should be catched somewhere else"
-				)
-			);
-		} else {
-			ensure!(
-				self.tranches
-					.get(at - 1)
-					.expect("at is <= len and is not zero. An element before at must exist. qed.")
-					.tranche_type
-					.valid_next_tranche(&new_tranche.tranche_type),
-				DispatchError::Other(
-					"Invalid next tranche type. This should be catched somewhere else."
-				)
-			);
-		}
-		self.tranches.insert(at, new_tranche);
-		self.ids.insert(at, id);
+
+		self.validate_insert(at, &new_tranche)?;
+		self.tranches.insert(i_at, new_tranche);
+		self.ids.insert(i_at, id);
 
 		Ok(())
 	}
@@ -1962,6 +1994,7 @@ pub mod test {
 			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 			let input = TrancheInput {
+				// setting to easily testable value for tranche replacement
 				seniority: Some(5),
 				tranche_type: TrancheType::NonResidual {
 					interest_rate_per_sec: int_per_sec,
@@ -1977,6 +2010,13 @@ pub mod test {
 			// replacing last tranche
 			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
 			assert!(replace_res.is_ok());
+			assert_eq!(
+				tranches
+					.get_tranche(TrancheLoc::Index(2))
+					.unwrap()
+					.seniority,
+				5
+			);
 
 			// verify replace doesn't work if interest is greater than tranche w/ lower index ("next")
 			let mut tranches = default_tranches();
@@ -1985,6 +2025,7 @@ pub mod test {
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
 			let input = TrancheInput {
+				// setting to easily testable value for tranche replacement, should not be changed from 0
 				seniority: Some(5),
 				tranche_type: TrancheType::NonResidual {
 					interest_rate_per_sec: int_per_sec,
@@ -1998,6 +2039,14 @@ pub mod test {
 
 			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
 			assert!(replace_res.is_err());
+			// verify unchanged from default val
+			assert_eq!(
+				tranches
+					.get_tranche(TrancheLoc::Index(2))
+					.unwrap()
+					.seniority,
+				0
+			);
 
 			// verify replacing tranche works when interest rate higher than senior tranche following it
 			let mut tranches = default_tranches();
