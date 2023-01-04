@@ -574,6 +574,24 @@ where
 					"Invalid next tranche type. This should be catched somewhere else."
 				)
 			);
+			ensure!(
+				if i_at < self.tranches.len() - 1 {
+					tranche.tranche_type.valid_next_tranche(
+                &self.tranches
+						        .get(i_at + 1)
+						        .expect(
+							          "at is <= len and is not zero. An element before at must exist. qed.",
+						        )
+						        .tranche_type
+            )
+				} else {
+					// no need to check prev elements if last
+					true
+				},
+				DispatchError::Other(
+					"Invalid next tranche type. This should be catched somewhere else."
+				)
+			)
 		};
 		Ok(())
 	}
@@ -2066,25 +2084,25 @@ pub mod test {
 			assert!(replace_res.is_ok());
 
 			// verify replacing tranche errors if tranche following it has a higher interest rate
-			// let mut tranches = default_tranches();
+			let mut tranches = default_tranches();
 
-			// let int_per_sec = Rate::saturating_from_integer(2)
-			// 	/ Rate::saturating_from_integer(SECS_PER_YEAR)
-			// 	+ One::one();
-			// let input = TrancheInput {
-			// 	seniority: Some(5),
-			// 	tranche_type: TrancheType::NonResidual {
-			// 		interest_rate_per_sec: int_per_sec,
-			// 		min_risk_buffer: min_risk_buffer,
-			// 	},
-			// 	metadata: TrancheMetadata {
-			// 		token_name: BoundedVec::<u8, TokenNameLen>::default(),
-			// 		token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
-			// 	},
-			// };
+			let int_per_sec = Rate::saturating_from_integer(1)
+				/ Rate::saturating_from_integer(SECS_PER_YEAR * SECS_PER_YEAR)
+				+ One::one();
+			let input = TrancheInput {
+				seniority: Some(5),
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: int_per_sec,
+					min_risk_buffer: min_risk_buffer,
+				},
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::<u8, TokenNameLen>::default(),
+					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+				},
+			};
 
-			// let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
-			// assert!(replace_res.is_err());
+			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
+			assert!(replace_res.is_err());
 		}
 	}
 
