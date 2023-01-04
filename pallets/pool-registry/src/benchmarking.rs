@@ -201,7 +201,9 @@ benchmarks! {
 	//
 	set_metadata {
 		let n in 0..<T as pallet_pool_system::Config>::MaxSizeMetadata::get();
-		let caller: T::AccountId = account("admin", 1, 0);
+		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
+		prepare_asset_registry::<T>();
+		create_pool::<T>(2, caller.clone())?;
 		let metadata = vec![0u8; n as usize];
 	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
 	verify {
