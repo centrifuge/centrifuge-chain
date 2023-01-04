@@ -62,7 +62,11 @@ benchmarks! {
 			  TrancheId = [u8; 16],
 			  Balance = u128,
 			  CurrencyId = CurrencyId,
-			  EpochId = PoolEpochId>,
+			  EpochId = PoolEpochId,
+			  Rate = <T as Config>::InterestRate,
+			  MaxTokenNameLength = <T as Config>::MaxTokenNameLength,
+			  MaxTokenSymbolLength = <T as Config>::MaxTokenSymbolLength,
+			  MaxTranches = <T as Config>::MaxTranches>,
 		<T as pallet_investments::Config>::Tokens: Inspect<T::AccountId, AssetId = CurrencyId, Balance = u128>,
 		<<T as pallet_investments::Config>::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 			InvestmentProperties<T::AccountId, Currency = CurrencyId>,
@@ -137,26 +141,26 @@ benchmarks! {
 		assert_eq!(actual_update.changes, changes);
 	}
 
-	// update_and_execute {
-	// 	let admin: T::AccountId = create_admin::<T>(0);
-	// 	let n in 1..T::MaxTranches::get();
-	// 	let tranches = build_update_tranches::<T>(n);
-	// 	prepare_asset_registry::<T>();
-	// 	create_pool::<T>(n, admin.clone())?;
-	// }: update(RawOrigin::Signed(admin), POOL, PoolChanges {
-	// 	tranches: Change::NewValue(build_update_tranches::<T>(n)),
-	// 	min_epoch_time: Change::NewValue(SECS_PER_DAY),
-	// 	max_nav_age: Change::NewValue(SECS_PER_HOUR),
-	// 	tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
-	// })
-	// verify {
-	// 	// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
-	// 	// so the update should have been executed immediately.
-	// 	let pool = get_pool::<T>();
-	// 	assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
-	// 	assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
-	// 	assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
-	// }
+	update_and_execute {
+		let admin: T::AccountId = create_admin::<T>(0);
+		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
+		let tranches = build_update_tranches::<T>(n);
+		prepare_asset_registry::<T>();
+		create_pool::<T>(n, admin.clone())?;
+	}: update(RawOrigin::Signed(admin), POOL, PoolChanges {
+		tranches: Change::NewValue(build_update_tranches::<T>(n)),
+		min_epoch_time: Change::NewValue(SECS_PER_DAY),
+		max_nav_age: Change::NewValue(SECS_PER_HOUR),
+		tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
+	})
+	verify {
+		// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
+		// so the update should have been executed immediately.
+		let pool = get_pool::<T>();
+		assert_update_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
+		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
+	}
 	// execute_update {
 	// 	let admin: T::AccountId = create_admin::<T>(0);
 	// 	let n in 1..T::MaxTranches::get();
