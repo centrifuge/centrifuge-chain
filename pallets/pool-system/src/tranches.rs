@@ -2104,6 +2104,59 @@ pub mod test {
 			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
 			assert!(replace_res.is_err());
 		}
+
+		#[test]
+		fn validate_insert_works() {
+			let mut tranches = default_tranches();
+
+			let tranche_id: TrancheId = [
+				103u8, 57, 22, 242, 127, 45, 18, 102, 173, 154, 105, 163, 156, 150, 75, 194,
+			];
+			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+			let int_per_sec = Rate::saturating_from_integer(2)
+				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				+ One::one();
+
+			// verify returns valid when interest greater than tranch following new tranche
+			let new_tranche = tranches
+				.create_tranche(
+					3,
+					tranche_id,
+					TrancheType::NonResidual {
+						interest_rate_per_sec: int_per_sec,
+						min_risk_buffer: min_risk_buffer,
+					},
+					Some(5u32),
+					SECS_PER_YEAR,
+				)
+				.unwrap();
+
+			assert!(tranches.validate_insert(1, &new_tranche).is_ok());
+			// verify error when tranche new_tranche is following  has lower interest
+			assert!(tranches.validate_insert(1, &new_tranche).is_ok());
+
+			// verify error returned when interest less than tranch following new tranche
+			let int_per_sec = Rate::saturating_from_rational(1, 100)
+				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				+ One::one();
+			let new_tranche = tranches
+				.create_tranche(
+					3,
+					tranche_id,
+					TrancheType::NonResidual {
+						interest_rate_per_sec: int_per_sec,
+						min_risk_buffer: min_risk_buffer,
+					},
+					Some(5u32),
+					SECS_PER_YEAR,
+				)
+				.unwrap();
+
+			assert!(tranches.validate_insert(1, &new_tranche).is_err());
+
+			// verify ok when tranche new_tranche is following has higher interest rate
+			assert!(tranches.validate_insert(2, &new_tranche).is_ok())
+		}
 	}
 
 	mod tranche_id_gen {
