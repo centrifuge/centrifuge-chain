@@ -205,6 +205,7 @@ pub trait CurrencyPrice<CurrencyId> {
 
 /// A trait that can be used to calculate interest accrual for debt
 pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
+	type MaxRateCount: Get<u32>;
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
 	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
 

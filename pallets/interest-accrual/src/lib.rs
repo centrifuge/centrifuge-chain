@@ -459,6 +459,7 @@ pub mod pallet {
 }
 
 impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balance>> for Pallet<T> {
+	type MaxRateCount = T::MaxRateCount;
 	type NormalizedDebt = T::Balance;
 	type Rates = RateVec<T>;
 
