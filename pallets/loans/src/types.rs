@@ -148,12 +148,22 @@ pub struct LoanDetails<Asset, BlockNumber> {
 	pub(crate) schedule: RepaymentSchedule<Moment>,
 }
 
-// TODO: implement Mid
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum InterestEvent {
-	/// At the end of the period, e.g. the last day of the month for a monthly period
-	End,
-}
+// #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+// pub enum CalendarEvent {
+// 	/// At the end of the period, e.g. the last day of the month for a monthly period
+// 	End,
+// }
+
+// pub enum InterestReferenceDate {
+// 	/// Interest payments are expected every period based on an event, e.g. the end of the period
+// 	/// E.g. if the period is monthly and the origination date is Mar 3, the first interest
+// 	/// payment is expected on Mar 31.
+// 	CalendarDate { event: CalendarEvent },
+// 	/// Interest payments are expected every period relative to the origination date.
+// 	/// E.g. if the period is monthly and the origination date is Mar 3, the first interest
+// 	/// payment is expected on Apr 3.
+// 	OriginationDate,
+// }
 
 // TODO: implement Yearly, Quarterly, Daily
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -161,7 +171,7 @@ pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
 	None,
 	/// Interest payments are expected monthly
-	Monthly { event: InterestEvent },
+	// Monthly { reference: InterestReferenceDate },
 }
 
 // TODO: implement StraightLine, Annuity
@@ -197,7 +207,7 @@ pub enum RepayRestrictions {
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum RepricingRestrictions {
+pub enum PriceRestrictions {
 	None,
 }
 
@@ -214,11 +224,11 @@ pub struct LoanRestrictions<Rate> {
 	/// How much can be borrowed
 	max_borrow_amount: MaxBorrowAmount<Rate>,
 	/// How often can be borrowed
-	borrows: BorrowRestrictions,
+	borrow: BorrowRestrictions,
 	/// How often can be repaid
-	repayments: RepayRestrictions,
-	/// How often can be priced after the initial pricing
-	repricing: RepricingRestrictions,
+	repay: RepayRestrictions,
+	/// How often can be priced
+	price: PriceRestrictions,
 }
 
 // Matches LoanPricing except interest rate input should be per year while stored per second
