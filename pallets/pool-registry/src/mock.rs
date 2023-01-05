@@ -12,7 +12,7 @@
 use std::marker::PhantomData;
 
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
-use cfg_traits::{PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
+use cfg_traits::{OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
 use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, Role},
@@ -33,7 +33,7 @@ use pallet_pool_system::{
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
 use crate::{self as pallet_pool_registry, Config};
@@ -140,7 +140,7 @@ impl pallet_pool_system::Config for Test {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
-	type Investments = OrderManager;
+	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
@@ -317,7 +317,6 @@ frame_support::construct_runtime!(
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>},
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		OrderManager: cfg_test_utils::mocks::order_manager::{Pallet, Storage},
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -351,19 +350,35 @@ impl PoolUpdateGuard for UpdateGuard {
 	type ScheduledUpdateDetails =
 		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
 
-	fn released(_: &Self::PoolDetails, _: &Self::ScheduledUpdateDetails, _: Self::Moment) -> bool {
+	fn released(
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
+	) -> bool {
+		if now < update.scheduled_time {
+			return false;
+		}
+
+		// The epoch in which the redemptions were fulfilled,
+		// should have closed after the scheduled time already,
+		// to ensure that investors had the `MinUpdateDelay`
+		// to submit their redemption orders.
+		if now < pool.epoch.last_closed {
+			return false;
+		}
+
+		// There should be no outstanding redemption orders.
+		if pool
+			.tranches
+			.tranches
+			.iter()
+			.map(|tranche| Investments::redeem_orders(tranche.currency).amount)
+			.any(|redemption| redemption != Zero::zero())
+		{
+			return false;
+		}
 		return true;
 	}
-}
-
-impl cfg_test_utils::mocks::order_manager::Config for Test {
-	type Accountant = PoolSystem;
-	type FundsAccount = FundsAccount;
-	type InvestmentId = TrancheCurrency;
-	type PoolId = PoolId;
-	type Rate = Rate;
-	type Tokens = OrmlTokens;
-	type TrancheId = TrancheId;
 }
 
 // Parameterize balances pallet
