@@ -20,13 +20,12 @@
 //! |      Action     |   From  |    To   |      Role     | Collateral Owner |
 //! |-----------------|---------|---------|---------------|------------------|
 //! |      create     |         | Created |    Borrower   |        Yes       |
-//! |      price      | Created |  Active | PrincingAdmin |                  |
-//! |      extend     |  Active |  Active | PrincingAdmin |                  |
+//! |      price      | Created |  Active | PricingAdmin |                  |
 //! |      borrow     |  Active |  Active |               |        Yes       |
 //! |      repay      |  Active |  Active |               |        Yes       |
 //! |    write_off    |  Active |  Active |               |                  |
 //! | admin_write_off |  Active |  Active |   LoanAdmin   |                  |
-//! |      close      |  Active |  Close  |               |        Yes       |
+//! |      close      |  Active |  Closed  |               |        Yes       |
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
