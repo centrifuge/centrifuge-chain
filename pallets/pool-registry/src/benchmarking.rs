@@ -15,11 +15,10 @@
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
 use cfg_types::tokens::{CurrencyId, TrancheCurrency};
-use codec::EncodeLike;
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::fungibles::Inspect;
 use frame_system::RawOrigin;
-use orml_traits::{asset_registry::Inspect as OrmlInspect, Change};
+use orml_traits::Change;
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_pool_system::benchmarking::{
 	assert_input_tranches_match, assert_update_tranches_match, build_bench_input_tranches,
@@ -27,9 +26,8 @@ use pallet_pool_system::benchmarking::{
 	prepare_asset_registry, update_pool,
 };
 use pallet_pool_system::{
-	pool_types::{PoolChanges, ScheduledUpdateDetails},
+	pool_types::PoolChanges,
 	tranches::{TrancheIndex, TrancheInput, TrancheMetadata, TrancheType, TrancheUpdate},
-	Pool, PoolDetailsOf, TrancheOf,
 };
 use sp_runtime::{
 	traits::{One, Zero},
@@ -41,7 +39,6 @@ use super::*;
 
 const CURRENCY: u128 = 1_000_000_000_000_000;
 const MAX_RESERVE: u128 = 10_000 * CURRENCY;
-const MINT_AMOUNT: u128 = 1_000_000 * CURRENCY;
 
 const SECS_PER_HOUR: u64 = 60 * 60;
 const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
@@ -93,6 +90,7 @@ benchmarks! {
 		let tranches = build_bench_input_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
 		prepare_asset_registry::<T>();
+		create_pool::<T>(n, caller.clone())?;
 	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
@@ -110,6 +108,7 @@ benchmarks! {
 		let tranches = build_update_tranches::<T>(n);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
+
 		let pool = get_pool::<T>();
 		let default_min_epoch_time = pool.parameters.min_epoch_time;
 		let default_max_nav_age = pool.parameters.max_nav_age;
@@ -127,15 +126,13 @@ benchmarks! {
 			tranche_metadata: Change::NoChange,
 		};
 
-		// Call Update on pool_system::Pallet because of the Mock
-		update_pool::<T>(changes.clone());
+		update_pool::<T>(changes.clone())?;
 	}: update(RawOrigin::Signed(admin), POOL, changes.clone())
 	verify {
 		// Should be the old values
-		//todo: Why? The MinUpdateDelay is 0, so should be updated right away?
-		// let pool = get_pool::<T>();
-		// assert_eq!(pool.parameters.min_epoch_time, default_min_epoch_time);
-		// assert_eq!(pool.parameters.max_nav_age, default_max_nav_age);
+		let pool = get_pool::<T>();
+		assert_eq!(pool.parameters.min_epoch_time, default_min_epoch_time);
+		assert_eq!(pool.parameters.max_nav_age, default_max_nav_age);
 
 		let actual_update = get_scheduled_update::<T>();
 		assert_eq!(actual_update.changes, changes);
@@ -147,12 +144,15 @@ benchmarks! {
 		let tranches = build_update_tranches::<T>(n);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
-	}: update(RawOrigin::Signed(admin), POOL, PoolChanges {
-		tranches: Change::NewValue(build_update_tranches::<T>(n)),
-		min_epoch_time: Change::NewValue(SECS_PER_DAY),
-		max_nav_age: Change::NewValue(SECS_PER_HOUR),
-		tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
-	})
+
+		let changes = PoolChanges {
+			tranches: Change::NewValue(build_update_tranches::<T>(n)),
+			min_epoch_time: Change::NewValue(SECS_PER_DAY),
+			max_nav_age: Change::NewValue(SECS_PER_HOUR),
+			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
+		};
+		update_pool::<T>(changes.clone())?;
+	}: update(RawOrigin::Signed(admin), POOL, changes)
 	verify {
 		// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
 		// so the update should have been executed immediately.
@@ -185,10 +185,10 @@ benchmarks! {
 			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
 		};
 
-		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, changes)?;
-
 		// Withdraw redeem order so the update can be executed after that
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 0)?;
+
+		update_pool::<T>(changes.clone())?;
 	}: execute_update(RawOrigin::Signed(admin), POOL)
 	verify {
 		let pool = get_pool::<T>();

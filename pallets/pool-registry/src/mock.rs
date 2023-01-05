@@ -12,15 +12,10 @@
 use std::marker::PhantomData;
 
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
-use cfg_traits::{
-	Permissions as PermissionsT, PoolMutate, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as TrancheCurrencyT, UpdateState,
-};
+use cfg_traits::{PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
 use cfg_types::{
-	epoch::EpochState,
 	fixed_point::Rate,
-	permissions::{PermissionRoles, PermissionScope, PoolRole, Role, UNION},
-	time::TimeProvider,
+	permissions::{PermissionScope, Role},
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 };
 use frame_support::{
@@ -29,21 +24,16 @@ use frame_support::{
 	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
 	PalletId,
 };
-use frame_system::{EnsureSigned, EnsureSignedBy};
-use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
+use frame_system::EnsureSigned;
+use orml_traits::parameter_type_with_key;
 use pallet_pool_system::{
-	pool_types::{
-		PoolChanges, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
-		ScheduledUpdateDetails,
-	},
-	tranches::{Tranche, TrancheInput, TrancheType, Tranches},
-	*,
+	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
+	tranches::TrancheInput,
 };
-use sp_arithmetic::Perquintill;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup, Zero},
+	traits::{BlakeTwo256, IdentityLookup},
 };
 
 use crate::{self as pallet_pool_registry, Config};
@@ -115,7 +105,7 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
-	pub const MinUpdateDelay: u64 = 1; // for testing purposes
+	pub const MinUpdateDelay: u64 = 0; // for testing purposes
 	pub const ChallengeTime: BlockNumber = 0;
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
@@ -240,7 +230,7 @@ impl<T: Config + pallet_pool_registry::Config + pallet_pool_system::Config>
 	}
 
 	fn execute_update(_: <T as pallet_pool_system::Config>::PoolId) -> Result<u32, DispatchError> {
-		todo!()
+		Ok(1)
 	}
 }
 
