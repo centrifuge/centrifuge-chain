@@ -14,6 +14,20 @@
 //! # Loan pallet
 //!
 //! This pallet provides functionality for managing loans on Tinlake
+//!
+//! Check the next table as an overview of the possible actions you can do for managing loans:
+//!
+//! |      Action     |   From  |    To   |      Role     | Collateral Owner |
+//! |-----------------|---------|---------|---------------|------------------|
+//! |      create     |         | Created |    Borrower   |        Yes       |
+//! |      price      | Created |  Active | PrincingAdmin |                  |
+//! |      extend     |  Active |  Active | PrincingAdmin |                  |
+//! |      borrow     |  Active |  Active |               |        Yes       |
+//! |      repay      |  Active |  Active |               |        Yes       |
+//! |    write_off    |  Active |  Active |               |                  |
+//! | admin_write_off |  Active |  Active |   LoanAdmin   |                  |
+//! |      close      |  Active |  Close  |               |        Yes       |
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "std")]
