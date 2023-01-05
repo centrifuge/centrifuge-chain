@@ -17,7 +17,7 @@ use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
 use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
@@ -46,7 +46,7 @@ use xcm::{
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
 
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
+#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
 pub struct TrancheInput<Rate, MaxTokenNameLength, MaxTokenSymbolLength>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -57,7 +57,7 @@ where
 	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct TrancheUpdate<Rate> {
 	pub tranche_type: TrancheType<Rate>,
 	pub seniority: Option<Seniority>,
@@ -85,7 +85,7 @@ where
 	pub metadata: TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 }
 
-#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum TrancheType<Rate> {
 	Residual,
 	NonResidual {
@@ -126,7 +126,8 @@ where
 	}
 }
 
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
+#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
+// TODO: Why same struct twice? pool-registry and pool-system. Maybe because of circular dependencies?
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -308,9 +309,11 @@ pub type TrancheIndex = u64;
 /// are not reusable!
 pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
+	// FIXME: Move to BoundedVec
 	pub tranches: Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>>,
+	// FIXME: Move to BoundedVec
 	pub ids: Vec<TrancheId>,
 	pub salt: TrancheSalt<PoolId>,
 }
@@ -994,7 +997,7 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency> {
 	pub currency: TrancheCurrency,
 	pub supply: Balance,
@@ -1023,8 +1026,9 @@ impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurr
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency> {
+	// FIXME: Convert to BoundedVec
 	pub tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
 }
 

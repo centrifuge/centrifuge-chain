@@ -146,7 +146,7 @@ pub struct PoolParameters {
 	pub max_nav_age: Moment,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -158,6 +158,33 @@ where
 		Change<BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>>,
 	pub min_epoch_time: Change<Moment>,
 	pub max_nav_age: Change<Moment>,
+}
+
+// TODO: Check whether macro can be used instead of custom impl.
+// Unfortunately, `Change` is the root as it does not impl MaxEncodedLen.
+// Could open PR on ORML.
+impl<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches> MaxEncodedLen
+	for PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
+	PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>: Encode,
+	BoundedVec<TrancheUpdate<Rate>, MaxTranches>: MaxEncodedLen,
+	BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>:
+		MaxEncodedLen,
+	Moment: MaxEncodedLen,
+{
+	fn max_encoded_len() -> usize {
+		BoundedVec::<TrancheUpdate<Rate>, MaxTranches>::max_encoded_len()
+			.saturating_add(BoundedVec::<
+				TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
+				MaxTranches,
+			>::max_encoded_len())
+			// From 4x Change Enum
+			.saturating_add(4)
+			.saturating_add(Moment::max_encoded_len().saturating_mul(2))
+	}
 }
 
 /// Information about the deposit that has been taken to create a pool

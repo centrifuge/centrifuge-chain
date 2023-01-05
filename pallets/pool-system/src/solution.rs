@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use codec::MaxEncodedLen;
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
@@ -85,7 +86,7 @@ impl PoolState {
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum UnhealthyState {
 	MaxReserveViolated,
@@ -93,7 +94,7 @@ pub enum UnhealthyState {
 }
 
 /// The solutions struct for epoch solution
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum EpochSolution<Balance> {
 	Healthy(HealthySolution<Balance>),
@@ -101,7 +102,7 @@ pub enum EpochSolution<Balance> {
 }
 
 /// The information for a currently executing epoch
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber, TrancheCurrency>
 {
 	pub epoch: EpochId,
@@ -315,7 +316,7 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct HealthySolution<Balance> {
 	pub solution: Vec<TrancheSolution>,
@@ -331,7 +332,7 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct UnhealthySolution<Balance> {
 	pub state: Vec<UnhealthyState>,

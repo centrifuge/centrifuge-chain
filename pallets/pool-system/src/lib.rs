@@ -190,7 +190,8 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
+			+ FixedPointNumber<Inner = Self::Balance>
+			+ MaxEncodedLen;
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -226,7 +227,7 @@ pub mod pallet {
 			+ TypeInfo
 			+ Into<u32>;
 
-		type CurrencyId: Parameter + Copy;
+		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		type PoolCurrency: Contains<Self::CurrencyId>;
 

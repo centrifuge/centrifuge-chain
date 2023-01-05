@@ -15,7 +15,7 @@
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolMutate, UpdateState};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
-use codec::HasCompact;
+use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -34,7 +34,7 @@ mod mock;
 mod tests;
 pub mod weights;
 
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
+#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
 where
 	MaxTokenNameLength: Get<u32>,

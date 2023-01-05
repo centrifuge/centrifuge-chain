@@ -11,11 +11,11 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct EpochState<EpochId> {
 	/// Current epoch that is ongoing.
 	pub current: EpochId,

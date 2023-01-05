@@ -145,7 +145,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type MaxTokenSymbolLength: Get<u32>;
 	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
-	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
 
 	fn create(
 		admin: AccountId,

@@ -11,7 +11,7 @@
 //! To buy an NFT, users will call `buy`.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{self, Transfer as FungiblesTransfer},
 	tokens::nonfungibles::{self, Inspect as _, Transfer as _},
@@ -48,14 +48,14 @@ type CollectionIdOf<T> =
 type ItemIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ItemId;
 
 // Storage types
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Sale<AccountId, CurrencyId, Balance> {
 	pub seller: AccountId,
 	pub price: Price<CurrencyId, Balance>,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Price<CurrencyId, Balance> {
 	pub currency: CurrencyId,
@@ -94,7 +94,8 @@ pub mod pallet {
 			+ Copy
 			+ Default
 			+ TypeInfo
-			+ IsType<CollectionIdOf<Self>>;
+			+ IsType<CollectionIdOf<Self>>
+			+ MaxEncodedLen;
 
 		/// The NFT ItemId type
 		type ItemId: Parameter
@@ -103,7 +104,8 @@ pub mod pallet {
 			+ Copy
 			+ TypeInfo
 			+ From<u128>
-			+ IsType<ItemIdOf<Self>>;
+			+ IsType<ItemIdOf<Self>>
+			+ MaxEncodedLen;
 
 		/// The Id of this pallet
 		#[pallet::constant]
