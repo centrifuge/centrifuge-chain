@@ -2157,6 +2157,135 @@ pub mod test {
 			// verify ok when tranche new_tranche is following has higher interest rate
 			assert!(tranches.validate_insert(2, &new_tranche).is_ok())
 		}
+
+		#[test]
+		fn remove_tranches_works() {
+			// TODO: tests for `remove` method on `Tranches`
+		}
+
+		#[test]
+		fn of_pool_tranches_works() {
+			// TODO: tests for `of_pool` method on `Tranches`
+		}
+
+		#[test]
+		fn combine_with_non_residual_top_tranches_works() {
+			// TODO: tests for `combine_with_non_residual_top` method on `Traches`
+		}
+
+		#[test]
+		fn combine_with_mut_non_residual_top_traches_works() {
+			// TODO: tests for `combine_with_non_residual_top` method on `Tranches`
+		}
+
+		#[test]
+		fn ids_residual_top_tranches_works() {
+			// TODO: tests for `ids_residual_top` method on `Tranches`
+		}
+
+		#[test]
+		fn combine_residual_top_tranches_works() {
+			// TODO: tests for `combine_residual_top` method on `Tranches`
+		}
+
+		#[test]
+		fn combine_with_mut_residual_top_tranches_works() {
+			// TODO: tests for `combine_with_mut_residual_top` method on `Tranches`
+		}
+
+		#[test]
+		fn calculate_prices_tranches_works() {
+			// TODO: tests for `calculate_prices` method on `Tranches`
+		}
+
+		#[test]
+		fn num_tranches_works() {
+			// TODO: tests for `num_tranches` method on `Tranches`
+		}
+
+		#[test]
+		fn into_tranches_works() {
+			// TODO: tests for `into_tranches` method on `Tranches`
+		}
+
+		#[test]
+		fn non_residual_tranches_works() {
+			// TODO: tests for `non_residual_tranches` method on `Tranches`
+		}
+
+		#[test]
+		fn non_reidual_tranches_mut_works() {
+			// TODO: tests for `non_residual_tranches_mut` method on `Tranches`
+		}
+
+		#[test]
+		fn residual_tranches_works() {
+			// TODO: tests for `residual_tranches` method on `Tranches`
+		}
+
+		#[test]
+		fn residual_tranches_mut_works() {
+			// TODO: tests for `residual_tranches_mut` method on `Tranches`
+		}
+
+		#[test]
+		fn non_residual_tranches_mut_works() {
+			// TODO: tests for `non_residual_tranches_mut` method on `Tranches`
+		}
+
+		#[test]
+		fn residual_tranche() {
+			// TODO: tests for `residual_tranche` method on `Tranches`
+		}
+
+		#[test]
+		fn residual_tranche_mut_works() {
+			// TODO: tests for `residual_tranche_mut` method on `Tranches`
+		}
+
+		#[test]
+		fn non_residual_top_slice_works() {
+			// TODO: tests for `non_residual_top_slice` method on `Tranches`
+		}
+		#[test]
+		fn non_residual_top_slice_mut_works() {
+			// TODO: tests for `non_residual_top_slice_mut` method on `Tranches`
+		}
+
+		#[test]
+		fn residual_top_slice_works() {
+			// TODO: tests for `residual_top_slice` method on `Tranches`
+		}
+
+		#[test]
+		fn residual_top_slice_mut_works() {
+			// TODO: tests for `residual_top_slice_mut` method on `Tranches`
+		}
+
+		#[test]
+		fn supplies_works() {
+			// TODO: tests for `supplies` method on `Tranches`
+		}
+
+		#[test]
+		fn acc_supply_works() {
+			// TODO: tests for `acc_supply` method on `Tranches`
+		}
+
+		#[test]
+		fn min_risk_buffers_works() {
+			// TODO: tests for `min_risk_buffers` method on `Tranches`
+		}
+
+		#[test]
+		fn seniorities_works() {
+			// TODO: tests for `seniorities` method on `Tranches`
+		}
+
+		#[test]
+		fn rebalance_tranches_works() {
+			// TODO: tests for `rebalance_tranches` method on `Tranches`
+		}
 	}
 
 	mod tranche_id_gen {
