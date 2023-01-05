@@ -208,6 +208,24 @@ mod tests {
 		}
 
 		#[test]
+		fn encoding_domain_evm() {
+			let evm_domain = Domain::EVM(u64::MAX);
+
+			let expected_hex = "00ffffffffffffffff";
+			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
+			assert_eq!(evm_domain.encode(), expected);
+		}
+
+		#[test]
+		fn encoding_domain_parachain() {
+			let parachain_domain = Domain::Parachain(ParachainId::Moonbeam);
+
+			let expected_hex = "0100";
+			let expected = <[u8; 2]>::from_hex(expected_hex).expect("Decoding failed");
+			assert_eq!(parachain_domain.encode(), expected);
+		}
+
+		#[test]
 		fn add_pool_zero() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 0 };
 			let encoded = msg.encode();
