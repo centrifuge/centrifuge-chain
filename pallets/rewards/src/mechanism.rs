@@ -12,6 +12,10 @@ pub trait RewardMechanism {
 	type Balance: Balance;
 	type MaxCurrencyMovements: Get<u32>;
 
+	/// Check if the group is ready to be rewarded.
+	/// Most of the cases it means that the group has stake that should be rewarded.
+	fn is_ready(group: &Self::Group) -> bool;
+
 	/// Reward the group mutating the group entity.
 	fn reward_group(
 		group: &mut Self::Group,

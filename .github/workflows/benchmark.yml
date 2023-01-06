@@ -32,7 +32,7 @@ jobs:
               body: `:clock1: Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\` :clock1:`
             })
             return comment.data.id
-      - name: Free space on Ubuntu
+      - name: Prep build on Ubuntu
         run: |
           echo "Pre cleanup"
           df -h
@@ -83,7 +83,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `
-              :white_check_mark: Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\` :white_check_mark: 
+              :white_check_mark: Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\` :white_check_mark:
               Find the artifact here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
               `
             })

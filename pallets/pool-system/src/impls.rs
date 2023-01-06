@@ -203,7 +203,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		Pool::<T>::insert(pool_id, pool_details.clone());
 
-		Self::deposit_event(Event::PoolCreated {
+		Self::deposit_event(Event::Created {
 			admin: admin.clone(),
 			depositor,
 			pool_id,

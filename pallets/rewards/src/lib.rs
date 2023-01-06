@@ -218,6 +218,11 @@ pub mod pallet {
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
 
+		fn is_ready(group_id: Self::GroupId) -> bool {
+			let group = Groups::<T, I>::get(group_id);
+			T::RewardMechanism::is_ready(&group)
+		}
+
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
 			Groups::<T, I>::try_mutate(group_id, |group| {
 				let reward = T::RewardMechanism::reward_group(group, reward)?;

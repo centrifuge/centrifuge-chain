@@ -41,7 +41,7 @@ pub mod weights;
 mod benchmarking;
 
 pub use cfg_traits::{
-	ops::ensure::{EnsureAdd, EnsureAddAssign},
+	ops::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
 };
 use frame_support::{
