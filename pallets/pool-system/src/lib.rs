@@ -88,6 +88,7 @@ pub type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
 	<T as Config>::Rate,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
+	<T as Config>::MaxEpocExecutionTranches,
 >;
 
 /// Types alias for Tranches
@@ -98,6 +99,7 @@ pub type TranchesOf<T> = Tranches<
 	<T as Config>::TrancheCurrency,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
+	<T as Config>::MaxTranches,
 >;
 
 #[allow(dead_code)]
@@ -120,6 +122,7 @@ type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
+	<T as Config>::MaxTranches,
 >;
 
 /// Type alias for `struct EpochExecutionInfo`
@@ -130,6 +133,8 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
 	<T as Config>::TrancheCurrency,
+	<T as Config>::MaxEpocExecutionTranches,
+	<T as Config>::MaxTranches,
 >;
 
 /// Type alias for `struct PoolDepositInfo`
@@ -317,11 +322,15 @@ pub mod pallet {
 
 		/// Max number of Tranches
 		#[pallet::constant]
-		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
+		type MaxTranches: Get<u32> + Member + PartialOrd + scale_info::TypeInfo;
 
 		/// The amount that must be reserved to create a pool
 		#[pallet::constant]
 		type PoolDeposit: Get<Self::Balance>;
+
+		/// The maximum amount of execution tranches of an epoch.
+		#[pallet::constant]
+		type MaxEpocExecutionTranches: Get<u32> + scale_info::TypeInfo;
 
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
@@ -373,7 +382,7 @@ pub mod pallet {
 		SolutionSubmitted {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
-			solution: EpochSolution<T::Balance>,
+			solution: EpochSolution<T::Balance, T::MaxTranches>,
 		},
 		/// An epoch was executed.
 		EpochExecuted {
@@ -897,7 +906,7 @@ pub mod pallet {
 			pool_id: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
-		) -> Result<EpochSolution<T::Balance>, DispatchError> {
+		) -> Result<EpochSolution<T::Balance, T::MaxTranches>, DispatchError> {
 			match Self::inspect_solution(pool_id, epoch, solution)? {
 				PoolState::Healthy => {
 					EpochSolution::score_solution_healthy(solution, &epoch.tranches)
@@ -923,21 +932,24 @@ pub mod pallet {
 				Error::<T>::InvalidSolution
 			);
 
-			let (acc_invest, acc_redeem, risk_buffers) =
-				calculate_solution_parameters::<_, _, T::Rate, _, T::TrancheCurrency>(
-					&epoch.tranches,
-					solution,
-				)
-				.map_err(|e| {
-					// In case we have an underflow in the calculation, there
-					// is not enough balance in the tranches to realize the redeemptions.
-					// We convert this at the pool level into an InsufficientCurrency error.
-					if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
-						Error::<T>::InsufficientCurrency
-					} else {
-						Error::<T>::InvalidSolution
-					}
-				})?;
+			let (acc_invest, acc_redeem, risk_buffers) = calculate_solution_parameters::<
+				_,
+				_,
+				T::Rate,
+				_,
+				T::TrancheCurrency,
+				T::MaxEpocExecutionTranches,
+			>(&epoch.tranches, solution)
+			.map_err(|e| {
+				// In case we have an underflow in the calculation, there
+				// is not enough balance in the tranches to realize the redeemptions.
+				// We convert this at the pool level into an InsufficientCurrency error.
+				if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
+					Error::<T>::InsufficientCurrency
+				} else {
+					Error::<T>::InvalidSolution
+				}
+			})?;
 
 			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)

@@ -51,14 +51,21 @@ impl<Balance> ReserveDetails<Balance>
 where
 	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
 {
-	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency>(
+	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
 		&mut self,
-		epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
+		epoch_tranches: &EpochExecutionTranches<
+			Balance,
+			BalanceRatio,
+			Weight,
+			TrancheCurrency,
+			MaxExecutionTranches,
+		>,
 		solution: &[TrancheSolution],
 	) -> DispatchResult
 	where
 		Weight: Copy + From<u128>,
 		BalanceRatio: Copy,
+		MaxExecutionTranches: Get<u32>,
 	{
 		let executed_amounts = epoch_tranches.fulfillment_cash_flows(solution)?;
 
@@ -112,15 +119,17 @@ pub struct PoolDetails<
 	Weight,
 	TrancheId,
 	PoolId,
+	MaxTranches,
 > where
 	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
+	MaxTranches: Get<u32>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
 	/// List of tranches, ordered junior to senior.
-	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>,
+	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>,
 	/// Details about the parameters of the pool.
 	pub parameters: PoolParameters,
 	/// Metadata that specifies the pool.
@@ -181,8 +190,8 @@ where
 				TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 				MaxTranches,
 			>::max_encoded_len())
-			// From 4x Change Enum
-			.saturating_add(4)
+			// from 4x `Value` enum
+			.saturating_add(8 * 4)
 			.saturating_add(Moment::max_encoded_len().saturating_mul(2))
 	}
 }
@@ -221,7 +230,18 @@ pub struct PoolEssence<
 		Vec<TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 }
 
-impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
+impl<
+		CurrencyId,
+		TrancheCurrency,
+		EpochId,
+		Balance,
+		Rate,
+		MetaSize,
+		Weight,
+		TrancheId,
+		PoolId,
+		MaxTranches,
+	>
 	PoolDetails<
 		CurrencyId,
 		TrancheCurrency,
@@ -232,6 +252,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 		Weight,
 		TrancheId,
 		PoolId,
+		MaxTranches,
 	> where
 	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
 	CurrencyId: Copy,
@@ -242,6 +263,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,
 	TrancheId: Clone + From<[u8; 16]> + PartialEq,
 	Weight: Copy + From<u128>,
+	MaxTranches: Get<u32>,
 {
 	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
 		self.epoch.current += One::one();

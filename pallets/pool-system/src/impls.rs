@@ -126,6 +126,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			T::TrancheCurrency,
 			T::TrancheId,
 			T::PoolId,
+			T::MaxTranches,
 		>::from_input::<T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
 			pool_id,
 			tranche_inputs.clone(),

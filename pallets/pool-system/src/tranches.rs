@@ -36,7 +36,7 @@ use sp_runtime::{
 	traits::{ConstU32, Member, One, Zero},
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, WeakBoundedVec,
 };
-use sp_std::{marker::PhantomData, vec::Vec};
+use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},
@@ -137,7 +137,7 @@ where
 	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct Tranche<Balance, Rate, Weight, CurrencyId> {
 	pub tranche_type: TrancheType<Rate>,
 	pub seniority: Seniority,
@@ -310,11 +310,12 @@ pub type TrancheIndex = u64;
 pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId> {
-	// FIXME: Move to BoundedVec
-	pub tranches: Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>>,
-	// FIXME: Move to BoundedVec
-	pub ids: Vec<TrancheId>,
+pub struct Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>
+where
+	MaxTranches: Get<u32>,
+{
+	pub tranches: BoundedVec<Tranche<Balance, Rate, Weight, TrancheCurrency>, MaxTranches>,
+	pub ids: BoundedVec<TrancheId, MaxTranches>,
 	pub salt: TrancheSalt<PoolId>,
 }
 
@@ -345,23 +346,25 @@ impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> 
 		}
 
 		Ok(Self {
-			tranches,
-			ids,
+			tranches: BoundedVec::<Tranche<Balance, Rate, Weight, TrancheCurrency>, MaxTranches>::truncate_from(tranches),
+			ids: BoundedVec::<TrancheId, MaxTrances>::truncate_from(ids),
 			salt,
 		})
 	}
 }
 
 // The solution struct for a specific tranche
-#[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[derive(
+	Encode, Decode, Copy, Clone, Eq, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TrancheSolution {
 	pub invest_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,
 }
 
-impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>
-	Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>
+impl<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>
+	Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>
 where
 	TrancheCurrency: Copy + TrancheCurrencyT<PoolId, TrancheId>,
 	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
@@ -369,6 +372,7 @@ where
 	Rate: One + Copy + FixedPointNumber<Inner = Balance>,
 	TrancheId: Clone + From<[u8; 16]> + sp_std::cmp::PartialEq,
 	PoolId: Copy + Encode,
+	MaxTranches: Get<u32>,
 {
 	pub fn from_input<MaxTokenNameLength, MaxTokenSymbolLength>(
 		pool: PoolId,
@@ -379,8 +383,8 @@ where
 		MaxTokenNameLength: Get<u32>,
 		MaxTokenSymbolLength: Get<u32>,
 	{
-		let tranches = Vec::with_capacity(tranche_inputs.len());
-		let ids = Vec::with_capacity(tranche_inputs.len());
+		let tranches = BoundedVec::with_bounded_capacity(tranche_inputs.len());
+		let ids = BoundedVec::with_bounded_capacity(tranche_inputs.len());
 		let salt = (0, pool);
 		let mut tranches = Tranches {
 			tranches,
@@ -409,7 +413,7 @@ where
 			TrancheLoc::Index(index) => index
 				.try_into()
 				.ok()
-				.and_then(|index: usize| self.ids.get(index).cloned()),
+				.and_then(|index: usize| self.ids.deref().get(index).cloned()),
 		}
 	}
 
@@ -461,7 +465,7 @@ where
 			TrancheLoc::Index(index) => {
 				let index: Option<usize> = index.try_into().ok();
 				if let Some(index) = index {
-					self.tranches.get(index)
+					self.tranches.deref().get(index)
 				} else {
 					None
 				}
@@ -471,7 +475,7 @@ where
 				if let Some(index) = index {
 					let index: Option<usize> = index.try_into().ok();
 					if let Some(index) = index {
-						self.tranches.get(index)
+						self.tranches.deref().get(index)
 					} else {
 						None
 					}
@@ -496,7 +500,7 @@ where
 	/// -> tranche id = Twox128::hash(salt)
 	fn next_id(&mut self) -> Result<TrancheId, DispatchError> {
 		let id =
-			Tranches::<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>::id_from_salt(
+			Tranches::<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>::id_from_salt(
 				self.salt,
 			);
 		self.salt = (
@@ -560,7 +564,7 @@ where
 		let at_idx = at;
 		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
-			at <= self.tranches.len(),
+			at <= self.tranches.deref().len(),
 			DispatchError::Other(
 				"Must add tranches either in between others or at the end. This should be catched somewhere else."
 			)
@@ -593,8 +597,12 @@ where
 				)
 			);
 		}
-		self.tranches.insert(at, new_tranche);
-		self.ids.insert(at, id);
+		self.tranches
+			.try_insert(at, new_tranche)
+			.expect("at is < len and either 0 or a previous element must exist. qed.");
+		self.ids
+			.try_insert(at, id)
+			.expect("at is < len and either 0 or a previous element must exist. qed.");
 
 		Ok(())
 	}
@@ -602,7 +610,7 @@ where
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
 		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
-			at < self.tranches.len(),
+			at < self.tranches.deref().len(),
 			DispatchError::Other(
 				"Invalid tranche index. Exceeding number of tranches. This should be catched somewhere else."
 			)
@@ -615,7 +623,7 @@ where
 	}
 
 	pub fn ids_non_residual_top(&self) -> Vec<TrancheId> {
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		self.ids.iter().rev().for_each(|id| res.push(id.clone()));
 		res
 	}
@@ -628,8 +636,8 @@ where
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter().rev() {
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
+		for tranche in self.tranches.deref().iter().rev() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -640,7 +648,7 @@ where
 	where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		for tranche in self.tranches.iter_mut().rev() {
 			let r = f(tranche)?;
 			res.push(r)
@@ -657,7 +665,7 @@ where
 		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>, W) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		let iter = self.tranches.iter().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -680,7 +688,7 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -692,15 +700,15 @@ where
 	}
 
 	pub fn ids_residual_top(&self) -> Vec<TrancheId> {
-		self.ids.clone()
+		self.ids.clone().into_inner()
 	}
 
 	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter() {
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
+		for tranche in self.tranches.deref().iter() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -711,7 +719,7 @@ where
 	where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, TrancheCurrency>) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		for tranche in self.tranches.iter_mut() {
 			let r = f(tranche)?;
 			res.push(r)
@@ -728,8 +736,8 @@ where
 		F: FnMut(&Tranche<Balance, Rate, Weight, TrancheCurrency>, W) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().zip(with.into_iter());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
+		let iter = self.tranches.deref().iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -751,7 +759,7 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter_mut().zip(with.into_iter());
 
@@ -815,17 +823,19 @@ where
 	}
 
 	pub fn num_tranches(&self) -> usize {
-		self.tranches.len()
+		self.tranches.deref().len()
 	}
 
-	pub fn into_tranches(self) -> Vec<Tranche<Balance, Rate, Weight, TrancheCurrency>> {
+	pub fn into_tranches(
+		self,
+	) -> BoundedVec<Tranche<Balance, Rate, Weight, TrancheCurrency>, MaxTranches> {
 		self.tranches
 	}
 
 	pub fn non_residual_tranches(
 		&self,
 	) -> Option<&[Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
+		if let Some((_head, tail)) = self.tranches.deref().as_slice().split_first() {
 			Some(tail)
 		} else {
 			None
@@ -835,7 +845,7 @@ where
 	pub fn non_residual_tranches_mut(
 		&mut self,
 	) -> Option<&mut [Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
+		if let Some((_head, tail)) = self.tranches.as_mut().split_first_mut() {
 			Some(tail)
 		} else {
 			None
@@ -843,7 +853,7 @@ where
 	}
 
 	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
+		if let Some((head, _tail)) = self.tranches.deref().as_slice().split_first() {
 			Some(head)
 		} else {
 			None
@@ -853,7 +863,7 @@ where
 	pub fn residual_tranche_mut(
 		&mut self,
 	) -> Option<&mut Tranche<Balance, Rate, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
+		if let Some((head, _tail)) = self.tranches.as_mut().split_first_mut() {
 			Some(head)
 		} else {
 			None
@@ -863,23 +873,23 @@ where
 	pub fn non_residual_top_slice(
 		&self,
 	) -> &RevSlice<Tranche<Balance, Rate, Weight, TrancheCurrency>> {
-		self.tranches.rev()
+		self.tranches.deref().rev()
 	}
 
 	pub fn non_residual_top_slice_mut(
 		&mut self,
 	) -> &mut RevSlice<Tranche<Balance, Rate, Weight, TrancheCurrency>> {
-		self.tranches.rev_mut()
+		self.tranches.as_mut().rev_mut()
 	}
 
 	pub fn residual_top_slice(&self) -> &[Tranche<Balance, Rate, Weight, TrancheCurrency>] {
-		self.tranches.as_slice()
+		self.tranches.deref().as_slice()
 	}
 
 	pub fn residual_top_slice_mut(
 		&mut self,
 	) -> &mut [Tranche<Balance, Rate, Weight, TrancheCurrency>] {
-		self.tranches.as_mut_slice()
+		self.tranches.as_mut()
 	}
 
 	pub fn supplies(&self) -> Result<Vec<Balance>, DispatchError> {
@@ -1027,29 +1037,42 @@ impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurr
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency> {
-	// FIXME: Convert to BoundedVec
-	pub tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
+pub struct EpochExecutionTranches<
+	Balance,
+	BalanceRatio,
+	Weight,
+	TrancheCurrency,
+	MaxEpocExecutionTranches,
+> where
+	MaxEpocExecutionTranches: Get<u32>,
+{
+	pub tranches: BoundedVec<
+		EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
+		MaxEpocExecutionTranches,
+	>,
 }
 
 /// Utility implementations for `EpochExecutionTranches`
-impl<Balance, BalanceRatio, Weight, TrancheCurrency>
-	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>
+impl<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
+	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
 where
 	Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	BalanceRatio: Copy,
+	MaxEpocExecutionTranches: Get<u32>,
 {
 	pub fn new(
 		tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
 	) -> Self {
-		Self { tranches }
+		Self {
+			tranches: BoundedVec::truncate_from(tranches),
+		}
 	}
 
 	pub fn non_residual_tranches(
 		&self,
 	) -> Option<&[EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
+		if let Some((_head, tail)) = self.tranches.deref().as_slice().split_first() {
 			Some(tail)
 		} else {
 			None
@@ -1059,7 +1082,7 @@ where
 	pub fn non_residual_tranches_mut(
 		&mut self,
 	) -> Option<&mut [EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
+		if let Some((_head, tail)) = self.tranches.as_mut().split_first_mut() {
 			Some(tail)
 		} else {
 			None
@@ -1069,7 +1092,7 @@ where
 	pub fn residual_tranche(
 		&self,
 	) -> Option<&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
+		if let Some((head, _tail)) = self.tranches.deref().as_slice().split_first() {
 			Some(head)
 		} else {
 			None
@@ -1079,7 +1102,7 @@ where
 	pub fn residual_tranche_mut(
 		&mut self,
 	) -> Option<&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
+		if let Some((head, _tail)) = self.tranches.as_mut().split_first_mut() {
 			Some(head)
 		} else {
 			None
@@ -1087,37 +1110,40 @@ where
 	}
 
 	pub fn num_tranches(&self) -> usize {
-		self.tranches.len()
+		self.tranches.deref().len()
 	}
 
 	pub fn into_tranches(
 		self,
-	) -> Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
+	) -> BoundedVec<
+		EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
+		MaxEpocExecutionTranches,
+	> {
 		self.tranches
 	}
 
 	pub fn non_residual_top_slice(
 		&self,
 	) -> &RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
-		self.tranches.rev()
+		self.tranches.deref().rev()
 	}
 
 	pub fn non_residual_top_slice_mut(
 		&mut self,
 	) -> &mut RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
-		self.tranches.rev_mut()
+		self.tranches.as_mut().rev_mut()
 	}
 
 	pub fn residual_top_slice(
 		&self,
 	) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>] {
-		self.tranches.as_slice()
+		self.tranches.deref().as_slice()
 	}
 
 	pub fn residual_top_slice_mut(
 		&mut self,
 	) -> &mut [EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>] {
-		self.tranches.as_mut_slice()
+		self.tranches.as_mut()
 	}
 
 	pub fn combine_non_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
@@ -1126,8 +1152,8 @@ where
 			&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter().rev() {
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
+		for tranche in self.tranches.deref().iter().rev() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1140,7 +1166,7 @@ where
 			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		for tranche in &mut self.tranches.iter_mut().rev() {
 			let r = f(tranche)?;
 			res.push(r)
@@ -1160,7 +1186,7 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		let iter = self.tranches.iter().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -1183,7 +1209,7 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -1200,8 +1226,8 @@ where
 			&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter() {
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
+		for tranche in self.tranches.deref().iter() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1214,7 +1240,7 @@ where
 			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
 		) -> Result<R, DispatchError>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		for tranche in self.tranches.iter_mut() {
 			let r = f(tranche)?;
 			res.push(r)
@@ -1234,8 +1260,8 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().zip(with.into_iter());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
+		let iter = self.tranches.deref().iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -1257,7 +1283,7 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
+		let mut res = Vec::with_capacity(self.tranches.deref().len());
 		let iter = self.tranches.iter_mut().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -1270,12 +1296,13 @@ where
 }
 
 /// Business logic implementations for `EpochExecutionTranches`
-impl<Balance, BalanceRatio, Weight, TrancheCurrency>
-	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>
+impl<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
+	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
 where
 	Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	BalanceRatio: Copy,
+	MaxEpocExecutionTranches: Get<u32>,
 {
 	pub fn prices(&self) -> Vec<BalanceRatio> {
 		self.tranches.iter().map(|tranche| tranche.price).collect()
