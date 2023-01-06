@@ -21,12 +21,13 @@ use cfg_types::{
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	parameter_types,
-	traits::{Contains, Hooks, PalletInfoAccess, SortedMembers},
+	traits::{Contains, GenesisBuild, Hooks, PalletInfoAccess, SortedMembers},
 	PalletId,
 };
 use frame_system::EnsureSigned;
-use orml_traits::parameter_type_with_key;
+use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
 use pallet_pool_system::{
+	benchmarking::create_pool,
 	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
 	tranches::TrancheInput,
 };
@@ -189,8 +190,11 @@ pub struct ModifyPoolMock<T> {
 	phantom: PhantomData<T>,
 }
 
-impl<T: Config + pallet_pool_registry::Config + pallet_pool_system::Config>
-	PoolMutate<T::AccountId, <T as pallet_pool_system::Config>::PoolId> for ModifyPoolMock<T>
+impl<
+		T: Config
+			+ pallet_pool_registry::Config
+			+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
+	> PoolMutate<T::AccountId, <T as pallet_pool_system::Config>::PoolId> for ModifyPoolMock<T>
 {
 	type Balance = <T as pallet_pool_registry::Config>::Balance;
 	type CurrencyId = <T as pallet_pool_registry::Config>::CurrencyId;
@@ -211,14 +215,15 @@ impl<T: Config + pallet_pool_registry::Config + pallet_pool_system::Config>
 	>;
 
 	fn create(
-		_admin: T::AccountId,
+		admin: T::AccountId,
 		_depositor: T::AccountId,
 		_pool_id: <T as pallet_pool_system::Config>::PoolId,
-		_tranche_inputs: Vec<Self::TrancheInput>,
+		tranche_inputs: Vec<Self::TrancheInput>,
 		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
 		_metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
+		create_pool::<T>(tranche_inputs.len() as u32, admin)?;
 		Ok(())
 	}
 
@@ -451,9 +456,44 @@ pub const START_DATE: u64 = 1640995200;
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub fn build(self) -> sp_io::TestExternalities {
-		let storage = frame_system::GenesisConfig::default()
+		let mut storage = frame_system::GenesisConfig::default()
 			.build_storage::<Test>()
 			.unwrap();
+
+		orml_tokens::GenesisConfig::<Test> {
+			balances: (0..10)
+				.into_iter()
+				.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
+				.collect(),
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		pallet_balances::GenesisConfig::<Test> {
+			balances: (0..10)
+				.into_iter()
+				.map(|idx| (idx, 1000 * CURRENCY))
+				.collect(),
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		orml_asset_registry_mock::GenesisConfig {
+			metadata: vec![(
+				CurrencyId::AUSD,
+				AssetMetadata {
+					decimals: 18,
+					name: "MOCK TOKEN".as_bytes().to_vec(),
+					symbol: "MOCK".as_bytes().to_vec(),
+					existential_deposit: 0,
+					location: None,
+					additional: CustomMetadata::default(),
+				},
+			)],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
 		let mut externalities = sp_io::TestExternalities::new(storage);
 		externalities.execute_with(|| {
 			System::set_block_number(1);
