@@ -65,6 +65,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxRolesPerScope: Get<u32>;
 
+		/// The maximum number of tranche investors.
+		#[pallet::constant]
+		type MaxTranches: Get<u32>;
+
 		type WeightInfo: WeightInfo;
 	}
 

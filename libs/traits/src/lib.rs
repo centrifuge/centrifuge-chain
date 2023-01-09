@@ -114,8 +114,16 @@ pub trait PoolNAV<PoolId, Amount> {
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
-	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo + Encode + Decode;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo;
+	type PoolId: Parameter
+		+ Member
+		+ Debug
+		+ Copy
+		+ Default
+		+ TypeInfo
+		+ Encode
+		+ Decode
+		+ MaxEncodedLen;
+	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
 	type Rate;
 	type Moment;
 

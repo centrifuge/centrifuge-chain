@@ -31,7 +31,7 @@ decl_runtime_apis! {
 		Balance: Codec,
 		Currency: Codec,
 		BalanceRatio: Codec,
-		MaxTranches: Get<u32>,
+		MaxTranches: Codec + Get<u32>,
 	{
 		fn currency(pool_id: PoolId) -> Option<Currency>;
 

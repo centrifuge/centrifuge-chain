@@ -18,7 +18,7 @@
 //! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
 
-use codec::{CompactAs, Decode, Encode};
+use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "std")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use sp_arithmetic::{
@@ -430,6 +430,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	PartialOrd,
 	Ord,
 	scale_info::TypeInfo,
+	MaxEncodedLen,
 )]
 pub struct Rate(u128);
 

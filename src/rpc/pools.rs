@@ -9,12 +9,18 @@ use pallet_pool_system::{
 use runtime_common::apis::PoolsApi as PoolsRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::{
+	generic::BlockId,
+	traits::{Block as BlockT, Get},
+};
 
 use crate::rpc::{invalid_params_error, runtime_error};
 
 #[rpc(client, server)]
-pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, BlockHash> {
+pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, BlockHash, MaxTranches>
+where
+	MaxTranches: Get<u32>,
+{
 	#[method(name = "pools_currency")]
 	fn currency(&self, poold_id: PoolId, at: Option<BlockHash>) -> RpcResult<Currency>;
 
@@ -24,7 +30,7 @@ pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, BlockHash
 		pool_id: PoolId,
 		solution: Vec<TrancheSolution>,
 		at: Option<BlockHash>,
-	) -> RpcResult<EpochSolution<Balance>>;
+	) -> RpcResult<EpochSolution<Balance, MaxTranches>>;
 
 	#[method(name = "pools_trancheTokenPrice")]
 	fn tranche_token_price(
@@ -75,17 +81,19 @@ impl<C, P> Pools<C, P> {
 	}
 }
 
-impl<C, Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>
-	PoolsApiServer<PoolId, TrancheId, Balance, Currency, BalanceRatio, Block::Hash> for Pools<C, Block>
+impl<C, Block, PoolId, TrancheId, Balance, Currency, BalanceRatio, MaxTranches>
+	PoolsApiServer<PoolId, TrancheId, Balance, Currency, BalanceRatio, Block::Hash, MaxTranches>
+	for Pools<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: PoolsRuntimeApi<Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>,
+	C::Api: PoolsRuntimeApi<Block, PoolId, TrancheId, Balance, Currency, BalanceRatio, MaxTranches>,
 	Balance: Codec + Copy,
 	PoolId: Codec + Copy + Debug,
 	TrancheId: Codec + Clone + Debug,
 	Currency: Codec,
 	BalanceRatio: Codec,
+	MaxTranches: Codec + Get<u32>,
 {
 	fn currency(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Currency> {
 		let api = self.client.runtime_api();
@@ -105,7 +113,7 @@ where
 		pool_id: PoolId,
 		solution: Vec<TrancheSolution>,
 		at: Option<Block::Hash>,
-	) -> RpcResult<EpochSolution<Balance>> {
+	) -> RpcResult<EpochSolution<Balance, MaxTranches>> {
 		let api = self.client.runtime_api();
 		let at = if let Some(hash) = at {
 			BlockId::hash(hash)

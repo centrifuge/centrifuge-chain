@@ -15,7 +15,7 @@ use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
 use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
@@ -38,7 +38,7 @@ mod contract;
 pub use contract::*;
 
 /// The Parachains that Centrifuge Connectors support.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum ParachainId {
 	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or Moonbase on a testnet.
@@ -53,7 +53,7 @@ type EVMChainId = u64;
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
 	/// An EVM domain, identified by its EVM Chain Id
@@ -456,7 +456,12 @@ pub mod pallet {
 		) -> Vec<u8> {
 			let mut encoded: Vec<u8> = Vec::new();
 
-			encoded.append(&mut xcm_domain.ethereum_xcm_transact_call_index.clone());
+			encoded.append(
+				&mut xcm_domain
+					.ethereum_xcm_transact_call_index
+					.clone()
+					.into_inner(),
+			);
 			encoded.append(
 				&mut xcm_primitives::EthereumXcmTransaction::V1(
 					xcm_primitives::EthereumXcmTransactionV1 {

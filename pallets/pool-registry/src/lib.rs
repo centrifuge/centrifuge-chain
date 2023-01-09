@@ -44,7 +44,7 @@ where
 	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolMetadata<MetaSize>
 where
 	MetaSize: Get<u32>,
@@ -52,7 +52,7 @@ where
 	metadata: BoundedVec<u8, MetaSize>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum PoolRegistrationStatus {
 	Registered,
 	Unregistered,

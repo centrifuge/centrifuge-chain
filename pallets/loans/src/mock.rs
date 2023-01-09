@@ -339,9 +339,11 @@ impl pallet_permissions::Config for Runtime {
 	type Editors = Everything;
 	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
+	type MaxTranches = MaxTranches;
 	type Role = Role;
 	type Scope = PermissionScope<u64, CurrencyId>;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
 	type WeightInfo = ();
 }
 
