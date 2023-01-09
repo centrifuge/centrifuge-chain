@@ -291,6 +291,11 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	}
 
 	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
+		ensure!(
+			EpochExecution::<T>::try_get(pool_id).is_err(),
+			Error::<T>::InSubmissionPeriod
+		);
+
 		let update =
 			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
 
