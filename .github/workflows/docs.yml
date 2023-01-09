@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
+      RUSTDOCFLAGS: "-D warnings"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
