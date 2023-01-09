@@ -34,24 +34,6 @@
 //! ### Supported Origins
 //! Valid origin is an administrator or root.
 //!
-//! ### Types
-//! - `AdminOrigin` - Ensure that origin of a transaction is an administrator.
-//! - `Currency` -  Expected currency of the reward claim.
-//! - `Event` -  Overarching type for pallet events.
-//! - `MinimalPayoutAmount` -  Minimal reward payout amount that can be claimed.
-//! - `PalletId` -  Constant configuration parameter to store the module identifier for the pallet.
-//! - `WeightInfo` -  Pallet's transaction weights, calculated using runtime benchmarking.
-//!
-//! ### Events
-//! - `Claimed(T::AccountId, <T as pallet_balances::Config>::Balance)` - Event triggered after a reward claim is successfully processed.
-//! - `RootHashStored(<T as frame_system::Config>::Hash)` - Event triggered when the root hash is stored.
-//!
-//! ### Errors
-//! - `InsufficientBalance` - Amount being claimed is less than the available amount in [`ClaimedAmounts`].
-//! - `InvalidProofs` - The combination of account id, amount, and proofs vector in a claim was invalid.
-//! - `MustBeAdmin` - Protected operation, must be performed by admin.
-//! - `UnderMinPayout` - The payout amount attempting to be claimed is less than the minimum allowed by [`MinimalPayoutAmount`].
-//!
 //! ### Dispatchable Functions
 //!
 //! Callable functions (or extrinsics), also considered as transactions, materialize the
@@ -125,7 +107,6 @@ pub mod traits {
 	/// Weight information for pallet extrinsics
 	///
 	/// Weights are calculated using runtime benchmarking features.
-	/// See [`benchmarking`] module for more information.
 	pub trait WeightInfo {
 		fn claim(hashes_length: usize) -> Weight;
 		fn set_upload_account() -> Weight;
@@ -246,7 +227,7 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Amount being claimed is less than the available amount in [`ClaimedAmounts`].
+		/// Amount being claimed is less than the available amount stored.
 		InsufficientBalance,
 
 		/// The combination of account id, amount, and proofs vector in a claim was invalid.
@@ -255,7 +236,7 @@ pub mod pallet {
 		/// Protected operation, must be performed by admin
 		MustBeAdmin,
 
-		/// The payout amount attempting to be claimed is less than the minimum allowed by [`MinimalPayoutAmount`].
+		/// The payout amount attempting to be claimed is less than the minimum allowed by [`Config::MinimalPayoutAmount`].
 		UnderMinPayout,
 	}
 

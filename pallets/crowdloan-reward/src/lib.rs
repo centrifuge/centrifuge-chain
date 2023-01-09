@@ -19,11 +19,6 @@
 //! for managing reward claims (including security aspects, such as malicious
 //! Denial of Service or replay attacks).
 //!
-//! - \[`Config`]
-//! - \[`Call`]
-//! - \[`Pallet`]
-//! - \[`Reward`](pallet_crowdloan_claim::traits::Reward)
-//!
 //! ## Overview
 //! The function of this pallet is to provide the Centrifuge-specific reward functionality for
 //! contributors of the relay chain crowdloan. In order to provide this functionality the pallet
@@ -36,36 +31,6 @@
 //! ## Terminology
 //! For information on terms and concepts used in this pallet,
 //! please refer to the [pallet' specification document](https://centrifuge.hackmd.io/JIGbo97DSiCPFnBFN62aTQ?both).
-//!
-//! ## Goals
-//!
-//! ## Usage
-//!
-//! ## Interface
-//!
-//! ### Supported Origins
-//! Valid origin is an administrator or root.
-//!
-//! ### Types
-//!
-//! ### Events
-//!
-//! ### Errors
-//!
-//! ### Dispatchable Functions
-//!
-//! - [`set_vesting_start`] : Origin must be admin or root, and allows to set the start of the vesting
-//!    after the initialization.
-//! - [`set_vesting_period`] : Origin must be admin or root, and allows to set the period of the vesting
-//!    after the initialization.
-//! - [`set_conversion_rate`] : Origin must be admin or root, and allows to set the conversion rate
-//!    between relay chain and native balance after the initialization.
-//! - [`set_direct_payout_ratio`] : Origin must be admin or root, and allows to set the ratio between
-//!    vested and direct payout amount after the initialization.
-//!
-//! ### Public Functions
-//!
-//! ## Genesis Configuration
 //!
 //! ## Dependencies
 //! This pallet works hand in hand with [`pallet-crowdloan-claim`] pallet. In fact, it must
@@ -313,7 +278,7 @@ pub mod pallet {
 		/// Set vesting period.
 		///
 		/// This administrative transaction allows to modify the vesting period
-		/// after a previous [`initialize`] transaction was triggered in order
+		/// after a previous [`Pallet::initialize()`] transaction was triggered in order
 		/// to perform seminal pallet configuration.
 		///
 		/// ## Emits
@@ -340,7 +305,7 @@ pub mod pallet {
 		///
 		/// This administrative function allows to modify the ratio
 		/// between vested and direct payout amount after the pallet
-		/// was initialized via a call to the [`initialize`] transaction.
+		/// was initialized via a call to the [`Pallet::initialize()`] transaction.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_direct_payout_ratio())]
 		pub fn set_direct_payout_ratio(
 			origin: OriginFor<T>,

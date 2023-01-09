@@ -3,10 +3,10 @@
 //! This pallet provides a place for digital art creators and owners to offer their
 //! NFTs for sale and for potential buyers to browse and buy them.
 //!
-//! To sell NFTs, users will call `add`. Doing so will have the NFT being transferred
+//! To sell NFTs, users will call [`Pallet::add()`]. Doing so will have the NFT being transferred
 //! from the seller to this pallet's account, to grant us the own
 //!
-//! To remove an NFT from sale and thus reclaim its ownership, sellers will call `remove`.
+//! To remove an NFT from sale and thus reclaim its ownership, sellers will call [`Pallet::remove()`].
 //!
 //! To buy an NFT, users will call `buy`.
 //!
@@ -175,7 +175,7 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// A user tried to add an NFT that could not be found in T::NonFungibles
+		/// A user tried to add an NFT that could not be found in [`Config::NonFungibles`]
 		NotFound,
 
 		/// The origin is not the owner of an NFT
@@ -197,7 +197,7 @@ pub mod pallet {
 		/// Add an NFT
 		///
 		/// Fails if
-		///   - the NFT is not found in [T::NonFungibles]
+		///   - the NFT is not found in [`Config::NonFungibles`]
 		///   - `origin` is not the owner of the nft
 		///   - the nft is already for sale
 		///   - transferring ownership of the NFT to this pallet's account fails
@@ -337,8 +337,8 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Check if the given `account` is the owner of the NFT.
 		/// Returns:
-		///		- Ok(bool) when the NFT is found in T::NonFungibles
-		///     - Err(NotFound) when the NFT could not be found in T::NonFungibles
+		///		- Ok(bool) when the NFT is found in [`Config::NonFungibles`]
+		///     - Err(NotFound) when the NFT could not be found in [`Config::NonFungibles`]
 		fn is_owner(
 			account: T::AccountId,
 			class_id: T::CollectionId,

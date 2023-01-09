@@ -66,7 +66,7 @@ type BalanceOf<T> =
 /// This is the maximum expected time for document consensus to take place between a pre-commit of an anchor and a
 /// commit to be received for the pre-committed anchor. Currently we expect to provide around 80 mins for this.
 /// Since our current block time as per chain_spec.rs is 6s, we set this to 80 * 60 secs / 6 secs/block = 800 blocks.
-const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u32 = 800;
+pub const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u32 = 800;
 
 /// Determines how many loop iterations are allowed to run at a time inside the runtime.
 const MAX_LOOP_IN_TX: u64 = 100;
@@ -124,7 +124,7 @@ pub mod pallet {
 		type CommitAnchorFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Key to identify the amount of funds reserved in a [`Pallet::pre_commit()`] call.
-		/// These funds will be unreserved once the user make the [`commit()`] succesfully
+		/// These funds will be unreserved once the user make the [`Pallet::commit()`] succesfully
 		/// or call [`Pallet::evict_pre_commits()`]
 		type PreCommitDepositFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
@@ -222,8 +222,8 @@ pub mod pallet {
 		/// publish a pre-commit. Only the pre-committer account in the Centrifuge chain is
 		/// allowed to `commit` a corresponding anchor before the pre-commit has expired.
 		/// Some funds are reserved on a succesful pre-commit call.
-		/// These funds are returned to the same account after a succesful [`commit()`] call
-		/// or explicitely if evicting the pre-commits by calling [`evict_pre_commits()`].
+		/// These funds are returned to the same account after a succesful [`Pallet::commit()`] call
+		/// or explicitely if evicting the pre-commits by calling [`Pallet::evict_pre_commits()`].
 		/// For a more detailed explanation refer section 3.4 of
 		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::pre_commit())]
@@ -268,7 +268,7 @@ pub mod pallet {
 		/// If a pre-commit exists for the obtained `anchor_id`, hash of pre-committed
 		/// `signing_root + proof` must match the given `doc_root`.
 		/// Any pre-committed data is automatically removed on a succesful commit and the reserved
-		/// funds from [`pre_commit()`] are returned to the same account.
+		/// funds from [`Pallet::pre_commit()`] are returned to the same account.
 		/// To avoid state bloat on chain,
 		/// the committed anchor would be evicted after the given `stored_until_date`.
 		/// The calling account would be charged accordingly for the storage period.
@@ -360,7 +360,7 @@ pub mod pallet {
 		}
 
 		/// Initiates eviction of pre-commits that has expired given a list on anchor ids.
-		/// For each evicted pre-commits, the deposit holded by [`pre_commit()`] call
+		/// For each evicted pre-commits, the deposit holded by [`Pallet::pre_commit()`] call
 		/// will be returned to the same account that made it originally.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_pre_commits())]
 		pub fn evict_pre_commits(

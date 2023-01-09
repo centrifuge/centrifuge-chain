@@ -21,7 +21,7 @@ use sp_runtime::{ArithmeticError, DispatchError};
 
 use crate::WriteOffGroup;
 
-/// calculates the latest accumulated rate since the last
+/// Calculates the latest accumulated rate since the last.
 pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 	interest_rate_per_sec: Rate,
 	current_accumulated_rate: Rate,
@@ -33,7 +33,7 @@ pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 		.and_then(|v| v.checked_mul(&current_accumulated_rate))
 }
 
-/// calculates the debt using debt=principal_debt * cumulative_rate
+/// Calculates the debt using `debt=principal_debt * cumulative_rate`.
 pub fn debt<Balance: FixedPointOperand, Rate: FixedPointNumber>(
 	normalized_debt: Balance,
 	accumulated_rate: Rate,
@@ -41,14 +41,14 @@ pub fn debt<Balance: FixedPointOperand, Rate: FixedPointNumber>(
 	accumulated_rate.checked_mul_int(normalized_debt)
 }
 
-/// represents how much some other value should be incremented or decremented by
+/// Represents how much some other value should be incremented or decremented by.
 pub enum Adjustment<Balance> {
 	Inc(Balance),
 	Dec(Balance),
 }
 
-/// calculates the principal debt after the adjustment
-/// current_debt and cumulative_rate must be latest
+/// Calculates the principal debt after the adjustment
+/// `current_debt` and `cumulative_rate` must be latest
 pub fn calculate_normalized_debt<
 	Balance: FixedPointOperand + BaseArithmetic,
 	Rate: FixedPointNumber,
@@ -66,36 +66,36 @@ pub fn calculate_normalized_debt<
 	rate.checked_mul_int(current_debt)
 }
 
-/// returns the seconds in a given normal day
+/// Returns the seconds in a given normal day.
 #[inline]
 pub(crate) fn seconds_per_day() -> Moment {
 	3600 * 24
 }
 
-/// returns the seconds in a given normal year(365 days)
-/// https://docs.centrifuge.io/learn/interest-rate-methodology/
+/// Returns the seconds in a given normal year(365 days).
+/// More [info](https://docs.centrifuge.io/learn/interest-rate-methodology/)
 #[inline]
 pub(crate) fn seconds_per_year() -> Moment {
 	seconds_per_day() * 365
 }
 
-/// calculates rate per second from the given nominal interest rate
-/// https://docs.centrifuge.io/learn/interest-rate-methodology/
+/// Calculates rate per second from the given nominal interest rate.
+/// More [info](https://docs.centrifuge.io/learn/interest-rate-methodology/)
 pub fn interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
 	rate_per_annum
 		.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
 		.and_then(|res| res.checked_add(&Rate::one()))
 }
 
-/// calculates fractional part of the rate per second from the given nominal interest rate
-/// https://docs.centrifuge.io/learn/interest-rate-methodology/
+/// Calculates fractional part of the rate per second from the given nominal interest rate.
+/// More [info](https://docs.centrifuge.io/learn/interest-rate-methodology/)
 pub fn penalty_interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
 	rate_per_annum.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
 }
 
-/// calculates the risk adjusted expected cash flow for bullet loan type
-/// assumes maturity date has not passed
-/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+/// Calculates the risk adjusted expected cash flow for bullet loan type.
+/// Assumes maturity date has not passed.
+/// More [info](https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing)
 pub fn bullet_loan_risk_adjusted_expected_cash_flow<Balance, Rate>(
 	debt: Balance,
 	now: Moment,
@@ -122,9 +122,9 @@ where
 	rr.checked_mul_int(cf)
 }
 
-/// calculates present value for bullet loan
-/// assumes maturity date has not passed
-/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+/// Calculates present value for bullet loan.
+/// Assumes maturity date has not passed.
+/// More [info](https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing)
 pub fn bullet_loan_present_value<Balance, Rate>(
 	expected_cash_flow: Balance,
 	now: Moment,
@@ -146,7 +146,7 @@ where
 	d.checked_mul_int(expected_cash_flow)
 }
 
-/// returns the valid write off group given the maturity date and current time
+/// Returns the valid write off group given the maturity date and current time
 /// since the write off groups are not guaranteed to be in a sorted order and
 /// we want to preserve the index of the group,
 /// we also pick the group that has the highest overdue days found in the vector
@@ -174,8 +174,8 @@ pub(crate) fn valid_write_off_group<Rate>(
 	Ok(current_group)
 }
 
-/// calculates max_borrow_amount for a loan,
-/// max_borrow_amount = advance_rate * collateral_value - debt
+/// Calculates max_borrow_amount for a loan:
+/// `max_borrow_amount = advance_rate * collateral_value - debt`.
 pub(crate) fn max_borrow_amount<
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
@@ -188,9 +188,9 @@ pub(crate) fn max_borrow_amount<
 	val.checked_sub(&debt)
 }
 
-/// calculates the expected loss over term
-/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
-/// we cap the term expected loss to 100%
+/// Calculates the expected loss over term.
+/// We cap the term expected loss to 100%.
+/// More [info](https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value)
 #[inline]
 pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 	pd: Rate,
@@ -204,7 +204,7 @@ pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 		.map(|tel| tel.min(One::one()))
 }
 
-/// calculates expected cash flow from current debt till maturity at the given rate per second
+/// Calculates expected cash flow from current debt till maturity at the given rate per second.
 #[inline]
 pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOperand>(
 	debt: Balance,
@@ -216,7 +216,7 @@ pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOper
 	acc_rate.checked_mul_int(debt)
 }
 
-/// calculates discounted cash flow given the discount rate until maturity
+/// Calculates discounted cash flow given the discount rate until maturity.
 #[inline]
 pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOperand>(
 	ra_ecf: Balance,

@@ -20,10 +20,6 @@
 //! does not implement the rewarding strategy, that is the role of the
 //! [`pallet-crowdloan-reward`] pallet.
 //!
-//! - \[`Config`]
-//! - \[`Call`]
-//! - \[`Pallet`]
-//!
 //! ## Overview
 //! This pallet is used to proces reward claims from contributors who locked
 //! tokens on the Polkadot/Kusama relay chain for participating in a crowdloan
@@ -40,30 +36,6 @@
 //! The aim of this pallet is to ensure that a contributor who's claiming a reward
 //! is eligible for it and avoid potential attacks, such as, for instance, Denial of
 //! Service (DoS) or spams by requiring fee payment.
-//!
-//! ## Usage
-//!
-//! ## Interface
-//!
-//! ### Supported Origins
-//! Valid origin is an administrator or root.
-//!
-//! ### Types
-//!
-//! ### Events
-//!
-//! ### Errors
-//!
-//! ### Dispatchable Functions
-//!
-//! Callable functions (or extrinsics), also considered as transactions, materialize the
-//! pallet contract. Here's the callable functions implemented in this Pallet:
-//!
-//! [`claim_reward`]
-//!
-//! ### Public Functions
-//!
-//! ## Genesis Configuration
 //!
 //! ## Dependencies
 //! As stated in the overview of this pallet, the latter relies on the [`pallet-crowdloan-reward`]
@@ -494,9 +466,9 @@ pub mod pallet {
 		/// This administrative function is used to transfer the list of contributors
 		/// and their respective contributions, stored as a child trie root hash in
 		/// the relay chain's [`crowdloan`](https://github.com/paritytech/polkadot/blob/rococo-v1/runtime/common/src/crowdloan.rs)
-		/// pallet, to [`Contributions`] storage item.
+		/// pallet, to `Contributions` storage item.
 		/// This transaction can only be called via a signed transactions.
-		/// The [`contributions`] parameter contains the hash of the crowdloan pallet's child
+		/// The `contributions` parameter contains the hash of the crowdloan pallet's child
 		/// trie root. It is later used for proving that a contributor effectively contributed
 		/// to the crowdloan campaign, and that the amount of the contribution is correct as
 		/// well.
