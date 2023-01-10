@@ -165,6 +165,7 @@ where
 }
 
 // NOTE: Can be removed once orml_traits::Change impls MaxEncodedLen
+// https://github.com/open-web3-stack/open-runtime-module-library/pull/867
 impl<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches> MaxEncodedLen
 	for PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
