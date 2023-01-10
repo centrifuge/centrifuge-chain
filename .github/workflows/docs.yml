@@ -23,10 +23,15 @@ jobs:
           default: true
 
       - name: Build Documentation
+        id: build_docs
         uses: actions-rs/cargo@v1
         with:
           command: doc
           args: --all --no-deps
+      
+      - name: Build Documentation failed
+        if: failure() && steps.build_docs.outcome == 'failure'
+        run: echo ":::warning::Building Docs failed"
 
       - name: Create Index file
         run: ./ci/create_index_for_rust_docs.sh
