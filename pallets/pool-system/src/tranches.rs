@@ -350,7 +350,7 @@ impl
 
 		Ok(Self {
 			tranches: BoundedVec::<
-				Tranche<Balance, Rate, Weight, TrancheCurrency>,
+				Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>,
 				crate::mock::MaxTranches,
 			>::truncate_from(tranches),
 			ids: BoundedVec::<TrancheId, crate::mock::MaxTranches>::truncate_from(ids),
