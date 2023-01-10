@@ -281,7 +281,7 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, PartialOrd, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
@@ -370,6 +370,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheWeight,
 		TrancheId,
 		u64,
+		MaxTranches,
 	>;
 	type ScheduledUpdateDetails =
 		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 pub use dummy::pallet as pallet_dummy;
 use frame_support::{
 	parameter_types,
@@ -50,7 +50,7 @@ pub enum Role {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo)]
+		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
 		pub struct OrgStorage: u32 {
 			const SENIOR_EXEC = 0b00000001;
 			const HEAD_OF_SAUBERMACHING  = 0b00000010;
@@ -60,14 +60,16 @@ bitflags::bitflags! {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo)]
+		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
 		pub struct XcmStorage: u32 {
 			const SENDER = 0b00000001;
 			const RECEIVER  = 0b00000010;
 		}
 }
 
-#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+)]
 pub struct Storage {
 	org: OrgStorage,
 	xcm: XcmStorage,
@@ -82,7 +84,9 @@ impl Default for Storage {
 	}
 }
 
-#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+)]
 pub enum Scope {
 	PalletA,
 	PalletB,
@@ -281,6 +285,7 @@ impl frame_system::Config for Runtime {
 parameter_types! {
 	pub const One: u64 = 1;
 	pub const MaxRoles: u32 = 10;
+	pub const MaxTranches: u32 = 5;
 }
 
 type AdminOrigin = EitherOfDiverse<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
@@ -290,6 +295,7 @@ impl pallet_permissions::Config for Runtime {
 	type Editors = Editors;
 	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
+	type MaxTranches = MaxTranches;
 	type Role = Role;
 	type Scope = Scope;
 	type Storage = Storage;

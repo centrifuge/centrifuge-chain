@@ -911,8 +911,6 @@ impl pallet_pool_system::Config for Runtime {
 	type EpochId = PoolEpochId;
 	type Event = Event;
 	type Investments = Investments;
-	// FIXME: Assign correct value
-	type MaxEpocExecutionTranches = MaxTranches;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;

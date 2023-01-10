@@ -22,7 +22,7 @@ use cfg_types::{
 	orders::{FulfillmentWithPrice, TotalOrder},
 	tokens::CurrencyId,
 };
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResultWithPostInfo,
 	parameter_types,
@@ -183,6 +183,7 @@ impl<T> PreConditions<T> for Always {
 	TypeInfo,
 	Serialize,
 	Deserialize,
+	MaxEncodedLen,
 )]
 pub enum InvestmentId {
 	PoolTranche {

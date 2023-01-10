@@ -88,7 +88,7 @@ pub type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
 	<T as Config>::Rate,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
-	<T as Config>::MaxEpocExecutionTranches,
+	<T as Config>::MaxTranches,
 >;
 
 /// Types alias for Tranches
@@ -133,7 +133,6 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
 	<T as Config>::TrancheCurrency,
-	<T as Config>::MaxEpocExecutionTranches,
 	<T as Config>::MaxTranches,
 >;
 
@@ -327,10 +326,6 @@ pub mod pallet {
 		/// The amount that must be reserved to create a pool
 		#[pallet::constant]
 		type PoolDeposit: Get<Self::Balance>;
-
-		/// The maximum amount of execution tranches of an epoch.
-		#[pallet::constant]
-		type MaxEpocExecutionTranches: Get<u32> + scale_info::TypeInfo;
 
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
@@ -938,7 +933,7 @@ pub mod pallet {
 				T::Rate,
 				_,
 				T::TrancheCurrency,
-				T::MaxEpocExecutionTranches,
+				T::MaxTranches,
 			>(&epoch.tranches, solution)
 			.map_err(|e| {
 				// In case we have an underflow in the calculation, there

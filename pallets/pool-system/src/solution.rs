@@ -113,23 +113,16 @@ pub struct EpochExecutionInfo<
 	Weight,
 	BlockNumber,
 	TrancheCurrency,
-	MaxEpocExecutionTranches,
 	MaxTranches,
 > where
-	MaxEpocExecutionTranches: Get<u32>,
 	MaxTranches: Get<u32>,
 {
 	pub epoch: EpochId,
 	pub nav: Balance,
 	pub reserve: Balance,
 	pub max_reserve: Balance,
-	pub tranches: EpochExecutionTranches<
-		Balance,
-		BalanceRatio,
-		Weight,
-		TrancheCurrency,
-		MaxEpocExecutionTranches,
-	>,
+	pub tranches:
+		EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>,
 	pub best_submission: Option<EpochSolution<Balance, MaxTranches>>,
 	pub challenge_period_end: Option<BlockNumber>,
 }
@@ -455,28 +448,15 @@ where
 	}
 }
 
-pub fn calculate_solution_parameters<
-	Balance,
-	BalanceRatio,
-	Rate,
-	Weight,
-	Currency,
-	MaxEpocExecutionTranches,
->(
-	epoch_tranches: &EpochExecutionTranches<
-		Balance,
-		BalanceRatio,
-		Weight,
-		Currency,
-		MaxEpocExecutionTranches,
-	>,
+pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency, MaxTranches>(
+	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, Currency, MaxTranches>,
 	solution: &[TrancheSolution],
 ) -> Result<(Balance, Balance, Vec<Perquintill>), DispatchError>
 where
 	BalanceRatio: Copy + FixedPointNumber,
 	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
-	MaxEpocExecutionTranches: Get<u32>,
+	MaxTranches: Get<u32>,
 {
 	let acc_invest: Balance = epoch_tranches
 		.residual_top_slice()
@@ -510,6 +490,7 @@ where
 #[cfg(test)]
 mod test {
 	use super::*;
+	use crate::mock::MaxTranches;
 
 	fn get_tranche_solution(invest_fulfillment: f64, redeem_fulfillment: f64) -> TrancheSolution {
 		TrancheSolution {
@@ -518,17 +499,17 @@ mod test {
 		}
 	}
 
-	fn get_solution(fulfillments: Vec<(f64, f64)>) -> BoundedVec<TrancheSolution, ConstU32<10>> {
+	fn get_solution(fulfillments: Vec<(f64, f64)>) -> BoundedVec<TrancheSolution, MaxTranches> {
 		let mut solutions = Vec::new();
 
 		fulfillments
 			.into_iter()
 			.for_each(|(invest, redeem)| solutions.push(get_tranche_solution(invest, redeem)));
 
-		BoundedVec::<_, ConstU32<10>>::truncate_from(solutions)
+		BoundedVec::<_, MaxTranches>::truncate_from(solutions)
 	}
 
-	fn get_full_solution() -> BoundedVec<TrancheSolution, ConstU32<10>> {
+	fn get_full_solution() -> BoundedVec<TrancheSolution, MaxTranches> {
 		let mut solutions = Vec::new();
 
 		solutions.push(get_tranche_solution(1.0, 1.0));
@@ -536,7 +517,7 @@ mod test {
 		solutions.push(get_tranche_solution(1.0, 1.0));
 		solutions.push(get_tranche_solution(1.0, 1.0));
 
-		BoundedVec::<_, ConstU32<10>>::truncate_from(solutions)
+		BoundedVec::<_, MaxTranches>::truncate_from(solutions)
 	}
 
 	#[test]
@@ -625,14 +606,14 @@ mod test {
 
 	#[test]
 	fn epoch_solution_healthy_works() {
-		let solution = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 0,
 		});
 		assert!(solution.healthy());
 
-		let solution = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
@@ -644,82 +625,82 @@ mod test {
 
 	#[test]
 	fn epoch_solution_solution_works() {
-		let solution = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 0,
 		});
-		assert!(solution.solution() == get_full_solution());
+		assert!(solution.solution() == get_full_solution().as_slice());
 
-		let solution = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
 			reserve_improvement_score: Some(2),
 			risk_buffer_improvement_scores: None,
 		});
-		assert!(solution.solution() == get_full_solution());
+		assert!(solution.solution() == get_full_solution().as_slice());
 	}
 
 	#[test]
 	fn epoch_solution_partial_eq_works() {
-		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 3,
 		});
 
-		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 3,
 		});
 		assert!(solution_1 == solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_solution(vec![(0.0, 0.0), (1.0, 0.7), (0.7, 0.7)]),
 			score: 3,
 		});
 
-		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 3,
 		});
 		assert!(solution_1 != solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 3,
 		});
 
-		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 4,
 		});
 		assert!(solution_1 != solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
 			reserve_improvement_score: Some(2),
 			risk_buffer_improvement_scores: None,
 		});
-		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 4,
 		});
 		assert!(solution_1 != solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
 			reserve_improvement_score: Some(2),
 			risk_buffer_improvement_scores: None,
 		});
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
@@ -728,16 +709,16 @@ mod test {
 		});
 		assert!(solution_1 == solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
 			reserve_improvement_score: Some(5),
 			risk_buffer_improvement_scores: None,
 		});
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
@@ -746,16 +727,16 @@ mod test {
 		});
 		assert!(solution_1 != solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
 			reserve_improvement_score: Some(5),
 			risk_buffer_improvement_scores: None,
 		});
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_solution(vec![(0.0, 0.0), (1.0, 0.7), (0.7, 0.7)]),
@@ -768,7 +749,7 @@ mod test {
 	#[test]
 	fn unhealthy_solution_has_state_works() {
 		let unhealthy = UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: get_full_solution(),
@@ -784,12 +765,12 @@ mod test {
 	// via the `ParitalOrd` implementation of `EpochSolution`, `HealthySolution` and `UnhealthySolution`.
 	#[test]
 	fn higher_score_is_better() {
-		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 3,
 		});
 
-		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: get_full_solution(),
 			score: 4,
 		});
@@ -798,19 +779,19 @@ mod test {
 
 	#[test]
 	fn healthy_always_above_unhealthy() {
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MinRiskBufferViolated,
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: Default::default(),
 			reserve_improvement_score: Some(1000),
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 2u128, 3u128, 4u128],
 			)), // 4 tranches
 		});
 
-		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {
 			solution: Default::default(),
 			score: 0,
 		});
@@ -819,8 +800,8 @@ mod test {
 
 	#[test]
 	fn reserve_improvement_better() {
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: Default::default(),
@@ -828,8 +809,8 @@ mod test {
 			risk_buffer_improvement_scores: None,
 		});
 
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: Default::default(),
@@ -842,8 +823,8 @@ mod test {
 
 	#[test]
 	fn no_reserve_violation_better() {
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: Default::default(),
@@ -851,7 +832,7 @@ mod test {
 			risk_buffer_improvement_scores: None,
 		});
 
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
 			state: Default::default(),
 			solution: Default::default(),
 			reserve_improvement_score: None,
@@ -863,20 +844,20 @@ mod test {
 
 	#[test]
 	fn no_risk_buff_violation_better() {
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 				UnhealthyState::MinRiskBufferViolated,
 			]),
 			solution: Default::default(),
 			reserve_improvement_score: Some(5),
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 2u128, 3u128, 4u128],
 			)), // 4 tranches
 		});
 
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 			]),
 			solution: Default::default(),
@@ -889,26 +870,26 @@ mod test {
 
 	#[test]
 	fn reserve_improvement_decides_over_equal_min_risk_buff() {
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 				UnhealthyState::MinRiskBufferViolated,
 			]),
 			solution: Default::default(),
 			reserve_improvement_score: Some(5),
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 2u128, 3u128, 4u128],
 			)), // 4 tranches
 		});
 
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: BoundedVec::<_, ConstU32<10>>::truncate_from(vec![
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::<_, MaxTranches>::truncate_from(vec![
 				UnhealthyState::MaxReserveViolated,
 				UnhealthyState::MinRiskBufferViolated,
 			]),
 			solution: Default::default(),
 			reserve_improvement_score: Some(6),
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 2u128, 3u128, 4u128],
 			)), // 4 tranches
 		});
@@ -918,56 +899,60 @@ mod test {
 
 	#[test]
 	fn risk_buff_improvement_better() {
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: vec![UnhealthyState::MinRiskBufferViolated],
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::truncate_from(vec![UnhealthyState::MinRiskBufferViolated]),
 			solution: Default::default(),
 			reserve_improvement_score: None,
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 2u128, 3u128, 4u128],
 			)), // 4 tranches
 		});
 
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: vec![UnhealthyState::MinRiskBufferViolated],
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::truncate_from(vec![UnhealthyState::MinRiskBufferViolated]),
 			solution: Default::default(),
 			reserve_improvement_score: None,
-			risk_buffer_improvement_scores: Some(vec![2u128, 0u128, 0u128, 0u128]), // 4 tranches
+			risk_buffer_improvement_scores: Some(BoundedVec::truncate_from(vec![
+				2u128, 0u128, 0u128, 0u128,
+			])), // 4 tranches
 		});
 
 		assert!(solution_1 < solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: vec![UnhealthyState::MinRiskBufferViolated],
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::truncate_from(vec![UnhealthyState::MinRiskBufferViolated]),
 			solution: Default::default(),
 			reserve_improvement_score: None,
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 2u128, 3u128, 4u128],
 			)), // 4 tranches
 		});
 
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: vec![UnhealthyState::MinRiskBufferViolated],
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::truncate_from(vec![UnhealthyState::MinRiskBufferViolated]),
 			solution: Default::default(),
 			reserve_improvement_score: None,
-			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 5u128]), // 4 tranches
+			risk_buffer_improvement_scores: Some(BoundedVec::truncate_from(vec![
+				1u128, 2u128, 3u128, 5u128,
+			])), // 4 tranches
 		});
 
 		assert!(solution_1 < solution_2);
 
-		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: vec![UnhealthyState::MinRiskBufferViolated],
+		let solution_1 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::truncate_from(vec![UnhealthyState::MinRiskBufferViolated]),
 			solution: Default::default(),
 			reserve_improvement_score: None,
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 2u128, 3u128, 4u128],
 			)), // 4 tranches
 		});
 
-		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: vec![UnhealthyState::MinRiskBufferViolated],
+		let solution_2 = EpochSolution::<u128, MaxTranches>::Unhealthy(UnhealthySolution {
+			state: BoundedVec::truncate_from(vec![UnhealthyState::MinRiskBufferViolated]),
 			solution: Default::default(),
 			reserve_improvement_score: None,
-			risk_buffer_improvement_scores: Some(BoundedVec::<_, ConstU32<10>>::truncate_from(
+			risk_buffer_improvement_scores: Some(BoundedVec::<_, MaxTranches>::truncate_from(
 				vec![1u128, 3u128, 3u128, 5u128],
 			)), // 4 tranches
 		});

@@ -320,7 +320,9 @@ where
 }
 
 #[cfg(test)]
-impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> {
+impl
+	Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId, crate::mock::MaxTranches>
+{
 	pub fn new(
 		pool: PoolId,
 		tranches: Vec<Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>>,
@@ -336,6 +338,7 @@ impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> 
 				TrancheCurrency,
 				TrancheId,
 				PoolId,
+				crate::mock::MaxTranches,
 			>::id_from_salt(salt));
 			salt = (
 				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
@@ -346,8 +349,11 @@ impl Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId> 
 		}
 
 		Ok(Self {
-			tranches: BoundedVec::<Tranche<Balance, Rate, Weight, TrancheCurrency>, MaxTranches>::truncate_from(tranches),
-			ids: BoundedVec::<TrancheId, MaxTrances>::truncate_from(ids),
+			tranches: BoundedVec::<
+				Tranche<Balance, Rate, Weight, TrancheCurrency>,
+				crate::mock::MaxTranches,
+			>::truncate_from(tranches),
+			ids: BoundedVec::<TrancheId, crate::mock::MaxTranches>::truncate_from(ids),
 			salt,
 		})
 	}
@@ -1037,29 +1043,24 @@ impl Default for EpochExecutionTranche<Balance, Rate, TrancheWeight, TrancheCurr
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct EpochExecutionTranches<
-	Balance,
-	BalanceRatio,
-	Weight,
-	TrancheCurrency,
-	MaxEpocExecutionTranches,
-> where
-	MaxEpocExecutionTranches: Get<u32>,
+pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>
+where
+	MaxTranches: Get<u32>,
 {
 	pub tranches: BoundedVec<
 		EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
-		MaxEpocExecutionTranches,
+		MaxTranches,
 	>,
 }
 
 /// Utility implementations for `EpochExecutionTranches`
-impl<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
-	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
+impl<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>
+	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>
 where
 	Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	BalanceRatio: Copy,
-	MaxEpocExecutionTranches: Get<u32>,
+	MaxTranches: Get<u32>,
 {
 	pub fn new(
 		tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>>,
@@ -1117,7 +1118,7 @@ where
 		self,
 	) -> BoundedVec<
 		EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>,
-		MaxEpocExecutionTranches,
+		MaxTranches,
 	> {
 		self.tranches
 	}
@@ -1296,13 +1297,13 @@ where
 }
 
 /// Business logic implementations for `EpochExecutionTranches`
-impl<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
-	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxEpocExecutionTranches>
+impl<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>
+	EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency, MaxTranches>
 where
 	Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	BalanceRatio: Copy,
-	MaxEpocExecutionTranches: Get<u32>,
+	MaxTranches: Get<u32>,
 {
 	pub fn prices(&self) -> Vec<BalanceRatio> {
 		self.tranches.iter().map(|tranche| tranche.price).collect()

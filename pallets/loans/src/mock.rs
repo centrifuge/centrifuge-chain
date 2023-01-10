@@ -254,6 +254,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheWeight,
 		TrancheId,
 		PoolId,
+		MaxTranches,
 	>;
 	type ScheduledUpdateDetails =
 		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
@@ -326,8 +327,8 @@ impl pallet_interest_accrual::Config for Runtime {
 }
 
 parameter_types! {
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxTranches: u8 = 5;
+	#[derive(Debug, Eq, PartialEq, PartialOrd, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: u32 = 5;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;

@@ -461,6 +461,7 @@ mod tests {
 
 	parameter_types! {
 		pub const MinDelay: u64 = 4;
+		pub const MaxTranches: u32 = 5;
 	}
 
 	struct Now(core::time::Duration);
@@ -497,9 +498,9 @@ mod tests {
 
 	#[test]
 	fn permission_roles_work() {
-		assert!(PermissionRoles::<Now, MinDelay, TrancheId>::default().empty());
+		assert!(PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default().empty());
 
-		let mut roles = PermissionRoles::<Now, MinDelay, TrancheId>::default();
+		let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
 
 		// Updating works only when increasing permissions
 		assert!(roles
