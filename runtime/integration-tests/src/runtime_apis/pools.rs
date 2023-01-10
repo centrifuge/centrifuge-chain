@@ -11,14 +11,23 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{AccountId, CollectionId, PoolId, CFG};
-use cfg_traits::PoolMutate;
+use cfg_traits::{Permissions, PoolMutate};
 use cfg_types::{
 	fixed_point::Rate,
+	permissions::{PermissionScope, PoolRole, Role},
 	tokens::{CurrencyId, CustomMetadata},
 };
-use development_runtime::apis::PoolsApi;
-use frame_support::{assert_ok, dispatch::RawOrigin, traits::tokens::nonfungibles::Create};
+use development_runtime::{apis::PoolsApi, RuntimeOrigin};
+use frame_support::{
+	assert_ok,
+	dispatch::RawOrigin,
+	traits::{
+		tokens::nonfungibles::{Create, Mutate as NMutate},
+		OriginTrait,
+	},
+};
 use orml_traits::asset_registry::Mutate;
+use pallet_loans::types::Asset;
 use pallet_pool_system::tranches::{TrancheInput, TrancheMetadata, TrancheType};
 use sp_core::{bounded::BoundedVec, sr25519, Pair};
 use sp_runtime::{
@@ -28,18 +37,40 @@ use sp_runtime::{
 use tokio::runtime::Handle;
 
 use super::ApiEnv;
+use crate::pools::utils::loans::LoanId;
 
 #[tokio::test]
 async fn test() {
 	ApiEnv::new(Handle::current())
 		.startup(|| {
 			let pool_id = 3;
-			let account = sp_runtime::AccountId32::from(
+			let loan_id = LoanId::from(1_u16);
+
+			let admin = sp_runtime::AccountId32::from(
 				<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
 					.unwrap()
 					.public()
 					.into_account(),
 			);
+
+			let borrower = sp_runtime::AccountId32::from(
+				<sr25519::Pair as sp_core::Pair>::from_string("//Bob", None)
+					.unwrap()
+					.public()
+					.into_account(),
+			);
+
+			<development_runtime::Permissions as Permissions<AccountId>>::add(
+				PermissionScope::Pool(pool_id),
+				borrower.clone(),
+				Role::PoolRole(PoolRole::Borrower),
+			);
+
+			// <development_runtime::Permissions  as Permissions<AccountId>>::add(
+			// 	PermissionScope::Pool(pool_id),
+			// 	admin.clone(),
+			// 	Role::PoolRole(PoolRole::PoolAdmin),
+			// );
 
 			let token_name = BoundedVec::try_from("SuperToken".as_bytes().to_owned())
 				.expect("Can't create BoundedVec");
@@ -62,8 +93,8 @@ async fn test() {
 
 			// Creating a pool
 			<development_runtime::PoolSystem as PoolMutate<AccountId, PoolId>>::create(
-				account.clone(),
-				account.clone(),
+				admin.clone(),
+				admin.clone(),
 				pool_id.clone(),
 				vec![
 					TrancheInput {
@@ -92,24 +123,44 @@ async fn test() {
 			)
 			.expect("Pool creation should not fail");
 
-			// Initalising a pool
+			// Initalising a pool and creating a loan
 			// 1. We need a NFT class id (through the uniques pallet)
 			// 2. We need to initialise the pool through the loans extrinsic "initalise pool"
 			//    which adds NFT class ids to the pool
-			let uniques_class_id: CollectionId = 1_u64.into();
+			// 3. Mint NFT
+			// 4. Create Collateral
+			// 5. Create Loan
+			let uniques_class_id: CollectionId = 2_u64.into();
+			// let admin = <development_runtime::Loans>::account_id();
 			<development_runtime::Uniques as Create<AccountId>>::create_collection(
 				&uniques_class_id,
-				&account.clone(),
-				&account.clone(),
+				&admin.clone(),
+				&<development_runtime::Loans>::account_id(),
 			)
 			.expect("class creation should not fail");
 
 			<development_runtime::Loans>::initialise_pool(
-				RawOrigin::Signed(account).into(),
+				RawOrigin::Signed(admin).into(),
 				pool_id,
 				uniques_class_id,
 			)
 			.expect("initialisation of pool should not fail");
+
+			<development_runtime::Uniques as NMutate<AccountId>>::mint_into(
+				&uniques_class_id.into(),
+				&loan_id.into(),
+				&borrower,
+			)
+			.expect("mint should not fail");
+
+			let collateral = Asset(uniques_class_id, loan_id);
+
+			<development_runtime::Loans>::create(
+				RuntimeOrigin::signed(borrower),
+				pool_id,
+				collateral,
+			)
+			.expect("Loan creation should not fail");
 		})
 		.with_api(|api, latest| {
 			let valuation = api.portfolio_valuation(&latest, 3).unwrap();
