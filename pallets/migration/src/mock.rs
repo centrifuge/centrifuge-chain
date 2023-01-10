@@ -21,7 +21,7 @@ use frame_support::{
 	parameter_types,
 	scale_info::TypeInfo,
 	sp_runtime::traits::ConvertInto,
-	traits::{Contains, InstanceFilter},
+	traits::{Contains, InstanceFilter, WithdrawReasons},
 };
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
@@ -84,8 +84,8 @@ impl Default for ProxyType {
 		Self::Any
 	}
 }
-impl InstanceFilter<Call> for ProxyType {
-	fn filter(&self, _c: &Call) -> bool {
+impl InstanceFilter<RuntimeCall> for ProxyType {
+	fn filter(&self, _c: &RuntimeCall) -> bool {
 		true
 	}
 
@@ -97,15 +97,15 @@ impl InstanceFilter<Call> for ProxyType {
 impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
-	type Call = Call;
 	type CallHasher = BlakeTwo256;
 	type Currency = Balances;
-	type Event = Event;
 	type MaxPending = MaxPending;
 	type MaxProxies = MaxProxies;
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type ProxyType = ProxyType;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Self>;
 }
 
@@ -120,11 +120,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -132,14 +132,17 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	pub const MinVestedTransfer: u64 = 16;
 	pub const MaxVestingSchedules: u32 = 4;
+	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
+		  WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
 
 // Implement vesting pallet configuration for mock runtime
 impl pallet_vesting::Config for Runtime {
 	type BlockNumberToBalance = ConvertInto;
 	type Currency = Balances;
-	type Event = Event;
 	type MinVestedTransfer = MinVestedTransfer;
+	type RuntimeEvent = RuntimeEvent;
+	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 	type WeightInfo = ();
 
 	const MAX_VESTING_SCHEDULES: u32 = 1;
@@ -162,9 +165,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = BlockNumber;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
@@ -174,8 +175,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -193,10 +196,10 @@ parameter_types! {
 // Implement the migration manager pallet
 // The actual associated type, which executes the migration can be found in the migration folder
 impl pallet_migration_manager::Config for Runtime {
-	type Event = Event;
 	type MigrationMaxAccounts = MigrationMaxAccounts;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type MigrationMaxVestings = MigrationMaxVestings;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -205,12 +208,12 @@ impl pallet_migration_manager::Config for Runtime {
 // other calls will be disallowed
 pub struct BaseFilter;
 
-impl Contains<Call> for BaseFilter {
-	fn contains(c: &Call) -> bool {
+impl Contains<RuntimeCall> for BaseFilter {
+	fn contains(c: &RuntimeCall) -> bool {
 		matches!(
 			c,
 			// Calls for runtime upgrade
-			|Call::System(frame_system::Call::set_code { .. })| Call::System(
+			|RuntimeCall::System(frame_system::Call::set_code { .. })| RuntimeCall::System(
 				frame_system::Call::set_code_without_checks { .. }
 			) // Calls that are present in each block
 		)
@@ -280,7 +283,7 @@ pub(crate) fn reward_events() -> Vec<pallet_migration_manager::Event<Runtime>> {
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let Event::Migration(inner) = e {
+			if let RuntimeEvent::Migration(inner) = e {
 				Some(inner)
 			} else {
 				None

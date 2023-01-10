@@ -13,8 +13,11 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use cfg_primitives::CFG as CURRENCY;
-use cfg_traits::{Investment, PoolMutate, PoolNAV, TrancheCurrency as _};
-use cfg_types::tokens::{CurrencyId, TrancheCurrency};
+use cfg_traits::{Investment, Permissions, PoolMutate, PoolNAV, TrancheCurrency as _};
+use cfg_types::{
+	permissions::{PermissionScope, PoolRole, Role},
+	tokens::{CurrencyId, TrancheCurrency},
+};
 use codec::Encode;
 use frame_support::{
 	assert_ok, parameter_types,
@@ -135,7 +138,7 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 	);
 
 	// Initialize pool with initial investments
-	assert_ok!(PoolPallet::<T>::create(
+	assert_ok!(pallet_pool_system::Pallet::<T>::create(
 		owner.clone(),
 		owner.clone(),
 		pool_id,
@@ -165,13 +168,35 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 		None
 	));
 
+	let account: <T as frame_system::Config>::AccountId =
+		FundsAccount::get().into_account_truncating();
+	let scope = PermissionScope::Pool(pool_id.into());
+	let role = Role::PoolRole(PoolRole::TrancheInvestor(
+		JuniorTrancheId::get().into(),
+		u64::MAX,
+	));
+	assert_ok!(<T as pallet_loans::Config>::Permission::add(
+		scope,
+		account.clone(),
+		role
+	));
+	let role = Role::PoolRole(PoolRole::TrancheInvestor(
+		SeniorTrancheId::get().into(),
+		u64::MAX,
+	));
+	assert_ok!(<T as pallet_loans::Config>::Permission::add(
+		scope,
+		account.clone(),
+		role
+	));
+
 	assert_ok!(OM::update_investment(
-		&FundsAccount::get().into_account_truncating(),
+		&account,
 		TrancheCurrency::generate(pool_id.into(), JuniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
 	assert_ok!(OM::update_investment(
-		&FundsAccount::get().into_account_truncating(),
+		&account,
 		TrancheCurrency::generate(pool_id.into(), SeniorTrancheId::get().into()).into(),
 		(500 * CURRENCY).into(),
 	));
@@ -193,12 +218,12 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 	)
 	.expect("Could not fixup pool parameters");
 
-	assert_ok!(PoolPallet::<T>::close_epoch(
+	assert_ok!(pallet_pool_system::Pallet::<T>::close_epoch(
 		RawOrigin::Signed(owner).into(),
 		pool_id,
 	));
 
-	let pool = PoolStorage::<T>::get(pool_id).unwrap();
+	let pool = pallet_pool_system::Pool::<T>::get(pool_id).unwrap();
 	assert_eq!(pool.reserve.available, (1000 * CURRENCY).into());
 }
 
@@ -245,7 +270,7 @@ where
 pub(crate) fn assert_last_event<T, E>(generic_event: E)
 where
 	T: pallet_loans::Config + pallet_pool_system::Config,
-	E: Into<<T as frame_system::Config>::Event>,
+	E: Into<<T as frame_system::Config>::RuntimeEvent>,
 {
 	let events = frame_system::Pallet::<T>::events();
 	let system_event = generic_event.into();

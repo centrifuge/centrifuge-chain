@@ -123,7 +123,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Balance: Member
 			+ Parameter
@@ -232,18 +232,6 @@ pub mod pallet {
 				+ T::Weights::calculate_accumulated_rate(bits);
 
 			db_weight + db_weight_accumulated.saturating_mul(count)
-		}
-
-		fn on_runtime_upgrade() -> Weight {
-			let weight = T::DbWeight::get().reads_writes(1, 1);
-			let count_rates_weight = if StorageVersion::<T>::get() == Release::V1 {
-				let count = Rate::<T>::iter_keys().count();
-				RateCount::<T>::set(count as u32);
-				T::DbWeight::get().reads_writes(count as u64, 1)
-			} else {
-				Weight::from_ref_time(0)
-			};
-			weight.saturating_add(count_rates_weight)
 		}
 	}
 

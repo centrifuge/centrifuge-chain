@@ -18,7 +18,7 @@ use sp_runtime::testing::H256;
 
 use super::*;
 use crate::{
-	mock::{Event as MockEvent, *},
+	mock::{RuntimeEvent as MockEvent, *},
 	Event as CrateEvent,
 };
 
@@ -28,9 +28,12 @@ fn add_keys() {
 		let keys = get_test_keys();
 		let origin: u64 = 1;
 
-		Balances::set_balance(Origin::root(), origin, 10000 * CURRENCY, 0).unwrap();
+		Balances::set_balance(RuntimeOrigin::root(), origin, 10000 * CURRENCY, 0).unwrap();
 
-		assert_ok!(Keystore::add_keys(Origin::signed(origin), keys.clone()));
+		assert_ok!(Keystore::add_keys(
+			RuntimeOrigin::signed(origin),
+			keys.clone()
+		));
 		assert_eq!(
 			Keys::<Runtime>::iter().collect::<Vec<_>>().len(),
 			2,
@@ -77,7 +80,7 @@ fn add_keys_key_errors() {
 		let keys: Vec<AddKey<H256>> = Vec::new();
 
 		assert_err!(
-			Keystore::add_keys(Origin::signed(1), keys.clone()),
+			Keystore::add_keys(RuntimeOrigin::signed(1), keys.clone()),
 			Error::<Runtime>::NoKeys
 		);
 	});
@@ -88,7 +91,7 @@ fn add_keys_key_errors() {
 		let keys = get_n_test_keys(num_keys);
 
 		assert_err!(
-			Keystore::add_keys(Origin::signed(1), keys),
+			Keystore::add_keys(RuntimeOrigin::signed(1), keys),
 			Error::<Runtime>::TooManyKeys
 		);
 	});
@@ -100,7 +103,7 @@ fn add_keys_key_already_exists() {
 		let keys = get_test_keys();
 		let origin = 1;
 
-		Balances::set_balance(Origin::root(), origin, 10000 * CURRENCY, 0).unwrap();
+		Balances::set_balance(RuntimeOrigin::root(), origin, 10000 * CURRENCY, 0).unwrap();
 
 		let first_key = keys[0].clone();
 		let key_id: KeyId<H256> = (first_key.key.clone(), first_key.purpose.clone());
@@ -118,7 +121,7 @@ fn add_keys_key_already_exists() {
 		);
 
 		assert_err!(
-			Keystore::add_keys(Origin::signed(1), keys),
+			Keystore::add_keys(RuntimeOrigin::signed(1), keys),
 			Error::<Runtime>::KeyAlreadyExists
 		)
 	});
@@ -131,7 +134,7 @@ fn add_keys_insufficient_balance() {
 		let origin: u64 = 1;
 
 		assert_err!(
-			Keystore::add_keys(Origin::signed(origin), keys.clone()),
+			Keystore::add_keys(RuntimeOrigin::signed(origin), keys.clone()),
 			pallet_balances::Error::<Runtime>::InsufficientBalance,
 		);
 	});
@@ -149,7 +152,7 @@ fn revoke_keys() {
 			let vec: Vec<H256> = vec![key.key];
 
 			assert_ok!(Keystore::revoke_keys(
-				Origin::signed(origin),
+				RuntimeOrigin::signed(origin),
 				vec,
 				key.purpose,
 			),);
@@ -194,7 +197,11 @@ fn revoke_keys_key_errors() {
 		let keys: Vec<H256> = Vec::new();
 
 		assert_err!(
-			Keystore::revoke_keys(Origin::signed(1), keys, KeyPurpose::P2PDocumentSigning),
+			Keystore::revoke_keys(
+				RuntimeOrigin::signed(1),
+				keys,
+				KeyPurpose::P2PDocumentSigning
+			),
 			Error::<Runtime>::NoKeys
 		);
 
@@ -214,7 +221,7 @@ fn revoke_keys_key_errors() {
 
 		assert_err!(
 			Keystore::revoke_keys(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				key_hashes,
 				KeyPurpose::P2PDocumentSigning
 			),
@@ -237,7 +244,7 @@ fn revoke_keys_key_not_found() {
 
 		assert_err!(
 			Keystore::revoke_keys(
-				Origin::signed(origin),
+				RuntimeOrigin::signed(origin),
 				key_hashes.clone(),
 				KeyPurpose::P2PDocumentSigning
 			),
@@ -246,7 +253,7 @@ fn revoke_keys_key_not_found() {
 
 		assert_err!(
 			Keystore::revoke_keys(
-				Origin::signed(origin),
+				RuntimeOrigin::signed(origin),
 				key_hashes.clone(),
 				KeyPurpose::P2PDiscovery
 			),
@@ -274,7 +281,11 @@ fn revoke_keys_key_already_revoked() {
 		let key_hashes: Vec<H256> = vec![key_id.0];
 
 		assert_err!(
-			Keystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), key_purpose),
+			Keystore::revoke_keys(
+				RuntimeOrigin::signed(origin),
+				key_hashes.clone(),
+				key_purpose
+			),
 			Error::<Runtime>::KeyAlreadyRevoked
 		);
 	});
@@ -294,7 +305,10 @@ fn set_deposit() {
 
 		let new_deposit: u128 = 11;
 
-		assert_ok!(Keystore::set_deposit(Origin::signed(origin), new_deposit));
+		assert_ok!(Keystore::set_deposit(
+			RuntimeOrigin::signed(origin),
+			new_deposit
+		));
 		assert_eq!(
 			new_deposit,
 			KeyDeposit::<Runtime>::get(),

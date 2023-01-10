@@ -121,7 +121,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm_transactor::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type WeightInfo: WeightInfo;
 
@@ -136,7 +136,7 @@ pub mod pallet {
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
 		/// The origin allowed to make admin-like changes, such calling `set_domain_router`.
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
 
@@ -420,7 +420,7 @@ pub mod pallet {
 				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
 
 			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
-				T::Origin::root(),
+				T::RuntimeOrigin::root(),
 				// The destination to which the message should be sent
 				Box::new(xcm_domain.location),
 				fee_payer,

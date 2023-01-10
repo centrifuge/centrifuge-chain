@@ -51,10 +51,11 @@
 //!
 //! The exact reward functionality of this pallet is given by the mechanism used when it's
 //! configured. Current mechanisms:
-//! - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism with support for
+//! - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism.
 //! currency movement.
-//! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism with support for
+//! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism.
 //! currency movement.
+//! - [gap](https://centrifuge.hackmd.io/@Luis/rkJXBz08s) mechanism.
 //!
 
 #[cfg(test)]
@@ -75,15 +76,14 @@ use frame_support::{
 	},
 	PalletId,
 };
-use mechanism::{DistributionId, MoveCurrencyError, RewardMechanism};
+use mechanism::{MoveCurrencyError, RewardMechanism};
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
+use sp_std::fmt::Debug;
 
 type RewardCurrencyOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Currency;
 type RewardGroupOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Group;
 type RewardAccountOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Account;
-type DistributionIdOf<T, I> =
-	<<T as Config<I>>::RewardMechanism as RewardMechanism>::DistributionId;
 type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::Balance;
 
 #[frame_support::pallet]
@@ -92,7 +92,8 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config<I: 'static = ()>: frame_system::Config {
-		type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self, I>>
+			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Identifier of this pallet used as an account where stores the reward that is not claimed.
 		/// When you distribute reward, the amount distributed goes here.
@@ -100,7 +101,7 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		/// Type used to identify domains.
-		type DomainId: TypeInfo + MaxEncodedLen + FullCodec + Copy + PartialEq + sp_std::fmt::Debug;
+		type DomainId: TypeInfo + MaxEncodedLen + FullCodec + Copy + PartialEq + Debug;
 
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen;
@@ -109,7 +110,7 @@ pub mod pallet {
 		type RewardCurrency: Get<Self::CurrencyId>;
 
 		/// Type used to identify groups.
-		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + sp_std::fmt::Debug;
+		type GroupId: FullCodec + TypeInfo + MaxEncodedLen + Copy + PartialEq + Debug;
 
 		/// Type used to handle currency transfers and reservations.
 		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
@@ -159,12 +160,6 @@ pub mod pallet {
 		RewardAccountOf<T, I>,
 		ValueQuery,
 	>;
-
-	#[pallet::storage]
-	pub(super) type LastDistributionId<T: Config<I>, I: 'static = ()>
-	where
-		DistributionIdOf<T, I>: TypeInfo + MaxEncodedLen + FullCodec + Default,
-	= StorageValue<_, DistributionIdOf<T, I>, ValueQuery>;
 
 	// --------------------------
 
@@ -219,29 +214,31 @@ pub mod pallet {
 	impl<T: Config<I>, I: 'static> GroupRewards for Pallet<T, I>
 	where
 		RewardGroupOf<T, I>: FullCodec + Default,
-		DistributionIdOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
 		type GroupId = T::GroupId;
 
+		fn is_ready(group_id: Self::GroupId) -> bool {
+			let group = Groups::<T, I>::get(group_id);
+			T::RewardMechanism::is_ready(&group)
+		}
+
 		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
-			LastDistributionId::<T, I>::try_mutate(|distribution_id| {
-				Groups::<T, I>::try_mutate(group_id, |group| {
-					T::RewardMechanism::reward_group(group, reward, distribution_id.next_id()?)?;
+			Groups::<T, I>::try_mutate(group_id, |group| {
+				let reward = T::RewardMechanism::reward_group(group, reward)?;
 
-					T::Currency::mint_into(
-						T::RewardCurrency::get(),
-						&T::PalletId::get().into_account_truncating(),
-						reward,
-					)?;
+				T::Currency::mint_into(
+					T::RewardCurrency::get(),
+					&T::PalletId::get().into_account_truncating(),
+					reward,
+				)?;
 
-					Self::deposit_event(Event::GroupRewarded {
-						group_id,
-						amount: reward,
-					});
+				Self::deposit_event(Event::GroupRewarded {
+					group_id,
+					amount: reward,
+				});
 
-					Ok(())
-				})
+				Ok(())
 			})
 		}
 
@@ -397,11 +394,11 @@ pub mod pallet {
 						Err(Error::<T, I>::CurrencyInSameGroup)?;
 					}
 
-					Groups::<T, I>::try_mutate(prev_group_id, |prev_group| -> DispatchResult {
-						Groups::<T, I>::try_mutate(next_group_id, |next_group| {
-							T::RewardMechanism::move_currency(currency, prev_group, next_group)
+					Groups::<T, I>::try_mutate(prev_group_id, |from_group| -> DispatchResult {
+						Groups::<T, I>::try_mutate(next_group_id, |to_group| {
+							T::RewardMechanism::move_currency(currency, from_group, to_group)
 								.map_err(|e| match e {
-									MoveCurrencyError::Arithmetic(error) => error.into(),
+									MoveCurrencyError::Internal(error) => error.into(),
 									MoveCurrencyError::MaxMovements => {
 										Error::<T, I>::CurrencyMaxMovementsReached.into()
 									}
@@ -425,6 +422,19 @@ pub mod pallet {
 
 		fn currency_group(currency_id: Self::CurrencyId) -> Option<Self::GroupId> {
 			Currencies::<T, I>::get(currency_id).0
+		}
+	}
+
+	impl<T: Config<I>, I: 'static> Pallet<T, I>
+	where
+		RewardAccountOf<T, I>: FullCodec + Default,
+	{
+		pub fn list_currencies(
+			account_id: T::AccountId,
+		) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
+			StakeAccounts::<T, I>::iter_prefix(account_id)
+				.map(|(currency_id, _)| currency_id)
+				.collect()
 		}
 	}
 }

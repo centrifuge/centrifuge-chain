@@ -46,7 +46,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Scope: Member + Parameter + MaxEncodedLen;
 
@@ -60,7 +60,7 @@ pub mod pallet {
 
 		type Editors: Contains<(Self::AccountId, Option<Self::Role>, Self::Scope, Self::Role)>;
 
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		#[pallet::constant]
 		type MaxRolesPerScope: Get<u32>;

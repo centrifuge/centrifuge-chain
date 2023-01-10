@@ -15,19 +15,19 @@ const CURRENCY_ID_A: u32 = 23;
 fn check_special_privileges() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			Liquidity::set_distributed_reward(Origin::signed(USER_A), 10),
+			Liquidity::set_distributed_reward(RuntimeOrigin::signed(USER_A), 10),
 			BadOrigin
 		);
 		assert_noop!(
-			Liquidity::set_epoch_duration(Origin::signed(USER_A), 100),
+			Liquidity::set_epoch_duration(RuntimeOrigin::signed(USER_A), 100),
 			BadOrigin
 		);
 		assert_noop!(
-			Liquidity::set_group_weight(Origin::signed(USER_A), GROUP_A, 3),
+			Liquidity::set_group_weight(RuntimeOrigin::signed(USER_A), GROUP_A, 3),
 			BadOrigin
 		);
 		assert_noop!(
-			Liquidity::set_currency_group(Origin::signed(USER_A), CURRENCY_ID_A, GROUP_A),
+			Liquidity::set_currency_group(RuntimeOrigin::signed(USER_A), CURRENCY_ID_A, GROUP_A),
 			BadOrigin
 		);
 	});
@@ -39,7 +39,10 @@ fn distributed_reward_change() {
 
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
-		assert_ok!(Liquidity::set_distributed_reward(Origin::root(), REWARD));
+		assert_ok!(Liquidity::set_distributed_reward(
+			RuntimeOrigin::root(),
+			REWARD
+		));
 		assert_eq!(NextEpochChanges::<Test>::get().reward, Some(REWARD));
 		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
 		Liquidity::on_initialize(0);
@@ -64,7 +67,7 @@ fn epoch_change() {
 		System::set_block_number(INITIAL_BLOCK);
 		assert_eq!(EndOfEpoch::<Test>::get().0, INITIAL_BLOCK);
 		assert_ok!(Liquidity::set_epoch_duration(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			EPOCH_DURATION
 		));
 		assert_eq!(
@@ -96,7 +99,7 @@ fn currency_changes() {
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		assert_ok!(Liquidity::set_currency_group(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			CURRENCY_ID_A,
 			GROUP_A
 		));
@@ -137,17 +140,20 @@ fn weight_changes() {
 
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
-		assert_ok!(Liquidity::set_distributed_reward(Origin::root(), REWARD));
+		assert_ok!(Liquidity::set_distributed_reward(
+			RuntimeOrigin::root(),
+			REWARD
+		));
 		Liquidity::on_initialize(0);
 
 		// EPOCH 1
 		assert_ok!(Liquidity::set_group_weight(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			GROUP_A,
 			WEIGHT_1
 		));
 		assert_ok!(Liquidity::set_group_weight(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			GROUP_B,
 			WEIGHT_2
 		));
@@ -177,8 +183,8 @@ fn weight_changes() {
 			Some(&WEIGHT_2)
 		);
 
-		let ctx1 = MockRewards::group_stake_context();
-		ctx1.expect().return_const(100u64);
+		let ctx1 = MockRewards::is_ready_context();
+		ctx1.expect().return_const(true);
 
 		let ctx2 = MockRewards::reward_group_context();
 		ctx2.expect()
@@ -201,11 +207,11 @@ fn weight_changes() {
 fn max_weight_changes() {
 	new_test_ext().execute_with(|| {
 		for i in 0..MaxChangesPerEpoch::get() {
-			assert_ok!(Liquidity::set_group_weight(Origin::root(), i, 100));
+			assert_ok!(Liquidity::set_group_weight(RuntimeOrigin::root(), i, 100));
 		}
 
 		assert_noop!(
-			Liquidity::set_group_weight(Origin::root(), MaxChangesPerEpoch::get() + 1, 100),
+			Liquidity::set_group_weight(RuntimeOrigin::root(), MaxChangesPerEpoch::get() + 1, 100),
 			Error::<Test>::MaxChangesPerEpochReached
 		);
 	});
@@ -215,11 +221,19 @@ fn max_weight_changes() {
 fn max_currency_changes() {
 	new_test_ext().execute_with(|| {
 		for i in 0..MaxChangesPerEpoch::get() {
-			assert_ok!(Liquidity::set_currency_group(Origin::root(), i, GROUP_B));
+			assert_ok!(Liquidity::set_currency_group(
+				RuntimeOrigin::root(),
+				i,
+				GROUP_B
+			));
 		}
 
 		assert_noop!(
-			Liquidity::set_currency_group(Origin::root(), MaxChangesPerEpoch::get() + 1, 100),
+			Liquidity::set_currency_group(
+				RuntimeOrigin::root(),
+				MaxChangesPerEpoch::get() + 1,
+				100
+			),
 			Error::<Test>::MaxChangesPerEpochReached
 		);
 	});
@@ -232,7 +246,11 @@ fn discard_groups_exceed_max_grups() {
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		for i in 0..MaxGroups::get() + 1 {
-			assert_ok!(Liquidity::set_group_weight(Origin::root(), i, WEIGHT));
+			assert_ok!(Liquidity::set_group_weight(
+				RuntimeOrigin::root(),
+				i,
+				WEIGHT
+			));
 		}
 		Liquidity::on_initialize(0);
 

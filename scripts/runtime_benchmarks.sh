@@ -68,8 +68,8 @@ else
 fi
 
 # Build only once
-echo "Building chain with features: cargo build --release --features runtime-benchmarks"
-cargo build --release --features runtime-benchmarks
+echo "Building chain with features: cargo build --release --features runtime-benchmarks,test-benchmarks"
+cargo build --release --features runtime-benchmarks,test-benchmarks
 check $?
 
 weight_path="${runtime_path}/src/weights"

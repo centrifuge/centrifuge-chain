@@ -14,7 +14,7 @@ jobs:
     env:
       RUST_TOOLCHAIN: "nightly-2022-05-09"
     steps:
-      - name: Free space on Ubuntu
+      - name: Prep build on Ubuntu
         if: ${{ matrix.os }} == 'ubuntu-latest'
         run: |
           echo "Pre cleanup"
@@ -23,6 +23,7 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Post cleanup"
           df -h
+          sudo apt-get install protobuf-compiler
       - name: Check out code
         uses: actions/checkout@v3
       - name: Install latest nightly

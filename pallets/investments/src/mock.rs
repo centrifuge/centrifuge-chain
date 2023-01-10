@@ -72,9 +72,7 @@ impl frame_system::Config for MockRuntime {
 	type BlockLength = ();
 	type BlockNumber = BlockNumber;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = Hash;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -84,8 +82,10 @@ impl frame_system::Config for MockRuntime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -105,16 +105,14 @@ impl GetByKey<CurrencyId, u128> for ExistentialDeposit {
 impl orml_tokens::Config for MockRuntime {
 	type Amount = i64;
 	type Balance = Balance;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = Nothing;
-	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposit;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -126,11 +124,11 @@ impl pallet_balances::Config for MockRuntime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -150,10 +148,10 @@ impl pallet_investments::Config for MockRuntime {
 	type Accountant = MockAccountant<OrmlTokens>;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
-	type Event = Event;
 	type InvestmentId = InvestmentId;
 	type MaxOutstandingCollects = MaxOutstandingCollect;
 	type PreConditions = Always;
+	type RuntimeEvent = RuntimeEvent;
 	type Tokens = OrmlTokens;
 	type WeightInfo = ();
 }
@@ -305,14 +303,14 @@ impl TestExternalitiesBuilder {
 	}
 }
 
-pub(crate) fn last_event() -> Event {
+pub(crate) fn last_event() -> RuntimeEvent {
 	let events = frame_system::Pallet::<MockRuntime>::events();
 	// compare to the last event record
 	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(1)];
 	event.clone()
 }
 
-pub(crate) fn n_last_event(n: usize) -> Event {
+pub(crate) fn n_last_event(n: usize) -> RuntimeEvent {
 	let events = frame_system::Pallet::<MockRuntime>::events();
 	// compare to the last event record
 	let frame_system::EventRecord { event, .. } = &events[events.len().saturating_sub(n + 1)];
@@ -334,9 +332,21 @@ pub(crate) fn free_balance_of(who: MockAccountId, currency_id: CurrencyId) -> Ba
 ///
 /// User accounts are the default Investor{A,B,C}
 pub(crate) fn invest_x_per_investor(amount: Balance) -> DispatchResult {
-	Investments::update_invest_order(Origin::signed(InvestorA::get()), INVESTMENT_0_0, amount)?;
-	Investments::update_invest_order(Origin::signed(InvestorB::get()), INVESTMENT_0_0, amount)?;
-	Investments::update_invest_order(Origin::signed(InvestorC::get()), INVESTMENT_0_0, amount)
+	Investments::update_invest_order(
+		RuntimeOrigin::signed(InvestorA::get()),
+		INVESTMENT_0_0,
+		amount,
+	)?;
+	Investments::update_invest_order(
+		RuntimeOrigin::signed(InvestorB::get()),
+		INVESTMENT_0_0,
+		amount,
+	)?;
+	Investments::update_invest_order(
+		RuntimeOrigin::signed(InvestorC::get()),
+		INVESTMENT_0_0,
+		amount,
+	)
 }
 
 /// Redeem amount into INVESTMENT_0_0
@@ -344,17 +354,17 @@ pub(crate) fn invest_x_per_investor(amount: Balance) -> DispatchResult {
 /// User accounts are the default TrancheHolder{A,B,C}
 pub(crate) fn redeem_x_per_investor(amount: Balance) -> DispatchResult {
 	Investments::update_redeem_order(
-		Origin::signed(TrancheHolderA::get()),
+		RuntimeOrigin::signed(TrancheHolderA::get()),
 		INVESTMENT_0_0,
 		amount,
 	)?;
 	Investments::update_redeem_order(
-		Origin::signed(TrancheHolderB::get()),
+		RuntimeOrigin::signed(TrancheHolderB::get()),
 		INVESTMENT_0_0,
 		amount,
 	)?;
 	Investments::update_redeem_order(
-		Origin::signed(TrancheHolderC::get()),
+		RuntimeOrigin::signed(TrancheHolderC::get()),
 		INVESTMENT_0_0,
 		amount,
 	)
@@ -432,7 +442,7 @@ pub(crate) fn invest_x_per_fulfill_x(
 	fulfillment: FulfillmentWithPrice<Rate>,
 ) -> DispatchResult {
 	for (who, amount) in invest_per_investor {
-		Investments::update_invest_order(Origin::signed(who), INVESTMENT_0_0, amount)?;
+		Investments::update_invest_order(RuntimeOrigin::signed(who), INVESTMENT_0_0, amount)?;
 	}
 	let _invest_orders = Investments::process_invest_orders(INVESTMENT_0_0)?;
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
@@ -482,7 +492,7 @@ pub(crate) fn redeem_x_per_fulfill_x(
 	fulfillment: FulfillmentWithPrice<Rate>,
 ) -> DispatchResult {
 	for (who, amount) in redeem_per_investor {
-		Investments::update_redeem_order(Origin::signed(who), INVESTMENT_0_0, amount)?;
+		Investments::update_redeem_order(RuntimeOrigin::signed(who), INVESTMENT_0_0, amount)?;
 	}
 	let _redeem_orders = Investments::process_redeem_orders(INVESTMENT_0_0)?;
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
@@ -505,7 +515,10 @@ where
 }
 
 /// Collect both invest and redemptions
-pub(crate) fn collect_both(who: Origin, investment_id: InvestmentId) -> DispatchResultWithPostInfo {
+pub(crate) fn collect_both(
+	who: RuntimeOrigin,
+	investment_id: InvestmentId,
+) -> DispatchResultWithPostInfo {
 	Investments::collect_investments(who.clone(), investment_id)?;
 	Investments::collect_redemptions(who, investment_id)
 }

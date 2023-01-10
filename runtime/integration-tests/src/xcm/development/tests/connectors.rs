@@ -37,8 +37,8 @@ use cfg_types::{
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Connectors, Origin, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, XTokens,
-	XcmTransactor,
+	Balances, Connectors, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, RuntimeOrigin,
+	XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
@@ -87,7 +87,7 @@ fn add_pool() {
 		// Verify that the pool must exist before we can call Connectors::add_pool
 		assert_noop!(
 			Connectors::add_pool(
-				Origin::signed(ALICE.into()),
+				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
 				Domain::Parachain(ParachainId::Moonbeam),
 			),
@@ -99,7 +99,7 @@ fn add_pool() {
 
 		// Verify that we can now call Connectors::add_pool successfully
 		assert_ok!(Connectors::add_pool(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			pool_id,
 			Domain::Parachain(ParachainId::Moonbeam),
 		));
@@ -126,7 +126,7 @@ fn add_tranche() {
 		let nonexistent_tranche = [71u8; 16];
 		assert_noop!(
 			Connectors::add_tranche(
-				Origin::signed(ALICE.into()),
+				RuntimeOrigin::signed(ALICE.into()),
 				pool_id.clone(),
 				nonexistent_tranche,
 				Domain::Parachain(ParachainId::Moonbeam),
@@ -144,7 +144,7 @@ fn add_tranche() {
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when given a valid pool + tranche id pair.
 		assert_ok!(Connectors::add_tranche(
-			Origin::signed(ALICE.into()),
+			RuntimeOrigin::signed(ALICE.into()),
 			pool_id.clone(),
 			tranche_id,
 			Domain::Parachain(ParachainId::Moonbeam),
@@ -179,7 +179,7 @@ fn transfer() {
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
 			Connectors::transfer(
-				Origin::signed(ALICE.into()),
+				RuntimeOrigin::signed(ALICE.into()),
 				pool_id.clone(),
 				tranche_id.clone(),
 				dest_address.clone(),
@@ -190,7 +190,7 @@ fn transfer() {
 
 		// Make BOB the MembersListAdmin of this Pool
 		assert_ok!(Permissions::add(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
 			PermissionScope::Pool(pool_id.clone()),
@@ -199,7 +199,7 @@ fn transfer() {
 
 		// Call the Connectors::update_member which ensures the destination address is whitelisted.
 		assert_ok!(Connectors::update_member(
-			Origin::signed(BOB.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			dest_address.clone(),
 			pool_id.clone(),
 			tranche_id.clone(),
@@ -216,7 +216,7 @@ fn transfer() {
 		// Finally, verify that we can now transfer the tranche to the destination address
 		let amount = 123;
 		assert_ok!(Connectors::transfer(
-			Origin::signed(BOB.into()),
+			RuntimeOrigin::signed(BOB.into()),
 			pool_id.clone(),
 			tranche_id.clone(),
 			dest_address.clone(),
@@ -318,7 +318,7 @@ mod utils {
 
 		// We need to set the Transact info for Moonbeam in the XcmTransactor pallet
 		assert_ok!(XcmTransactor::set_transact_info(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(VersionedMultiLocation::V1(moonbeam_location.clone())),
 			1,
 			8_000_000_000_000_000,
@@ -326,7 +326,7 @@ mod utils {
 		));
 
 		assert_ok!(XcmTransactor::set_fee_per_second(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Box::new(VersionedMultiLocation::V1(moonbeam_native_token.clone())),
 			default_per_second(18), // default fee_per_second for this token which has 18 decimals
 		));
@@ -343,7 +343,7 @@ mod utils {
 		};
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			meta,
 			Some(glmr_currency_id.clone())
 		));
@@ -353,7 +353,7 @@ mod utils {
 		OrmlTokens::deposit(glmr_currency_id, &BOB.into(), 10 * dollar(18));
 
 		assert_ok!(Connectors::set_domain_router(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			Domain::Parachain(ParachainId::Moonbeam),
 			Router::Xcm(XcmDomain {
 				location: moonbeam_location
@@ -379,7 +379,7 @@ mod utils {
 			additional: CustomMetadata::default(),
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			ausd_meta,
 			Some(CurrencyId::AUSD)
 		));

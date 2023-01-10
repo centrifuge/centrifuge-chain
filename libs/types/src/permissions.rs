@@ -442,10 +442,12 @@ where
 				Ok(self.info[index].permissioned_till = validity)
 			}
 		} else {
-			self.info.try_push(TrancheInvestorInfo {
-				tranche_id: tranche,
-				permissioned_till: validity,
-			})
+			self.info
+				.try_push(TrancheInvestorInfo {
+					tranche_id: tranche,
+					permissioned_till: validity,
+				})
+				.map_err(|_| ())
 		}
 	}
 }

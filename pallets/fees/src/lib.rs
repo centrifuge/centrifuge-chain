@@ -60,10 +60,10 @@ pub mod pallet {
 		type Treasury: OnUnbalanced<ImbalanceOf<Self>>;
 
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Required origin for changing fees.
-		type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
+		type FeeChangeOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Default value for fee keys.
 		type DefaultFeeValue: Get<BalanceOf<Self>>;

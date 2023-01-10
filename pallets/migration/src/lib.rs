@@ -81,7 +81,7 @@ pub mod pallet {
 		type MigrationMaxProxies: Get<u32>;
 
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// WeightInfo
 		type WeightInfo: WeightInfo;

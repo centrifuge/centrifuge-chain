@@ -171,13 +171,13 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_balances::Config {
 		/// Ensure that origin of a transaction is an administrator.
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Expected currency of the reward claim.
 		type Currency: Currency<Self::AccountId>;
 
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Minimal amount that can be claimed for a reward payout.
 		///
@@ -401,7 +401,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Returns true if the given origin can update the upload account
-	fn can_update_upload_account(origin: T::Origin) -> DispatchResult {
+	fn can_update_upload_account(origin: T::RuntimeOrigin) -> DispatchResult {
 		T::AdminOrigin::try_origin(origin)
 			.map(|_| ())
 			.or_else(ensure_root)?;

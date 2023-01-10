@@ -26,7 +26,7 @@ fn fails_with_unknown_investment() {
 
 		assert_noop!(
 			Investments::update_invest_order(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				UNKNOWN_INVESTMENT,
 				2 * amount,
 			),
@@ -34,7 +34,7 @@ fn fails_with_unknown_investment() {
 		);
 		assert_noop!(
 			Investments::update_redeem_order(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				UNKNOWN_INVESTMENT,
 				2 * amount,
 			),
@@ -84,7 +84,7 @@ fn update_invest_works() {
 		// holds the right balance
 		{
 			assert_ok!(Investments::update_invest_order(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0,
 				2 * amount,
 			));
@@ -126,7 +126,7 @@ fn update_invest_works() {
 		// - decreasing the investment-id's account by the diff
 		{
 			assert_ok!(Investments::update_invest_order(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0,
 				amount / 2,
 			));
@@ -156,7 +156,7 @@ fn update_invest_works() {
 		// - increasing the investment-id's account by the diff
 		{
 			assert_ok!(Investments::update_invest_order(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
@@ -183,7 +183,7 @@ fn update_invest_works() {
 		// holds the right balance
 		{
 			assert_ok!(Investments::update_invest_order(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
@@ -226,7 +226,7 @@ fn update_invest_to_zero_removes_order() {
 		let amount = 50 * CURRENCY;
 
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(InvestorA::get()),
+			RuntimeOrigin::signed(InvestorA::get()),
 			INVESTMENT_0_0,
 			2 * amount,
 		));
@@ -238,7 +238,7 @@ fn update_invest_to_zero_removes_order() {
 		);
 
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(InvestorA::get()),
+			RuntimeOrigin::signed(InvestorA::get()),
 			INVESTMENT_0_0,
 			0,
 		));
@@ -272,7 +272,7 @@ fn update_invest_fails_when_collect_needed() {
 		{
 			assert_noop!(
 				Investments::update_invest_order(
-					Origin::signed(InvestorA::get()),
+					RuntimeOrigin::signed(InvestorA::get()),
 					INVESTMENT_0_0,
 					amount,
 				),
@@ -280,7 +280,7 @@ fn update_invest_fails_when_collect_needed() {
 			);
 			assert_noop!(
 				Investments::update_invest_order(
-					Origin::signed(InvestorB::get()),
+					RuntimeOrigin::signed(InvestorB::get()),
 					INVESTMENT_0_0,
 					amount,
 				),
@@ -288,7 +288,7 @@ fn update_invest_fails_when_collect_needed() {
 			);
 			assert_noop!(
 				Investments::update_invest_order(
-					Origin::signed(InvestorC::get()),
+					RuntimeOrigin::signed(InvestorC::get()),
 					INVESTMENT_0_0,
 					amount,
 				),
@@ -305,17 +305,17 @@ fn update_invest_fails_when_collect_needed() {
 		// the orders for the redemptions
 		{
 			assert_ok!(Investments::update_redeem_order(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
 			assert_ok!(Investments::update_redeem_order(
-				Origin::signed(TrancheHolderB::get()),
+				RuntimeOrigin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
 			assert_ok!(Investments::update_redeem_order(
-				Origin::signed(TrancheHolderC::get()),
+				RuntimeOrigin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
@@ -364,7 +364,7 @@ fn update_redeem_works() {
 		// holds the right balance
 		{
 			assert_ok!(Investments::update_redeem_order(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0,
 				2 * amount,
 			));
@@ -409,7 +409,7 @@ fn update_redeem_works() {
 		// - decreasing the investment-id's account by the diff
 		{
 			assert_ok!(Investments::update_redeem_order(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0,
 				amount / 2,
 			));
@@ -439,7 +439,7 @@ fn update_redeem_works() {
 		// - increasing the investment-id's account by the diff
 		{
 			assert_ok!(Investments::update_redeem_order(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
@@ -469,7 +469,7 @@ fn update_redeem_works() {
 		// holds the right balance
 		{
 			assert_ok!(Investments::update_redeem_order(
-				Origin::signed(TrancheHolderB::get()),
+				RuntimeOrigin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
@@ -512,7 +512,7 @@ fn update_redeem_to_zero_removes_order() {
 		let amount = 50 * CURRENCY;
 
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(TrancheHolderA::get()),
+			RuntimeOrigin::signed(TrancheHolderA::get()),
 			INVESTMENT_0_0,
 			2 * amount,
 		));
@@ -524,7 +524,7 @@ fn update_redeem_to_zero_removes_order() {
 		);
 
 		assert_ok!(Investments::update_redeem_order(
-			Origin::signed(TrancheHolderA::get()),
+			RuntimeOrigin::signed(TrancheHolderA::get()),
 			INVESTMENT_0_0,
 			0,
 		));
@@ -563,7 +563,7 @@ fn update_redeem_fails_when_collect_needed() {
 		{
 			assert_noop!(
 				Investments::update_redeem_order(
-					Origin::signed(TrancheHolderA::get()),
+					RuntimeOrigin::signed(TrancheHolderA::get()),
 					INVESTMENT_0_0,
 					amount,
 				),
@@ -571,7 +571,7 @@ fn update_redeem_fails_when_collect_needed() {
 			);
 			assert_noop!(
 				Investments::update_redeem_order(
-					Origin::signed(TrancheHolderB::get()),
+					RuntimeOrigin::signed(TrancheHolderB::get()),
 					INVESTMENT_0_0,
 					amount,
 				),
@@ -579,7 +579,7 @@ fn update_redeem_fails_when_collect_needed() {
 			);
 			assert_noop!(
 				Investments::update_redeem_order(
-					Origin::signed(TrancheHolderC::get()),
+					RuntimeOrigin::signed(TrancheHolderC::get()),
 					INVESTMENT_0_0,
 					amount,
 				),
@@ -591,17 +591,17 @@ fn update_redeem_fails_when_collect_needed() {
 		// the orders for the investments
 		{
 			assert_ok!(Investments::update_invest_order(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
 			assert_ok!(Investments::update_invest_order(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
 			assert_ok!(Investments::update_invest_order(
-				Origin::signed(InvestorC::get()),
+				RuntimeOrigin::signed(InvestorC::get()),
 				INVESTMENT_0_0,
 				amount,
 			));
@@ -851,7 +851,7 @@ fn fulfillment_partially_works_low_price() {
 				SINGLE_INVEST_AMOUNT,
 				INVEST_FULFILLMENT,
 				|_| Investments::update_invest_order(
-					Origin::signed(InvestorD::get()),
+					RuntimeOrigin::signed(InvestorD::get()),
 					INVESTMENT_0_0,
 					SINGLE_INVEST_AMOUNT
 				)
@@ -860,7 +860,7 @@ fn fulfillment_partially_works_low_price() {
 				SINGLE_REDEEM_AMOUNT,
 				REDEEM_FULFILLMENT,
 				|_| Investments::update_redeem_order(
-					Origin::signed(TrancheHolderD::get()),
+					RuntimeOrigin::signed(TrancheHolderD::get()),
 					INVESTMENT_0_0,
 					SINGLE_REDEEM_AMOUNT
 				)
@@ -940,7 +940,7 @@ fn fulfillment_partially_works_low_price() {
 		// InvestorA: - should have 20% of SINGLE_INVEST_AMOUNT fulfilled
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1003,7 +1003,7 @@ fn fulfillment_partially_works_low_price() {
 			// Collecting again does NOT change anything
 
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1045,7 +1045,7 @@ fn fulfillment_partially_works_low_price() {
 		// InvestorB: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1108,7 +1108,7 @@ fn fulfillment_partially_works_low_price() {
 			// Collecting again does NOT change anything
 
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1149,7 +1149,7 @@ fn fulfillment_partially_works_low_price() {
 		// Collecting for active session is okay but triggers "warn" events
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorD::get()),
+				RuntimeOrigin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1173,7 +1173,7 @@ fn fulfillment_partially_works_low_price() {
 		// Redemption collects work fine too.
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1232,7 +1232,7 @@ fn fulfillment_partially_works_low_price() {
 			// Collecting again does NOT change anything
 
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1355,7 +1355,7 @@ fn fulfillment_partially_works_low_price() {
 		// Now we collect for every user until FullyCollected and no more outstanding
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1363,7 +1363,7 @@ fn fulfillment_partially_works_low_price() {
 				26848874598070739546
 			);
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1371,7 +1371,7 @@ fn fulfillment_partially_works_low_price() {
 				26848874598070739546
 			);
 			assert_ok!(collect_both(
-				Origin::signed(InvestorC::get()),
+				RuntimeOrigin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1379,7 +1379,7 @@ fn fulfillment_partially_works_low_price() {
 				26848874598070739546
 			);
 			assert_ok!(collect_both(
-				Origin::signed(InvestorD::get()),
+				RuntimeOrigin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
 			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
@@ -1391,7 +1391,7 @@ fn fulfillment_partially_works_low_price() {
 				26848874598070739547
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1399,7 +1399,7 @@ fn fulfillment_partially_works_low_price() {
 				93113772455089820355
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderB::get()),
+				RuntimeOrigin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1407,7 +1407,7 @@ fn fulfillment_partially_works_low_price() {
 				93113772455089820355
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderC::get()),
+				RuntimeOrigin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1415,7 +1415,7 @@ fn fulfillment_partially_works_low_price() {
 				93113772455089820355
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderD::get()),
+				RuntimeOrigin::signed(TrancheHolderD::get()),
 				INVESTMENT_0_0
 			));
 			// NOTE: TrancheHolderD gets MINIMALLY more, as he had different fulfillments
@@ -1545,7 +1545,7 @@ fn fulfillment_partially_works_high_price() {
 				SINGLE_INVEST_AMOUNT,
 				INVEST_FULFILLMENT,
 				|_| Investments::update_invest_order(
-					Origin::signed(InvestorD::get()),
+					RuntimeOrigin::signed(InvestorD::get()),
 					INVESTMENT_0_0,
 					SINGLE_INVEST_AMOUNT
 				)
@@ -1554,7 +1554,7 @@ fn fulfillment_partially_works_high_price() {
 				SINGLE_REDEEM_AMOUNT,
 				REDEEM_FULFILLMENT,
 				|_| Investments::update_redeem_order(
-					Origin::signed(TrancheHolderD::get()),
+					RuntimeOrigin::signed(TrancheHolderD::get()),
 					INVESTMENT_0_0,
 					SINGLE_REDEEM_AMOUNT
 				)
@@ -1634,7 +1634,7 @@ fn fulfillment_partially_works_high_price() {
 		// InvestorA: - should have 20% of SINGLE_INVEST_AMOUNT fulfilled
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1697,7 +1697,7 @@ fn fulfillment_partially_works_high_price() {
 			// Collecting again does NOT change anything
 
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1739,7 +1739,7 @@ fn fulfillment_partially_works_high_price() {
 		// InvestorB: - should have 20% if SINGLE_INVEST_AMOUNT fulfilled
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1802,7 +1802,7 @@ fn fulfillment_partially_works_high_price() {
 			// Collecting again does NOT change anything
 
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1843,7 +1843,7 @@ fn fulfillment_partially_works_high_price() {
 		// Collecting for active session is okay but triggers "warn" events
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorD::get()),
+				RuntimeOrigin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1867,7 +1867,7 @@ fn fulfillment_partially_works_high_price() {
 		// Redemption collects work fine too.
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -1926,7 +1926,7 @@ fn fulfillment_partially_works_high_price() {
 			// Collecting again does NOT change anything
 
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2041,7 +2041,7 @@ fn fulfillment_partially_works_high_price() {
 		// Now we collect for every user until FullyCollected and no more outstanding
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2049,7 +2049,7 @@ fn fulfillment_partially_works_high_price() {
 				26886035313001605134
 			);
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2057,7 +2057,7 @@ fn fulfillment_partially_works_high_price() {
 				26886035313001605134
 			);
 			assert_ok!(collect_both(
-				Origin::signed(InvestorC::get()),
+				RuntimeOrigin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2065,7 +2065,7 @@ fn fulfillment_partially_works_high_price() {
 				26886035313001605134
 			);
 			assert_ok!(collect_both(
-				Origin::signed(InvestorD::get()),
+				RuntimeOrigin::signed(InvestorD::get()),
 				INVESTMENT_0_0
 			));
 			// NOTE: InvestorD gets MINIMALLY more, as he had different fulfillments
@@ -2077,7 +2077,7 @@ fn fulfillment_partially_works_high_price() {
 				26886035313001605135
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2085,7 +2085,7 @@ fn fulfillment_partially_works_high_price() {
 				92985074626865671639
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderB::get()),
+				RuntimeOrigin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2093,7 +2093,7 @@ fn fulfillment_partially_works_high_price() {
 				92985074626865671639
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderC::get()),
+				RuntimeOrigin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2101,7 +2101,7 @@ fn fulfillment_partially_works_high_price() {
 				92985074626865671639
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderD::get()),
+				RuntimeOrigin::signed(TrancheHolderD::get()),
 				INVESTMENT_0_0
 			));
 			// NOTE: TrancheHolderD gets MINIMALLY less, as he had different fulfillments
@@ -2239,7 +2239,7 @@ fn fulfillment_of_zero_works() {
 		// InvestorA
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2284,7 +2284,7 @@ fn fulfillment_of_zero_works() {
 		// InvestorB
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2329,7 +2329,7 @@ fn fulfillment_of_zero_works() {
 		// InvestorC
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorC::get()),
+				RuntimeOrigin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2374,7 +2374,7 @@ fn fulfillment_of_zero_works() {
 		// TrancheHolderA
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2419,7 +2419,7 @@ fn fulfillment_of_zero_works() {
 		// TrancheHolderB
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderB::get()),
+				RuntimeOrigin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2464,7 +2464,7 @@ fn fulfillment_of_zero_works() {
 		// TrancheHolderC
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderC::get()),
+				RuntimeOrigin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2591,7 +2591,7 @@ fn collecting_fully_works() {
 		// InvestorA
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2629,7 +2629,7 @@ fn collecting_fully_works() {
 		// InvestorB
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorB::get()),
+				RuntimeOrigin::signed(InvestorB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2667,7 +2667,7 @@ fn collecting_fully_works() {
 		// InvestorC
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorC::get()),
+				RuntimeOrigin::signed(InvestorC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2707,7 +2707,7 @@ fn collecting_fully_works() {
 		// TrancheHolderA
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2745,7 +2745,7 @@ fn collecting_fully_works() {
 		// TrancheHolderB
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderB::get()),
+				RuntimeOrigin::signed(TrancheHolderB::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2783,7 +2783,7 @@ fn collecting_fully_works() {
 		// TrancheHolderC
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderC::get()),
+				RuntimeOrigin::signed(TrancheHolderC::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2855,7 +2855,7 @@ fn collecting_over_max_works() {
 		// Collecting does only run till MaxOutstandingCollects and triggers right event
 		{
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2880,7 +2880,7 @@ fn collecting_over_max_works() {
 				)),
 			);
 			assert_ok!(collect_both(
-				Origin::signed(InvestorA::get()),
+				RuntimeOrigin::signed(InvestorA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2910,7 +2910,7 @@ fn collecting_over_max_works() {
 		// Collecting does only run till MaxOutstandingCollects and triggers right event
 		{
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(
@@ -2935,7 +2935,7 @@ fn collecting_over_max_works() {
 				)),
 			);
 			assert_ok!(collect_both(
-				Origin::signed(TrancheHolderA::get()),
+				RuntimeOrigin::signed(TrancheHolderA::get()),
 				INVESTMENT_0_0
 			));
 			assert_eq!(

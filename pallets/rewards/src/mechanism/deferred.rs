@@ -1,32 +1,39 @@
-use cfg_traits::ops::ensure::{
+use cfg_traits::ops::{
 	EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureSub, EnsureSubAssign,
 };
 use frame_support::{pallet_prelude::*, traits::tokens};
 use num_traits::Signed;
-use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, FixedPointOperand};
+pub use pallet::*;
+use sp_runtime::{
+	traits::{One, Saturating, Zero},
+	ArithmeticError, FixedPointNumber, FixedPointOperand,
+};
 
 use super::{base, MoveCurrencyError, RewardMechanism};
 
 /// Type that contains the stake properties of a stake group
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Group<Balance, Rate, DistributionId> {
-	base: base::Group<Balance, Rate>,
-	distribution_id: DistributionId,
-	last_rate: Rate,
-	lost_reward: Balance,
+pub struct Group<T: Config> {
+	base: base::Group<T::Balance, T::Rate>,
+	last_rate: T::Rate,
+	lost_reward: T::Balance,
+	distribution_id: T::DistributionId,
 }
 
-impl<Balance, Rate, DistributionId> Group<Balance, Rate, DistributionId> {
-	fn get_last_rate<MaxMovements>(
-		&self,
-		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
-	) -> Rate
-	where
-		MaxMovements: Get<u32>,
-		DistributionId: PartialEq,
-		Rate: Copy,
-	{
+impl<T: Config> Default for Group<T> {
+	fn default() -> Self {
+		Self {
+			base: base::Group::default(),
+			last_rate: T::Rate::zero(),
+			lost_reward: T::Balance::zero(),
+			distribution_id: T::DistributionId::default(),
+		}
+	}
+}
+
+impl<T: Config> Group<T> {
+	fn get_last_rate(&self, currency: &Currency<T>) -> T::Rate {
 		if self.distribution_id == currency.next_distribution_id {
 			currency.prev_last_rate
 		} else {
@@ -36,92 +43,75 @@ impl<Balance, Rate, DistributionId> Group<Balance, Rate, DistributionId> {
 }
 
 /// Type that contains the stake properties of an account
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug, Default)]
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Account<Balance, IBalance, DistributionId> {
-	base: base::Account<Balance, IBalance>,
-	distribution_id: DistributionId,
-	rewarded_stake: Balance,
+pub struct Account<T: Config> {
+	base: base::Account<T::Balance, T::IBalance>,
+	rewarded_stake: T::Balance,
+	distribution_id: T::DistributionId,
 }
 
-impl<Balance, IBalance, DistributionId> Account<Balance, IBalance, DistributionId>
-where
-	Balance: FixedPointOperand + EnsureAdd + EnsureSub + TryFrom<IBalance> + Copy + Ord,
-	IBalance: FixedPointOperand + TryFrom<Balance> + EnsureAdd + EnsureSub + Copy,
-	DistributionId: Copy + PartialEq,
-{
-	fn get_rewarded_stake(
-		&self,
-		group_distribution_id: DistributionId,
-		prev_distribution_id: DistributionId,
-		next_distribution_id: DistributionId,
-	) -> Balance {
-		if self.distribution_id != group_distribution_id
-			&& (self.distribution_id != prev_distribution_id
-				|| group_distribution_id != next_distribution_id)
-		{
+impl<T: Config> Default for Account<T> {
+	fn default() -> Self {
+		Self {
+			base: base::Account::default(),
+			rewarded_stake: T::Balance::zero(),
+			distribution_id: T::DistributionId::default(),
+		}
+	}
+}
+
+impl<T: Config> Account<T> {
+	fn was_distribution(&self, group: &Group<T>, currency: &Currency<T>) -> bool {
+		if self.base.last_currency_movement as usize == currency.base.rpt_changes.len() {
+			self.distribution_id != group.distribution_id
+		} else {
+			self.distribution_id != currency.prev_distribution_id
+				|| group.distribution_id != currency.next_distribution_id
+		}
+	}
+
+	fn get_rewarded_stake(&self, group: &Group<T>, currency: &Currency<T>) -> T::Balance {
+		if self.was_distribution(group, currency) {
 			self.base.stake
 		} else {
 			self.rewarded_stake
 		}
 	}
 
-	fn safe_rewarded_stake(
-		&mut self,
-		group_distribution_id: DistributionId,
-		prev_distribution_id: DistributionId,
-		next_distribution_id: DistributionId,
-	) {
-		self.rewarded_stake = self.get_rewarded_stake(
-			group_distribution_id,
-			prev_distribution_id,
-			next_distribution_id,
-		);
-		self.distribution_id = group_distribution_id;
+	fn update_rewarded_stake(&mut self, group: &Group<T>, currency: &Currency<T>) {
+		self.rewarded_stake = self.get_rewarded_stake(group, currency);
+		self.distribution_id = group.distribution_id;
 	}
 
-	fn last_rewarded_stake<Rate: FixedPointNumber, MaxMovements>(
+	fn last_rewarded_stake(
 		&self,
-		group: &Group<Balance, Rate, DistributionId>,
-		currency: &Currency<Balance, Rate, DistributionId, MaxMovements>,
-	) -> Result<Balance, ArithmeticError>
-	where
-		MaxMovements: Get<u32>,
-	{
+		group: &Group<T>,
+		currency: &Currency<T>,
+	) -> Result<T::Balance, ArithmeticError> {
 		group
 			.get_last_rate(currency)
-			.ensure_mul_int(self.get_rewarded_stake(
-				group.distribution_id,
-				currency.prev_distribution_id,
-				currency.next_distribution_id,
-			))
+			.ensure_mul_int(self.get_rewarded_stake(group, currency))
 	}
 }
 
 /// Type that contains the stake properties of stake class
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Currency<Balance, Rate, DistributionId, MaxMovements: Get<u32>> {
-	base: base::Currency<Balance, Rate, MaxMovements>,
-	prev_distribution_id: DistributionId,
-	next_distribution_id: DistributionId,
-	prev_last_rate: Rate,
+pub struct Currency<T: Config> {
+	base: base::Currency<T::Balance, T::Rate, T::MaxCurrencyMovements>,
+	prev_distribution_id: T::DistributionId,
+	next_distribution_id: T::DistributionId,
+	prev_last_rate: T::Rate,
 }
 
-impl<Balance, Rate, DistributionId, MaxMovements> Default
-	for Currency<Balance, Rate, DistributionId, MaxMovements>
-where
-	Balance: Zero,
-	Rate: Default,
-	DistributionId: Default,
-	MaxMovements: Get<u32>,
-{
+impl<T: Config> Default for Currency<T> {
 	fn default() -> Self {
 		Self {
 			base: base::Currency::default(),
-			prev_distribution_id: DistributionId::default(),
-			next_distribution_id: DistributionId::default(),
-			prev_last_rate: Rate::default(),
+			prev_distribution_id: T::DistributionId::default(),
+			next_distribution_id: T::DistributionId::default(),
+			prev_last_rate: T::Rate::default(),
 		}
 	}
 }
@@ -130,161 +120,206 @@ pub struct Mechanism<Balance, IBalance, Rate, MaxCurrencyMovements>(
 	sp_std::marker::PhantomData<(Balance, IBalance, Rate, MaxCurrencyMovements)>,
 );
 
-impl<Balance, IBalance, Rate, MaxCurrencyMovements> RewardMechanism
-	for Mechanism<Balance, IBalance, Rate, MaxCurrencyMovements>
-where
-	Balance: tokens::Balance + FixedPointOperand + TryFrom<IBalance>,
-	IBalance: FixedPointOperand
-		+ TryFrom<Balance>
-		+ EnsureAdd
-		+ EnsureSub
-		+ Copy
-		+ Signed
-		+ sp_std::fmt::Debug,
-	Rate: EnsureFixedPointNumber,
-	MaxCurrencyMovements: Get<u32>,
-	<Rate as FixedPointNumber>::Inner: Signed,
-{
-	type Account = Account<Self::Balance, IBalance, Self::DistributionId>;
-	type Balance = Balance;
-	type Currency = Currency<Balance, Rate, Self::DistributionId, MaxCurrencyMovements>;
-	type DistributionId = u32;
-	type Group = Group<Balance, Rate, Self::DistributionId>;
-	type MaxCurrencyMovements = MaxCurrencyMovements;
+#[frame_support::pallet]
+pub mod pallet {
+	use frame_support::pallet_prelude::*;
 
-	fn reward_group(
-		group: &mut Self::Group,
-		amount: Self::Balance,
-		distribution_id: Self::DistributionId,
-	) -> Result<(), ArithmeticError> {
-		let reward = amount.ensure_add(group.lost_reward)?;
+	use super::*;
 
-		base::Mechanism::<Balance, IBalance, Rate, MaxCurrencyMovements>::reward_group(
-			&mut group.base,
-			reward,
-			(),
-		)?;
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type DistributionId: PartialEq
+			+ Copy
+			+ codec::FullCodec
+			+ MaxEncodedLen
+			+ Default
+			+ TypeInfo
+			+ One
+			+ EnsureAdd
+			+ sp_std::fmt::Debug;
 
-		group.lost_reward = Balance::zero();
-		group.last_rate = Rate::ensure_from_rational(reward, group.base.total_stake)?;
-		group.distribution_id = distribution_id;
+		type Balance: tokens::Balance
+			+ FixedPointOperand
+			+ TryFrom<Self::IBalance>
+			+ codec::FullCodec
+			+ TypeInfo
+			+ MaxEncodedLen;
 
-		Ok(())
+		type IBalance: FixedPointOperand
+			+ TryFrom<Self::Balance>
+			+ codec::FullCodec
+			+ TypeInfo
+			+ MaxEncodedLen
+			+ EnsureAdd
+			+ EnsureSub
+			+ Copy
+			+ Signed
+			+ sp_std::fmt::Debug
+			+ Default;
+
+		type Rate: FixedPointNumber + codec::FullCodec + TypeInfo + MaxEncodedLen;
+
+		type MaxCurrencyMovements: Get<u32> + sp_std::fmt::Debug;
 	}
 
-	fn deposit_stake(
-		account: &mut Self::Account,
-		currency: &mut Self::Currency,
-		group: &mut Self::Group,
-		amount: Self::Balance,
-	) -> Result<(), ArithmeticError> {
-		account.safe_rewarded_stake(
-			group.distribution_id,
-			currency.prev_distribution_id,
-			currency.next_distribution_id,
-		);
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	pub struct Pallet<T>(_);
 
-		base::Mechanism::deposit_stake(
-			&mut account.base,
-			&mut currency.base,
-			&mut group.base,
-			amount,
-		)
-	}
+	#[pallet::storage]
+	pub(super) type LastDistributionId<T: Config> = StorageValue<_, T::DistributionId, ValueQuery>;
 
-	fn withdraw_stake(
-		account: &mut Self::Account,
-		currency: &mut Self::Currency,
-		group: &mut Self::Group,
-		amount: Self::Balance,
-	) -> Result<(), ArithmeticError> {
-		account.safe_rewarded_stake(
-			group.distribution_id,
-			currency.prev_distribution_id,
-			currency.next_distribution_id,
-		);
+	impl<T: Config> RewardMechanism for Pallet<T>
+	where
+		<T::Rate as FixedPointNumber>::Inner: Signed,
+	{
+		type Account = Account<T>;
+		type Balance = T::Balance;
+		type Currency = Currency<T>;
+		type Group = Group<T>;
+		type MaxCurrencyMovements = T::MaxCurrencyMovements;
 
-		let rewarded_amount = {
-			let unrewarded_stake = account.base.stake.saturating_sub(account.rewarded_stake);
-			let unrewarded_amount = amount.min(unrewarded_stake);
-			amount.ensure_sub(unrewarded_amount)
-		}?;
-
-		base::Mechanism::withdraw_stake(
-			&mut account.base,
-			&mut currency.base,
-			&mut group.base,
-			amount,
-		)?;
-
-		let lost_reward = group
-			.get_last_rate(currency)
-			.ensure_mul_int(rewarded_amount)?;
-
-		account.rewarded_stake.ensure_sub_assign(rewarded_amount)?;
-		account
-			.base
-			.reward_tally
-			.ensure_add_assign(lost_reward.ensure_into()?)?;
-
-		group.lost_reward.ensure_add_assign(lost_reward)?;
-
-		Ok(())
-	}
-
-	fn compute_reward(
-		account: &Self::Account,
-		currency: &Self::Currency,
-		group: &Self::Group,
-	) -> Result<Self::Balance, ArithmeticError> {
-		base::Mechanism::compute_reward(&account.base, &currency.base, &group.base)?
-			.ensure_sub(account.last_rewarded_stake(group, currency)?)
-	}
-
-	fn claim_reward(
-		account: &mut Self::Account,
-		currency: &Self::Currency,
-		group: &Self::Group,
-	) -> Result<Self::Balance, ArithmeticError> {
-		let last_rewarded_stake = account.last_rewarded_stake(group, currency)?;
-
-		let reward = base::Mechanism::claim_reward(&mut account.base, &currency.base, &group.base)?
-			.ensure_sub(last_rewarded_stake)?;
-
-		account
-			.base
-			.reward_tally
-			.ensure_sub_assign(last_rewarded_stake.ensure_into()?)?;
-
-		Ok(reward)
-	}
-
-	fn move_currency(
-		currency: &mut Self::Currency,
-		prev_group: &mut Self::Group,
-		next_group: &mut Self::Group,
-	) -> Result<(), MoveCurrencyError> {
-		base::Mechanism::<_, IBalance, _, _>::move_currency(
-			&mut currency.base,
-			&mut prev_group.base,
-			&mut next_group.base,
-		)?;
-
-		// Only if there was a distribution from last move, we update the previous related data.
-		if currency.next_distribution_id != prev_group.distribution_id {
-			currency.prev_distribution_id = prev_group.distribution_id;
-			currency.prev_last_rate = prev_group.last_rate;
+		fn is_ready(group: &Self::Group) -> bool {
+			group.base.total_stake > Self::Balance::zero()
 		}
-		currency.next_distribution_id = next_group.distribution_id;
 
-		Ok(())
-	}
+		fn reward_group(
+			group: &mut Self::Group,
+			amount: Self::Balance,
+		) -> Result<Self::Balance, DispatchError> {
+			let mut reward_used = Self::Balance::zero();
 
-	fn account_stake(account: &Self::Account) -> Self::Balance {
-		account.base.stake
-	}
+			if group.base.total_stake > Self::Balance::zero() {
+				let reward = amount.ensure_add(group.lost_reward)?;
+				base::Mechanism::<T::Balance, T::IBalance, T::Rate, T::MaxCurrencyMovements>::reward_group(
+                    &mut group.base,
+                    reward,
+                )?;
 
-	fn group_stake(group: &Self::Group) -> Self::Balance {
-		group.base.total_stake
+				group.lost_reward = T::Balance::zero();
+				group.last_rate = T::Rate::ensure_from_rational(reward, group.base.total_stake)?;
+
+				reward_used = reward
+			}
+
+			group.distribution_id = LastDistributionId::<T>::try_mutate(
+				|distribution_id| -> Result<T::DistributionId, DispatchError> {
+					distribution_id.ensure_add_assign(One::one())?;
+					Ok(*distribution_id)
+				},
+			)?;
+
+			Ok(reward_used)
+		}
+
+		fn deposit_stake(
+			account: &mut Self::Account,
+			currency: &mut Self::Currency,
+			group: &mut Self::Group,
+			amount: Self::Balance,
+		) -> DispatchResult {
+			account.update_rewarded_stake(group, currency);
+
+			base::Mechanism::deposit_stake(
+				&mut account.base,
+				&mut currency.base,
+				&mut group.base,
+				amount,
+			)
+		}
+
+		fn withdraw_stake(
+			account: &mut Self::Account,
+			currency: &mut Self::Currency,
+			group: &mut Self::Group,
+			amount: Self::Balance,
+		) -> DispatchResult {
+			account.update_rewarded_stake(group, currency);
+
+			let rewarded_amount = {
+				let unrewarded_stake = account.base.stake.saturating_sub(account.rewarded_stake);
+				let unrewarded_amount = amount.min(unrewarded_stake);
+				amount.ensure_sub(unrewarded_amount)
+			}?;
+
+			base::Mechanism::withdraw_stake(
+				&mut account.base,
+				&mut currency.base,
+				&mut group.base,
+				amount,
+			)?;
+
+			let lost_reward = group
+				.get_last_rate(currency)
+				.ensure_mul_int(rewarded_amount)?;
+
+			account.rewarded_stake.ensure_sub_assign(rewarded_amount)?;
+			account
+				.base
+				.reward_tally
+				.ensure_add_assign(lost_reward.ensure_into()?)?;
+
+			group.lost_reward.ensure_add_assign(lost_reward)?;
+
+			Ok(())
+		}
+
+		fn compute_reward(
+			account: &Self::Account,
+			currency: &Self::Currency,
+			group: &Self::Group,
+		) -> Result<Self::Balance, DispatchError> {
+			base::Mechanism::compute_reward(&account.base, &currency.base, &group.base)?
+				.ensure_sub(account.last_rewarded_stake(group, currency)?)
+				.map_err(|e| e.into())
+		}
+
+		fn claim_reward(
+			account: &mut Self::Account,
+			currency: &Self::Currency,
+			group: &Self::Group,
+		) -> Result<Self::Balance, DispatchError> {
+			let last_rewarded_stake = account.last_rewarded_stake(group, currency)?;
+
+			let reward =
+				base::Mechanism::claim_reward(&mut account.base, &currency.base, &group.base)?
+					.ensure_sub(last_rewarded_stake)?;
+
+			account
+				.base
+				.reward_tally
+				.ensure_sub_assign(last_rewarded_stake.ensure_into()?)?;
+
+			Ok(reward)
+		}
+
+		fn move_currency(
+			currency: &mut Self::Currency,
+			from_group: &mut Self::Group,
+			to_group: &mut Self::Group,
+		) -> Result<(), MoveCurrencyError> {
+			base::Mechanism::<_, T::IBalance, _, _>::move_currency(
+				&mut currency.base,
+				&mut from_group.base,
+				&mut to_group.base,
+			)?;
+
+			// Only if there was a distribution from last move, we update the previous related data.
+			if currency.next_distribution_id != from_group.distribution_id {
+				currency.prev_distribution_id = from_group.distribution_id;
+				currency.prev_last_rate = from_group.last_rate;
+			}
+			currency.next_distribution_id = to_group.distribution_id;
+
+			Ok(())
+		}
+
+		fn account_stake(account: &Self::Account) -> Self::Balance {
+			account.base.stake
+		}
+
+		fn group_stake(group: &Self::Group) -> Self::Balance {
+			group.base.total_stake
+		}
 	}
 }

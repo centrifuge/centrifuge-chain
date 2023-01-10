@@ -30,12 +30,12 @@ use crate::{
 	chain::{
 		centrifuge,
 		centrifuge::{
-			Call as CentrifugeCall, Runtime as CentrifugeRuntime,
+			Runtime as CentrifugeRuntime, RuntimeCall as CentrifugeCall,
 			SignedExtra as CentrifugeSignedExtra, UncheckedExtrinsic as CentrifugeUnchecked,
 		},
 		relay,
 		relay::{
-			Address as RelayAddress, Call as RelayCall, Runtime as RelayRuntime,
+			Address as RelayAddress, Runtime as RelayRuntime, RuntimeCall as RelayCall,
 			SignedExtra as RelaySignedExtra, UncheckedExtrinsic as RelayUnchecked,
 		},
 	},
@@ -50,7 +50,7 @@ pub fn xt_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: cfg_primitives::Index,
-	call: centrifuge::Call,
+	call: centrifuge::RuntimeCall,
 ) -> Result<centrifuge::UncheckedExtrinsic, ()> {
 	let client = env.centrifuge.client();
 
@@ -77,7 +77,7 @@ pub fn xt_relay(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: RelayIndex,
-	call: relay::Call,
+	call: relay::RuntimeCall,
 ) -> Result<relay::UncheckedExtrinsic, ()> {
 	let client = env.relay.client();
 

@@ -35,7 +35,7 @@ fn update_pool() {
 			};
 
 			assert_ok!(PoolRegistry::update(
-				Origin::signed(pool_owner),
+				RuntimeOrigin::signed(pool_owner),
 				pool_id,
 				changes,
 			));
@@ -68,7 +68,7 @@ fn register_pool_and_set_metadata() {
 			let metadata = Some(hash);
 
 			assert_ok!(PoolRegistry::register(
-				Origin::signed(pool_owner),
+				RuntimeOrigin::signed(pool_owner),
 				pool_owner,
 				pool_id,
 				tranches_inputs,
@@ -92,7 +92,7 @@ fn set_metadata() {
 			let pool_id = 0;
 
 			assert_ok!(PoolRegistry::set_metadata(
-				Origin::signed(pool_owner),
+				RuntimeOrigin::signed(pool_owner),
 				pool_id,
 				"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
 					.as_bytes()

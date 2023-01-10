@@ -447,15 +447,15 @@ impl From<Keyring> for [u8; 32] {
 	}
 }
 
-impl From<Keyring> for crate::chain::centrifuge::Origin {
+impl From<Keyring> for crate::chain::centrifuge::RuntimeOrigin {
 	fn from(account: Keyring) -> Self {
-		crate::chain::centrifuge::Origin::signed(AccountId32::from(account))
+		crate::chain::centrifuge::RuntimeOrigin::signed(AccountId32::from(account))
 	}
 }
 
-impl From<Keyring> for crate::chain::relay::Origin {
+impl From<Keyring> for crate::chain::relay::RuntimeOrigin {
 	fn from(account: Keyring) -> Self {
-		crate::chain::relay::Origin::signed(AccountId32::from(account))
+		crate::chain::relay::RuntimeOrigin::signed(AccountId32::from(account))
 	}
 }
 

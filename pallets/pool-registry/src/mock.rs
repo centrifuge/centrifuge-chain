@@ -52,9 +52,7 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -64,8 +62,10 @@ impl frame_system::Config for Test {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -148,7 +148,6 @@ impl<T: Config + pallet_pool_registry::Config> PoolMutate<T::AccountId, T::PoolI
 impl Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type Event = Event;
 	type InterestRate = Rate;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = ();
@@ -159,6 +158,7 @@ impl Config for Test {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;
 	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
 	type TrancheId = TrancheId;
 	type WeightInfo = ();
 }
@@ -236,7 +236,7 @@ impl TestExternalitiesBuilder {
 			System::set_block_number(1);
 			System::on_initialize(System::block_number());
 			Timestamp::on_initialize(System::block_number());
-			Timestamp::set(Origin::none(), START_DATE * SECONDS).unwrap();
+			Timestamp::set(RuntimeOrigin::none(), START_DATE * SECONDS).unwrap();
 		});
 		externalities
 	}

@@ -46,7 +46,7 @@ mod test {
 
 	use super::*;
 	use crate::{
-		mock::{new_test_ext, Origin, Test},
+		mock::{new_test_ext, RuntimeOrigin,  Test},
 		{self as pallet_anchors},
 	};
 
@@ -69,7 +69,7 @@ mod test {
 			pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_day);
 
 			assert_ok!(pallet_anchors::Pallet::<Runtime>::evict_anchors(
-				Origin::signed(1)
+				RuntimeOrigin::signed(1)
 			));
 
 			assert_eq!(

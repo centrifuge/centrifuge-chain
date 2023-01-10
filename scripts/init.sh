@@ -64,7 +64,7 @@ start-parachain)
     --ws-external \
     --rpc-methods=Unsafe \
     --state-cache-size 0 \
-    --log="main,debug" \
+    --log="main,info" \
   ;;
 
 onboard-parachain)

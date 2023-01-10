@@ -25,16 +25,16 @@ fn finalize_works() {
 			// We need to actually trigger storage to change status to Status::Ongoing
 			helper_migrate_total_issuance();
 
-			pallet_migration_manager::Pallet::<Runtime>::finalize(Origin::root()).unwrap();
+			pallet_migration_manager::Pallet::<Runtime>::finalize(RuntimeOrigin::root()).unwrap();
 
 			assert_noop!(
-				pallet_migration_manager::Pallet::<Runtime>::finalize(Origin::root()),
+				pallet_migration_manager::Pallet::<Runtime>::finalize(RuntimeOrigin::root()),
 				pallet_migration_manager::Error::<Runtime>::OnlyFinalizeOngoing,
 			);
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<Runtime>::migrate_balances_issuance(
-					Origin::root(),
+					RuntimeOrigin::root(),
 					0u32.into()
 				),
 				pallet_migration_manager::Error::<Runtime>::MigrationAlreadyCompleted,
@@ -42,7 +42,7 @@ fn finalize_works() {
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<Runtime>::migrate_system_account(
-					Origin::root(),
+					RuntimeOrigin::root(),
 					Vec::new(),
 				),
 				pallet_migration_manager::Error::<Runtime>::MigrationAlreadyCompleted,
@@ -50,7 +50,7 @@ fn finalize_works() {
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<Runtime>::migrate_proxy_proxies(
-					Origin::root(),
+					RuntimeOrigin::root(),
 					Vec::new()
 				),
 				pallet_migration_manager::Error::<Runtime>::MigrationAlreadyCompleted,
@@ -58,7 +58,7 @@ fn finalize_works() {
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<Runtime>::migrate_vesting_vesting(
-					Origin::root(),
+					RuntimeOrigin::root(),
 					Vec::new()
 				),
 				pallet_migration_manager::Error::<Runtime>::MigrationAlreadyCompleted,
@@ -124,7 +124,7 @@ fn migrate_system_account_to_many_accounts() {
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<Runtime>::migrate_system_account(
-					Origin::root(),
+					RuntimeOrigin::root(),
 					data
 				),
 				pallet_migration_manager::Error::<Runtime>::TooManyAccounts
@@ -145,7 +145,7 @@ fn migrate_system_account_all() {
 
 		if count % ACCOUNTS as usize == 0 || count == SYSTEM_ACCOUNT.len() {
 			pallet_migration_manager::Pallet::<Runtime>::migrate_system_account(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				data.clone(),
 			)
 			.unwrap();
@@ -169,7 +169,7 @@ fn helper_migrate_total_issuance() {
 		codec::Decode::decode(&mut TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
 
 	pallet_migration_manager::Pallet::<Runtime>::migrate_balances_issuance(
-		Origin::root(),
+		RuntimeOrigin::root(),
 		additional_issuance,
 	)
 	.unwrap();
@@ -187,7 +187,7 @@ fn migrate_total_issuance() {
 			let old_issuance = Balances::total_issuance();
 
 			pallet_migration_manager::Pallet::<Runtime>::migrate_balances_issuance(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				additional_issuance,
 			)
 			.unwrap();
@@ -221,7 +221,7 @@ fn migrate_vesting_vesting_all() {
 
 		if count % VESTINGS as usize == 0 || count == VESTING_VESTING.len() {
 			pallet_migration_manager::Pallet::<Runtime>::migrate_vesting_vesting(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				data,
 			)
 			.unwrap();
@@ -313,7 +313,7 @@ fn migrate_vesting_vesting_to_many_vestings() {
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<Runtime>::migrate_vesting_vesting(
-					Origin::root(),
+					RuntimeOrigin::root(),
 					data
 				),
 				pallet_migration_manager::Error::<Runtime>::TooManyVestings
@@ -352,7 +352,7 @@ fn migrate_proxy_proxies_all() {
 
 		if count % PROXIES as usize == 0 || count == proxies_len {
 			pallet_migration_manager::Pallet::<Runtime>::migrate_proxy_proxies(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				data,
 			)
 			.unwrap();
@@ -448,7 +448,7 @@ fn migrate_proxy_proxies_to_many_proxies() {
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<Runtime>::migrate_proxy_proxies(
-					Origin::root(),
+					RuntimeOrigin::root(),
 					data
 				),
 				pallet_migration_manager::Error::<Runtime>::TooManyProxies

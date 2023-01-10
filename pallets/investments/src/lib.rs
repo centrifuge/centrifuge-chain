@@ -184,7 +184,7 @@ pub mod pallet {
 			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
 	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The underlying investments one can invest into
 		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen;

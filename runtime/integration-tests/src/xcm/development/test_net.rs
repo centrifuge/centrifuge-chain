@@ -35,7 +35,7 @@ decl_test_relay_chain! {
 decl_test_parachain! {
 	pub struct Development {
 		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
+		RuntimeOrigin = development_runtime::RuntimeOrigin,
 		XcmpMessageHandler = development_runtime::XcmpQueue,
 		DmpMessageHandler = development_runtime::DmpQueue,
 		new_ext = para_ext(parachains::polkadot::centrifuge::ID),
@@ -45,7 +45,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Moonbeam {
 		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
+		RuntimeOrigin = development_runtime::RuntimeOrigin,
 		XcmpMessageHandler = development_runtime::XcmpQueue,
 		DmpMessageHandler = development_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_MOONBEAM),

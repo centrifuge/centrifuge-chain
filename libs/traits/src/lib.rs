@@ -104,12 +104,15 @@ pub trait Reward {
 /// A trait that can be used to fetch the nav and update nav for a given pool
 pub trait PoolNAV<PoolId, Amount> {
 	type ClassId;
-	type Origin;
+	type RuntimeOrigin;
 	// nav returns the nav and the last time it was calculated
 	fn nav(pool_id: PoolId) -> Option<(Amount, u64)>;
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
-	fn initialise(origin: Self::Origin, pool_id: PoolId, class_id: Self::ClassId)
-		-> DispatchResult;
+	fn initialise(
+		origin: Self::RuntimeOrigin,
+		pool_id: PoolId,
+		class_id: Self::ClassId,
+	) -> DispatchResult;
 }
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.

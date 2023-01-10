@@ -11,7 +11,7 @@ use sp_runtime::{
 	FixedI64,
 };
 
-use super::mechanism::{base, deferred};
+use super::mechanism::{self};
 use crate as pallet_rewards;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -30,8 +30,11 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Tokens: orml_tokens,
+		DeferredRewardMechanism: mechanism::deferred,
+		GapRewardMechanism: mechanism::gap,
 		Rewards1: pallet_rewards::<Instance1>,
 		Rewards2: pallet_rewards::<Instance2>,
+		Rewards3: pallet_rewards::<Instance3>,
 	}
 );
 
@@ -43,9 +46,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -55,8 +56,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ConstU16<42>;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -97,16 +100,14 @@ orml_traits::parameter_type_with_key! {
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = u64;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = ();
 	type MaxReserves = ();
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -114,8 +115,24 @@ frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"m/reward");
 	pub const RewardCurrency: CurrencyId = CurrencyId::Reward;
 
-	#[derive(scale_info::TypeInfo)]
+	#[derive(scale_info::TypeInfo, Default, RuntimeDebug)]
 	pub const MaxCurrencyMovements: u32 = 3;
+}
+
+impl mechanism::gap::Config for Runtime {
+	type Balance = u64;
+	type DistributionId = u32;
+	type IBalance = i64;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI64;
+}
+
+impl mechanism::deferred::Config for Runtime {
+	type Balance = u64;
+	type DistributionId = u32;
+	type IBalance = i64;
+	type MaxCurrencyMovements = MaxCurrencyMovements;
+	type Rate = FixedI64;
 }
 
 macro_rules! pallet_rewards_config {
@@ -124,17 +141,18 @@ macro_rules! pallet_rewards_config {
 			type Currency = Tokens;
 			type CurrencyId = CurrencyId;
 			type DomainId = DomainId;
-			type Event = Event;
 			type GroupId = u32;
 			type PalletId = RewardsPalletId;
 			type RewardCurrency = RewardCurrency;
 			type RewardMechanism = $mechanism;
+			type RuntimeEvent = RuntimeEvent;
 		}
 	};
 }
 
-pallet_rewards_config!(Instance1, base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
-pallet_rewards_config!(Instance2, deferred::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance1, mechanism::base::Mechanism<u64, i128, FixedI64, MaxCurrencyMovements>);
+pallet_rewards_config!(Instance2, mechanism::deferred::Pallet<Runtime>);
+pallet_rewards_config!(Instance3, mechanism::gap::Pallet<Runtime>);
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default()

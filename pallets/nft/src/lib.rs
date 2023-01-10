@@ -95,7 +95,7 @@ pub mod pallet {
 		+ chainbridge::Config
 	{
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Chain identifier type
 		type ChainId: Parameter + Member + Debug + Default + FullCodec + Into<u8> + From<u8>;

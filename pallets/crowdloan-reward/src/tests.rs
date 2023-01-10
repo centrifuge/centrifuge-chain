@@ -35,7 +35,7 @@ fn initalize_module() {
 		.build(|| System::set_block_number(4))
 		.execute_with(|| {
 			assert!(CrowdloanReward::initialize(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Perbill::from_percent(12),
 				4,
 				4,
@@ -57,21 +57,21 @@ fn not_admin_for_setters() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3)
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
 				.unwrap();
 		})
 		.execute_with(|| {
 			assert_noop!(
-				CrowdloanReward::set_vesting_start(Origin::signed(2), 1),
+				CrowdloanReward::set_vesting_start(RuntimeOrigin::signed(2), 1),
 				CrowdloanRewardError::<Runtime>::MustBeAdministrator
 			);
 			assert_noop!(
-				CrowdloanReward::set_vesting_period(Origin::signed(2), 3),
+				CrowdloanReward::set_vesting_period(RuntimeOrigin::signed(2), 3),
 				CrowdloanRewardError::<Runtime>::MustBeAdministrator
 			);
 			assert_noop!(
 				CrowdloanReward::set_direct_payout_ratio(
-					Origin::signed(2),
+					RuntimeOrigin::signed(2),
 					Perbill::from_percent(10)
 				),
 				CrowdloanRewardError::<Runtime>::MustBeAdministrator
@@ -85,21 +85,21 @@ fn setters_ok() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3)
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
 				.unwrap();
 		})
 		.execute_with(|| {
-			assert!(CrowdloanReward::set_vesting_start(Origin::signed(1), 1).is_ok());
-			assert!(CrowdloanReward::set_vesting_period(Origin::signed(1), 55555).is_ok());
+			assert!(CrowdloanReward::set_vesting_start(RuntimeOrigin::signed(1), 1).is_ok());
+			assert!(CrowdloanReward::set_vesting_period(RuntimeOrigin::signed(1), 55555).is_ok());
 			assert!(CrowdloanReward::set_direct_payout_ratio(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				Perbill::from_percent(9)
 			)
 			.is_ok());
-			assert!(CrowdloanReward::set_vesting_start(Origin::root(), 1).is_ok());
-			assert!(CrowdloanReward::set_vesting_period(Origin::root(), 55555).is_ok());
+			assert!(CrowdloanReward::set_vesting_start(RuntimeOrigin::root(), 1).is_ok());
+			assert!(CrowdloanReward::set_vesting_period(RuntimeOrigin::root(), 55555).is_ok());
 			assert!(CrowdloanReward::set_direct_payout_ratio(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				Perbill::from_percent(9)
 			)
 			.is_ok());
@@ -112,7 +112,8 @@ fn reward_participant() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
@@ -146,7 +147,8 @@ fn zero_direct_payout_reward() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(0), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(0), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
@@ -180,7 +182,8 @@ fn account_already_vesting() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			assert_noop!(
@@ -196,7 +199,8 @@ fn reward_amount_to_low_for_vesting() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
+			CrowdloanReward::initialize(RuntimeOrigin::signed(1), Perbill::from_percent(20), 4, 3)
+				.unwrap()
 		})
 		.execute_with(|| {
 			assert_noop!(

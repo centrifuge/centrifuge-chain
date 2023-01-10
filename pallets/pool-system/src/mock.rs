@@ -79,10 +79,10 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
-	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
 	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
+	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
 	type Storage =
 		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
@@ -108,9 +108,7 @@ impl system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -120,8 +118,10 @@ impl system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -150,11 +150,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -166,16 +166,14 @@ parameter_types! {
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -199,7 +197,6 @@ parameter_types! {
 impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type Event = Event;
 	type Fungibles = OrmlTokens;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
@@ -216,6 +213,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesMutateHold = cfg_traits::Always;
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -258,10 +256,10 @@ impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
 	type BalanceRatio = Rate;
-	type Event = Event;
 	type InvestmentId = TrancheCurrency;
 	type MaxOutstandingCollects = MaxOutstandingCollects;
 	type PreConditions = Always;
+	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
 	type WeightInfo = ();
 }
@@ -318,7 +316,6 @@ impl Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
-	type Event = Event;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxSizeMetadata = MaxSizeMetadata;
@@ -338,6 +335,7 @@ impl Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
@@ -477,7 +475,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::set_block_number(1);
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
-		Timestamp::set(Origin::none(), START_DATE).unwrap();
+		Timestamp::set(RuntimeOrigin::none(), START_DATE).unwrap();
 
 		for account in 0..10u64 {
 			<<Runtime as Config>::Permission as PermissionsT<u64>>::add(
@@ -508,7 +506,7 @@ pub fn next_block_after(seconds: u64) {
 	System::set_block_number(System::block_number() + 1);
 	System::on_initialize(System::block_number());
 	Timestamp::on_initialize(System::block_number());
-	Timestamp::set(Origin::none(), Timestamp::now() + seconds * SECONDS).unwrap();
+	Timestamp::set(RuntimeOrigin::none(), Timestamp::now() + seconds * SECONDS).unwrap();
 }
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
@@ -548,19 +546,19 @@ pub fn invest_close_and_collect(
 ) {
 	for (account, tranche_id, investment) in investments.clone() {
 		assert_ok!(Investments::update_invest_order(
-			Origin::signed(account),
+			RuntimeOrigin::signed(account),
 			TrancheCurrency::generate(pool_id, tranche_id),
 			investment
 		));
 	}
 	assert_ok!(PoolSystem::close_epoch(
-		Origin::signed(DEFAULT_POOL_OWNER).clone(),
+		RuntimeOrigin::signed(DEFAULT_POOL_OWNER).clone(),
 		pool_id
 	));
 
 	for (account, tranche_id, _) in investments {
 		assert_ok!(Investments::collect_investments(
-			Origin::signed(account),
+			RuntimeOrigin::signed(account),
 			TrancheCurrency::generate(pool_id, tranche_id),
 		));
 	}

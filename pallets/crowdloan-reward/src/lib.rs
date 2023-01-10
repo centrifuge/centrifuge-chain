@@ -177,11 +177,11 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Admin or the module. I.e. this is necessary in cases, where the vesting parameters need
 		/// to be changed without an additional initialization.
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: WeightInfo;
@@ -370,7 +370,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// Check if a transaction was called by an administrator or root entity.
-	fn is_origin_administrator(origin: T::Origin) -> DispatchResultWithPostInfo {
+	fn is_origin_administrator(origin: T::RuntimeOrigin) -> DispatchResultWithPostInfo {
 		T::AdminOrigin::try_origin(origin)
 			.map(|_| ())
 			.or_else(ensure_root)?;

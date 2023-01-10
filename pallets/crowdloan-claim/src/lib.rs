@@ -217,7 +217,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_balances::Config {
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Constant configuration parameter to store the pallet identifier for the pallet.
 		///
@@ -251,7 +251,7 @@ pub mod pallet {
 		>;
 
 		/// Entity which is allowed to perform administrative transactions
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: WeightInfo;
@@ -676,7 +676,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// Check if the origin is an administrator or represents the root.
-	fn ensure_administrator(origin: T::Origin) -> DispatchResult {
+	fn ensure_administrator(origin: T::RuntimeOrigin) -> DispatchResult {
 		T::AdminOrigin::try_origin(origin)
 			.map(|_| ())
 			.or_else(ensure_root)?;

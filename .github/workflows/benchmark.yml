@@ -32,7 +32,7 @@ jobs:
               body: `:clock1: Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\` :clock1:`
             })
             return comment.data.id
-      - name: Free space on Ubuntu
+      - name: Prep build on Ubuntu
         run: |
           echo "Pre cleanup"
           df -h
@@ -40,8 +40,24 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Post cleanup"
           df -h
-      - name: Check out code
+          sudo apt-get install protobuf-compiler
+      - name: Get PR Hash
+        id: get_pr_hash
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const number = context.payload.issue.number;
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: number
+            });
+            return pr.data.head.sha
+      - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.get_pr_hash.outputs.result }}
       - name: Install latest nightly
         uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
@@ -67,7 +83,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `
-              :white_check_mark: Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\` :white_check_mark: 
+              :white_check_mark: Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\` :white_check_mark:
               Find the artifact here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
               `
             })

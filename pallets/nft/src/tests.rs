@@ -39,7 +39,7 @@ fn bad_origin() {
 			let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
 			assert_err!(
 				Nft::validate_mint(
-					Origin::none(),
+					RuntimeOrigin::none(),
 					anchor_id,
 					deposit_address,
 					pfs,
@@ -63,7 +63,7 @@ fn missing_anchor() {
 			let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
 			assert_err!(
 				Nft::validate_mint(
-					Origin::signed(USER_A),
+					RuntimeOrigin::signed(USER_A),
 					anchor_id,
 					deposit_address,
 					pfs,
@@ -92,7 +92,7 @@ fn valid_proof() {
 			let (proof, doc_root, static_proofs) = get_valid_proof();
 
 			assert_ok!(Anchors::commit(
-				Origin::signed(USER_B),
+				RuntimeOrigin::signed(USER_B),
 				pre_image,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -100,12 +100,12 @@ fn valid_proof() {
 			));
 
 			assert_ok!(ChainBridge::whitelist_chain(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				dest_id.clone()
 			));
 
 			assert_ok!(Nft::validate_mint(
-				Origin::signed(USER_A),
+				RuntimeOrigin::signed(USER_A),
 				anchor_id,
 				deposit_address,
 				vec![proof],
@@ -133,7 +133,7 @@ fn invalid_proof() {
 			let (proof, doc_root, static_proofs) = get_invalid_proof();
 
 			assert_ok!(Anchors::commit(
-				Origin::signed(USER_B),
+				RuntimeOrigin::signed(USER_B),
 				pre_image,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -142,7 +142,7 @@ fn invalid_proof() {
 
 			assert_err!(
 				Nft::validate_mint(
-					Origin::signed(USER_A),
+					RuntimeOrigin::signed(USER_A),
 					anchor_id,
 					deposit_address,
 					vec![proof],

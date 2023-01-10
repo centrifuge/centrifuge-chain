@@ -119,9 +119,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -131,8 +129,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -148,11 +148,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -195,11 +195,11 @@ parameter_types! {
 impl chainbridge::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type ChainId = MockChainId;
-	type Event = Event;
 	type PalletId = ChainBridgePalletId;
-	type Proposal = Call;
+	type Proposal = RuntimeCall;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -227,9 +227,9 @@ parameter_types! {
 // Implement NFT pallet's configuration trait for the mock runtime
 impl PalletNftConfig for Runtime {
 	type ChainId = ChainId;
-	type Event = Event;
 	type NftProofValidationFeeKey = ();
 	type ResourceHashId = MockResourceHashId;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = MockWeightInfo;
 }
 

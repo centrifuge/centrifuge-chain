@@ -28,9 +28,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = RocksDbWeight;
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -40,8 +38,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -60,9 +60,9 @@ parameter_types! {
 
 impl Config for Runtime {
 	type Balance = Balance;
-	type Event = Event;
 	type InterestRate = Rate;
 	type MaxRateCount = MaxRateCount;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = ();
 }
@@ -101,7 +101,7 @@ impl TestExternalitiesBuilder {
 			System::set_block_number(1);
 			System::on_initialize(System::block_number());
 			Timestamp::on_initialize(System::block_number());
-			Timestamp::set(Origin::none(), START_DATE * SECONDS).unwrap();
+			Timestamp::set(RuntimeOrigin::none(), START_DATE * SECONDS).unwrap();
 		});
 		externalities
 	}

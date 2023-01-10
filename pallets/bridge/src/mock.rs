@@ -104,9 +104,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -116,8 +114,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -128,11 +128,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -152,9 +152,9 @@ impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	// Not used in the tests.
 	type DefaultFeeValue = DefaultFeeValue;
-	type Event = Event;
 	type FeeChangeOrigin = EnsureNever<Runtime>;
 	type FeeKey = ();
+	type RuntimeEvent = RuntimeEvent;
 	type Treasury = ();
 	type WeightInfo = ();
 }
@@ -171,11 +171,11 @@ parameter_types! {
 impl chainbridge::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
 	type ChainId = MockChainId;
-	type Event = Event;
 	type PalletId = ChainBridgePalletId;
-	type Proposal = Call;
+	type Proposal = RuntimeCall;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -190,10 +190,10 @@ impl BridgePalletConfig for Runtime {
 	type BridgeOrigin = EnsureBridge<Runtime>;
 	type BridgePalletId = BridgePalletId;
 	type Currency = Balances;
-	type Event = Event;
 	type Fees = Fees;
 	type NativeTokenId = NativeTokenId;
 	type NativeTokenTransferFeeKey = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -248,12 +248,12 @@ pub(crate) mod helpers {
 
 	use super::*;
 
-	pub fn expect_event<E: Into<Event>>(event: E) {
+	pub fn expect_event<E: Into<RuntimeEvent>>(event: E) {
 		assert_eq!(last_event(), event.into());
 	}
 
 	// Return last triggered event
-	fn last_event() -> Event {
+	fn last_event() -> RuntimeEvent {
 		frame_system::Pallet::<Runtime>::events()
 			.pop()
 			.map(|item| item.event)
@@ -261,12 +261,12 @@ pub(crate) mod helpers {
 	}
 
 	// Assert that the event was emitted at some point.
-	pub fn event_exists<E: Into<Event>>(e: E) {
-		let actual: Vec<Event> = frame_system::Pallet::<Runtime>::events()
+	pub fn event_exists<E: Into<RuntimeEvent>>(e: E) {
+		let actual: Vec<RuntimeEvent> = frame_system::Pallet::<Runtime>::events()
 			.iter()
 			.map(|e| e.event.clone())
 			.collect();
-		let e: Event = e.into();
+		let e: RuntimeEvent = e.into();
 		let mut exists = false;
 		for evt in actual {
 			if evt == e {
@@ -281,8 +281,8 @@ pub(crate) mod helpers {
 	//
 	// A contiguous set of events must be provided. They must include the most recent
 	// event, but do not have to include every past event.
-	pub fn assert_events(mut expected: Vec<Event>) {
-		let mut actual: Vec<Event> = frame_system::Pallet::<Runtime>::events()
+	pub fn assert_events(mut expected: Vec<RuntimeEvent>) {
+		let mut actual: Vec<RuntimeEvent> = frame_system::Pallet::<Runtime>::events()
 			.iter()
 			.map(|e| e.event.clone())
 			.collect();
@@ -296,16 +296,16 @@ pub(crate) mod helpers {
 	}
 
 	// Build a dummy remark proposal
-	pub fn mock_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
-		Call::Bridge(pallet_bridge::Call::remark {
+	pub fn mock_remark_proposal(hash: H256, r_id: ResourceId) -> RuntimeCall {
+		RuntimeCall::Bridge(pallet_bridge::Call::remark {
 			hash: hash,
 			r_id: r_id,
 		})
 	}
 
 	// Build a dummy transfer proposal.
-	pub fn mock_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
-		Call::Bridge(pallet_bridge::Call::transfer {
+	pub fn mock_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> RuntimeCall {
+		RuntimeCall::Bridge(pallet_bridge::Call::transfer {
 			to: to,
 			amount: amount,
 			r_id: r_id,

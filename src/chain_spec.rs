@@ -51,7 +51,9 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 }
 
 /// The extensions for the [`ChainSpec`].
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
+#[derive(
+	Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension,
+)]
 #[serde(deny_unknown_fields)]
 pub struct Extensions {
 	/// The relay chain of the Parachain.
@@ -1039,7 +1041,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				decimals: 12,
 				name: b"Acala USD".to_vec(),
 				symbol: b"AUSD".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: Some(xcm::VersionedMultiLocation::V1(MultiLocation {
 					parents: 1,
 					interior: X2(
@@ -1065,7 +1067,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 				decimals: 6,
 				name: b"Tether USD".to_vec(),
 				symbol: b"USDT".to_vec(),
-				existential_deposit: 0u128.into(),
+				existential_deposit: 0u128,
 				location: Some(xcm::VersionedMultiLocation::V1(MultiLocation {
 					parents: 1,
 					interior: X3(

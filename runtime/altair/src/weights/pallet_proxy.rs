@@ -31,76 +31,43 @@ use sp_std::marker::PhantomData;
 /// Weights for pallet_proxy using the Substrate node and recommended hardware.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_proxy::WeightInfo for WeightInfo<T> {
-	fn proxy(p: u32) -> Weight {
-		Weight::from_ref_time(40_684_000) // Standard Error: 12_000
-			.saturating_add(Weight::from_ref_time(183_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
+	fn proxy(_p: u32) -> Weight {
+		todo!()
 	}
 
-	fn proxy_announced(a: u32, p: u32) -> Weight {
-		Weight::from_ref_time(84_364_000) // Standard Error: 14_000
-			.saturating_add(Weight::from_ref_time(349_000).saturating_mul(a as u64)) // Standard Error: 14_000
-			.saturating_add(Weight::from_ref_time(123_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn proxy_announced(_a: u32, _p: u32) -> Weight {
+		todo!()
 	}
 
-	fn remove_announcement(a: u32, p: u32) -> Weight {
-		Weight::from_ref_time(57_353_000) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(443_000).saturating_mul(a as u64)) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(57_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn remove_announcement(_a: u32, _p: u32) -> Weight {
+		todo!()
 	}
 
-	fn reject_announcement(a: u32, p: u32) -> Weight {
-		Weight::from_ref_time(57_966_000) // Standard Error: 9_000
-			.saturating_add(Weight::from_ref_time(429_000).saturating_mul(a as u64)) // Standard Error: 9_000
-			.saturating_add(Weight::from_ref_time(46_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn reject_announcement(_a: u32, _p: u32) -> Weight {
+		todo!()
 	}
 
-	fn announce(a: u32, p: u32) -> Weight {
-		Weight::from_ref_time(76_007_000) // Standard Error: 10_000
-			.saturating_add(Weight::from_ref_time(392_000).saturating_mul(a as u64)) // Standard Error: 11_000
-			.saturating_add(Weight::from_ref_time(152_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(3 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+	fn announce(_a: u32, _p: u32) -> Weight {
+		todo!()
 	}
 
-	fn add_proxy(p: u32) -> Weight {
-		Weight::from_ref_time(63_429_000) // Standard Error: 12_000
-			.saturating_add(Weight::from_ref_time(245_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn add_proxy(_p: u32) -> Weight {
+		todo!()
 	}
 
-	fn remove_proxy(p: u32) -> Weight {
-		Weight::from_ref_time(63_905_000) // Standard Error: 13_000
-			.saturating_add(Weight::from_ref_time(260_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn remove_proxy(_p: u32) -> Weight {
+		todo!()
 	}
 
-	fn remove_proxies(p: u32) -> Weight {
-		Weight::from_ref_time(53_529_000) // Standard Error: 9_000
-			.saturating_add(Weight::from_ref_time(198_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn remove_proxies(_p: u32) -> Weight {
+		todo!()
 	}
 
-	fn anonymous(p: u32) -> Weight {
-		Weight::from_ref_time(70_125_000) // Standard Error: 17_000
-			.saturating_add(Weight::from_ref_time(204_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn create_pure(_p: u32) -> Weight {
+		todo!()
 	}
 
-	fn kill_anonymous(p: u32) -> Weight {
-		Weight::from_ref_time(56_171_000) // Standard Error: 8_000
-			.saturating_add(Weight::from_ref_time(155_000).saturating_mul(p as u64))
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+	fn kill_pure(_p: u32) -> Weight {
+		todo!()
 	}
 }

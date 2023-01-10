@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
+use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub};
 use cfg_types::epoch::EpochState;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -23,7 +24,7 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, One, Zero},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, TypeId,
+	FixedPointNumber, FixedPointOperand, TypeId,
 };
 use sp_std::{cmp::PartialEq, vec::Vec};
 
@@ -72,20 +73,14 @@ where
 		// Update the total/available reserve for the new total value of the pool
 		let mut acc_investments = Balance::zero();
 		let mut acc_redemptions = Balance::zero();
-		for (invest, redeem) in executed_amounts.iter() {
-			acc_investments = acc_investments
-				.checked_add(invest)
-				.ok_or(ArithmeticError::Overflow)?;
-			acc_redemptions = acc_redemptions
-				.checked_add(redeem)
-				.ok_or(ArithmeticError::Overflow)?;
+		for &(invest, redeem) in executed_amounts.iter() {
+			acc_investments.ensure_add_assign(invest)?;
+			acc_redemptions.ensure_add_assign(redeem)?;
 		}
 		self.total = self
 			.total
-			.checked_add(&acc_investments)
-			.ok_or(ArithmeticError::Overflow)?
-			.checked_sub(&acc_redemptions)
-			.ok_or(ArithmeticError::Underflow)?;
+			.ensure_add(acc_investments)?
+			.ensure_sub(acc_redemptions)?;
 
 		Ok(())
 	}
@@ -256,7 +251,7 @@ impl<
 	> where
 	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
 	CurrencyId: Copy,
-	EpochId: BaseArithmetic,
+	EpochId: BaseArithmetic + Copy,
 	MetaSize: Get<u32> + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -266,7 +261,7 @@ impl<
 	MaxTranches: Get<u32>,
 {
 	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
-		self.epoch.current += One::one();
+		self.epoch.current.ensure_add_assign(One::one())?;
 		self.epoch.last_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
 		// Set available reserve to 0 to disable originations while the epoch is closed but not executed
