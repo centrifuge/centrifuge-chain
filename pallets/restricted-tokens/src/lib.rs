@@ -30,7 +30,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 pub mod weights;
-
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::*,
