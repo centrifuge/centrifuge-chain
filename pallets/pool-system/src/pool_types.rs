@@ -164,9 +164,7 @@ where
 	pub max_nav_age: Change<Moment>,
 }
 
-// TODO: Check whether macro can be used instead of custom impl.
-// Unfortunately, `Change` is the root as it does not impl MaxEncodedLen.
-// Could open PR on ORML.
+// NOTE: Can be removed once orml_traits::Change impls MaxEncodedLen
 impl<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches> MaxEncodedLen
 	for PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
@@ -185,9 +183,9 @@ where
 				TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 				MaxTranches,
 			>::max_encoded_len())
-			// from 4x `Value` enum
-			.saturating_add(8 * 4)
 			.saturating_add(Moment::max_encoded_len().saturating_mul(2))
+			// MEL for Change<T> is 1 + T::max_encoded_len()
+			.saturating_add(4)
 	}
 }
 

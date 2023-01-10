@@ -30,7 +30,7 @@ pub struct XcmDomain<CurrencyId> {
 	pub fee_currency: CurrencyId,
 }
 
-/// FIXME: Remove this custom implementation once the following underlying data implements MaxEncodedLen:
+// NOTE: Remove this custom implementation once the following underlying data implements MaxEncodedLen:
 /// * Polkadot Repo: xcm::VersionedMultiLocation
 /// * PureStake Repo: pallet_xcm_transactor::Config<Self = T>::CurrencyId
 impl<CurrencyId> MaxEncodedLen for XcmDomain<CurrencyId>
@@ -38,15 +38,15 @@ where
 	XcmDomain<CurrencyId>: Encode,
 {
 	fn max_encoded_len() -> usize {
-		// custom mel bound for `VersionedMultiLocation`
+		// custom MEL bound for `VersionedMultiLocation`
 		xcm::v1::MultiLocation::max_encoded_len()
-			// VersionedMultiLocation is binary enum
+			// VersionedMultiLocation is enum with two variants
 			.saturating_add(2)
 			.saturating_add(BoundedVec::<
 				u8,
 				ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>,
 			>::max_encoded_len())
-			// custom mel bound for CurrencyId
+			// custom MEL bound for CurrencyId
 			.saturating_add(cfg_types::tokens::CurrencyId::max_encoded_len())
 			.saturating_add(H160::max_encoded_len())
 	}
