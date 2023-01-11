@@ -198,7 +198,7 @@ impl frame_system::Config for Runtime {
 	/// The ubiquitous origin type.
 	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = SS58Prefix;
-	type SystemWeightInfo = frame_system::weights::SubstrateWeight<Runtime>;
+	type SystemWeightInfo = weights::frame_system::WeightInfo<Runtime>;
 	/// Get the chain's current version.
 	type Version = Version;
 }
@@ -259,7 +259,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = Moment;
 	type OnTimestampSet = Aura;
-	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_timestamp::WeightInfo<Runtime>;
 }
 
 // money stuff
@@ -303,7 +303,7 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 	/// The overarching event type.
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_balances::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -365,7 +365,7 @@ impl pallet_multisig::Config for Runtime {
 	type MaxSignatories = MaxSignatories;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_multisig::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -508,14 +508,14 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyType = ProxyType;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_proxy::WeightInfo<Runtime>;
 }
 
 impl pallet_utility::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_utility::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_utility::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -535,7 +535,7 @@ impl pallet_scheduler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_scheduler::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -550,7 +550,7 @@ impl pallet_preimage::Config for Runtime {
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_preimage::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -567,7 +567,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Proposal = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -672,7 +672,7 @@ impl pallet_democracy::Config for Runtime {
 	type VoteLockingPeriod = EnactmentPeriod;
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
-	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_democracy::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -697,7 +697,7 @@ impl pallet_identity::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Slashed = Treasury;
 	type SubAccountDeposit = SubAccountDeposit;
-	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_identity::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -712,7 +712,7 @@ impl pallet_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type RuntimeEvent = RuntimeEvent;
 	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
-	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_vesting::WeightInfo<Self>;
 
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
@@ -764,7 +764,7 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -836,7 +836,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1002,7 +1002,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_restricted_tokens::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
 }
 
 parameter_type_with_key! {
@@ -1715,8 +1715,10 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
+			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
+			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1782,8 +1784,10 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
+			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
+			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

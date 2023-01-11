@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use cfg_primitives::PoolEpochId;
-use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
+use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _, UpdateState};
 use cfg_types::tokens::{CurrencyId, CustomMetadata, TrancheCurrency};
 use codec::EncodeLike;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
@@ -170,7 +170,7 @@ benchmarks! {
 	}
 }
 
-fn prepare_asset_registry<T: Config>()
+pub fn prepare_asset_registry<T: Config>()
 where
 	T::AssetRegistry:
 		OrmlMutate<AssetId = CurrencyId, Balance = u128, CustomMetadata = CustomMetadata>,
@@ -194,7 +194,7 @@ where
 	}
 }
 
-fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
+pub fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 	Pool::<T>::mutate(POOL, |pool| {
 		let pool = pool.as_mut().unwrap();
 		pool.parameters.min_epoch_time = 0;
@@ -202,47 +202,18 @@ fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 	});
 }
 
-// fn assert_input_tranches_match<T: Config>(
-// 	chain: &[TrancheOf<T>],
-// 	target: &[TrancheInput<T::InterestRate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
-// ) {
-// 	assert_eq!(chain.len(), target.len());
-// 	for (chain, target) in chain.iter().zip(target.iter()) {
-// 		assert_eq!(chain.tranche_type, target.tranche_type);
-// 	}
-// }
-
-// fn assert_update_tranches_match<T: Config>(
-// 	chain: &[TrancheOf<T>],
-// 	target: &[TrancheUpdate<T::InterestRate>],
-// ) {
-// 	assert_eq!(chain.len(), target.len());
-// 	for (chain, target) in chain.iter().zip(target.iter()) {
-// 		assert_eq!(chain.tranche_type, target.tranche_type);
-// 	}
-// }
-
-fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
+pub fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
 }
 
-// fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<
-// 	T::InterestRate,
-// 	T::MaxTokenNameLength,
-// 	T::MaxTokenSymbolLength,
-// 	T::MaxTranches,
-// > {
-// 	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
-// }
-
-fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
+pub fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
 	get_pool::<T>()
 		.tranches
 		.tranche_id(TrancheLoc::Index(index))
 		.unwrap()
 }
 
-fn create_investor<
+pub fn create_investor<
 	T: Config<PoolId = u64, TrancheId = [u8; 16], Balance = u128, CurrencyId = CurrencyId>,
 >(
 	id: u32,
@@ -269,7 +240,7 @@ where
 	Ok(investor)
 }
 
-fn create_admin<T: Config<CurrencyId = CurrencyId, Balance = u128>>(id: u32) -> T::AccountId
+pub fn create_admin<T: Config<CurrencyId = CurrencyId, Balance = u128>>(id: u32) -> T::AccountId
 where
 	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 		From<<T as frame_system::Config>::AccountId>,
@@ -291,7 +262,7 @@ where
 	)
 }
 
-fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>(
+pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>(
 	num_tranches: u32,
 	caller: T::AccountId,
 ) -> DispatchResult {
@@ -307,67 +278,39 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 	)
 }
 
-// fn build_update_tranche_metadata<T: Config>(
-// ) -> BoundedVec<TrancheMetadata<T::MaxTokenNameLength, T::MaxTokenSymbolLength>, T::MaxTranches> {
-// 	vec![TrancheMetadata {
-// 		token_name: BoundedVec::default(),
-// 		token_symbol: BoundedVec::default(),
-// 	}]
-// 	.try_into()
-// 	.expect("T::MaxTranches > 0")
-// }
+pub fn update_pool<T: Config<PoolId = u64>>(
+	changes: PoolChanges<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>,
+) -> Result<UpdateState, DispatchError> {
+	Pallet::<T>::update(POOL, changes)
+}
 
-// fn build_update_tranches<T: Config>(
-// 	num_tranches: u32,
-// ) -> BoundedVec<TrancheUpdate<T::InterestRate>, T::MaxTranches> {
-// 	let mut tranches = build_bench_update_tranches::<T>(num_tranches);
-//
-// 	for tranche in &mut tranches {
-// 		tranche.tranche_type = match tranche.tranche_type {
-// 			TrancheType::Residual => TrancheType::Residual,
-// 			TrancheType::NonResidual {
-// 				interest_rate_per_sec,
-// 				min_risk_buffer,
-// 			} => {
-// 				let min_risk_buffer = Perquintill::from_parts(min_risk_buffer.deconstruct() * 2);
-// 				TrancheType::NonResidual {
-// 					interest_rate_per_sec,
-// 					min_risk_buffer,
-// 				}
-// 			}
-// 		}
-// 	}
-// 	tranches
-// }
-//
-// fn build_bench_update_tranches<T: Config>(
-// 	num_tranches: u32,
-// ) -> BoundedVec<TrancheUpdate<T::InterestRate>, T::MaxTranches> {
-// 	let senior_interest_rate = T::InterestRate::saturating_from_rational(5, 100)
-// 		/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR);
-// 	let mut tranches: Vec<_> = (1..num_tranches)
-// 		.map(|tranche_id| TrancheUpdate {
-// 			tranche_type: TrancheType::NonResidual {
-// 				interest_rate_per_sec: senior_interest_rate
-// 					/ T::InterestRate::saturating_from_integer(tranche_id)
-// 					+ One::one(),
-// 				min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
-// 			},
-// 			seniority: None,
-// 		})
-// 		.collect();
-// 	tranches.insert(
-// 		0,
-// 		TrancheUpdate {
-// 			tranche_type: TrancheType::Residual,
-// 			seniority: None,
-// 		},
-// 	);
-//
-// 	tranches.try_into().expect("num_tranches <= T::MaxTranches")
-// }
+pub fn get_scheduled_update<T: Config<PoolId = u64>>(
+) -> ScheduledUpdateDetails<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength, T::MaxTranches>
+{
+	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
+}
 
-fn build_bench_input_tranches<T: Config>(
+pub fn assert_input_tranches_match<T: Config>(
+	chain: &[TrancheOf<T>],
+	target: &[TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>],
+) {
+	assert_eq!(chain.len(), target.len());
+	for (chain, target) in chain.iter().zip(target.iter()) {
+		assert_eq!(chain.tranche_type, target.tranche_type);
+	}
+}
+
+pub fn assert_update_tranches_match<T: Config>(
+	chain: &[TrancheOf<T>],
+	target: &[TrancheUpdate<T::Rate>],
+) {
+	assert_eq!(chain.len(), target.len());
+	for (chain, target) in chain.iter().zip(target.iter()) {
+		assert_eq!(chain.tranche_type, target.tranche_type);
+	}
+}
+
+pub fn build_bench_input_tranches<T: Config>(
 	num_tranches: u32,
 ) -> Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>> {
 	let senior_interest_rate =
