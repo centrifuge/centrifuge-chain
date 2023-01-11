@@ -15,7 +15,7 @@
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
 use cfg_types::tokens::{CurrencyId, TrancheCurrency};
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::benchmarks;
 use frame_support::traits::fungibles::Inspect;
 use frame_system::RawOrigin;
 use orml_traits::Change;
@@ -273,8 +273,9 @@ fn build_bench_update_tranches<T: Config>(
 	tranches.try_into().expect("num_tranches <= T::MaxTranches")
 }
 
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::mock::TestExternalitiesBuilder::default().build(),
-	crate::mock::Test,
-);
+// TODO: Enable once ModifyPool is not fully mocked
+// impl_benchmark_test_suite!(
+// 	Pallet,
+// 	crate::mock::TestExternalitiesBuilder::default().build(),
+// 	crate::mock::Test,
+// );
