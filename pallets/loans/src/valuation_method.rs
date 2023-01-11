@@ -12,14 +12,14 @@
 // GNU General Public License for more details.
 
 //! Module provides functionality for different loan types
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
 
 use super::*;
 
 /// different types of loans
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ValuationMethod<Rate, Balance> {
 	DiscountedCashFlows(DiscountedCashFlows<Rate, Balance>),
@@ -31,22 +31,22 @@ where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
 {
-	pub(crate) fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self) -> bool {
 		match self {
-			ValuationMethod::DiscountedCashFlows(bl) => bl.is_valid(now),
+			ValuationMethod::DiscountedCashFlows(bl) => bl.is_valid(),
 			ValuationMethod::OutstandingDebt(cl) => cl.is_valid(),
 		}
 	}
 }
 
 /// The data structure for Bullet loan type
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DiscountedCashFlows<Rate, Balance> {
 	probability_of_default: Rate,
 	loss_given_default: Rate,
 	discount_rate: Rate,
+	_t: sp_std::marker::PhantomData<Balance>,
 }
 
 impl<Rate, Balance> DiscountedCashFlows<Rate, Balance>
@@ -63,6 +63,7 @@ where
 			probability_of_default,
 			discount_rate,
 			loss_given_default,
+			_t: Default::default(),
 		}
 	}
 
@@ -75,6 +76,12 @@ where
 		now: Moment,
 		interest_rate_per_sec: Rate,
 	) -> Option<Balance> {
+		let origination_date = match origination_date {
+			//TODO: use let else when supported
+			Some(origination_date) => origination_date,
+			None => return Some(Balance::zero()),
+		};
+
 		if debt.is_zero() {
 			return Some(Balance::zero());
 		}
@@ -87,7 +94,7 @@ where
 
 		// Calculate the expected loss over the term of the loan
 		let tel = Rate::saturating_from_rational(
-			maturity_date - origination_date,
+			maturity_date.checked_sub(origination_date)?,
 			math::seconds_per_year(),
 		)
 		.checked_mul(&self.probability_of_default)
@@ -107,15 +114,8 @@ where
 	}
 
 	/// validates the bullet loan parameters
-	pub fn is_valid(&self, now: Moment) -> bool {
-		vec![
-			// discount should always be >= 1
-			self.discount_rate >= One::one(),
-			// maturity date should always be in future where now is at this instant
-			self.maturity_date > now,
-		]
-		.into_iter()
-		.all(|is_positive| is_positive)
+	pub fn is_valid(&self) -> bool {
+		self.discount_rate >= One::one()
 	}
 }
 
@@ -123,7 +123,9 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OutstandingDebt<Balance> {}
+pub struct OutstandingDebt<Balance> {
+	_t: sp_std::marker::PhantomData<Balance>,
+}
 
 impl<Balance> OutstandingDebt<Balance>
 where
@@ -131,7 +133,9 @@ where
 {
 	#[allow(dead_code)]
 	pub fn new() -> Self {
-		Self {}
+		Self {
+			_t: Default::default(),
+		}
 	}
 
 	/// calculates the present value of the credit line loan

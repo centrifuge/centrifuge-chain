@@ -12,10 +12,14 @@
 // GNU General Public License for more details.
 
 //! Module provides base types and their functions
-use cfg_traits::PoolInspect;
+use cfg_traits::{
+	ops::ensure::{EnsureAddAssign, EnsureFixedPointNumber},
+	PoolInspect,
+};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
+use sp_runtime::ArithmeticError;
 use valuation_method::ValuationMethod;
 
 use super::*;
@@ -82,8 +86,7 @@ pub struct WriteOffGroupInput<Rate> {
 	pub(crate) penalty_interest_rate_per_year: Rate,
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffStatus<Rate> {
 	None,
@@ -100,8 +103,7 @@ pub enum WriteOffStatus<Rate> {
 	},
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffAction<Rate> {
 	WriteOffToCurrentGroup,
@@ -111,24 +113,8 @@ pub enum WriteOffAction<Rate> {
 	},
 }
 
-/// The data structure for storing loan status
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum LoanStatus<BlockNumber> {
-	/// Loan was created by a borrower and the collateral NFT was locked.
-	Created,
-	/// Loan has been priced and optionally has been financed already.
-	/// The number of active loans in a pool is limited as all active loans
-	/// are looped over to calculate the portfolio valuation.
-	Active,
-	/// Loan has been closed and the collateral NFT was transferred back to the borrower.
-	Closed { closed_at: BlockNumber },
-}
-
 /// Information about how the nav was updated
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum NAVUpdateType {
 	/// NAV was fully recomputed to an exact value
@@ -140,12 +126,9 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct LoanDetails<Asset, BlockNumber> {
+pub struct LoanDetails<Asset> {
 	pub(crate) collateral: Asset,
-
-	pub(crate) status: LoanStatus<BlockNumber>,
-
-	pub(crate) schedule: RepaymentSchedule<Moment>,
+	pub(crate) schedule: RepaymentSchedule,
 }
 
 // #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -166,52 +149,74 @@ pub struct LoanDetails<Asset, BlockNumber> {
 // }
 
 // TODO: implement Yearly, Quarterly, Daily
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
 	None,
-	/// Interest payments are expected monthly
+	// Interest payments are expected monthly
 	// Monthly { reference: InterestReferenceDate },
 }
 
 // TODO: implement StraightLine, Annuity
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PayDownSchedule {
 	/// The entire borrowed amount is expected to be paid back at the maturity date
 	None,
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub enum Maturity<Moment> {
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum Maturity {
 	Fixed(Moment),
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-pub struct RepaymentSchedule<Moment> {
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct RepaymentSchedule {
 	/// Expected repayment date for remaining debt
-	maturity: Maturity<Moment>,
+	maturity: Maturity,
 	/// Period at which interest is paid
 	interest_payments: InterestPayments,
 	/// How much of the initially borrowed amount is paid back during interest payments
 	pay_down_schedule: PayDownSchedule,
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+impl RepaymentSchedule {
+	pub fn maturity_date(&self) -> Moment {
+		match self.maturity {
+			Maturity::Fixed(moment) => moment,
+		}
+	}
+
+	pub fn update_maturity_date(&mut self, date: Moment) {
+		match &mut self.maturity {
+			Maturity::Fixed(moment) => *moment = date,
+		}
+	}
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum BorrowRestrictions {
 	None,
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RepayRestrictions {
 	None,
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PriceRestrictions {
 	None,
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum MaxBorrowAmount<Rate> {
 	/// Collateral value - advance rate * total borrowed
 	UpToTotalBorrowed { advance_rate: Rate },
@@ -219,7 +224,8 @@ pub enum MaxBorrowAmount<Rate> {
 	UpToOutstandingDebt { advance_rate: Rate },
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct LoanRestrictions<Rate> {
 	/// How much can be borrowed
 	max_borrow_amount: MaxBorrowAmount<Rate>,
@@ -232,7 +238,7 @@ pub struct LoanRestrictions<Rate> {
 }
 
 // Matches LoanPricing except interest rate input should be per year while stored per second
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct LoanPricingInput<Rate, Balance> {
 	pub(crate) collateral_value: Balance,
 	pub(crate) interest_rate_per_year: Rate,
@@ -240,7 +246,8 @@ pub struct LoanPricingInput<Rate, Balance> {
 	pub(crate) restrictions: LoanRestrictions<Rate>,
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct LoanPricing<Rate, Balance> {
 	pub(crate) collateral_value: Balance,
 	pub(crate) interest_rate_per_sec: Rate,
@@ -253,11 +260,7 @@ where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
 {
-	fn from_input(
-		&self,
-		input: LoanPricingInput<Rate, Balance>,
-		interest_rate_per_sec: Rate,
-	) -> Self {
+	pub fn from_input(input: LoanPricingInput<Rate, Balance>, interest_rate_per_sec: Rate) -> Self {
 		Self {
 			interest_rate_per_sec,
 			collateral_value: input.collateral_value,
@@ -265,21 +268,13 @@ where
 			restrictions: input.restrictions,
 		}
 	}
-
-	fn is_valid(&self, now: Moment) -> bool {
-		match self.valuation_method {
-			ValuationMethod::DiscountedCashFlows(bl) => bl.is_valid(now),
-			ValuationMethod::OutstandingDebt(cl) => cl.is_valid(),
-		}
-	}
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
+pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt, Asset> {
 	pub(crate) loan_id: LoanId,
-	// Why not:
-	// pub(crate) loan: LoanDetails
+	pub(crate) loan: LoanDetails<Asset>,
 	pub(crate) pricing: LoanPricing<Rate, Balance>,
 
 	// time at which first borrow occurred
@@ -299,7 +294,8 @@ pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) last_updated: Moment,
 }
 
-impl<LoanId, Rate, Balance, NormalizedDebt> PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt>
+impl<LoanId, Rate, Balance, NormalizedDebt, Asset>
+	PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt, Asset>
 where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
@@ -325,33 +321,33 @@ where
 			}
 		};
 
-		match self.valuation_method {
+		match self.pricing.valuation_method {
 			ValuationMethod::DiscountedCashFlows(bl) => bl.present_value(
 				debt,
-				self.schedule.maturity_date,
+				self.loan.schedule.maturity_date(),
 				self.origination_date,
 				now,
-				self.interest_rate_per_sec,
+				self.pricing.interest_rate_per_sec,
 			),
 			ValuationMethod::OutstandingDebt(cl) => cl.present_value(debt),
 		}
 	}
 
-	pub fn max_borrow_amount(&self, debt: Balance) -> Balance {
-		match self.restrictions.max_borrow_amount {
+	pub fn max_borrow_amount(&self, debt: Balance) -> Result<Balance, ArithmeticError> {
+		Ok(match self.pricing.restrictions.max_borrow_amount {
 			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
-				.checked_mul_int(self.collateral_value)?
+				.ensure_mul_int(self.pricing.collateral_value)?
 				.checked_sub(&self.total_borrowed),
-			ValuationMethod::UpToOutstandingDebt { advance_rate } => advance_rate
-				.checked_mul_int(self.collateral_value)?
+			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
+				.ensure_mul_int(self.pricing.collateral_value)?
 				.checked_sub(&debt),
 		}
 		// always fallback to zero max_borrow_amount
-		.unwrap_or_else(Zero::zero)
+		.unwrap_or_else(Zero::zero))
 	}
 }
 
-/// Types to ease function signatures
+// Types to ease function signatures
 pub(crate) type ClassIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 pub(crate) type InstanceIdOf<T> =
@@ -376,9 +372,10 @@ pub(crate) type PricedLoanDetailsOf<T> = PricedLoanDetails<
 	<T as Config>::Rate,
 	<T as Config>::Balance,
 	NormalizedDebtOf<T>,
+	AssetOf<T>,
 >;
 
-pub(crate) type LoanDetailsOf<T> = LoanDetails<AssetOf<T>, BlockNumberOf<T>>;
+pub(crate) type LoanDetailsOf<T> = LoanDetails<AssetOf<T>>;
 
 pub(crate) type ActiveCount = u32;
 pub(crate) type WriteOffDetails<Rate> = (Option<u32>, Rate, Rate);

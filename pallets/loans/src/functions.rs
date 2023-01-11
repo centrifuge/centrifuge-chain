@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 
 //! Module provides loan related functions
+use cfg_traits::ops::ensure::EnsureAdd;
 use cfg_types::adjustments::Adjustment;
 use pallet_pool_system::pool_types::PoolLocator;
 use sp_runtime::{traits::BadOrigin, ArithmeticError};
@@ -91,15 +92,15 @@ impl<T: Config> Pallet<T> {
 		write_off_groups: &[WriteOffGroup<T::Rate>],
 	) -> T::Rate {
 		match loan.write_off_status {
-			WriteOffStatus::None => loan.interest_rate_per_sec,
+			WriteOffStatus::None => loan.pricing.interest_rate_per_sec,
 			WriteOffStatus::WrittenOff { write_off_index } => {
-				loan.interest_rate_per_sec
+				loan.pricing.interest_rate_per_sec
 					+ write_off_groups[write_off_index as usize].penalty_interest_rate_per_sec
 			}
 			WriteOffStatus::WrittenOffByAdmin {
 				penalty_interest_rate_per_sec,
 				..
-			} => loan.interest_rate_per_sec + penalty_interest_rate_per_sec,
+			} => loan.pricing.interest_rate_per_sec + penalty_interest_rate_per_sec,
 		}
 	}
 
@@ -108,7 +109,7 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		collateral_owner: T::AccountId,
 		collateral: AssetOf<T>,
-		schedule: RepaymentSchedule<Moment>,
+		schedule: RepaymentSchedule,
 	) -> Result<T::LoanId, sp_runtime::DispatchError> {
 		// check if the nft belongs to owner
 		let (collateral_class_id, instance_id) = collateral.destruct();
@@ -144,31 +145,35 @@ impl<T: Config> Pallet<T> {
 		NextLoanId::<T>::mutate(pool_id, |loan_id| *loan_id = next_loan_id);
 
 		// create loan
-		Loan::<T>::insert(
+		UnpricedLoans::<T>::insert(
 			pool_id,
 			loan_id,
 			LoanDetails {
 				collateral,
 				schedule,
-				status: LoanStatus::Created,
 			},
 		);
 		Ok(loan_id)
 	}
 
-	pub(crate) fn price_created_loan(
+	pub(crate) fn price_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		pricing: LoanPricingInput<T::Rate, T::Balance>,
-	) -> Result<u32, DispatchError> {
+	) -> Result<(), DispatchError> {
 		let now = Self::now();
-		ensure!(pricing.is_valid(now), Error::<T>::LoanValueInvalid);
+
+		ensure!(
+			pricing.valuation_method.is_valid(),
+			Error::<T>::LoanValueInvalid
+		);
 
 		let interest_rate_per_sec =
 			T::InterestAccrual::reference_yearly_rate(pricing.interest_rate_per_year)?;
 
 		let active_loan = PricedLoanDetails {
 			loan_id,
+			loan: UnpricedLoans::<T>::get(pool_id, loan_id).ok_or(Error::<T>::MissingLoan)?,
 			pricing: LoanPricing::from_input(pricing, interest_rate_per_sec),
 			origination_date: None,
 			normalized_debt: Zero::zero(),
@@ -178,25 +183,27 @@ impl<T: Config> Pallet<T> {
 			last_updated: now,
 		};
 
-		let mut active_loans = ActiveLoans::<T>::get(pool_id);
-		active_loans
-			.try_push(active_loan)
-			.map_err(|_| Error::<T>::TooManyActiveLoans)?;
-		let count = active_loans.len();
-		ActiveLoans::<T>::insert(pool_id, active_loans);
+		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+			active_loans
+				.try_push(active_loan)
+				.map_err(|_| Error::<T>::TooManyActiveLoans)
+		})?;
 
-		Ok(count
-			.try_into()
-			.expect("len is 32-bit in WASM, this cannot panic"))
+		UnpricedLoans::<T>::remove(pool_id, loan_id);
+
+		Ok(())
 	}
 
-	pub(crate) fn price_active_loan(
+	pub(crate) fn reprice_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		pricing: LoanPricingInput<T::Rate, T::Balance>,
-	) -> Result<u32, DispatchError> {
+	) -> Result<ActiveCount, DispatchError> {
 		let now = Self::now();
-		ensure!(pricing.is_valid(now), Error::<T>::LoanValueInvalid);
+		ensure!(
+			pricing.valuation_method.is_valid(),
+			Error::<T>::LoanValueInvalid
+		);
 
 		let interest_rate_per_sec =
 			T::InterestAccrual::reference_yearly_rate(pricing.interest_rate_per_year)?;
@@ -205,7 +212,7 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			|active_loan| -> Result<(), DispatchError> {
 				let old_debt = T::InterestAccrual::previous_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 					active_loan.last_updated,
 				)?;
@@ -218,19 +225,19 @@ impl<T: Config> Pallet<T> {
 
 				// calculate new normalized debt without amount
 				let normalized_debt = T::InterestAccrual::renormalize_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					interest_rate_per_sec,
 					active_loan.normalized_debt,
 				)?;
 
-				T::InterestAccrual::unreference_rate(active_loan.interest_rate_per_sec)?;
+				T::InterestAccrual::unreference_rate(active_loan.pricing.interest_rate_per_sec)?;
 
 				active_loan.pricing = LoanPricing::from_input(pricing, interest_rate_per_sec);
 				active_loan.normalized_debt = normalized_debt;
 				active_loan.last_updated = now;
 
 				let new_debt = T::InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 				)?;
 
@@ -241,32 +248,39 @@ impl<T: Config> Pallet<T> {
 
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)
 			},
-		)?;
-
-		Ok(ActiveLoans::<T>::get(pool_id).len().try_into().unwrap())
+		)
+		.map(|(count, _)| count)
 	}
 
 	pub(crate) fn extend_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		added_time: Moment,
-	) -> Result<u32, DispatchError> {
+	) -> Result<ActiveCount, DispatchError> {
 		Self::try_mutate_active_loan(
 			pool_id,
 			loan_id,
 			|active_loan| -> Result<(), DispatchError> {
 				let new_maturity_date = active_loan
-					.pricing
+					.loan
 					.schedule
-					.maturity_date
-					.checked_add(added_time)?;
-				active_loan.pricing.schedule.maturity_date = new_maturity_date;
+					.maturity_date()
+					.ensure_add(added_time)?;
+
+				let now = Self::now();
+
+				ensure!(new_maturity_date > now, Error::<T>::LoanMaturityDatePassed);
+
+				active_loan
+					.loan
+					.schedule
+					.update_maturity_date(new_maturity_date);
 
 				// TODO: should update PV of loan
+				todo!()
 			},
-		)?;
-
-		Ok(ActiveLoans::<T>::get(pool_id).len().try_into().unwrap())
+		)
+		.map(|(count, _)| count)
 	}
 
 	// try to close a given loan.
@@ -278,22 +292,6 @@ impl<T: Config> Pallet<T> {
 	) -> Result<(ActiveCount, ClosedLoan<T>), DispatchError> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
-
-		let collateral = Loan::<T>::try_mutate(
-			pool_id,
-			loan_id,
-			|loan| -> Result<AssetOf<T>, DispatchError> {
-				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
-
-				// ensure loan is active
-				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
-
-				// update loan status
-				let closed_at = T::BlockNumberProvider::current_block_number();
-				loan.status = LoanStatus::Closed { closed_at };
-				Ok(loan.collateral)
-			},
-		)?;
 
 		ActiveLoans::<T>::try_mutate(
 			pool_id,
@@ -337,7 +335,7 @@ impl<T: Config> Pallet<T> {
 					Self::rate_with_penalty(active_loan, &write_off_groups);
 
 				// transfer collateral nft to owner
-				let (collateral_class_id, instance_id) = collateral.destruct();
+				let (collateral_class_id, instance_id) = active_loan.loan.collateral.destruct();
 				T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &owner)?;
 
 				// burn loan nft
@@ -352,7 +350,7 @@ impl<T: Config> Pallet<T> {
 				Ok((
 					active_count.try_into().unwrap(),
 					ClosedLoan {
-						collateral,
+						collateral: Asset(collateral_class_id, instance_id),
 						written_off,
 					},
 				))
@@ -370,8 +368,6 @@ impl<T: Config> Pallet<T> {
 	) -> Result<(ActiveCount, bool), DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
-		let loan = Loan::<T>::get(pool_id, loan_id).ok_or(Error::<T>::MissingLoan)?;
-		ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
 		Self::try_mutate_active_loan(
 			pool_id,
@@ -384,29 +380,28 @@ impl<T: Config> Pallet<T> {
 				);
 
 				// ensure maturity date has not passed if the loan has a maturity date
-				let now: Moment = Self::now();
-				let valid = match active_loan.valuation_method.maturity_date() {
-					Some(md) => md > now,
-					None => true,
-				};
-				ensure!(valid, Error::<T>::LoanMaturityDatePassed);
+				let now = Self::now();
+				ensure!(
+					active_loan.loan.schedule.maturity_date() > now,
+					Error::<T>::LoanMaturityDatePassed
+				);
 
 				// ensure borrow amount is positive
 				ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
 				// check for max borrow amount
 				let old_debt = T::InterestAccrual::previous_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 					active_loan.last_updated,
 				)?;
 
 				let current_debt = T::InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 				)?;
 
-				let max_borrow_amount = active_loan.max_borrow_amount(current_debt);
+				let max_borrow_amount = active_loan.max_borrow_amount(current_debt)?;
 				ensure!(
 					amount <= max_borrow_amount,
 					Error::<T>::MaxBorrowAmountExceeded
@@ -426,7 +421,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate new normalized debt with adjustment amount
 				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 					Adjustment::Increase(amount),
 				)?;
@@ -443,7 +438,7 @@ impl<T: Config> Pallet<T> {
 				active_loan.last_updated = now;
 
 				let new_debt = T::InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 				)?;
 
@@ -476,7 +471,7 @@ impl<T: Config> Pallet<T> {
 				false => Ok(old_pv
 					.checked_sub(&new_pv)
 					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
-					.unwrap_or_else(Zero::zero)),
+					.unwrap_or_else(Zero::zero)), // Error instead?
 			}?;
 			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
@@ -497,8 +492,6 @@ impl<T: Config> Pallet<T> {
 	) -> Result<(ActiveCount, T::Balance), DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
-		let loan = Loan::<T>::get(pool_id, loan_id).ok_or(Error::<T>::MissingLoan)?;
-		ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
 		Self::try_mutate_active_loan(
 			pool_id,
@@ -535,7 +528,7 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				let current_debt = T::InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 				)?;
 
@@ -549,7 +542,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate new normalized debt with repaid amount
 				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.pricing.interest_rate_per_sec,
 					active_loan.normalized_debt,
 					Adjustment::Decrease(repay_amount),
 				)?;
@@ -671,9 +664,6 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		action: WriteOffAction<T::Rate>,
 	) -> Result<(ActiveCount, WriteOffDetailsOf<T>), DispatchError> {
-		let loan = Loan::<T>::get(pool_id, loan_id).ok_or(Error::<T>::MissingLoan)?;
-		ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
-
 		Self::try_mutate_active_loan(
 			pool_id,
 			loan_id,
@@ -694,10 +684,7 @@ impl<T: Config> Pallet<T> {
 						);
 						ensure!(!is_written_off_by_admin, Error::<T>::WrittenOffByAdmin);
 
-						let maturity_date = active_loan
-							.valuation_method
-							.maturity_date()
-							.ok_or(Error::<T>::ValuationMethodInvalid)?;
+						let maturity_date = active_loan.loan.schedule.maturity_date();
 
 						// ensure loan's maturity date has passed
 						let now = Self::now();
@@ -760,6 +747,7 @@ impl<T: Config> Pallet<T> {
 
 				// Migrate written-off loan to new interest rate
 				let interest_rate_with_penalty = active_loan
+					.pricing
 					.interest_rate_per_sec
 					.checked_add(&write_off_penalty_rate)
 					.ok_or(ArithmeticError::Overflow)?;

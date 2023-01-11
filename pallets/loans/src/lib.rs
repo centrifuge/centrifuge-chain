@@ -186,12 +186,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_id)]
 	pub(crate) type NextLoanId<T: Config> =
-		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery, OnNextLoanIdEmpty>;
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery, OnNextLoanIdEmpty>; // Could it be ValueStorage?
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan)]
-	pub type Loan<T: Config> = StorageDoubleMap<
+	pub type UnpricedLoans<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
@@ -248,7 +248,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			collateral: AssetOf<T>,
-			schedule: RepaymentSchedule<Moment>,
+			schedule: RepaymentSchedule,
 		},
 		/// A loan was closed.
 		Closed {
@@ -261,6 +261,18 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			pricing: LoanPricingInput<T::Rate, T::Balance>,
+		},
+		/// A loan was priced.
+		Repriced {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			pricing: LoanPricingInput<T::Rate, T::Balance>,
+		},
+		/// A loan was priced.
+		Extended {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			added_time: Moment,
 		},
 		/// An amount was borrowed for a loan.
 		Borrowed {
@@ -408,16 +420,17 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			collateral: AssetOf<T>,
-			schedule: RepaymentSchedule<Moment>,
+			schedule: RepaymentSchedule,
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
 			let owner = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, owner.clone(), PoolRole::Borrower)?;
-			let loan_id = Self::create_loan(pool_id, owner, collateral, schedule)?;
+			let loan_id = Self::create_loan(pool_id, owner, collateral, schedule.clone())?;
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
 				loan_id,
 				collateral,
+				schedule,
 			});
 			Ok(())
 		}
@@ -539,25 +552,12 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			pricing: LoanPricingInput<T::Rate, T::Balance>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 
-			let active_count =
-				Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
-					let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+			Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
 
-					match loan.status {
-						LoanStatus::Created => {
-							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
-
-							let res = Self::price_created_loan(pool_id, loan_id, pricing);
-
-							loan.status = LoanStatus::Active;
-							res
-						}
-						.. => Err(Error::<T>::LoanIsAlreadyPriced)?,
-					}
-				})?;
+			Self::price_loan(pool_id, loan_id, pricing.clone())?;
 
 			Self::deposit_event(Event::<T>::Priced {
 				pool_id,
@@ -565,7 +565,29 @@ pub mod pallet {
 				pricing,
 			});
 
-			Ok(Some(T::WeightInfo::price(active_count)).into())
+			Ok(()) //TODO: fix benchmark to not have a parameter
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
+		pub fn reprice(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			pricing: LoanPricingInput<T::Rate, T::Balance>,
+		) -> DispatchResultWithPostInfo {
+			let owner = ensure_signed(origin)?;
+
+			Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
+
+			let active_count = Self::reprice_loan(pool_id, loan_id, pricing.clone())?;
+
+			Self::deposit_event(Event::<T>::Repriced {
+				pool_id,
+				loan_id,
+				pricing,
+			});
+
+			Ok(Some(T::WeightInfo::price(active_count)).into()) // TODO: reprice benchmark
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
@@ -578,11 +600,15 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
 
-			let res = Self::extend_loan(pool_id, loan_id, added_time);
+			let active_count = Self::extend_loan(pool_id, loan_id, added_time)?;
 
-			Self::deposit_event(Event::<T>::Extended { pool_id, loan_id });
+			Self::deposit_event(Event::<T>::Extended {
+				pool_id,
+				loan_id,
+				added_time,
+			});
 
-			Ok(Some(T::WeightInfo::price(active_count)).into())
+			Ok(Some(T::WeightInfo::price(active_count)).into()) // TODO: WeightInfo::extend
 		}
 
 		/// Updates the NAV for a given pool
