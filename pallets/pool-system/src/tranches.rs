@@ -574,25 +574,22 @@ where
 					"Invalid next tranche type. This should be catched somewhere else."
 				)
 			);
-			ensure!(
-				if i_at < self.tranches.len() - 1 {
+			if i_at < self.tranches.len() - 1 {
+				ensure!(
 					tranche.tranche_type.valid_next_tranche(
-                &self.tranches
-						        .get(i_at + 1)
-						        .expect(
-							          "at is <= len and is not zero. An element before at must exist. qed.",
-						        )
-						        .tranche_type
-            )
-				} else {
-					// no need to check prev elements if last
-					true
-				},
-				DispatchError::Other(
-					"Invalid next tranche type. This should be catched somewhere else."
+						&self.tranches
+							.get(i_at + 1)
+							.expect(
+								  "at is <= len and is not zero. An element before at must exist. qed.",
+							)
+							.tranche_type
+						), 
+					DispatchError::Other(
+						"Invalid next tranche type. This should be catched somewhere else."
+					)
 				)
-			)
-		};
+			}
+		}
 		Ok(())
 	}
 
