@@ -186,7 +186,7 @@ where
 				TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 				MaxTranches,
 			>::max_encoded_len())
-			// The min epoc time
+			// The min epoc time and max nav age
 			.saturating_add(Moment::max_encoded_len().saturating_mul(2))
 			// From the `Change` enum which wraps all four fields of Self
 			.saturating_add(4)
