@@ -178,13 +178,13 @@ benchmarks! {
 			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
 		};
 
-		update_pool::<T>(changes.clone())?;
-
 		// Invest so we can redeem later
 		let investor = create_investor::<T>(0, TRANCHE)?;
 		let locator = get_tranche_id::<T>(TRANCHE);
 		// Submit redemption order so the update isn't immediately executed
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
+
+		update_pool::<T>(changes.clone())?;
 
 		// Withdraw redeem order so the update can be executed after that
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 0)?;

@@ -65,6 +65,7 @@ use sp_runtime::{
 };
 use sp_std::vec;
 use types::*;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;

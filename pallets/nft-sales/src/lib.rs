@@ -19,6 +19,7 @@ use frame_support::traits::{
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
