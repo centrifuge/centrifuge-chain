@@ -18,6 +18,7 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
 };
 use development_runtime::{apis::PoolsApi, RuntimeOrigin};
+use frame_benchmarking::account;
 use frame_support::{
 	assert_ok,
 	dispatch::RawOrigin,
@@ -44,7 +45,6 @@ async fn test() {
 	ApiEnv::new(Handle::current())
 		.startup(|| {
 			let pool_id = 3;
-			let loan_id = LoanId::from(1_u16);
 
 			let admin = sp_runtime::AccountId32::from(
 				<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
@@ -60,17 +60,30 @@ async fn test() {
 					.into_account(),
 			);
 
+			let admin_account = account::<AccountId>("//Alice", 0, 0);
+			let borrower_account = account::<AccountId>("//Bob", 0, 0);
+
+			<development_runtime::Balances>::set_balance(
+				RuntimeOrigin::root(),
+				sp_runtime::MultiAddress::Id(admin_account),
+				10000 * 10_000_000_000,
+				0,
+			)
+			.unwrap();
+
+			<development_runtime::Balances>::set_balance(
+				RuntimeOrigin::root(),
+				sp_runtime::MultiAddress::Id(borrower_account),
+				10000 * 10_000_000_000,
+				0,
+			)
+			.unwrap();
+
 			<development_runtime::Permissions as Permissions<AccountId>>::add(
 				PermissionScope::Pool(pool_id),
 				borrower.clone(),
 				Role::PoolRole(PoolRole::Borrower),
 			);
-
-			// <development_runtime::Permissions  as Permissions<AccountId>>::add(
-			// 	PermissionScope::Pool(pool_id),
-			// 	admin.clone(),
-			// 	Role::PoolRole(PoolRole::PoolAdmin),
-			// );
 
 			let token_name = BoundedVec::try_from("SuperToken".as_bytes().to_owned())
 				.expect("Can't create BoundedVec");
@@ -123,44 +136,49 @@ async fn test() {
 			)
 			.expect("Pool creation should not fail");
 
+			//
 			// Initalising a pool and creating a loan
-			// 1. We need a NFT class id (through the uniques pallet)
-			// 2. We need to initialise the pool through the loans extrinsic "initalise pool"
-			//    which adds NFT class ids to the pool
-			// 3. Mint NFT
-			// 4. Create Collateral
-			// 5. Create Loan
-			let uniques_class_id: CollectionId = 2_u64.into();
-			// let admin = <development_runtime::Loans>::account_id();
+			//
+			let loan_nft_class_id: CollectionId = 1_u64.into();
 			<development_runtime::Uniques as Create<AccountId>>::create_collection(
-				&uniques_class_id,
+				&loan_nft_class_id,
 				&admin.clone(),
-				&<development_runtime::Loans>::account_id(),
+				&admin.clone(),
 			)
-			.expect("class creation should not fail");
+			.expect("collection creation should not fail");
 
 			<development_runtime::Loans>::initialise_pool(
 				RawOrigin::Signed(admin).into(),
 				pool_id,
-				uniques_class_id,
+				loan_nft_class_id,
 			)
 			.expect("initialisation of pool should not fail");
 
+			let collateral_class: CollectionId = 2_u64.into();
+			<development_runtime::Uniques as Create<AccountId>>::create_collection(
+				&collateral_class,
+				&borrower.clone(),
+				&borrower.clone(),
+			)
+			.expect("class creation should not fail");
+
+			let instance_id = LoanId::from(1_u32);
+
 			<development_runtime::Uniques as NMutate<AccountId>>::mint_into(
-				&uniques_class_id.into(),
-				&loan_id.into(),
+				&collateral_class.into(),
+				&instance_id.into(),
 				&borrower,
 			)
 			.expect("mint should not fail");
 
-			let collateral = Asset(uniques_class_id, loan_id);
+			let collateral = Asset(collateral_class, instance_id);
 
 			<development_runtime::Loans>::create(
 				RuntimeOrigin::signed(borrower),
 				pool_id,
 				collateral,
 			)
-			.expect("Loan creation should not fail");
+			.expect("Creation of loan should not fail");
 		})
 		.with_api(|api, latest| {
 			let valuation = api.portfolio_valuation(&latest, 3).unwrap();
