@@ -296,3 +296,15 @@ pub(crate) fn expect_asset_to_be_burned<T: frame_system::Config + pallet_loans::
 		None
 	);
 }
+
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+pub(crate) fn get_active_loan(
+	pool_id: PoolIdOf<T>,
+	loan_id: T::LoanId,
+) -> Option<PricedLoanDetailsOf<T>> {
+	let active_loans = ActiveLoans::<T>::get(pool_id);
+
+	active_loans
+		.into_iter()
+		.find(|active_loan| active_loan.loan_id == loan_id)
+}

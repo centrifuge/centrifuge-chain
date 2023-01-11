@@ -32,7 +32,6 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
-	pallet_prelude::Get,
 	sp_runtime::traits::{One, Zero},
 	traits::{
 		tokens::nonfungibles::{Inspect, Mutate, Transfer},
@@ -46,7 +45,7 @@ pub use pallet::*;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::vec;
@@ -73,7 +72,7 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
-	use frame_support::{pallet_prelude::*, PalletId};
+	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
@@ -130,10 +129,6 @@ pub mod pallet {
 		/// A way for use to fetch the time of the current block
 		type Time: UnixTime;
 
-		/// PalletID of this loan module
-		#[pallet::constant]
-		type LoansPalletId: Get<PalletId>;
-
 		/// Pool reserve type
 		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
 
@@ -159,9 +154,6 @@ pub mod pallet {
 		/// Max number of write-off groups per pool.
 		#[pallet::constant]
 		type MaxWriteOffGroups: Get<u32>;
-
-		/// Source of the current block number
-		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 	}
 
 	/// Stores the loan nft class ID against a given pool
@@ -217,7 +209,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		PricedLoanDetailsOf<T>,
+		(PricedLoanDetailsOf<T>, BlockNumberOf<T>),
 		OptionQuery,
 	>;
 
@@ -688,7 +680,8 @@ pub mod pallet {
 		///
 		///
 		/// Weight is calculated for one group. Since there is no extra read or writes for groups more than 1,
-		/// We need to ensure we are charging the reads and write only once but the actual compute to be equal to number of groups processed
+		/// We need to ensure we are charging the reads and write only once but the actual compute
+		/// to be equal to number of groups processed
 		#[pallet::weight(<T as Config>::WeightInfo::write_off(T::MaxActiveLoansPerPool::get(), T::MaxWriteOffGroups::get()))]
 		pub fn write_off(
 			origin: OriginFor<T>,

@@ -15,16 +15,14 @@
 use cfg_traits::ops::ensure::EnsureAdd;
 use cfg_types::adjustments::Adjustment;
 use pallet_pool_system::pool_types::PoolLocator;
-use sp_runtime::{traits::BadOrigin, ArithmeticError};
+use sp_runtime::{
+	traits::{BadOrigin, BlockNumberProvider},
+	ArithmeticError,
+};
 
 use super::*;
 
 impl<T: Config> Pallet<T> {
-	/// returns the account_id of the loan pallet
-	pub fn account_id() -> T::AccountId {
-		T::LoansPalletId::get().into_account_truncating()
-	}
-
 	pub fn ensure_role(
 		pool_id: PoolIdOf<T>,
 		sender: T::AccountId,
@@ -49,19 +47,6 @@ impl<T: Config> Pallet<T> {
 		ensure!(actual_owner == expected_owner, Error::<T>::NotAssetOwner);
 
 		Ok(Asset(loan_class_id, loan_id))
-	}
-
-	// TODO: Move this to test-utils
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
-	pub(crate) fn get_active_loan(
-		pool_id: PoolIdOf<T>,
-		loan_id: T::LoanId,
-	) -> Option<PricedLoanDetailsOf<T>> {
-		let active_loans = ActiveLoans::<T>::get(pool_id);
-
-		active_loans
-			.into_iter()
-			.find(|active_loan| active_loan.loan_id == loan_id)
 	}
 
 	pub(crate) fn try_mutate_active_loan<R, F>(
@@ -112,7 +97,7 @@ impl<T: Config> Pallet<T> {
 		schedule: RepaymentSchedule,
 	) -> Result<T::LoanId, sp_runtime::DispatchError> {
 		// check if the nft belongs to owner
-		let (collateral_class_id, instance_id) = collateral.destruct();
+		let Asset(collateral_class_id, instance_id) = collateral;
 		let owner = T::NonFungible::owner(&collateral_class_id.into(), &instance_id.into())
 			.ok_or(Error::<T>::NFTOwnerNotFound)?;
 		ensure!(owner == collateral_owner, Error::<T>::NotAssetOwner);
@@ -335,17 +320,24 @@ impl<T: Config> Pallet<T> {
 					Self::rate_with_penalty(active_loan, &write_off_groups);
 
 				// transfer collateral nft to owner
-				let (collateral_class_id, instance_id) = active_loan.loan.collateral.destruct();
+				let Asset(collateral_class_id, instance_id) = active_loan.loan.collateral;
 				T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &owner)?;
 
 				// burn loan nft
-				let (loan_class_id, loan_id) = loan_nft.destruct();
+				let Asset(loan_class_id, loan_id) = loan_nft;
 				T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
 
 				T::InterestAccrual::unreference_rate(interest_rate_with_penalty)?;
 				let active_count = active_loans.len();
 				let closed_loan = active_loans.remove(active_loan_idx);
-				ClosedLoans::<T>::insert(pool_id, loan_id, closed_loan);
+				ClosedLoans::<T>::insert(
+					pool_id,
+					loan_id,
+					(
+						closed_loan,
+						frame_system::Pallet::<T>::current_block_number(),
+					),
+				);
 
 				Ok((
 					active_count.try_into().unwrap(),
@@ -583,7 +575,7 @@ impl<T: Config> Pallet<T> {
 			active_loan.normalized_debt,
 		)?;
 
-		let now: Moment = Self::now();
+		let now = Self::now();
 		active_loan.last_updated = now;
 
 		let present_value = active_loan

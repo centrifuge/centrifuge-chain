@@ -28,12 +28,6 @@ use super::*;
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
 pub struct Asset<ClassId, InstanceId>(pub ClassId, pub InstanceId);
 
-impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
-	pub fn destruct(self) -> (ClassId, InstanceId) {
-		(self.0, self.1)
-	}
-}
-
 /// ClosedLoan holds the collateral reference of the loan and if loan was written off
 pub(crate) struct ClosedLoan<T: pallet::Config> {
 	pub(crate) collateral: AssetOf<T>,
