@@ -38,16 +38,18 @@ where
 	XcmDomain<CurrencyId>: Encode,
 {
 	fn max_encoded_len() -> usize {
-		// custom MEL bound for `VersionedMultiLocation`
+		// The domain's `VersionedMultiLocation` (custom bound)
 		xcm::v1::MultiLocation::max_encoded_len()
-			// VersionedMultiLocation is enum with two variants
+			// From the two enum variants of `VersionedMultiLocation
 			.saturating_add(2)
+			// The ethereum xcm call index (default bound)
 			.saturating_add(BoundedVec::<
 				u8,
 				ConstU32<{ xcm_primitives::MAX_ETHEREUM_XCM_INPUT_SIZE }>,
 			>::max_encoded_len())
-			// custom MEL bound for CurrencyId
-			.saturating_add(cfg_types::tokens::CurrencyId::max_encoded_len())
+			// The contract address (default bound)
 			.saturating_add(H160::max_encoded_len())
+			// The fee currency (custom bound)
+			.saturating_add(cfg_types::tokens::CurrencyId::max_encoded_len())
 	}
 }

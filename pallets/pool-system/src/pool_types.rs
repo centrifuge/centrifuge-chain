@@ -179,13 +179,16 @@ where
 	Moment: MaxEncodedLen,
 {
 	fn max_encoded_len() -> usize {
+		// The tranches (default bound)
 		BoundedVec::<TrancheUpdate<Rate>, MaxTranches>::max_encoded_len()
+			// The tranche metadata (default bound)
 			.saturating_add(BoundedVec::<
 				TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
 				MaxTranches,
 			>::max_encoded_len())
+			// The min epoc time
 			.saturating_add(Moment::max_encoded_len().saturating_mul(2))
-			// MEL for Change<T> is 1 + T::max_encoded_len()
+			// From the `Change` enum which wraps all four fields of Self
 			.saturating_add(4)
 	}
 }
