@@ -40,8 +40,8 @@ where
 	fn max_encoded_len() -> usize {
 		// The domain's `VersionedMultiLocation` (custom bound)
 		xcm::v1::MultiLocation::max_encoded_len()
-			// From the two enum variants of `VersionedMultiLocation
-			.saturating_add(2)
+			// From the enum wrapping of `VersionedMultiLocation`
+			.saturating_add(1)
 			// The ethereum xcm call index (default bound)
 			.saturating_add(BoundedVec::<
 				u8,
