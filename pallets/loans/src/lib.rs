@@ -16,9 +16,6 @@
 //! This pallet provides functionality for managing loans on Tinlake
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-use std::fmt::Debug;
-
 use cfg_primitives::Moment;
 use cfg_traits::{
 	InterestAccrual as InterestAccrualT, Permissions as PermissionsT, PoolInspect,

@@ -12,20 +12,16 @@
 // GNU General Public License for more details.
 
 //! Module provides base types and their functions
-use cfg_traits::{
-	ops::ensure::{EnsureAddAssign, EnsureFixedPointNumber},
-	PoolInspect,
-};
+use cfg_traits::{ops::ensure::EnsureFixedPointNumber, PoolInspect};
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::Zero;
 use sp_runtime::ArithmeticError;
 use valuation_method::ValuationMethod;
 
 use super::*;
 
 /// Asset that represents a non fungible
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, RuntimeDebug, TypeInfo)]
 pub struct Asset<ClassId, InstanceId>(pub ClassId, pub InstanceId);
 
 /// ClosedLoan holds the collateral reference of the loan and if loan was written off
@@ -264,8 +260,8 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt, Asset> {
 	pub(crate) loan_id: LoanId,
 	pub(crate) loan: LoanDetails<Asset>,
@@ -294,8 +290,8 @@ where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
 {
-	/// returns the present value of the loan
-	pub(crate) fn present_value(
+	/// Computes the present value based of the valuation method.
+	pub fn present_value(
 		&self,
 		debt: Balance,
 		write_off_groups: &[WriteOffGroup<Rate>],
@@ -331,13 +327,11 @@ where
 		Ok(match self.pricing.restrictions.max_borrow_amount {
 			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
 				.ensure_mul_int(self.pricing.collateral_value)?
-				.checked_sub(&self.total_borrowed),
+				.saturating_sub(self.total_borrowed),
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.pricing.collateral_value)?
-				.checked_sub(&debt),
-		}
-		// always fallback to zero max_borrow_amount
-		.unwrap_or_else(Zero::zero))
+				.saturating_sub(debt),
+		})
 	}
 }
 

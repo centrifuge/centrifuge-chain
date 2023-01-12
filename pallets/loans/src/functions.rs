@@ -95,7 +95,7 @@ impl<T: Config> Pallet<T> {
 		collateral_owner: T::AccountId,
 		collateral: AssetOf<T>,
 		schedule: RepaymentSchedule,
-	) -> Result<T::LoanId, sp_runtime::DispatchError> {
+	) -> Result<T::LoanId, DispatchError> {
 		// check if the nft belongs to owner
 		let Asset(collateral_class_id, instance_id) = collateral;
 		let owner = T::NonFungible::owner(&collateral_class_id.into(), &instance_id.into())
@@ -406,10 +406,7 @@ impl<T: Config> Pallet<T> {
 					.present_value(old_debt, &[], active_loan.last_updated)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-				let new_total_borrowed = active_loan
-					.total_borrowed
-					.checked_add(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
+				let new_total_borrowed = active_loan.total_borrowed.ensure_add(amount)?;
 
 				// calculate new normalized debt with adjustment amount
 				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
@@ -489,7 +486,7 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			|active_loan| -> Result<T::Balance, DispatchError> {
-				let now: Moment = Self::now();
+				let now = Self::now();
 
 				// ensure current time is more than origination time
 				// this is mainly to deal with how we calculate debt while trying to repay
@@ -527,10 +524,7 @@ impl<T: Config> Pallet<T> {
 				// ensure amount is not more than current debt
 				let repay_amount = amount.min(current_debt);
 
-				let new_total_repaid = active_loan
-					.total_repaid
-					.checked_add(&repay_amount)
-					.ok_or(ArithmeticError::Overflow)?;
+				let new_total_repaid = active_loan.total_repaid.ensure_add(repay_amount)?;
 
 				// calculate new normalized debt with repaid amount
 				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
@@ -601,10 +595,7 @@ impl<T: Config> Pallet<T> {
 						&write_off_groups,
 					)?;
 
-					sum.checked_add(&present_value)
-						.ok_or(sp_runtime::DispatchError::Arithmetic(
-							ArithmeticError::Overflow,
-						))
+					Ok(sum.ensure_add(present_value)?)
 				},
 			)?;
 
@@ -722,7 +713,7 @@ impl<T: Config> Pallet<T> {
 					active_loan.last_updated,
 				)?;
 
-				let now: Moment = Self::now();
+				let now = Self::now();
 
 				// get old present value accounting for any write offs
 				let old_pv = active_loan
@@ -741,8 +732,7 @@ impl<T: Config> Pallet<T> {
 				let interest_rate_with_penalty = active_loan
 					.pricing
 					.interest_rate_per_sec
-					.checked_add(&write_off_penalty_rate)
-					.ok_or(ArithmeticError::Overflow)?;
+					.ensure_add(write_off_penalty_rate)?;
 				T::InterestAccrual::reference_rate(interest_rate_with_penalty)?;
 				active_loan.normalized_debt = T::InterestAccrual::renormalize_debt(
 					previous_interest_rate,
