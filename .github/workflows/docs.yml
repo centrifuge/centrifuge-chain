@@ -4,6 +4,8 @@ on:
     branches: [main]
 jobs:
   docs:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
