@@ -36,6 +36,7 @@ enum Who {
 use cfg_traits::{Permissions, Properties};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Contains};
 use frame_system::pallet_prelude::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
