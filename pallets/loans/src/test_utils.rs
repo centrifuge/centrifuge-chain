@@ -30,7 +30,11 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
-use pallet_pool_system::tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType};
+use pallet_pool_system::tranches::TrancheLoc;
+use pallet_pool_system::{
+	tranches::{TrancheInput, TrancheMetadata, TrancheType},
+	Pallet as PoolPallet, Pool as PoolStorage,
+};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,

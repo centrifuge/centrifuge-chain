@@ -56,7 +56,7 @@
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use cfg_traits::InterestAccrual;
 use cfg_types::adjustments::Adjustment;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
@@ -90,14 +90,14 @@ pub struct RateDetailsV0<InterestRate, Moment> {
 	pub last_updated: Moment,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct RateDetails<InterestRate> {
 	pub accumulated_rate: InterestRate,
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, TypeInfo, PartialEq)]
+#[derive(Encode, Decode, TypeInfo, PartialEq, MaxEncodedLen)]
 #[repr(u32)]
 pub enum Release {
 	V0,
@@ -120,7 +120,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -146,7 +145,8 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
+			+ FixedPointNumber<Inner = Self::Balance>
+			+ MaxEncodedLen;
 
 		type Time: UnixTime;
 
