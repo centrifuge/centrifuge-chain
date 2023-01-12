@@ -25,7 +25,7 @@ use cfg_types::{
 };
 use codec::HasCompact;
 use frame_support::{
-	dispatch::{DispatchErrorWithPostInfo, DispatchResult, PostDispatchInfo},
+	dispatch::DispatchResult,
 	pallet_prelude::*,
 	traits::{
 		fungibles::{Inspect, Mutate, Transfer},
@@ -63,7 +63,7 @@ use tranches::{
 pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+pub mod benchmarking;
 mod impls;
 
 #[cfg(test)]
@@ -115,7 +115,7 @@ pub type TrancheOf<T> = Tranche<
 >;
 
 /// Type alias to ease function signatures
-type PoolDetailsOf<T> = PoolDetails<
+pub type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::EpochId,
@@ -150,7 +150,7 @@ type ScheduledUpdateDetailsOf<T> = ScheduledUpdateDetails<
 	<T as Config>::MaxTranches,
 >;
 
-type PoolChangesOf<T> = PoolChanges<
+pub type PoolChangesOf<T> = PoolChanges<
 	<T as Config>::Rate,
 	<T as Config>::MaxTokenNameLength,
 	<T as Config>::MaxTokenSymbolLength,

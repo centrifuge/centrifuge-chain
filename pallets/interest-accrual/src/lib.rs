@@ -66,6 +66,7 @@ use sp_runtime::{
 };
 
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;

@@ -21,10 +21,7 @@
 use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{
-		Codec, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo,
-		PostDispatchInfo,
-	},
+	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
 	Parameter, RuntimeDebug,
 };
@@ -143,8 +140,8 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
 	NoExecution,
-	Executed,
-	Stored,
+	Executed(u32),
+	Stored(u32),
 }
 
 /// A trait that supports modifications of pools
@@ -168,12 +165,9 @@ pub trait PoolMutate<AccountId, PoolId> {
 		metadata: Option<Vec<u8>>,
 	) -> DispatchResult;
 
-	fn update(
-		pool_id: PoolId,
-		changes: Self::PoolChanges,
-	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
+	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
 
-	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
+	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
