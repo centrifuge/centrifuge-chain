@@ -555,7 +555,9 @@ pub async fn start_altair_node(
 						Ok((slot, time, parachain_inherent))
 					}
 				},
-				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(
+					client.clone(),
+				),
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
@@ -712,7 +714,9 @@ pub async fn start_centrifuge_node(
 						Ok((slot, time, parachain_inherent))
 					}
 				},
-				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(
+					client.clone(),
+				),
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
@@ -875,7 +879,9 @@ pub async fn start_development_node(
 						Ok((slot, time, parachain_inherent))
 					}
 				},
-				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(
+					client.clone(),
+				),
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
