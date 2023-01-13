@@ -447,7 +447,7 @@ pub fn build_altair_import_queue(
 		_,
 		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
-		block_import: client.clone(),
+		block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
@@ -555,7 +555,7 @@ pub async fn start_altair_node(
 						Ok((slot, time, parachain_inherent))
 					}
 				},
-				block_import: client.clone(),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
@@ -607,7 +607,7 @@ pub fn build_centrifuge_import_queue(
 		_,
 		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
-		block_import: client.clone(),
+		block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
@@ -712,7 +712,7 @@ pub async fn start_centrifuge_node(
 						Ok((slot, time, parachain_inherent))
 					}
 				},
-				block_import: client.clone(),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
@@ -764,7 +764,7 @@ pub fn build_development_import_queue(
 		_,
 		_,
 	>(cumulus_client_consensus_aura::ImportQueueParams {
-		block_import: client.clone(),
+		block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 		client,
 		create_inherent_data_providers: move |_, _| async move {
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
@@ -875,7 +875,7 @@ pub async fn start_development_node(
 						Ok((slot, time, parachain_inherent))
 					}
 				},
-				block_import: client.clone(),
+				block_import: cumulus_client_consensus_common::ParachainBlockImport::new(client.clone()),
 				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
