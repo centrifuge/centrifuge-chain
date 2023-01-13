@@ -1525,18 +1525,15 @@ pub mod test {
 		buffer_in_perc: Option<u64>,
 		seniority: Seniority,
 	) -> TTranche {
-		let interest_rate_per_sec = if let Some(rate) = interest_rate_in_perc {
-			Rate::saturating_from_rational(rate, 100) / Rate::saturating_from_integer(SECS_PER_YEAR)
-				+ One::one()
-		} else {
-			Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR) + One::one()
-		};
+		let interest_rate_per_sec = interest_rate_in_perc
+			.map(|rate| Rate::saturating_from_rational(rate, 100))
+			.unwrap_or(Rate::one())
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
 
-		let min_risk_buffer = if let Some(buffer) = buffer_in_perc {
-			Perquintill::from_rational(buffer, 100)
-		} else {
-			Perquintill::zero()
-		};
+		let min_risk_buffer = buffer_in_perc
+			.map(|buffer| Perquintill::from_rational(buffer, 100))
+			.unwrap_or(Perquintill::zero());
 
 		TTranche {
 			tranche_type: TrancheType::NonResidual {
