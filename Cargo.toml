@@ -207,8 +207,17 @@ cli = [
   'try-runtime-cli',
 ]
 try-runtime = [
-  "centrifuge-runtime/try-runtime",
   "altair-runtime/try-runtime",
+  "centrifuge-runtime/try-runtime",
+  "cfg-types/try-runtime",
+  "development-runtime/try-runtime",
+  "pallet-anchors/try-runtime",
+  "pallet-im-online/try-runtime",
+  "pallet-loans/try-runtime",
+  "pallet-pool-system/try-runtime",
+  "polkadot-cli/try-runtime",
+  "polkadot-service/try-runtime",
+  "runtime-common/try-runtime",
   "try-runtime-cli",
 ]
 
