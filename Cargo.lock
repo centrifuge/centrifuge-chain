@@ -1267,7 +1267,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.32#e4c8357eb31174681cc4ee8ffe4ddeaba11f63ff"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.33#66b5e7606a0e9a924a4e520555766f177ed291f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5741,7 +5741,7 @@ dependencies = [
 [[package]]
 name = "orml-asset-registry"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.32#f336875e48599b5e9500b301385259354821f01f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5760,7 +5760,7 @@ dependencies = [
 [[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.32#f336875e48599b5e9500b301385259354821f01f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5775,7 +5775,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.32#f336875e48599b5e9500b301385259354821f01f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -5793,7 +5793,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.32#f336875e48599b5e9500b301385259354821f01f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
 dependencies = [
  "frame-support",
  "parity-scale-codec 3.2.1",
@@ -5807,7 +5807,7 @@ dependencies = [
 [[package]]
 name = "orml-xcm"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.32#f336875e48599b5e9500b301385259354821f01f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5821,7 +5821,7 @@ dependencies = [
 [[package]]
 name = "orml-xcm-support"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.32#f336875e48599b5e9500b301385259354821f01f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
 dependencies = [
  "frame-support",
  "orml-traits",
@@ -5835,7 +5835,7 @@ dependencies = [
 [[package]]
 name = "orml-xtokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.32#f336875e48599b5e9500b301385259354821f01f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -6142,7 +6142,7 @@ dependencies = [
 [[package]]
 name = "pallet-collator-selection"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.32#6abd385ce49f7feb882218646410feb063404b77"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.33#27721d794ee63aae42317a7eeda21595dd3200d9"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -13206,7 +13206,7 @@ checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
 [[package]]
 name = "unique-assets"
 version = "1.0.0"
-source = "git+https://github.com/centrifuge/unique-assets?branch=polkadot-v0.9.32#add9952d779835b06ae5b59d97b70c28fa817a2b"
+source = "git+https://github.com/centrifuge/unique-assets?branch=polkadot-v0.9.33#8a67969ebcaf2de618fcc742cb0c0c3eb5605a64"
 dependencies = [
  "frame-support",
 ]
