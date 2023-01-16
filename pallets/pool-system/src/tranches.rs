@@ -2291,12 +2291,94 @@ pub mod test {
 
 		#[test]
 		fn combine_with_non_residual_top_tranches_works() {
-			// TODO: tests for `combine_with_non_residual_top` method on `Traches`
+			assert_eq!(
+				default_tranches()
+					.combine_with_non_residual_top(&[220, 210, 250], |tranche, other_val| {
+						Ok((tranche.seniority + 1, *other_val))
+					})
+					.unwrap(),
+				[(1, 220), (1, 210), (1, 250)]
+			);
+
+			// tranches has smaller size than combinator
+			assert_eq!(
+				default_tranches()
+					.combine_with_non_residual_top(&[220, 210, 250, 110], |tranche, other_val| {
+						Ok((tranche.seniority, *other_val))
+					}),
+				Err(DispatchError::Other(
+					"Iterable contains more elements than Tranches tranche count",
+				))
+			);
+
+			// tranches has greater size than combinator
+			assert_eq!(
+				default_tranches()
+					.combine_with_non_residual_top(&[220, 210], |tranche, other_val| {
+						Ok((tranche.seniority, *other_val))
+					}),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
+
+			// combinator is empty
+			assert_eq!(
+				default_tranches().combine_with_non_residual_top(vec![], |tranche, _: u32| {
+					Ok(tranche.seniority)
+				}),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
 		}
 
 		#[test]
-		fn combine_with_mut_non_residual_top_traches_works() {
-			// TODO: tests for `combine_with_non_residual_top` method on `Tranches`
+		fn combine_with_mut_non_residual_top_tranches_works() {
+			let mut tranches = default_tranches();
+			let values = [10, 20, 30];
+			assert_eq!(
+				tranches.combine_with_mut_non_residual_top(&values, |tranche, new_seniority| {
+					tranche.seniority = *new_seniority;
+					Ok(tranche.seniority)
+				}),
+				Ok(values.into())
+			);
+
+			// tranches has smaller size than combinator
+			let values_too_many = [10, 20, 30, 40];
+			assert_eq!(
+				tranches
+					.combine_with_mut_non_residual_top(&values_too_many, |tranche, other_val| {
+						Ok(tranche.seniority + other_val)
+					}),
+				Err(DispatchError::Other(
+					"Iterable contains more elements than Tranches tranche count",
+				))
+			);
+
+			// tranches has greater size than combinator
+			let mut tranches = default_tranches();
+			let values_too_few = [10, 20];
+			assert_eq!(
+				tranches
+					.combine_with_mut_non_residual_top(&values_too_few, |tranche, other_val| {
+						Ok(tranche.seniority + other_val)
+					}),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
+
+			// combinator is empty
+			assert_eq!(
+				tranches.combine_with_mut_non_residual_top(vec![], |tranche, _: u32| {
+					Ok(tranche.seniority)
+				}),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
 		}
 
 		#[test]
