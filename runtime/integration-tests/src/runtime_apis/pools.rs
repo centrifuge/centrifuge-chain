@@ -12,8 +12,12 @@
 
 use cfg_types::{permissions::PermissionScope::Currency, tokens::CurrencyId};
 use codec::Encode;
+use frame_support::assert_ok;
+use frame_support::dispatch::UnfilteredDispatchable;
+use frame_system::Origin;
 use development_runtime::apis::PoolsApi;
 use fudge::primitives::Chain;
+use sp_runtime::app_crypto::sr25519;
 use tokio::runtime::Handle;
 
 use super::{ApiEnv, PARA_ID};
@@ -26,6 +30,9 @@ use crate::{
 		pools::{default_pool, pool_setup_calls},
 	},
 };
+use crate::chain::centrifuge::RuntimeOrigin;
+use sp_core::Pair;
+use sp_runtime::traits::IdentifyAccount;
 
 #[tokio::test]
 async fn test() {
@@ -35,17 +42,27 @@ async fn test() {
 			let mut env = test_env_default(Handle::current());
 			default_pool(&mut env, &mut nft_manager, Keyring::Admin, 0);
 			let set_loans_for_pools =
-				init_loans_for_pool(Keyring::Admin.into(), 0, &mut nft_manager)
-					.into_iter()
-					.map(|call| call.encode())
-					.collect();
-			TestEnv::batch_sign_and_submit(
-				&mut env,
-				Chain::Para(PARA_ID),
-				Keyring::Admin.into(),
-				set_loans_for_pools,
-			)
-			.expect("Setup loans for pool calls are succesful");
+				init_loans_for_pool(Keyring::Admin.into(), 0, &mut nft_manager);
+					// .into_iter()
+					// .map(|call| call.encode())
+					// .collect();
+			let alice = sp_runtime::AccountId32::from(
+				<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
+					.unwrap()
+					.public()
+					.into_account(),
+			);
+			for call in set_loans_for_pools {
+				let res = UnfilteredDispatchable::dispatch_bypass_filter(call, Origin::Signed(alice.clone()));
+				assert_ok!(res);
+			}
+			// TestEnv::batch_sign_and_submit(
+			// 	&mut env,
+			// 	Chain::Para(PARA_ID),
+			// 	Keyring::Admin.into(),
+			// 	set_loans_for_pools,
+			// )
+			// .expect("Setup loans for pool calls are succesful");
 		})
 		.with_api(|api, latest| {
 			let valuation = api.currency(&latest, 0).unwrap();
