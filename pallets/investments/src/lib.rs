@@ -187,7 +187,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The underlying investments one can invest into
-		type InvestmentId: Member + Parameter + Copy;
+		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen;
 
 		/// Something that knows how to handle accounting for the given investments
 		/// and provides metadata about them
@@ -218,7 +218,8 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ FixedPointNumber<Inner = Self::Amount>
-			+ FixedPointNumberExtension;
+			+ FixedPointNumberExtension
+			+ MaxEncodedLen;
 
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
@@ -243,7 +244,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
