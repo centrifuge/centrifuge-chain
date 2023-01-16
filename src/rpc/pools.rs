@@ -17,8 +17,16 @@ use sp_runtime::{
 use crate::rpc::{invalid_params_error, runtime_error};
 
 #[rpc(client, server)]
-pub trait PoolsApi<PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio, BlockHash, MaxTranches> {
-where
+pub trait PoolsApi<
+	PoolId,
+	LoanId,
+	TrancheId,
+	Balance,
+	Currency,
+	BalanceRatio,
+	BlockHash,
+	MaxTranches,
+> where
 	MaxTranches: Get<u32>,
 {
 	#[method(name = "pools_currency")]
@@ -93,12 +101,29 @@ impl<C, P> Pools<C, P> {
 }
 
 impl<C, Block, PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio, MaxTranches>
-	PoolsApiServer<PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio, Block::Hash, MaxTranches>
-	for Pools<C, Block>
+	PoolsApiServer<
+		PoolId,
+		LoanId,
+		TrancheId,
+		Balance,
+		Currency,
+		BalanceRatio,
+		Block::Hash,
+		MaxTranches,
+	> for Pools<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: PoolsRuntimeApi<Block, PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio, MaxTranches>,
+	C::Api: PoolsRuntimeApi<
+		Block,
+		PoolId,
+		LoanId,
+		TrancheId,
+		Balance,
+		Currency,
+		BalanceRatio,
+		MaxTranches,
+	>,
 	Balance: Codec + Copy,
 	PoolId: Codec + Copy + Debug,
 	LoanId: Codec + Copy + Debug,

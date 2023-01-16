@@ -43,7 +43,7 @@ use crate::{
 		centrifuge,
 		centrifuge::{Runtime, PARA_ID},
 	},
-	pools::utils::genesis::default_balances,
+	pools::utils::genesis::{default_balances, register_default_asset},
 };
 
 /// Start date used for timestamps in test-enviornments
@@ -88,6 +88,9 @@ fn create_builder(
 	let mut storage = Storage::default();
 	// Add default balances
 	default_balances::<Runtime>(&mut storage);
+	// Register default assets
+	register_default_asset::<Runtime>(&mut storage);
+
 	state.insert_storage(storage);
 
 	if let Some(storage) = genesis {
