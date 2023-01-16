@@ -635,6 +635,7 @@ where
 		Ok(())
 	}
 
+	// TODO: Should it be possible to remove residual tranche without replacing?
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
 		let at: usize = at.ensure_into()?;
 		ensure!(
@@ -694,14 +695,26 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.non_residual_top_slice().iter().zip(with.into_iter());
+		let mut tranche_slice = self.non_residual_top_slice().iter();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
+		for _ in 0..self.tranches.len() {
+			match (tranche_slice.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"Tranches struct contains more tranches than combining iterable",
+					));
+				}
+			};
 		}
 
-		Ok(res)
+		match (tranche_slice.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than Tranches tranche count",
+			)),
+		}
 	}
 
 	pub fn combine_with_mut_non_residual_top<R, W, I, F>(
@@ -716,18 +729,29 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self
-			.non_residual_top_slice_mut()
-			.iter_mut()
-			.zip(with.into_iter());
+		// we're going to have a mutable borrow later and will need len after that, grabbing now
+		let tranches_count = self.tranches.len();
+		let mut res = Vec::with_capacity(tranches_count);
+		let mut tranche_slice = self.non_residual_top_slice_mut().iter_mut();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
+		for _ in 0..tranches_count {
+			match (tranche_slice.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"Tranches struct contains more tranches than combining iterable",
+					))
+				}
+			};
 		}
 
-		Ok(res)
+		match (tranche_slice.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than Tranches tranche count",
+			)),
+		}
 	}
 
 	pub fn ids_residual_top(&self) -> Vec<TrancheId> {
@@ -768,14 +792,26 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.residual_top_slice().iter().zip(with.into_iter());
+		let mut tranche_slice = self.residual_top_slice().iter();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
+		for _ in 0..self.tranches.len() {
+			match (tranche_slice.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"Tranches struct contains more tranches than combining iterable",
+					))
+				}
+			};
 		}
 
-		Ok(res)
+		match (tranche_slice.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than Tranches tranche count",
+			)),
+		}
 	}
 
 	pub fn combine_with_mut_residual_top<R, W, I, F>(
@@ -790,18 +826,29 @@ where
 		) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self
-			.residual_top_slice_mut()
-			.iter_mut()
-			.zip(with.into_iter());
+		// we're going to have a mutable borrow later and will need len after that, grabbing now
+		let tranches_count = self.tranches.len();
+		let mut res = Vec::with_capacity(tranches_count);
+		let mut tranche_slice = self.residual_top_slice_mut().iter_mut();
+		let mut with_iter = with.into_iter();
 
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
+		for _ in 0..tranches_count {
+			match (tranche_slice.next(), with_iter.next()) {
+				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
+				_ => {
+					return Err(DispatchError::Other(
+						"Tranches struct contains more tranches than combining iterable",
+					))
+				}
+			};
 		}
 
-		Ok(res)
+		match (tranche_slice.next(), with_iter.next()) {
+			(None, None) => Ok(res),
+			_ => Err(DispatchError::Other(
+				"Iterable contains more elements than Tranches tranche count",
+			)),
+		}
 	}
 
 	// TODO: Understand and add docs
@@ -1198,7 +1245,7 @@ where
 				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
 				_ => {
 					return Err(DispatchError::Other(
-						"EpochExecutionTranches contains more tranches than iterables elements",
+						"EpochExecutionTranches contains more tranches than combining iterable",
 					));
 				}
 			};
@@ -1235,7 +1282,7 @@ where
 				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
 				_ => {
 					return Err(DispatchError::Other(
-						"EpochExecutionTranches contains more tranches than iterables elements",
+						"EpochExecutionTranches contains more tranches than combining iterable",
 					))
 				}
 			};
@@ -1298,7 +1345,7 @@ where
 				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
 				_ => {
 					return Err(DispatchError::Other(
-						"EpochExecutionTranches contains more tranches than iterables elements",
+						"EpochExecutionTranches contains more tranches than combining iterable",
 					))
 				}
 			};
@@ -1335,7 +1382,7 @@ where
 				(Some(tranche), Some(w)) => res.push(f(tranche, w)?),
 				_ => {
 					return Err(DispatchError::Other(
-						"EpochExecutionTranches contains more tranches than iterables elements",
+						"EpochExecutionTranches contains more tranches than combining iterable",
 					))
 				}
 			};
