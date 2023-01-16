@@ -38,9 +38,12 @@ use sp_runtime::{generic::BlockId, traits::IdentifyAccount, BuildStorage, Storag
 use tokio::runtime::Handle;
 use xcm_emulator::ParachainInherentData;
 
-use crate::chain::{
-	centrifuge,
-	centrifuge::{Runtime, PARA_ID},
+use crate::{
+	chain::{
+		centrifuge,
+		centrifuge::{Runtime, PARA_ID},
+	},
+	pools::utils::genesis::default_balances,
 };
 
 /// Start date used for timestamps in test-enviornments
@@ -82,21 +85,10 @@ fn create_builder(
 		.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 	);
 
-	state.insert_storage(
-		pallet_balances::GenesisConfig::<centrifuge::Runtime> {
-			balances: vec![(
-				sp_runtime::AccountId32::from(
-					<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
-						.unwrap()
-						.public()
-						.into_account(),
-				),
-				10000 * CFG,
-			)],
-		}
-		.build_storage()
-		.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
-	);
+	let mut storage = Storage::default();
+	// Add default balances
+	default_balances::<Runtime>(&mut storage);
+	state.insert_storage(storage);
 
 	if let Some(storage) = genesis {
 		state.insert_storage(storage);
