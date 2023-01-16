@@ -178,14 +178,18 @@ where
 	Balance: FixedPointOperand,
 	Weight: Copy + From<u128>,
 {
+	/// Returns the sum of the debt and reserve amounts.
 	pub fn balance(&self) -> Result<Balance, ArithmeticError> {
 		self.debt.ensure_add(self.reserve)
 	}
 
+	/// Returns the reserve amount.
 	pub fn free_balance(&self) -> Result<Balance, ArithmeticError> {
 		Ok(self.reserve)
 	}
 
+	/// Update the debt of a Tranche by multiplying with the accrued interest since the last update:
+	/// 	debt = debt * interest_rate_per_second ^ (now - last_update)
 	pub fn accrue(&mut self, now: Moment) -> Result<(), ArithmeticError> {
 		let delta = now - self.last_updated_interest;
 		let interest = self.interest_rate_per_sec();
@@ -200,6 +204,7 @@ where
 		Ok(())
 	}
 
+	/// Returns the min risk buffer of a non-residual Tranche or zero.
 	pub fn min_risk_buffer(&self) -> Perquintill {
 		match &self.tranche_type {
 			TrancheType::Residual => Perquintill::zero(),
@@ -209,6 +214,7 @@ where
 		}
 	}
 
+	/// Returns the interest rate per second for a non-residual Tranche or one.
 	pub fn interest_rate_per_sec(&self) -> Rate {
 		match &self.tranche_type {
 			TrancheType::Residual => One::one(),
@@ -219,6 +225,7 @@ where
 		}
 	}
 
+	/// Updates the debt by applying the accrued interest rate since the last update moment and returns it.
 	pub fn debt(&mut self, now: Moment) -> Result<Balance, DispatchError> {
 		self.accrue(now)?;
 		Ok(self.debt)
@@ -583,9 +590,9 @@ where
 								  "at is <= len and is not zero. An element before at must exist. qed.",
 							)
 							.tranche_type
-						), 
+						),
 					DispatchError::Other(
-						"Invalid next tranche type. This should be catched somewhere else."
+						"Invalid following tranche type. This should be catched somewhere else."
 					)
 				)
 			}
@@ -797,6 +804,7 @@ where
 		Ok(res)
 	}
 
+	// TODO: Understand and add docs
 	pub fn calculate_prices<BalanceRatio, Tokens, AccountId>(
 		&mut self,
 		total_assets: Balance,
@@ -808,15 +816,16 @@ where
 		TrancheCurrency: Into<<Tokens as Inspect<AccountId>>::AssetId>,
 	{
 		let mut remaining_assets = total_assets;
-		let pool_is_zero = total_assets == Zero::zero();
+		let pool_is_zero = total_assets.is_zero();
 
 		// we are gonna reverse the order
 		// such that prices are calculated from most senior to junior
 		// there by all the remaining assets are given to the most junior tranche
 		let mut prices = self.combine_mut_non_residual_top(|tranche| {
+			// initial supply * accrued interest
 			let total_issuance = Tokens::total_issuance(tranche.currency.into());
 
-			if pool_is_zero || total_issuance == Zero::zero() {
+			if pool_is_zero || total_issuance.is_zero() {
 				Ok(One::one())
 			} else if tranche.tranche_type == TrancheType::Residual {
 				Ok(BalanceRatio::ensure_from_rational(
@@ -834,9 +843,7 @@ where
 					remaining_assets = Zero::zero();
 					left_over_assets
 				} else {
-					remaining_assets = remaining_assets
-						.checked_sub(&tranche_balance)
-						.expect("Tranche value smaller equal remaining assets. qed.");
+					remaining_assets = remaining_assets.ensure_sub(tranche_balance)?;
 					tranche_balance
 				};
 				Ok(BalanceRatio::ensure_from_rational(
@@ -1075,41 +1082,37 @@ where
 	pub fn non_residual_tranches(
 		&self,
 	) -> Option<&[EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
-			Some(tail)
-		} else {
-			None
-		}
+		self.tranches
+			.as_slice()
+			.split_first()
+			.map(|(_head, tail)| tail)
 	}
 
 	pub fn non_residual_tranches_mut(
 		&mut self,
 	) -> Option<&mut [EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
-			Some(tail)
-		} else {
-			None
-		}
+		self.tranches
+			.as_mut_slice()
+			.split_first_mut()
+			.map(|(_head, tail)| tail)
 	}
 
 	pub fn residual_tranche(
 		&self,
 	) -> Option<&EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
-			Some(head)
-		} else {
-			None
-		}
+		self.tranches
+			.as_slice()
+			.split_first()
+			.map(|(head, _tail)| head)
 	}
 
 	pub fn residual_tranche_mut(
 		&mut self,
 	) -> Option<&mut EpochExecutionTranche<Balance, BalanceRatio, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
-			Some(head)
-		} else {
-			None
-		}
+		self.tranches
+			.as_mut_slice()
+			.split_first_mut()
+			.map(|(head, _tail)| head)
 	}
 
 	pub fn num_tranches(&self) -> usize {
@@ -1551,6 +1554,7 @@ pub mod test {
 		}
 	}
 
+	/// Sets up three tranches: The default residual and two non residual ones with (10, 10, 0) and (5, 25, 0) for (interest_rate_per_sec, buffer_in_perc, seniority).
 	fn default_tranches() -> TTranches {
 		TTranches::new(
 			DEFAULT_POOL_ID,
@@ -1563,6 +1567,7 @@ pub mod test {
 		.unwrap()
 	}
 
+	/// Sets up three tranches: The default residual and two non residual ones with (10, 10, 1) and (5, 25, 2) for (interest_rate_per_sec, buffer_in_perc, seniority).
 	fn default_tranches_with_seniority() -> TTranches {
 		TTranches::new(
 			DEFAULT_POOL_ID,
@@ -1662,7 +1667,7 @@ pub mod test {
 		}
 
 		#[test]
-		fn tranche_accures_correctly() {
+		fn tranche_accrues_correctly() {
 			let mut tranche = non_residual(1, Some(10), None);
 			tranche.debt = 100000000;
 			tranche.accrue(SECS_PER_YEAR).unwrap();
@@ -1862,9 +1867,9 @@ pub mod test {
 				.get_mut_tranche(TrancheLoc::Id(valid_tranche_id))
 				.unwrap();
 
-			tranche.debt = 25000;
+			tranche.debt = 25001;
 			// ensure both correct tranche fetched, and tranche mutable
-			assert_eq!((tranche.debt, tranche.seniority), (25000, 1));
+			assert_eq!((tranche.debt, tranche.seniority), (25001, 1));
 
 			let invalid_tranche_id: TrancheId = [
 				59u8, 168, 10, 10, 10, 10, 10, 191, 69, 232, 6, 209, 154, 5, 32, 37,
@@ -1909,6 +1914,8 @@ pub mod test {
 			];
 			let int_per_sec = Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+
+			// Create tranch with explicit seniority
 			let new_tranche = tranches
 				.create_tranche(
 					3,
@@ -1946,6 +1953,7 @@ pub mod test {
 			);
 			assert_eq!(new_tranche.ratio, Perquintill::zero());
 
+			// Create tranch with implicit seniority (through index)
 			let new_tranche = tranches
 				.create_tranche(
 					3,
@@ -1954,6 +1962,7 @@ pub mod test {
 						interest_rate_per_sec: int_per_sec,
 						min_risk_buffer: min_risk_buffer,
 					},
+					// By not providing seniority, it is derived from the index
 					None,
 					SECS_PER_YEAR,
 				)
@@ -1961,6 +1970,7 @@ pub mod test {
 
 			assert_eq!(new_tranche.seniority, 3);
 
+			// Create tranch with overflowing index
 			let new_tranche = tranches.create_tranche(
 				u64::MAX,
 				tranche_id,
@@ -1999,10 +2009,13 @@ pub mod test {
 				8u32
 			}
 		}
+
+		/// Replace should work if interest is lower than tranche w/ lower index ("next").
 		#[test]
-		fn replace_tranche_works() {
+		fn replace_tranche_less_interest_than_next_works() {
 			let mut tranches = default_tranches();
 
+			// ensure we have an interest rate lower than the the left side tranche with a lower index, e.g. lower than 10% at index 1
 			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 			let input = TrancheInput {
@@ -2029,11 +2042,16 @@ pub mod test {
 					.seniority,
 				5
 			);
+		}
 
-			// verify replace doesn't work if interest is greater than tranche w/ lower index ("next")
+		// Replace must not work if new interest rate is greater than tranche w/ lower index ("next").
+		#[test]
+		fn replace_tranche_more_interest_than_next_throws() {
 			let mut tranches = default_tranches();
-			// ensure we have a interest rate larger than prev tranche from defaults
-			let int_per_sec = Rate::saturating_from_integer(2)
+			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+
+			// ensure we have an interest rate larger than the a tranche with a lower index, e.g. 10%
+			let int_per_sec = Rate::saturating_from_rational(11, 100)
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
 			let input = TrancheInput {
@@ -2050,7 +2068,12 @@ pub mod test {
 			};
 
 			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
-			assert!(replace_res.is_err());
+			assert_eq!(
+				replace_res,
+				Err(DispatchError::Other(
+					"Invalid next tranche type. This should be catched somewhere else."
+				))
+			);
 			// verify unchanged from default val
 			assert_eq!(
 				tranches
@@ -2059,29 +2082,17 @@ pub mod test {
 					.seniority,
 				0
 			);
+		}
 
-			// verify replacing tranche works when interest rate higher than senior tranche following it
-			let mut tranches = default_tranches();
-			let input = TrancheInput {
-				seniority: Some(5),
-				tranche_type: TrancheType::NonResidual {
-					interest_rate_per_sec: int_per_sec,
-					min_risk_buffer: min_risk_buffer,
-				},
-				metadata: TrancheMetadata {
-					token_name: BoundedVec::<u8, TokenNameLen>::default(),
-					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
-				},
-			};
-
-			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
-			assert!(replace_res.is_ok());
-
-			// verify replacing tranche errors if tranche following it has a higher interest rate
+		/// Replace should work if new interest rate is greater than tranche w/ higher index ("following").
+		#[test]
+		fn replace_tranche_more_interest_than_following_works() {
 			let mut tranches = default_tranches();
 
-			let int_per_sec = Rate::saturating_from_integer(1)
-				/ Rate::saturating_from_integer(SECS_PER_YEAR * SECS_PER_YEAR)
+			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+			// ensure we have an interest rate larger than the the right-side tranche with a greater index, e.g. larger than 5% at index 2
+			let int_per_sec = Rate::saturating_from_rational(6u64, 100)
+				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
 			let input = TrancheInput {
 				seniority: Some(5),
@@ -2096,7 +2107,38 @@ pub mod test {
 			};
 
 			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
-			assert!(replace_res.is_err());
+			assert!(replace_res.is_ok());
+		}
+
+		/// Replace must not work if new interest rate is lower than tranche w/ greater index ("following").
+		#[test]
+		fn replace_tranche_less_interest_than_following_throws() {
+			let mut tranches = default_tranches();
+			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+
+			// ensure we have an interest rate lower than a tranche with a higher index, e.g. 5%
+			let int_per_sec = Rate::saturating_from_rational(4, 100)
+				/ Rate::saturating_from_integer(SECS_PER_YEAR)
+				+ One::one();
+			let input = TrancheInput {
+				seniority: Some(5),
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: int_per_sec,
+					min_risk_buffer: min_risk_buffer,
+				},
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::<u8, TokenNameLen>::default(),
+					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+				},
+			};
+
+			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
+			assert_eq!(
+				replace_res,
+				Err(DispatchError::Other(
+					"Invalid following tranche type. This should be catched somewhere else."
+				))
+			);
 		}
 
 		#[test]
