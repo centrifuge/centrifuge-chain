@@ -1816,6 +1816,8 @@ pub mod test {
 	}
 
 	mod tranches {
+		use frame_support::assert_ok;
+
 		use super::*;
 
 		#[test]
@@ -2243,12 +2245,48 @@ pub mod test {
 
 		#[test]
 		fn remove_tranches_works() {
-			// TODO: tests for `remove` method on `Tranches`
+			let mut tranches = default_tranches();
+			let tranches_pre_removal = tranches.clone();
+
+			// attempt to remove outside of bounds
+			assert!(tranches.remove(3).is_err());
+
+			// remove middle tranche
+			assert_ok!(tranches.remove(1));
+			assert_eq!(tranches.num_tranches(), 2);
+			assert!(tranches.get_tranche(TrancheLoc::Index(2)).is_none());
+			assert_eq!(
+				tranches_pre_removal
+					.get_tranche(TrancheLoc::Index(2))
+					.unwrap(),
+				tranches.get_tranche(TrancheLoc::Index(1)).unwrap()
+			);
+
+			// remove residual tranche
+			assert_ok!(tranches.remove(0));
+			assert_eq!(tranches.num_tranches(), 1);
+			assert!(tranches.get_tranche(TrancheLoc::Index(1)).is_none());
+			assert_eq!(
+				tranches_pre_removal
+					.get_tranche(TrancheLoc::Index(2))
+					.unwrap(),
+				tranches.get_tranche(TrancheLoc::Index(0)).unwrap()
+			);
+
+			// remove last remaining tranche
+			assert_ok!(tranches.remove(0));
+			assert!(tranches.num_tranches().is_zero());
+			assert!(tranches.remove(0).is_err());
 		}
 
 		#[test]
 		fn of_pool_tranches_works() {
-			// TODO: tests for `of_pool` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(tranches.of_pool(), DEFAULT_POOL_ID);
+
+			let new_pool_id = 42;
+			tranches.salt = (24, 42);
+			assert_eq!(tranches.of_pool(), new_pool_id);
 		}
 
 		#[test]
@@ -2571,7 +2609,7 @@ pub mod test {
 						Ok((tranche.seniority, *other_val))
 					}),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements"
+					"EpochExecutionTranches contains more tranches than combining iterable"
 				))
 			);
 
@@ -2593,7 +2631,7 @@ pub mod test {
 						Ok((tranche.seniority, other_val))
 					}),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements",
+					"EpochExecutionTranches contains more tranches than combining iterable",
 				))
 			);
 		}
@@ -2666,7 +2704,7 @@ pub mod test {
 					},
 				),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements",
+					"EpochExecutionTranches contains more tranches than combining iterable",
 				))
 			);
 
@@ -2682,7 +2720,7 @@ pub mod test {
 					},
 				),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements",
+					"EpochExecutionTranches contains more tranches than combining iterable",
 				))
 			)
 		}
@@ -2734,7 +2772,7 @@ pub mod test {
 				default_epoch_tranches()
 					.combine_with_residual_top([1, 2], |t, zip_val| { Ok((t.seniority, zip_val)) }),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements"
+					"EpochExecutionTranches contains more tranches than combining iterable"
 				))
 			);
 
@@ -2743,7 +2781,7 @@ pub mod test {
 					Ok((t.seniority, zip_val))
 				}),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements"
+					"EpochExecutionTranches contains more tranches than combining iterable"
 				))
 			)
 		}
@@ -2780,7 +2818,7 @@ pub mod test {
 					Ok((t.seniority, t.invest))
 				}),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements"
+					"EpochExecutionTranches contains more tranches than combining iterable"
 				))
 			);
 
@@ -2805,7 +2843,7 @@ pub mod test {
 					Ok((t.seniority, t.invest))
 				}),
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements"
+					"EpochExecutionTranches contains more tranches than combining iterable"
 				))
 			);
 		}
@@ -2836,7 +2874,7 @@ pub mod test {
 
 			assert_eq!(
 				Err(DispatchError::Other(
-					"EpochExecutionTranches contains more tranches than iterables elements"
+					"EpochExecutionTranches contains more tranches than combining iterable"
 				)),
 				default_epoch_tranches().supplies_with_fulfillment(&[
 					default_tranche_solution(),
