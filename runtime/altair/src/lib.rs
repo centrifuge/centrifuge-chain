@@ -1672,17 +1672,25 @@ impl_runtime_apis! {
 		}
 
 		fn portfolio_valuation(pool_id: PoolId) -> Option<Balance> {
-			pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
-			if let Some((_, valuation)) = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id).ok() {
-				return Some(valuation);
+			if pallet_pool_system::Pool::<Runtime>::contains_key(pool_id) && let Some((_, valuation)) = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id).ok() {
+					return Some(valuation);
 			}
 
 			None
 		}
 
 		fn max_borrow_amount(pool_id: PoolId, loan_id: ItemId) -> Option<Balance> {
-			pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
-			pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id, loan_id).ok()
+			if pallet_pool_system::Pool::<Runtime>::contains_key(pool_id) {
+				match pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id, loan_id) {
+					Ok(balance) => return Some(balance),
+					Err(err) => {
+						// println!("{:?}", err);
+						return Some(1);
+					}
+				}
+			}
+
+			None
 		}
 	}
 
