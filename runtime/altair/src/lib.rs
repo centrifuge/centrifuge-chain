@@ -1681,13 +1681,7 @@ impl_runtime_apis! {
 
 		fn max_borrow_amount(pool_id: PoolId, loan_id: ItemId) -> Option<Balance> {
 			if pallet_pool_system::Pool::<Runtime>::contains_key(pool_id) {
-				match pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id, loan_id) {
-					Ok(balance) => return Some(balance),
-					Err(err) => {
-						// println!("{:?}", err);
-						return Some(1);
-					}
-				}
+				return pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id, loan_id).ok();
 			}
 
 			None
