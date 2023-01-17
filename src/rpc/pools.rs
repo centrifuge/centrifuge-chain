@@ -249,11 +249,7 @@ where
 
 	fn portfolio_valuation(&self, pool_id: PoolId, at: Option<Block::Hash>) -> RpcResult<Balance> {
 		let api = self.client.runtime_api();
-		let at = if let Some(hash) = at {
-			BlockId::hash(hash)
-		} else {
-			BlockId::hash(self.client.info().best_hash)
-		};
+		let at = BlockId::hash(at.unwrap_or(self.client.info().best_hash));
 
 		api.portfolio_valuation(&at, pool_id)
 			.map_err(|e| runtime_error("Unable to query pool valuation.", e))?
@@ -267,11 +263,7 @@ where
 		at: Option<Block::Hash>,
 	) -> RpcResult<Balance> {
 		let api = self.client.runtime_api();
-		let at = if let Some(hash) = at {
-			BlockId::hash(hash)
-		} else {
-			BlockId::hash(self.client.info().best_hash)
-		};
+		let at = BlockId::hash(at.unwrap_or(self.client.info().best_hash));
 
 		api.max_borrow_amount(&at, pool_id, loan_id)
 			.map_err(|e| runtime_error("Unable to query pool valuation.", e))?
