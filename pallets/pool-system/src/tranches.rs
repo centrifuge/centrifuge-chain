@@ -652,6 +652,8 @@ where
 	}
 
 	pub fn ids_non_residual_top(&self) -> Vec<TrancheId> {
+		// TODO: Investigate refactor after rebasing to main
+		// self.ids.iter().rev().map(|id| id.clone()).collect()
 		let mut res = Vec::with_capacity(self.tranches.len());
 		self.ids.iter().rev().for_each(|id| res.push(id.clone()));
 		res
@@ -917,21 +919,21 @@ where
 	pub fn non_residual_tranches(
 		&self,
 	) -> Option<&[Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.residual_top_slice().split_first() {
-			Some(tail)
-		} else {
-			None
-		}
+		self.tranches
+			.as_slice()
+			.iter()
+			.position(|tranche| matches!(tranche.tranche_type, TrancheType::NonResidual { .. }))
+			.and_then(|index| self.tranches.as_slice().get(index..))
 	}
 
 	pub fn non_residual_tranches_mut(
 		&mut self,
 	) -> Option<&mut [Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
-		if let Some((_head, tail)) = self.residual_top_slice_mut().split_first_mut() {
-			Some(tail)
-		} else {
-			None
-		}
+		self.tranches
+			.as_mut_slice()
+			.iter()
+			.position(|tranche| matches!(tranche.tranche_type, TrancheType::NonResidual { .. }))
+			.and_then(|index| self.tranches.as_mut_slice().get_mut(index..))
 	}
 
 	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, TrancheCurrency>> {
@@ -1133,6 +1135,7 @@ where
 			.as_slice()
 			.split_first()
 			.map(|(_head, tail)| tail)
+			.filter(|tail| !tail.len().is_zero())
 	}
 
 	pub fn non_residual_tranches_mut(
@@ -1142,6 +1145,7 @@ where
 			.as_mut_slice()
 			.split_first_mut()
 			.map(|(_head, tail)| tail)
+			.filter(|tail| !tail.len().is_zero())
 	}
 
 	pub fn residual_tranche(
@@ -2291,13 +2295,15 @@ pub mod test {
 
 		#[test]
 		fn combine_with_non_residual_top_tranches_works() {
+			let mut i: Seniority = 0;
 			assert_eq!(
 				default_tranches()
 					.combine_with_non_residual_top(&[220, 210, 250], |tranche, other_val| {
-						Ok((tranche.seniority + 1, *other_val))
+						i += 1;
+						Ok((tranche.seniority + i, *other_val))
 					})
 					.unwrap(),
-				[(1, 220), (1, 210), (1, 250)]
+				[(1, 220), (2, 210), (3, 250)]
 			);
 
 			// tranches has smaller size than combinator
@@ -2383,17 +2389,101 @@ pub mod test {
 
 		#[test]
 		fn ids_residual_top_tranches_works() {
-			// TODO: tests for `ids_residual_top` method on `Tranches`
+			let tranches = default_tranches();
+			assert_eq!(tranches.ids, tranches.ids_residual_top());
+
+			let rev_ids: Vec<TrancheId> = tranches.ids.clone().into_iter().rev().collect();
+			assert_eq!(rev_ids, tranches.ids_non_residual_top());
 		}
 
 		#[test]
 		fn combine_residual_top_tranches_works() {
-			// TODO: tests for `combine_residual_top` method on `Tranches`
+			let mut i: Seniority = 0;
+			assert_eq!(
+				default_tranches()
+					.combine_with_residual_top(&[220, 210, 250], |tranche, other_val| {
+						i += 1;
+						Ok((tranche.seniority + i, *other_val))
+					})
+					.unwrap(),
+				[(1, 220), (2, 210), (3, 250)]
+			);
+
+			// tranches has smaller size than combinator
+			assert_eq!(
+				default_tranches()
+					.combine_with_residual_top(&[220, 210, 250, 110], |tranche, other_val| {
+						Ok((tranche.seniority, *other_val))
+					}),
+				Err(DispatchError::Other(
+					"Iterable contains more elements than Tranches tranche count",
+				))
+			);
+
+			// tranches has greater size than combinator
+			assert_eq!(
+				default_tranches().combine_with_residual_top(&[220, 210], |tranche, other_val| {
+					Ok((tranche.seniority, *other_val))
+				}),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
+
+			// combinator is empty
+			assert_eq!(
+				default_tranches()
+					.combine_with_residual_top(vec![], |tranche, _: u32| { Ok(tranche.seniority) }),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
 		}
 
 		#[test]
 		fn combine_with_mut_residual_top_tranches_works() {
-			// TODO: tests for `combine_with_mut_residual_top` method on `Tranches`
+			let mut tranches = default_tranches();
+			let values = [10, 20, 30];
+			assert_eq!(
+				tranches.combine_with_mut_residual_top(&values, |tranche, new_seniority| {
+					tranche.seniority = *new_seniority;
+					Ok(tranche.seniority)
+				}),
+				Ok(values.into())
+			);
+
+			// tranches has smaller size than combinator
+			let values_too_many = [10, 20, 30, 40];
+			assert_eq!(
+				tranches.combine_with_mut_residual_top(&values_too_many, |tranche, other_val| {
+					Ok(tranche.seniority + other_val)
+				}),
+				Err(DispatchError::Other(
+					"Iterable contains more elements than Tranches tranche count",
+				))
+			);
+
+			// tranches has greater size than combinator
+			let mut tranches = default_tranches();
+			let values_too_few = [10, 20];
+			assert_eq!(
+				tranches.combine_with_mut_residual_top(&values_too_few, |tranche, other_val| {
+					Ok(tranche.seniority + other_val)
+				}),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
+
+			// combinator is empty
+			assert_eq!(
+				tranches.combine_with_mut_residual_top(vec![], |tranche, _: u32| {
+					Ok(tranche.seniority)
+				}),
+				Err(DispatchError::Other(
+					"Tranches struct contains more tranches than combining iterable"
+				))
+			);
 		}
 
 		#[test]
@@ -2403,21 +2493,58 @@ pub mod test {
 
 		#[test]
 		fn num_tranches_works() {
-			// TODO: tests for `num_tranches` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(tranches.num_tranches(), 3);
+
+			// decrease size
+			assert_ok!(tranches.remove(1));
+			assert_eq!(tranches.num_tranches(), 2);
+
+			// increase size
+			let input = TrancheInput {
+				seniority: Some(5),
+				tranche_type: TrancheType::NonResidual {
+					interest_rate_per_sec: Rate::one(),
+					min_risk_buffer: Perquintill::from_percent(5),
+				},
+				metadata: TrancheMetadata {
+					token_name: BoundedVec::<u8, TokenNameLen>::default(),
+					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
+				},
+			};
+			assert_ok!(tranches.add(2, input, 0u64));
+			assert_eq!(tranches.num_tranches(), 3);
 		}
 
 		#[test]
 		fn into_tranches_works() {
-			// TODO: tests for `into_tranches` method on `Tranches`
+			let tranches = default_tranches();
+			assert_eq!(tranches.clone().into_tranches(), tranches.tranches);
 		}
 
 		#[test]
 		fn non_residual_tranches_works() {
-			// TODO: tests for `non_residual_tranches` method on `Tranches`
+			let mut tranches = default_tranches();
+			let non_res_tranches = tranches.non_residual_tranches().unwrap();
+			assert_eq!(non_res_tranches.len(), 2);
+
+			assert_eq!(
+				non_res_tranches[0].tranche_type,
+				non_residual(1, Some(10), Some(10)).tranche_type
+			);
+			assert_eq!(
+				non_res_tranches[1].tranche_type,
+				non_residual(2, Some(5), Some(25)).tranche_type
+			);
+
+			// remove residual tranches
+			assert_ok!(tranches.remove(2));
+			assert_ok!(tranches.remove(1));
+			assert_eq!(tranches.non_residual_tranches(), None);
 		}
 
 		#[test]
-		fn non_reidual_tranches_mut_works() {
+		fn non_residual_tranches_mut_works() {
 			// TODO: tests for `non_residual_tranches_mut` method on `Tranches`
 		}
 
@@ -2432,7 +2559,7 @@ pub mod test {
 		}
 
 		#[test]
-		fn non_residual_tranches_mut_works() {
+		fn non_residual_tranche_mut_works() {
 			// TODO: tests for `non_residual_tranches_mut` method on `Tranches`
 		}
 
