@@ -13,7 +13,7 @@
 use cfg_types::{permissions::PermissionScope::Currency, tokens::CurrencyId};
 use codec::Encode;
 use development_runtime::apis::PoolsApi;
-use frame_support::{assert_ok, dispatch::UnfilteredDispatchable};
+use frame_support::{assert_ok, dispatch::UnfilteredDispatchable, traits::UnixTime};
 use frame_system::Origin;
 use fudge::primitives::Chain;
 use sp_core::Pair;
@@ -23,7 +23,7 @@ use tokio::runtime::Handle;
 use super::{ApiEnv, PARA_ID};
 use crate::{
 	chain,
-	chain::centrifuge::RuntimeOrigin,
+	chain::centrifuge::{Runtime, RuntimeOrigin},
 	pools::utils::{
 		accounts::Keyring,
 		env::{test_env_default, TestEnv},
@@ -68,6 +68,8 @@ async fn test() {
 				);
 				assert_ok!(res);
 			}
+
+			development_runtime::Timestamp::set_timestamp(86400000 * 3);
 		})
 		.with_api(|api, latest| {
 			let valuation = api.portfolio_valuation(&latest, 0).unwrap();
