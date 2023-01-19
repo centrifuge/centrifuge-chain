@@ -10,19 +10,21 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::{permissions::PermissionScope::Currency, tokens::CurrencyId};
+use cfg_primitives::{AccountId, Moment};
+use cfg_types::{
+	permissions::{PermissionScope, PermissionScope::Currency, PoolRole, Role},
+	tokens::CurrencyId,
+};
+use cfg_utils::set_block_number_timestamp;
 use codec::Encode;
 use development_runtime::apis::PoolsApi;
 use frame_support::{assert_ok, dispatch::UnfilteredDispatchable, traits::UnixTime};
 use frame_system::Origin;
 use fudge::primitives::Chain;
+use pallet_loans::math;
 use sp_core::Pair;
 use sp_runtime::{app_crypto::sr25519, traits::IdentifyAccount};
 use tokio::runtime::Handle;
-use cfg_primitives::{AccountId, Moment};
-use cfg_types::permissions::{PermissionScope, PoolRole, Role};
-use cfg_utils::set_block_number_timestamp;
-use pallet_loans::math;
 
 use super::{ApiEnv, PARA_ID};
 use crate::{
@@ -31,7 +33,7 @@ use crate::{
 	pools::utils::{
 		accounts::Keyring,
 		env::{test_env_default, TestEnv},
-		loans::{init_loans_for_pool, issue_default_loan, LoanId, NftManager, borrow_call},
+		loans::{borrow_call, init_loans_for_pool, issue_default_loan, LoanId, NftManager},
 		pools::default_pool_calls,
 	},
 };
@@ -45,10 +47,9 @@ async fn test() {
 
 			let mut nft_manager = NftManager::new();
 			let set_default_pool = default_pool_calls(pool_admin.clone(), 0, &mut nft_manager);
-			let set_loans_for_pools =
-				init_loans_for_pool(pool_admin.clone(), 0, &mut nft_manager);
+			let set_loans_for_pools = init_loans_for_pool(borrower.clone(), 0, &mut nft_manager);
 			let issue_default_loans = issue_default_loan(
-				pool_admin.clone(),
+				borrower.clone(),
 				0,
 				10_000 * 10_000_000_000,
 				90 * 60 * 60 * 24,
@@ -62,16 +63,10 @@ async fn test() {
 				);
 				assert_ok!(res);
 			}
-			for call in set_loans_for_pools {
-				let res = UnfilteredDispatchable::dispatch_bypass_filter(
-					call,
-					RuntimeOrigin::signed(pool_admin.clone()),
-				);
-			}
 			for call in issue_default_loans {
 				let res = UnfilteredDispatchable::dispatch_bypass_filter(
 					call,
-					RuntimeOrigin::signed(pool_admin.clone()),
+					RuntimeOrigin::signed(borrower.clone()),
 				);
 				assert_ok!(res);
 			}
@@ -83,7 +78,7 @@ async fn test() {
 
 			let borrow_call = UnfilteredDispatchable::dispatch_bypass_filter(
 				borrow_call(0, LoanId::from(0_u16), 100_000),
-				RuntimeOrigin::signed(pool_admin.clone()),
+				RuntimeOrigin::signed(borrower.clone()),
 			);
 
 			assert_ok!(borrow_call);
