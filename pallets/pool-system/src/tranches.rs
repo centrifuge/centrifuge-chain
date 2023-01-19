@@ -930,28 +930,28 @@ where
 		&mut self,
 	) -> Option<&mut [Tranche<Balance, Rate, Weight, TrancheCurrency>]> {
 		self.tranches
-			.as_mut_slice()
+			.as_slice()
 			.iter()
 			.position(|tranche| matches!(tranche.tranche_type, TrancheType::NonResidual { .. }))
 			.and_then(|index| self.tranches.as_mut_slice().get_mut(index..))
 	}
 
 	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.residual_top_slice().split_first() {
-			Some(head)
-		} else {
-			None
-		}
+		self.tranches
+			.as_slice()
+			.iter()
+			.position(|tranche| matches!(tranche.tranche_type, TrancheType::Residual))
+			.and_then(|index| self.tranches.as_slice().get(index))
 	}
 
 	pub fn residual_tranche_mut(
 		&mut self,
 	) -> Option<&mut Tranche<Balance, Rate, Weight, TrancheCurrency>> {
-		if let Some((head, _tail)) = self.residual_top_slice_mut().split_first_mut() {
-			Some(head)
-		} else {
-			None
-		}
+		self.tranches
+			.as_slice()
+			.iter()
+			.position(|tranche| matches!(tranche.tranche_type, TrancheType::Residual))
+			.and_then(|index| self.tranches.as_mut_slice().get_mut(index))
 	}
 
 	pub fn non_residual_top_slice(
@@ -2545,51 +2545,104 @@ pub mod test {
 
 		#[test]
 		fn non_residual_tranches_mut_works() {
-			// TODO: tests for `non_residual_tranches_mut` method on `Tranches`
-		}
+			let mut tranches = default_tranches();
+			let non_res_tranches = tranches.non_residual_tranches_mut().unwrap();
+			assert_eq!(non_res_tranches.len(), 2);
 
-		#[test]
-		fn residual_tranches_works() {
-			// TODO: tests for `residual_tranches` method on `Tranches`
-		}
+			assert_eq!(
+				non_res_tranches[0].tranche_type,
+				non_residual(1, Some(10), Some(10)).tranche_type
+			);
+			assert_eq!(
+				non_res_tranches[1].tranche_type,
+				non_residual(2, Some(5), Some(25)).tranche_type
+			);
 
-		#[test]
-		fn residual_tranches_mut_works() {
-			// TODO: tests for `residual_tranches_mut` method on `Tranches`
-		}
-
-		#[test]
-		fn non_residual_tranche_mut_works() {
-			// TODO: tests for `non_residual_tranches_mut` method on `Tranches`
+			// remove residual tranches
+			assert_ok!(tranches.remove(2));
+			assert_ok!(tranches.remove(1));
+			assert_eq!(tranches.non_residual_tranches_mut(), None);
 		}
 
 		#[test]
 		fn residual_tranche() {
-			// TODO: tests for `residual_tranche` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(tranches.residual_tranche(), Some(&residual_base(0, 0)));
+
+			// break assumption of existing residual branche for the sake of the test
+			assert_ok!(tranches.remove(0));
+			assert!(tranches.residual_tranche().is_none());
 		}
 
 		#[test]
 		fn residual_tranche_mut_works() {
-			// TODO: tests for `residual_tranche_mut` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(
+				tranches.residual_tranche_mut(),
+				Some(&mut residual_base(0, 0))
+			);
+
+			// break assumption of existing residual branche for the sake of the test
+			assert_ok!(tranches.remove(0));
+			assert!(tranches.residual_tranche_mut().is_none());
 		}
 
 		#[test]
 		fn non_residual_top_slice_works() {
-			// TODO: tests for `non_residual_top_slice` method on `Tranches`
+			let tranches = default_tranches();
+			assert_eq!(
+				tranches.non_residual_top_slice().len(),
+				tranches.num_tranches()
+			);
+			assert_eq!(
+				tranches.non_residual_top_slice().first(),
+				Some(&non_residual(2, Some(5), Some(25))),
+			);
+			assert_eq!(tranches.non_residual_top_slice().last(), Some(&residual(0)),);
 		}
 		#[test]
 		fn non_residual_top_slice_mut_works() {
-			// TODO: tests for `non_residual_top_slice_mut` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(
+				tranches.non_residual_top_slice_mut().len(),
+				tranches.num_tranches()
+			);
+			assert_eq!(
+				tranches.non_residual_top_slice_mut().first_mut(),
+				Some(&mut non_residual(2, Some(5), Some(25))),
+			);
+			assert_eq!(
+				tranches.non_residual_top_slice_mut().last_mut(),
+				Some(&mut residual(0)),
+			);
 		}
 
 		#[test]
 		fn residual_top_slice_works() {
-			// TODO: tests for `residual_top_slice` method on `Tranches`
+			let tranches = default_tranches();
+			assert_eq!(tranches.residual_top_slice().len(), tranches.num_tranches());
+			assert_eq!(tranches.residual_top_slice().first(), Some(&residual(0)));
+			assert_eq!(
+				tranches.residual_top_slice().last(),
+				Some(&non_residual(2, Some(5), Some(25))),
+			);
 		}
 
 		#[test]
 		fn residual_top_slice_mut_works() {
-			// TODO: tests for `residual_top_slice_mut` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(
+				tranches.residual_top_slice_mut().len(),
+				tranches.num_tranches()
+			);
+			assert_eq!(
+				tranches.residual_top_slice_mut().first_mut(),
+				Some(&mut residual(0))
+			);
+			assert_eq!(
+				tranches.residual_top_slice_mut().last_mut(),
+				Some(&mut non_residual(2, Some(5), Some(25))),
+			);
 		}
 
 		#[test]
