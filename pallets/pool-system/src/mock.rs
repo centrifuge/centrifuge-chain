@@ -80,10 +80,12 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 	type MaxRolesPerScope = MaxRoles;
+	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
 	type WeightInfo = ();
 }
 
@@ -277,7 +279,7 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, PartialOrd, Debug, Clone, Copy )]
 	pub const MaxTranches: u32 = 5;
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
@@ -366,6 +368,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheWeight,
 		TrancheId,
 		u64,
+		MaxTranches,
 	>;
 	type ScheduledUpdateDetails =
 		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;

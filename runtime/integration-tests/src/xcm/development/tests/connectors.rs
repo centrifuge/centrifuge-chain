@@ -269,7 +269,7 @@ fn encoded_ethereum_xcm_add_pool() {
 		interior: X1(Parachain(1000)),
 	};
 	// 38 is the pallet index, 0 is the `transact` extrinsic index.
-	let ethereum_xcm_transact_call_index = vec![38, 0];
+	let ethereum_xcm_transact_call_index = BoundedVec::truncate_from(vec![38, 0]);
 	let contract_address = H160::from(
 		<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882").expect("Decoding failed"),
 	);
@@ -360,7 +360,7 @@ mod utils {
 					.clone()
 					.try_into()
 					.expect("Bad xcm version"),
-				ethereum_xcm_transact_call_index: vec![38, 0],
+				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 				contract_address: H160::from(
 					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
 						.expect("Invalid address"),

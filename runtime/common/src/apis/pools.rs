@@ -16,6 +16,7 @@ use pallet_pool_system::{
 	EpochSolution,
 };
 use sp_api::decl_runtime_apis;
+use sp_runtime::traits::Get;
 use sp_std::vec::Vec;
 
 decl_runtime_apis! {
@@ -23,17 +24,18 @@ decl_runtime_apis! {
 	///
 	/// Note: The runtime api is pallet specific, while the RPC methods
 	///       are more focused on domain-specific logic
-	pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio>
+	pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, MaxTranches>
 	where
 		PoolId: Codec,
 		TrancheId: Codec,
 		Balance: Codec,
 		Currency: Codec,
 		BalanceRatio: Codec,
+		MaxTranches: Codec + Get<u32>,
 	{
 		fn currency(pool_id: PoolId) -> Option<Currency>;
 
-		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>;
+		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance, MaxTranches>>;
 
 		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<BalanceRatio>;
 
