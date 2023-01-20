@@ -466,6 +466,7 @@ where
 				let index = self.tranche_index(&TrancheLoc::Id(id));
 				if let Some(index) = index {
 					let index: Option<usize> = index.try_into().ok();
+					// supposedly uncovered
 					if let Some(index) = index {
 						self.tranches.get(index)
 					} else {
@@ -563,6 +564,7 @@ where
 		tranche: &Tranche<Balance, Rate, Weight, TrancheCurrency>,
 	) -> DispatchResult {
 		let i_at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		// supposedly uncovered
 		if i_at == 0 {
 			ensure!(
 				tranche.tranche_type == TrancheType::Residual,
@@ -853,7 +855,8 @@ where
 		}
 	}
 
-	// TODO: Understand and add docs
+	/// Returns the current prices of the tranches based on the current NAV and each tranche's balance and total issuance at this exact moment.
+	/// The correctness of the waterfall is ensured by starting at the top non-residual tranch.
 	pub fn calculate_prices<BalanceRatio, Tokens, AccountId>(
 		&mut self,
 		total_assets: Balance,
@@ -2519,6 +2522,7 @@ pub mod test {
 			const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400;
 			const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100;
 
+			// FIXME: To reviewer, can this somehow be derived? In practice, we only need the `total_issuance` but `calculate_price` requires the trait.
 			struct TTokens(u64);
 			impl Inspect<TrancheCurrency> for TTokens {
 				type AssetId = TrancheCurrency;
@@ -2771,6 +2775,25 @@ pub mod test {
 		}
 
 		#[test]
+		fn rebalance_tranches_works() {
+			let mut tranches = default_tranches_with_issuance();
+
+			assert_ok!(tranches.rebalance_tranches(
+				SECS_PER_YEAR,
+				// TODO: Investigate how these two leads to error
+				600,
+				700,
+				&[
+					Perquintill::from_percent(0),
+					Perquintill::from_percent(0),
+					Perquintill::from_percent(0),
+				],
+				&[(0, 0), (0, 0), (0, 0)],
+			));
+			assert_eq!(tranches, default_tranches_with_issuance());
+		}
+
+		#[test]
 		fn num_tranches_works() {
 			let mut tranches = default_tranches();
 			assert_eq!(tranches.num_tranches(), 3);
@@ -3006,11 +3029,6 @@ pub mod test {
 					.seniority += i;
 			}
 			assert_eq!(tranches.seniorities(), vec![0, 2, 4]);
-		}
-
-		#[test]
-		fn rebalance_tranches_works() {
-			// TODO: tests for `rebalance_tranches` method on `Tranches`
 		}
 	}
 
