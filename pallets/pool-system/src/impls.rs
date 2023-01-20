@@ -47,7 +47,7 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 		// Get cached nav as calculating current nav would be too computationally expensive
 		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
-		let total_assets = pool.reserve.total.saturating_add(nav);
+		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
 
 		let tranche_index: usize = pool
 			.tranches
@@ -126,6 +126,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			T::TrancheCurrency,
 			T::TrancheId,
 			T::PoolId,
+			T::MaxTranches,
 		>::from_input::<T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
 			pool_id,
 			tranche_inputs.clone(),

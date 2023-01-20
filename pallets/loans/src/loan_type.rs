@@ -12,12 +12,13 @@
 // GNU General Public License for more details.
 
 //! Module provides functionality for different loan types
+use codec::MaxEncodedLen;
 use scale_info::TypeInfo;
 
 use super::*;
 
 /// different types of loans
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanType<Rate, Balance> {
@@ -49,7 +50,7 @@ where
 }
 
 /// The data structure for Bullet loan type
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BulletLoan<Rate, Balance> {
@@ -127,7 +128,7 @@ where
 }
 
 /// The data structure for Credit line loan type
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CreditLine<Rate, Balance> {
@@ -169,7 +170,7 @@ impl<Rate, Balance> CreditLine<Rate, Balance> {
 }
 
 /// The data structure for Credit line with maturity loan type
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CreditLineWithMaturity<Rate, Balance> {

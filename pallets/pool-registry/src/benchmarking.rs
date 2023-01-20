@@ -15,7 +15,7 @@
 use cfg_primitives::PoolEpochId;
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
 use cfg_types::tokens::{CurrencyId, TrancheCurrency};
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::benchmarks;
 use frame_support::traits::fungibles::Inspect;
 use frame_system::RawOrigin;
 use orml_traits::Change;
@@ -178,13 +178,13 @@ benchmarks! {
 			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
 		};
 
-		update_pool::<T>(changes.clone())?;
-
 		// Invest so we can redeem later
 		let investor = create_investor::<T>(0, TRANCHE)?;
 		let locator = get_tranche_id::<T>(TRANCHE);
 		// Submit redemption order so the update isn't immediately executed
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
+
+		update_pool::<T>(changes.clone())?;
 
 		// Withdraw redeem order so the update can be executed after that
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 0)?;
@@ -273,8 +273,9 @@ fn build_bench_update_tranches<T: Config>(
 	tranches.try_into().expect("num_tranches <= T::MaxTranches")
 }
 
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::mock::TestExternalitiesBuilder::default().build(),
-	crate::mock::Test,
-);
+// TODO: Enable once ModifyPool is not fully mocked
+// impl_benchmark_test_suite!(
+// 	Pallet,
+// 	crate::mock::TestExternalitiesBuilder::default().build(),
+// 	crate::mock::Test,
+// );

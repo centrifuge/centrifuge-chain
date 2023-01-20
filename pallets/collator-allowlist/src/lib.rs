@@ -37,7 +37,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -49,7 +48,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		/// The Validator Id type
-		type ValidatorId: Member + Parameter + MaybeSerializeDeserialize;
+		type ValidatorId: Member + Parameter + MaybeSerializeDeserialize + MaxEncodedLen;
 
 		/// Type representing the underlying validator registration center.
 		/// It offers us the API we need to check whether a collator

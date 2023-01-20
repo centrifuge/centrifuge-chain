@@ -1053,6 +1053,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		TrancheWeight,
 		TrancheId,
 		PoolId,
+		MaxTranches,
 	>;
 	type ScheduledUpdateDetails = ScheduledUpdateDetails<
 		Rate,
@@ -1276,7 +1277,8 @@ impl pallet_loans::Config for Runtime {
 }
 
 parameter_types! {
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	#[derive(Encode, Decode, Debug, Eq, PartialEq, PartialOrd, scale_info::TypeInfo, Clone)]
+	#[cfg_attr(feature = "std", derive(frame_support::Serialize, frame_support::Deserialize))]
 	pub const MaxTranches: u32 = 5;
 
 	// How much time should lapse before a tranche investor can be removed
@@ -1291,10 +1293,12 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
+	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
 	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
 }
 
@@ -1928,12 +1932,12 @@ impl_runtime_apis! {
 	}
 
 	// PoolsApi
-	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
+	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate, MaxTranches> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pool_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
 
-		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>{
+		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance, MaxTranches>>{
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			let epoch_execution_info = pallet_pool_system::EpochExecution::<Runtime>::get(pool_id)?;
 			pallet_pool_system::Pallet::<Runtime>::score_solution(
