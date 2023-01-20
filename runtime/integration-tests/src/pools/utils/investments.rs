@@ -26,7 +26,7 @@ use crate::{
 	pools::utils::{accounts::Keyring, loans::update_nav_call, pools::close_epoch_call},
 };
 
-/// Funds a Pool with a given PoolId. The pool must already exist and initalised.
+/// Fund a Pool with a given PoolId. The pool must already exist and be initialised.
 /// We fund the JuniorTranche of the Pool for TrancheInvestors 1 to 11.
 ///
 /// Extrinsics that are generated:

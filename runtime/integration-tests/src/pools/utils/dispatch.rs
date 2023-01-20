@@ -15,6 +15,14 @@ use frame_support::{assert_ok, dispatch::UnfilteredDispatchable};
 
 use crate::chain::centrifuge::RuntimeOrigin;
 
+/// A helper macro which is using the trait `UnfilteredDispatchable`
+/// (https://paritytech.github.io/substrate/master/frame_support/dispatch/trait.UnfilteredDispatchable.html
+/// From the docs: "Type that can be dispatched with an origin but without checking the origin filter."
+///
+/// We use this to execute our pallet calls in the integration tests. We use the utils to create calls of the
+/// type `RuntimeCall`, and pass them to the `dispatch_bypass_filter` function. This macro saves us
+/// from exposing the `UnfilteredDispatchable` trait implementation to each test where we might need it
+/// and reduce the cognitive overload this might cause.
 macro_rules! dispatch {
 	($calls:expr, $account:expr) => {
 		for call in $calls {

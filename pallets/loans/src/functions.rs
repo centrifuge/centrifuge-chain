@@ -788,10 +788,11 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// make sure maturity date has not passed if the loan has a maturity date
-		let valid = match active_loan.loan_type.maturity_date() {
-			Some(md) => md > now,
-			None => true,
-		};
+		let valid = active_loan
+			.loan_type
+			.maturity_date()
+			.map(|md| md > now)
+			.unwrap_or(true);
 
 		ensure!(valid, Error::<T>::LoanMaturityDatePassed);
 

@@ -62,12 +62,8 @@ async fn test() {
 			dispatch!(investemnt_calls, pool_admin.clone());
 			dispatch!(issue_default_loans, pool_admin.clone());
 
-			let borrow_calls = vec![borrow_call(
-				POOL_ID,
-				LoanId::from(1_u16),
-				10_000 * DECIMAL_BASE_12,
-			)];
-			dispatch!(borrow_calls, pool_admin.clone());
+			let borrow_calls = borrow_call(POOL_ID, LoanId::from(1_u16), 10_000 * DECIMAL_BASE_12);
+			dispatch!(vec![borrow_calls], pool_admin.clone());
 
 			// set timestamp to around 1 year
 			let now = development_runtime::Timestamp::now();
