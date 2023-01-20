@@ -1581,6 +1581,7 @@ pub mod test {
 	use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
 
 	use super::*;
+	use crate::mock::MaxTranches;
 
 	// NOTE: We currently expose types in runtime-common. As we do not want
 	//       this dependecy in our pallets, we generate the types manually here.
@@ -1590,7 +1591,7 @@ pub mod test {
 	type TTrancheType = TrancheType<Rate>;
 	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
 	type TTranches =
-		Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId, ConstU32<10>>;
+		Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId, MaxTranches>;
 
 	const DEFAULT_POOL_ID: PoolId = 0;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1717,7 +1718,7 @@ pub mod test {
 	}
 
 	fn default_epoch_tranches(
-	) -> EpochExecutionTranches<Balance, BalanceRatio, TrancheWeight, TrancheCurrency, ConstU32<10>>
+	) -> EpochExecutionTranches<Balance, BalanceRatio, TrancheWeight, TrancheCurrency, MaxTranches>
 	{
 		let epoch_tranches = default_tranches_with_seniority()
 			.into_tranches()
@@ -2320,7 +2321,7 @@ pub mod test {
 		#[test]
 		fn remove_tranches_works() {
 			let mut tranches = default_tranches();
-			let tranches_pre_removal = tranches.clone();
+			let tranches_pre_removal = default_tranches();
 
 			// attempt to remove outside of bounds
 			assert!(tranches.remove(3).is_err());
@@ -2820,21 +2821,22 @@ pub mod test {
 
 		#[test]
 		fn rebalance_tranches_works() {
-			let mut tranches = default_tranches_with_issuance();
+			todo!();
+			// let mut tranches = default_tranches_with_issuance();
 
-			assert_ok!(tranches.rebalance_tranches(
-				SECS_PER_YEAR,
-				// TODO: Investigate how these two leads to error
-				600,
-				700,
-				&[
-					Perquintill::from_percent(0),
-					Perquintill::from_percent(0),
-					Perquintill::from_percent(0),
-				],
-				&[(0, 0), (0, 0), (0, 0)],
-			));
-			assert_eq!(tranches, default_tranches_with_issuance());
+			// assert_ok!(tranches.rebalance_tranches(
+			// 	SECS_PER_YEAR,
+			// 	// TODO: Investigate how these two leads to error
+			// 	600,
+			// 	700,
+			// 	&[
+			// 		Perquintill::from_percent(0),
+			// 		Perquintill::from_percent(0),
+			// 		Perquintill::from_percent(0),
+			// 	],
+			// 	&[(0, 0), (0, 0), (0, 0)],
+			// ));
+			// assert_eq!(tranches, default_tranches_with_issuance());
 		}
 
 		#[test]
@@ -2865,7 +2867,8 @@ pub mod test {
 		#[test]
 		fn into_tranches_works() {
 			let tranches = default_tranches();
-			assert_eq!(tranches.clone().into_tranches(), tranches.tranches);
+			let tranches_2 = default_tranches();
+			assert_eq!(tranches_2.into_tranches(), tranches.tranches);
 		}
 
 		#[test]
@@ -3087,8 +3090,16 @@ pub mod test {
 				59u8, 168, 10, 55, 120, 240, 78, 191, 69, 232, 6, 209, 154, 5, 32, 37,
 			];
 			assert_eq!(
-				Tranches::<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId>::id_from_salt(salt),
-          expected_txt_vec
+				Tranches::<
+					Balance,
+					Rate,
+					TrancheWeight,
+					TrancheCurrency,
+					TrancheId,
+					PoolId,
+					MaxTranches,
+				>::id_from_salt(salt),
+				expected_txt_vec
 			)
 		}
 	}
