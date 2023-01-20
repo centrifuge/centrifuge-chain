@@ -976,6 +976,7 @@ where
 		self.tranches.as_mut_slice()
 	}
 
+	/// Returns each tranche's total supply starting at the residual top.
 	pub fn supplies(&self) -> Result<Vec<Balance>, DispatchError> {
 		Ok(self
 			.residual_top_slice()
@@ -984,6 +985,7 @@ where
 			.collect::<Result<_, _>>()?)
 	}
 
+	/// Returns the total supply over all tranches starting at the residual top.
 	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
 		Ok(self
 			.residual_top_slice()
@@ -993,6 +995,7 @@ where
 			})?)
 	}
 
+	/// Returns each tranche's min risk buffer starting at the residual top.
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
 		self.residual_top_slice()
 			.iter()
@@ -1000,6 +1003,7 @@ where
 			.collect()
 	}
 
+	/// Returns each tranche's seniority starting at the residual top.
 	pub fn seniorities(&self) -> Vec<Seniority> {
 		self.residual_top_slice()
 			.iter()
@@ -1544,21 +1548,85 @@ pub mod test {
 
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 	const DEFAULT_POOL_ID: PoolId = 0;
+	const DEBT_RESIDUAL_TRANCHE: u128 = 100;
+	const DEBT_NON_RESIDUAL_TRANCHE_1: u128 = 100;
+	const DEBT_NON_RESIDUAL_TRANCHE_2: u128 = 200;
+	const RESERVE_RESIDUAL_TRANCHE: u128 = 100;
+	const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400;
+	const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100;
+
+	struct TTokens(u64);
+	impl Inspect<TrancheCurrency> for TTokens {
+		type AssetId = TrancheCurrency;
+		type Balance = u128;
+
+		/// Mock value is sum of asset.pool_id and 1000.
+		fn total_issuance(asset: Self::AssetId) -> Self::Balance {
+			match asset.of_tranche() {
+				// default most senior tranch currency id
+				[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] => {
+					DEBT_NON_RESIDUAL_TRANCHE_2 + RESERVE_NON_RESIDUAL_TRANCHE_2
+				}
+				// default least senior tranch currency id
+				[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] => {
+					DEBT_NON_RESIDUAL_TRANCHE_1 + RESERVE_NON_RESIDUAL_TRANCHE_1
+				}
+				// default single residual tranch currency id
+				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] => {
+					DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE
+				}
+				_ => 1000,
+			}
+		}
+
+		fn minimum_balance(_asset: Self::AssetId) -> Self::Balance {
+			todo!()
+		}
+
+		fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
+			todo!()
+		}
+
+		fn reducible_balance(
+			_asset: Self::AssetId,
+			_who: &TrancheCurrency,
+			_keep_alive: bool,
+		) -> Self::Balance {
+			todo!()
+		}
+
+		fn can_deposit(
+			_asset: Self::AssetId,
+			_who: &TrancheCurrency,
+			_amount: Self::Balance,
+			_mint: bool,
+		) -> frame_support::traits::tokens::DepositConsequence {
+			todo!()
+		}
+
+		fn can_withdraw(
+			_asset: Self::AssetId,
+			_who: &TrancheCurrency,
+			_amount: Self::Balance,
+		) -> frame_support::traits::tokens::WithdrawConsequence<Self::Balance> {
+			todo!()
+		}
+	}
 
 	#[derive(PartialEq)]
 	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
 
 	fn residual(id: u8) -> TTranche {
-		residual_base(id, 0)
+		residual_base(id, 0, 0, 0)
 	}
 
-	fn residual_base(id: u8, seniority: Seniority) -> TTranche {
+	fn residual_base(id: u8, seniority: Seniority, debt: Balance, reserve: Balance) -> TTranche {
 		TTranche {
 			tranche_type: TrancheType::Residual,
 			seniority: seniority,
 			currency: TrancheCurrency::generate(DEFAULT_POOL_ID, [id; 16]),
-			debt: 0,
-			reserve: 0,
+			debt,
+			reserve,
 			loss: 0,
 			ratio: Perquintill::zero(),
 			last_updated_interest: 0,
@@ -1570,7 +1638,7 @@ pub mod test {
 		interest_rate_in_perc: Option<u32>,
 		buffer_in_perc: Option<u64>,
 	) -> TTranche {
-		non_residual_base(id, interest_rate_in_perc, buffer_in_perc, 0)
+		non_residual_base(id, interest_rate_in_perc, buffer_in_perc, 0, 0, 0)
 	}
 
 	fn non_residual_base(
@@ -1578,6 +1646,8 @@ pub mod test {
 		interest_rate_in_perc: Option<u32>,
 		buffer_in_perc: Option<u64>,
 		seniority: Seniority,
+		debt: Balance,
+		reserve: Balance,
 	) -> TTranche {
 		let interest_rate_per_sec = interest_rate_in_perc
 			.map(|rate| Rate::saturating_from_rational(rate, 100))
@@ -1596,8 +1666,8 @@ pub mod test {
 			},
 			seniority: seniority,
 			currency: TrancheCurrency::generate(DEFAULT_POOL_ID, [id; 16]),
-			debt: 0,
-			reserve: 0,
+			debt,
+			reserve,
 			loss: 0,
 			ratio: Perquintill::zero(),
 			last_updated_interest: 0,
@@ -1623,9 +1693,26 @@ pub mod test {
 		TTranches::new(
 			DEFAULT_POOL_ID,
 			vec![
-				residual_base(0, 0),
-				non_residual_base(1, Some(10), Some(10), 1),
-				non_residual_base(2, Some(5), Some(25), 2),
+				residual_base(0, 0, 0, 0),
+				non_residual_base(1, Some(10), Some(10), 1, 0, 0),
+				non_residual_base(2, Some(5), Some(25), 2, 0, 0),
+			],
+		)
+		.unwrap()
+	}
+
+	/// Sets up three tranches:
+	///
+	/// 	* Residual: 0% interest, 0% buffer, 100 debt, 100 reserve
+	/// 	* Non Residual: 10% interest, 10% buffer, 100 debt, 400 reserve
+	/// 	* Non Residual: 5% interest, 25% buffer, 200 debt, 100 reserve
+	fn default_tranches_with_issuance() -> TTranches {
+		TTranches::new(
+			DEFAULT_POOL_ID,
+			vec![
+				residual_base(0, 0, 100, 100),
+				non_residual_base(1, Some(10), Some(10), 1, 100, 400),
+				non_residual_base(2, Some(5), Some(25), 2, 200, 100),
 			],
 		)
 		.unwrap()
@@ -2487,8 +2574,187 @@ pub mod test {
 		}
 
 		#[test]
-		fn calculate_prices_tranches_works() {
-			// TODO: tests for `calculate_prices` method on `Tranches`
+		/// No debt, reserve or APR for any tranche.
+		fn calculate_prices_no_debt_works() {
+			let initial_assets = DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE;
+
+			// only residual has a price if there is no debt
+			assert_eq!(
+				default_tranches()
+					.calculate_prices::<_, TTokens, TrancheCurrency>(initial_assets, SECS_PER_YEAR),
+				Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
+			);
+			// price should be the same for longer time period as NAV does not change
+			assert_eq!(
+				default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
+					initial_assets,
+					2 * SECS_PER_YEAR
+				),
+				Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
+			);
+
+			// price should double if initial assets doubles
+			assert_eq!(
+				default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
+					initial_assets * 2,
+					SECS_PER_YEAR
+				),
+				Ok(vec![
+					Rate::saturating_from_rational(2, 1),
+					Rate::zero(),
+					Rate::zero(),
+				])
+			);
+			// price should be half if initial asset amount is halfed
+			assert_eq!(
+				default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
+					initial_assets / 2,
+					2 * SECS_PER_YEAR
+				),
+				Ok(vec![
+					Rate::saturating_from_rational(1, 2),
+					Rate::zero(),
+					Rate::zero(),
+				])
+			);
+		}
+
+		#[test]
+		/// If amount of assets is zwero zero, all price rates should be one.
+		fn calculate_prices_no_assets_works() {
+			assert_eq!(
+				default_tranches()
+					.calculate_prices::<_, TTokens, TrancheCurrency>(0, SECS_PER_YEAR),
+				Ok(vec![Rate::one(), Rate::one(), Rate::one(),])
+			);
+		}
+
+		#[test]
+		/// Check price loss waterfall for different asset amounts.
+		///
+		/// Each tranche has a different APR, debt, reserve and total issuance.
+		/// The sum of total issuance (initial NAV) for all three tranches is 1000.
+		///
+		/// NOTE: Expected values checked against in https://docs.google.com/spreadsheets/d/16hpWBzGFxlhsIFYJYl1Im9BsNLKVjvJj8VUvECxqduE/edit#gid=543118716
+		fn calculate_prices_total_assets_works() {
+			assert_eq!(
+				default_tranches_with_issuance()
+					.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
+				Ok(vec![
+					Rate::saturating_from_rational(1395, 1000),
+					Rate::saturating_from_rational(1022, 1000),
+					Rate::saturating_from_rational(31, 30),
+				])
+			);
+			// reduce new NAV/total_assets by 200 to have loss in residual tranche
+			assert_eq!(
+				default_tranches_with_issuance()
+					.calculate_prices::<_, TTokens, TrancheCurrency>(900, SECS_PER_YEAR),
+				Ok(vec![
+					Rate::saturating_from_rational(395, 1000),
+					Rate::saturating_from_rational(1022, 1000),
+					Rate::saturating_from_rational(31, 30),
+				])
+			);
+			// reduce new NAV/total_assets by another 200 to have loss in first non-res tranche
+			assert_eq!(
+				default_tranches_with_issuance()
+					.calculate_prices::<_, TTokens, TrancheCurrency>(700, SECS_PER_YEAR),
+				Ok(vec![
+					Rate::zero(),
+					Rate::saturating_from_rational(780, 1000),
+					Rate::saturating_from_rational(31, 30),
+				])
+			);
+			// reduce new NAV/total_assets by another 500 to have loss most senior tranche
+			assert_eq!(
+				default_tranches_with_issuance()
+					.calculate_prices::<_, TTokens, TrancheCurrency>(100, SECS_PER_YEAR),
+				Ok(vec![
+					Rate::zero(),
+					Rate::zero(),
+					Rate::saturating_from_rational(1, 3),
+				])
+			);
+		}
+
+		#[test]
+		/// Check price evolution over course of multiple years without adjusting total assets.
+		///
+		/// Each tranche has a different APR, debt, reserve and total issuance.
+		/// The sum of total issuance (initial NAV) for all three tranches is 1000.
+		fn calculate_prices_last_update_works() {
+			let mut tranches = default_tranches_with_issuance();
+			assert_eq!(
+				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
+				Ok(vec![
+					Rate::saturating_from_rational(1395, 1000),
+					Rate::saturating_from_rational(1022, 1000),
+					Rate::saturating_from_rational(31, 30),
+				])
+			);
+			// increase time since last update by two to reduce res price
+			assert_eq!(
+				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 2 * SECS_PER_YEAR),
+				Ok(vec![
+					Rate::saturating_from_rational(1280, 1000),
+					Rate::saturating_from_rational(1046, 1000),
+					Rate::saturating_from_rational(1070, 1000),
+				])
+			);
+			// increase time since last update by ten to reduce res and first non-res prices
+			assert_eq!(
+				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 5 * SECS_PER_YEAR),
+				Ok(vec![
+					Rate::saturating_from_rational(885, 1000),
+					Rate::saturating_from_rational(1132, 1000),
+					Rate::saturating_from_rational(1190, 1000),
+				])
+			);
+			// increase time since last update by twenty to reduce
+			assert_eq!(
+				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 20 * SECS_PER_YEAR),
+				Ok(vec![
+					Rate::zero(),
+					Rate::saturating_from_rational(912, 1000),
+					Rate::saturating_from_rational(2140, 1000)
+						+ Rate::saturating_from_rational(2, 300),
+				])
+			);
+		}
+
+		// FIXME: Are we fine with rounding errors up to 0.5%?
+		fn calculate_prices_rounding_works() {
+			let mut tranches = default_tranches_with_issuance();
+			assert_ok!(
+				tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR)
+			);
+
+			// NOTE: APR = APY after 9 years, probably due to rounding
+			for i in 2..20 {
+				assert_eq!(
+					tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
+						1100,
+						i * SECS_PER_YEAR
+					),
+					default_tranches_with_issuance()
+						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, i * SECS_PER_YEAR),
+					"APR != APY after {} years",
+					i
+				);
+			}
+		}
+
+		#[test]
+		fn calculate_prices_same_moment_works() {
+			let mut tranches = default_tranches_with_issuance();
+			let prices =
+				tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR);
+			// should be no change if the last update happened at the provided moment
+			assert_eq!(
+				prices,
+				tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR)
+			);
 		}
 
 		#[test]
@@ -2567,7 +2833,10 @@ pub mod test {
 		#[test]
 		fn residual_tranche() {
 			let mut tranches = default_tranches();
-			assert_eq!(tranches.residual_tranche(), Some(&residual_base(0, 0)));
+			assert_eq!(
+				tranches.residual_tranche(),
+				Some(&residual_base(0, 0, 0, 0))
+			);
 
 			// break assumption of existing residual branche for the sake of the test
 			assert_ok!(tranches.remove(0));
@@ -2579,7 +2848,7 @@ pub mod test {
 			let mut tranches = default_tranches();
 			assert_eq!(
 				tranches.residual_tranche_mut(),
-				Some(&mut residual_base(0, 0))
+				Some(&mut residual_base(0, 0, 0, 0))
 			);
 
 			// break assumption of existing residual branche for the sake of the test
@@ -2647,22 +2916,83 @@ pub mod test {
 
 		#[test]
 		fn supplies_works() {
-			// TODO: tests for `supplies` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(tranches.supplies(), Ok(vec![0, 0, 0]));
+
+			tranches.get_mut_tranche(TrancheLoc::Index(0)).unwrap().debt = 50;
+			tranches
+				.get_mut_tranche(TrancheLoc::Index(1))
+				.unwrap()
+				.reserve = 40;
+			tranches.get_mut_tranche(TrancheLoc::Index(2)).unwrap().debt = 4;
+			tranches
+				.get_mut_tranche(TrancheLoc::Index(2))
+				.unwrap()
+				.reserve = 6;
+			assert_eq!(tranches.supplies(), Ok(vec![50, 40, 10]));
 		}
 
 		#[test]
 		fn acc_supply_works() {
-			// TODO: tests for `acc_supply` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(tranches.acc_supply(), Ok(0));
+
+			tranches.get_mut_tranche(TrancheLoc::Index(0)).unwrap().debt = 50;
+			tranches
+				.get_mut_tranche(TrancheLoc::Index(1))
+				.unwrap()
+				.reserve = 40;
+			tranches.get_mut_tranche(TrancheLoc::Index(2)).unwrap().debt = 4;
+			tranches
+				.get_mut_tranche(TrancheLoc::Index(2))
+				.unwrap()
+				.reserve = 6;
+			assert_eq!(tranches.acc_supply(), Ok(100));
 		}
 
 		#[test]
 		fn min_risk_buffers_works() {
-			// TODO: tests for `min_risk_buffers` method on `Tranches`
+			let mut tranches = default_tranches();
+			assert_eq!(
+				tranches.min_risk_buffers(),
+				vec![
+					Perquintill::from_percent(0),
+					Perquintill::from_percent(10),
+					Perquintill::from_percent(25)
+				]
+			);
+
+			for i in 0u64..tranches.num_tranches().ensure_into().unwrap() {
+				tranches
+					.get_mut_tranche(TrancheLoc::Index(i))
+					.unwrap()
+					.tranche_type = TrancheType::NonResidual {
+					min_risk_buffer: Perquintill::from_percent(i),
+					interest_rate_per_sec: Rate::one(),
+				};
+			}
+			assert_eq!(
+				tranches.min_risk_buffers(),
+				vec![
+					Perquintill::from_percent(0),
+					Perquintill::from_percent(1),
+					Perquintill::from_percent(2)
+				]
+			);
 		}
 
 		#[test]
 		fn seniorities_works() {
-			// TODO: tests for `seniorities` method on `Tranches`
+			let mut tranches = default_tranches_with_seniority();
+			assert_eq!(tranches.seniorities(), vec![0, 1, 2]);
+
+			for i in 0u32..tranches.num_tranches().ensure_into().unwrap() {
+				tranches
+					.get_mut_tranche(TrancheLoc::Index(i.into()))
+					.unwrap()
+					.seniority += i;
+			}
+			assert_eq!(tranches.seniorities(), vec![0, 2, 4]);
 		}
 
 		#[test]
