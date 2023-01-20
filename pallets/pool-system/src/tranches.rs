@@ -1546,72 +1546,8 @@ pub mod test {
 	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
 	type TTranches = Tranches<Balance, Rate, TrancheWeight, TrancheCurrency, TrancheId, PoolId>;
 
-	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 	const DEFAULT_POOL_ID: PoolId = 0;
-	const DEBT_RESIDUAL_TRANCHE: u128 = 100;
-	const DEBT_NON_RESIDUAL_TRANCHE_1: u128 = 100;
-	const DEBT_NON_RESIDUAL_TRANCHE_2: u128 = 200;
-	const RESERVE_RESIDUAL_TRANCHE: u128 = 100;
-	const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400;
-	const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100;
-
-	struct TTokens(u64);
-	impl Inspect<TrancheCurrency> for TTokens {
-		type AssetId = TrancheCurrency;
-		type Balance = u128;
-
-		/// Mock value is sum of asset.pool_id and 1000.
-		fn total_issuance(asset: Self::AssetId) -> Self::Balance {
-			match asset.of_tranche() {
-				// default most senior tranch currency id
-				[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] => {
-					DEBT_NON_RESIDUAL_TRANCHE_2 + RESERVE_NON_RESIDUAL_TRANCHE_2
-				}
-				// default least senior tranch currency id
-				[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] => {
-					DEBT_NON_RESIDUAL_TRANCHE_1 + RESERVE_NON_RESIDUAL_TRANCHE_1
-				}
-				// default single residual tranch currency id
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] => {
-					DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE
-				}
-				_ => 1000,
-			}
-		}
-
-		fn minimum_balance(_asset: Self::AssetId) -> Self::Balance {
-			todo!()
-		}
-
-		fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
-			todo!()
-		}
-
-		fn reducible_balance(
-			_asset: Self::AssetId,
-			_who: &TrancheCurrency,
-			_keep_alive: bool,
-		) -> Self::Balance {
-			todo!()
-		}
-
-		fn can_deposit(
-			_asset: Self::AssetId,
-			_who: &TrancheCurrency,
-			_amount: Self::Balance,
-			_mint: bool,
-		) -> frame_support::traits::tokens::DepositConsequence {
-			todo!()
-		}
-
-		fn can_withdraw(
-			_asset: Self::AssetId,
-			_who: &TrancheCurrency,
-			_amount: Self::Balance,
-		) -> frame_support::traits::tokens::WithdrawConsequence<Self::Balance> {
-			todo!()
-		}
-	}
+	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 
 	#[derive(PartialEq)]
 	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
@@ -2573,188 +2509,265 @@ pub mod test {
 			);
 		}
 
-		#[test]
-		/// No debt, reserve or APR for any tranche.
-		fn calculate_prices_no_debt_works() {
-			let initial_assets = DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE;
+		mod calculate_prices {
+			use super::*;
 
-			// only residual has a price if there is no debt
-			assert_eq!(
-				default_tranches()
-					.calculate_prices::<_, TTokens, TrancheCurrency>(initial_assets, SECS_PER_YEAR),
-				Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
-			);
-			// price should be the same for longer time period as NAV does not change
-			assert_eq!(
-				default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
-					initial_assets,
-					2 * SECS_PER_YEAR
-				),
-				Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
-			);
+			const DEBT_RESIDUAL_TRANCHE: u128 = 100;
+			const DEBT_NON_RESIDUAL_TRANCHE_1: u128 = 100;
+			const DEBT_NON_RESIDUAL_TRANCHE_2: u128 = 200;
+			const RESERVE_RESIDUAL_TRANCHE: u128 = 100;
+			const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400;
+			const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100;
 
-			// price should double if initial assets doubles
-			assert_eq!(
-				default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
-					initial_assets * 2,
-					SECS_PER_YEAR
-				),
-				Ok(vec![
-					Rate::saturating_from_rational(2, 1),
-					Rate::zero(),
-					Rate::zero(),
-				])
-			);
-			// price should be half if initial asset amount is halfed
-			assert_eq!(
-				default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
-					initial_assets / 2,
-					2 * SECS_PER_YEAR
-				),
-				Ok(vec![
-					Rate::saturating_from_rational(1, 2),
-					Rate::zero(),
-					Rate::zero(),
-				])
-			);
-		}
+			struct TTokens(u64);
+			impl Inspect<TrancheCurrency> for TTokens {
+				type AssetId = TrancheCurrency;
+				type Balance = u128;
 
-		#[test]
-		/// If amount of assets is zwero zero, all price rates should be one.
-		fn calculate_prices_no_assets_works() {
-			assert_eq!(
-				default_tranches()
-					.calculate_prices::<_, TTokens, TrancheCurrency>(0, SECS_PER_YEAR),
-				Ok(vec![Rate::one(), Rate::one(), Rate::one(),])
-			);
-		}
+				/// Mock value is sum of asset.pool_id and 1000.
+				fn total_issuance(asset: Self::AssetId) -> Self::Balance {
+					match asset.of_tranche() {
+						// default most senior tranch currency id
+						[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] => {
+							DEBT_NON_RESIDUAL_TRANCHE_2 + RESERVE_NON_RESIDUAL_TRANCHE_2
+						}
+						// default least senior tranch currency id
+						[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] => {
+							DEBT_NON_RESIDUAL_TRANCHE_1 + RESERVE_NON_RESIDUAL_TRANCHE_1
+						}
+						// default single residual tranch currency id
+						[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] => {
+							DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE
+						}
+						_ => 1000,
+					}
+				}
 
-		#[test]
-		/// Check price loss waterfall for different asset amounts.
-		///
-		/// Each tranche has a different APR, debt, reserve and total issuance.
-		/// The sum of total issuance (initial NAV) for all three tranches is 1000.
-		///
-		/// NOTE: Expected values checked against in https://docs.google.com/spreadsheets/d/16hpWBzGFxlhsIFYJYl1Im9BsNLKVjvJj8VUvECxqduE/edit#gid=543118716
-		fn calculate_prices_total_assets_works() {
-			assert_eq!(
-				default_tranches_with_issuance()
-					.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
-				Ok(vec![
-					Rate::saturating_from_rational(1395, 1000),
-					Rate::saturating_from_rational(1022, 1000),
-					Rate::saturating_from_rational(31, 30),
-				])
-			);
-			// reduce new NAV/total_assets by 200 to have loss in residual tranche
-			assert_eq!(
-				default_tranches_with_issuance()
-					.calculate_prices::<_, TTokens, TrancheCurrency>(900, SECS_PER_YEAR),
-				Ok(vec![
-					Rate::saturating_from_rational(395, 1000),
-					Rate::saturating_from_rational(1022, 1000),
-					Rate::saturating_from_rational(31, 30),
-				])
-			);
-			// reduce new NAV/total_assets by another 200 to have loss in first non-res tranche
-			assert_eq!(
-				default_tranches_with_issuance()
-					.calculate_prices::<_, TTokens, TrancheCurrency>(700, SECS_PER_YEAR),
-				Ok(vec![
-					Rate::zero(),
-					Rate::saturating_from_rational(780, 1000),
-					Rate::saturating_from_rational(31, 30),
-				])
-			);
-			// reduce new NAV/total_assets by another 500 to have loss most senior tranche
-			assert_eq!(
-				default_tranches_with_issuance()
-					.calculate_prices::<_, TTokens, TrancheCurrency>(100, SECS_PER_YEAR),
-				Ok(vec![
-					Rate::zero(),
-					Rate::zero(),
-					Rate::saturating_from_rational(1, 3),
-				])
-			);
-		}
+				fn minimum_balance(_asset: Self::AssetId) -> Self::Balance {
+					todo!()
+				}
 
-		#[test]
-		/// Check price evolution over course of multiple years without adjusting total assets.
-		///
-		/// Each tranche has a different APR, debt, reserve and total issuance.
-		/// The sum of total issuance (initial NAV) for all three tranches is 1000.
-		fn calculate_prices_last_update_works() {
-			let mut tranches = default_tranches_with_issuance();
-			assert_eq!(
-				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
-				Ok(vec![
-					Rate::saturating_from_rational(1395, 1000),
-					Rate::saturating_from_rational(1022, 1000),
-					Rate::saturating_from_rational(31, 30),
-				])
-			);
-			// increase time since last update by two to reduce res price
-			assert_eq!(
-				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 2 * SECS_PER_YEAR),
-				Ok(vec![
-					Rate::saturating_from_rational(1280, 1000),
-					Rate::saturating_from_rational(1046, 1000),
-					Rate::saturating_from_rational(1070, 1000),
-				])
-			);
-			// increase time since last update by ten to reduce res and first non-res prices
-			assert_eq!(
-				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 5 * SECS_PER_YEAR),
-				Ok(vec![
-					Rate::saturating_from_rational(885, 1000),
-					Rate::saturating_from_rational(1132, 1000),
-					Rate::saturating_from_rational(1190, 1000),
-				])
-			);
-			// increase time since last update by twenty to reduce
-			assert_eq!(
-				tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 20 * SECS_PER_YEAR),
-				Ok(vec![
-					Rate::zero(),
-					Rate::saturating_from_rational(912, 1000),
-					Rate::saturating_from_rational(2140, 1000)
-						+ Rate::saturating_from_rational(2, 300),
-				])
-			);
-		}
+				fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
+					todo!()
+				}
 
-		// FIXME: Are we fine with rounding errors up to 0.5%?
-		fn calculate_prices_rounding_works() {
-			let mut tranches = default_tranches_with_issuance();
-			assert_ok!(
-				tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR)
-			);
+				fn reducible_balance(
+					_asset: Self::AssetId,
+					_who: &TrancheCurrency,
+					_keep_alive: bool,
+				) -> Self::Balance {
+					todo!()
+				}
 
-			// NOTE: APR = APY after 9 years, probably due to rounding
-			for i in 2..20 {
+				fn can_deposit(
+					_asset: Self::AssetId,
+					_who: &TrancheCurrency,
+					_amount: Self::Balance,
+					_mint: bool,
+				) -> frame_support::traits::tokens::DepositConsequence {
+					todo!()
+				}
+
+				fn can_withdraw(
+					_asset: Self::AssetId,
+					_who: &TrancheCurrency,
+					_amount: Self::Balance,
+				) -> frame_support::traits::tokens::WithdrawConsequence<Self::Balance> {
+					todo!()
+				}
+			}
+
+			#[test]
+			/// No debt, reserve or APR for any tranche.
+			fn calculate_prices_no_debt_works() {
+				let initial_assets = DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE;
+
+				// only residual has a price if there is no debt
 				assert_eq!(
-					tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
-						1100,
-						i * SECS_PER_YEAR
+					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
+						initial_assets,
+						SECS_PER_YEAR
 					),
-					default_tranches_with_issuance()
-						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, i * SECS_PER_YEAR),
-					"APR != APY after {} years",
-					i
+					Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
+				);
+				// price should be the same for longer time period as NAV does not change
+				assert_eq!(
+					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
+						initial_assets,
+						2 * SECS_PER_YEAR
+					),
+					Ok(vec![Rate::one(), Rate::zero(), Rate::zero(),])
+				);
+
+				// price should double if initial assets doubles
+				assert_eq!(
+					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
+						initial_assets * 2,
+						SECS_PER_YEAR
+					),
+					Ok(vec![
+						Rate::saturating_from_rational(2, 1),
+						Rate::zero(),
+						Rate::zero(),
+					])
+				);
+				// price should be half if initial asset amount is halfed
+				assert_eq!(
+					default_tranches().calculate_prices::<_, TTokens, TrancheCurrency>(
+						initial_assets / 2,
+						2 * SECS_PER_YEAR
+					),
+					Ok(vec![
+						Rate::saturating_from_rational(1, 2),
+						Rate::zero(),
+						Rate::zero(),
+					])
 				);
 			}
-		}
 
-		#[test]
-		fn calculate_prices_same_moment_works() {
-			let mut tranches = default_tranches_with_issuance();
-			let prices =
-				tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR);
-			// should be no change if the last update happened at the provided moment
-			assert_eq!(
-				prices,
-				tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR)
-			);
+			#[test]
+			/// If amount of assets is zwero zero, all price rates should be one.
+			fn calculate_prices_no_assets_works() {
+				assert_eq!(
+					default_tranches()
+						.calculate_prices::<_, TTokens, TrancheCurrency>(0, SECS_PER_YEAR),
+					Ok(vec![Rate::one(), Rate::one(), Rate::one(),])
+				);
+			}
+
+			#[test]
+			/// Check price loss waterfall for different asset amounts.
+			///
+			/// Each tranche has a different APR, debt, reserve and total issuance.
+			/// The sum of total issuance (initial NAV) for all three tranches is 1000.
+			///
+			/// NOTE: Expected values checked against in https://docs.google.com/spreadsheets/d/16hpWBzGFxlhsIFYJYl1Im9BsNLKVjvJj8VUvECxqduE/edit#gid=543118716
+			fn calculate_prices_total_assets_works() {
+				assert_eq!(
+					default_tranches_with_issuance()
+						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
+					Ok(vec![
+						Rate::saturating_from_rational(1395, 1000),
+						Rate::saturating_from_rational(1022, 1000),
+						Rate::saturating_from_rational(31, 30),
+					])
+				);
+				// reduce new NAV/total_assets by 200 to have loss in residual tranche
+				assert_eq!(
+					default_tranches_with_issuance()
+						.calculate_prices::<_, TTokens, TrancheCurrency>(900, SECS_PER_YEAR),
+					Ok(vec![
+						Rate::saturating_from_rational(395, 1000),
+						Rate::saturating_from_rational(1022, 1000),
+						Rate::saturating_from_rational(31, 30),
+					])
+				);
+				// reduce new NAV/total_assets by another 200 to have loss in first non-res tranche
+				assert_eq!(
+					default_tranches_with_issuance()
+						.calculate_prices::<_, TTokens, TrancheCurrency>(700, SECS_PER_YEAR),
+					Ok(vec![
+						Rate::zero(),
+						Rate::saturating_from_rational(780, 1000),
+						Rate::saturating_from_rational(31, 30),
+					])
+				);
+				// reduce new NAV/total_assets by another 500 to have loss most senior tranche
+				assert_eq!(
+					default_tranches_with_issuance()
+						.calculate_prices::<_, TTokens, TrancheCurrency>(100, SECS_PER_YEAR),
+					Ok(vec![
+						Rate::zero(),
+						Rate::zero(),
+						Rate::saturating_from_rational(1, 3),
+					])
+				);
+			}
+
+			#[test]
+			/// Check price evolution over course of multiple years without adjusting total assets.
+			///
+			/// Each tranche has a different APR, debt, reserve and total issuance.
+			/// The sum of total issuance (initial NAV) for all three tranches is 1000.
+			fn calculate_prices_last_update_works() {
+				let mut tranches = default_tranches_with_issuance();
+				assert_eq!(
+					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
+					Ok(vec![
+						Rate::saturating_from_rational(1395, 1000),
+						Rate::saturating_from_rational(1022, 1000),
+						Rate::saturating_from_rational(31, 30),
+					])
+				);
+				// increase time since last update by two to reduce res price
+				assert_eq!(
+					tranches
+						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 2 * SECS_PER_YEAR),
+					Ok(vec![
+						Rate::saturating_from_rational(1280, 1000),
+						Rate::saturating_from_rational(1046, 1000),
+						Rate::saturating_from_rational(1070, 1000),
+					])
+				);
+				// increase time since last update by ten to reduce res and first non-res prices
+				assert_eq!(
+					tranches
+						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 5 * SECS_PER_YEAR),
+					Ok(vec![
+						Rate::saturating_from_rational(885, 1000),
+						Rate::saturating_from_rational(1132, 1000),
+						Rate::saturating_from_rational(1190, 1000),
+					])
+				);
+				// increase time since last update by twenty to reduce
+				assert_eq!(
+					tranches
+						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 20 * SECS_PER_YEAR),
+					Ok(vec![
+						Rate::zero(),
+						Rate::saturating_from_rational(912, 1000),
+						Rate::saturating_from_rational(2140, 1000)
+							+ Rate::saturating_from_rational(2, 300),
+					])
+				);
+			}
+
+			// FIXME: Are we fine with rounding errors up to 0.5%?
+			// #[test]
+			fn calculate_prices_rounding_works() {
+				let mut tranches = default_tranches_with_issuance();
+				assert_ok!(tranches
+					.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR));
+
+				for i in 2..20 {
+					assert_eq!(
+						tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
+							1100,
+							i * SECS_PER_YEAR
+						),
+						default_tranches_with_issuance()
+							.calculate_prices::<Rate, TTokens, TrancheCurrency>(
+								1100,
+								i * SECS_PER_YEAR
+							),
+						"APR != APY after {} years",
+						i
+					);
+				}
+			}
+
+			#[test]
+			fn calculate_prices_same_moment_works() {
+				let mut tranches = default_tranches_with_issuance();
+				let prices = tranches
+					.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR);
+				// should be no change if the last update happened at the provided moment
+				assert_eq!(
+					prices,
+					tranches
+						.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR)
+				);
+			}
 		}
 
 		#[test]
