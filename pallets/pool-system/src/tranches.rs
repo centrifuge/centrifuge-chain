@@ -1595,6 +1595,12 @@ pub mod test {
 
 	const DEFAULT_POOL_ID: PoolId = 0;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+	const DEBT_RESIDUAL_TRANCHE: u128 = 100_000_000;
+	const DEBT_NON_RESIDUAL_TRANCHE_1: u128 = 100_000_000;
+	const DEBT_NON_RESIDUAL_TRANCHE_2: u128 = 200_000_000;
+	const RESERVE_RESIDUAL_TRANCHE: u128 = 100_000_000;
+	const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400_000_000;
+	const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100_000_000;
 
 	#[derive(PartialEq)]
 	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
@@ -1686,16 +1692,30 @@ pub mod test {
 
 	/// Sets up three tranches:
 	///
-	/// 	* Residual: 0% interest, 0% buffer, 100 debt, 100 reserve
-	/// 	* Non Residual: 10% interest, 10% buffer, 100 debt, 400 reserve
-	/// 	* Non Residual: 5% interest, 25% buffer, 200 debt, 100 reserve
+	/// 	* Residual: 0% interest, 0% buffer, 100M debt, 100M reserve
+	/// 	* Non Residual: 10% interest, 10% buffer, 100M debt, 400M reserve
+	/// 	* Non Residual: 5% interest, 25% buffer, 200M debt, 100M reserve
 	fn default_tranches_with_issuance() -> TTranches {
 		TTranches::new(
 			DEFAULT_POOL_ID,
 			vec![
-				residual_base(0, 0, 100, 100),
-				non_residual_base(1, Some(10), Some(10), 1, 100, 400),
-				non_residual_base(2, Some(5), Some(25), 2, 200, 100),
+				residual_base(0, 0, DEBT_RESIDUAL_TRANCHE, RESERVE_RESIDUAL_TRANCHE),
+				non_residual_base(
+					1,
+					Some(10),
+					Some(10),
+					1,
+					DEBT_NON_RESIDUAL_TRANCHE_1,
+					RESERVE_NON_RESIDUAL_TRANCHE_1,
+				),
+				non_residual_base(
+					2,
+					Some(5),
+					Some(25),
+					2,
+					DEBT_NON_RESIDUAL_TRANCHE_2,
+					RESERVE_NON_RESIDUAL_TRANCHE_2,
+				),
 			],
 		)
 		.unwrap()
@@ -1791,7 +1811,7 @@ pub mod test {
 		#[test]
 		fn tranche_accrues_correctly() {
 			let mut tranche = non_residual(1, Some(10), None);
-			tranche.debt = 100000000;
+			tranche.debt = 100_000_000;
 			tranche.accrue(SECS_PER_YEAR).unwrap();
 
 			// After one year, we have 10% of interest, using APY and RPS compounding
@@ -1819,7 +1839,7 @@ pub mod test {
 		#[test]
 		fn tranche_accrues_debt_on_debt_call() {
 			let mut tranche = non_residual(1, Some(10), None);
-			tranche.debt = 100000000;
+			tranche.debt = 100_000_000;
 
 			// After one year, we have 10% of interest, using APY and RPS compounding
 			assert_eq!(110517092, tranche.debt(SECS_PER_YEAR).unwrap())
@@ -2560,20 +2580,13 @@ pub mod test {
 		mod calculate_prices {
 			use super::*;
 
-			const DEBT_RESIDUAL_TRANCHE: u128 = 100;
-			const DEBT_NON_RESIDUAL_TRANCHE_1: u128 = 100;
-			const DEBT_NON_RESIDUAL_TRANCHE_2: u128 = 200;
-			const RESERVE_RESIDUAL_TRANCHE: u128 = 100;
-			const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400;
-			const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100;
-
 			// FIXME: To reviewer, can this somehow be derived? In practice, we only need the `total_issuance` but `calculate_price` requires the trait.
 			struct TTokens(u64);
 			impl Inspect<TrancheCurrency> for TTokens {
 				type AssetId = TrancheCurrency;
 				type Balance = u128;
 
-				/// Mock value is sum of asset.pool_id and 1000.
+				/// Mock value is sum of asset.pool_id and 100_000_0000.
 				fn total_issuance(asset: Self::AssetId) -> Self::Balance {
 					match asset.of_tranche() {
 						// default most senior tranch currency id
@@ -2588,7 +2601,7 @@ pub mod test {
 						[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] => {
 							DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE
 						}
-						_ => 1000,
+						_ => 100_000_0000,
 					}
 				}
 
@@ -2694,37 +2707,49 @@ pub mod test {
 			fn calculate_prices_total_assets_works() {
 				assert_eq!(
 					default_tranches_with_issuance()
-						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
+						.calculate_prices::<_, TTokens, TrancheCurrency>(
+							1_100_000_000,
+							SECS_PER_YEAR
+						),
 					Ok(vec![
-						Rate::saturating_from_rational(1395, 1000),
-						Rate::saturating_from_rational(1022, 1000),
-						Rate::saturating_from_rational(31, 30),
+						Rate::saturating_from_rational(1396143445, 1000000000),
+						Rate::saturating_from_rational(1021034184, 1000000000),
+						Rate::saturating_from_rational(103418073, 100000000),
 					])
 				);
-				// reduce new NAV/total_assets by 200 to have loss in residual tranche
+				// reduce new NAV/total_assets by 200_000_000 to have loss in residual tranche
 				assert_eq!(
 					default_tranches_with_issuance()
-						.calculate_prices::<_, TTokens, TrancheCurrency>(900, SECS_PER_YEAR),
+						.calculate_prices::<_, TTokens, TrancheCurrency>(
+							900_000_000,
+							SECS_PER_YEAR
+						),
 					Ok(vec![
-						Rate::saturating_from_rational(395, 1000),
-						Rate::saturating_from_rational(1022, 1000),
-						Rate::saturating_from_rational(31, 30),
+						Rate::saturating_from_rational(396143445u64, 1000000000u64),
+						Rate::saturating_from_rational(1021034184, 1000000000),
+						Rate::saturating_from_rational(103418073, 100000000),
 					])
 				);
 				// reduce new NAV/total_assets by another 200 to have loss in first non-res tranche
 				assert_eq!(
 					default_tranches_with_issuance()
-						.calculate_prices::<_, TTokens, TrancheCurrency>(700, SECS_PER_YEAR),
+						.calculate_prices::<_, TTokens, TrancheCurrency>(
+							700_000_000,
+							SECS_PER_YEAR
+						),
 					Ok(vec![
 						Rate::zero(),
-						Rate::saturating_from_rational(780, 1000),
-						Rate::saturating_from_rational(31, 30),
+						Rate::saturating_from_rational(779491562, 1000000000),
+						Rate::saturating_from_rational(103418073, 100000000),
 					])
 				);
 				// reduce new NAV/total_assets by another 500 to have loss most senior tranche
 				assert_eq!(
 					default_tranches_with_issuance()
-						.calculate_prices::<_, TTokens, TrancheCurrency>(100, SECS_PER_YEAR),
+						.calculate_prices::<_, TTokens, TrancheCurrency>(
+							100_000_000,
+							SECS_PER_YEAR
+						),
 					Ok(vec![
 						Rate::zero(),
 						Rate::zero(),
@@ -2741,42 +2766,59 @@ pub mod test {
 			fn calculate_prices_last_update_works() {
 				let mut tranches = default_tranches_with_issuance();
 				assert_eq!(
-					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR),
+					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
+						1_100_000_000,
+						SECS_PER_YEAR
+					),
 					Ok(vec![
-						Rate::saturating_from_rational(1395, 1000),
-						Rate::saturating_from_rational(1022, 1000),
-						Rate::saturating_from_rational(31, 30),
+						Rate::saturating_from_rational(1396143445, 1000000000),
+						Rate::saturating_from_rational(1021034184, 1000000000),
+						Rate::saturating_from_rational(103418073, 100000000),
 					])
 				);
 				// increase time since last update by two to reduce res price
 				assert_eq!(
-					tranches
-						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 2 * SECS_PER_YEAR),
+					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
+						1_100_000_000,
+						2 * SECS_PER_YEAR
+					),
 					Ok(vec![
-						Rate::saturating_from_rational(1280, 1000),
-						Rate::saturating_from_rational(1046, 1000),
-						Rate::saturating_from_rational(1070, 1000),
+						Rate::saturating_from_rational(1284127705, 1000000000),
+						Rate::saturating_from_rational(1044280552, 1000000000),
+						Rate::saturating_from_rational(
+							1070113943333333333333333333u128,
+							1000000000000000000000000000u128
+						),
 					])
 				);
 				// increase time since last update by ten to reduce res and first non-res prices
 				assert_eq!(
-					tranches
-						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 5 * SECS_PER_YEAR),
+					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
+						1_100_000_000,
+						5 * SECS_PER_YEAR
+					),
 					Ok(vec![
-						Rate::saturating_from_rational(885, 1000),
-						Rate::saturating_from_rational(1132, 1000),
-						Rate::saturating_from_rational(1190, 1000),
+						Rate::saturating_from_rational(89161395, 100000000),
+						Rate::saturating_from_rational(1129744254, 1000000000),
+						Rate::saturating_from_rational(
+							1189350276666666666666666667u128,
+							1000000000000000000000000000u128
+						),
 					])
 				);
 				// increase time since last update by twenty to reduce
 				assert_eq!(
-					tranches
-						.calculate_prices::<_, TTokens, TrancheCurrency>(1100, 20 * SECS_PER_YEAR),
+					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
+						1_100_000_000,
+						20 * SECS_PER_YEAR
+					),
 					Ok(vec![
 						Rate::zero(),
-						Rate::saturating_from_rational(912, 1000),
-						Rate::saturating_from_rational(2140, 1000)
-							+ Rate::saturating_from_rational(2, 300),
+						Rate::saturating_from_rational(91268727, 100000000),
+						Rate::saturating_from_rational(
+							2145521216666666666666666667u128,
+							1000000000000000000000000000u128
+						),
 					])
 				);
 			}
@@ -2785,18 +2827,20 @@ pub mod test {
 			// #[test]
 			fn calculate_prices_rounding_works() {
 				let mut tranches = default_tranches_with_issuance();
-				assert_ok!(tranches
-					.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR));
+				assert_ok!(tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
+					1_100_000_000,
+					SECS_PER_YEAR
+				));
 
 				for i in 2..20 {
 					assert_eq!(
 						tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
-							1100,
+							1_100_000_000,
 							i * SECS_PER_YEAR
 						),
 						default_tranches_with_issuance()
 							.calculate_prices::<Rate, TTokens, TrancheCurrency>(
-								1100,
+								1_100_000_000,
 								i * SECS_PER_YEAR
 							),
 						"APR != APY after {} years",
@@ -2808,13 +2852,17 @@ pub mod test {
 			#[test]
 			fn calculate_prices_same_moment_works() {
 				let mut tranches = default_tranches_with_issuance();
-				let prices = tranches
-					.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR);
+				let prices = tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
+					1_100_000_000,
+					SECS_PER_YEAR,
+				);
 				// should be no change if the last update happened at the provided moment
 				assert_eq!(
 					prices,
-					tranches
-						.calculate_prices::<Rate, TTokens, TrancheCurrency>(1100, SECS_PER_YEAR)
+					tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
+						1_100_000_000,
+						SECS_PER_YEAR
+					)
 				);
 			}
 		}
