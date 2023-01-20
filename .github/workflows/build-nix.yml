@@ -2,7 +2,7 @@ name: nix-build
 on:
   pull_request:
   push:
-    branches: [main, 'release-v**']
+    branches: [main, 'release-v**', 'connectors-v0.1.0']
 jobs:
   build:
     runs-on: ubuntu-latest
