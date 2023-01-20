@@ -14,10 +14,20 @@
 
 /// Start date used for timestamps in test-enviornments
 /// Sat Jan 01 2022 00:00:00 GMT+0000
+///
+/// NOTE: In milliseconds!
 pub const START_DATE: u64 = 1640995200u64;
 
+pub mod millisecs {
+	pub const MILLI_SECOND: u64 = 1000u64;
+	pub const MILLI_SECONDS_PER_MINUTE: u64 = 60 * MILLI_SECOND;
+	pub const MILLI_SECONDS_PER_HOUR: u64 = 60 * MILLI_SECONDS_PER_MINUTE;
+	pub const MILLI_SECONDS_PER_DAY: u64 = 24 * MILLI_SECONDS_PER_HOUR;
+	pub const MILLI_SECONDS_PER_YEAR: u64 = 365 * MILLI_SECONDS_PER_DAY;
+}
+
 pub mod secs {
-	pub const SECOND: u64 = 1000u64;
+	pub const SECOND: u64 = 1u64;
 	pub const SECONDS_PER_MINUTE: u64 = 60 * SECOND;
 	pub const SECONDS_PER_HOUR: u64 = 60 * SECONDS_PER_MINUTE;
 	pub const SECONDS_PER_DAY: u64 = 24 * SECONDS_PER_HOUR;

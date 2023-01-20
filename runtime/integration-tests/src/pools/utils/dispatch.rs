@@ -10,14 +10,21 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub mod accounts;
-pub mod dispatch;
-pub mod env;
-pub mod extrinsics;
-pub mod genesis;
-pub mod investments;
-pub mod loans;
-pub mod logs;
-pub mod pools;
-pub mod time;
-pub mod tokens;
+//! Utilities around the dispatching calls
+use frame_support::{assert_ok, dispatch::UnfilteredDispatchable};
+
+use crate::chain::centrifuge::RuntimeOrigin;
+
+macro_rules! dispatch {
+	($calls:expr, $account:expr) => {
+		for call in $calls {
+			let res = UnfilteredDispatchable::dispatch_bypass_filter(
+				call,
+				RuntimeOrigin::signed($account),
+			);
+			assert_ok!(res);
+		}
+	};
+}
+
+pub(crate) use dispatch;

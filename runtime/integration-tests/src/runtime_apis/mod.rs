@@ -23,6 +23,7 @@ use fudge::{
 	state::StateProvider,
 	StandaloneBuilder, TWasmExecutor,
 };
+use polkadot_primitives::v2::PersistedValidationData;
 use sc_client_api::{HeaderBackend, StorageProof};
 use sc_executor::WasmExecutor;
 use sc_service::TFullClient;
@@ -43,12 +44,11 @@ use crate::{
 		centrifuge,
 		centrifuge::{Runtime, PARA_ID},
 	},
-	pools::utils::genesis::{default_balances, register_default_asset},
+	pools::utils::{
+		genesis::{default_balances, register_default_asset},
+		time::START_DATE,
+	},
 };
-
-/// Start date used for timestamps in test-enviornments
-/// Sat Jan 01 2022 00:00:00 GMT+0000
-pub const START_DATE: u64 = 1640995200u64;
 
 /// The type that CreatesInherentDataProviders for the para-chain.
 /// As a new-type here as otherwise the TestEnv is badly
@@ -118,7 +118,12 @@ fn create_builder(
 					);
 			// Dummy data for relay-inherent
 			let inherent = ParachainInherentData {
-				validation_data: Default::default(),
+				validation_data: PersistedValidationData {
+					parent_head: Default::default(),
+					relay_parent_number: 1,
+					relay_parent_storage_root: H256::zero(),
+					max_pov_size: 0,
+				},
 				relay_chain_state: StorageProof::empty(),
 				downward_messages: vec![],
 				horizontal_messages: Default::default(),
@@ -158,6 +163,8 @@ pub struct ApiEnv {
 
 impl ApiEnv {
 	pub fn new(handle: Handle) -> Self {
+		crate::pools::utils::logs::init_logs();
+
 		Self {
 			builder: create_builder(handle, Some(Storage::default())),
 		}

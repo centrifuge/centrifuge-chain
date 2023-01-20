@@ -224,6 +224,10 @@ pub fn close_loan_call(pool_id: PoolId, loan_id: LoanId) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::close { pool_id, loan_id })
 }
 
+pub fn update_nav_call(pool_id: PoolId) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::update_nav { pool_id })
+}
+
 pub fn create_nft_call(admin: AccountId, collection: CollectionId) -> RuntimeCall {
 	RuntimeCall::Uniques(UniquesCall::create {
 		admin: Address::Id(admin),

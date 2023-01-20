@@ -1672,8 +1672,10 @@ impl_runtime_apis! {
 		}
 
 		fn portfolio_valuation(pool_id: PoolId) -> Option<Balance> {
-			if pallet_pool_system::Pool::<Runtime>::contains_key(pool_id) && let Some((_, valuation)) = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id).ok() {
-					return Some(valuation);
+			if pallet_pool_system::Pool::<Runtime>::contains_key(pool_id) {
+				return pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+					.map(|(_, valuation)| valuation)
+					.ok();
 			}
 
 			None
