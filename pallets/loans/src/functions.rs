@@ -767,6 +767,9 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
+	/// Get the maximum amount one can borrow from a given loan in a given pool.
+	/// The loan must be active and has not been written off. In addition,
+	/// the maturity date must not have passed (if the loan has a maturity date).
 	pub fn get_max_borrow_amount(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
