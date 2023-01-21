@@ -561,6 +561,7 @@ impl Rate {
 		Self(inner)
 	}
 
+	// FIXME: Numeric issues. E.g. Rate::from_float(1.1) is > Rate::saturating_from_rational(11, 10)
 	#[cfg(any(feature = "std", test))]
 	pub fn from_float(x: f64) -> Self {
 		Self((x * (<Self as FixedPointNumber>::DIV as f64)) as u128)
