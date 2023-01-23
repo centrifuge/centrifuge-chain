@@ -1,22 +1,35 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{InterestAccrual, Permissions, PoolInspect, PoolReserve};
+use cfg_traits::{
+	ops::{EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
+	InterestAccrual, Permissions, PoolInspect, PoolReserve,
+};
 use cfg_types::{
 	adjustments::Adjustment,
-	permissions::{PermissionScope, Role},
+	permissions::{PermissionScope, PoolRole, Role},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::{
-		tokens::nonfungibles::{Inspect, Mutate, Transfer},
+		tokens::{
+			self,
+			nonfungibles::{Inspect, Mutate, Transfer},
+		},
 		UnixTime,
 	},
 	RuntimeDebug,
 };
 use pallet::*;
 use scale_info::TypeInfo;
-use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointOperand};
+use sp_arithmetic::traits::checked_pow;
+use sp_runtime::{
+	traits::{BadOrigin, One},
+	ArithmeticError, FixedPointNumber, FixedPointOperand,
+};
+
+const SECONDS_PER_DAY: Moment = 3600 * 24;
+const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
 
 type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 	<T as frame_system::Config>::AccountId,
@@ -112,6 +125,68 @@ pub enum ValuationMethod<Rate> {
 	OutstandingDebt,
 }
 
+impl<Rate> ValuationMethod<Rate>
+where
+	Rate: FixedPointNumber,
+{
+	pub fn present_value<Balance: tokens::Balance + FixedPointOperand>(
+		&self,
+		debt: Balance,
+		maturity_date: Moment,
+		origination_date: Moment,
+		now: Moment,
+		interest_rate_per_sec: Rate,
+	) -> Result<Balance, ArithmeticError> {
+		match self {
+			ValuationMethod::DiscountedCashFlows {
+				loss_given_default,
+				probability_of_default,
+				discount_rate,
+			} => {
+				// If the loan is overdue, there are no future cash flows to discount,
+				// hence we use the outstanding debt as the value.
+				if now > maturity_date {
+					return Ok(debt);
+				}
+
+				// Calculate the expected loss over the term of the loan
+				let tel = Rate::saturating_from_rational(
+					maturity_date.ensure_sub(origination_date)?,
+					SECONDS_PER_YEAR,
+				)
+				.ensure_mul(*probability_of_default)?
+				.ensure_mul(*loss_given_default)?
+				.min(One::one());
+
+				let tel_inv = Rate::one().ensure_sub(tel)?;
+
+				// Calculate the risk-adjusted expected cash flows
+				let exp = maturity_date.ensure_sub(now)?.ensure_into()?;
+				let acc_rate =
+					checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
+				let ecf = acc_rate.ensure_mul_int(debt)?;
+				let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
+
+				// Discount the risk-adjusted expected cash flows
+				let rate = checked_pow(*discount_rate, exp).ok_or(ArithmeticError::Overflow)?;
+				let d = Rate::one().ensure_div(rate)?;
+
+				d.ensure_mul_int(ra_ecf)
+			}
+			ValuationMethod::OutstandingDebt => Ok(debt),
+		}
+	}
+
+	pub fn is_valid(&self) -> bool {
+		match self {
+			ValuationMethod::DiscountedCashFlows { discount_rate, .. } => {
+				discount_rate >= &One::one()
+			}
+			ValuationMethod::OutstandingDebt => true,
+		}
+	}
+}
+
 /// Diferents methods of how to compute the amount can be borrowed
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum MaxBorrowAmount<Rate> {
@@ -124,11 +199,17 @@ pub enum MaxBorrowAmount<Rate> {
 
 /// Specify how offer a loan can be borrowed
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum BorrowRestrictions {}
+pub enum BorrowRestrictions {
+	/// TODO
+	None,
+}
 
 /// Specify how offer a loan can be repaid
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum RepayRestrictions {}
+pub enum RepayRestrictions {
+	/// TODO
+	None,
+}
 
 /// Define the loan restrictions
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -216,7 +297,7 @@ pub struct ClosedLoan<BlockNumber, ClassId, LoanId, Balance, Rate> {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
@@ -254,17 +335,7 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
-		type Balance: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ From<u64>
-			+ From<u128>
-			+ TypeInfo
-			+ TryInto<u64>;
+		type Balance: tokens::Balance;
 
 		/// The NonFungible trait that can mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId>
@@ -312,7 +383,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanInfo<T::ClassId, T::LoanId, T::Balance, T::Rate>,
+		CreatedLoan<T::ClassId, T::LoanId, T::Balance, T::Rate>,
 		OptionQuery,
 	>;
 
@@ -347,37 +418,112 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		/// A loan was created.
+		Created {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			loan_info: LoanInfo<T::ClassId, T::LoanId, T::Balance, T::Rate>,
+			interest_rate_per_sec: T::Rate,
+		},
+	}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		/// Emits when pool doesn't exist
+		PoolMissing,
+		/// Emits when the NFT owner is not found
+		NFTOwnerNotFound,
+		/// Emits when NFT owner doesn't match the expected owner
+		NotAssetOwner,
+		/// Emits when NFT the specified valuation method is not considered valid
+		ValuationMethodNotValid,
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
-		pub fn create(
+		#[transactional]
+		pub fn register_nft_class_to_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			info: LoanInfo<T::ClassId, T::LoanId, T::Balance, T::Rate>,
-			interest_rate_per_year: T::Rate,
+			loan_nft_class_id: T::ClassId,
 		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
+
+			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolMissing);
+
+			// TODO: nft management
+
 			todo!()
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn create(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_info: LoanInfo<T::ClassId, T::LoanId, T::Balance, T::Rate>,
+			interest_rate_per_year: T::Rate,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
+
+			let Asset(class_id, instance_id) = loan_info.collateral;
+
+			let owner = T::NonFungible::owner(&class_id, &instance_id)
+				.ok_or(Error::<T>::NFTOwnerNotFound)?;
+
+			ensure!(who == owner, Error::<T>::NotAssetOwner);
+
+			// TODO: nft management
+			let loan_id = 1.into();
+
+			// CHECK: should we check more info from the `loan_info`?
+			ensure!(
+				loan_info.valuation_method.is_valid(),
+				Error::<T>::ValuationMethodNotValid
+			);
+
+			let interest_rate_per_sec =
+				T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?;
+
+			CreatedLoans::<T>::insert(
+				pool_id,
+				loan_id,
+				CreatedLoan {
+					info: loan_info.clone(),
+					interest_rate_per_sec,
+				},
+			);
+
+			Self::deposit_event(Event::<T>::Created {
+				pool_id,
+				loan_id,
+				loan_info,
+				interest_rate_per_sec,
+			});
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn borrow(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
 		) -> DispatchResult {
-			// first_borrow()
+			// borrow_created()
 			// or
-			// borrow_again()
+			// borrow_active()
 			todo!()
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn repay(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -388,6 +534,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -397,6 +544,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn write_off_admin(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -408,6 +556,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn close(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -420,12 +569,13 @@ pub mod pallet {
 		}
 	}
 
+	/// Actions from extrinsics
 	impl<T: Config> Pallet<T> {
-		fn first_borrow() -> DispatchResult {
+		fn borrow_created() -> DispatchResult {
 			todo!()
 		}
 
-		fn borrow_again() -> DispatchResult {
+		fn borrow_active() -> DispatchResult {
 			todo!()
 		}
 
@@ -435,6 +585,23 @@ pub mod pallet {
 
 		fn close_active() -> DispatchResult {
 			todo!()
+		}
+	}
+
+	/// Utility methods
+	impl<T: Config> Pallet<T> {
+		pub fn ensure_role(
+			pool_id: PoolIdOf<T>,
+			who: &T::AccountId,
+			role: PoolRole,
+		) -> Result<(), BadOrigin> {
+			T::Permission::has(
+				PermissionScope::Pool(pool_id),
+				who.clone(),
+				Role::PoolRole(role),
+			)
+			.then_some(())
+			.ok_or(BadOrigin)
 		}
 	}
 }
