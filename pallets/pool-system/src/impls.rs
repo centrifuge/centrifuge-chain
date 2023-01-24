@@ -75,6 +75,10 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 			last_updated: nav_last_updated,
 		})
 	}
+
+	fn account_for(pool_id: Self::PoolId) -> T::AccountId {
+		PoolLocator { pool_id }.into_account_truncating()
+	}
 }
 
 impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {

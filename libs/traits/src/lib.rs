@@ -134,6 +134,7 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+	fn account_for(pool_id: Self::PoolId) -> AccountId;
 }
 
 /// Variants for valid Pool updates to send out as events
