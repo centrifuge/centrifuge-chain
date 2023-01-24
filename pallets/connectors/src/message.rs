@@ -208,21 +208,30 @@ mod tests {
 		}
 
 		#[test]
-		fn encoding_domain_evm() {
-			let evm_domain = Domain::EVM(u64::MAX);
+		fn encoding_domain_evm_ethereum_mainnet() {
+			let domain = Domain::EVM(1);
 
-			let expected_hex = "00ffffffffffffffff";
+			let expected_hex = "000100000000000000";
 			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(evm_domain.encode(), expected);
+			assert_eq!(domain.encode(), expected);
+		}
+
+		#[test]
+		fn encoding_domain_evm_avalanche() {
+			let domain = Domain::EVM(43114);
+
+			let expected_hex = "006aa8000000000000";
+			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
+			assert_eq!(domain.encode(), expected);
 		}
 
 		#[test]
 		fn encoding_domain_parachain() {
-			let parachain_domain = Domain::Parachain(ParachainId::Moonbeam);
+			let domain = Domain::Parachain(ParachainId::Moonbeam);
 
 			let expected_hex = "0100";
 			let expected = <[u8; 2]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(parachain_domain.encode(), expected);
+			assert_eq!(domain.encode(), expected);
 		}
 
 		#[test]
