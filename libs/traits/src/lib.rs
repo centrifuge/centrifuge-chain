@@ -134,6 +134,8 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+
+	/// Get the account used for the given `pool_id`.
 	fn account_for(pool_id: Self::PoolId) -> AccountId;
 }
 
