@@ -16,11 +16,12 @@ use frame_support::{
 			self,
 			nonfungibles::{Inspect, Mutate, Transfer},
 		},
-		UnixTime,
+		PalletError, UnixTime,
 	},
-	RuntimeDebug, StorageHasher,
+	transactional, RuntimeDebug, StorageHasher,
 };
 use pallet::*;
+//use pallet_pool_system::pool_types::PoolLocator;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
 use sp_runtime::{
@@ -66,6 +67,14 @@ pub enum Maturity {
 	Fixed(Moment),
 }
 
+impl Maturity {
+	fn date(&self) -> Moment {
+		match self {
+			Maturity::Fixed(moment) => *moment,
+		}
+	}
+}
+
 /// Interest payment periods
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InterestPayments {
@@ -93,6 +102,12 @@ pub struct RepaymentSchedule {
 	pay_down_schedule: PayDownSchedule,
 }
 
+impl RepaymentSchedule {
+	fn is_valid(&self, now: Moment) -> bool {
+		self.maturity.date() > now
+	}
+}
+
 /// Defines the valuation method of a loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum ValuationMethod<Rate> {
@@ -115,7 +130,7 @@ impl<Rate> ValuationMethod<Rate>
 where
 	Rate: FixedPointNumber,
 {
-	pub fn present_value<Balance: tokens::Balance + FixedPointOperand>(
+	fn present_value<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
 		debt: Balance,
 		maturity_date: Moment,
@@ -163,7 +178,7 @@ where
 		}
 	}
 
-	pub fn is_valid(&self) -> bool {
+	fn is_valid(&self) -> bool {
 		match self {
 			ValuationMethod::DiscountedCashFlows { discount_rate, .. } => {
 				discount_rate >= &One::one()
@@ -228,26 +243,32 @@ pub struct LoanInfo<Asset, Balance, Rate> {
 
 	/// Restrictions of this loan
 	restrictions: LoanRestrictions<Rate>,
-}
-
-/// Data containing a loan that has been created but is not active yet.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct CreatedLoan<Asset, Balance, Rate> {
-	/// Loan information
-	info: LoanInfo<Asset, Balance, Rate>,
 
 	/// Interest rate per second
 	interest_rate_per_sec: Rate,
 }
 
+/// Data containing a loan that has been created but is not active yet.
+#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
+pub struct CreatedLoan<AccountId, Asset, Balance, Rate> {
+	/// Loan information
+	info: LoanInfo<Asset, Balance, Rate>,
+
+	/// Borrower account that created this loan
+	borrower: AccountId,
+}
+
 /// Data containing an active loan.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct ActiveLoan<LoanId, Asset, Balance, Rate> {
+pub struct ActiveLoan<LoanId, AccountId, Asset, Balance, Rate> {
 	/// Id of this loan
 	loan_id: LoanId,
 
 	/// Loan information
 	info: LoanInfo<Asset, Balance, Rate>,
+
+	/// Borrower account that created this loan
+	borrower: AccountId,
 
 	/// Specify whether the loan has been writen off
 	healthiness: Healthiness<Rate>,
@@ -263,9 +284,6 @@ pub struct ActiveLoan<LoanId, Asset, Balance, Rate> {
 
 	/// Total repaid amount of this loan
 	total_repaid: Balance,
-
-	/// Interest rate per second
-	interest_rate_per_sec: Rate,
 
 	/// When the loans's Present Value (PV) was last updated
 	last_updated: Moment,
@@ -286,17 +304,11 @@ type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 	<T as Config>::CurrencyId,
 >>::PoolId;
 
-type ItemIdOf<T> =
-	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
-
-type CollectionIdOf<T> =
-	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
-
 type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*, transactional};
+	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
@@ -311,6 +323,11 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+		/// Identify a curreny.
+		/// Used to specify [`PoolReserve`] and [`Permisions`].
+		type CurrencyId: Parameter + Copy + MaxEncodedLen;
+
+		/// Identify an non fungible collection
 		type CollectionId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
@@ -319,6 +336,7 @@ pub mod pallet {
 			+ Copy
 			+ MaxEncodedLen;
 
+		/// Identify an non fungible item
 		type ItemId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
@@ -327,6 +345,7 @@ pub mod pallet {
 			+ Copy
 			+ MaxEncodedLen;
 
+		/// Identify a loan in the pallet
 		type LoanId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
@@ -336,8 +355,10 @@ pub mod pallet {
 			+ Copy
 			+ AsRef<[u8]>;
 
+		/// Used to generate [`LoanId`] identifiers
 		type Hasher: StorageHasher<Output = Self::LoanId>;
 
+		/// Defines the rate type used for math computations
 		type Rate: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
@@ -345,29 +366,29 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
-		type Balance: tokens::Balance;
-
-		/// An entity that can mint, transfer, and inspect assets.
-		type NonFungible: Transfer<Self::AccountId>
-			+ Mutate<Self::AccountId>
-			+ Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>;
+		/// Defines the balance type used for math computations
+		type Balance: tokens::Balance + FixedPointOperand;
 
 		/// Fetching method for the time of the current block
 		type Time: UnixTime;
 
-		/// Pool reserve type
+		/// Used to mint, transfer, and inspect assets.
+		type NonFungible: Transfer<Self::AccountId>
+			+ Mutate<Self::AccountId>
+			+ Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>;
+
+		/// Access to the pool
 		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
 
-		type CurrencyId: Parameter + Copy + MaxEncodedLen;
-
-		/// Permission type that verifies permissions of users
-		type Permission: Permissions<
+		/// Used to verify permissions of users
+		type Permissions: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
 			Role = Role,
 			Error = DispatchError,
 		>;
 
+		/// Used to calculate interest accrual for debt.
 		type InterestAccrual: InterestAccrual<
 			Self::Rate,
 			Self::Balance,
@@ -396,7 +417,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		CreatedLoan<AssetOf<T>, T::Balance, T::Rate>,
+		CreatedLoan<T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
 		OptionQuery,
 	>;
 
@@ -409,7 +430,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		PoolIdOf<T>,
 		BoundedVec<
-			ActiveLoan<T::LoanId, AssetOf<T>, T::Balance, T::Rate>,
+			ActiveLoan<T::LoanId, T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
 			T::MaxActiveLoansPerPool,
 		>,
 		ValueQuery,
@@ -437,7 +458,6 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			loan_info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
-			interest_rate_per_sec: T::Rate,
 		},
 	}
 
@@ -448,9 +468,25 @@ pub mod pallet {
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
 		/// Emits when NFT owner doesn't match the expected owner
-		NotAssetOwner,
-		/// Emits when NFT the specified valuation method is not considered valid
-		ValuationMethodNotValid,
+		NotNFTOwner,
+		/// Emits when the loan is bad specified
+		LoanValueInvalid(InnerLoanError),
+	}
+
+	#[derive(Encode, Decode, TypeInfo)]
+	enum InnerLoanError {
+		ValuationMethod,
+		RepaymentSchedule,
+	}
+
+	impl PalletError for InnerLoanError {
+		const MAX_ENCODED_SIZE: usize = 1; // Up to 256 errors
+	}
+
+	impl<T> From<InnerLoanError> for Error<T> {
+		fn from(error: InnerLoanError) -> Self {
+			Error::<T>::LoanValueInvalid(error)
+		}
 	}
 
 	#[pallet::call]
@@ -460,38 +496,49 @@ pub mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			loan_info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+			schedule: RepaymentSchedule,
+			collateral: AssetOf<T>,
+			collateral_value: T::Balance,
+			valuation_method: ValuationMethod<T::Rate>,
+			restrictions: LoanRestrictions<T::Rate>,
 			interest_rate_per_year: T::Rate,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
+			Self::ensure_collateral_owner(&who, collateral)?;
 
-			let (collection_id, item_id) = loan_info.collateral;
-			let owner = T::NonFungible::owner(&collection_id, &item_id)
-				.ok_or(Error::<T>::NFTOwnerNotFound)?;
+			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolMissing);
 
-			ensure!(who == owner, Error::<T>::NotAssetOwner);
-
-			let loan_id = LastLoanId::<T>::mutate(|last_loan_id| {
-				*last_loan_id = T::Hasher::hash(&*last_loan_id.as_ref());
-				*last_loan_id
-			});
-
-			// CHECK: should we check more info from the `loan_info`?
 			ensure!(
-				loan_info.valuation_method.is_valid(),
-				Error::<T>::ValuationMethodNotValid
+				valuation_method.is_valid(),
+				Error::<T>::from(InnerLoanError::ValuationMethod)
 			);
 
-			let interest_rate_per_sec =
-				T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?;
+			ensure!(
+				schedule.is_valid(Self::now()),
+				Error::<T>::from(InnerLoanError::RepaymentSchedule)
+			);
+
+			Self::transfer_asset_to(collateral, T::Pool::account_for(pool_id))?;
+
+			let loan_id = Self::generate_loan_id();
+			let loan_info = LoanInfo {
+				schedule,
+				collateral: collateral,
+				collateral_value,
+				valuation_method,
+				restrictions,
+				interest_rate_per_sec: T::InterestAccrual::reference_yearly_rate(
+					interest_rate_per_year,
+				)?,
+			};
 
 			CreatedLoans::<T>::insert(
 				pool_id,
 				loan_id,
 				CreatedLoan {
 					info: loan_info.clone(),
-					interest_rate_per_sec,
+					borrower: who,
 				},
 			);
 
@@ -499,7 +546,6 @@ pub mod pallet {
 				pool_id,
 				loan_id,
 				loan_info,
-				interest_rate_per_sec,
 			});
 
 			Ok(())
@@ -587,18 +633,47 @@ pub mod pallet {
 
 	/// Utility methods
 	impl<T: Config> Pallet<T> {
-		pub fn ensure_role(
+		fn ensure_role(
 			pool_id: PoolIdOf<T>,
 			who: &T::AccountId,
 			role: PoolRole,
 		) -> Result<(), BadOrigin> {
-			T::Permission::has(
+			T::Permissions::has(
 				PermissionScope::Pool(pool_id),
 				who.clone(),
 				Role::PoolRole(role),
 			)
 			.then_some(())
 			.ok_or(BadOrigin)
+		}
+
+		fn ensure_collateral_owner(
+			owner: &T::AccountId,
+			(collection_id, item_id): AssetOf<T>,
+		) -> Result<(), Error<T>> {
+			T::NonFungible::owner(&collection_id, &item_id)
+				.ok_or(Error::<T>::NFTOwnerNotFound)?
+				.eq(owner)
+				.then_some(())
+				.ok_or(Error::<T>::NotNFTOwner)
+		}
+
+		fn generate_loan_id() -> T::LoanId {
+			LastLoanId::<T>::mutate(|last_loan_id| {
+				*last_loan_id = T::Hasher::hash(&*last_loan_id.as_ref());
+				*last_loan_id
+			})
+		}
+
+		fn transfer_asset_to(
+			(collection_id, item_id): AssetOf<T>,
+			to: &T::AccountId,
+		) -> DispatchResult {
+			T::NonFungible::transfer(&collection_id, &item_id, to)
+		}
+
+		fn now() -> Moment {
+			T::Time::now().as_secs()
 		}
 	}
 }
