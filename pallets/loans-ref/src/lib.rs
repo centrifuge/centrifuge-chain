@@ -474,7 +474,7 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, TypeInfo)]
-	enum InnerLoanError {
+	pub enum InnerLoanError {
 		ValuationMethod,
 		RepaymentSchedule,
 	}
@@ -519,7 +519,7 @@ pub mod pallet {
 				Error::<T>::from(InnerLoanError::RepaymentSchedule)
 			);
 
-			Self::transfer_asset_to(collateral, T::Pool::account_for(pool_id))?;
+			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
 			let loan_id = Self::generate_loan_id();
 			let loan_info = LoanInfo {
@@ -663,13 +663,6 @@ pub mod pallet {
 				*last_loan_id = T::Hasher::hash(&*last_loan_id.as_ref());
 				*last_loan_id
 			})
-		}
-
-		fn transfer_asset_to(
-			(collection_id, item_id): AssetOf<T>,
-			to: &T::AccountId,
-		) -> DispatchResult {
-			T::NonFungible::transfer(&collection_id, &item_id, to)
 		}
 
 		fn now() -> Moment {
