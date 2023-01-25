@@ -18,9 +18,9 @@ use frame_support::{
 			self,
 			nonfungibles::{Inspect, Mutate, Transfer},
 		},
-		PalletError, UnixTime,
+		UnixTime,
 	},
-	transactional, RuntimeDebug, StorageHasher,
+	transactional, PalletError, RuntimeDebug, StorageHasher,
 };
 use pallet::*;
 use scale_info::TypeInfo;
@@ -333,22 +333,6 @@ pub struct ClosedLoan<T: Config> {
 	info: LoanInfo<T>,
 }
 
-#[derive(Encode, Decode, TypeInfo)]
-pub enum InnerLoanError {
-	ValuationMethod,
-	RepaymentSchedule,
-}
-
-impl PalletError for InnerLoanError {
-	const MAX_ENCODED_SIZE: usize = 1; // Up to 256 errors
-}
-
-impl<T> From<InnerLoanError> for Error<T> {
-	fn from(error: InnerLoanError) -> Self {
-		Error::<T>::InvalidLoanValue(error)
-	}
-}
-
 type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
@@ -558,6 +542,18 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
+	}
+
+	#[derive(Encode, Decode, TypeInfo, PalletError)]
+	pub enum InnerLoanError {
+		ValuationMethod,
+		RepaymentSchedule,
+	}
+
+	impl<T> From<InnerLoanError> for Error<T> {
+		fn from(error: InnerLoanError) -> Self {
+			Error::<T>::InvalidLoanValue(error)
+		}
 	}
 
 	#[pallet::call]
