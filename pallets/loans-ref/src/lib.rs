@@ -25,7 +25,7 @@ use pallet::*;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
 use sp_runtime::{
-	traits::{BadOrigin, One},
+	traits::{BadOrigin, BlockNumberProvider, One, Zero},
 	ArithmeticError, FixedPointNumber, FixedPointOperand,
 };
 
@@ -299,6 +299,22 @@ pub struct ClosedLoan<BlockNumber, Asset, Balance, Rate> {
 	info: LoanInfo<Asset, Balance, Rate>,
 }
 
+#[derive(Encode, Decode, TypeInfo)]
+pub enum InnerLoanError {
+	ValuationMethod,
+	RepaymentSchedule,
+}
+
+impl PalletError for InnerLoanError {
+	const MAX_ENCODED_SIZE: usize = 1; // Up to 256 errors
+}
+
+impl<T> From<InnerLoanError> for Error<T> {
+	fn from(error: InnerLoanError) -> Self {
+		Error::<T>::InvalidLoanValue(error)
+	}
+}
+
 type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
@@ -464,29 +480,19 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Emits when pool doesn't exist
-		PoolMissing,
+		PoolNotFound,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
 		/// Emits when NFT owner doesn't match the expected owner
 		NotNFTOwner,
 		/// Emits when the loan is bad specified
-		LoanValueInvalid(InnerLoanError),
-	}
-
-	#[derive(Encode, Decode, TypeInfo)]
-	pub enum InnerLoanError {
-		ValuationMethod,
-		RepaymentSchedule,
-	}
-
-	impl PalletError for InnerLoanError {
-		const MAX_ENCODED_SIZE: usize = 1; // Up to 256 errors
-	}
-
-	impl<T> From<InnerLoanError> for Error<T> {
-		fn from(error: InnerLoanError) -> Self {
-			Error::<T>::LoanValueInvalid(error)
-		}
+		InvalidLoanValue(InnerLoanError),
+		/// Emits when loan doesn't exist
+		LoanNotFound,
+		/// Emits when the applicant account is not the borrower of the loan
+		NotLoanBorrower,
+		/// Emits when the max number of active loans was reached
+		MaxActiveLoansReached,
 	}
 
 	#[pallet::call]
@@ -507,7 +513,7 @@ pub mod pallet {
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
 			Self::ensure_collateral_owner(&who, collateral)?;
 
-			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolMissing);
+			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolNotFound);
 
 			ensure!(
 				valuation_method.is_valid(),
@@ -559,6 +565,11 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			amount: T::Balance,
 		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let loan = CreatedLoans::<T>::take(pool_id, loan_id).ok_or(Error::<T>::LoanNotFound)?;
+
+			Self::ensure_loan_borrower(&who, &loan.borrower)?;
 			// borrow_created()
 			// or
 			// borrow_active()
@@ -658,10 +669,106 @@ pub mod pallet {
 				.ok_or(Error::<T>::NotNFTOwner)
 		}
 
+		fn ensure_loan_borrower(
+			owner: &T::AccountId,
+			borrower: &T::AccountId,
+		) -> Result<(), Error<T>> {
+			ensure!(owner == borrower, Error::<T>::NotLoanBorrower);
+			Ok(())
+		}
+
 		fn generate_loan_id() -> T::LoanId {
 			LastLoanId::<T>::mutate(|last_loan_id| {
 				*last_loan_id = T::Hasher::hash(&*last_loan_id.as_ref());
 				*last_loan_id
+			})
+		}
+
+		fn try_mutate_created_loan<F, R>(
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			f: F,
+		) -> Result<R, DispatchError>
+		where
+			F: FnOnce(
+				&mut ActiveLoan<T::LoanId, T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
+			) -> Result<R, DispatchError>,
+		{
+			let created_loan =
+				CreatedLoans::<T>::take(pool_id, loan_id).ok_or(Error::<T>::LoanNotFound)?;
+
+			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+				let index = active_loans.len();
+				active_loans
+					.try_push(ActiveLoan {
+						loan_id,
+						info: created_loan.info,
+						borrower: created_loan.borrower,
+						healthiness: Healthiness::Healthy,
+						origination_date: 0,
+						normalized_debt: T::Balance::zero(),
+						total_borrowed: T::Balance::zero(),
+						total_repaid: T::Balance::zero(),
+						last_updated: 0,
+					})
+					.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
+
+				f(active_loans
+					.get_mut(index)
+					.ok_or(DispatchError::Other("Expect active loan at that index"))?)
+			})
+		}
+
+		fn try_mutate_active_loan<F, R>(
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			f: F,
+		) -> Result<R, DispatchError>
+		where
+			F: FnOnce(
+				&mut ActiveLoan<T::LoanId, T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
+			) -> Result<R, DispatchError>,
+		{
+			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+				let active_loan = active_loans
+					.iter_mut()
+					.find(|active_loan| active_loan.loan_id == loan_id)
+					.ok_or(Error::<T>::LoanNotFound)?;
+
+				f(active_loan)
+			})
+		}
+
+		fn try_mutate_to_close_loan<F, R>(
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			f: F,
+		) -> Result<R, DispatchError>
+		where
+			F: FnOnce(
+				&mut ActiveLoan<T::LoanId, T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
+			) -> Result<R, DispatchError>,
+		{
+			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+				let index = active_loans
+					.iter()
+					.position(|active_loan| active_loan.loan_id == loan_id)
+					.ok_or(Error::<T>::LoanNotFound)?;
+
+				let mut active_loan = active_loans.swap_remove(index);
+
+				let result = f(&mut active_loan)?;
+
+				ClosedLoans::<T>::insert(
+					pool_id,
+					loan_id,
+					ClosedLoan {
+						closed_at: frame_system::Pallet::<T>::current_block_number(),
+						info: active_loan.info,
+					},
+				);
+
+				Ok(result)
 			})
 		}
 
