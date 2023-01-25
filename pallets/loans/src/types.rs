@@ -13,6 +13,7 @@
 
 //! Module provides base types and their functions
 use cfg_traits::PoolInspect;
+use codec::MaxEncodedLen;
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
@@ -20,7 +21,7 @@ use sp_arithmetic::traits::Zero;
 use super::*;
 
 /// Asset that represents a non fungible
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo, MaxEncodedLen)]
 pub struct Asset<ClassId, InstanceId>(pub ClassId, pub InstanceId);
 
 impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
@@ -37,7 +38,9 @@ pub(crate) struct ClosedLoan<T: pallet::Config> {
 }
 
 /// The data structure for storing pool nav details
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[derive(
+	Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct NAVDetails<Balance> {
 	// this is the latest nav for the given pool.
@@ -54,7 +57,9 @@ pub struct NAVDetails<Balance> {
 }
 
 /// The data structure for storing a specific write off group
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[derive(
+	Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct WriteOffGroup<Rate> {
 	/// percentage of outstanding debt we are going to write off on a loan
@@ -68,7 +73,9 @@ pub struct WriteOffGroup<Rate> {
 }
 
 /// The data structure as input for creating a write-off group
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[derive(
+	Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct WriteOffGroupInput<Rate> {
 	/// percentage of outstanding debt we are going to write off on a loan
@@ -81,7 +88,7 @@ pub struct WriteOffGroupInput<Rate> {
 	pub(crate) penalty_interest_rate_per_year: Rate,
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffStatus<Rate> {
@@ -111,7 +118,7 @@ pub enum WriteOffAction<Rate> {
 }
 
 /// The data structure for storing loan status
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanStatus<BlockNumber> {
@@ -136,14 +143,14 @@ pub enum NAVUpdateType {
 }
 
 /// The data structure for storing loan info
-#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct LoanDetails<Asset, BlockNumber> {
+pub struct LoanDetails<Asset: MaxEncodedLen, BlockNumber> {
 	pub(crate) collateral: Asset,
 	pub(crate) status: LoanStatus<BlockNumber>,
 }
 
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,

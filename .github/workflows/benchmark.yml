@@ -4,6 +4,8 @@ on:
     types: [created]
 jobs:
   benchmark:
+    permissions:
+      pull-requests: write
     name: benchmark
     runs-on: ubuntu-latest-4-cores
     if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}

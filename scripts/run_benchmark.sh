@@ -20,6 +20,7 @@ cargo run --release --features runtime-benchmarks,test-benchmarks -- benchmark p
   --execution=wasm \
   --wasm-execution=compiled \
   --heap-pages=4096 \
+  --template=./scripts/frame-weight-template.hbs \
   --output="${output}"
 
 # since benchmark generates a weight.rs file that may or may not cargo fmt'ed.

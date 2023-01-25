@@ -15,7 +15,7 @@
 use cfg_primitives::Moment;
 use cfg_traits::{Permissions, PoolMutate, UpdateState};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
-use codec::HasCompact;
+use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -34,7 +34,7 @@ mod mock;
 mod tests;
 pub mod weights;
 
-#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo)]
+#[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -44,7 +44,7 @@ where
 	pub token_symbol: BoundedVec<u8, MaxTokenSymbolLength>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolMetadata<MetaSize>
 where
 	MetaSize: Get<u32>,
@@ -52,7 +52,7 @@ where
 	metadata: BoundedVec<u8, MetaSize>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum PoolRegistrationStatus {
 	Registered,
 	Unregistered,
@@ -98,7 +98,12 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ core::fmt::Debug;
 
-		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
+		type Rate: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ FixedPointNumber
+			+ TypeInfo
+			+ MaxEncodedLen;
 
 		/// A fixed-point number which represents an
 		/// interest rate.
@@ -158,7 +163,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
@@ -226,7 +230,7 @@ pub mod pallet {
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
-		#[pallet::weight(T::WeightInfo::create(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
+		#[pallet::weight(T::WeightInfo::register(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
 		#[transactional]
 		pub fn register(
 			origin: OriginFor<T>,
@@ -316,22 +320,21 @@ pub mod pallet {
 				BadOrigin
 			);
 
-			match T::ModifyPool::update(pool_id, changes) {
-				Ok((state, dispatch_info)) => {
-					Self::deposit_event(Event::UpdateRegistered { pool_id });
+			let state = T::ModifyPool::update(pool_id, changes)?;
+			Self::deposit_event(Event::UpdateRegistered { pool_id });
 
-					match state {
-						UpdateState::NoExecution => (),
-						UpdateState::Executed => {
-							Self::deposit_event(Event::UpdateExecuted { pool_id })
-						}
-						UpdateState::Stored => Self::deposit_event(Event::UpdateStored { pool_id }),
-					}
-
-					Ok(dispatch_info)
+			let weight = match state {
+				UpdateState::NoExecution => T::WeightInfo::update_no_execution(0),
+				UpdateState::Executed(num_tranches) => {
+					Self::deposit_event(Event::UpdateExecuted { pool_id });
+					T::WeightInfo::update_and_execute(num_tranches)
 				}
-				Err(e) => Err(e),
-			}
+				UpdateState::Stored(num_tranches) => {
+					Self::deposit_event(Event::UpdateStored { pool_id });
+					T::WeightInfo::update_no_execution(num_tranches)
+				}
+			};
+			Ok(Some(weight).into())
 		}
 
 		/// Executed a scheduled update to the pool.
@@ -347,13 +350,8 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			match T::ModifyPool::execute_update(pool_id) {
-				Ok(res) => {
-					Self::deposit_event(Event::UpdateExecuted { pool_id });
-					Ok(res)
-				}
-				Err(e) => Err(e),
-			}
+			let num_tranches = T::ModifyPool::execute_update(pool_id)?;
+			Ok(Some(T::WeightInfo::execute_update(num_tranches)).into())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.

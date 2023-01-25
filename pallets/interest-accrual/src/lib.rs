@@ -56,7 +56,7 @@
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use cfg_traits::{InterestAccrual, RateCollection};
 use cfg_types::adjustments::Adjustment;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
@@ -68,6 +68,7 @@ use sp_std::vec::Vec;
 
 pub mod migrations;
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
@@ -90,14 +91,14 @@ pub struct RateDetailsV1<InterestRate> {
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct RateDetails<InterestRate> {
 	pub interest_rate_per_sec: InterestRate,
 	pub accumulated_rate: InterestRate,
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, TypeInfo, PartialEq)]
+#[derive(Encode, Decode, TypeInfo, PartialEq, MaxEncodedLen)]
 #[repr(u32)]
 pub enum Release {
 	V0,
@@ -120,7 +121,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -147,7 +147,8 @@ pub mod pallet {
 			+ core::fmt::Debug
 			+ Copy
 			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
+			+ FixedPointNumber<Inner = Self::Balance>
+			+ MaxEncodedLen;
 
 		type Time: UnixTime;
 

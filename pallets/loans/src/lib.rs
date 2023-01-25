@@ -14,6 +14,19 @@
 //! # Loan pallet
 //!
 //! This pallet provides functionality for managing loans on Tinlake
+//!
+//! Check the next table as an overview of the possible actions you can do for managing loans:
+//!
+//! |      Action     |   From  |    To   |      Role     | Collateral Owner |
+//! |-----------------|---------|---------|---------------|------------------|
+//! |      create     |         | Created |    Borrower   |        Yes       |
+//! |      price      | Created |  Active | PricingAdmin |                  |
+//! |      borrow     |  Active |  Active |               |        Yes       |
+//! |      repay      |  Active |  Active |               |        Yes       |
+//! |    write_off    |  Active |  Active |               |                  |
+//! | admin_write_off |  Active |  Active |   LoanAdmin   |                  |
+//! |      close      |  Active |  Closed  |               |        Yes       |
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "std")]
@@ -52,6 +65,7 @@ use sp_runtime::{
 };
 use sp_std::vec;
 use types::*;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -71,8 +85,6 @@ pub mod math;
 pub mod types;
 pub mod weights;
 
-pub use weights::WeightInfo;
-
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
@@ -86,7 +98,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -101,7 +112,8 @@ pub mod pallet {
 			+ Copy
 			+ Default
 			+ TypeInfo
-			+ IsType<ClassIdOf<Self>>;
+			+ IsType<ClassIdOf<Self>>
+			+ MaxEncodedLen;
 
 		/// The LoanId/InstanceId type
 		type LoanId: Parameter
@@ -110,10 +122,16 @@ pub mod pallet {
 			+ Copy
 			+ TypeInfo
 			+ From<u128>
-			+ IsType<InstanceIdOf<Self>>;
+			+ IsType<InstanceIdOf<Self>>
+			+ MaxEncodedLen;
 
 		/// the rate type
-		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
+		type Rate: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ FixedPointNumber
+			+ TypeInfo
+			+ MaxEncodedLen;
 
 		type Balance: Member
 			+ Parameter
@@ -140,7 +158,7 @@ pub mod pallet {
 		/// Pool reserve type
 		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
 
-		type CurrencyId: Parameter + Copy;
+		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Permission type that verifies permissions of users
 		type Permission: PermissionsT<
