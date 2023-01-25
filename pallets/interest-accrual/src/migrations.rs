@@ -61,7 +61,10 @@ pub mod v2 {
 			v1::RateCount::<T>::kill();
 			StorageVersion::<T>::set(Release::V2);
 
-			T::DbWeight::get().reads_writes(1 + count, 3)
+			// Reads: storage version + each rate
+			// Writes: each rate (storage killed), rates count (storage killed),
+			// rates vector, storage version
+			T::DbWeight::get().reads_writes(1 + count, 3 + count)
 		}
 	}
 }
