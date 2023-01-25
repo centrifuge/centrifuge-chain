@@ -21,7 +21,6 @@ use frame_support::{
 	transactional, RuntimeDebug, StorageHasher,
 };
 use pallet::*;
-//use pallet_pool_system::pool_types::PoolLocator;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
 use sp_runtime::{
@@ -32,32 +31,45 @@ use sp_runtime::{
 const SECONDS_PER_DAY: Moment = 3600 * 24;
 const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
 
-/// Diferent write off status that an unhealthy loan can have
+/// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub enum WriteOffStatus<Rate> {
-	/// Usual write off
-	Standard {
-		/// Index in the vec of write off groups.
-		write_off_index: u32,
-	},
-	/// Written off by an admin
-	Admin {
-		/// Percentage of outstanding debt we are going to write off on a loan
-		percentage: Rate,
+pub struct WriteOffPolicy<Rate> {
+	/// Number in days after the maturity has passed at which this write off policy is valid
+	overdue_days: u32,
 
-		/// Additional interest that accrues on the written off loan as penalty
-		penalty_interest_rate_per_sec: Rate,
-	},
+	/// Percentage of present value we are going to write off on a loan
+	percentage: Rate,
+
+	/// Additional interest that accrues on the written off loan as penalty
+	penalty_interest_rate_per_sec: Rate,
 }
 
-/// Defines the status of an active loan
+/// Diferent kinds of write off status that a loan can be
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub enum Healthiness<Rate> {
-	/// The loan has not been written off
-	Healthy,
+pub enum WriteOffStatus<Rate> {
+	/// The loan has not been written down at all.
+	None,
 
-	/// The loan has been writen off
-	Unhealthy(WriteOffStatus<Rate>),
+	/// Written down by a admin
+	WrittenDownByPolicy {
+		/// Percentage of present value we are going to write off on a loan
+		percentage: Rate,
+
+		/// Additional interest that accrues on the written down loan as penalty
+		penalty_interest_rate_per_sec: Rate,
+	},
+
+	/// Written down by an admin
+	WrittenDownByAdmin {
+		/// Percentage of present value we are going to write off on a loan
+		percentage: Rate,
+
+		/// Additional interest that accrues on the written down loan as penalty
+		penalty_interest_rate_per_sec: Rate,
+	},
+
+	/// Written down totally: 100% percentage, 0% penalty.
+	WrittenOff,
 }
 
 /// Specify the expected repayments date
@@ -192,7 +204,7 @@ where
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum MaxBorrowAmount<Rate> {
 	/// Ceiling computation using the total borrow
-	UpToTotalBorrows { advance_rate: Rate },
+	UpToTotalBorrowed { advance_rate: Rate },
 
 	/// Ceiling computation using the outstanding debt
 	UpToOutstandingDebt { advance_rate: Rate },
@@ -201,8 +213,8 @@ pub enum MaxBorrowAmount<Rate> {
 /// Specify how offer a loan can be borrowed
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum BorrowRestrictions {
-	/// TODO
-	None,
+	/// The loan can be borrowed if it is not written down.
+	WrittenDown,
 }
 
 /// Specify how offer a loan can be repaid
@@ -271,7 +283,7 @@ pub struct ActiveLoan<LoanId, AccountId, Asset, Balance, Rate> {
 	borrower: AccountId,
 
 	/// Specify whether the loan has been writen off
-	healthiness: Healthiness<Rate>,
+	written_off_status: WriteOffStatus<Rate>,
 
 	/// Date when the loans becomes active
 	origination_date: Moment,
@@ -464,6 +476,17 @@ pub mod pallet {
 		T::LoanId,
 		ClosedLoan<T::BlockNumber, AssetOf<T>, T::Balance, T::Rate>,
 		OptionQuery,
+	>;
+
+	/// Stores write off policies used in each pool
+	#[pallet::storage]
+	#[pallet::getter(fn pool_writeoff_groups)]
+	pub(crate) type WriteOffPolicies<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		BoundedVec<WriteOffPolicy<T::Rate>, T::MaxWriteOffGroups>,
+		ValueQuery,
 	>;
 
 	#[pallet::event]
@@ -704,7 +727,7 @@ pub mod pallet {
 						loan_id,
 						info: created_loan.info,
 						borrower: created_loan.borrower,
-						healthiness: Healthiness::Healthy,
+						written_off_status: WriteOffStatus::None,
 						origination_date: 0,
 						normalized_debt: T::Balance::zero(),
 						total_borrowed: T::Balance::zero(),
