@@ -260,15 +260,10 @@ pub mod pallet {
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
-			Rates::<T>::get()
-				.into_iter()
-				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
-				.ok_or(Error::<T>::NoSuchRate)
-				.and_then(|rate| {
-					Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-						.ok_or(Error::<T>::DebtCalculationFailed)
-				})
-				.map_err(Into::into)
+			let rate = Self::get_rate(interest_rate_per_sec)?;
+			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
+				.ok_or(Error::<T>::DebtCalculationFailed)?;
+			Ok(debt)
 		}
 
 		pub fn get_previous_debt(
@@ -276,27 +271,21 @@ pub mod pallet {
 			normalized_debt: T::Balance,
 			when: Moment,
 		) -> Result<T::Balance, DispatchError> {
-			let rate = Rates::<T>::get()
-				.into_iter()
-				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec);
-			if let Some(rate) = rate {
-				let now = LastUpdated::<T>::get();
-				if when > now {
-					return Err(Error::<T>::NotInPast.into());
-				}
-				let delta = now - when;
-				let rate_adjustment = checked_pow(interest_rate_per_sec, delta as usize)
-					.ok_or(ArithmeticError::Overflow)?;
-				let past_rate = rate
-					.accumulated_rate
-					.checked_div(&rate_adjustment)
-					.ok_or(ArithmeticError::Underflow)?;
-				let debt = Self::calculate_debt(normalized_debt, past_rate)
-					.ok_or(Error::<T>::DebtCalculationFailed)?;
-				Ok(debt)
-			} else {
-				Err(Error::<T>::NoSuchRate.into())
+			let rate = Self::get_rate(interest_rate_per_sec)?;
+			let now = LastUpdated::<T>::get();
+			if when > now {
+				return Err(Error::<T>::NotInPast.into());
 			}
+			let delta = now - when;
+			let rate_adjustment = checked_pow(interest_rate_per_sec, delta as usize)
+				.ok_or(ArithmeticError::Overflow)?;
+			let past_rate = rate
+				.accumulated_rate
+				.checked_div(&rate_adjustment)
+				.ok_or(ArithmeticError::Underflow)?;
+			let debt = Self::calculate_debt(normalized_debt, past_rate)
+				.ok_or(Error::<T>::DebtCalculationFailed)?;
+			Ok(debt)
 		}
 
 		pub fn do_adjust_normalized_debt(
@@ -304,10 +293,7 @@ pub mod pallet {
 			normalized_debt: T::Balance,
 			adjustment: Adjustment<T::Balance>,
 		) -> Result<T::Balance, DispatchError> {
-			let rate = Rates::<T>::get()
-				.into_iter()
-				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
-				.ok_or(Error::<T>::NoSuchRate)?;
+			let rate = Self::get_rate(interest_rate_per_sec)?;
 
 			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
@@ -332,14 +318,8 @@ pub mod pallet {
 			new_interest_rate: T::InterestRate,
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
-			let old_rate = Rates::<T>::get()
-				.into_iter()
-				.find(|rate| rate.interest_rate_per_sec == old_interest_rate)
-				.ok_or(Error::<T>::NoSuchRate)?;
-			let new_rate = Rates::<T>::get()
-				.into_iter()
-				.find(|rate| rate.interest_rate_per_sec == new_interest_rate)
-				.ok_or(Error::<T>::NoSuchRate)?;
+			let old_rate = Self::get_rate(old_interest_rate)?;
+			let new_rate = Self::get_rate(new_interest_rate)?;
 
 			let debt = Self::calculate_debt(normalized_debt, old_rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
@@ -404,45 +384,50 @@ pub mod pallet {
 		}
 
 		pub fn reference_interest_rate(interest_rate_per_sec: T::InterestRate) -> DispatchResult {
-			let mut rates = Rates::<T>::get();
-			for rate in &mut rates {
-				if rate.interest_rate_per_sec == interest_rate_per_sec {
-					rate.reference_count += 1;
-					return Ok(());
+			Rates::<T>::try_mutate(|rates| {
+				for rate in rates.iter_mut() {
+					if rate.interest_rate_per_sec == interest_rate_per_sec {
+						rate.reference_count += 1;
+						return Ok(());
+					}
 				}
-			}
-			// Fell through the loop, so push in a new item
-			let new_rate = RateDetailsOf::<T> {
-				interest_rate_per_sec,
-				accumulated_rate: One::one(),
-				reference_count: 1,
-			};
-			rates
-				.try_push(new_rate)
-				.map_err(|_| Error::<T>::TooManyRates)?;
-			Rates::<T>::set(rates);
-			Ok(())
+				// Fell through the loop, so push in a new item
+				let new_rate = RateDetailsOf::<T> {
+					interest_rate_per_sec,
+					accumulated_rate: One::one(),
+					reference_count: 1,
+				};
+				rates
+					.try_push(new_rate)
+					.map_err(|_| Error::<T>::TooManyRates)?;
+				Ok(())
+			})
 		}
 
 		pub fn unreference_interest_rate(interest_rate_per_sec: T::InterestRate) -> DispatchResult {
-			let mut rates = Rates::<T>::get();
-			let idx = rates
-				.iter()
-				.enumerate()
-				.find(|(_, rate)| rate.interest_rate_per_sec == interest_rate_per_sec)
-				.ok_or(Error::<T>::NoSuchRate)?
-				.0;
-			rates[idx].reference_count = rates[idx].reference_count.saturating_sub(1);
-			if rates[idx].reference_count == 0 {
-				rates.remove(idx);
-			}
-			Ok(())
+			Rates::<T>::try_mutate(|rates| {
+				let idx = rates
+					.iter()
+					.enumerate()
+					.find(|(_, rate)| rate.interest_rate_per_sec == interest_rate_per_sec)
+					.ok_or(Error::<T>::NoSuchRate)?
+					.0;
+				rates[idx].reference_count = rates[idx].reference_count.saturating_sub(1);
+				if rates[idx].reference_count == 0 {
+					rates.remove(idx);
+				}
+				Ok(())
+			})
 		}
 
-		pub fn get_rate(interest_rate_per_sec: T::InterestRate) -> Option<RateDetailsOf<T>> {
-			Rates::<T>::get()
+		pub fn get_rate(
+			interest_rate_per_sec: T::InterestRate,
+		) -> Result<RateDetailsOf<T>, DispatchError> {
+			let rate = Rates::<T>::get()
 				.into_iter()
 				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
+				.ok_or(Error::<T>::NoSuchRate)?;
+			Ok(rate)
 		}
 
 		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
