@@ -28,6 +28,8 @@ pub struct XcmDomain<CurrencyId> {
 	pub contract_address: H160,
 	/// The currency in which execution fees will be paid on
 	pub fee_currency: CurrencyId,
+	/// The max gas_limit we want to propose for a remote evm execution
+	pub max_gas_limit: u128,
 }
 
 // NOTE: Remove this custom implementation once the following underlying data implements MaxEncodedLen:
