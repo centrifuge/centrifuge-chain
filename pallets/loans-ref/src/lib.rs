@@ -12,6 +12,7 @@ use cfg_types::{
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
+	pallet_prelude::RuntimeDebugNoBound,
 	traits::{
 		tokens::{
 			self,
@@ -240,40 +241,38 @@ pub struct LoanRestrictions<Rate> {
 
 /// Loan information.
 /// It contemplates the loan proposal by the borrower and the pricing properties by the issuer.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct LoanInfo<Asset, Balance, Rate> {
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct LoanInfo<T: Config> {
 	/// Specify the repayments schedule of the loan
 	schedule: RepaymentSchedule,
 
 	/// Collateral used for this loan
-	collateral: Asset,
+	collateral: AssetOf<T>,
 
 	/// Value of the collateral used for this loan
-	collateral_value: Balance,
+	collateral_value: T::Balance,
 
 	/// Valuation method of this loan
-	valuation_method: ValuationMethod<Rate>,
+	valuation_method: ValuationMethod<T::Rate>,
 
 	/// Restrictions of this loan
-	restrictions: LoanRestrictions<Rate>,
+	restrictions: LoanRestrictions<T::Rate>,
 
 	/// Interest rate per second
-	interest_rate_per_sec: Rate,
+	interest_rate_per_sec: T::Rate,
 }
 
-impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
-where
-	Rate: FixedPointNumber,
-{
-	fn validate(&self, now: Moment) -> Result<(), InnerLoanError> {
+impl<T: Config> LoanInfo<T> {
+	fn validate(&self, now: Moment) -> sp_runtime::DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
-			InnerLoanError::ValuationMethod
+			Error::<T>::from(InnerLoanError::ValuationMethod)
 		);
 
 		ensure!(
 			self.schedule.is_valid(now),
-			InnerLoanError::RepaymentSchedule
+			Error::<T>::from(InnerLoanError::RepaymentSchedule)
 		);
 
 		Ok(())
@@ -282,40 +281,42 @@ where
 
 /// Data containing a loan that has been created but is not active yet.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct CreatedLoan<AccountId, Asset, Balance, Rate> {
+#[scale_info(skip_type_params(T))]
+pub struct CreatedLoan<T: Config> {
 	/// Loan information
-	info: LoanInfo<Asset, Balance, Rate>,
+	info: LoanInfo<T>,
 
 	/// Borrower account that created this loan
-	borrower: AccountId,
+	borrower: T::AccountId,
 }
 
 /// Data containing an active loan.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct ActiveLoan<LoanId, AccountId, Asset, Balance, Rate> {
+#[scale_info(skip_type_params(T))]
+pub struct ActiveLoan<T: Config> {
 	/// Id of this loan
-	loan_id: LoanId,
+	loan_id: T::LoanId,
 
 	/// Loan information
-	info: LoanInfo<Asset, Balance, Rate>,
+	info: LoanInfo<T>,
 
 	/// Borrower account that created this loan
-	borrower: AccountId,
+	borrower: T::AccountId,
 
 	/// Specify whether the loan has been writen off
-	written_off_status: WriteOffStatus<Rate>,
+	written_off_status: WriteOffStatus<T::Rate>,
 
 	/// Date when the loans becomes active
 	origination_date: Moment,
 
 	/// Normalized debt used to calculate the outstanding debt.
-	normalized_debt: Balance,
+	normalized_debt: T::Balance,
 
 	/// Total borrowed amount of this loan
-	total_borrowed: Balance,
+	total_borrowed: T::Balance,
 
 	/// Total repaid amount of this loan
-	total_repaid: Balance,
+	total_repaid: T::Balance,
 
 	/// When the loans's Present Value (PV) was last updated
 	last_updated: Moment,
@@ -323,12 +324,13 @@ pub struct ActiveLoan<LoanId, AccountId, Asset, Balance, Rate> {
 
 /// Data containing a closed loan for historical purposes.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct ClosedLoan<BlockNumber, Asset, Balance, Rate> {
+#[scale_info(skip_type_params(T))]
+pub struct ClosedLoan<T: Config> {
 	/// Block when the loan was closed
-	closed_at: BlockNumber,
+	closed_at: T::BlockNumber,
 
 	/// Loan information
-	info: LoanInfo<Asset, Balance, Rate>,
+	info: LoanInfo<T>,
 }
 
 #[derive(Encode, Decode, TypeInfo)]
@@ -353,14 +355,6 @@ type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 >>::PoolId;
 
 type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-
-type ActiveLoanOf<T> = ActiveLoan<
-	<T as Config>::LoanId,
-	<T as frame_system::Config>::AccountId,
-	AssetOf<T>,
-	<T as Config>::Balance,
-	<T as Config>::Rate,
->;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -473,7 +467,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		CreatedLoan<T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
+		CreatedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -485,7 +479,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<ActiveLoanOf<T>, T::MaxActiveLoansPerPool>,
+		BoundedVec<ActiveLoan<T>, T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -499,7 +493,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		ClosedLoan<T::BlockNumber, AssetOf<T>, T::Balance, T::Rate>,
+		ClosedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -521,7 +515,7 @@ pub mod pallet {
 		Created {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			loan_info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+			loan_info: LoanInfo<T>,
 		},
 		/// An amount was borrowed for a loan
 		Borrowed {
@@ -596,7 +590,8 @@ pub mod pallet {
 					interest_rate_per_year,
 				)?,
 			};
-			loan_info.validate(Self::now()).map_err(Error::<T>::from)?;
+
+			loan_info.validate(Self::now())?;
 
 			let loan_id = Self::generate_loan_id();
 
@@ -633,7 +628,7 @@ pub mod pallet {
 			match CreatedLoans::<T>::take(pool_id, loan_id) {
 				Some(loan) => {
 					Self::ensure_loan_borrower(&who, &loan.borrower)?;
-					Self::insert_active_loan(pool_id, loan_id, loan.info, loan.borrower, |loan| {
+					Self::make_active_loan(pool_id, loan_id, loan.info, loan.borrower, |loan| {
 						Self::do_borrow(loan, amount)
 					})?
 				}
@@ -734,19 +729,19 @@ pub mod pallet {
 
 	/// Active loan actions
 	impl<T: Config> Pallet<T> {
-		fn do_borrow(loan: &mut ActiveLoanOf<T>, amount: T::Balance) -> DispatchResult {
+		fn do_borrow(loan: &mut ActiveLoan<T>, amount: T::Balance) -> DispatchResult {
 			todo!()
 		}
 
-		fn do_repay(loan: &mut ActiveLoanOf<T>, amount: T::Balance) -> DispatchResult {
+		fn do_repay(loan: &mut ActiveLoan<T>, amount: T::Balance) -> DispatchResult {
 			todo!()
 		}
 
-		fn do_write_off(loan: &mut ActiveLoanOf<T>) -> DispatchResult {
+		fn do_write_off(loan: &mut ActiveLoan<T>) -> DispatchResult {
 			todo!()
 		}
 
-		fn do_close(loan: &mut ActiveLoanOf<T>) -> DispatchResult {
+		fn do_close(loan: &mut ActiveLoan<T>) -> DispatchResult {
 			todo!()
 		}
 	}
@@ -797,17 +792,15 @@ pub mod pallet {
 			})
 		}
 
-		fn insert_active_loan<F, R>(
+		fn make_active_loan<F, R>(
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+			info: LoanInfo<T>,
 			borrower: T::AccountId,
 			f: F,
 		) -> Result<R, DispatchError>
 		where
-			F: FnOnce(
-				&mut ActiveLoan<T::LoanId, T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
-			) -> Result<R, DispatchError>,
+			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans.len();
@@ -837,9 +830,7 @@ pub mod pallet {
 			f: F,
 		) -> Result<R, DispatchError>
 		where
-			F: FnOnce(
-				&mut ActiveLoan<T::LoanId, T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
-			) -> Result<R, DispatchError>,
+			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let active_loan = active_loans
@@ -857,9 +848,7 @@ pub mod pallet {
 			f: F,
 		) -> Result<R, DispatchError>
 		where
-			F: FnOnce(
-				&mut ActiveLoan<T::LoanId, T::AccountId, AssetOf<T>, T::Balance, T::Rate>,
-			) -> Result<R, DispatchError>,
+			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
