@@ -465,7 +465,7 @@ pub mod pallet {
 			encoded.append(
 				&mut xcm_primitives::EthereumXcmTransaction::V1(
 					xcm_primitives::EthereumXcmTransactionV1 {
-						gas_limit: U256::from(80_000),
+						gas_limit: U256::from(500_000),
 						fee_payment: xcm_primitives::EthereumXcmFee::Auto,
 						action: pallet_ethereum::TransactionAction::Call(
 							xcm_domain.contract_address,

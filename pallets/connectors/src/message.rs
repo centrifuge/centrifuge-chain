@@ -306,7 +306,6 @@ mod tests {
 		}
 
 		#[test]
-		#[ignore = "wip"]
 		fn transfer() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 				pool_id: 1,
@@ -316,10 +315,10 @@ mod tests {
 				amount: 100 * CURRENCY,
 			};
 			let encoded = msg.encode();
-			println!("{}", hex::encode(encoded.clone()));
 
-			let input = "0500000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101016400000000000000";
-			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
+			let input = "0500000000000000010000000000000000000000000000000101000101010101010101010101010101010101010101010101010101010101010101000010632d5ec76b0500000000000000";
+
+			let expected = <[u8; 75]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 	}
