@@ -434,7 +434,8 @@ pub mod pallet {
 				OriginKind::SovereignAccount,
 				TransactWeights {
 					// Specify a conservative max weight
-					transact_required_weight_at_most: xcm_domain.max_gas_limit * 25_000 + 100_000_000,
+					transact_required_weight_at_most: xcm_domain.max_gas_limit * 25_000
+						+ 100_000_000,
 					overall_weight: None,
 				},
 			)?;
