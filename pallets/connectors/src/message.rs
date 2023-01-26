@@ -306,6 +306,21 @@ mod tests {
 		}
 
 		#[test]
+		fn update_member_that_failed() {
+			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateMember {
+				pool_id: 2,
+				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+				address: <[u8; 32]>::from_hex("1231231231231231231231231231231231231231231231231231231231231231").expect(""),
+				valid_until: 1706260138,
+			};
+			let encoded = msg.encode();
+
+			let input = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b1231231231231231231231231231231231231231231231231231231231231231aa76b36500000000";
+			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
+			assert_eq!(hex::encode(encoded), hex::encode(expected));
+		}
+
+		#[test]
 		fn transfer() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 				pool_id: 1,
