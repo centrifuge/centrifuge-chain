@@ -79,6 +79,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(feature = "runtime-benchmarks", test))]
+mod test_utils;
+
 pub use pallet::*;
 
 // Type aliases
@@ -98,7 +101,7 @@ pub struct RateDetails<InterestRate> {
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, TypeInfo, PartialEq, MaxEncodedLen)]
+#[derive(Encode, Decode, TypeInfo, PartialEq, MaxEncodedLen, RuntimeDebug)]
 #[repr(u32)]
 pub enum Release {
 	V0,

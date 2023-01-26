@@ -66,8 +66,75 @@ pub mod v2 {
 			// rates vector, storage version
 			T::DbWeight::get().reads_writes(1 + count, 3 + count)
 		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			let version = StorageVersion::<T>::get();
+			let old_rates: Option<
+				Vec<(
+					<T as Config>::InterestRate,
+					RateDetailsV1<<T as Config>::InterestRate>,
+				)>,
+			> = if version == Release::V1 {
+				Some(v1::Rate::<T>::iter().collect())
+			} else {
+				None
+			};
+			Ok(old_rates.encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+			let old_rates = Option::<
+				Vec<(
+					<T as Config>::InterestRate,
+					RateDetailsV1<<T as Config>::InterestRate>,
+				)>,
+			>::decode(&mut state.as_ref())
+			.map_err(|_| "Error decoding pre-upgrade state")?;
+
+			for (rate_per_sec, old_rate) in old_rates.into_iter().flatten() {
+				let new_rate = Pallet::<T>::get_rate(rate_per_sec)
+					.map_err(|_| "Expected rate not found in new state")?;
+				if new_rate.accumulated_rate != old_rate.accumulated_rate {
+					return Err("Accumulated rate was not correctly migrated");
+				}
+
+				if new_rate.reference_count != old_rate.reference_count {
+					return Err("Reference count was not correctly migrated");
+				}
+			}
+
+			Ok(())
+		}
 	}
 }
 
 #[cfg(test)]
-mod test {}
+mod test {
+	use super::*;
+	use crate::{mock::*, test_utils::*};
+	#[cfg(feature = "try-runtime")]
+	#[test]
+	fn migrate_to_v2() {
+		TestExternalitiesBuilder::default()
+			.build()
+			.execute_with(|| {
+				let rate = interest_rate_per_sec(
+					<Runtime as Config>::InterestRate::saturating_from_rational(10, 100),
+				)
+				.unwrap();
+				v1::Rate::<Runtime>::insert(
+					&rate,
+					RateDetailsV1 {
+						accumulated_rate: rate.clone(),
+						reference_count: 42,
+					},
+				);
+				StorageVersion::<Runtime>::put(Release::V1);
+				let state = v2::Migration::<Runtime>::pre_upgrade().unwrap();
+				v2::Migration::<Runtime>::on_runtime_upgrade();
+				v2::Migration::<Runtime>::post_upgrade(state).unwrap();
+			})
+	}
+}

@@ -15,25 +15,7 @@
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 
 use super::*;
-
-/// returns the seconds in a given normal day
-fn seconds_per_day() -> Moment {
-	3600 * 24
-}
-
-/// returns the seconds in a given normal year(365 days)
-/// https://docs.centrifuge.io/learn/interest-rate-methodology/
-fn seconds_per_year() -> Moment {
-	seconds_per_day() * 365
-}
-
-/// calculates rate per second from the given nominal interest rate
-/// https://docs.centrifuge.io/learn/interest-rate-methodology/
-fn interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
-	rate_per_annum
-		.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
-		.and_then(|res| res.checked_add(&Rate::one()))
-}
+use crate::test_utils::*;
 
 benchmarks! {
 	// Our logarithmic-time pow implementation is effectively
