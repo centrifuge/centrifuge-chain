@@ -56,7 +56,7 @@ where
 	fn distribute_reward<It>(
 		reward: Self::Balance,
 		groups: It,
-	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
+	) -> Result<Vec<Result<Self::Balance, DispatchError>>, DispatchError>
 	where
 		It: IntoIterator<Item = Self::GroupId>,
 		It::IntoIter: Clone,
@@ -77,7 +77,7 @@ where
 	fn distribute_reward_with_weights<Weight, It>(
 		reward: Self::Balance,
 		groups: It,
-	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
+	) -> Result<Vec<Result<Self::Balance, DispatchError>>, DispatchError>
 	where
 		Weight: FixedPointOperand + EnsureAdd + Unsigned,
 		It: IntoIterator<Item = (Self::GroupId, Weight)>,
@@ -92,21 +92,18 @@ where
 
 		Ok(groups
 			.map(|(group_id, weight)| {
-				let result = (|| {
-					let group_reward = if Self::is_ready(group_id.clone()) {
-						let reward_rate = FixedU128::checked_from_rational(weight, total_weight)
-							.ok_or(ArithmeticError::DivisionByZero)?;
+				let group_reward = if Self::is_ready(group_id.clone()) {
+					let reward_rate = FixedU128::checked_from_rational(weight, total_weight)
+						.ok_or(ArithmeticError::DivisionByZero)?;
 
-						reward_rate.ensure_mul_int(reward)?
-					} else {
-						Self::Balance::zero()
-					};
+					reward_rate.ensure_mul_int(reward)?
+				} else {
+					Self::Balance::zero()
+				};
 
-					Self::reward_group(group_id.clone(), group_reward)
-				})();
-				(group_id, result)
+				Self::reward_group(group_id.clone(), group_reward)?;
+				Ok(group_reward)
 			})
-			.filter_map(|(group_id, result)| result.err().map(|err| (group_id, err)))
 			.collect())
 	}
 }
@@ -316,7 +313,7 @@ mod test {
 				REWARD_ZERO,
 				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
 			),
-			vec![(GroupId::Err, DispatchError::Other("issue"))]
+			vec![Ok(0), Err(DispatchError::Other("issue")), Ok(0), Ok(0)]
 		);
 	}
 
@@ -374,7 +371,12 @@ mod test {
 				REWARD,
 				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
 			),
-			vec![(GroupId::Err, DispatchError::Other("issue"))]
+			vec![
+				Ok(0),
+				Err(DispatchError::Other("issue")),
+				Ok(REWARD / 3),
+				Ok(REWARD / 3)
+			]
 		);
 	}
 
@@ -418,7 +420,7 @@ mod test {
 					(GroupId::B, 40u32)
 				]
 			),
-			vec![(GroupId::Err, DispatchError::Other("issue"))]
+			vec![Ok(0), Err(DispatchError::Other("issue")), Ok(33), Ok(44)]
 		);
 	}
 }
