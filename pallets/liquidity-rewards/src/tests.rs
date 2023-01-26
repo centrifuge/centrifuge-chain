@@ -238,7 +238,7 @@ fn weight_changes() {
 						_ => unreachable!(),
 					}
 			})
-			.returning(|_, _| Ok(()));
+			.returning(|_, rewards| Ok(rewards));
 
 		Liquidity::on_initialize(INITIAL_EPOCH_DURATION * 3);
 	});

@@ -33,8 +33,14 @@ pub trait GroupRewards {
 	fn is_ready(group_id: Self::GroupId) -> bool;
 
 	/// Reward a group distributing the reward amount proportionally to all associated accounts.
-	/// This method is called by distribution method only when the group has some stake.
-	fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult;
+	/// This method is called by distribution method only when the group is considered ready,
+	/// check [`GroupRewards::is_ready()`].
+	/// The method returns the minted reward. Depending on the implementation it may be less
+	/// than requested.
+	fn reward_group(
+		group_id: Self::GroupId,
+		reward: Self::Balance,
+	) -> Result<Self::Balance, DispatchError>;
 
 	/// Retrieve the total staked amount.
 	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
@@ -101,8 +107,7 @@ where
 					Self::Balance::zero()
 				};
 
-				Self::reward_group(group_id.clone(), group_reward)?;
-				Ok(group_reward)
+				Self::reward_group(group_id.clone(), group_reward)
 			})
 			.collect())
 	}
@@ -210,7 +215,7 @@ pub mod mock {
 			fn reward_group(
 				group_id: <Self as GroupRewards>::GroupId,
 				reward: <Self as GroupRewards>::Balance
-			) -> DispatchResult;
+			) -> Result<<Self as GroupRewards>::Balance, DispatchError>;
 
 			fn group_stake(group_id: <Self as GroupRewards>::GroupId) -> <Self as GroupRewards>::Balance;
 		}
@@ -303,9 +308,9 @@ mod test {
 		ctx2.expect()
 			.times(4)
 			.withf(|_, reward| *reward == REWARD_ZERO)
-			.returning(|group_id, _| match group_id {
+			.returning(|group_id, reward| match group_id {
 				GroupId::Err => Err(DispatchError::Other("issue")),
-				_ => Ok(()),
+				_ => Ok(reward),
 			});
 
 		assert_ok!(
@@ -361,9 +366,9 @@ mod test {
 						GroupId::B => REWARD / 3,
 					}
 			})
-			.returning(|group_id, _| match group_id {
+			.returning(|group_id, reward| match group_id {
 				GroupId::Err => Err(DispatchError::Other("issue")),
-				_ => Ok(()),
+				_ => Ok(reward),
 			});
 
 		assert_ok!(
@@ -405,9 +410,9 @@ mod test {
 						GroupId::B => 40 * REWARD / 90,
 					}
 			})
-			.returning(|group_id, _| match group_id {
+			.returning(|group_id, reward| match group_id {
 				GroupId::Err => Err(DispatchError::Other("issue")),
-				_ => Ok(()),
+				_ => Ok(reward),
 			});
 
 		assert_ok!(
