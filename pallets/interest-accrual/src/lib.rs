@@ -205,7 +205,7 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			StorageVersion::<T>::put(Release::V1);
+			StorageVersion::<T>::put(Release::V2);
 		}
 	}
 
