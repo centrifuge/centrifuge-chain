@@ -302,6 +302,37 @@ fn pool_account<T: pallet_pool_system::Config>(pool_id: T::PoolId) -> T::Account
 	PoolLocator { pool_id }.into_account_truncating()
 }
 
+// Populate interest rates for worst-case lookup of our actual rate
+fn populate_bench_storage<T: Config>(
+	pool_id: PoolIdOf<T>,
+	loans: u32,
+	rates: u32,
+) -> Option<AssetOf<T>>
+where
+	<T as LoanConfig>::Rate: From<Rate>,
+	<T as LoanConfig>::LoanId: From<u32>,
+	<T as InterestAccrualConfig>::InterestRate: From<Rate>,
+	<T as pallet_balances::Config>::Balance: From<u128>,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
+	<T as pallet_pool_system::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+{
+	let mut collateral = None;
+	for idx in 1..rates {
+		let rate = Rate::saturating_from_rational(idx, 5000).into();
+		InterestAccrualPallet::<T>::reference_yearly_rate(rate)
+			.expect("Must be able to reference dummy interest rates");
+	}
+	for idx in 0..loans {
+		let loan_id = (idx + 1).into();
+		let (loan_owner, asset) = create_asset::<T>(loan_id);
+		collateral = Some(asset);
+		LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset)
+			.expect("loan issue should not fail");
+		activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, rates);
+	}
+	collateral
+}
+
 benchmarks! {
 	where_clause {
 		where
@@ -359,18 +390,7 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..<T as InterestAccrualConfig>::MaxRateCount::get();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..m {
-			let rate = Rate::saturating_from_rational(idx, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, asset) = create_asset::<T>(loan_id);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, m);
-		}
+		populate_bench_storage::<T>(pool_id, n, m);
 		// Worst case here - an already-priced loan (which
 		// needs to be removed from the active list) at the
 		// very end of the list.
@@ -420,18 +440,7 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..<T as InterestAccrualConfig>::MaxRateCount::get();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..m {
-			let rate = Rate::saturating_from_rational(idx+1, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, asset) = create_asset::<T>(loan_id);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, m);
-		}
+		populate_bench_storage::<T>(pool_id, n, m);
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (100 * CURRENCY).into();
@@ -452,18 +461,7 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..<T as InterestAccrualConfig>::MaxRateCount::get();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..m {
-			let rate = Rate::saturating_from_rational(idx+1, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, asset) = create_asset::<T>(loan_id);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, m);
-		}
+		populate_bench_storage::<T>(pool_id, n, m);
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (50 * CURRENCY).into();
@@ -491,18 +489,7 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..<T as InterestAccrualConfig>::MaxRateCount::get();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..m {
-			let rate = Rate::saturating_from_rational(idx+1, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, asset) = create_asset::<T>(loan_id);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, m);
-		}
+		populate_bench_storage::<T>(pool_id, n, m);
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (100 * CURRENCY).into();
@@ -535,18 +522,7 @@ benchmarks! {
 		let m in 1..T::MaxWriteOffGroups::get();
 		let o in 1..(<T as InterestAccrualConfig>::MaxRateCount::get() - 1);
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..o {
-			let rate = Rate::saturating_from_rational(idx+1, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, asset) = create_asset::<T>(loan_id);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, o);
-		}
+		populate_bench_storage::<T>(pool_id, n, o);
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let risk_admin = risk_admin::<T>();
@@ -590,18 +566,7 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..(<T as InterestAccrualConfig>::MaxRateCount::get() - 1);
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..m {
-			let rate = Rate::saturating_from_rational(idx+1, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, asset) = create_asset::<T>(loan_id);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, m);
-		}
+		populate_bench_storage::<T>(pool_id, n, m);
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (100 * CURRENCY).into();
@@ -626,22 +591,7 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..<T as InterestAccrualConfig>::MaxRateCount::get();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..m {
-			let rate = Rate::saturating_from_rational(idx+1, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		let mut collateral = None;
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, new_asset) = create_asset::<T>(loan_id);
-			collateral = Some(new_asset);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, new_asset).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, m);
-
-		}
-		let collateral = collateral.unwrap();
+		let collateral = populate_bench_storage::<T>(pool_id, n, m).unwrap();
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (100 * CURRENCY).into();
@@ -683,21 +633,7 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..(<T as InterestAccrualConfig>::MaxRateCount::get() - 1);
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
-		// Populate interest rates for worst-case lookup of our actual rate
-		for idx in 1..m {
-			let rate = Rate::saturating_from_rational(idx+1, 5000).into();
-			InterestAccrualPallet::<T>::reference_yearly_rate(rate)
-				.expect("Must be able to reference dummy interest rates");
-		}
-		let mut collateral = None;
-		for idx in 0..n {
-			let loan_id = (idx + 1).into();
-			let (loan_owner, new_collateral) = create_asset::<T>(loan_id);
-			collateral = Some(new_collateral);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, new_collateral).expect("loan issue should not fail");
-			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, m);
-		}
-		let collateral = collateral.unwrap();
+		let collateral = populate_bench_storage::<T>(pool_id, n, m).unwrap();
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (100 * CURRENCY).into();
@@ -745,6 +681,9 @@ benchmarks! {
 				.expect("Must be able to reference dummy interest rates");
 		}
 		let amount = (CURRENCY / 4).into();
+
+		// Special case compared to the normal setup fn.
+		// we need to borrow each loan so we have a non-zero NAV amount.
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
 			let (loan_owner, asset) = create_asset::<T>(loan_id);
