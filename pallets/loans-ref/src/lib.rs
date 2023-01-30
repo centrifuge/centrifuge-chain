@@ -2,7 +2,10 @@
 
 use cfg_primitives::Moment;
 use cfg_traits::{
-	ops::{EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
+	ops::{
+		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul,
+		EnsureSub,
+	},
 	InterestAccrual, Permissions, PoolInspect, PoolReserve,
 };
 use cfg_types::{
@@ -12,7 +15,7 @@ use cfg_types::{
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
-	pallet_prelude::RuntimeDebugNoBound,
+	pallet_prelude::{DispatchResult, RuntimeDebugNoBound},
 	traits::{
 		tokens::{
 			self,
@@ -24,10 +27,10 @@ use frame_support::{
 };
 use pallet::*;
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::checked_pow;
+use sp_arithmetic::traits::{checked_pow, Saturating};
 use sp_runtime::{
 	traits::{BadOrigin, BlockNumberProvider, One, Zero},
-	ArithmeticError, FixedPointNumber, FixedPointOperand,
+	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
 const SECONDS_PER_DAY: Moment = 3600 * 24;
@@ -57,8 +60,8 @@ pub enum WriteOffStatus<Rate> {
 		/// Percentage of present value we are going to write off on a loan
 		percentage: Rate,
 
-		/// Additional interest that accrues on the written down loan as penalty
-		penalty_interest_rate_per_sec: Rate,
+		/// Additional interest that accrues on the written down loan as penalty per sec
+		penalty: Rate,
 	},
 
 	/// Written down by an admin
@@ -66,12 +69,42 @@ pub enum WriteOffStatus<Rate> {
 		/// Percentage of present value we are going to write off on a loan
 		percentage: Rate,
 
-		/// Additional interest that accrues on the written down loan as penalty
-		penalty_interest_rate_per_sec: Rate,
+		/// Additional interest that accrues on the written down loan as penalty per sec
+		penalty: Rate,
 	},
 
 	/// Written down totally: 100% percentage, 0% penalty.
 	WrittenOff,
+}
+
+impl<Rate> WriteOffStatus<Rate>
+where
+	Rate: FixedPointNumber,
+{
+	fn penalize_rate(&self, rate: Rate) -> Result<Rate, ArithmeticError> {
+		match self {
+			WriteOffStatus::None => Ok(rate),
+			WriteOffStatus::WrittenDownByPolicy { penalty, .. } => rate.ensure_add(*penalty),
+			WriteOffStatus::WrittenDownByAdmin { penalty, .. } => rate.ensure_add(*penalty),
+			WrittenOff => Ok(rate), //TODO: check if this is correct
+		}
+	}
+
+	fn write_down<Balance: tokens::Balance + FixedPointOperand>(
+		&self,
+		debt: Balance,
+	) -> Result<Balance, ArithmeticError> {
+		match self {
+			WriteOffStatus::None => Ok(debt),
+			WriteOffStatus::WrittenDownByPolicy { percentage, .. } => {
+				debt.ensure_sub(percentage.ensure_mul_int(debt)?)
+			}
+			WriteOffStatus::WrittenDownByAdmin { percentage, .. } => {
+				debt.ensure_sub(percentage.ensure_mul_int(debt)?)
+			}
+			WrittenOff => Ok(Balance::zero()),
+		}
+	}
 }
 
 /// Specify the expected repayments date
@@ -144,54 +177,6 @@ impl<Rate> ValuationMethod<Rate>
 where
 	Rate: FixedPointNumber,
 {
-	fn present_value<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		debt: Balance,
-		maturity_date: Moment,
-		origination_date: Moment,
-		now: Moment,
-		interest_rate_per_sec: Rate,
-	) -> Result<Balance, ArithmeticError> {
-		match self {
-			ValuationMethod::DiscountedCashFlows {
-				loss_given_default,
-				probability_of_default,
-				discount_rate,
-			} => {
-				// If the loan is overdue, there are no future cash flows to discount,
-				// hence we use the outstanding debt as the value.
-				if now > maturity_date {
-					return Ok(debt);
-				}
-
-				// Calculate the expected loss over the term of the loan
-				let tel = Rate::saturating_from_rational(
-					maturity_date.ensure_sub(origination_date)?,
-					SECONDS_PER_YEAR,
-				)
-				.ensure_mul(*probability_of_default)?
-				.ensure_mul(*loss_given_default)?
-				.min(One::one());
-
-				let tel_inv = Rate::one().ensure_sub(tel)?;
-
-				// Calculate the risk-adjusted expected cash flows
-				let exp = maturity_date.ensure_sub(now)?.ensure_into()?;
-				let acc_rate =
-					checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
-				let ecf = acc_rate.ensure_mul_int(debt)?;
-				let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
-
-				// Discount the risk-adjusted expected cash flows
-				let rate = checked_pow(*discount_rate, exp).ok_or(ArithmeticError::Overflow)?;
-				let d = Rate::one().ensure_div(rate)?;
-
-				d.ensure_mul_int(ra_ecf)
-			}
-			ValuationMethod::OutstandingDebt => Ok(debt),
-		}
-	}
-
 	fn is_valid(&self) -> bool {
 		match self {
 			ValuationMethod::DiscountedCashFlows { discount_rate, .. } => {
@@ -264,7 +249,7 @@ pub struct LoanInfo<T: Config> {
 }
 
 impl<T: Config> LoanInfo<T> {
-	fn validate(&self, now: Moment) -> sp_runtime::DispatchResult {
+	fn validate(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
 			Error::<T>::from(InnerLoanError::ValuationMethod)
@@ -276,6 +261,10 @@ impl<T: Config> LoanInfo<T> {
 		);
 
 		Ok(())
+	}
+
+	pub fn deregister(&mut self) -> DispatchResult {
+		T::InterestAccrual::unreference_rate(self.interest_rate_per_sec)
 	}
 }
 
@@ -320,6 +309,154 @@ pub struct ActiveLoan<T: Config> {
 
 	/// When the loans's Present Value (PV) was last updated
 	last_updated: Moment,
+}
+
+impl<T: Config> ActiveLoan<T> {
+	pub fn deregister(&mut self) -> DispatchResult {
+		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)?;
+		self.info.deregister()
+	}
+
+	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
+		// TODO: check borrow restrictions
+
+		ensure!(
+			amount <= self.max_borrow_amount()?,
+			Error::<T>::MaxBorrowAmountExceeded
+		);
+
+		self.total_borrowed.ensure_add_assign(amount)?;
+
+		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+			self.info.interest_rate_per_sec,
+			self.normalized_debt,
+			Adjustment::Increase(amount),
+		)?;
+
+		self.last_updated = T::Time::now().as_secs();
+
+		Ok(())
+	}
+
+	pub fn repay(&mut self, amount: T::Balance) -> DispatchResult {
+		// TODO: check repay restrictions
+
+		let current_debt = T::InterestAccrual::current_debt(
+			self.info.interest_rate_per_sec,
+			self.normalized_debt,
+		)?;
+
+		let amount = amount.min(current_debt);
+
+		self.total_repaid.ensure_add_assign(amount)?;
+
+		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+			self.info.interest_rate_per_sec,
+			self.normalized_debt,
+			Adjustment::Decrease(amount),
+		)?;
+
+		self.last_updated = T::Time::now().as_secs();
+
+		Ok(())
+	}
+
+	pub fn write_off(&mut self) -> DispatchResult {
+		/*
+		let interest_rate_per_sec = self.interest_rate_with_penalty()?;
+
+		T::InterestAccrual::reference_rate(interest_rate_per_sec)?;
+
+		self.normalized_debt = T::InterestAccrual::renormalize_debt(
+			self.info.interest_rate_per_sec,
+			interest_rate_per_sec,
+			self.normalized_debt,
+		)?;
+
+		T::InterestAccrual::unreference_rate(self.info.interest_rate_per_sec)?;
+		*/
+		todo!()
+	}
+
+	pub fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
+		self.written_off_status
+			.penalize_rate(self.info.interest_rate_per_sec)
+	}
+
+	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
+		let debt = if self.last_updated == T::Time::now().as_secs() {
+			// Faster than `previous_debt`
+			T::InterestAccrual::current_debt(self.info.interest_rate_per_sec, self.normalized_debt)
+		} else {
+			T::InterestAccrual::previous_debt(
+				self.info.interest_rate_per_sec,
+				self.normalized_debt,
+				self.last_updated,
+			)
+		}?;
+
+		let debt = self.written_off_status.write_down(debt)?;
+
+		self.compute_present_value(debt)
+	}
+
+	pub fn compute_present_value(&self, debt: T::Balance) -> Result<T::Balance, DispatchError> {
+		let interest_rate_per_sec = self.interest_rate_with_penalty()?;
+
+		match self.info.valuation_method {
+			ValuationMethod::DiscountedCashFlows {
+				loss_given_default,
+				probability_of_default,
+				discount_rate,
+			} => {
+				// If the loan is overdue, there are no future cash flows to discount,
+				// hence we use the outstanding debt as the value.
+				let maturity_date = self.info.schedule.maturity.date();
+				if self.last_updated > maturity_date {
+					return Ok(debt);
+				}
+
+				// Calculate the expected loss over the term of the loan
+				let tel = T::Rate::saturating_from_rational(
+					maturity_date.ensure_sub(self.origination_date)?,
+					SECONDS_PER_YEAR,
+				)
+				.ensure_mul(probability_of_default)?
+				.ensure_mul(loss_given_default)?
+				.min(One::one());
+
+				let tel_inv = T::Rate::one().ensure_sub(tel)?;
+
+				// Calculate the risk-adjusted expected cash flows
+				let exp = maturity_date.ensure_sub(self.last_updated)?.ensure_into()?;
+				let acc_rate =
+					checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
+				let ecf = acc_rate.ensure_mul_int(debt)?;
+				let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
+
+				// Discount the risk-adjusted expected cash flows
+				let rate = checked_pow(discount_rate, exp).ok_or(ArithmeticError::Overflow)?;
+				let d = T::Rate::one().ensure_div(rate)?;
+
+				Ok(d.ensure_mul_int(ra_ecf)?)
+			}
+			ValuationMethod::OutstandingDebt => Ok(debt),
+		}
+	}
+
+	pub fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
+		Ok(match self.info.restrictions.max_borrow_amount {
+			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
+				.ensure_mul_int(self.info.collateral_value)?
+				.saturating_sub(self.total_borrowed),
+			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
+				.ensure_mul_int(self.info.collateral_value)?
+				.saturating_sub(T::InterestAccrual::current_debt(
+					self.info.interest_rate_per_sec,
+					self.normalized_debt,
+				)?),
+		})
+	}
 }
 
 /// Data containing a closed loan for historical purposes.
@@ -542,6 +679,8 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
+		/// Emits when the borrowed amount is more than the allowed amount
+		MaxBorrowAmountExceeded,
 	}
 
 	#[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -726,15 +865,35 @@ pub mod pallet {
 	/// Active loan actions
 	impl<T: Config> Pallet<T> {
 		fn do_borrow(loan: &mut ActiveLoan<T>, amount: T::Balance) -> DispatchResult {
-			todo!()
+			let old_pv = loan.present_value()?;
+			loan.borrow(amount)?;
+			let new_pv = loan.present_value()?;
+
+			//Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+			//T::Pool::withdraw(pool_id, owner, amount)?;
+
+			Ok(())
 		}
 
 		fn do_repay(loan: &mut ActiveLoan<T>, amount: T::Balance) -> DispatchResult {
-			todo!()
+			let old_pv = loan.present_value()?;
+			loan.repay(amount)?;
+			let new_pv = loan.present_value()?;
+
+			//Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+			//T::Pool::deposit(pool_id, owner, amount)?;
+
+			Ok(())
 		}
 
 		fn do_write_off(loan: &mut ActiveLoan<T>) -> DispatchResult {
-			todo!()
+			let old_pv = loan.present_value()?;
+			loan.write_off()?;
+			let new_pv = loan.present_value()?;
+
+			//Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+
+			Ok(())
 		}
 
 		fn do_close(loan: &mut ActiveLoan<T>) -> DispatchResult {
@@ -806,11 +965,11 @@ pub mod pallet {
 						info,
 						borrower,
 						written_off_status: WriteOffStatus::None,
-						origination_date: 0,
+						origination_date: Self::now(),
 						normalized_debt: T::Balance::zero(),
 						total_borrowed: T::Balance::zero(),
 						total_repaid: T::Balance::zero(),
-						last_updated: 0,
+						last_updated: Self::now(), // Think about this
 					})
 					.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
