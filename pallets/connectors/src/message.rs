@@ -152,7 +152,10 @@ impl<
 
 				message.append(&mut tranche_id.encode());
 				message.append(&mut address.encode());
-				message.append(&mut valid_until.encode());
+
+				let mut encoded_valid_until = valid_until.encode();
+				encoded_valid_until.reverse();
+				message.append(&mut encoded_valid_until);
 
 				message
 			}
@@ -300,7 +303,7 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			let input = "0400000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101016400000000000000";
+			let input = "0400000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101010000000000000064";
 			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
@@ -315,7 +318,8 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			let input = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b1231231231231231231231231231231231231231231231231231231231231231aa76b36500000000";
+			// 65B376AA - AA 76 B3 65
+			let input = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065B376AA";
 			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(hex::encode(encoded), hex::encode(expected));
 		}
