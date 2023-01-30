@@ -547,7 +547,7 @@ where
 		MaxTokenSymbolLength: Get<u32>,
 	{
 		let at_idx = at;
-		let i_at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		let i_at: usize = at.ensure_into()?;
 		ensure!(
 			    i_at <= self.tranches.len(),
 			    DispatchError::Other(
@@ -580,7 +580,7 @@ where
 		at: TrancheIndex,
 		tranche: &Tranche<Balance, Rate, Weight, TrancheCurrency>,
 	) -> DispatchResult {
-		let i_at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		let i_at: usize = at.ensure_into()?;
 		// supposedly uncovered
 		if i_at == 0 {
 			ensure!(
@@ -658,16 +658,27 @@ where
 		Ok(())
 	}
 
-	// TODO: Should it be possible to remove residual tranche without replacing?
+	/// Removing should only be possible if the Tranche at the given index has zero balance and is not the residual one.
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
-		let at: usize = at.ensure_into()?;
-		ensure!(
-			at < self.tranches.deref().len(),
-			DispatchError::Other(
-				"Invalid tranche index. Exceeding number of tranches. This should be catched somewhere else."
-			)
-		);
+		self.get_tranche(TrancheLoc::Index(at))
+			.ok_or_else(|| DispatchError::Arithmetic(ArithmeticError::Overflow))
+			.and_then(|tranche| -> DispatchResult {
+				ensure!(
+					tranche.tranche_type != TrancheType::Residual,
+					DispatchError::Other("Must not remove residual tranche.")
+				);
 
+				ensure!(
+					tranche.balance()?.is_zero(),
+					DispatchError::Other(
+						"Must not remove non-residual tranche with non-zero balance."
+					)
+				);
+
+				Ok(())
+			})?;
+
+		let at: usize = at.ensure_into()?;
 		self.tranches.remove(at);
 		self.ids.remove(at);
 
@@ -2294,12 +2305,9 @@ pub mod test {
 		}
 
 		#[test]
-		fn remove_tranches_works() {
+		fn remove_tranches_happy_path_works() {
 			let mut tranches = default_tranches();
 			let tranches_pre_removal = default_tranches();
-
-			// attempt to remove outside of bounds
-			assert!(tranches.remove(3).is_err());
 
 			// remove middle tranche
 			assert_ok!(tranches.remove(1));
@@ -2312,21 +2320,45 @@ pub mod test {
 				tranches.get_tranche(TrancheLoc::Index(1)).unwrap()
 			);
 
-			// remove residual tranche
-			assert_ok!(tranches.remove(0));
+			// remove last remaining non-res tranche
+			assert_ok!(tranches.remove(1));
+			assert_eq!(tranches.non_residual_tranches(), None);
 			assert_eq!(tranches.num_tranches(), 1);
-			assert!(tranches.get_tranche(TrancheLoc::Index(1)).is_none());
 			assert_eq!(
 				tranches_pre_removal
-					.get_tranche(TrancheLoc::Index(2))
+					.get_tranche(TrancheLoc::Index(0))
 					.unwrap(),
 				tranches.get_tranche(TrancheLoc::Index(0)).unwrap()
 			);
+		}
 
-			// remove last remaining tranche
-			assert_ok!(tranches.remove(0));
-			assert!(tranches.num_tranches().is_zero());
-			assert!(tranches.remove(0).is_err());
+		#[test]
+		fn remove_tranches_throws() {
+			let mut tranches = default_tranches_with_issuance();
+
+			// attempt to remove outside of bounds
+			assert_eq!(
+				tranches.remove(3),
+				Err(DispatchError::Arithmetic(ArithmeticError::Overflow))
+			);
+
+			assert_eq!(
+				tranches.remove(0),
+				Err(DispatchError::Other("Must not remove residual tranche."))
+			);
+
+			assert_eq!(
+				tranches.remove(1),
+				Err(DispatchError::Other(
+					"Must not remove non-residual tranche with non-zero balance."
+				))
+			);
+			assert_eq!(
+				tranches.remove(2),
+				Err(DispatchError::Other(
+					"Must not remove non-residual tranche with non-zero balance."
+				))
+			);
 		}
 
 		#[test]
@@ -2952,7 +2984,7 @@ pub mod test {
 				non_residual(2, Some(5), Some(25)).tranche_type
 			);
 
-			// remove residual tranches
+			// remove non-residual tranches
 			assert_ok!(tranches.remove(2));
 			assert_ok!(tranches.remove(1));
 			assert_eq!(tranches.non_residual_tranches(), None);
@@ -2987,8 +3019,8 @@ pub mod test {
 				Some(&residual_base(0, 0, 0, 0))
 			);
 
-			// break assumption of existing residual branche for the sake of the test
-			assert_ok!(tranches.remove(0));
+			// break assumption of existing residual tranche via private API for the sake of the test
+			tranches.tranches.remove(0);
 			assert!(tranches.residual_tranche().is_none());
 		}
 
@@ -3000,8 +3032,8 @@ pub mod test {
 				Some(&mut residual_base(0, 0, 0, 0))
 			);
 
-			// break assumption of existing residual branche for the sake of the test
-			assert_ok!(tranches.remove(0));
+			// break assumption of existing residual tranche via private API for the sake of the test
+			tranches.tranches.remove(0);
 			assert!(tranches.residual_tranche_mut().is_none());
 		}
 
