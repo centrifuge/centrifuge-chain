@@ -323,8 +323,7 @@ pub mod pallet {
 						loan.borrow(amount)?;
 						let new_pv = loan.present_value()?;
 
-						Self::update_nav_with_pv(pool_id, Zero::zero(), new_pv)?;
-						T::Pool::withdraw(pool_id, who, amount)
+						Self::update_nav_with_pv(pool_id, Zero::zero(), new_pv)
 					})?
 				}
 				None => Self::mutate_active_loan(pool_id, loan_id, |loan| {
@@ -334,10 +333,11 @@ pub mod pallet {
 					loan.borrow(amount)?;
 					let new_pv = loan.present_value()?;
 
-					Self::update_nav_with_pv(pool_id, old_pv, new_pv)?;
-					T::Pool::withdraw(pool_id, who, amount)
+					Self::update_nav_with_pv(pool_id, old_pv, new_pv)
 				})?,
 			};
+
+			T::Pool::withdraw(pool_id, who, amount)?;
 
 			Self::deposit_event(Event::<T>::Borrowed {
 				pool_id,
@@ -358,7 +358,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			Self::mutate_active_loan(pool_id, loan_id, |loan| {
+			let amount = Self::mutate_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 				let old_pv = loan.present_value()?;
@@ -366,8 +366,11 @@ pub mod pallet {
 				let new_pv = loan.present_value()?;
 
 				Self::update_nav_with_pv(pool_id, old_pv, new_pv)?;
-				T::Pool::deposit(pool_id, who, amount)
+
+				Ok(amount)
 			})?;
+
+			T::Pool::deposit(pool_id, who, amount)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
