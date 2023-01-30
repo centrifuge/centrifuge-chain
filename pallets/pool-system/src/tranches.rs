@@ -2651,8 +2651,59 @@ pub mod test {
 				);
 			}
 
+			#[test]
 			fn calculate_prices_no_issuance_works() {
-				unimplemented!("Needs costum TTokens with no issunce")
+				struct TTokensEmpty(u64);
+				impl Inspect<TrancheCurrency> for TTokensEmpty {
+					type AssetId = TrancheCurrency;
+					type Balance = u128;
+
+					/// Mock value is sum of asset.pool_id and 100_000_0000.
+					fn total_issuance(_asset: Self::AssetId) -> Self::Balance {
+						Self::Balance::zero()
+					}
+
+					fn minimum_balance(_asset: Self::AssetId) -> Self::Balance {
+						todo!()
+					}
+
+					fn balance(_asset: Self::AssetId, _who: &TrancheCurrency) -> Self::Balance {
+						todo!()
+					}
+
+					fn reducible_balance(
+						_asset: Self::AssetId,
+						_who: &TrancheCurrency,
+						_keep_alive: bool,
+					) -> Self::Balance {
+						todo!()
+					}
+
+					fn can_deposit(
+						_asset: Self::AssetId,
+						_who: &TrancheCurrency,
+						_amount: Self::Balance,
+						_mint: bool,
+					) -> frame_support::traits::tokens::DepositConsequence {
+						todo!()
+					}
+
+					fn can_withdraw(
+						_asset: Self::AssetId,
+						_who: &TrancheCurrency,
+						_amount: Self::Balance,
+					) -> frame_support::traits::tokens::WithdrawConsequence<Self::Balance> {
+						todo!()
+					}
+				}
+
+				assert_eq!(
+					default_tranches().calculate_prices::<_, TTokensEmpty, TrancheCurrency>(
+						10u128.pow(10),
+						SECS_PER_YEAR
+					),
+					Ok(vec![Rate::one(), Rate::one(), Rate::one(),])
+				);
 			}
 
 			// Check price loss waterfall for different asset amounts.
