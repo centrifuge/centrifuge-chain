@@ -215,6 +215,10 @@ impl<T: Config> ActiveLoan<T> {
 		Ok((self.info, self.borrower))
 	}
 
+	pub fn update_time(&mut self, moment: Moment) {
+		self.last_updated = moment
+	}
+
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
 		let debt = self.debt()?;
 		let debt = self.written_off_status.write_down(debt)?;

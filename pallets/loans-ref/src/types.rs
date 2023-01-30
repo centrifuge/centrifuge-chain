@@ -16,6 +16,31 @@ use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedPointOpera
 const SECONDS_PER_DAY: Moment = 3600 * 24;
 const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
 
+// NAV (Net Asset Value) information.
+// It will be updated on these scenarios:
+//   1. When we are calculating pool NAV.
+//   2. When there is borrow or repay or write off on a loan under this pool
+// So NAV could be:
+//	 - Approximate when current time != last_updated
+//	 - Exact when current time == last_updated
+#[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
+pub struct NAVDetails<Balance> {
+	// Latest computed NAV for the given pool
+	pub latest: Balance,
+
+	// Last time when the NAV was calculated for the entire pool
+	pub last_updated: Moment,
+}
+
+/// Information about how the nav was updated
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum NAVUpdateType {
+	/// NAV was fully recomputed to an exact value
+	Exact,
+	/// NAV was updated inexactly based on loan status changes
+	Inexact,
+}
+
 /// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 pub struct WriteOffPolicy<Rate> {

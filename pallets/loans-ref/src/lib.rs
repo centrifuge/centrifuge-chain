@@ -3,7 +3,10 @@
 mod loan;
 mod types;
 
-use cfg_traits::{InterestAccrual, Permissions, PoolInspect, PoolReserve};
+use cfg_traits::{
+	ops::{EnsureAdd, EnsureSub},
+	InterestAccrual, Permissions, PoolInspect, PoolReserve,
+};
 use cfg_types::{
 	adjustments::Adjustment,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -24,7 +27,9 @@ use sp_runtime::{
 	traits::{BadOrigin, BlockNumberProvider, Zero},
 	FixedPointOperand,
 };
-use types::{LoanRestrictions, RepaymentSchedule, ValuationMethod, WriteOffPolicy};
+use types::{
+	LoanRestrictions, NAVDetails, NAVUpdateType, RepaymentSchedule, ValuationMethod, WriteOffPolicy,
+};
 
 type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 	<T as frame_system::Config>::AccountId,
@@ -136,7 +141,6 @@ pub mod pallet {
 
 	/// Storage for loans that has been created but are not still active.
 	#[pallet::storage]
-	#[pallet::getter(fn get_loan)]
 	pub(crate) type CreatedLoans<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -175,7 +179,6 @@ pub mod pallet {
 
 	/// Stores write off policies used in each pool
 	#[pallet::storage]
-	#[pallet::getter(fn pool_writeoff_groups)]
 	pub(crate) type WriteOffPolicies<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
@@ -183,6 +186,11 @@ pub mod pallet {
 		BoundedVec<WriteOffPolicy<T::Rate>, T::MaxWriteOffGroups>,
 		ValueQuery,
 	>;
+
+	/// Stores the pool NAV associated to each pool
+	#[pallet::storage]
+	pub(crate) type PoolNAV<T: Config> =
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Balance>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -215,6 +223,12 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			collateral: AssetOf<T>,
+		},
+		/// The NAV for a pool was updated.
+		NAVUpdated {
+			pool_id: PoolIdOf<T>,
+			nav: T::Balance,
+			update_type: NAVUpdateType,
 		},
 	}
 
@@ -475,7 +489,51 @@ pub mod pallet {
 			old_pv: T::Balance,
 			new_pv: T::Balance,
 		) -> DispatchResult {
-			todo!()
+			PoolNAV::<T>::try_mutate(pool_id, |nav| -> Result<(), DispatchError> {
+				nav.latest = match new_pv > old_pv {
+					// borrow
+					true => nav.latest.ensure_add(new_pv.ensure_sub(old_pv)?)?,
+					// repay
+					false => nav.latest.ensure_sub(old_pv.ensure_sub(new_pv)?)?,
+				};
+
+				Self::deposit_event(Event::<T>::NAVUpdated {
+					pool_id,
+					nav: nav.latest,
+					update_type: NAVUpdateType::Inexact,
+				});
+
+				Ok(())
+			})
+		}
+
+		fn update_nav_for_pool(pool_id: PoolIdOf<T>) -> DispatchResult {
+			let now = T::Time::now().as_secs();
+			let nav = ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+				active_loans.iter_mut().try_fold(
+					T::Balance::zero(),
+					|sum, active_loan| -> Result<_, DispatchError> {
+						active_loan.update_time(now);
+						Ok(sum.ensure_add(active_loan.present_value()?)?)
+					},
+				)
+			})?;
+
+			PoolNAV::<T>::insert(
+				pool_id,
+				NAVDetails {
+					latest: nav,
+					last_updated: now,
+				},
+			);
+
+			Self::deposit_event(Event::<T>::NAVUpdated {
+				pool_id,
+				nav,
+				update_type: NAVUpdateType::Exact,
+			});
+
+			Ok(())
 		}
 
 		fn make_active_loan<F, R>(
