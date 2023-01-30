@@ -33,6 +33,7 @@ where
 		tranche_id: TrancheId,
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+		price: Rate,
 	},
 	UpdateTokenPrice {
 		pool_id: PoolId,
@@ -106,6 +107,7 @@ impl<
 				tranche_id,
 				token_name,
 				token_symbol,
+				price,
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
@@ -117,6 +119,7 @@ impl<
 				message.append(&mut tranche_id.encode());
 				message.append(&mut token_name.encode());
 				message.append(&mut token_symbol.encode());
+				message.append(&mut price.encode());
 
 				message
 			}
@@ -265,12 +268,13 @@ mod tests {
 				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
 				token_name: [5; 128],
 				token_symbol: [6; 32],
+				price: Rate::one(),
 			};
 			let encoded_bytes = msg.encode();
 
 			// We encode the encoded bytes as hex to verify it's what we expect
 			let encoded_hex = hex::encode(encoded_bytes.clone());
-			let expected_hex = "020000000000bce1a40000000000000000000000000000000105050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050606060606060606060606060606060606060606060606060606060606060606";
+			let expected_hex = "020000000000bce1a40000000000000000000000000000000105050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050606060606060606060606060606060606060606060606060606060606060606000000e83c80d09f3c2e3b0300000000";
 			assert_eq!(expected_hex, encoded_hex);
 
 			// Now decode the bytes encoded as hex back to bytes and verify it's the same as

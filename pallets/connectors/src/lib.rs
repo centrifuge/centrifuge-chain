@@ -266,6 +266,8 @@ pub mod pallet {
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
+			let latest_price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingTranchePrice)?;
 
 			// Send the message to the domain
 			Self::do_send_message(
@@ -275,6 +277,7 @@ pub mod pallet {
 					tranche_id,
 					token_name,
 					token_symbol,
+					price: latest_price.price,
 				},
 				domain,
 			)?;
