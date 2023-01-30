@@ -174,7 +174,6 @@ pub mod pallet {
 	// for the pallet.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	// ------------------------------------------------------------------------
@@ -205,7 +204,8 @@ pub mod pallet {
 			+ Member
 			+ Ord
 			+ Parameter
-			+ Into<AccountId32>;
+			+ Into<AccountId32>
+			+ MaxEncodedLen;
 
 		/// The maximum length (i.e. depth of the tree) we allow a proof to have.
 		/// This mitigates DDoS attacks solely. We choose 30, which by a base 2 merkle-tree

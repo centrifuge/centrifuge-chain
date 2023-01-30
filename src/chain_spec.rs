@@ -625,6 +625,40 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
+pub fn demo(para_id: ParaId) -> DevelopmentChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DEMO".into());
+	properties.insert("tokenDecimals".into(), currency_decimals::NATIVE.into());
+
+	DevelopmentChainSpec::from_genesis(
+		"Demo Live",
+		"demo_live",
+		ChainType::Live,
+		move || {
+			development_genesis(
+				// kANEUrMbi9xC16AfL5vSGwfvBVRoRdfWoQ8abPiXi5etFxpdP
+				hex!["e0c426785313bb7e712d66dce43ccb81a7eaef373784511fb508fff4b5df3305"].into(),
+				vec![(
+					// kAHJNhAragKRrAb9X8JxSNYoqPqv36TspSwdSuyMfxGKUmfdH
+					hex!["068f3bd4ed27bb83da8fdebbb4deba6b3b3b83ff47c8abad11e5c48c74c20b11"].into(),
+					// kAKXFWse8rghi8mbAFB4RaVyZu6XZXq5i9wv7uYakZ3vQcxMR
+					hex!["68d9baaa081802f8ec50d475b654810b158cdcb23e11c43815a6549f78f1b34f"]
+						.unchecked_into(),
+				)],
+				demo_endowed_accounts(),
+				Some(100000000 * CFG),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
 pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
@@ -637,20 +671,10 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 		move || {
 			development_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![
-					(
-						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						get_from_seed::<development_runtime::AuraId>("Alice"),
-					),
-					(
-						get_account_id_from_seed::<sr25519::Public>("Bob"),
-						get_from_seed::<development_runtime::AuraId>("Bob"),
-					),
-					(
-						get_account_id_from_seed::<sr25519::Public>("Charlie"),
-						get_from_seed::<development_runtime::AuraId>("Charlie"),
-					),
-				],
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_from_seed::<development_runtime::AuraId>("Alice"),
+				)],
 				endowed_accounts(),
 				Some(10000000 * CFG),
 				para_id,
@@ -693,6 +717,27 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 		Some(properties),
 		Default::default(),
 	)
+}
+
+fn demo_endowed_accounts() -> Vec<cfg_primitives::AccountId> {
+	vec![
+		//kANEUrMbi9xC16AfL5vSGwfvBVRoRdfWoQ8abPiXi5etFxpdP
+		hex!["e0c426785313bb7e712d66dce43ccb81a7eaef373784511fb508fff4b5df3305"].into(),
+		// kAHJNhAragKRrAb9X8JxSNYoqPqv36TspSwdSuyMfxGKUmfdH
+		hex!["068f3bd4ed27bb83da8fdebbb4deba6b3b3b83ff47c8abad11e5c48c74c20b11"].into(),
+		// kAJ27MdBneY2U6QXvY3CmUE9btDmTvxSYfBd5qjw9U6oNZe2C
+		hex!["2663e968d484dc12c488a5b74107c0c3b6bcf21a6672923b153e4b5a9170a878"].into(),
+		// kAKq5N4wTcKU7qCCSzUqNcQQSMfPuN5k8tBafgoH9tpUgfVg2
+		hex!["7671f8ee2c446ebd2b655ab5380b8004598d9663809cbb372f3de627a0e5eb32"].into(),
+		// kAJkDfWBaUSoavcbWc7m5skLsd5APLgqfr8YfgKEcBctccxTv
+		hex!["4681744964868d0f210b1161759958390a861b1733c65a6d04ac6b0ffe2f1e42"].into(),
+		// kAKZvAs9YpXMbZLNqrbu4rnqWDPVDEVVsDc6ngKtemEbqmQSk
+		hex!["6ae25829700ff7251861ac4a97235070b3e6e0883ce54ee53aa48400aa28d905"].into(),
+		// kAMBhYMypx5LGfEwBKDg42mBmymXEvU8TRHwoDMyGhY74oMf8
+		hex!["b268e5eee003859659258de82991ce0dc47db15c5b3d32bd050f8b02d350530e"].into(),
+		// kANtu5pYcZ2TcutMAaeuxYgySzT1YH7y72h77rReLki24c33J
+		hex!["fe110c5ece58c80fc7fb740b95776f9b640ae1c9f0842895a55d2e582e4e1076"].into(),
+	]
 }
 
 fn endowed_accounts() -> Vec<cfg_primitives::AccountId> {

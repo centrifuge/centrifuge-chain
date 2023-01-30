@@ -21,10 +21,7 @@
 use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{
-		Codec, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo,
-		PostDispatchInfo,
-	},
+	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
 	Parameter, RuntimeDebug,
 };
@@ -117,8 +114,16 @@ pub trait PoolNAV<PoolId, Amount> {
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
-	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo + Encode + Decode;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo;
+	type PoolId: Parameter
+		+ Member
+		+ Debug
+		+ Copy
+		+ Default
+		+ TypeInfo
+		+ Encode
+		+ Decode
+		+ MaxEncodedLen;
+	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
 	type Rate;
 	type Moment;
 
@@ -129,14 +134,17 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+
+	/// Get the account used for the given `pool_id`.
+	fn account_for(pool_id: Self::PoolId) -> AccountId;
 }
 
 /// Variants for valid Pool updates to send out as events
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
 	NoExecution,
-	Executed,
-	Stored,
+	Executed(u32),
+	Stored(u32),
 }
 
 /// A trait that supports modifications of pools
@@ -148,7 +156,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type MaxTokenSymbolLength: Get<u32>;
 	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
-	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
 
 	fn create(
 		admin: AccountId,
@@ -160,12 +168,9 @@ pub trait PoolMutate<AccountId, PoolId> {
 		metadata: Option<Vec<u8>>,
 	) -> DispatchResult;
 
-	fn update(
-		pool_id: PoolId,
-		changes: Self::PoolChanges,
-	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
+	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
 
-	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
+	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit

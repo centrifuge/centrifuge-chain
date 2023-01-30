@@ -91,6 +91,7 @@ fn load_spec(
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging(para_id))),
 		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local(para_id))),
+		"demo" => Ok(Box::new(chain_spec::demo(para_id))),
 		"development" => Ok(Box::new(chain_spec::development(para_id))),
 		"development-local" => Ok(Box::new(chain_spec::development_local(para_id))),
 		"" => Err(String::from("No Chain-id provided")),

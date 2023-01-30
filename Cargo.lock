@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.23"
+version = "0.10.24"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -909,7 +909,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.23"
+version = "0.10.24"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -1009,7 +1009,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.15"
+version = "0.10.16"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -6917,16 +6917,21 @@ name = "pallet-pool-registry"
 version = "1.0.0"
 dependencies = [
  "cfg-primitives",
+ "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "orml-asset-registry",
+ "orml-tokens",
  "orml-traits",
+ "pallet-balances",
+ "pallet-investments",
  "pallet-permissions",
  "pallet-pool-system",
  "pallet-timestamp",
+ "parachain-info",
  "parity-scale-codec 3.2.1",
  "polkadot-parachain",
  "scale-info",

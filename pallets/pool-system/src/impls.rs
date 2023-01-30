@@ -47,7 +47,7 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 		// Get cached nav as calculating current nav would be too computationally expensive
 		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
-		let total_assets = pool.reserve.total.saturating_add(nav);
+		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
 
 		let tranche_index: usize = pool
 			.tranches
@@ -74,6 +74,10 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 			price,
 			last_updated: nav_last_updated,
 		})
+	}
+
+	fn account_for(pool_id: Self::PoolId) -> T::AccountId {
+		PoolLocator { pool_id }.into_account_truncating()
 	}
 }
 
@@ -126,6 +130,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			T::TrancheCurrency,
 			T::TrancheId,
 			T::PoolId,
+			T::MaxTranches,
 		>::from_input::<T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
 			pool_id,
 			tranche_inputs.clone(),
@@ -221,10 +226,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		Ok(())
 	}
 
-	fn update(
-		pool_id: T::PoolId,
-		changes: PoolChangesOf<T>,
-	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
+	fn update(pool_id: T::PoolId, changes: PoolChangesOf<T>) -> Result<UpdateState, DispatchError> {
 		ensure!(
 			EpochExecution::<T>::try_get(pool_id).is_err(),
 			Error::<T>::InSubmissionPeriod
@@ -249,10 +251,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				ScheduledUpdate::<T>::remove(pool_id);
 			}
 
-			return Ok((
-				UpdateState::NoExecution,
-				Some(T::WeightInfo::update_no_execution(0)).into(),
-			));
+			return Ok(UpdateState::NoExecution);
 		}
 
 		if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
@@ -287,22 +286,21 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
 			Self::do_update_pool(&pool_id, &changes)?;
 
-			Ok((
-				UpdateState::Executed,
-				Some(T::WeightInfo::update_and_execute(num_tranches)).into(),
-			))
+			Ok(UpdateState::Executed(num_tranches))
 		} else {
 			// If an update was already stored, this will override it
 			ScheduledUpdate::<T>::insert(pool_id, update);
 
-			Ok((
-				UpdateState::Stored,
-				Some(T::WeightInfo::update_no_execution(num_tranches)).into(),
-			))
+			Ok(UpdateState::Stored(num_tranches))
 		}
 	}
 
-	fn execute_update(pool_id: T::PoolId) -> DispatchResultWithPostInfo {
+	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
+		ensure!(
+			EpochExecution::<T>::try_get(pool_id).is_err(),
+			Error::<T>::InSubmissionPeriod
+		);
+
 		let update =
 			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
 
@@ -321,7 +319,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		Self::do_update_pool(&pool_id, &update.changes)?;
 
 		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-		Ok(Some(T::WeightInfo::execute_update(num_tranches)).into())
+		Ok(num_tranches)
 	}
 }
 

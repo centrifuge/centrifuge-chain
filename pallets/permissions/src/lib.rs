@@ -36,6 +36,7 @@ enum Who {
 use cfg_traits::{Permissions, Properties};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Contains};
 use frame_system::pallet_prelude::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -48,11 +49,15 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type Scope: Member + Parameter;
+		type Scope: Member + Parameter + MaxEncodedLen;
 
 		type Role: Member + Parameter;
 
-		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
+		type Storage: Member
+			+ Parameter
+			+ Properties<Property = Self::Role>
+			+ Default
+			+ MaxEncodedLen;
 
 		type Editors: Contains<(Self::AccountId, Option<Self::Role>, Self::Scope, Self::Role)>;
 
@@ -61,12 +66,15 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxRolesPerScope: Get<u32>;
 
+		/// The maximum number of tranches.
+		#[pallet::constant]
+		type MaxTranches: Get<u32>;
+
 		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
