@@ -1538,10 +1538,6 @@ pub mod test {
 	use super::*;
 	use crate::mock::MaxTranches;
 
-	// NOTE: We currently expose types in runtime-common. As we do not want
-	//       this dependecy in our pallets, we generate the types manually here.
-	//       Not sure, if we should rather allow dev-dependency to runtime-common.
-
 	type BalanceRatio = Rate;
 	type TTrancheType = TrancheType<Rate>;
 	type TTranche = Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>;
@@ -2014,7 +2010,7 @@ pub mod test {
 			let int_per_sec = Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 
-			// Create tranch with explicit seniority
+			// Create tranche with explicit seniority
 			let new_tranche = tranches
 				.create_tranche(
 					3,
@@ -2052,7 +2048,7 @@ pub mod test {
 			);
 			assert_eq!(new_tranche.ratio, Perquintill::zero());
 
-			// Create tranch with implicit seniority (through index)
+			// Create tranche with implicit seniority (through index)
 			let new_tranche = tranches
 				.create_tranche(
 					3,
@@ -2069,7 +2065,7 @@ pub mod test {
 
 			assert_eq!(new_tranche.seniority, 3);
 
-			// Create tranch with overflowing index
+			// Create tranche with overflowing index
 			let new_tranche = tranches.create_tranche(
 				u64::MAX,
 				tranche_id,
@@ -2109,7 +2105,7 @@ pub mod test {
 			}
 		}
 
-		/// Replace should work if interest is lower than tranche w/ lower index ("next").
+		// Replace should work if interest is lower than tranche w/ lower index ("next").
 		#[test]
 		fn replace_tranche_less_interest_than_next_works() {
 			let mut tranches = default_tranches();
@@ -2130,7 +2126,7 @@ pub mod test {
 				},
 			};
 
-			// verify replace tranche works with interest less than prev tranch as expected
+			// verify replace tranche works with interest less than prev tranche as expected
 			// replacing last tranche
 			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
 			assert!(replace_res.is_ok());
@@ -2183,7 +2179,7 @@ pub mod test {
 			);
 		}
 
-		/// Replace should work if new interest rate is greater than tranche w/ higher index ("following").
+		// Replace should work if new interest rate is greater than tranche w/ higher index ("following").
 		#[test]
 		fn replace_tranche_more_interest_than_following_works() {
 			let mut tranches = default_tranches();
@@ -2209,7 +2205,7 @@ pub mod test {
 			assert!(replace_res.is_ok());
 		}
 
-		/// Replace must not work if new interest rate is lower than tranche w/ greater index ("following").
+		// Replace must not work if new interest rate is lower than tranche w/ greater index ("following").
 		#[test]
 		fn replace_tranche_less_interest_than_following_throws() {
 			let mut tranches = default_tranches();
@@ -2252,7 +2248,7 @@ pub mod test {
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
 
-			// verify returns valid when interest greater than tranch following new tranche
+			// verify returns valid when interest greater than tranche following new tranche
 			let new_tranche = tranches
 				.create_tranche(
 					3,
@@ -2270,7 +2266,7 @@ pub mod test {
 			// verify error when tranche new_tranche is following  has lower interest
 			assert!(tranches.validate_insert(1, &new_tranche).is_ok());
 
-			// verify error returned when interest less than tranch following new tranche
+			// verify error returned when interest less than tranche following new tranche
 			let int_per_sec = Rate::saturating_from_rational(1, 100)
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
@@ -2535,7 +2531,6 @@ pub mod test {
 		mod calculate_prices {
 			use super::*;
 
-			// FIXME: To reviewer, can this somehow be derived? In practice, we only need the `total_issuance` but `calculate_price` requires the trait.
 			struct TTokens(u64);
 			impl Inspect<TrancheCurrency> for TTokens {
 				type AssetId = TrancheCurrency;
@@ -2544,15 +2539,15 @@ pub mod test {
 				/// Mock value is sum of asset.pool_id and 100_000_0000.
 				fn total_issuance(asset: Self::AssetId) -> Self::Balance {
 					match asset.of_tranche() {
-						// default most senior tranch currency id
+						// default most senior tranche currency id
 						[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] => {
 							DEBT_NON_RESIDUAL_TRANCHE_2 + RESERVE_NON_RESIDUAL_TRANCHE_2
 						}
-						// default least senior tranch currency id
+						// default least senior tranche currency id
 						[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] => {
 							DEBT_NON_RESIDUAL_TRANCHE_1 + RESERVE_NON_RESIDUAL_TRANCHE_1
 						}
-						// default single residual tranch currency id
+						// default single residual tranche currency id
 						[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] => {
 							DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE
 						}
@@ -2594,8 +2589,8 @@ pub mod test {
 				}
 			}
 
+			// No debt, reserve or APR for any tranche.
 			#[test]
-			/// No debt, reserve or APR for any tranche.
 			fn calculate_prices_no_debt_works() {
 				let initial_assets = DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE;
 
@@ -2642,8 +2637,8 @@ pub mod test {
 				);
 			}
 
+			// If amount of assets is zero, all price rates should be one.
 			#[test]
-			/// If amount of assets is zwero zero, all price rates should be one.
 			fn calculate_prices_no_assets_works() {
 				assert_eq!(
 					default_tranches()
@@ -2652,13 +2647,17 @@ pub mod test {
 				);
 			}
 
+			fn calculate_prices_no_issuance_works() {
+				unimplemented!("Needs costum TTokens with no issunce")
+			}
+
+			// Check price loss waterfall for different asset amounts.
+			//
+			// Each tranche has a different APR, debt, reserve and total issuance.
+			// The sum of total issuance (initial NAV) for all three tranches is 1000.
+			//
+			// NOTE: Expected values checked against in https://docs.google.com/spreadsheets/d/16hpWBzGFxlhsIFYJYl1Im9BsNLKVjvJj8VUvECxqduE/edit#gid=543118716
 			#[test]
-			/// Check price loss waterfall for different asset amounts.
-			///
-			/// Each tranche has a different APR, debt, reserve and total issuance.
-			/// The sum of total issuance (initial NAV) for all three tranches is 1000.
-			///
-			/// NOTE: Expected values checked against in https://docs.google.com/spreadsheets/d/16hpWBzGFxlhsIFYJYl1Im9BsNLKVjvJj8VUvECxqduE/edit#gid=543118716
 			fn calculate_prices_total_assets_works() {
 				assert_eq!(
 					default_tranches_with_issuance()
@@ -2713,11 +2712,11 @@ pub mod test {
 				);
 			}
 
+			// Check price evolution over course of multiple years without adjusting total assets.
+			//
+			// Each tranche has a different APR, debt, reserve and total issuance.
+			// The sum of total issuance (initial NAV) for all three tranches is 1000.
 			#[test]
-			/// Check price evolution over course of multiple years without adjusting total assets.
-			///
-			/// Each tranche has a different APR, debt, reserve and total issuance.
-			/// The sum of total issuance (initial NAV) for all three tranches is 1000.
 			fn calculate_prices_last_update_works() {
 				let mut tranches = default_tranches_with_issuance();
 				assert_eq!(
@@ -2798,7 +2797,7 @@ pub mod test {
 								1_100_000_000,
 								i * SECS_PER_YEAR
 							),
-						"APR != APY after {} years",
+						"rounding error after {} years",
 						i
 					);
 				}
