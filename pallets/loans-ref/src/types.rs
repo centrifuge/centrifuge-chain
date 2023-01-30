@@ -42,7 +42,7 @@ pub enum NAVUpdateType {
 }
 
 /// The data structure for storing a specific write off policy
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffPolicy<Rate> {
 	/// Number in days after the maturity has passed at which this write off policy is valid
 	overdue_days: u32,
@@ -52,6 +52,23 @@ pub struct WriteOffPolicy<Rate> {
 
 	/// Additional interest that accrues on the written off loan as penalty
 	penalty_interest_rate_per_sec: Rate,
+}
+
+impl<Rate> WriteOffPolicy<Rate> {
+	fn is_not_overdue(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
+		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
+		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
+	}
+
+	pub fn find_policy<'a>(
+		policies: impl Iterator<Item = &'a WriteOffPolicy<Rate>>,
+		maturity_date: Moment,
+		now: Moment,
+	) -> Option<&'a WriteOffPolicy<Rate>> {
+		policies
+			.filter_map(|p| p.is_not_overdue(maturity_date, now).ok()?.then_some(p))
+			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
+	}
 }
 
 /// Diferent kinds of write off status that a loan can be

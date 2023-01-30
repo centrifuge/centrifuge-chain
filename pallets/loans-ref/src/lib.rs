@@ -25,7 +25,7 @@ use loan::{ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, InnerLoanError, LoanInf
 use pallet::*;
 use sp_runtime::{
 	traits::{BadOrigin, BlockNumberProvider, Zero},
-	FixedPointOperand,
+	ArithmeticError, FixedPointOperand,
 };
 use types::{
 	LoanRestrictions, NAVDetails, NAVUpdateType, RepaymentSchedule, ValuationMethod, WriteOffPolicy,
@@ -440,6 +440,17 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn update_write_off_policy(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			policies: BoundedVec<WriteOffPolicy<T::Rate>, T::MaxWriteOffGroups>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			todo!()
+		}
 	}
 
 	/// Utility methods
@@ -489,7 +500,7 @@ pub mod pallet {
 			old_pv: T::Balance,
 			new_pv: T::Balance,
 		) -> DispatchResult {
-			PoolNAV::<T>::try_mutate(pool_id, |nav| -> Result<(), DispatchError> {
+			let nav = PoolNAV::<T>::try_mutate(pool_id, |nav| -> Result<_, ArithmeticError> {
 				nav.latest = match new_pv > old_pv {
 					// borrow
 					true => nav.latest.ensure_add(new_pv.ensure_sub(old_pv)?)?,
@@ -497,14 +508,16 @@ pub mod pallet {
 					false => nav.latest.ensure_sub(old_pv.ensure_sub(new_pv)?)?,
 				};
 
-				Self::deposit_event(Event::<T>::NAVUpdated {
-					pool_id,
-					nav: nav.latest,
-					update_type: NAVUpdateType::Inexact,
-				});
+				Ok(nav.latest)
+			})?;
 
-				Ok(())
-			})
+			Self::deposit_event(Event::<T>::NAVUpdated {
+				pool_id,
+				nav,
+				update_type: NAVUpdateType::Inexact,
+			});
+
+			Ok(())
 		}
 
 		fn update_nav_for_pool(pool_id: PoolIdOf<T>) -> DispatchResult {
