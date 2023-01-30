@@ -249,6 +249,30 @@ pub struct LoanInfo<T: Config> {
 }
 
 impl<T: Config> LoanInfo<T> {
+	fn new(
+		schedule: RepaymentSchedule,
+		collateral: AssetOf<T>,
+		collateral_value: T::Balance,
+		valuation_method: ValuationMethod<T::Rate>,
+		restrictions: LoanRestrictions<T::Rate>,
+		interest_rate_per_year: T::Rate,
+	) -> Result<Self, DispatchError> {
+		let loan_info = LoanInfo {
+			schedule,
+			collateral,
+			collateral_value,
+			valuation_method,
+			restrictions,
+			interest_rate_per_sec: T::InterestAccrual::reference_yearly_rate(
+				interest_rate_per_year,
+			)?,
+		};
+
+		loan_info.validate(T::Time::now().as_secs())?;
+
+		Ok(loan_info)
+	}
+
 	fn validate(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
@@ -312,12 +336,23 @@ pub struct ActiveLoan<T: Config> {
 }
 
 impl<T: Config> ActiveLoan<T> {
-	pub fn deregister(&mut self) -> DispatchResult {
-		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)?;
-		self.info.deregister()
+	pub fn new(loan_id: T::LoanId, info: LoanInfo<T>, borrower: T::AccountId) -> Self {
+		let now = T::Time::now().as_secs();
+
+		ActiveLoan {
+			loan_id,
+			info,
+			borrower,
+			written_off_status: WriteOffStatus::None,
+			origination_date: now,
+			normalized_debt: T::Balance::zero(),
+			total_borrowed: T::Balance::zero(),
+			total_repaid: T::Balance::zero(),
+			last_updated: now,
+		}
 	}
 
-	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
+	pub fn borrow(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
 		// TODO: check borrow restrictions
 
 		ensure!(
@@ -335,10 +370,10 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.last_updated = T::Time::now().as_secs();
 
-		Ok(())
+		Ok(amount)
 	}
 
-	pub fn repay(&mut self, amount: T::Balance) -> DispatchResult {
+	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
 		// TODO: check repay restrictions
 
 		let current_debt = T::InterestAccrual::current_debt(
@@ -358,7 +393,7 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.last_updated = T::Time::now().as_secs();
 
-		Ok(())
+		Ok(amount)
 	}
 
 	pub fn write_off(&mut self) -> DispatchResult {
@@ -376,6 +411,12 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::unreference_rate(self.info.interest_rate_per_sec)?;
 		*/
 		todo!()
+	}
+
+	pub fn close(&mut self) -> DispatchResult {
+		// TODO: check close restrictions
+
+		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)
 	}
 
 	pub fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
@@ -715,19 +756,14 @@ pub mod pallet {
 
 			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolNotFound);
 
-			let loan_info = LoanInfo {
+			let loan_info = LoanInfo::new(
 				schedule,
 				collateral,
 				collateral_value,
 				valuation_method,
 				restrictions,
-				interest_rate_per_sec: T::InterestAccrual::reference_yearly_rate(
-					interest_rate_per_year,
-				)?,
-			};
-
-			loan_info.validate(Self::now())?;
-
+				interest_rate_per_year,
+			)?;
 			let loan_id = Self::generate_loan_id();
 
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
@@ -764,14 +800,24 @@ pub mod pallet {
 				Some(loan) => {
 					Self::ensure_loan_borrower(&who, &loan.borrower)?;
 					Self::make_active_loan(pool_id, loan_id, loan.info, loan.borrower, |loan| {
-						Self::do_borrow(loan, amount)
+						let amount = loan.borrow(amount)?;
+						let new_pv = loan.present_value()?;
+
+						Self::update_nav_with_pv(pool_id, Zero::zero(), new_pv)?;
+						T::Pool::withdraw(pool_id, who, amount)
 					})?
 				}
 				None => Self::mutate_active_loan(pool_id, loan_id, |loan| {
 					Self::ensure_loan_borrower(&who, &loan.borrower)?;
-					Self::do_borrow(loan, amount)
+
+					let old_pv = loan.present_value()?;
+					let amount = loan.borrow(amount)?;
+					let new_pv = loan.present_value()?;
+
+					Self::update_nav_with_pv(pool_id, old_pv, new_pv)?;
+					T::Pool::withdraw(pool_id, who, amount)
 				})?,
-			}
+			};
 
 			Self::deposit_event(Event::<T>::Borrowed {
 				pool_id,
@@ -794,7 +840,13 @@ pub mod pallet {
 
 			Self::mutate_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, &loan.borrower)?;
-				Self::do_repay(loan, amount)
+
+				let old_pv = loan.present_value()?;
+				let amount = loan.repay(amount)?;
+				let new_pv = loan.present_value()?;
+
+				Self::update_nav_with_pv(pool_id, old_pv, new_pv)?;
+				T::Pool::deposit(pool_id, who, amount)
 			})?;
 
 			Self::deposit_event(Event::<T>::Repaid {
@@ -817,7 +869,12 @@ pub mod pallet {
 
 			Self::mutate_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, &loan.borrower)?;
-				Self::do_write_off(loan)
+
+				let old_pv = loan.present_value()?;
+				loan.write_off()?;
+				let new_pv = loan.present_value()?;
+
+				Self::update_nav_with_pv(pool_id, old_pv, new_pv)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff { pool_id, loan_id });
@@ -834,79 +891,43 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let info = match CreatedLoans::<T>::take(pool_id, loan_id) {
-				Some(loan) => loan.info,
-				None => Self::take_active_loan(pool_id, loan_id, |loan| {
-					Self::ensure_loan_borrower(&who, &loan.borrower)?;
-					Self::do_close(loan)?;
-					Ok(loan.info.clone())
-				})?,
+			let (mut info, borrower) = match CreatedLoans::<T>::take(pool_id, loan_id) {
+				Some(loan) => (loan.info, loan.borrower),
+				None => {
+					let mut loan = Self::take_active_loan(pool_id, loan_id)?;
+					loan.close()?;
+					(loan.info, loan.borrower)
+				}
 			};
+
+			Self::ensure_loan_borrower(&who, &borrower)?;
+
+			info.deregister()?;
+
+			let collateral = info.collateral.clone();
+			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
 			ClosedLoans::<T>::insert(
 				pool_id,
 				loan_id,
 				ClosedLoan {
 					closed_at: frame_system::Pallet::<T>::current_block_number(),
-					info: info.clone(),
+					info,
 				},
 			);
 
 			Self::deposit_event(Event::<T>::Closed {
 				pool_id,
 				loan_id,
-				collateral: info.collateral,
+				collateral,
 			});
 
 			Ok(())
 		}
 	}
 
-	/// Active loan actions
-	impl<T: Config> Pallet<T> {
-		fn do_borrow(loan: &mut ActiveLoan<T>, amount: T::Balance) -> DispatchResult {
-			let old_pv = loan.present_value()?;
-			loan.borrow(amount)?;
-			let new_pv = loan.present_value()?;
-
-			//Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-			//T::Pool::withdraw(pool_id, owner, amount)?;
-
-			Ok(())
-		}
-
-		fn do_repay(loan: &mut ActiveLoan<T>, amount: T::Balance) -> DispatchResult {
-			let old_pv = loan.present_value()?;
-			loan.repay(amount)?;
-			let new_pv = loan.present_value()?;
-
-			//Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-			//T::Pool::deposit(pool_id, owner, amount)?;
-
-			Ok(())
-		}
-
-		fn do_write_off(loan: &mut ActiveLoan<T>) -> DispatchResult {
-			let old_pv = loan.present_value()?;
-			loan.write_off()?;
-			let new_pv = loan.present_value()?;
-
-			//Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-
-			Ok(())
-		}
-
-		fn do_close(loan: &mut ActiveLoan<T>) -> DispatchResult {
-			todo!()
-		}
-	}
-
 	/// Utility methods
 	impl<T: Config> Pallet<T> {
-		fn now() -> Moment {
-			T::Time::now().as_secs()
-		}
-
 		fn ensure_role(
 			pool_id: PoolIdOf<T>,
 			who: &T::AccountId,
@@ -947,6 +968,14 @@ pub mod pallet {
 			})
 		}
 
+		fn update_nav_with_pv(
+			pool_id: PoolIdOf<T>,
+			old_pv: T::Balance,
+			new_pv: T::Balance,
+		) -> DispatchResult {
+			todo!()
+		}
+
 		fn make_active_loan<F, R>(
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
@@ -960,17 +989,7 @@ pub mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans.len();
 				active_loans
-					.try_push(ActiveLoan {
-						loan_id,
-						info,
-						borrower,
-						written_off_status: WriteOffStatus::None,
-						origination_date: Self::now(),
-						normalized_debt: T::Balance::zero(),
-						total_borrowed: T::Balance::zero(),
-						total_repaid: T::Balance::zero(),
-						last_updated: Self::now(), // Think about this
-					})
+					.try_push(ActiveLoan::new(loan_id, info, borrower))
 					.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 				f(active_loans
@@ -997,21 +1016,17 @@ pub mod pallet {
 			})
 		}
 
-		fn take_active_loan<F, R>(
+		fn take_active_loan(
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			f: F,
-		) -> Result<R, DispatchError>
-		where
-			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
-		{
+		) -> Result<ActiveLoan<T>, DispatchError> {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
 					.position(|active_loan| active_loan.loan_id == loan_id)
 					.ok_or(Error::<T>::LoanNotFound)?;
 
-				f(&mut active_loans.swap_remove(index))
+				Ok(active_loans.swap_remove(index))
 			})
 		}
 	}
