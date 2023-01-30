@@ -1533,7 +1533,10 @@ fn finalize_combine<R, T, W>(
 #[cfg(test)]
 pub mod test {
 	use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
-	use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
+	use cfg_types::{
+		fixed_point::{FixedPointNumberExtension, Rate},
+		tokens::TrancheCurrency,
+	};
 
 	use super::*;
 	use crate::mock::MaxTranches;
@@ -1552,6 +1555,7 @@ pub mod test {
 	const RESERVE_RESIDUAL_TRANCHE: u128 = 100_000_000;
 	const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400_000_000;
 	const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100_000_000;
+	const MAX_ROUNDING_PRECISION: u128 = 10u128.pow(6);
 
 	#[derive(PartialEq)]
 	struct TrancheWeights(Vec<(TrancheWeight, TrancheWeight)>);
@@ -2777,8 +2781,8 @@ pub mod test {
 				);
 			}
 
-			// FIXME: Are we fine with rounding errors up to 0.5%?
-			// #[test]
+			// The maximum precision before rounding errors is 10e-6% which should be fine
+			#[test]
 			fn calculate_prices_rounding_works() {
 				let mut tranches = default_tranches_with_issuance();
 				assert_ok!(tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
@@ -2786,17 +2790,26 @@ pub mod test {
 					SECS_PER_YEAR
 				));
 
-				for i in 2..20 {
+				for i in 2..200 {
 					assert_eq!(
-						tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
-							1_100_000_000,
-							i * SECS_PER_YEAR
-						),
+						tranches
+							.calculate_prices::<Rate, TTokens, TrancheCurrency>(
+								1_100_000_000,
+								i * SECS_PER_YEAR
+							)
+							.unwrap()
+							.into_iter()
+							.map(|ratio| ratio.checked_mul_int_floor(MAX_ROUNDING_PRECISION))
+							.collect::<Vec<Option<u128>>>(),
 						default_tranches_with_issuance()
 							.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 								1_100_000_000,
 								i * SECS_PER_YEAR
-							),
+							)
+							.unwrap()
+							.into_iter()
+							.map(|ratio| ratio.checked_mul_int_floor(MAX_ROUNDING_PRECISION))
+							.collect::<Vec<Option<u128>>>(),
 						"rounding error after {} years",
 						i
 					);
