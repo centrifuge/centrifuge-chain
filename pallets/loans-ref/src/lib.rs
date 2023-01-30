@@ -388,24 +388,6 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	pub fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
-		match self.info.restrictions.borrows {
-			BorrowRestrictions::WrittenOff => {
-				ensure!(
-					matches!(self.written_off_status, WriteOffStatus::None),
-					Error::<T>::WrittenOffLoan
-				)
-			}
-		}
-
-		ensure!(
-			amount <= self.max_borrow_amount()?,
-			Error::<T>::MaxBorrowAmountExceeded
-		);
-
-		Ok(())
-	}
-
 	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
 		self.ensure_can_borrow(amount)?;
 
@@ -423,14 +405,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		// TODO: check repay restrictions
-
-		let current_debt = T::InterestAccrual::current_debt(
-			self.info.interest_rate_per_sec,
-			self.normalized_debt,
-		)?;
-
-		let amount = amount.min(current_debt);
+		let amount = self.ensure_can_repay(amount)?;
 
 		self.total_repaid.ensure_add_assign(amount)?;
 
@@ -446,6 +421,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn write_off(&mut self) -> DispatchResult {
+		self.ensure_can_write_off()?;
 		/*
 		let interest_rate_per_sec = self.interest_rate_with_penalty()?;
 
@@ -463,17 +439,17 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn close(&mut self) -> DispatchResult {
-		// TODO: check close restrictions
+		self.ensure_can_close()?;
 
 		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)
 	}
 
-	pub fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
+	fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
 		self.written_off_status
 			.penalize_rate(self.info.interest_rate_per_sec)
 	}
 
-	pub fn debt(&self) -> Result<T::Balance, DispatchError> {
+	fn debt(&self) -> Result<T::Balance, DispatchError> {
 		if self.last_updated == T::Time::now().as_secs() {
 			T::InterestAccrual::current_debt(self.info.interest_rate_per_sec, self.normalized_debt)
 		} else {
@@ -510,7 +486,7 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	pub fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
+	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
 		Ok(match self.info.restrictions.max_borrow_amount {
 			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
@@ -522,6 +498,47 @@ impl<T: Config> ActiveLoan<T> {
 					self.normalized_debt,
 				)?),
 		})
+	}
+
+	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
+		match self.info.restrictions.borrows {
+			BorrowRestrictions::WrittenOff => {
+				ensure!(
+					matches!(self.written_off_status, WriteOffStatus::None),
+					Error::<T>::WrittenOffLoan
+				)
+			}
+		}
+
+		ensure!(
+			amount <= self.max_borrow_amount()?,
+			Error::<T>::MaxBorrowAmountExceeded
+		);
+
+		Ok(())
+	}
+
+	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
+		match self.info.restrictions.repayments {
+			RepayRestrictions::None => (),
+		};
+
+		let current_debt = T::InterestAccrual::current_debt(
+			self.info.interest_rate_per_sec,
+			self.normalized_debt,
+		)?;
+
+		Ok(amount.min(current_debt))
+	}
+
+	fn ensure_can_write_off(&self) -> DispatchResult {
+		todo!()
+	}
+
+	fn ensure_can_close(&self) -> DispatchResult {
+		ensure!(self.normalized_debt.is_zero(), Error::<T>::LoanNotRepaid);
+
+		Ok(())
 	}
 }
 
@@ -749,6 +766,8 @@ pub mod pallet {
 		MaxBorrowAmountExceeded,
 		/// Emits when an action is not allowed because the loan is written off
 		WrittenOffLoan,
+		/// Emits when loan amount not repaid but trying to close loan
+		LoanNotRepaid,
 	}
 
 	#[derive(Encode, Decode, TypeInfo, PalletError)]
