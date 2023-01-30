@@ -130,6 +130,7 @@ pub mod pallet {
 		type MaxWriteOffGroups: Get<u32>;
 	}
 
+	/// Contains the last loan id generated
 	#[pallet::storage]
 	pub(crate) type LastLoanId<T: Config> = StorageValue<_, T::LoanId, ValueQuery, GetDefault>;
 
