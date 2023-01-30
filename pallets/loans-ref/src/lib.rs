@@ -1,21 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_primitives::Moment;
-use cfg_traits::{
-	ops::{
-		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul,
-		EnsureSub,
-	},
-	InterestAccrual, Permissions, PoolInspect, PoolReserve,
-};
+mod loan;
+mod types;
+
+use cfg_traits::{InterestAccrual, Permissions, PoolInspect, PoolReserve};
 use cfg_types::{
 	adjustments::Adjustment,
 	permissions::{PermissionScope, PoolRole, Role},
 };
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	ensure,
-	pallet_prelude::{DispatchResult, RuntimeDebugNoBound},
 	traits::{
 		tokens::{
 			self,
@@ -23,540 +16,20 @@ use frame_support::{
 		},
 		UnixTime,
 	},
-	transactional, PalletError, RuntimeDebug, StorageHasher,
+	transactional, StorageHasher,
 };
+use loan::{ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, InnerLoanError, LoanInfo};
 use pallet::*;
-use scale_info::TypeInfo;
-use sp_arithmetic::traits::{checked_pow, Saturating};
 use sp_runtime::{
-	traits::{BadOrigin, BlockNumberProvider, One, Zero},
-	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
+	traits::{BadOrigin, BlockNumberProvider, Zero},
+	FixedPointOperand,
 };
-
-const SECONDS_PER_DAY: Moment = 3600 * 24;
-const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
-
-/// The data structure for storing a specific write off policy
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub struct WriteOffPolicy<Rate> {
-	/// Number in days after the maturity has passed at which this write off policy is valid
-	overdue_days: u32,
-
-	/// Percentage of present value we are going to write off on a loan
-	percentage: Rate,
-
-	/// Additional interest that accrues on the written off loan as penalty
-	penalty_interest_rate_per_sec: Rate,
-}
-
-/// Diferent kinds of write off status that a loan can be
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub enum WriteOffStatus<Rate> {
-	/// The loan has not been written down at all.
-	None,
-
-	/// Written down by a admin
-	WrittenDownByPolicy {
-		/// Percentage of present value we are going to write off on a loan
-		percentage: Rate,
-
-		/// Additional interest that accrues on the written down loan as penalty per sec
-		penalty: Rate,
-	},
-
-	/// Written down by an admin
-	WrittenDownByAdmin {
-		/// Percentage of present value we are going to write off on a loan
-		percentage: Rate,
-
-		/// Additional interest that accrues on the written down loan as penalty per sec
-		penalty: Rate,
-	},
-
-	/// Written down totally: 100% percentage, 0% penalty.
-	WrittenOff,
-}
-
-impl<Rate> WriteOffStatus<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	fn penalize_rate(&self, rate: Rate) -> Result<Rate, ArithmeticError> {
-		match self {
-			WriteOffStatus::None => Ok(rate),
-			WriteOffStatus::WrittenDownByPolicy { penalty, .. } => rate.ensure_add(*penalty),
-			WriteOffStatus::WrittenDownByAdmin { penalty, .. } => rate.ensure_add(*penalty),
-			WriteOffStatus::WrittenOff => Ok(rate), //TODO: check if this is correct
-		}
-	}
-
-	fn write_down<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		debt: Balance,
-	) -> Result<Balance, ArithmeticError> {
-		match self {
-			WriteOffStatus::None => Ok(debt),
-			WriteOffStatus::WrittenDownByPolicy { percentage, .. } => {
-				debt.ensure_sub(percentage.ensure_mul_int(debt)?)
-			}
-			WriteOffStatus::WrittenDownByAdmin { percentage, .. } => {
-				debt.ensure_sub(percentage.ensure_mul_int(debt)?)
-			}
-			WriteOffStatus::WrittenOff => Ok(Balance::zero()),
-		}
-	}
-}
-
-/// Specify the expected repayments date
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum Maturity {
-	/// Fixed point in time
-	Fixed(Moment),
-}
-
-impl Maturity {
-	fn date(&self) -> Moment {
-		match self {
-			Maturity::Fixed(moment) => *moment,
-		}
-	}
-}
-
-/// Interest payment periods
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum InterestPayments {
-	/// All interest is expected to be paid at the maturity date
-	None,
-}
-
-/// Specify the paydown schedules of the loan
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum PayDownSchedule {
-	/// The entire borrowed amount is expected to be paid back at the maturity date
-	None,
-}
-
-/// Specify the repayment schedule of the loan
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct RepaymentSchedule {
-	/// Expected repayments date for remaining debt
-	maturity: Maturity,
-
-	/// Period at which interest is paid
-	interest_payments: InterestPayments,
-
-	/// How much of the initially borrowed amount is paid back during interest payments
-	pay_down_schedule: PayDownSchedule,
-}
-
-impl RepaymentSchedule {
-	fn is_valid(&self, now: Moment) -> bool {
-		self.maturity.date() > now
-	}
-}
-
-/// TODO
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct DiscountedCashFlows<Rate> {
-	/// TODO
-	probability_of_default: Rate,
-
-	/// TODO
-	loss_given_default: Rate,
-
-	/// TODO
-	discount_rate: Rate,
-}
-
-impl<Rate: FixedPointNumber> DiscountedCashFlows<Rate> {
-	fn compute_present_value<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		debt: Balance,
-		at: Moment,
-		interest_rate_per_sec: Rate,
-		maturity_date: Moment,
-		origination_date: Moment,
-	) -> Result<Balance, ArithmeticError> {
-		// Calculate the expected loss over the term of the loan
-		let tel = Rate::saturating_from_rational(
-			maturity_date.ensure_sub(origination_date)?,
-			SECONDS_PER_YEAR,
-		)
-		.ensure_mul(self.probability_of_default)?
-		.ensure_mul(self.loss_given_default)?
-		.min(One::one());
-
-		let tel_inv = Rate::one().ensure_sub(tel)?;
-
-		// Calculate the risk-adjusted expected cash flows
-		let exp = maturity_date.ensure_sub(at)?.ensure_into()?;
-		let acc_rate = checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
-		let ecf = acc_rate.ensure_mul_int(debt)?;
-		let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
-
-		// Discount the risk-adjusted expected cash flows
-		let rate = checked_pow(self.discount_rate, exp).ok_or(ArithmeticError::Overflow)?;
-		let d = Rate::one().ensure_div(rate)?;
-
-		Ok(d.ensure_mul_int(ra_ecf)?)
-	}
-}
-
-/// Defines the valuation method of a loan
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum ValuationMethod<Rate> {
-	/// TODO
-	DiscountedCashFlows(DiscountedCashFlows<Rate>),
-	/// TODO
-	OutstandingDebt,
-}
-
-impl<Rate> ValuationMethod<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	fn is_valid(&self) -> bool {
-		match self {
-			ValuationMethod::DiscountedCashFlows(dcf) => dcf.discount_rate >= One::one(),
-			ValuationMethod::OutstandingDebt => true,
-		}
-	}
-}
-
-/// Diferents methods of how to compute the amount can be borrowed
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum MaxBorrowAmount<Rate> {
-	/// Ceiling computation using the total borrow
-	UpToTotalBorrowed { advance_rate: Rate },
-
-	/// Ceiling computation using the outstanding debt
-	UpToOutstandingDebt { advance_rate: Rate },
-}
-
-/// Specify how offer a loan can be borrowed
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum BorrowRestrictions {
-	/// The loan can not be borrowed if it has been written off.
-	WrittenOff,
-}
-
-/// Specify how offer a loan can be repaid
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub enum RepayRestrictions {
-	/// TODO
-	None,
-}
-
-/// Define the loan restrictions
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct LoanRestrictions<Rate> {
-	/// How much can be borrowed
-	max_borrow_amount: MaxBorrowAmount<Rate>,
-
-	/// How offen can be borrowed
-	borrows: BorrowRestrictions,
-
-	/// How offen can be repaid
-	repayments: RepayRestrictions,
-}
-
-/// Loan information.
-/// It contemplates the loan proposal by the borrower and the pricing properties by the issuer.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(T))]
-pub struct LoanInfo<T: Config> {
-	/// Specify the repayments schedule of the loan
-	schedule: RepaymentSchedule,
-
-	/// Collateral used for this loan
-	collateral: AssetOf<T>,
-
-	/// Value of the collateral used for this loan
-	collateral_value: T::Balance,
-
-	/// Valuation method of this loan
-	valuation_method: ValuationMethod<T::Rate>,
-
-	/// Restrictions of this loan
-	restrictions: LoanRestrictions<T::Rate>,
-
-	/// Interest rate per second
-	interest_rate_per_sec: T::Rate,
-}
-
-impl<T: Config> LoanInfo<T> {
-	pub fn new(
-		schedule: RepaymentSchedule,
-		collateral: AssetOf<T>,
-		collateral_value: T::Balance,
-		valuation_method: ValuationMethod<T::Rate>,
-		restrictions: LoanRestrictions<T::Rate>,
-		interest_rate_per_year: T::Rate,
-	) -> Result<Self, DispatchError> {
-		let loan_info = LoanInfo {
-			schedule,
-			collateral,
-			collateral_value,
-			valuation_method,
-			restrictions,
-			interest_rate_per_sec: T::InterestAccrual::reference_yearly_rate(
-				interest_rate_per_year,
-			)?,
-		};
-
-		loan_info.validate(T::Time::now().as_secs())?;
-
-		Ok(loan_info)
-	}
-
-	fn validate(&self, now: Moment) -> DispatchResult {
-		ensure!(
-			self.valuation_method.is_valid(),
-			Error::<T>::from(InnerLoanError::ValuationMethod)
-		);
-
-		ensure!(
-			self.schedule.is_valid(now),
-			Error::<T>::from(InnerLoanError::RepaymentSchedule)
-		);
-
-		Ok(())
-	}
-
-	pub fn destroy(&mut self) -> DispatchResult {
-		T::InterestAccrual::unreference_rate(self.interest_rate_per_sec)
-	}
-}
-
-/// Data containing a loan that has been created but is not active yet.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(T))]
-pub struct CreatedLoan<T: Config> {
-	/// Loan information
-	info: LoanInfo<T>,
-
-	/// Borrower account that created this loan
-	borrower: T::AccountId,
-}
-
-/// Data containing an active loan.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(T))]
-pub struct ActiveLoan<T: Config> {
-	/// Id of this loan
-	loan_id: T::LoanId,
-
-	/// Loan information
-	info: LoanInfo<T>,
-
-	/// Borrower account that created this loan
-	borrower: T::AccountId,
-
-	/// Specify whether the loan has been writen off
-	written_off_status: WriteOffStatus<T::Rate>,
-
-	/// Date when the loans becomes active
-	origination_date: Moment,
-
-	/// Normalized debt used to calculate the outstanding debt.
-	normalized_debt: T::Balance,
-
-	/// Total borrowed amount of this loan
-	total_borrowed: T::Balance,
-
-	/// Total repaid amount of this loan
-	total_repaid: T::Balance,
-
-	/// When the loans's Present Value (PV) was last updated
-	last_updated: Moment,
-}
-
-impl<T: Config> ActiveLoan<T> {
-	pub fn new(loan_id: T::LoanId, info: LoanInfo<T>, borrower: T::AccountId, now: Moment) -> Self {
-		ActiveLoan {
-			loan_id,
-			info,
-			borrower,
-			written_off_status: WriteOffStatus::None,
-			origination_date: now,
-			normalized_debt: T::Balance::zero(),
-			total_borrowed: T::Balance::zero(),
-			total_repaid: T::Balance::zero(),
-			last_updated: now,
-		}
-	}
-
-	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
-		self.ensure_can_borrow(amount)?;
-
-		self.total_borrowed.ensure_add_assign(amount)?;
-
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate_per_sec,
-			self.normalized_debt,
-			Adjustment::Increase(amount),
-		)?;
-
-		self.last_updated = T::Time::now().as_secs();
-
-		Ok(())
-	}
-
-	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		let amount = self.ensure_can_repay(amount)?;
-
-		self.total_repaid.ensure_add_assign(amount)?;
-
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate_per_sec,
-			self.normalized_debt,
-			Adjustment::Decrease(amount),
-		)?;
-
-		self.last_updated = T::Time::now().as_secs();
-
-		Ok(amount)
-	}
-
-	pub fn write_off(&mut self) -> DispatchResult {
-		self.ensure_can_write_off()?;
-		/*
-		let interest_rate_per_sec = self.interest_rate_with_penalty()?;
-
-		T::InterestAccrual::reference_rate(interest_rate_per_sec)?;
-
-		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			self.info.interest_rate_per_sec,
-			interest_rate_per_sec,
-			self.normalized_debt,
-		)?;
-
-		T::InterestAccrual::unreference_rate(self.info.interest_rate_per_sec)?;
-		*/
-		todo!()
-	}
-
-	pub fn close(&mut self) -> DispatchResult {
-		self.ensure_can_close()?;
-
-		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)
-	}
-
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let debt = self.debt()?;
-		let debt = self.written_off_status.write_down(debt)?;
-
-		match &self.info.valuation_method {
-			ValuationMethod::DiscountedCashFlows(dcf) => {
-				// If the loan is overdue, there are no future cash flows to discount,
-				// hence we use the outstanding debt as the value.
-				let maturity_date = self.info.schedule.maturity.date();
-				if self.last_updated > maturity_date {
-					return Ok(debt);
-				}
-
-				Ok(dcf.compute_present_value(
-					debt,
-					self.last_updated,
-					self.interest_rate_with_penalty()?,
-					self.origination_date,
-					maturity_date,
-				)?)
-			}
-			ValuationMethod::OutstandingDebt => Ok(debt),
-		}
-	}
-
-	fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
-		self.written_off_status
-			.penalize_rate(self.info.interest_rate_per_sec)
-	}
-
-	fn debt(&self) -> Result<T::Balance, DispatchError> {
-		if self.last_updated == T::Time::now().as_secs() {
-			T::InterestAccrual::current_debt(self.info.interest_rate_per_sec, self.normalized_debt)
-		} else {
-			T::InterestAccrual::previous_debt(
-				self.info.interest_rate_per_sec,
-				self.normalized_debt,
-				self.last_updated,
-			)
-		}
-	}
-
-	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
-		Ok(match self.info.restrictions.max_borrow_amount {
-			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
-				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.total_borrowed),
-			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
-				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(T::InterestAccrual::current_debt(
-					self.info.interest_rate_per_sec,
-					self.normalized_debt,
-				)?),
-		})
-	}
-
-	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
-		match self.info.restrictions.borrows {
-			BorrowRestrictions::WrittenOff => {
-				ensure!(
-					matches!(self.written_off_status, WriteOffStatus::None),
-					Error::<T>::WrittenOffLoan
-				)
-			}
-		}
-
-		ensure!(
-			amount <= self.max_borrow_amount()?,
-			Error::<T>::MaxBorrowAmountExceeded
-		);
-
-		Ok(())
-	}
-
-	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		match self.info.restrictions.repayments {
-			RepayRestrictions::None => (),
-		};
-
-		let current_debt = T::InterestAccrual::current_debt(
-			self.info.interest_rate_per_sec,
-			self.normalized_debt,
-		)?;
-
-		Ok(amount.min(current_debt))
-	}
-
-	fn ensure_can_write_off(&self) -> DispatchResult {
-		todo!()
-	}
-
-	fn ensure_can_close(&self) -> DispatchResult {
-		ensure!(self.normalized_debt.is_zero(), Error::<T>::LoanNotRepaid);
-
-		Ok(())
-	}
-}
-
-/// Data containing a closed loan for historical purposes.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(T))]
-pub struct ClosedLoan<T: Config> {
-	/// Block when the loan was closed
-	closed_at: T::BlockNumber,
-
-	/// Loan information
-	info: LoanInfo<T>,
-}
+use types::{LoanRestrictions, RepaymentSchedule, ValuationMethod, WriteOffPolicy};
 
 type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 >>::PoolId;
-
-type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -768,18 +241,6 @@ pub mod pallet {
 		LoanNotRepaid,
 	}
 
-	#[derive(Encode, Decode, TypeInfo, PalletError)]
-	pub enum InnerLoanError {
-		ValuationMethod,
-		RepaymentSchedule,
-	}
-
-	impl<T> From<InnerLoanError> for Error<T> {
-		fn from(error: InnerLoanError) -> Self {
-			Error::<T>::InvalidLoanValue(error)
-		}
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
@@ -852,7 +313,7 @@ pub mod pallet {
 					})?
 				}
 				None => Self::mutate_active_loan(pool_id, loan_id, |loan| {
-					Self::ensure_loan_borrower(&who, &loan.borrower)?;
+					Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 					let old_pv = loan.present_value()?;
 					loan.borrow(amount)?;
@@ -883,7 +344,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			Self::mutate_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(&who, &loan.borrower)?;
+				Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 				let old_pv = loan.present_value()?;
 				let amount = loan.repay(amount)?;
@@ -912,7 +373,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			Self::mutate_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(&who, &loan.borrower)?;
+				Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 				let old_pv = loan.present_value()?;
 				loan.write_off()?;
@@ -937,18 +398,14 @@ pub mod pallet {
 
 			let (mut info, borrower) = match CreatedLoans::<T>::take(pool_id, loan_id) {
 				Some(loan) => (loan.info, loan.borrower),
-				None => {
-					let mut loan = Self::take_active_loan(pool_id, loan_id)?;
-					loan.close()?;
-					(loan.info, loan.borrower)
-				}
+				None => Self::take_active_loan(pool_id, loan_id)?.close()?,
 			};
 
 			Self::ensure_loan_borrower(&who, &borrower)?;
 
 			info.destroy()?;
 
-			let collateral = info.collateral.clone();
+			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
 			ClosedLoans::<T>::insert(
@@ -1055,7 +512,7 @@ pub mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let active_loan = active_loans
 					.iter_mut()
-					.find(|active_loan| active_loan.loan_id == loan_id)
+					.find(|active_loan| active_loan.loan_id() == loan_id)
 					.ok_or(Error::<T>::LoanNotFound)?;
 
 				f(active_loan)
@@ -1069,7 +526,7 @@ pub mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
-					.position(|active_loan| active_loan.loan_id == loan_id)
+					.position(|active_loan| active_loan.loan_id() == loan_id)
 					.ok_or(Error::<T>::LoanNotFound)?;
 
 				Ok(active_loans.swap_remove(index))
