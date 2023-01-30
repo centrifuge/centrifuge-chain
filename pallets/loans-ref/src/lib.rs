@@ -372,9 +372,7 @@ pub struct ActiveLoan<T: Config> {
 }
 
 impl<T: Config> ActiveLoan<T> {
-	pub fn new(loan_id: T::LoanId, info: LoanInfo<T>, borrower: T::AccountId) -> Self {
-		let now = T::Time::now().as_secs();
-
+	pub fn new(loan_id: T::LoanId, info: LoanInfo<T>, borrower: T::AccountId, now: Moment) -> Self {
 		ActiveLoan {
 			loan_id,
 			info,
@@ -444,23 +442,6 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)
 	}
 
-	fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
-		self.written_off_status
-			.penalize_rate(self.info.interest_rate_per_sec)
-	}
-
-	fn debt(&self) -> Result<T::Balance, DispatchError> {
-		if self.last_updated == T::Time::now().as_secs() {
-			T::InterestAccrual::current_debt(self.info.interest_rate_per_sec, self.normalized_debt)
-		} else {
-			T::InterestAccrual::previous_debt(
-				self.info.interest_rate_per_sec,
-				self.normalized_debt,
-				self.last_updated,
-			)
-		}
-	}
-
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
 		let debt = self.debt()?;
 		let debt = self.written_off_status.write_down(debt)?;
@@ -483,6 +464,23 @@ impl<T: Config> ActiveLoan<T> {
 				)?)
 			}
 			ValuationMethod::OutstandingDebt => Ok(debt),
+		}
+	}
+
+	fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
+		self.written_off_status
+			.penalize_rate(self.info.interest_rate_per_sec)
+	}
+
+	fn debt(&self) -> Result<T::Balance, DispatchError> {
+		if self.last_updated == T::Time::now().as_secs() {
+			T::InterestAccrual::current_debt(self.info.interest_rate_per_sec, self.normalized_debt)
+		} else {
+			T::InterestAccrual::previous_debt(
+				self.info.interest_rate_per_sec,
+				self.normalized_debt,
+				self.last_updated,
+			)
 		}
 	}
 
@@ -1033,9 +1031,11 @@ pub mod pallet {
 			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+				let now = T::Time::now().as_secs();
+
 				let index = active_loans.len();
 				active_loans
-					.try_push(ActiveLoan::new(loan_id, info, borrower))
+					.try_push(ActiveLoan::new(loan_id, info, borrower, now))
 					.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 				f(active_loans
