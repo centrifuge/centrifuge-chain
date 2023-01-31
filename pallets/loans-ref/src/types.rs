@@ -41,6 +41,13 @@ pub enum NAVUpdateType {
 	Inexact,
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum WriteOffAction<Rate> {
+	WriteOff,
+	WriteDown { percentage: Rate, penalty: Rate },
+	WriteUp { percentage: Rate, penalty: Rate },
+}
+
 /// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffPolicy<Rate> {
@@ -48,10 +55,10 @@ pub struct WriteOffPolicy<Rate> {
 	overdue_days: u32,
 
 	/// Percentage of present value we are going to write off on a loan
-	percentage: Rate,
+	pub percentage: Rate,
 
-	/// Additional interest that accrues on the written off loan as penalty
-	penalty_interest_rate_per_sec: Rate,
+	/// Additional interest that accrues on the written off loan as penalty per year
+	pub penalty: Rate,
 }
 
 impl<Rate> WriteOffPolicy<Rate> {

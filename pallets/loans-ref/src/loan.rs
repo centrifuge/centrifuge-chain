@@ -21,7 +21,7 @@ use sp_runtime::{traits::Zero, ArithmeticError, DispatchError};
 use super::{Config, Error};
 use crate::types::{
 	BorrowRestrictions, LoanRestrictions, MaxBorrowAmount, RepayRestrictions, RepaymentSchedule,
-	ValuationMethod, WriteOffStatus,
+	ValuationMethod, WriteOffAction, WriteOffStatus,
 };
 
 pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
@@ -87,7 +87,7 @@ impl<T: Config> LoanInfo<T> {
 		Ok(loan_info)
 	}
 
-	pub fn destroy(&mut self) -> DispatchResult {
+	pub fn deactivate(&mut self) -> DispatchResult {
 		T::InterestAccrual::unreference_rate(self.interest_rate_per_sec)
 	}
 
@@ -189,7 +189,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(amount)
 	}
 
-	pub fn write_off(&mut self) -> DispatchResult {
+	pub fn write_off(&mut self, action: WriteOffAction<T::Rate>) -> DispatchResult {
 		self.ensure_can_write_off()?;
 		/*
 		let interest_rate_per_sec = self.interest_rate_with_penalty()?;
@@ -252,6 +252,10 @@ impl<T: Config> ActiveLoan<T> {
 		&self.borrower
 	}
 
+	pub fn maturity_date(&self) -> Moment {
+		self.info.schedule.maturity.date()
+	}
+
 	fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
 		self.written_off_status
 			.penalize_rate(self.info.interest_rate_per_sec)
@@ -296,6 +300,11 @@ impl<T: Config> ActiveLoan<T> {
 		ensure!(
 			amount <= self.max_borrow_amount()?,
 			Error::<T>::MaxBorrowAmountExceeded
+		);
+
+		ensure!(
+			self.info.schedule.maturity.date() > T::Time::now().as_secs(),
+			Error::<T>::LoanMaturityDatePassed
 		);
 
 		Ok(())

@@ -28,7 +28,8 @@ use sp_runtime::{
 	ArithmeticError, FixedPointOperand,
 };
 use types::{
-	LoanRestrictions, NAVDetails, NAVUpdateType, RepaymentSchedule, ValuationMethod, WriteOffPolicy,
+	LoanRestrictions, NAVDetails, NAVUpdateType, RepaymentSchedule, ValuationMethod,
+	WriteOffAction, WriteOffPolicy,
 };
 
 type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
@@ -217,6 +218,7 @@ pub mod pallet {
 		WrittenOff {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
+			action: WriteOffAction<T::Rate>,
 		},
 		/// A loan was closed
 		Closed {
@@ -229,6 +231,9 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			nav: T::Balance,
 			update_type: NAVUpdateType,
+		},
+		WriteOffPoliciesUpdated {
+			pool_id: PoolIdOf<T>,
 		},
 	}
 
@@ -254,6 +259,10 @@ pub mod pallet {
 		WrittenOffLoan,
 		/// Emits when loan amount not repaid but trying to close loan
 		LoanNotRepaid,
+		/// Emits when maturity has passed and borrower tried to borrow more
+		LoanMaturityDatePassed,
+		/// Emits when a policy is not found for a specific loan
+		WriteOffPolicyNotFound,
 	}
 
 	#[pallet::call]
@@ -274,7 +283,7 @@ pub mod pallet {
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
 			Self::ensure_collateral_owner(&who, collateral)?;
 
-			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolNotFound);
+			Self::ensure_pool_exists(pool_id)?;
 
 			let loan_info = LoanInfo::new(
 				schedule,
@@ -388,19 +397,64 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 
-			Self::mutate_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(&who, &loan.borrower())?;
+			let action = Self::mutate_active_loan(pool_id, loan_id, |loan| {
+				let policies = WriteOffPolicies::<T>::get(pool_id);
+				let policy = WriteOffPolicy::find_policy(
+					policies.iter(),
+					loan.maturity_date(),
+					T::Time::now().as_secs(),
+				)
+				.ok_or(Error::<T>::WriteOffPolicyNotFound)?;
+
+				let action = WriteOffAction::WriteDown {
+					percentage: policy.percentage.clone(),
+					penalty: Self::to_rate_per_sec(policy.penalty)?,
+				};
 
 				let old_pv = loan.present_value()?;
-				loan.write_off()?;
+				loan.write_off(action.clone())?;
+				let new_pv = loan.present_value()?;
+
+				Self::update_nav_with_pv(pool_id, old_pv, new_pv)?;
+
+				Ok(action)
+			})?;
+
+			Self::deposit_event(Event::<T>::WrittenOff {
+				pool_id,
+				loan_id,
+				action,
+			});
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn admin_write_off(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			action: WriteOffAction<T::Rate>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
+
+			Self::mutate_active_loan(pool_id, loan_id, |loan| {
+				let old_pv = loan.present_value()?;
+				loan.write_off(action.clone())?;
 				let new_pv = loan.present_value()?;
 
 				Self::update_nav_with_pv(pool_id, old_pv, new_pv)
 			})?;
 
-			Self::deposit_event(Event::<T>::WrittenOff { pool_id, loan_id });
+			Self::deposit_event(Event::<T>::WrittenOff {
+				pool_id,
+				loan_id,
+				action,
+			});
 
 			Ok(())
 		}
@@ -421,7 +475,7 @@ pub mod pallet {
 
 			Self::ensure_loan_borrower(&who, &borrower)?;
 
-			info.destroy()?;
+			info.deactivate()?;
 
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
@@ -452,42 +506,56 @@ pub mod pallet {
 			policies: BoundedVec<WriteOffPolicy<T::Rate>, T::MaxWriteOffGroups>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			todo!()
+			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
+
+			Self::ensure_pool_exists(pool_id)?;
+
+			WriteOffPolicies::<T>::insert(pool_id, policies);
+
+			Self::deposit_event(Event::<T>::WriteOffPoliciesUpdated { pool_id });
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn update_nave(origin: OriginFor<T>, pool_id: PoolIdOf<T>) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			Self::update_nav_for_pool(pool_id)
 		}
 	}
 
 	/// Utility methods
 	impl<T: Config> Pallet<T> {
-		fn ensure_role(
-			pool_id: PoolIdOf<T>,
-			who: &T::AccountId,
-			role: PoolRole,
-		) -> Result<(), BadOrigin> {
+		fn ensure_role(pool_id: PoolIdOf<T>, who: &T::AccountId, role: PoolRole) -> DispatchResult {
 			T::Permissions::has(
 				PermissionScope::Pool(pool_id),
 				who.clone(),
 				Role::PoolRole(role),
 			)
 			.then_some(())
-			.ok_or(BadOrigin)
+			.ok_or(BadOrigin.into())
 		}
 
 		fn ensure_collateral_owner(
 			owner: &T::AccountId,
 			(collection_id, item_id): AssetOf<T>,
-		) -> Result<(), Error<T>> {
+		) -> DispatchResult {
 			T::NonFungible::owner(&collection_id, &item_id)
 				.ok_or(Error::<T>::NFTOwnerNotFound)?
 				.eq(owner)
 				.then_some(())
-				.ok_or(Error::<T>::NotNFTOwner)
+				.ok_or(Error::<T>::NotNFTOwner.into())
 		}
 
-		fn ensure_loan_borrower(
-			owner: &T::AccountId,
-			borrower: &T::AccountId,
-		) -> Result<(), Error<T>> {
+		fn ensure_loan_borrower(owner: &T::AccountId, borrower: &T::AccountId) -> DispatchResult {
 			ensure!(owner == borrower, Error::<T>::NotLoanBorrower);
+			Ok(())
+		}
+
+		fn ensure_pool_exists(pool_id: PoolIdOf<T>) -> DispatchResult {
+			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolNotFound);
 			Ok(())
 		}
 
@@ -496,6 +564,10 @@ pub mod pallet {
 				*last_loan_id = T::Hasher::hash(&*last_loan_id.as_ref());
 				*last_loan_id
 			})
+		}
+
+		fn to_rate_per_sec(rate_per_year: T::Rate) -> Result<T::Rate, DispatchError> {
+			T::InterestAccrual::convert_additive_rate_to_per_sec(rate_per_year)
 		}
 
 		fn update_nav_with_pv(
