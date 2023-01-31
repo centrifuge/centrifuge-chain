@@ -27,7 +27,6 @@ use frame_support::weights::Weight;
 /// Weight information for pallet extrinsics
 ///
 /// Weights are calculated using runtime benchmarking features.
-/// See [`benchmarking`] module for more information.
 pub trait WeightInfo {
 	fn transfer() -> Weight;
 

@@ -21,7 +21,7 @@ pub trait AnchorApi<IdHash, BlockHash> {
 	) -> RpcResult<AnchorData<IdHash, BlockNumber>>;
 }
 
-/// A struct that implements the [`AnchorApi`].
+/// A struct that implements the `AnchorApi`.
 pub struct Anchors<C, P> {
 	client: Arc<C>,
 	_marker: std::marker::PhantomData<P>,
