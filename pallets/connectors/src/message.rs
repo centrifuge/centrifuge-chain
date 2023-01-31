@@ -139,7 +139,10 @@ impl<
 				message.append(&mut encoded_pool_id);
 
 				message.append(&mut tranche_id.encode());
-				message.append(&mut price.encode());
+
+				let mut encoded_price = price.encode();
+				encoded_price.reverse();
+				message.append(&mut encoded_price);
 
 				message
 			}
@@ -290,12 +293,12 @@ mod tests {
 		fn update_token_price() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateTokenPrice {
 				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 				price: Rate::one(),
 			};
 			let encoded = msg.encode();
 
-			let input = "03000000000000000100000000000000000000000000000001000000e83c80d09f3c2e3b0300000000";
+			let input = "030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000";
 			let expected = <[u8; 41]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
