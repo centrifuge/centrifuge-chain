@@ -321,7 +321,6 @@ mod pallet {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
 			Self::ensure_collateral_owner(&who, collateral)?;
-
 			Self::ensure_pool_exists(pool_id)?;
 
 			let loan_info = LoanInfo::new(
@@ -546,7 +545,6 @@ mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
-
 			Self::ensure_pool_exists(pool_id)?;
 
 			WriteOffPolicies::<T>::insert(pool_id, policies);
@@ -560,6 +558,7 @@ mod pallet {
 		#[transactional]
 		pub fn update_nave(origin: OriginFor<T>, pool_id: PoolIdOf<T>) -> DispatchResult {
 			ensure_signed(origin)?;
+			Self::ensure_pool_exists(pool_id)?;
 
 			Self::update_nav_for_pool(pool_id)
 		}
