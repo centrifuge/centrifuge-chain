@@ -1,50 +1,48 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod loan;
 mod types;
 
-use cfg_traits::{
-	ops::{EnsureAdd, EnsureSub},
-	InterestAccrual, Permissions, PoolInspect, PoolReserve,
-};
-use cfg_types::{
-	adjustments::Adjustment,
-	permissions::{PermissionScope, PoolRole, Role},
-};
-use frame_support::{
-	traits::{
-		tokens::{
-			self,
-			nonfungibles::{Inspect, Mutate, Transfer},
-		},
-		UnixTime,
-	},
-	transactional, PalletError, StorageHasher,
-};
-use loan::{ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo};
-use pallet::*;
-use sp_runtime::{
-	traits::{BadOrigin, BlockNumberProvider, Zero},
-	ArithmeticError, FixedPointOperand,
-};
-use types::{
-	LoanRestrictions, NAVDetails, NAVUpdateType, RepaymentSchedule, ValuationMethod,
-	WriteOffAction, WriteOffPolicy,
-};
-
-type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
-	<T as frame_system::Config>::AccountId,
-	<T as Config>::CurrencyId,
->>::PoolId;
+pub use pallet::*;
 
 #[frame_support::pallet]
-pub mod pallet {
-	use frame_support::pallet_prelude::*;
+mod pallet {
+	use cfg_traits::{
+		ops::{EnsureAdd, EnsureSub},
+		InterestAccrual, Permissions, PoolInspect, PoolReserve,
+	};
+	use cfg_types::{
+		adjustments::Adjustment,
+		permissions::{PermissionScope, PoolRole, Role},
+	};
+	use frame_support::{
+		pallet_prelude::*,
+		traits::{
+			tokens::{
+				self,
+				nonfungibles::{Inspect, Mutate, Transfer},
+			},
+			UnixTime,
+		},
+		transactional, PalletError, StorageHasher,
+	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
+	use sp_runtime::{
+		traits::{BadOrigin, BlockNumberProvider, Zero},
+		ArithmeticError, FixedPointOperand,
+	};
+	use types::{
+		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions, NAVDetails,
+		NAVUpdateType, RepaymentSchedule, ValuationMethod, WriteOffAction, WriteOffPolicy,
+	};
 
 	use super::*;
+
+	type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
+		<T as frame_system::Config>::AccountId,
+		<T as Config>::CurrencyId,
+	>>::PoolId;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
