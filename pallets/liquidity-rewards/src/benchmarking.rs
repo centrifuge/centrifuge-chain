@@ -29,7 +29,7 @@ fn init_test_mock_with_expectations() -> impl Sized {
 		ctx1.expect().return_const(100u64);
 
 		let ctx2 = MockRewards::reward_group_context();
-		ctx2.expect().return_const(Ok(()));
+		ctx2.expect().return_const(Ok(0));
 
 		let ctx3 = MockRewards::deposit_stake_context();
 		ctx3.expect().return_const(Ok(()));
