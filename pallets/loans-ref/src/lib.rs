@@ -19,9 +19,9 @@ use frame_support::{
 		},
 		UnixTime,
 	},
-	transactional, StorageHasher,
+	transactional, PalletError, StorageHasher,
 };
-use loan::{ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, InnerLoanError, LoanInfo};
+use loan::{ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo};
 use pallet::*;
 use sp_runtime::{
 	traits::{BadOrigin, BlockNumberProvider, Zero},
@@ -241,28 +241,69 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when pool doesn't exist
 		PoolNotFound,
+		/// Emits when loan doesn't exist
+		LoanNotFound,
+		/// Emits when a policy is not found for a specific loan
+		WriteOffPolicyNotFound,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
 		/// Emits when NFT owner doesn't match the expected owner
 		NotNFTOwner,
-		/// Emits when the loan is bad specified
-		InvalidLoanValue(InnerLoanError),
-		/// Emits when loan doesn't exist
-		LoanNotFound,
 		/// Emits when the applicant account is not the borrower of the loan
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
+		/// Emits when the loan is bad specified and can not be created
+		CreateLoanError(CreateLoanError),
+		/// Emits when the loan can not be borrowed
+		BorrowLoanError(BorrowLoanError),
+		/// Emits when the loan can not be closed
+		CloseLoanError(CloseLoanError),
+	}
+
+	/// Error related to loan creation
+	#[derive(Encode, Decode, TypeInfo, PalletError)]
+	pub enum CreateLoanError {
+		/// Emits when valuation method is bad specified
+		InvalidValuationMethod,
+		/// Emits when repayment schedule is bad specified
+		InvalidRepaymentSchedule,
+	}
+
+	impl<T> From<CreateLoanError> for Error<T> {
+		fn from(error: CreateLoanError) -> Self {
+			Error::<T>::CreateLoanError(error)
+		}
+	}
+
+	/// Error related to loan borrowing
+	#[derive(Encode, Decode, TypeInfo, PalletError)]
+	pub enum BorrowLoanError {
 		/// Emits when the borrowed amount is more than the allowed amount
-		MaxBorrowAmountExceeded,
-		/// Emits when an action is not allowed because the loan is written off
-		WrittenOffLoan,
-		/// Emits when loan amount not repaid but trying to close loan
-		LoanNotRepaid,
+		MaxAmountExceeded,
+		/// Emits when the loan can not be borrowed because the loan is written off
+		WrittenOffRestriction,
 		/// Emits when maturity has passed and borrower tried to borrow more
-		LoanMaturityDatePassed,
-		/// Emits when a policy is not found for a specific loan
-		WriteOffPolicyNotFound,
+		MaturityDatePassed,
+	}
+
+	impl<T> From<BorrowLoanError> for Error<T> {
+		fn from(error: BorrowLoanError) -> Self {
+			Error::<T>::BorrowLoanError(error)
+		}
+	}
+
+	/// Error related to loan closing
+	#[derive(Encode, Decode, TypeInfo, PalletError)]
+	pub enum CloseLoanError {
+		/// Emits when close a loan that is not fully repaid
+		NotFullyRepaid,
+	}
+
+	impl<T> From<CloseLoanError> for Error<T> {
+		fn from(error: CloseLoanError) -> Self {
+			Error::<T>::CloseLoanError(error)
+		}
 	}
 
 	#[pallet::call]

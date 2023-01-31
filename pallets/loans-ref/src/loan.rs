@@ -12,31 +12,18 @@ use frame_support::{
 	ensure,
 	pallet_prelude::{DispatchResult, RuntimeDebugNoBound},
 	traits::UnixTime,
-	PalletError,
 };
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{traits::Zero, ArithmeticError, DispatchError};
 
-use super::{Config, Error};
+use super::{BorrowLoanError, CloseLoanError, Config, CreateLoanError, Error};
 use crate::types::{
 	BorrowRestrictions, LoanRestrictions, MaxBorrowAmount, RepayRestrictions, RepaymentSchedule,
 	ValuationMethod, WriteOffAction, WriteOffStatus,
 };
 
 pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-
-#[derive(Encode, Decode, TypeInfo, PalletError)]
-pub enum InnerLoanError {
-	ValuationMethod,
-	RepaymentSchedule,
-}
-
-impl<T> From<InnerLoanError> for Error<T> {
-	fn from(error: InnerLoanError) -> Self {
-		Error::<T>::InvalidLoanValue(error)
-	}
-}
 
 /// Loan information.
 /// It contemplates the loan proposal by the borrower and the pricing properties by the issuer.
@@ -98,12 +85,12 @@ impl<T: Config> LoanInfo<T> {
 	fn validate(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
-			Error::<T>::from(InnerLoanError::ValuationMethod)
+			Error::<T>::from(CreateLoanError::InvalidValuationMethod)
 		);
 
 		ensure!(
 			self.schedule.is_valid(now),
-			Error::<T>::from(InnerLoanError::RepaymentSchedule)
+			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
 		Ok(())
@@ -292,19 +279,19 @@ impl<T: Config> ActiveLoan<T> {
 			BorrowRestrictions::WrittenOff => {
 				ensure!(
 					matches!(self.written_off_status, WriteOffStatus::None),
-					Error::<T>::WrittenOffLoan
+					Error::<T>::from(BorrowLoanError::WrittenOffRestriction)
 				)
 			}
 		}
 
 		ensure!(
 			amount <= self.max_borrow_amount()?,
-			Error::<T>::MaxBorrowAmountExceeded
+			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 
 		ensure!(
 			self.info.schedule.maturity.date() > T::Time::now().as_secs(),
-			Error::<T>::LoanMaturityDatePassed
+			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
 		Ok(())
@@ -328,7 +315,10 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_close(&self) -> DispatchResult {
-		ensure!(self.normalized_debt.is_zero(), Error::<T>::LoanNotRepaid);
+		ensure!(
+			self.normalized_debt.is_zero(),
+			Error::<T>::from(CloseLoanError::NotFullyRepaid)
+		);
 
 		Ok(())
 	}
