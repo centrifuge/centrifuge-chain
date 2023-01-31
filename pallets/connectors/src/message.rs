@@ -209,6 +209,7 @@ mod tests {
 	const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 	pub mod encode {
+		use cfg_utils::vec_to_fixed_array;
 		use super::*;
 		use crate::{Domain, ParachainId};
 
@@ -271,16 +272,16 @@ mod tests {
 		fn add_tranche() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddTranche {
 				pool_id: 12378532,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				token_name: [5; 128],
-				token_symbol: [6; 32],
+				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
+				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 				price: Rate::one(),
 			};
 			let encoded_bytes = msg.encode();
 
 			// We encode the encoded bytes as hex to verify it's what we expect
 			let encoded_hex = hex::encode(encoded_bytes.clone());
-			let expected_hex = "020000000000bce1a4000000000000000000000000000000010505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505060606060606060606060606060606060606060606060606060606060606060600000000033b2e3c9fd0803ce8000000";
+			let expected_hex = "020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000";
 			assert_eq!(expected_hex, encoded_hex);
 
 			// Now decode the bytes encoded as hex back to bytes and verify it's the same as
