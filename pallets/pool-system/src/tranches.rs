@@ -479,7 +479,6 @@ where
 				let index = self.tranche_index(&TrancheLoc::Id(id));
 				if let Some(index) = index {
 					let index: Option<usize> = index.try_into().ok();
-					// supposedly uncovered
 					if let Some(index) = index {
 						self.tranches.deref().get(index)
 					} else {
@@ -581,7 +580,6 @@ where
 		tranche: &Tranche<Balance, Rate, Weight, TrancheCurrency>,
 	) -> DispatchResult {
 		let i_at: usize = at.ensure_into()?;
-		// supposedly uncovered
 		if i_at == 0 {
 			ensure!(
 				tranche.tranche_type == TrancheType::Residual,
@@ -1774,9 +1772,10 @@ pub mod test {
 		fn tranche_returns_min_risk_correctly() {
 			let tranche = non_residual(1, None, Some(20));
 			assert_eq!(
+				tranche.min_risk_buffer(),
 				Perquintill::from_rational(20u64, 100u64),
-				tranche.min_risk_buffer()
-			)
+			);
+			assert!(residual(2).min_risk_buffer().is_zero());
 		}
 
 		#[test]
@@ -3735,35 +3734,29 @@ pub mod test {
 		#[test]
 		fn epoch_execution_combine_residual_top_works() {
 			assert_eq!(
-				default_epoch_tranches()
-					.combine_residual_top(|t| Ok(t.seniority))
-					.unwrap()[..],
-				[0, 1, 2]
+				default_epoch_tranches().combine_residual_top(|t| Ok(t.seniority)),
+				Ok(vec![0, 1, 2])
 			)
 		}
 
 		#[test]
 		fn epoch_execution_combine_residual_top_mut_works() {
 			assert_eq!(
-				default_epoch_tranches()
-					.combine_mut_residual_top(|t| {
-						t.invest = 100 * t.seniority as u128;
-						Ok(t.invest)
-					})
-					.unwrap()[..],
-				[0, 100, 200]
+				default_epoch_tranches().combine_mut_residual_top(|t| {
+					t.invest = 100 * t.seniority as u128;
+					Ok(t.invest)
+				}),
+				Ok(vec![0, 100, 200])
 			)
 		}
 
 		#[test]
 		fn epoch_execution_combine_with_residual_top() {
 			assert_eq!(
-				default_epoch_tranches()
-					.combine_with_residual_top([1, 2, 3], |t, zip_val| {
-						Ok((t.seniority, zip_val))
-					})
-					.unwrap()[..],
-				[(0, 1), (1, 2), (2, 3)]
+				default_epoch_tranches().combine_with_residual_top([1, 2, 3], |t, zip_val| {
+					Ok((t.seniority, zip_val))
+				}),
+				Ok(vec![(0, 1), (1, 2), (2, 3)])
 			);
 
 			assert_eq!(
