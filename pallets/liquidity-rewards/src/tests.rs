@@ -46,11 +46,6 @@ fn distributed_reward_change() {
 		assert_eq!(NextEpochChanges::<Test>::get().reward, Some(REWARD));
 		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
 
-		Liquidity::on_initialize(0);
-
-		assert_eq!(NextEpochChanges::<Test>::get().reward, Some(REWARD));
-		assert_eq!(ActiveEpochData::<Test>::get().reward, 0);
-
 		Liquidity::on_initialize(INITIAL_EPOCH_DURATION);
 
 		// EPOCH 1
@@ -70,7 +65,7 @@ fn epoch_change() {
 
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
-		assert_eq!(EndOfEpoch::<Test>::get(), INITIAL_EPOCH_DURATION);
+		assert_eq!(EndOfEpoch::<Test>::get(), 0);
 		assert_ok!(Liquidity::set_epoch_duration(
 			RuntimeOrigin::root(),
 			EPOCH_DURATION

@@ -162,8 +162,7 @@ pub mod pallet {
 	// We dont have to deserialize the whole struct 99% of the time (assuming a duration of 100 blocks),
 	// we only need to perform that action when the epoch finalized, 1% of the time.
 	#[pallet::storage]
-	pub(super) type EndOfEpoch<T: Config> =
-		StorageValue<_, T::BlockNumber, ValueQuery, T::InitialEpochDuration>;
+	pub(super) type EndOfEpoch<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	/// Data associated to the current epoch.
 	#[pallet::storage]
