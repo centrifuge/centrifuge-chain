@@ -355,6 +355,10 @@ pub fn permission_call(
 	})
 }
 
+pub fn close_epoch_call(pool_id: PoolId) -> RuntimeCall {
+	RuntimeCall::PoolSystem(PoolSystemCall::close_epoch { pool_id })
+}
+
 pub fn create_pool_call(
 	admin: AccountId,
 	pool_id: PoolId,

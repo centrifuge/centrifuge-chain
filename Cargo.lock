@@ -9788,6 +9788,7 @@ dependencies = [
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-rewards",
+ "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-uniques",
  "pallet-xcm",

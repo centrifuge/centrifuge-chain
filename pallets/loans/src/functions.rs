@@ -766,4 +766,41 @@ impl<T: Config> Pallet<T> {
 			},
 		)
 	}
+
+	/// Get the maximum amount one can borrow from a given loan in a given pool.
+	/// The loan must be active and has not been written off. In addition,
+	/// the maturity date must not have passed (if the loan has a maturity date).
+	pub fn get_max_borrow_amount(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+	) -> Result<T::Balance, DispatchError> {
+		let now = Self::now();
+		let active_loans = ActiveLoans::<T>::get(pool_id);
+		let active_loan = active_loans
+			.into_iter()
+			.find(|active_loan| active_loan.loan_id == loan_id)
+			.ok_or(Error::<T>::LoanNotActive)?;
+
+		// ensure loan is not written off
+		ensure!(
+			active_loan.write_off_status == WriteOffStatus::None,
+			Error::<T>::WrittenOffByAdmin
+		);
+
+		// make sure maturity date has not passed if the loan has a maturity date
+		let valid = active_loan
+			.loan_type
+			.maturity_date()
+			.map(|md| md > now)
+			.unwrap_or(true);
+
+		ensure!(valid, Error::<T>::LoanMaturityDatePassed);
+
+		let current_debt = T::InterestAccrual::current_debt(
+			active_loan.interest_rate_per_sec,
+			active_loan.normalized_debt,
+		)?;
+
+		Ok(active_loan.max_borrow_amount(current_debt))
+	}
 }

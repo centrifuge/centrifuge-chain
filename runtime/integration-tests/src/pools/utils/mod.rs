@@ -11,9 +11,11 @@
 // GNU General Public License for more details.
 
 pub mod accounts;
+pub mod dispatch;
 pub mod env;
 pub mod extrinsics;
 pub mod genesis;
+pub mod investments;
 pub mod loans;
 pub mod logs;
 pub mod pools;

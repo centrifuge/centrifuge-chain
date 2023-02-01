@@ -24,9 +24,10 @@ decl_runtime_apis! {
 	///
 	/// Note: The runtime api is pallet specific, while the RPC methods
 	///       are more focused on domain-specific logic
-	pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio, MaxTranches>
+	pub trait PoolsApi<PoolId, LoanId, TrancheId, Balance, Currency, BalanceRatio, MaxTranches>
 	where
 		PoolId: Codec,
+		LoanId: Codec,
 		TrancheId: Codec,
 		Balance: Codec,
 		Currency: Codec,
@@ -46,5 +47,9 @@ decl_runtime_apis! {
 		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>;
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<Currency>;
+
+		fn portfolio_valuation(pool_id: PoolId) -> Option<Balance>;
+
+		fn max_borrow_amount(pool_id: PoolId, loan_id: LoanId) -> Option<Balance>;
 	}
 }

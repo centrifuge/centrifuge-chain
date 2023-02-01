@@ -1612,7 +1612,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate, MaxTranches> for Runtime {
+	impl runtime_common::apis::PoolsApi<Block, PoolId, ItemId, TrancheId, Balance, CurrencyId, Rate, MaxTranches> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pool_system::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
@@ -1670,7 +1670,27 @@ impl_runtime_apis! {
 			let pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
 			pool.tranches.tranche_currency(tranche_loc).map(Into::into)
 		}
+
+		fn portfolio_valuation(pool_id: PoolId) -> Option<Balance> {
+			if pallet_pool_system::Pool::<Runtime>::contains_key(pool_id) {
+				return pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+					.map(|(_, valuation)| valuation)
+					.ok();
+			}
+
+			None
+		}
+
+		fn max_borrow_amount(pool_id: PoolId, loan_id: ItemId) -> Option<Balance> {
+			if pallet_pool_system::Pool::<Runtime>::contains_key(pool_id) {
+				return pallet_loans::Pallet::<Runtime>::get_max_borrow_amount(pool_id, loan_id).ok();
+			}
+
+			None
+		}
 	}
+
+
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
