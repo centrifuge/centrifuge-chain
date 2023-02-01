@@ -226,7 +226,7 @@ pub mod pallet {
 						epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
 						epoch_data.duration = changes.duration.unwrap_or(epoch_data.duration);
 
-						let ends_on = ends_on.ensure_add(epoch_data.duration)?;
+						let ends_on = ends_on.max(current_block).ensure_add(epoch_data.duration)?;
 
 						EndOfEpoch::<T>::set(ends_on);
 

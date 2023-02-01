@@ -107,6 +107,36 @@ fn epoch_change() {
 }
 
 #[test]
+fn epoch_change_from_advanced_state() {
+	const EPOCH_DURATION: u64 = 42;
+	const SYSTEM_BLOCK_NUMBER: u64 = 1000;
+
+	new_test_ext().execute_with(|| {
+		// EPOCH 0
+		assert_ok!(Liquidity::set_epoch_duration(
+			RuntimeOrigin::root(),
+			EPOCH_DURATION
+		));
+
+		Liquidity::on_initialize(SYSTEM_BLOCK_NUMBER);
+
+		// EPOCH 1
+		assert_eq!(
+			EndOfEpoch::<Test>::get(),
+			SYSTEM_BLOCK_NUMBER + EPOCH_DURATION
+		);
+		assert_eq!(NextEpochChanges::<Test>::get().duration, None);
+
+		Liquidity::on_initialize(SYSTEM_BLOCK_NUMBER);
+
+		assert_eq!(
+			EndOfEpoch::<Test>::get(),
+			SYSTEM_BLOCK_NUMBER + EPOCH_DURATION
+		);
+	});
+}
+
+#[test]
 fn currency_changes() {
 	let _m = cfg_traits::rewards::mock::lock();
 
