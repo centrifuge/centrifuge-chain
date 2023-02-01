@@ -1673,20 +1673,6 @@ pub mod test {
 		.unwrap()
 	}
 
-	fn default_tranches_with_debt_and_reserve(
-		&[(res_debt, res_reserve), (non_res_1_debt, non_res_1_reserve), (non_res_2_debt, non_res_2_reserve)]: &[(Balance, Balance); 3],
-	) -> TTranches {
-		TTranches::new(
-			DEFAULT_POOL_ID,
-			vec![
-				residual_base(0, 0, res_debt, res_reserve),
-				non_residual_base(1, Some(10), Some(10), 1, non_res_1_debt, non_res_1_reserve),
-				non_residual_base(2, Some(5), Some(25), 2, non_res_2_debt, non_res_2_reserve),
-			],
-		)
-		.unwrap()
-	}
-
 	fn tranche_to_epoch_execution_tranche(
 		tranche: Tranche<Balance, Rate, TrancheWeight, TrancheCurrency>,
 	) -> EpochExecutionTranche<Balance, BalanceRatio, TrancheWeight, TrancheCurrency> {
@@ -2567,6 +2553,7 @@ pub mod test {
 		mod calculate_prices {
 			use super::*;
 
+			/// Implements only `total_issuance` required for `calculate_prices`.
 			struct TTokens(u64);
 			impl Inspect<TrancheCurrency> for TTokens {
 				type AssetId = TrancheCurrency;
@@ -2625,7 +2612,7 @@ pub mod test {
 
 			// No debt, reserve or APR for any tranche.
 			#[test]
-			fn calculate_prices_no_debt_works() {
+			fn no_debt_works() {
 				let initial_assets = DEBT_RES + RESERVE_RES;
 
 				// only residual has a price if there is no debt
@@ -2673,7 +2660,7 @@ pub mod test {
 
 			// If amount of assets is zero, all price rates should be one.
 			#[test]
-			fn calculate_prices_no_assets_works() {
+			fn no_assets_works() {
 				assert_eq!(
 					default_tranches()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(0, SECS_PER_YEAR),
@@ -2682,7 +2669,7 @@ pub mod test {
 			}
 
 			#[test]
-			fn calculate_prices_no_issuance_works() {
+			fn no_issuance_works() {
 				struct TTokensEmpty(u64);
 				impl Inspect<TrancheCurrency> for TTokensEmpty {
 					type AssetId = TrancheCurrency;
@@ -2743,7 +2730,7 @@ pub mod test {
 			//
 			// NOTE: Expected values checked against in https://docs.google.com/spreadsheets/d/16hpWBzGFxlhsIFYJYl1Im9BsNLKVjvJj8VUvECxqduE/edit#gid=543118716
 			#[test]
-			fn calculate_prices_total_assets_works() {
+			fn total_assets_works() {
 				assert_eq!(
 					default_tranches_with_issuance()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(
@@ -2802,7 +2789,7 @@ pub mod test {
 			// Each tranche has a different APR, debt, reserve and total issuance.
 			// The sum of total issuance (initial NAV) for all three tranches is 1000.
 			#[test]
-			fn calculate_prices_last_update_works() {
+			fn last_update_works() {
 				let mut tranches = default_tranches_with_issuance();
 				assert_eq!(
 					tranches.calculate_prices::<_, TTokens, TrancheCurrency>(
@@ -2864,7 +2851,7 @@ pub mod test {
 
 			// The maximum precision before rounding errors is 10e-6% which should be fine
 			#[test]
-			fn calculate_prices_rounding_works() {
+			fn rounding_works() {
 				let mut tranches = default_tranches_with_issuance();
 				assert_ok!(tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 					1_100_000_000,
@@ -2898,7 +2885,7 @@ pub mod test {
 			}
 
 			#[test]
-			fn calculate_prices_same_moment_works() {
+			fn same_moment_works() {
 				let mut tranches = default_tranches_with_issuance();
 				let prices = tranches.calculate_prices::<Rate, TTokens, TrancheCurrency>(
 					1_100_000_000,
@@ -2926,8 +2913,8 @@ pub mod test {
 			const RATIO_NONRES_2: Balance = DEBT_NONRES_2 + RESERVE_NONRES_2;
 			const DEFAULT_NAV: Balance = 1_234_567_890;
 
-			/// Compares tranches which were rebalanced with expected outcome for debt and reserve.
-			fn assert_rebalancing(
+			// Compares tranches which were rebalanced with expected outcome for debt and reserve.
+			fn assert_rebalancing_eq(
 				rebalance_tranches: TTranches,
 				[(debt_res, reserve_res), (debt_nonres_1, reserve_nonres_1), (debt_nonres2, reserve_nonres_2)]: &[(Balance, Balance); 3],
 			) {
@@ -2978,13 +2965,13 @@ pub mod test {
 					&[(0, 0), (0, 0), (0, 0)],
 				));
 
-				assert_eq!(
+				assert_rebalancing_eq(
 					tranches,
-					default_tranches_with_debt_and_reserve(&[
+					&[
 						(DEFAULT_NAV, DEBT_RES + RESERVE_RES),
 						(0, RATIO_NONRES_1),
 						(0, RATIO_NONRES_2),
-					])
+					],
 				);
 			}
 
@@ -3015,7 +3002,7 @@ pub mod test {
 					let reserve_nonres_2 = tranches_no_rebalance.tranches[2].debt
 						+ tranches_no_rebalance.tranches[2].reserve;
 
-					assert_rebalancing(
+					assert_rebalancing_eq(
 						tranches_rebalance,
 						&[
 							(
