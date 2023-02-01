@@ -329,8 +329,7 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			// 65B376AA - AA 76 B3 65
-			let input = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065B376AA";
+			let input = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065b376aa";
 			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(hex::encode(encoded), hex::encode(expected));
 		}
@@ -339,7 +338,7 @@ mod tests {
 		fn transfer() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 				domain: Domain::Parachain(ParachainId::Moonbeam),
 				destination: [1; 32],
 				amount: 100 * CURRENCY,
@@ -352,4 +351,10 @@ mod tests {
 			assert_eq!(encoded, expected);
 		}
 	}
+
+	fn tranche_id_from_hex(hex: &str) -> TrancheId {
+		<[u8; 16]>::from_hex(hex).expect("Should be valid tranche id")
+	}
 }
+
+
