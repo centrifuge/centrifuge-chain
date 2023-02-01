@@ -1560,12 +1560,12 @@ pub mod test {
 
 	const DEFAULT_POOL_ID: PoolId = 0;
 	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-	const DEBT_RESIDUAL_TRANCHE: u128 = 100_000_000;
-	const DEBT_NON_RESIDUAL_TRANCHE_1: u128 = 100_000_000;
-	const DEBT_NON_RESIDUAL_TRANCHE_2: u128 = 200_000_000;
-	const RESERVE_RESIDUAL_TRANCHE: u128 = 100_000_000;
-	const RESERVE_NON_RESIDUAL_TRANCHE_1: u128 = 400_000_000;
-	const RESERVE_NON_RESIDUAL_TRANCHE_2: u128 = 100_000_000;
+	const DEBT_RES: u128 = 100_000_000;
+	const DEBT_NONRES_1: u128 = 100_000_000;
+	const DEBT_NONRES_2: u128 = 200_000_000;
+	const RESERVE_RES: u128 = 100_000_000;
+	const RESERVE_NONRES_1: u128 = 400_000_000;
+	const RESERVE_NONRES_2: u128 = 100_000_000;
 	const MAX_ROUNDING_PRECISION: u128 = 10u128.pow(6);
 
 	#[derive(PartialEq)]
@@ -1665,23 +1665,23 @@ pub mod test {
 		TTranches::new(
 			DEFAULT_POOL_ID,
 			vec![
-				residual_base(0, 0, DEBT_RESIDUAL_TRANCHE, RESERVE_RESIDUAL_TRANCHE),
-				non_residual_base(
-					1,
-					Some(10),
-					Some(10),
-					1,
-					DEBT_NON_RESIDUAL_TRANCHE_1,
-					RESERVE_NON_RESIDUAL_TRANCHE_1,
-				),
-				non_residual_base(
-					2,
-					Some(5),
-					Some(25),
-					2,
-					DEBT_NON_RESIDUAL_TRANCHE_2,
-					RESERVE_NON_RESIDUAL_TRANCHE_2,
-				),
+				residual_base(0, 0, DEBT_RES, RESERVE_RES),
+				non_residual_base(1, Some(10), Some(10), 1, DEBT_NONRES_1, RESERVE_NONRES_1),
+				non_residual_base(2, Some(5), Some(25), 2, DEBT_NONRES_2, RESERVE_NONRES_2),
+			],
+		)
+		.unwrap()
+	}
+
+	fn default_tranches_with_debt_and_reserve(
+		&[(res_debt, res_reserve), (non_res_1_debt, non_res_1_reserve), (non_res_2_debt, non_res_2_reserve)]: &[(Balance, Balance); 3],
+	) -> TTranches {
+		TTranches::new(
+			DEFAULT_POOL_ID,
+			vec![
+				residual_base(0, 0, res_debt, res_reserve),
+				non_residual_base(1, Some(10), Some(10), 1, non_res_1_debt, non_res_1_reserve),
+				non_residual_base(2, Some(5), Some(25), 2, non_res_2_debt, non_res_2_reserve),
 			],
 		)
 		.unwrap()
@@ -2577,16 +2577,14 @@ pub mod test {
 					match asset.of_tranche() {
 						// default most senior tranche currency id
 						[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] => {
-							DEBT_NON_RESIDUAL_TRANCHE_2 + RESERVE_NON_RESIDUAL_TRANCHE_2
+							DEBT_NONRES_2 + RESERVE_NONRES_2
 						}
 						// default least senior tranche currency id
 						[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] => {
-							DEBT_NON_RESIDUAL_TRANCHE_1 + RESERVE_NON_RESIDUAL_TRANCHE_1
+							DEBT_NONRES_1 + RESERVE_NONRES_1
 						}
 						// default single residual tranche currency id
-						[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] => {
-							DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE
-						}
+						[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] => DEBT_RES + RESERVE_RES,
 						_ => 100_000_0000,
 					}
 				}
@@ -2628,7 +2626,7 @@ pub mod test {
 			// No debt, reserve or APR for any tranche.
 			#[test]
 			fn calculate_prices_no_debt_works() {
-				let initial_assets = DEBT_RESIDUAL_TRANCHE + RESERVE_RESIDUAL_TRANCHE;
+				let initial_assets = DEBT_RES + RESERVE_RES;
 
 				// only residual has a price if there is no debt
 				assert_eq!(
@@ -2917,24 +2915,270 @@ pub mod test {
 			}
 		}
 
-		#[test]
-		fn rebalance_tranches_works() {
-			todo!();
-			// let mut tranches = default_tranches_with_issuance();
+		mod rebalance {
+			use super::*;
 
-			// assert_ok!(tranches.rebalance_tranches(
-			// 	SECS_PER_YEAR,
-			// 	// TODO: Investigate how these two leads to error
-			// 	600,
-			// 	700,
-			// 	&[
-			// 		Perquintill::from_percent(0),
-			// 		Perquintill::from_percent(0),
-			// 		Perquintill::from_percent(0),
-			// 	],
-			// 	&[(0, 0), (0, 0), (0, 0)],
-			// ));
-			// assert_eq!(tranches, default_tranches_with_issuance());
+			const TOTAL_ASSETS: Balance = DEBT_RES
+				+ RESERVE_RES + DEBT_NONRES_1
+				+ RESERVE_NONRES_1
+				+ DEBT_NONRES_2 + RESERVE_NONRES_2;
+			const RATIO_NONRES_1: Balance = DEBT_NONRES_1 + RESERVE_NONRES_1;
+			const RATIO_NONRES_2: Balance = DEBT_NONRES_2 + RESERVE_NONRES_2;
+			const DEFAULT_NAV: Balance = 1_234_567_890;
+
+			/// Compares tranches which were rebalanced with expected outcome for debt and reserve.
+			fn assert_rebalancing(
+				rebalance_tranches: TTranches,
+				[(debt_res, reserve_res), (debt_nonres_1, reserve_nonres_1), (debt_nonres2, reserve_nonres_2)]: &[(Balance, Balance); 3],
+			) {
+				assert_eq!(&rebalance_tranches.tranches[0].debt, debt_res);
+				assert_eq!(&rebalance_tranches.tranches[0].reserve, reserve_res);
+				assert_eq!(&rebalance_tranches.tranches[1].debt, debt_nonres_1);
+				assert_eq!(&rebalance_tranches.tranches[1].reserve, reserve_nonres_1);
+				assert_eq!(&rebalance_tranches.tranches[2].debt, debt_nonres2);
+				assert_eq!(&rebalance_tranches.tranches[2].reserve, reserve_nonres_2);
+			}
+
+			#[test]
+			fn zero_setup_works() {
+				let mut tranches = default_tranches_with_issuance();
+
+				assert_ok!(tranches.rebalance_tranches(
+					0,
+					0,
+					0,
+					&[
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+					],
+					&[(0, 0), (0, 0), (0, 0)],
+				));
+
+				assert_eq!(tranches, default_tranches_with_seniority());
+			}
+
+			// Assing zero to moment, tranche ratios as well as expected in- and outflows.
+			// As a result, target debt for non-res tranches should be zero.
+			// Thus, expect changes for res tranche debt and reserve, as well as non-res debts.
+			#[test]
+			fn no_timediff_ratios_amounts_works() {
+				let mut tranches = default_tranches_with_issuance();
+
+				assert_ok!(tranches.rebalance_tranches(
+					0,
+					TOTAL_ASSETS,
+					// arbitrary amount which does not have any effect
+					DEFAULT_NAV,
+					&[
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+					],
+					&[(0, 0), (0, 0), (0, 0)],
+				));
+
+				assert_eq!(
+					tranches,
+					default_tranches_with_debt_and_reserve(&[
+						(DEFAULT_NAV, DEBT_RES + RESERVE_RES),
+						(0, RATIO_NONRES_1),
+						(0, RATIO_NONRES_2),
+					])
+				);
+			}
+
+			#[test]
+			fn timediff_without_ratios_amounts_works() {
+				for year in 1..20 {
+					let mut tranches_no_rebalance = default_tranches_with_issuance();
+					let mut tranches_rebalance = default_tranches_with_issuance();
+
+					let seconds = year * SECS_PER_YEAR;
+					assert_ok!(&tranches_rebalance.rebalance_tranches(
+						seconds,
+						2 * TOTAL_ASSETS,
+						DEFAULT_NAV,
+						&[
+							Perquintill::from_percent(0),
+							Perquintill::from_percent(0),
+							Perquintill::from_percent(0),
+						],
+						&[(0, 0), (0, 0), (0, 0)],
+					));
+
+					// apply rate to nonres debts
+					assert_ok!(tranches_no_rebalance.tranches[1].accrue(seconds));
+					assert_ok!(tranches_no_rebalance.tranches[2].accrue(seconds));
+					let reserve_nonres_1 = tranches_no_rebalance.tranches[1].debt
+						+ tranches_no_rebalance.tranches[1].reserve;
+					let reserve_nonres_2 = tranches_no_rebalance.tranches[2].debt
+						+ tranches_no_rebalance.tranches[2].reserve;
+
+					assert_rebalancing(
+						tranches_rebalance,
+						&[
+							(
+								DEFAULT_NAV,
+								2 * TOTAL_ASSETS - reserve_nonres_1 - reserve_nonres_2,
+							),
+							(0, reserve_nonres_1),
+							(0, reserve_nonres_2),
+						],
+					);
+				}
+			}
+
+			// For failure we need to have
+			// 	* non-res rates > 0% (the higher, the easier, thus 100% for simplicity)
+			// 	* pool value (pool reserve + NAV) > ratio of the most senior non-res tranche
+			//  * non-zero reserve and NAV
+			#[test]
+			fn nav_too_low_throws() {
+				let mut tranches = default_tranches_with_issuance();
+				assert_eq!(tranches.rebalance_tranches(
+							0,
+							RESERVE_NONRES_2 + 1,
+							DEBT_NONRES_2,
+							&[
+								Perquintill::from_percent(0),
+								Perquintill::from_percent(100),
+								Perquintill::from_percent(100),
+							],
+							&[(0, 0), (0, 0), (0, 0)],
+						), Err(DispatchError::Other("Corrupted pool-state. Pool NAV should be able to handle tranche debt substraction.")));
+				assert_ok!(tranches.rebalance_tranches(
+					0,
+					RESERVE_NONRES_2 - 1,
+					DEBT_NONRES_2,
+					&[
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(100),
+						Perquintill::from_percent(100),
+					],
+					&[(0, 0), (0, 0), (0, 0)],
+				));
+			}
+
+			// NAV needs to be greater 0. Else, expected debt is zero and we expect success.
+			#[test]
+			fn reserve_too_low_throws() {
+				let mut tranches = default_tranches_with_issuance();
+				let nav = 1;
+
+				assert_eq!(tranches.rebalance_tranches(
+							0,
+							// min reserve to throw when NAV is 1
+							0,
+							nav,
+							&[
+								Perquintill::from_percent(0),
+								Perquintill::from_percent(0),
+								Perquintill::from_percent(0),
+							],
+							&[(0, 0), (0, 0), (0, 0)],
+						), Err(DispatchError::Other("Corrupted pool-state. Pool reserve should be able to handle tranche reserve substraction.")));
+
+				assert_eq!(tranches.rebalance_tranches(
+							0,
+							// max reserve to throw
+							RESERVE_NONRES_1 + RESERVE_NONRES_2 - 2,
+							// with min nav
+							nav,
+							&[
+								Perquintill::from_percent(0),
+								Perquintill::from_percent(0),
+								Perquintill::from_percent(0),
+							],
+							&[(0, 0), (0, 0), (0, 0)],
+						), Err(DispatchError::Other("Corrupted pool-state. Pool reserve should be able to handle tranche reserve substraction.")));
+
+				assert_ok!(tranches.rebalance_tranches(
+					0,
+					RESERVE_NONRES_1 + RESERVE_NONRES_2 - 1,
+					nav,
+					&[
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+					],
+					&[(0, 0), (0, 0), (0, 0)],
+				));
+			}
+
+			// Compare two setups which differ in their ratios and choose NAV such that rebalanced non-res debts and reserves are equal for same tranche in.
+			#[test]
+			fn ratios_work() {
+				let mut single_rate = default_tranches_with_issuance();
+				let mut double_rate = default_tranches_with_issuance();
+				let rates = [
+					Perquintill::from_percent(0),
+					Perquintill::from_percent(10),
+					Perquintill::from_percent(15),
+				];
+
+				assert_ok!(single_rate.rebalance_tranches(
+					0,
+					TOTAL_ASSETS,
+					DEFAULT_NAV,
+					&rates,
+					&[(0, 0), (0, 0), (0, 0)],
+				));
+				assert_ok!(double_rate.rebalance_tranches(
+					0,
+					TOTAL_ASSETS,
+					DEFAULT_NAV / 2,
+					&rates.map(|rate| rate + rate),
+					&[(0, 0), (0, 0), (0, 0)],
+				));
+
+				assert_eq!(single_rate.tranches[1].debt, double_rate.tranches[1].debt);
+				assert_eq!(
+					single_rate.tranches[1].reserve,
+					double_rate.tranches[1].reserve
+				);
+				assert_eq!(single_rate.tranches[2].debt, double_rate.tranches[2].debt);
+				assert_eq!(
+					single_rate.tranches[2].reserve,
+					double_rate.tranches[2].reserve
+				);
+			}
+
+			#[test]
+			fn executed_amounts_work() {
+				let mut tranches = default_tranches_with_issuance();
+				let amounts = [
+					(20_000_000, 10_000_000),
+					(50_000_000, 10_000_000),
+					(100_000_000, 10_000_000),
+				];
+
+				assert_ok!(tranches.rebalance_tranches(
+					0,
+					TOTAL_ASSETS,
+					DEFAULT_NAV,
+					&[
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+						Perquintill::from_percent(0),
+					],
+					&amounts
+				));
+
+				// Executed amounts only affect reserves
+				assert_eq!(
+					tranches.tranches[1].reserve,
+					RATIO_NONRES_1 + amounts[1].0 - amounts[1].1
+				);
+				assert_eq!(
+					tranches.tranches[2].reserve,
+					RATIO_NONRES_2 + amounts[2].0 - amounts[2].1
+				);
+				assert_eq!(
+					tranches.tranches[0].reserve,
+					TOTAL_ASSETS - tranches.tranches[1].reserve - tranches.tranches[2].reserve
+				);
+			}
 		}
 
 		#[test]
