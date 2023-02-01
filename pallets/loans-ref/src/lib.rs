@@ -34,7 +34,7 @@ mod pallet {
 	};
 	use types::{
 		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions, NAVDetails,
-		NAVUpdateType, RepaymentSchedule, ValuationMethod, WriteOffAction, WriteOffPolicy,
+		NAVUpdateType, RepaymentSchedule, ValuationMethod, WriteOffAction, WriteOffState,
 	};
 
 	use super::*;
@@ -176,13 +176,13 @@ mod pallet {
 		OptionQuery,
 	>;
 
-	/// Stores write off policies used in each pool
+	/// Stores write off policy used in each pool
 	#[pallet::storage]
-	pub(crate) type WriteOffPolicies<T: Config> = StorageMap<
+	pub(crate) type WriteOffPolicy<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<WriteOffPolicy<T::Rate>, T::MaxWriteOffGroups>,
+		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
 		ValueQuery,
 	>;
 
@@ -241,8 +241,8 @@ mod pallet {
 		PoolNotFound,
 		/// Emits when loan doesn't exist
 		LoanNotFound,
-		/// Emits when a policy is not found for a specific loan
-		WriteOffPolicyNotFound,
+		/// Emits when a write of state is not fount in a policy for a specific loan
+		NoValidWriteOffState,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
 		/// Emits when NFT owner doesn't match the expected owner
@@ -255,6 +255,8 @@ mod pallet {
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed
 		BorrowLoanError(BorrowLoanError),
+		/// Emits when the loan can not be written off
+		WrittenOffError(WrittenOffError),
 		/// Emits when the loan can not be closed
 		CloseLoanError(CloseLoanError),
 	}
@@ -288,6 +290,19 @@ mod pallet {
 	impl<T> From<BorrowLoanError> for Error<T> {
 		fn from(error: BorrowLoanError) -> Self {
 			Error::<T>::BorrowLoanError(error)
+		}
+	}
+
+	/// Error related to loan borrowing
+	#[derive(Encode, Decode, TypeInfo, PalletError)]
+	pub enum WrittenOffError {
+		/// Emits when maturity has not passed tried to writ off
+		MaturityDateNotPassed,
+	}
+
+	impl<T> From<WrittenOffError> for Error<T> {
+		fn from(error: WrittenOffError) -> Self {
+			Error::<T>::WrittenOffError(error)
 		}
 	}
 
@@ -438,17 +453,17 @@ mod pallet {
 			ensure_signed(origin)?;
 
 			let action = Self::mutate_active_loan(pool_id, loan_id, |loan| {
-				let policies = WriteOffPolicies::<T>::get(pool_id);
-				let policy = WriteOffPolicy::find_policy(
-					policies.iter(),
+				let states = WriteOffPolicy::<T>::get(pool_id);
+				let write_off_state = WriteOffState::find_best(
+					states.iter(),
 					loan.maturity_date(),
 					T::Time::now().as_secs(),
 				)
-				.ok_or(Error::<T>::WriteOffPolicyNotFound)?;
+				.ok_or(Error::<T>::NoValidWriteOffState)?;
 
 				let action = WriteOffAction::WriteDown {
-					percentage: policy.percentage.clone(),
-					penalty: Self::to_rate_per_sec(policy.penalty)?,
+					percentage: write_off_state.percentage.clone(),
+					penalty: Self::to_rate_per_sec(write_off_state.penalty)?,
 				};
 
 				let old_pv = loan.present_value()?;
@@ -541,13 +556,13 @@ mod pallet {
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			policies: BoundedVec<WriteOffPolicy<T::Rate>, T::MaxWriteOffGroups>,
+			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			WriteOffPolicies::<T>::insert(pool_id, policies);
+			WriteOffPolicy::<T>::insert(pool_id, policy);
 
 			Self::deposit_event(Event::<T>::WriteOffPoliciesUpdated { pool_id });
 

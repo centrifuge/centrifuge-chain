@@ -24,7 +24,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
-use super::{BorrowLoanError, CloseLoanError, Config, CreateLoanError, Error};
+use super::{BorrowLoanError, CloseLoanError, Config, CreateLoanError, Error, WrittenOffError};
 
 const SECONDS_PER_DAY: Moment = 3600 * 24;
 const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
@@ -63,7 +63,7 @@ pub enum WriteOffAction<Rate> {
 
 /// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffPolicy<Rate> {
+pub struct WriteOffState<Rate> {
 	/// Number in days after the maturity has passed at which this write off policy is valid
 	overdue_days: u32,
 
@@ -74,18 +74,18 @@ pub struct WriteOffPolicy<Rate> {
 	pub penalty: Rate,
 }
 
-impl<Rate> WriteOffPolicy<Rate> {
+impl<Rate> WriteOffState<Rate> {
 	fn is_not_overdue(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
 		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
 		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
 	}
 
-	pub fn find_policy<'a>(
-		policies: impl Iterator<Item = &'a WriteOffPolicy<Rate>>,
+	pub fn find_best<'a>(
+		policy: impl Iterator<Item = &'a WriteOffState<Rate>>,
 		maturity_date: Moment,
 		now: Moment,
-	) -> Option<&'a WriteOffPolicy<Rate>> {
-		policies
+	) -> Option<&'a WriteOffState<Rate>> {
+		policy
 			.filter_map(|p| p.is_not_overdue(maturity_date, now).ok()?.then_some(p))
 			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
 	}
@@ -461,20 +461,21 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off(&mut self, action: WriteOffAction<T::Rate>) -> DispatchResult {
 		self.ensure_can_write_off()?;
+
+		todo!()
 		/*
 		let interest_rate_per_sec = self.interest_rate_with_penalty()?;
 
 		T::InterestAccrual::reference_rate(interest_rate_per_sec)?;
 
 		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			self.info.interest_rate_per_sec,
+			interest_rate_per_sec,
 			interest_rate_per_sec,
 			self.normalized_debt,
 		)?;
 
-		T::InterestAccrual::unreference_rate(self.info.interest_rate_per_sec)?;
+		T::InterestAccrual::unreference_rate(interest_rate_per_sec)?;
 		*/
-		todo!()
 	}
 
 	pub fn close(self) -> Result<(LoanInfo<T>, T::AccountId), DispatchError> {
@@ -594,7 +595,12 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_write_off(&self) -> DispatchResult {
-		todo!()
+		ensure!(
+			T::Time::now().as_secs() > self.info.schedule.maturity.date(),
+			Error::<T>::from(WrittenOffError::MaturityDateNotPassed)
+		);
+
+		Ok(())
 	}
 
 	fn ensure_can_close(&self) -> DispatchResult {
