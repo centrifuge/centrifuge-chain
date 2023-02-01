@@ -154,7 +154,7 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	/// Contains the timestamp in blocks when the current epochs finalized.
+	/// Contains the timestamp in blocks when the current epoch is finalized.
 	//
 	// Although this value could be stored inside `EpochData`,
 	// we maintain it separately to avoid deserializing the whole EpochData struct each `on_initialize()` call.
