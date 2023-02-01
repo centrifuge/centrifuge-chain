@@ -335,19 +335,36 @@ mod tests {
 		}
 
 		#[test]
-		fn transfer() {
+		fn transfer_xcm_domain() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 				domain: Domain::Parachain(ParachainId::Moonbeam),
-				destination: [1; 32],
-				amount: 100 * CURRENCY,
+				destination: <[u8; 32]>::from_hex("1231231231231231231231231231231231231231231231231231231231231231").expect(""),
+				amount: 123 * CURRENCY,
 			};
 			let encoded = msg.encode();
 
-			let input = "0500000000000000010000000000000000000000000000000101000101010101010101010101010101010101010101010101010101010101010101000010632d5ec76b0500000000000000";
+			let input = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100123123123123123123123123123123123123123123123123123123123123123100000c6d51c8f7aa0600000000000000";
 
 			let expected = <[u8; 75]>::from_hex(input).expect("Decoding failed");
+			assert_eq!(encoded, expected);
+		}
+
+		#[test]
+		fn transfer_evm_domain() {
+			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+				domain: Domain::EVM(43114),
+				destination: <[u8; 32]>::from_hex("1231231231231231231231231231231231231231231231231231231231231231").expect(""),
+				amount: 123 * CURRENCY,
+			};
+			let encoded = msg.encode();
+
+			let input = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b006aa8000000000000123123123123123123123123123123123123123123123123123123123123123100000c6d51c8f7aa0600000000000000";
+
+			let expected = <[u8; 82]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 	}
