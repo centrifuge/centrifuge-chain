@@ -257,3 +257,15 @@ pub(crate) type LoanDetailsOf<T> = LoanDetails<AssetOf<T>, BlockNumberOf<T>>;
 pub(crate) type ActiveCount = u32;
 pub(crate) type WriteOffDetails<Rate> = (Option<u32>, Rate, Rate);
 pub(crate) type WriteOffDetailsOf<T> = WriteOffDetails<<T as Config>::Rate>;
+
+pub(crate) type RateCollectionOf<T> = <<T as Config>::InterestAccrual as InterestAccrualT<
+	<T as Config>::Rate,
+	<T as Config>::Balance,
+	Adjustment<<T as Config>::Balance>,
+>>::Rates;
+
+pub(crate) type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrualT<
+	<T as Config>::Rate,
+	<T as Config>::Balance,
+	Adjustment<<T as Config>::Balance>,
+>>::MaxRateCount;
