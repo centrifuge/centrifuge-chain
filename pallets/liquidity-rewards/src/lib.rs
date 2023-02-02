@@ -47,6 +47,7 @@ pub use cfg_traits::{
 use frame_support::{
 	pallet_prelude::*,
 	traits::tokens::{AssetId, Balance},
+	DefaultNoBound,
 };
 pub use frame_support::{
 	storage::{bounded_btree_map::BoundedBTreeMap, transactional},
@@ -55,92 +56,39 @@ pub use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
-use sp_runtime::{
-	traits::{BlockNumberProvider, Saturating, Zero},
-	FixedPointOperand,
-};
+use sp_runtime::{traits::Zero, FixedPointOperand};
 use sp_std::mem;
 use weights::WeightInfo;
 
-/// Type that contains the timestamp of an epoch.
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct EpochTimestamp<BlockNumber>(BlockNumber);
-
-pub struct FirstEpochTimestamp<Provider, Duration>(
-	sp_std::marker::PhantomData<(Provider, Duration)>,
-);
-impl<Provider, Duration, BlockNumber> Get<EpochTimestamp<BlockNumber>>
-	for FirstEpochTimestamp<Provider, Duration>
-where
-	Provider: BlockNumberProvider<BlockNumber = BlockNumber>,
-	Duration: Get<BlockNumber>,
-	BlockNumber: Saturating,
-{
-	fn get() -> EpochTimestamp<BlockNumber> {
-		EpochTimestamp(Provider::current_block_number().saturating_add(Duration::get()))
-	}
-}
-
 /// Type that contains the associated data of an epoch
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct EpochData<BlockNumber, Balance, GroupId, Weight, MaxGroups>
-where
-	MaxGroups: Get<u32>,
-	GroupId: Ord,
-{
-	duration: BlockNumber,
-	reward: Balance,
-	weights: BoundedBTreeMap<GroupId, Weight, MaxGroups>,
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
+#[scale_info(skip_type_params(T))]
+pub struct EpochData<T: Config> {
+	duration: T::BlockNumber,
+	reward: T::Balance,
+	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxGroups>,
 }
 
-impl<BlockNumber, Balance, GroupId, Weight, MaxChangesPerEpoch> Default
-	for EpochData<BlockNumber, Balance, GroupId, Weight, MaxChangesPerEpoch>
-where
-	BlockNumber: Zero,
-	Balance: Zero,
-	MaxChangesPerEpoch: Get<u32>,
-	GroupId: Ord,
-{
+impl<T: Config> Default for EpochData<T> {
 	fn default() -> Self {
 		Self {
-			duration: BlockNumber::zero(),
-			reward: Balance::zero(),
+			duration: T::InitialEpochDuration::get(),
+			reward: T::Balance::zero(),
 			weights: BoundedBTreeMap::default(),
 		}
 	}
 }
 
-/// Type that contains the stake properties of stake class
-#[derive(PartialEq, Clone, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-pub struct EpochChanges<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch>
-where
-	MaxChangesPerEpoch: Get<u32>,
-	GroupId: Ord,
-	CurrencyId: Ord,
-{
-	duration: Option<BlockNumber>,
-	reward: Option<Balance>,
-	weights: BoundedBTreeMap<GroupId, Weight, MaxChangesPerEpoch>,
-	currencies: BoundedBTreeMap<CurrencyId, GroupId, MaxChangesPerEpoch>,
-}
-
-impl<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch> Default
-	for EpochChanges<BlockNumber, Balance, GroupId, CurrencyId, Weight, MaxChangesPerEpoch>
-where
-	MaxChangesPerEpoch: Get<u32>,
-	GroupId: Ord,
-	CurrencyId: Ord,
-{
-	fn default() -> Self {
-		Self {
-			duration: None,
-			reward: None,
-			weights: BoundedBTreeMap::default(),
-			currencies: BoundedBTreeMap::default(),
-		}
-	}
+/// Type that contains the pending update.
+#[derive(
+	PartialEq, Clone, DefaultNoBound, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound,
+)]
+#[scale_info(skip_type_params(T))]
+pub struct EpochChanges<T: Config> {
+	duration: Option<T::BlockNumber>,
+	reward: Option<T::Balance>,
+	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
+	currencies: BoundedBTreeMap<T::CurrencyId, T::GroupId, T::MaxChangesPerEpoch>,
 }
 
 pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
@@ -206,39 +154,24 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+	/// Contains the timestamp in blocks when the current epoch is finalized.
+	//
 	// Although this value could be stored inside `EpochData`,
 	// we maintain it separately to avoid deserializing the whole EpochData struct each `on_initialize()` call.
 	// EpochData could be relatively big if there many groups.
-	// We dont have to deserialize the whole struct 99% of the time assuming a duration of 100 blocks,
+	// We dont have to deserialize the whole struct 99% of the time (assuming a duration of 100 blocks),
 	// we only need to perform that action when the epoch finalized, 1% of the time.
 	#[pallet::storage]
-	pub(super) type EndOfEpoch<T: Config> = StorageValue<
-		_,
-		EpochTimestamp<T::BlockNumber>,
-		ValueQuery,
-		FirstEpochTimestamp<frame_system::Pallet<T>, T::InitialEpochDuration>,
-	>;
+	pub(super) type EndOfEpoch<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
+	/// Data associated to the current epoch.
 	#[pallet::storage]
-	pub(super) type ActiveEpochData<T: Config> = StorageValue<
-		_,
-		EpochData<T::BlockNumber, T::Balance, T::GroupId, T::Weight, T::MaxGroups>,
-		ValueQuery,
-	>;
+	pub(super) type ActiveEpochData<T: Config> = StorageValue<_, EpochData<T>, ValueQuery>;
 
+	/// Pending update data used when the current epoch finalizes.
+	/// Once it's used for the update, it's reset.
 	#[pallet::storage]
-	pub(super) type NextEpochChanges<T: Config> = StorageValue<
-		_,
-		EpochChanges<
-			T::BlockNumber,
-			T::Balance,
-			T::GroupId,
-			T::CurrencyId,
-			T::Weight,
-			T::MaxChangesPerEpoch,
-		>,
-		ValueQuery,
-	>;
+	pub(super) type NextEpochChanges<T: Config> = StorageValue<_, EpochChanges<T>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -246,14 +179,7 @@ pub mod pallet {
 		NewEpoch {
 			ends_on: T::BlockNumber,
 			reward: T::Balance,
-			last_changes: EpochChanges<
-				T::BlockNumber,
-				T::Balance,
-				T::GroupId,
-				T::CurrencyId,
-				T::Weight,
-				T::MaxChangesPerEpoch,
-			>,
+			last_changes: EpochChanges<T>,
 		},
 	}
 
@@ -267,7 +193,7 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
-			let ends_on = EndOfEpoch::<T>::get().0;
+			let ends_on = EndOfEpoch::<T>::get();
 
 			if ends_on > current_block {
 				return T::DbWeight::get().reads(1);
@@ -299,9 +225,9 @@ pub mod pallet {
 						epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
 						epoch_data.duration = changes.duration.unwrap_or(epoch_data.duration);
 
-						let ends_on = ends_on.ensure_add(epoch_data.duration)?;
+						let ends_on = ends_on.max(current_block).ensure_add(epoch_data.duration)?;
 
-						EndOfEpoch::<T>::set(EpochTimestamp(ends_on));
+						EndOfEpoch::<T>::set(ends_on);
 
 						Self::deposit_event(Event::NewEpoch {
 							ends_on: ends_on,

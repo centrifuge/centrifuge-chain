@@ -9,6 +9,7 @@ use sp_runtime::{
 use crate as pallet_liquidity_rewards;
 
 pub const DOMAIN: u8 = 23;
+pub const INITIAL_EPOCH_DURATION: u64 = 23;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -69,7 +70,7 @@ impl pallet_liquidity_rewards::Config for Test {
 	type CurrencyId = u32;
 	type Domain = LiquidityDomain;
 	type GroupId = u32;
-	type InitialEpochDuration = ConstU64<0>;
+	type InitialEpochDuration = ConstU64<INITIAL_EPOCH_DURATION>;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxGroups = MaxGroups;
 	type Rewards = MockRewards;
