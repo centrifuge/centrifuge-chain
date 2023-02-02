@@ -2113,13 +2113,15 @@ pub mod test {
 			// ensure we have an interest rate lower than the the left side tranche with a lower index, e.g. lower than 10% at index 1
 			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
+			let seniority = Some(5);
+			let tranche_type = TrancheType::NonResidual {
+				interest_rate_per_sec: int_per_sec,
+				min_risk_buffer: min_risk_buffer,
+			};
 			let input = TrancheInput {
 				// setting to easily testable value for tranche replacement
-				seniority: Some(5),
-				tranche_type: TrancheType::NonResidual {
-					interest_rate_per_sec: int_per_sec,
-					min_risk_buffer: min_risk_buffer,
-				},
+				seniority,
+				tranche_type,
 				metadata: TrancheMetadata {
 					token_name: BoundedVec::<u8, TokenNameLen>::default(),
 					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
@@ -2128,15 +2130,13 @@ pub mod test {
 
 			// verify replace tranche works with interest less than prev tranche as expected
 			// replacing last tranche
-			let replace_res = tranches.replace(2, input, SECS_PER_YEAR);
-			assert!(replace_res.is_ok());
-			assert_eq!(
-				tranches
-					.get_tranche(TrancheLoc::Index(2))
-					.unwrap()
-					.seniority,
-				5
-			);
+			assert_ok!(tranches.replace(2, input, SECS_PER_YEAR));
+			assert!(tranches
+				.get_tranche(TrancheLoc::Index(2))
+				.map(|tranche| {
+					tranche.seniority == seniority.unwrap() && tranche.tranche_type == tranche_type
+				})
+				.unwrap());
 		}
 
 		// Replace must not work if new interest rate is greater than tranche w/ lower index ("next").
@@ -2170,13 +2170,7 @@ pub mod test {
 				))
 			);
 			// verify unchanged from default val
-			assert_eq!(
-				tranches
-					.get_tranche(TrancheLoc::Index(2))
-					.unwrap()
-					.seniority,
-				0
-			);
+			assert_eq!(tranches.tranches[2], default_tranches().tranches[2]);
 		}
 
 		// Replace should work if new interest rate is greater than tranche w/ higher index ("following").
@@ -2189,20 +2183,33 @@ pub mod test {
 			let int_per_sec = Rate::saturating_from_rational(6u64, 100)
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
+			let seniority = Some(5);
+			let tranche_type = TrancheType::NonResidual {
+				interest_rate_per_sec: int_per_sec,
+				min_risk_buffer: min_risk_buffer,
+			};
 			let input = TrancheInput {
-				seniority: Some(5),
-				tranche_type: TrancheType::NonResidual {
-					interest_rate_per_sec: int_per_sec,
-					min_risk_buffer: min_risk_buffer,
-				},
+				seniority,
+				tranche_type,
 				metadata: TrancheMetadata {
 					token_name: BoundedVec::<u8, TokenNameLen>::default(),
 					token_symbol: BoundedVec::<u8, TokenSymLen>::default(),
 				},
 			};
 
-			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
-			assert!(replace_res.is_ok());
+			assert_ok!(tranches.replace(1, input, SECS_PER_YEAR));
+			assert!(tranches
+				.get_tranche(TrancheLoc::Index(1))
+				.map(|tranche| {
+					tranche.seniority == seniority.unwrap() && tranche.tranche_type == tranche_type
+				})
+				.unwrap());
+			let removed_tranche = &default_tranches().tranches[1];
+			assert!(tranches
+				.tranches
+				.iter()
+				.find(|tranche| tranche == &removed_tranche)
+				.is_none());
 		}
 
 		// Replace must not work if new interest rate is lower than tranche w/ greater index ("following").
@@ -2227,9 +2234,8 @@ pub mod test {
 				},
 			};
 
-			let replace_res = tranches.replace(1, input, SECS_PER_YEAR);
 			assert_eq!(
-				replace_res,
+				tranches.replace(1, input, SECS_PER_YEAR),
 				Err(DispatchError::Other(
 					"Invalid following tranche type. This should be catched somewhere else."
 				))
