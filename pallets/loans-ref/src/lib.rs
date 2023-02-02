@@ -33,8 +33,9 @@ mod pallet {
 		ArithmeticError, FixedPointOperand,
 	};
 	use types::{
-		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions, NAVDetails,
-		NAVUpdateType, RepaymentSchedule, ValuationMethod, WriteOffAction, WriteOffState,
+		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions,
+		PortfolioValuation, PortfolioValuationUpdateType, RepaymentSchedule, ValuationMethod,
+		WriteOffAction, WriteOffState,
 	};
 
 	use super::*;
@@ -185,10 +186,10 @@ mod pallet {
 		ValueQuery,
 	>;
 
-	/// Stores the pool NAV associated to each pool
+	/// Stores the portfolio valuation associated to each pool
 	#[pallet::storage]
-	pub(crate) type PoolNAV<T: Config> =
-		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Balance>, ValueQuery>;
+	pub(crate) type LatestPortfolioValuations<T: Config> =
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, PortfolioValuation<T::Balance>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -223,11 +224,11 @@ mod pallet {
 			loan_id: T::LoanId,
 			collateral: AssetOf<T>,
 		},
-		/// The NAV for a pool was updated.
-		NAVUpdated {
+		/// The Portfolio Valuation for a pool was updated.
+		PortfolioValuationUpdated {
 			pool_id: PoolIdOf<T>,
-			nav: T::Balance,
-			update_type: NAVUpdateType,
+			value: T::Balance,
+			update_type: PortfolioValuationUpdateType,
 		},
 		WriteOffPoliciesUpdated {
 			pool_id: PoolIdOf<T>,
@@ -384,7 +385,7 @@ mod pallet {
 						loan.borrow(amount)?;
 						let new_pv = loan.present_value()?;
 
-						Self::update_nav_with_pv(pool_id, Zero::zero(), new_pv)
+						Self::update_portfolio_valuation_with_pv(pool_id, Zero::zero(), new_pv)
 					})?
 				}
 				None => Self::mutate_active_loan(pool_id, loan_id, |loan| {
@@ -394,7 +395,7 @@ mod pallet {
 					loan.borrow(amount)?;
 					let new_pv = loan.present_value()?;
 
-					Self::update_nav_with_pv(pool_id, old_pv, new_pv)
+					Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)
 				})?,
 			};
 
@@ -426,7 +427,7 @@ mod pallet {
 				let amount = loan.repay(amount)?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_nav_with_pv(pool_id, old_pv, new_pv)?;
+				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)?;
 
 				Ok(amount)
 			})?;
@@ -469,7 +470,7 @@ mod pallet {
 				loan.write_off(action.clone())?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_nav_with_pv(pool_id, old_pv, new_pv)?;
+				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)?;
 
 				Ok(action)
 			})?;
@@ -499,7 +500,7 @@ mod pallet {
 				loan.write_off(action.clone())?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_nav_with_pv(pool_id, old_pv, new_pv)
+				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -570,11 +571,14 @@ mod pallet {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn update_nave(origin: OriginFor<T>, pool_id: PoolIdOf<T>) -> DispatchResult {
+		pub fn update_portfolio_valuation(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+		) -> DispatchResult {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			Self::update_nav_for_pool(pool_id)
+			Self::update_portfolio_valuation_for_pool(pool_id)
 		}
 	}
 
@@ -622,34 +626,37 @@ mod pallet {
 			T::InterestAccrual::convert_additive_rate_to_per_sec(rate_per_year)
 		}
 
-		fn update_nav_with_pv(
+		fn update_portfolio_valuation_with_pv(
 			pool_id: PoolIdOf<T>,
 			old_pv: T::Balance,
 			new_pv: T::Balance,
 		) -> DispatchResult {
-			let nav = PoolNAV::<T>::try_mutate(pool_id, |nav| -> Result<_, ArithmeticError> {
-				nav.latest = match new_pv > old_pv {
-					// borrow
-					true => nav.latest.ensure_add(new_pv.ensure_sub(old_pv)?)?,
-					// repay
-					false => nav.latest.ensure_sub(old_pv.ensure_sub(new_pv)?)?,
-				};
-
-				Ok(nav.latest)
-			})?;
-
-			Self::deposit_event(Event::<T>::NAVUpdated {
+			let value = LatestPortfolioValuations::<T>::try_mutate(
 				pool_id,
-				nav,
-				update_type: NAVUpdateType::Inexact,
+				|valuation| -> Result<_, ArithmeticError> {
+					valuation.value = match new_pv > old_pv {
+						// borrow
+						true => valuation.value.ensure_add(new_pv.ensure_sub(old_pv)?)?,
+						// repay
+						false => valuation.value.ensure_sub(old_pv.ensure_sub(new_pv)?)?,
+					};
+
+					Ok(valuation.value)
+				},
+			)?;
+
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+				pool_id,
+				value,
+				update_type: PortfolioValuationUpdateType::Inexact,
 			});
 
 			Ok(())
 		}
 
-		fn update_nav_for_pool(pool_id: PoolIdOf<T>) -> DispatchResult {
+		fn update_portfolio_valuation_for_pool(pool_id: PoolIdOf<T>) -> DispatchResult {
 			let now = T::Time::now().as_secs();
-			let nav = ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+			let value = ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				active_loans.iter_mut().try_fold(
 					T::Balance::zero(),
 					|sum, active_loan| -> Result<_, DispatchError> {
@@ -659,18 +666,18 @@ mod pallet {
 				)
 			})?;
 
-			PoolNAV::<T>::insert(
+			LatestPortfolioValuations::<T>::insert(
 				pool_id,
-				NAVDetails {
-					latest: nav,
+				PortfolioValuation {
+					value,
 					last_updated: now,
 				},
 			);
 
-			Self::deposit_event(Event::<T>::NAVUpdated {
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 				pool_id,
-				nav,
-				update_type: NAVUpdateType::Exact,
+				value,
+				update_type: PortfolioValuationUpdateType::Exact,
 			});
 
 			Ok(())

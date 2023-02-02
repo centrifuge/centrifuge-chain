@@ -29,28 +29,28 @@ use super::{BorrowLoanError, CloseLoanError, Config, CreateLoanError, Error, Wri
 const SECONDS_PER_DAY: Moment = 3600 * 24;
 const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
 
-// NAV (Net Asset Value) information.
+// Portfolio valuation information.
 // It will be updated on these scenarios:
-//   1. When we are calculating pool NAV.
+//   1. When we are calculating portfolio valuation for a pool.
 //   2. When there is borrow or repay or write off on a loan under this pool
-// So NAV could be:
+// So the portfolio valuation could be:
 //	 - Approximate when current time != last_updated
 //	 - Exact when current time == last_updated
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
-pub struct NAVDetails<Balance> {
-	// Latest computed NAV for the given pool
-	pub latest: Balance,
+pub struct PortfolioValuation<Balance> {
+	// Latest computed portfolio valuation for the given pool
+	pub value: Balance,
 
-	// Last time when the NAV was calculated for the entire pool
+	// Last time when the portfolio valuation was calculated for the entire pool
 	pub last_updated: Moment,
 }
 
-/// Information about how the nav was updated
+/// Information about how the portfolio valuation was updated
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum NAVUpdateType {
-	/// NAV was fully recomputed to an exact value
+pub enum PortfolioValuationUpdateType {
+	/// Portfolio Valuation was fully recomputed to an exact value
 	Exact,
-	/// NAV was updated inexactly based on loan status changes
+	/// Portfolio Valuation was updated inexactly based on loan status changes
 	Inexact,
 }
 
