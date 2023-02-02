@@ -2139,6 +2139,12 @@ pub mod test {
 					tranche.seniority == seniority.unwrap() && tranche.tranche_type == tranche_type
 				})
 				.unwrap());
+			let removed_tranche = &default_tranches().tranches[2];
+			assert!(tranches
+				.tranches
+				.iter()
+				.find(|tranche| tranche == &removed_tranche)
+				.is_none());
 		}
 
 		// Replace must not work if new interest rate is greater than tranche w/ lower index ("next").
