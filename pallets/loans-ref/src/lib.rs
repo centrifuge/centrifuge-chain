@@ -53,7 +53,6 @@ mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Identify a curreny.
-		/// Used to specify [`PoolReserve`] and [`Permisions`].
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		/// Identify an non fungible collection
@@ -84,7 +83,7 @@ mod pallet {
 			+ Copy
 			+ AsRef<[u8]>;
 
-		/// Used to generate [`LoanId`] identifiers
+		/// Used to generate [`Self::LoanId`] identifiers
 		type Hasher: StorageHasher<Output = Self::LoanId>;
 
 		/// Defines the rate type used for math computations
