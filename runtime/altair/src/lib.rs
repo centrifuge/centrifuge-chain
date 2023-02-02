@@ -1501,6 +1501,7 @@ pub type Executive = frame_executive::Executive<
 		pallet_preimage::migration::v1::Migration<Runtime>,
 		pallet_democracy::migrations::v1::Migration<Runtime>,
 		pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
+		pallet_interest_accrual::migrations::v2::Migration<Runtime>,
 	),
 >;
 

@@ -35,7 +35,7 @@ use std::fmt::Debug;
 use cfg_primitives::Moment;
 use cfg_traits::{
 	InterestAccrual as InterestAccrualT, Permissions as PermissionsT, PoolInspect,
-	PoolNAV as TPoolNav, PoolReserve,
+	PoolNAV as TPoolNav, PoolReserve, RateCollection,
 };
 pub use cfg_types::{
 	adjustments::Adjustment,
@@ -449,8 +449,8 @@ pub mod pallet {
 		/// Collateral NFT is transferred back to the loan owner.
 		/// Loan NFT is transferred back to LoanAccount.
 		#[pallet::weight(
-			<T as Config>::WeightInfo::repay_and_close(T::MaxActiveLoansPerPool::get()).max(
-				<T as Config>::WeightInfo::write_off_and_close(T::MaxActiveLoansPerPool::get())
+			<T as Config>::WeightInfo::repay_and_close(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()).max(
+				<T as Config>::WeightInfo::write_off_and_close(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get())
 			)
 		)]
 		#[transactional]
@@ -474,9 +474,9 @@ pub mod pallet {
 			});
 
 			let weight = if written_off {
-				T::WeightInfo::write_off_and_close(active_count)
+				T::WeightInfo::write_off_and_close(active_count, MaxRateCountOf::<T>::get())
 			} else {
-				T::WeightInfo::repay_and_close(active_count)
+				T::WeightInfo::repay_and_close(active_count, MaxRateCountOf::<T>::get())
 			};
 			Ok(Some(weight).into())
 		}
@@ -492,8 +492,8 @@ pub mod pallet {
 		/// Pool NAV is updated to reflect new present value of the loan.
 		/// Amount of tokens of an Asset will be transferred from pool reserve to loan owner.
 		#[pallet::weight(
-			<T as Config>::WeightInfo::initial_borrow(T::MaxActiveLoansPerPool::get()).max(
-				<T as Config>::WeightInfo::further_borrows(T::MaxActiveLoansPerPool::get())
+			<T as Config>::WeightInfo::initial_borrow(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()).max(
+				<T as Config>::WeightInfo::further_borrows(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get())
 			)
 		)]
 		#[transactional]
@@ -513,9 +513,9 @@ pub mod pallet {
 			});
 
 			let weight = if first_borrow {
-				T::WeightInfo::initial_borrow(active_count)
+				T::WeightInfo::initial_borrow(active_count, MaxRateCountOf::<T>::get())
 			} else {
-				T::WeightInfo::further_borrows(active_count)
+				T::WeightInfo::further_borrows(active_count, MaxRateCountOf::<T>::get())
 			};
 			Ok(Some(weight).into())
 		}
@@ -526,7 +526,7 @@ pub mod pallet {
 		/// Loan is accrued before transferring the amount to reserve.
 		/// If the repaying amount is more than current debt, only current debt is transferred.
 		/// Amount of token will be transferred from owner to Pool reserve.
-		#[pallet::weight(<T as Config>::WeightInfo::repay(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::weight(<T as Config>::WeightInfo::repay(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
 		#[transactional]
 		pub fn repay(
 			origin: OriginFor<T>,
@@ -541,7 +541,11 @@ pub mod pallet {
 				loan_id,
 				amount: total_repaid,
 			});
-			Ok(Some(T::WeightInfo::repay(active_count)).into())
+			Ok(Some(T::WeightInfo::repay(
+				active_count,
+				MaxRateCountOf::<T>::get(),
+			))
+			.into())
 		}
 
 		/// Set pricing for the loan with loan specific details like Rate, Loan type
@@ -551,7 +555,7 @@ pub mod pallet {
 		/// `interset_rate_per_year` is the anual interest rate, in the form 0.XXXX,
 		///     such that an APR of XX.YY% becomes 0.XXYY. Valid values are 0.0001
 		///     through 0.9999, with no more than four significant figures.
-		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
 		pub fn price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -601,7 +605,11 @@ pub mod pallet {
 				loan_type,
 			});
 
-			Ok(Some(T::WeightInfo::price(active_count)).into())
+			Ok(Some(T::WeightInfo::price(
+				active_count,
+				MaxRateCountOf::<T>::get(),
+			))
+			.into())
 		}
 
 		/// Updates the NAV for a given pool
@@ -613,7 +621,7 @@ pub mod pallet {
 		/// So instead, we calculate weight for one loan. We assume a maximum of 200 loans and deposit that weight
 		/// Once the NAV calculation is done, we check how many loans we have updated and return the actual weight so that
 		/// transaction payment can return the deposit.
-		#[pallet::weight(T::WeightInfo::update_nav(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::weight(T::WeightInfo::update_nav(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
 		pub fn update_nav(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -627,7 +635,11 @@ pub mod pallet {
 				update_type: NAVUpdateType::Exact,
 			});
 
-			Ok(Some(T::WeightInfo::update_nav(active_count)).into())
+			Ok(Some(T::WeightInfo::update_nav(
+				active_count,
+				MaxRateCountOf::<T>::get(),
+			))
+			.into())
 		}
 
 		/// Appends a new write off group to the Pool
@@ -682,7 +694,7 @@ pub mod pallet {
 		///
 		/// Weight is calculated for one group. Since there is no extra read or writes for groups more than 1,
 		/// We need to ensure we are charging the reads and write only once but the actual compute to be equal to number of groups processed
-		#[pallet::weight(<T as Config>::WeightInfo::write_off(T::MaxActiveLoansPerPool::get(), T::MaxWriteOffGroups::get()))]
+		#[pallet::weight(<T as Config>::WeightInfo::write_off(T::MaxActiveLoansPerPool::get(), T::MaxWriteOffGroups::get(), MaxRateCountOf::<T>::get()))]
 		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -708,7 +720,12 @@ pub mod pallet {
 			let count = write_off_group_index
 				.expect("non-admin write off always returns an index. qed")
 				+ 1;
-			Ok(Some(T::WeightInfo::write_off(active_count, count)).into())
+			Ok(Some(T::WeightInfo::write_off(
+				active_count,
+				count,
+				MaxRateCountOf::<T>::get(),
+			))
+			.into())
 		}
 
 		/// Write off an loan from admin origin
@@ -720,7 +737,7 @@ pub mod pallet {
 		/// Admin can write off loan with any index potentially going up the index or down.
 		///
 		/// `penalty_interest_rate_per_year` is specified in the same format as used for pricing loans.
-		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
 		pub fn admin_write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -752,7 +769,11 @@ pub mod pallet {
 				penalty_interest_rate_per_sec,
 				write_off_group_index: None,
 			});
-			Ok(Some(T::WeightInfo::admin_write_off(active_count)).into())
+			Ok(Some(T::WeightInfo::admin_write_off(
+				active_count,
+				MaxRateCountOf::<T>::get(),
+			))
+			.into())
 		}
 	}
 }
