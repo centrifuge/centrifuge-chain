@@ -269,7 +269,7 @@ fn activate_test_loan_with_rate<T: Config>(
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
-	let rp: <T as pallet::Config>::Rate = Rate::saturating_from_rational(rate, 5000).into();
+	let rp: <T as pallet::Config>::Rate = interest_rate(rate).into();
 	LoansPallet::<T>::price(
 		RawOrigin::Signed(borrower).into(),
 		pool_id,
@@ -318,7 +318,7 @@ where
 {
 	let mut collateral = None;
 	for idx in 1..rates {
-		let rate = Rate::saturating_from_rational(idx, 5000).into();
+		let rate = interest_rate(idx).into();
 		InterestAccrualPallet::<T>::reference_yearly_rate(rate)
 			.expect("Must be able to reference dummy interest rates");
 	}
@@ -331,6 +331,13 @@ where
 		activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner, rates);
 	}
 	collateral
+}
+
+fn interest_rate(rate: u32) -> Rate {
+	// denominator here needs to be greater than the total number of
+	// rates, and not so large as to create fractions that are too
+	// small for the interest-accrual validation.
+	Rate::saturating_from_rational(rate, 5000)
 }
 
 benchmarks! {

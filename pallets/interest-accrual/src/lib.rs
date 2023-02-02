@@ -54,7 +54,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::{InterestAccrual, RateCollection};
+use cfg_traits::{
+	ops::{EnsureAddAssign, EnsureDiv, EnsureInto},
+	InterestAccrual, RateCollection,
+};
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};
@@ -226,7 +229,7 @@ pub mod pallet {
 			let rates: Vec<_> = rates
 				.into_iter()
 				.filter_map(|rate| {
-					weight = weight.saturating_add(T::Weights::calculate_accumulated_rate(bits));
+					weight.saturating_accrue(T::Weights::calculate_accumulated_rate(bits));
 
 					let RateDetailsOf::<T> {
 						interest_rate_per_sec,
@@ -280,15 +283,11 @@ pub mod pallet {
 				return Err(Error::<T>::NotInPast.into());
 			}
 			let delta = now - when;
-			let rate_adjustment = checked_pow(interest_rate_per_sec, delta as usize)
+			let rate_adjustment = checked_pow(interest_rate_per_sec, delta.ensure_into()?)
 				.ok_or(ArithmeticError::Overflow)?;
-			let past_rate = rate
-				.accumulated_rate
-				.checked_div(&rate_adjustment)
-				.ok_or(ArithmeticError::Underflow)?;
-			let debt = Self::calculate_debt(normalized_debt, past_rate)
-				.ok_or(Error::<T>::DebtCalculationFailed)?;
-			Ok(debt)
+			let past_rate = rate.accumulated_rate.ensure_div(rate_adjustment)?;
+			Self::calculate_debt(normalized_debt, past_rate)
+				.ok_or(Error::<T>::DebtCalculationFailed.into())
 		}
 
 		pub fn do_adjust_normalized_debt(
@@ -390,7 +389,7 @@ pub mod pallet {
 			Rates::<T>::try_mutate(|rates| {
 				for rate in rates.iter_mut() {
 					if rate.interest_rate_per_sec == interest_rate_per_sec {
-						rate.reference_count += 1;
+						rate.reference_count.ensure_add_assign(1)?;
 						return Ok(());
 					}
 				}
@@ -417,7 +416,7 @@ pub mod pallet {
 					.0;
 				rates[idx].reference_count = rates[idx].reference_count.saturating_sub(1);
 				if rates[idx].reference_count == 0 {
-					rates.remove(idx);
+					rates.swap_remove(idx);
 				}
 				Ok(())
 			})
@@ -426,11 +425,10 @@ pub mod pallet {
 		pub fn get_rate(
 			interest_rate_per_sec: T::InterestRate,
 		) -> Result<RateDetailsOf<T>, DispatchError> {
-			let rate = Rates::<T>::get()
+			Rates::<T>::get()
 				.into_iter()
 				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
-				.ok_or(Error::<T>::NoSuchRate)?;
-			Ok(rate)
+				.ok_or(Error::<T>::NoSuchRate.into())
 		}
 
 		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
