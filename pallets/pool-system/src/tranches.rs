@@ -843,8 +843,10 @@ where
 			// initial supply * accrued interest
 			let total_issuance = Tokens::total_issuance(tranche.currency.into());
 
-			if pool_is_zero || total_issuance.is_zero() {
+			if total_issuance.is_zero() {
 				Ok(One::one())
+			} else if pool_is_zero {
+				Ok(Zero::zero())
 			} else if tranche.tranche_type == TrancheType::Residual {
 				Ok(BalanceRatio::ensure_from_rational(
 					remaining_assets,
@@ -2669,7 +2671,7 @@ pub mod test {
 				assert_eq!(
 					default_tranches()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(0, SECS_PER_YEAR),
-					Ok(vec![Rate::one(), Rate::one(), Rate::one(),])
+					Ok(vec![Rate::zero(), Rate::zero(), Rate::zero(),])
 				);
 			}
 
@@ -2680,7 +2682,6 @@ pub mod test {
 					type AssetId = TrancheCurrency;
 					type Balance = u128;
 
-					/// Mock value is sum of asset.pool_id and 100_000_0000.
 					fn total_issuance(_asset: Self::AssetId) -> Self::Balance {
 						Self::Balance::zero()
 					}
