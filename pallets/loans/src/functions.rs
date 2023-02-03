@@ -564,15 +564,13 @@ impl<T: Config> Pallet<T> {
 	/// accrues rate and debt of a given loan and updates it
 	/// returns the present value of the loan accounting any write offs
 	pub(crate) fn accrue_debt_and_calculate_present_value(
+		rates: &RateCollectionOf<T>,
 		active_loan: &mut PricedLoanDetailsOf<T>,
 		write_off_groups: &[WriteOffGroup<T::Rate>],
 	) -> Result<T::Balance, DispatchError> {
 		let interest_rate_with_penalty = Self::rate_with_penalty(active_loan, write_off_groups);
 
-		let debt = T::InterestAccrual::current_debt(
-			interest_rate_with_penalty,
-			active_loan.normalized_debt,
-		)?;
+		let debt = rates.current_debt(interest_rate_with_penalty, active_loan.normalized_debt)?;
 
 		let now: Moment = Self::now();
 		active_loan.last_updated = now;
@@ -589,6 +587,7 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 	) -> Result<(ActiveCount, T::Balance), DispatchError> {
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+		let rates = T::InterestAccrual::rates();
 
 		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 			// Loop over all loans and sum all present values, to calculate the Net Asset Value (NAV)
@@ -596,6 +595,7 @@ impl<T: Config> Pallet<T> {
 				Zero::zero(),
 				|sum, active_loan| -> Result<T::Balance, DispatchError> {
 					let present_value = Self::accrue_debt_and_calculate_present_value(
+						&rates,
 						active_loan,
 						&write_off_groups,
 					)?;

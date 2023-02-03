@@ -210,7 +210,12 @@ pub trait CurrencyPrice<CurrencyId> {
 
 /// A trait that can be used to calculate interest accrual for debt
 pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
+	/// The maximum number of rates this `InterestAccrual` can
+	/// contain. It is necessary for rate calculations in consumers of
+	/// this pallet, but is otherwise unused in this interface.
+	type MaxRateCount: Get<u32>;
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
+	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
 
 	/// Calculate the current debt using normalized debt * cumulative rate
 	fn current_debt(
@@ -261,6 +266,19 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	fn convert_additive_rate_to_per_sec(
 		interset_rate_per_year: InterestRate,
 	) -> Result<InterestRate, DispatchError>;
+
+	/// Returns a collection of pre-computed rates to perform multiple operations with
+	fn rates() -> Self::Rates;
+}
+
+/// A collection of pre-computed interest rates for performing interest accrual
+pub trait RateCollection<InterestRate, Balance, NormalizedDebt> {
+	/// Calculate the current debt using normalized debt * cumulative rate
+	fn current_debt(
+		&self,
+		interest_rate_per_sec: InterestRate,
+		normalized_debt: NormalizedDebt,
+	) -> Result<Balance, DispatchError>;
 }
 
 pub trait Permissions<AccountId> {
