@@ -54,13 +54,6 @@ pub enum PortfolioValuationUpdateType {
 	Inexact,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum WriteOffAction<Rate> {
-	WriteOff,
-	WriteDown { percentage: Rate, penalty: Rate },
-	WriteUp { percentage: Rate, penalty: Rate },
-}
-
 /// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffState<Rate> {
@@ -70,53 +63,45 @@ pub struct WriteOffState<Rate> {
 	/// Percentage of present value we are going to write off on a loan
 	pub percentage: Rate,
 
-	/// Additional interest that accrues on the written off loan as penalty per year
+	/// Additional interest that accrues on the written off loan as penalty
 	pub penalty: Rate,
 }
 
-impl<Rate> WriteOffState<Rate> {
+impl<Rate> WriteOffState<Rate>
+where
+	Rate: FixedPointNumber,
+{
 	fn is_not_overdue(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
 		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
 		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
 	}
 
-	pub fn find_best<'a>(
-		policy: impl Iterator<Item = &'a WriteOffState<Rate>>,
+	pub fn find_best(
+		policy: impl Iterator<Item = WriteOffState<Rate>>,
 		maturity_date: Moment,
 		now: Moment,
-	) -> Option<&'a WriteOffState<Rate>> {
+	) -> Option<WriteOffState<Rate>> {
 		policy
 			.filter_map(|p| p.is_not_overdue(maturity_date, now).ok()?.then_some(p))
 			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
 	}
+
+	pub fn status(&self) -> WriteOffStatus<Rate> {
+		WriteOffStatus {
+			percentage: self.percentage,
+			penalty: self.penalty,
+		}
+	}
 }
 
 /// Diferent kinds of write off status that a loan can be
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-pub enum WriteOffStatus<Rate> {
-	/// The loan has not been written down at all.
-	None,
+#[derive(Encode, Decode, Clone, PartialEq, Default, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct WriteOffStatus<Rate> {
+	/// Percentage of present value we are going to write off on a loan
+	pub percentage: Rate,
 
-	/// Written down by a admin
-	WrittenDownByPolicy {
-		/// Percentage of present value we are going to write off on a loan
-		percentage: Rate,
-
-		/// Additional interest that accrues on the written down loan as penalty per sec
-		penalty: Rate,
-	},
-
-	/// Written down by an admin
-	WrittenDownByAdmin {
-		/// Percentage of present value we are going to write off on a loan
-		percentage: Rate,
-
-		/// Additional interest that accrues on the written down loan as penalty per sec
-		penalty: Rate,
-	},
-
-	/// Written down totally: 100% percentage, 0% penalty.
-	WrittenOff,
+	/// Additional interest that accrues on the written down loan as penalty per sec
+	pub penalty: Rate,
 }
 
 impl<Rate> WriteOffStatus<Rate>
@@ -124,28 +109,18 @@ where
 	Rate: FixedPointNumber,
 {
 	pub fn penalize_rate(&self, rate: Rate) -> Result<Rate, ArithmeticError> {
-		match self {
-			WriteOffStatus::None => Ok(rate),
-			WriteOffStatus::WrittenDownByPolicy { penalty, .. } => rate.ensure_add(*penalty),
-			WriteOffStatus::WrittenDownByAdmin { penalty, .. } => rate.ensure_add(*penalty),
-			WriteOffStatus::WrittenOff => Ok(rate), //TODO: check if this is correct
-		}
+		self.penalty.ensure_add(rate)
 	}
 
 	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
 		debt: Balance,
 	) -> Result<Balance, ArithmeticError> {
-		match self {
-			WriteOffStatus::None => Ok(debt),
-			WriteOffStatus::WrittenDownByPolicy { percentage, .. } => {
-				debt.ensure_sub(percentage.ensure_mul_int(debt)?)
-			}
-			WriteOffStatus::WrittenDownByAdmin { percentage, .. } => {
-				debt.ensure_sub(percentage.ensure_mul_int(debt)?)
-			}
-			WriteOffStatus::WrittenOff => Ok(Balance::zero()),
-		}
+		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
+	}
+
+	pub fn is_none(&self) -> bool {
+		self.percentage.is_zero() && self.penalty.is_zero()
 	}
 }
 
@@ -418,7 +393,7 @@ impl<T: Config> ActiveLoan<T> {
 			loan_id,
 			info,
 			borrower,
-			written_off_status: WriteOffStatus::None,
+			written_off_status: WriteOffStatus::default(),
 			origination_date: now,
 			normalized_debt: T::Balance::zero(),
 			total_borrowed: T::Balance::zero(),
@@ -459,23 +434,36 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(amount)
 	}
 
-	pub fn write_off(&mut self, action: WriteOffAction<T::Rate>) -> DispatchResult {
-		self.ensure_can_write_off()?;
+	pub fn write_off(
+		&mut self,
+		limit: &WriteOffState<T::Rate>,
+		new_status: &WriteOffStatus<T::Rate>,
+	) -> DispatchResult {
+		self.ensure_can_write_off(limit, new_status)?;
 
-		todo!()
-		/*
-		let interest_rate_per_sec = self.interest_rate_with_penalty()?;
+		/* TODO
+		self.written_off_status = new_status.clone();
 
-		T::InterestAccrual::reference_rate(interest_rate_per_sec)?;
+		let prev_interest_rate = self.interest_rate_with_penalty()?;
+		let next_interest_rate = self
+			.info
+			.interest_rate_per_sec
+			.ensure_add(new_status.penalty)?;
+
+		T::InterestAccrual::reference_rate(next_interest_rate)?;
 
 		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			interest_rate_per_sec,
-			interest_rate_per_sec,
+			prev_interest_rate,
+			next_interest_rate,
 			self.normalized_debt,
 		)?;
 
-		T::InterestAccrual::unreference_rate(interest_rate_per_sec)?;
+		T::InterestAccrual::unreference_rate(prev_interest_rate)?;
+
+		self.last_updated = T::Time::now().as_secs();
 		*/
+
+		Ok(())
 	}
 
 	pub fn close(self) -> Result<(LoanInfo<T>, T::AccountId), DispatchError> {
@@ -559,15 +547,6 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
-		match self.info.restrictions.borrows {
-			BorrowRestrictions::WrittenOff => {
-				ensure!(
-					matches!(self.written_off_status, WriteOffStatus::None),
-					Error::<T>::from(BorrowLoanError::WrittenOffRestriction)
-				)
-			}
-		}
-
 		ensure!(
 			amount <= self.max_borrow_amount()?,
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
@@ -578,26 +557,44 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
+		match self.info.restrictions.borrows {
+			BorrowRestrictions::WrittenOff => {
+				ensure!(
+					self.written_off_status.is_none(),
+					Error::<T>::from(BorrowLoanError::WrittenOffRestriction)
+				)
+			}
+		}
+
 		Ok(())
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		match self.info.restrictions.repayments {
-			RepayRestrictions::None => (),
-		};
-
 		let current_debt = T::InterestAccrual::current_debt(
 			self.info.interest_rate_per_sec,
 			self.normalized_debt,
 		)?;
 
+		match self.info.restrictions.repayments {
+			RepayRestrictions::None => (),
+		};
+
 		Ok(amount.min(current_debt))
 	}
 
-	fn ensure_can_write_off(&self) -> DispatchResult {
+	fn ensure_can_write_off(
+		&self,
+		limit: &WriteOffState<T::Rate>,
+		status: &WriteOffStatus<T::Rate>,
+	) -> DispatchResult {
 		ensure!(
 			T::Time::now().as_secs() > self.info.schedule.maturity.date(),
 			Error::<T>::from(WrittenOffError::MaturityDateNotPassed)
+		);
+
+		ensure!(
+			status.percentage >= limit.percentage && status.penalty >= limit.penalty,
+			Error::<T>::from(WrittenOffError::LessThanPolicy)
 		);
 
 		Ok(())

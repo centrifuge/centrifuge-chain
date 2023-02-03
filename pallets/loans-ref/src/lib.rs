@@ -6,6 +6,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 mod pallet {
+	use cfg_primitives::Moment;
 	use cfg_traits::{
 		ops::{EnsureAdd, EnsureSub},
 		InterestAccrual, Permissions, PoolInspect, PoolReserve,
@@ -35,7 +36,7 @@ mod pallet {
 	use types::{
 		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions,
 		PortfolioValuation, PortfolioValuationUpdateType, RepaymentSchedule, ValuationMethod,
-		WriteOffAction, WriteOffState,
+		WriteOffState, WriteOffStatus,
 	};
 
 	use super::*;
@@ -216,7 +217,7 @@ mod pallet {
 		WrittenOff {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			action: WriteOffAction<T::Rate>,
+			status: WriteOffStatus<T::Rate>,
 		},
 		/// A loan was closed
 		Closed {
@@ -298,6 +299,8 @@ mod pallet {
 	pub enum WrittenOffError {
 		/// Emits when maturity has not passed tried to writ off
 		MaturityDateNotPassed,
+		/// Emits when a write off action tries to write off the more than the policy allows
+		LessThanPolicy,
 	}
 
 	impl<T> From<WrittenOffError> for Error<T> {
@@ -452,33 +455,23 @@ mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let action = Self::mutate_active_loan(pool_id, loan_id, |loan| {
-				let states = WriteOffPolicy::<T>::get(pool_id);
-				let write_off_state = WriteOffState::find_best(
-					states.iter(),
-					loan.maturity_date(),
-					T::Time::now().as_secs(),
-				)
-				.ok_or(Error::<T>::NoValidWriteOffState)?;
-
-				let action = WriteOffAction::WriteDown {
-					percentage: write_off_state.percentage.clone(),
-					penalty: Self::to_rate_per_sec(write_off_state.penalty)?,
-				};
+			let status = Self::mutate_active_loan(pool_id, loan_id, |loan| {
+				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
+				let status = limit.status();
 
 				let old_pv = loan.present_value()?;
-				loan.write_off(action.clone())?;
+				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
 				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)?;
 
-				Ok(action)
+				Ok(status)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
 				pool_id,
 				loan_id,
-				action,
+				status,
 			});
 
 			Ok(())
@@ -490,14 +483,22 @@ mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			action: WriteOffAction<T::Rate>,
+			percentage: T::Rate,
+			penalty: T::Rate,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
 
+			let status = WriteOffStatus {
+				percentage,
+				penalty: Self::to_rate_per_sec(penalty)?,
+			};
+
 			Self::mutate_active_loan(pool_id, loan_id, |loan| {
+				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
+
 				let old_pv = loan.present_value()?;
-				loan.write_off(action.clone())?;
+				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
 				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)
@@ -506,7 +507,7 @@ mod pallet {
 			Self::deposit_event(Event::<T>::WrittenOff {
 				pool_id,
 				loan_id,
-				action,
+				status,
 			});
 
 			Ok(())
@@ -556,11 +557,16 @@ mod pallet {
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
+			mut policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
 			Self::ensure_pool_exists(pool_id)?;
+
+			policy.iter_mut().try_for_each(|state| -> DispatchResult {
+				state.penalty = Self::to_rate_per_sec(state.penalty)?;
+				Ok(())
+			})?;
 
 			WriteOffPolicy::<T>::insert(pool_id, policy);
 
@@ -624,6 +630,18 @@ mod pallet {
 
 		fn to_rate_per_sec(rate_per_year: T::Rate) -> Result<T::Rate, DispatchError> {
 			T::InterestAccrual::convert_additive_rate_to_per_sec(rate_per_year)
+		}
+
+		fn find_write_off_state(
+			pool_id: PoolIdOf<T>,
+			maturity_date: Moment,
+		) -> Result<WriteOffState<T::Rate>, DispatchError> {
+			WriteOffState::find_best(
+				WriteOffPolicy::<T>::get(pool_id).into_iter(),
+				maturity_date,
+				T::Time::now().as_secs(),
+			)
+			.ok_or(Error::<T>::NoValidWriteOffState.into())
 		}
 
 		fn update_portfolio_valuation_with_pv(
