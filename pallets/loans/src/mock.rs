@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pool_system::pool_types::{PoolDetails, PoolLocator, ScheduledUpdateDetails};
+use pallet_pool_system::pool_types::{PoolDetails, ScheduledUpdateDetails};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -42,7 +42,7 @@ use sp_runtime::{
 };
 
 use crate as pallet_loans;
-use crate::test_utils::{FundsAccount, JuniorTrancheId, SeniorTrancheId};
+use crate::test_utils::FundsAccount;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -442,16 +442,6 @@ impl TestExternalitiesBuilder {
 		// add pool account with 1000 balance with currencyId 1
 		orml_tokens::GenesisConfig::<Runtime> {
 			balances: vec![
-				(
-					PoolLocator { pool_id: 0 }.into_account_truncating(),
-					CurrencyId::Tranche(0, JuniorTrancheId::get()),
-					100_000 * CURRENCY,
-				),
-				(
-					PoolLocator { pool_id: 0 }.into_account_truncating(),
-					CurrencyId::Tranche(0, SeniorTrancheId::get()),
-					100_000 * CURRENCY,
-				),
 				(7, USD, 100 * CURRENCY),
 				(
 					FundsAccount::get().into_account_truncating(),
