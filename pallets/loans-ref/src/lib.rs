@@ -460,10 +460,13 @@ mod pallet {
 				let status = limit.status();
 
 				let old_pv = loan.present_value()?;
+				loan.update_time(T::Time::now().as_secs());
+				let current_pv = loan.present_value()?;
 				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)?;
+				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, current_pv)?;
+				Self::update_portfolio_valuation_with_pv(pool_id, current_pv, new_pv)?;
 
 				Ok(status)
 			})?;
@@ -529,11 +532,10 @@ mod pallet {
 
 			Self::ensure_loan_borrower(&who, &borrower)?;
 
-			info.deactivate()?;
-
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
+			info.deactivate()?;
 			ClosedLoans::<T>::insert(
 				pool_id,
 				loan_id,
@@ -665,7 +667,7 @@ mod pallet {
 
 			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 				pool_id,
-				value,
+				value, // TODO: only if old_pv != new_pv
 				update_type: PortfolioValuationUpdateType::Inexact,
 			});
 

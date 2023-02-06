@@ -441,9 +441,6 @@ impl<T: Config> ActiveLoan<T> {
 	) -> DispatchResult {
 		self.ensure_can_write_off(limit, new_status)?;
 
-		/* TODO
-		self.written_off_status = new_status.clone();
-
 		let prev_interest_rate = self.interest_rate_with_penalty()?;
 		let next_interest_rate = self
 			.info
@@ -460,8 +457,7 @@ impl<T: Config> ActiveLoan<T> {
 
 		T::InterestAccrual::unreference_rate(prev_interest_rate)?;
 
-		self.last_updated = T::Time::now().as_secs();
-		*/
+		self.written_off_status = new_status.clone();
 
 		Ok(())
 	}
@@ -479,7 +475,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let debt = self.debt()?;
+		let debt = self.last_debt()?;
 		let debt = self.written_off_status.write_down(debt)?;
 
 		match &self.info.valuation_method {
@@ -520,7 +516,7 @@ impl<T: Config> ActiveLoan<T> {
 			.penalize_rate(self.info.interest_rate_per_sec)
 	}
 
-	fn debt(&self) -> Result<T::Balance, DispatchError> {
+	fn last_debt(&self) -> Result<T::Balance, DispatchError> {
 		if self.last_updated == T::Time::now().as_secs() {
 			T::InterestAccrual::current_debt(self.info.interest_rate_per_sec, self.normalized_debt)
 		} else {
