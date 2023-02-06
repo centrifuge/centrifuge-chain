@@ -355,6 +355,28 @@ impl<T: Config> LoanInfo<T> {
 	}
 }
 
+/// Data containing a loan that has been created but is not active yet.
+#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct CreatedLoan<T: Config> {
+	/// Loan information
+	pub info: LoanInfo<T>,
+
+	/// Borrower account that created this loan
+	pub borrower: T::AccountId,
+}
+
+/// Data containing a closed loan for historical purposes.
+#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct ClosedLoan<T: Config> {
+	/// Block when the loan was closed
+	pub closed_at: T::BlockNumber,
+
+	/// Loan information
+	pub info: LoanInfo<T>,
+}
+
 /// Data containing an active loan.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -402,103 +424,6 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
-		self.ensure_can_borrow(amount)?;
-
-		self.total_borrowed.ensure_add_assign(amount)?;
-
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate_per_sec,
-			self.normalized_debt,
-			Adjustment::Increase(amount),
-		)?;
-
-		self.last_updated = T::Time::now().as_secs();
-
-		Ok(())
-	}
-
-	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		let amount = self.ensure_can_repay(amount)?;
-
-		self.total_repaid.ensure_add_assign(amount)?;
-
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate_per_sec,
-			self.normalized_debt,
-			Adjustment::Decrease(amount),
-		)?;
-
-		self.last_updated = T::Time::now().as_secs();
-
-		Ok(amount)
-	}
-
-	pub fn write_off(
-		&mut self,
-		limit: &WriteOffState<T::Rate>,
-		new_status: &WriteOffStatus<T::Rate>,
-	) -> DispatchResult {
-		self.ensure_can_write_off(limit, new_status)?;
-
-		let prev_interest_rate = self.interest_rate_with_penalty()?;
-		let next_interest_rate = self
-			.info
-			.interest_rate_per_sec
-			.ensure_add(new_status.penalty)?;
-
-		T::InterestAccrual::reference_rate(next_interest_rate)?;
-
-		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			prev_interest_rate,
-			next_interest_rate,
-			self.normalized_debt,
-		)?;
-
-		T::InterestAccrual::unreference_rate(prev_interest_rate)?;
-
-		self.written_off_status = new_status.clone();
-
-		Ok(())
-	}
-
-	pub fn close(self) -> Result<(LoanInfo<T>, T::AccountId), DispatchError> {
-		self.ensure_can_close()?;
-
-		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)?;
-
-		Ok((self.info, self.borrower))
-	}
-
-	pub fn update_time(&mut self, moment: Moment) {
-		self.last_updated = moment
-	}
-
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let debt = self.last_debt()?;
-		let debt = self.written_off_status.write_down(debt)?;
-
-		match &self.info.valuation_method {
-			ValuationMethod::DiscountedCashFlows(dcf) => {
-				// If the loan is overdue, there are no future cash flows to discount,
-				// hence we use the outstanding debt as the value.
-				let maturity_date = self.info.schedule.maturity.date();
-				if self.last_updated > maturity_date {
-					return Ok(debt);
-				}
-
-				Ok(dcf.compute_present_value(
-					debt,
-					self.last_updated,
-					self.interest_rate_with_penalty()?,
-					self.origination_date,
-					maturity_date,
-				)?)
-			}
-			ValuationMethod::OutstandingDebt => Ok(debt),
-		}
-	}
-
 	pub fn loan_id(&self) -> T::LoanId {
 		self.loan_id
 	}
@@ -525,6 +450,31 @@ impl<T: Config> ActiveLoan<T> {
 				self.normalized_debt,
 				self.last_updated,
 			)
+		}
+	}
+
+	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
+		let debt = self.last_debt()?;
+		let debt = self.written_off_status.write_down(debt)?;
+
+		match &self.info.valuation_method {
+			ValuationMethod::DiscountedCashFlows(dcf) => {
+				// If the loan is overdue, there are no future cash flows to discount,
+				// hence we use the outstanding debt as the value.
+				let maturity_date = self.info.schedule.maturity.date();
+				if self.last_updated > maturity_date {
+					return Ok(debt);
+				}
+
+				Ok(dcf.compute_present_value(
+					debt,
+					self.last_updated,
+					self.interest_rate_with_penalty()?,
+					self.origination_date,
+					maturity_date,
+				)?)
+			}
+			ValuationMethod::OutstandingDebt => Ok(debt),
 		}
 	}
 
@@ -604,26 +554,76 @@ impl<T: Config> ActiveLoan<T> {
 
 		Ok(())
 	}
-}
 
-/// Data containing a loan that has been created but is not active yet.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(T))]
-pub struct CreatedLoan<T: Config> {
-	/// Loan information
-	pub info: LoanInfo<T>,
+	pub fn update_time(&mut self, moment: Moment) {
+		self.last_updated = moment
+	}
 
-	/// Borrower account that created this loan
-	pub borrower: T::AccountId,
-}
+	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
+		self.ensure_can_borrow(amount)?;
 
-/// Data containing a closed loan for historical purposes.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(T))]
-pub struct ClosedLoan<T: Config> {
-	/// Block when the loan was closed
-	pub closed_at: T::BlockNumber,
+		self.total_borrowed.ensure_add_assign(amount)?;
 
-	/// Loan information
-	pub info: LoanInfo<T>,
+		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+			self.info.interest_rate_per_sec,
+			self.normalized_debt,
+			Adjustment::Increase(amount),
+		)?;
+
+		self.last_updated = T::Time::now().as_secs();
+
+		Ok(())
+	}
+
+	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
+		let amount = self.ensure_can_repay(amount)?;
+
+		self.total_repaid.ensure_add_assign(amount)?;
+
+		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+			self.info.interest_rate_per_sec,
+			self.normalized_debt,
+			Adjustment::Decrease(amount),
+		)?;
+
+		self.last_updated = T::Time::now().as_secs();
+
+		Ok(amount)
+	}
+
+	pub fn write_off(
+		&mut self,
+		limit: &WriteOffState<T::Rate>,
+		new_status: &WriteOffStatus<T::Rate>,
+	) -> DispatchResult {
+		self.ensure_can_write_off(limit, new_status)?;
+
+		let prev_interest_rate = self.interest_rate_with_penalty()?;
+		let next_interest_rate = self
+			.info
+			.interest_rate_per_sec
+			.ensure_add(new_status.penalty)?;
+
+		T::InterestAccrual::reference_rate(next_interest_rate)?;
+
+		self.normalized_debt = T::InterestAccrual::renormalize_debt(
+			prev_interest_rate,
+			next_interest_rate,
+			self.normalized_debt,
+		)?;
+
+		T::InterestAccrual::unreference_rate(prev_interest_rate)?;
+
+		self.written_off_status = new_status.clone();
+
+		Ok(())
+	}
+
+	pub fn close(self) -> Result<(LoanInfo<T>, T::AccountId), DispatchError> {
+		self.ensure_can_close()?;
+
+		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)?;
+
+		Ok((self.info, self.borrower))
+	}
 }
