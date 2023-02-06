@@ -397,7 +397,7 @@ mod pallet {
 					Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 					let old_pv = loan.present_value()?;
-					loan.update_time(T::Time::now().as_secs());
+					loan.update_time(Self::now());
 					loan.borrow(amount)?;
 					let new_pv = loan.present_value()?;
 
@@ -430,7 +430,7 @@ mod pallet {
 				Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 				let old_pv = loan.present_value()?;
-				loan.update_time(T::Time::now().as_secs());
+				loan.update_time(Self::now());
 				let amount = loan.repay(amount)?;
 				let new_pv = loan.present_value()?;
 
@@ -464,7 +464,7 @@ mod pallet {
 				let status = limit.status();
 
 				let old_pv = loan.present_value()?;
-				loan.update_time(T::Time::now().as_secs());
+				loan.update_time(Self::now());
 				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
@@ -503,7 +503,7 @@ mod pallet {
 				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
 
 				let old_pv = loan.present_value()?;
-				loan.update_time(T::Time::now().as_secs());
+				loan.update_time(Self::now());
 				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
@@ -598,6 +598,10 @@ mod pallet {
 
 	/// Utility methods
 	impl<T: Config> Pallet<T> {
+		fn now() -> Moment {
+			T::Time::now().as_secs()
+		}
+
 		fn ensure_role(pool_id: PoolIdOf<T>, who: &T::AccountId, role: PoolRole) -> DispatchResult {
 			T::Permissions::has(
 				PermissionScope::Pool(pool_id),
