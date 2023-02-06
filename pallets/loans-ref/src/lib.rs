@@ -319,6 +319,10 @@ mod pallet {
 		}
 	}
 
+	/// Creates a new loan against the collateral provided
+	///
+	/// The origin must be the owner of the collateral.
+	/// This collateral will be transferred to the existing pool.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
@@ -368,6 +372,13 @@ mod pallet {
 			Ok(())
 		}
 
+		/// Transfers borrow amount to the borrower.
+		///
+		/// The origin must be the borrower of the loan.
+		/// The borrow action should fulfill the borrow restrictions configured at [`LoanRestrictions`].
+		/// The `amount` will be transferred from pool reserve to borrower.
+		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
+		/// Rate accumulation will start after the first borrow.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn borrow(
@@ -402,6 +413,13 @@ mod pallet {
 			Ok(())
 		}
 
+		/// Transfers amount borrowed to the pool reserve.
+		///
+		/// The origin must be the borrower of the loan.
+		/// If the repaying amount is more than current debt, only current debt is transferred.
+		/// The borrow action should fulfill the borrow restrictions configured at [`LoanRestrictions`].
+		/// The `amount` will be transferred from borrower to pool reserve.
+		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn repay(
@@ -428,6 +446,12 @@ mod pallet {
 			Ok(())
 		}
 
+		/// Writes off an overdue loan.
+		///
+		/// This action will write off based on the write off policy configured by
+		/// [`Pallet::update_write_off_policy()`].
+		/// No especial permisions are required to this call.
+		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn write_off(
@@ -455,6 +479,11 @@ mod pallet {
 			Ok(())
 		}
 
+		/// Writes off a loan from admin origin.
+		///
+		/// Forces a writing off of a loan if the `percentage` and `penalty` parameters
+		/// respect the policy values as the minimum.
+		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn admin_write_off(
@@ -486,6 +515,10 @@ mod pallet {
 			Ok(())
 		}
 
+		/// Closes a given loan
+		///
+		/// A loan only can be closed if it's fully repaid by the loan borrower.
+		/// Closing a loan gives back the collateral used for the loan to the borrower .
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn close(
@@ -516,6 +549,10 @@ mod pallet {
 			Ok(())
 		}
 
+		/// Updates the write off policy.
+		///
+		/// The write off policy is used to automatically set a write off minimum value to the
+		/// loan.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn update_write_off_policy(
@@ -539,6 +576,7 @@ mod pallet {
 			Ok(())
 		}
 
+		/// Updates the porfolio valuation for the given pool
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn update_portfolio_valuation(
