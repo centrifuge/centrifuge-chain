@@ -538,7 +538,7 @@ mod pallet {
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
-			ClosedLoans::<T>::insert(pool_id, loan_id, ClosedLoan::new(info));
+			ClosedLoans::<T>::insert(pool_id, loan_id, ClosedLoan::new(info)?);
 
 			Self::deposit_event(Event::<T>::Closed {
 				pool_id,

@@ -141,10 +141,6 @@ impl<Rate> WriteOffStatus<Rate>
 where
 	Rate: FixedPointNumber,
 {
-	pub fn penalize_rate(&self, rate: Rate) -> Result<Rate, ArithmeticError> {
-		self.penalty.ensure_add(rate)
-	}
-
 	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
 		debt: Balance,
@@ -336,8 +332,8 @@ pub struct LoanInfo<T: Config> {
 	/// Restrictions of this loan
 	restrictions: LoanRestrictions<T::Rate>,
 
-	/// Interest rate per second
-	base_interest_rate: T::Rate,
+	/// Interest rate per second with any penalty applied
+	interest_rate: T::Rate,
 }
 
 impl<T: Config> LoanInfo<T> {
@@ -355,7 +351,7 @@ impl<T: Config> LoanInfo<T> {
 			collateral_value,
 			valuation_method,
 			restrictions,
-			base_interest_rate: T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?,
+			interest_rate: T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?,
 		};
 
 		loan_info.validate(T::Time::now().as_secs())?;
@@ -363,8 +359,8 @@ impl<T: Config> LoanInfo<T> {
 		Ok(loan_info)
 	}
 
-	pub fn deactivate(&mut self) {
-		T::InterestAccrual::unreference_rate(self.base_interest_rate).ok();
+	pub fn deactivate(&mut self) -> DispatchResult {
+		T::InterestAccrual::unreference_rate(self.interest_rate)
 	}
 
 	pub fn collateral(&self) -> AssetOf<T> {
@@ -409,13 +405,13 @@ pub struct ClosedLoan<T: Config> {
 }
 
 impl<T: Config> ClosedLoan<T> {
-	pub fn new(mut info: LoanInfo<T>) -> Self {
-		info.deactivate();
+	pub fn new(mut info: LoanInfo<T>) -> Result<Self, DispatchError> {
+		info.deactivate()?;
 
-		Self {
+		Ok(Self {
 			closed_at: frame_system::Pallet::<T>::current_block_number(),
 			info,
-		}
+		})
 	}
 }
 
@@ -478,20 +474,23 @@ impl<T: Config> ActiveLoan<T> {
 		self.info.schedule.maturity.date()
 	}
 
-	fn interest_rate_with_penalty(&self) -> Result<T::Rate, ArithmeticError> {
-		self.written_off_status
-			.penalize_rate(self.info.base_interest_rate)
+	/// Returns a penalized version of the interest rate in an absolutely way.
+	/// This method first unpenalized the rate based on the current write off status before
+	/// penalize it with the input parameter.
+	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization.
+	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
+		self.info
+			.interest_rate
+			.ensure_sub(self.written_off_status.penalty)?
+			.ensure_add(penalty)
 	}
 
 	fn last_debt(&self) -> Result<T::Balance, DispatchError> {
 		if self.last_updated == T::Time::now().as_secs() {
-			T::InterestAccrual::current_debt(
-				self.interest_rate_with_penalty()?,
-				self.normalized_debt,
-			)
+			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)
 		} else {
 			T::InterestAccrual::previous_debt(
-				self.interest_rate_with_penalty()?,
+				self.info.interest_rate,
 				self.normalized_debt,
 				self.last_updated,
 			)
@@ -514,7 +513,7 @@ impl<T: Config> ActiveLoan<T> {
 				Ok(dcf.compute_present_value(
 					debt,
 					self.last_updated,
-					self.interest_rate_with_penalty()?,
+					self.info.interest_rate,
 					self.origination_date,
 					maturity_date,
 				)?)
@@ -531,7 +530,7 @@ impl<T: Config> ActiveLoan<T> {
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
 				.saturating_sub(T::InterestAccrual::current_debt(
-					self.interest_rate_with_penalty()?,
+					self.info.interest_rate,
 					self.normalized_debt,
 				)?),
 		})
@@ -561,10 +560,8 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		let current_debt = T::InterestAccrual::current_debt(
-			self.interest_rate_with_penalty()?,
-			self.normalized_debt,
-		)?;
+		let current_debt =
+			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)?;
 
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),
@@ -612,7 +609,7 @@ impl<T: Config> ActiveLoan<T> {
 		self.total_borrowed.ensure_add_assign(amount)?;
 
 		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.interest_rate_with_penalty()?,
+			self.info.interest_rate,
 			self.normalized_debt,
 			Adjustment::Increase(amount),
 		)?;
@@ -626,7 +623,7 @@ impl<T: Config> ActiveLoan<T> {
 		self.total_repaid.ensure_add_assign(amount)?;
 
 		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.interest_rate_with_penalty()?,
+			self.info.interest_rate,
 			self.normalized_debt,
 			Adjustment::Decrease(amount),
 		)?;
@@ -641,9 +638,8 @@ impl<T: Config> ActiveLoan<T> {
 	) -> DispatchResult {
 		self.ensure_can_write_off(limit, new_status)?;
 
-		let prev_interest_rate = self.interest_rate_with_penalty()?;
-		self.written_off_status = new_status.clone();
-		let next_interest_rate = self.interest_rate_with_penalty()?;
+		let prev_interest_rate = self.info.interest_rate;
+		let next_interest_rate = self.interest_rate_with(new_status.penalty)?;
 
 		T::InterestAccrual::reference_rate(next_interest_rate)?;
 
@@ -652,14 +648,14 @@ impl<T: Config> ActiveLoan<T> {
 			next_interest_rate,
 			self.normalized_debt,
 		)?;
+		self.written_off_status = new_status.clone();
+		self.info.interest_rate = next_interest_rate;
 
 		T::InterestAccrual::unreference_rate(prev_interest_rate)
 	}
 
 	pub fn close(self) -> Result<(LoanInfo<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
-
-		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)?;
 
 		Ok((self.info, self.borrower))
 	}
