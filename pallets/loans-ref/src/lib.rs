@@ -7,10 +7,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 mod pallet {
 	use cfg_primitives::Moment;
-	use cfg_traits::{
-		ops::{EnsureAdd, EnsureSub},
-		InterestAccrual, Permissions, PoolInspect, PoolReserve,
-	};
+	use cfg_traits::{ops::EnsureAdd, InterestAccrual, Permissions, PoolInspect, PoolReserve};
 	use cfg_types::{
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
@@ -31,7 +28,7 @@ mod pallet {
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
 		traits::{BadOrigin, BlockNumberProvider, Zero},
-		ArithmeticError, FixedPointOperand,
+		FixedPointOperand,
 	};
 	use types::{
 		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions,
@@ -384,22 +381,33 @@ mod pallet {
 			match CreatedLoans::<T>::take(pool_id, loan_id) {
 				Some(loan) => {
 					Self::ensure_loan_borrower(&who, &loan.borrower)?;
-					Self::make_active_loan(pool_id, loan_id, loan.info, loan.borrower, |loan| {
-						loan.borrow(amount)?;
-						let new_pv = loan.present_value()?;
+					Self::make_active_loan(
+						pool_id,
+						loan_id,
+						loan.info,
+						loan.borrower,
+						|loan, portfolio| {
+							loan.borrow(amount)?;
+							let new_pv = loan.present_value()?;
 
-						Self::update_portfolio_valuation_with_pv(pool_id, Zero::zero(), new_pv)
-					})?
+							Self::update_portfolio_valuation_with_pv(
+								pool_id,
+								portfolio,
+								Zero::zero(),
+								new_pv,
+							)
+						},
+					)?
 				}
-				None => Self::mutate_active_loan(pool_id, loan_id, |loan| {
+				None => Self::mutate_active_loan(pool_id, loan_id, |loan, portfolio| {
 					Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 					let old_pv = loan.present_value()?;
-					loan.update_time();
+					loan.update_time(T::Time::now().as_secs());
 					loan.borrow(amount)?;
 					let new_pv = loan.present_value()?;
 
-					Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)
+					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)
 				})?,
 			};
 
@@ -424,15 +432,15 @@ mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let amount = Self::mutate_active_loan(pool_id, loan_id, |loan| {
+			let amount = Self::mutate_active_loan(pool_id, loan_id, |loan, portfolio| {
 				Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 				let old_pv = loan.present_value()?;
-				loan.update_time();
+				loan.update_time(T::Time::now().as_secs());
 				let amount = loan.repay(amount)?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)?;
+				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
 
 				Ok(amount)
 			})?;
@@ -457,16 +465,16 @@ mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let status = Self::mutate_active_loan(pool_id, loan_id, |loan| {
+			let status = Self::mutate_active_loan(pool_id, loan_id, |loan, portfolio| {
 				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
 				let status = limit.status();
 
 				let old_pv = loan.present_value()?;
-				loan.update_time();
+				loan.update_time(T::Time::now().as_secs());
 				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)?;
+				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
 
 				Ok(status)
 			})?;
@@ -497,15 +505,15 @@ mod pallet {
 				penalty: Self::to_rate_per_sec(penalty)?,
 			};
 
-			Self::mutate_active_loan(pool_id, loan_id, |loan| {
+			Self::mutate_active_loan(pool_id, loan_id, |loan, portfolio| {
 				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
 
 				let old_pv = loan.present_value()?;
-				loan.update_time();
+				loan.update_time(T::Time::now().as_secs());
 				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)
+				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -587,7 +595,18 @@ mod pallet {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			Self::update_portfolio_valuation_for_pool(pool_id)
+			let now = T::Time::now().as_secs();
+			let value = Self::portfolio_valuation_for_pool(pool_id)?;
+
+			LatestPortfolioValuations::<T>::insert(pool_id, PortfolioValuation::new(value, now));
+
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+				pool_id,
+				value,
+				update_type: PortfolioValuationUpdateType::Exact,
+			});
+
+			Ok(())
 		}
 	}
 
@@ -649,59 +668,32 @@ mod pallet {
 
 		fn update_portfolio_valuation_with_pv(
 			pool_id: PoolIdOf<T>,
+			portfolio: &mut PortfolioValuation<T::Balance>,
 			old_pv: T::Balance,
 			new_pv: T::Balance,
 		) -> DispatchResult {
-			let value = LatestPortfolioValuations::<T>::try_mutate(
-				pool_id,
-				|valuation| -> Result<_, ArithmeticError> {
-					valuation.value = match new_pv > old_pv {
-						// borrow
-						true => valuation.value.ensure_add(new_pv.ensure_sub(old_pv)?)?,
-						// repay
-						false => valuation.value.ensure_sub(old_pv.ensure_sub(new_pv)?)?,
-					};
+			let prev_value = portfolio.value();
 
-					Ok(valuation.value)
-				},
-			)?;
+			portfolio.update_with_pv_diff(old_pv, new_pv)?;
 
-			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
-				pool_id,
-				value, // TODO: only if old_pv != new_pv
-				update_type: PortfolioValuationUpdateType::Inexact,
-			});
+			if prev_value != portfolio.value() {
+				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+					pool_id,
+					value: portfolio.value(),
+					update_type: PortfolioValuationUpdateType::Inexact,
+				});
+			}
 
 			Ok(())
 		}
 
-		fn update_portfolio_valuation_for_pool(pool_id: PoolIdOf<T>) -> DispatchResult {
-			let now = T::Time::now().as_secs();
-			let value = ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-				active_loans.iter_mut().try_fold(
-					T::Balance::zero(),
-					|sum, active_loan| -> Result<_, DispatchError> {
-						active_loan.update_time();
-						Ok(sum.ensure_add(active_loan.present_value()?)?)
-					},
-				)
-			})?;
-
-			LatestPortfolioValuations::<T>::insert(
-				pool_id,
-				PortfolioValuation {
-					value,
-					last_updated: now,
+		fn portfolio_valuation_for_pool(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+			ActiveLoans::<T>::get(pool_id).into_iter().try_fold(
+				T::Balance::zero(),
+				|sum, active_loan| -> Result<T::Balance, DispatchError> {
+					Ok(sum.ensure_add(active_loan.present_value()?)?)
 				},
-			);
-
-			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
-				pool_id,
-				value,
-				update_type: PortfolioValuationUpdateType::Exact,
-			});
-
-			Ok(())
+			)
 		}
 
 		fn make_active_loan<F, R>(
@@ -712,19 +704,26 @@ mod pallet {
 			f: F,
 		) -> Result<R, DispatchError>
 		where
-			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
+			F: FnOnce(
+				&mut ActiveLoan<T>,
+				&mut PortfolioValuation<T::Balance>,
+			) -> Result<R, DispatchError>,
 		{
-			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-				let now = T::Time::now().as_secs();
+			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
+				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+					let now = T::Time::now().as_secs();
+					let index = active_loans.len();
 
-				let index = active_loans.len();
-				active_loans
-					.try_push(ActiveLoan::new(loan_id, info, borrower, now))
-					.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
+					active_loans
+						.try_push(ActiveLoan::new(loan_id, info, borrower, now))
+						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
-				f(active_loans
-					.get_mut(index)
-					.ok_or(DispatchError::Other("Expect an active loan at given index"))?)
+					let loan = active_loans
+						.get_mut(index)
+						.ok_or(DispatchError::Other("Expect an active loan at given index"))?;
+
+					f(loan, portfolio)
+				})
 			})
 		}
 
@@ -734,15 +733,24 @@ mod pallet {
 			f: F,
 		) -> Result<R, DispatchError>
 		where
-			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
+			F: FnOnce(
+				&mut ActiveLoan<T>,
+				&mut PortfolioValuation<T::Balance>,
+			) -> Result<R, DispatchError>,
 		{
-			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-				let active_loan = active_loans
-					.iter_mut()
-					.find(|active_loan| active_loan.loan_id() == loan_id)
-					.ok_or(Error::<T>::LoanNotFound)?;
+			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
+				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+					let active_loan = active_loans
+						.iter_mut()
+						.find(|active_loan| active_loan.loan_id() == loan_id)
+						.ok_or(Error::<T>::LoanNotFound)?;
 
-				f(active_loan)
+					// Ensure we have the correct last_updated value before given
+					// the active_loan to the user callback.
+					active_loan.update_time(portfolio.last_updated());
+
+					f(active_loan, portfolio)
+				})
 			})
 		}
 

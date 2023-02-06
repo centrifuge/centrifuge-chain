@@ -2,7 +2,7 @@ use cfg_primitives::Moment;
 use cfg_traits::{
 	ops::{
 		EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul,
-		EnsureSub,
+		EnsureSub, EnsureSubAssign,
 	},
 	InterestAccrual,
 };
@@ -23,6 +23,7 @@ use sp_runtime::{
 	traits::{One, Zero},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
+use sp_std::cmp::Ordering;
 
 use super::{BorrowLoanError, CloseLoanError, Config, CreateLoanError, Error, WrittenOffError};
 
@@ -38,11 +39,43 @@ const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
 //	 - Exact when current time == last_updated
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct PortfolioValuation<Balance> {
-	// Latest computed portfolio valuation for the given pool
-	pub value: Balance,
+	// Computed portfolio valuation for the given pool
+	value: Balance,
 
 	// Last time when the portfolio valuation was calculated for the entire pool
-	pub last_updated: Moment,
+	last_updated: Moment,
+}
+
+impl<Balance> PortfolioValuation<Balance>
+where
+	Balance: tokens::Balance,
+{
+	pub fn new(value: Balance, when: Moment) -> Self {
+		Self {
+			value,
+			last_updated: when,
+		}
+	}
+
+	pub fn value(&self) -> Balance {
+		self.value
+	}
+
+	pub fn last_updated(&self) -> Moment {
+		self.last_updated
+	}
+
+	pub fn update_with_pv_diff(
+		&mut self,
+		old_pv: Balance,
+		new_pv: Balance,
+	) -> Result<(), ArithmeticError> {
+		match new_pv.cmp(&old_pv) {
+			Ordering::Greater => self.value.ensure_add_assign(new_pv.ensure_sub(old_pv)?),
+			Ordering::Less => self.value.ensure_sub_assign(old_pv.ensure_sub(new_pv)?),
+			Ordering::Equal => Ok(()),
+		}
+	}
 }
 
 /// Information about how the portfolio valuation was updated
@@ -555,8 +588,10 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn update_time(&mut self) {
-		self.last_updated = T::Time::now().as_secs()
+	pub fn update_time(&mut self, when: Moment) {
+		if when > self.last_updated {
+			self.last_updated = when;
+		}
 	}
 
 	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
