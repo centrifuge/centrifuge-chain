@@ -27,7 +27,7 @@ mod pallet {
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
-		traits::{BadOrigin, BlockNumberProvider, Zero},
+		traits::{BadOrigin, Zero},
 		FixedPointOperand,
 	};
 	use types::{
@@ -528,7 +528,7 @@ mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (mut info, borrower) = match CreatedLoans::<T>::take(pool_id, loan_id) {
+			let (info, borrower) = match CreatedLoans::<T>::take(pool_id, loan_id) {
 				Some(loan) => (loan.info, loan.borrower),
 				None => Self::take_active_loan(pool_id, loan_id)?.close()?,
 			};
@@ -538,15 +538,7 @@ mod pallet {
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
-			info.deactivate()?;
-			ClosedLoans::<T>::insert(
-				pool_id,
-				loan_id,
-				ClosedLoan {
-					closed_at: frame_system::Pallet::<T>::current_block_number(),
-					info,
-				},
-			);
+			ClosedLoans::<T>::insert(pool_id, loan_id, ClosedLoan::new(info));
 
 			Self::deposit_event(Event::<T>::Closed {
 				pool_id,

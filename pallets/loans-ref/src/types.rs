@@ -20,7 +20,7 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, Saturating};
 use sp_runtime::{
-	traits::{One, Zero},
+	traits::{BlockNumberProvider, One, Zero},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::cmp::Ordering;
@@ -402,10 +402,21 @@ pub struct CreatedLoan<T: Config> {
 #[scale_info(skip_type_params(T))]
 pub struct ClosedLoan<T: Config> {
 	/// Block when the loan was closed
-	pub closed_at: T::BlockNumber,
+	closed_at: T::BlockNumber,
 
 	/// Loan information
-	pub info: LoanInfo<T>,
+	info: LoanInfo<T>,
+}
+
+impl<T: Config> ClosedLoan<T> {
+	pub fn new(mut info: LoanInfo<T>) -> Self {
+		info.deactivate();
+
+		Self {
+			closed_at: frame_system::Pallet::<T>::current_block_number(),
+			info,
+		}
+	}
 }
 
 /// Data containing an active loan.
