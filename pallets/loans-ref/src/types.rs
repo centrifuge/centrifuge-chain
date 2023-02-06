@@ -477,7 +477,7 @@ impl<T: Config> ActiveLoan<T> {
 	/// Returns a penalized version of the interest rate in an absolutely way.
 	/// This method first unpenalized the rate based on the current write off status before
 	/// penalize it with the input parameter.
-	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization.
+	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization
 	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
 		self.info
 			.interest_rate
@@ -485,7 +485,7 @@ impl<T: Config> ActiveLoan<T> {
 			.ensure_add(penalty)
 	}
 
-	fn last_debt(&self) -> Result<T::Balance, DispatchError> {
+	fn last_updated_debt(&self) -> Result<T::Balance, DispatchError> {
 		if self.last_updated == T::Time::now().as_secs() {
 			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)
 		} else {
@@ -498,7 +498,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let debt = self.last_debt()?;
+		let debt = self.last_updated_debt()?;
 		let debt = self.written_off_status.write_down(debt)?;
 
 		match &self.info.valuation_method {
