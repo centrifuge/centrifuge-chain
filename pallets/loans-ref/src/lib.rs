@@ -395,6 +395,7 @@ mod pallet {
 					Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 					let old_pv = loan.present_value()?;
+					loan.update_time();
 					loan.borrow(amount)?;
 					let new_pv = loan.present_value()?;
 
@@ -427,6 +428,7 @@ mod pallet {
 				Self::ensure_loan_borrower(&who, &loan.borrower())?;
 
 				let old_pv = loan.present_value()?;
+				loan.update_time();
 				let amount = loan.repay(amount)?;
 				let new_pv = loan.present_value()?;
 
@@ -460,13 +462,11 @@ mod pallet {
 				let status = limit.status();
 
 				let old_pv = loan.present_value()?;
-				loan.update_time(T::Time::now().as_secs());
-				let current_pv = loan.present_value()?;
+				loan.update_time();
 				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
-				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, current_pv)?;
-				Self::update_portfolio_valuation_with_pv(pool_id, current_pv, new_pv)?;
+				Self::update_portfolio_valuation_with_pv(pool_id, old_pv, new_pv)?;
 
 				Ok(status)
 			})?;
@@ -501,6 +501,7 @@ mod pallet {
 				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
 
 				let old_pv = loan.present_value()?;
+				loan.update_time();
 				loan.write_off(&limit, &status)?;
 				let new_pv = loan.present_value()?;
 
@@ -680,7 +681,7 @@ mod pallet {
 				active_loans.iter_mut().try_fold(
 					T::Balance::zero(),
 					|sum, active_loan| -> Result<_, DispatchError> {
-						active_loan.update_time(now);
+						active_loan.update_time();
 						Ok(sum.ensure_add(active_loan.present_value()?)?)
 					},
 				)

@@ -555,8 +555,8 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn update_time(&mut self, moment: Moment) {
-		self.last_updated = moment
+	pub fn update_time(&mut self) {
+		self.last_updated = T::Time::now().as_secs()
 	}
 
 	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
@@ -569,8 +569,6 @@ impl<T: Config> ActiveLoan<T> {
 			self.normalized_debt,
 			Adjustment::Increase(amount),
 		)?;
-
-		self.last_updated = T::Time::now().as_secs();
 
 		Ok(())
 	}
@@ -586,8 +584,6 @@ impl<T: Config> ActiveLoan<T> {
 			Adjustment::Decrease(amount),
 		)?;
 
-		self.last_updated = T::Time::now().as_secs();
-
 		Ok(amount)
 	}
 
@@ -599,10 +595,8 @@ impl<T: Config> ActiveLoan<T> {
 		self.ensure_can_write_off(limit, new_status)?;
 
 		let prev_interest_rate = self.interest_rate_with_penalty()?;
-		let next_interest_rate = self
-			.info
-			.interest_rate_per_sec
-			.ensure_add(new_status.penalty)?;
+		self.written_off_status = new_status.clone();
+		let next_interest_rate = self.interest_rate_with_penalty()?;
 
 		T::InterestAccrual::reference_rate(next_interest_rate)?;
 
@@ -612,11 +606,7 @@ impl<T: Config> ActiveLoan<T> {
 			self.normalized_debt,
 		)?;
 
-		T::InterestAccrual::unreference_rate(prev_interest_rate)?;
-
-		self.written_off_status = new_status.clone();
-
-		Ok(())
+		T::InterestAccrual::unreference_rate(prev_interest_rate)
 	}
 
 	pub fn close(self) -> Result<(LoanInfo<T>, T::AccountId), DispatchError> {
