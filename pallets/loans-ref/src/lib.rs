@@ -54,7 +54,7 @@ mod pallet {
 		/// Identify a curreny.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
-		/// Identify an non fungible collection
+		/// Identify a non fungible collection
 		type CollectionId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
@@ -63,7 +63,7 @@ mod pallet {
 			+ Copy
 			+ MaxEncodedLen;
 
-		/// Identify an non fungible item
+		/// Identify a non fungible item
 		type ItemId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
@@ -379,25 +379,19 @@ mod pallet {
 			let who = ensure_signed(origin)?;
 
 			match CreatedLoans::<T>::take(pool_id, loan_id) {
-				Some(loan) => {
-					Self::ensure_loan_borrower(&who, &loan.borrower)?;
-					Self::make_active_loan(
-						pool_id,
-						loan_id,
-						loan.info,
-						loan.borrower,
-						|loan, portfolio| {
-							loan.borrow(amount)?;
-							let new_pv = loan.present_value()?;
+				Some(created_loan) => {
+					Self::ensure_loan_borrower(&who, &created_loan.borrower)?;
+					Self::make_active_loan(pool_id, loan_id, created_loan, |loan, portfolio| {
+						loan.borrow(amount)?;
+						let new_pv = loan.present_value()?;
 
-							Self::update_portfolio_valuation_with_pv(
-								pool_id,
-								portfolio,
-								Zero::zero(),
-								new_pv,
-							)
-						},
-					)?
+						Self::update_portfolio_valuation_with_pv(
+							pool_id,
+							portfolio,
+							Zero::zero(),
+							new_pv,
+						)
+					})?
 				}
 				None => Self::mutate_active_loan(pool_id, loan_id, |loan, portfolio| {
 					Self::ensure_loan_borrower(&who, &loan.borrower())?;
@@ -699,8 +693,7 @@ mod pallet {
 		fn make_active_loan<F, R>(
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			info: LoanInfo<T>,
-			borrower: T::AccountId,
+			created_loan: CreatedLoan<T>,
 			f: F,
 		) -> Result<R, DispatchError>
 		where
@@ -711,18 +704,20 @@ mod pallet {
 		{
 			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let now = T::Time::now().as_secs();
-					let index = active_loans.len();
+					let mut active_loan = ActiveLoan::new(
+						loan_id,
+						created_loan.info,
+						created_loan.borrower,
+						T::Time::now().as_secs(),
+					);
+
+					let result = f(&mut active_loan, portfolio);
 
 					active_loans
-						.try_push(ActiveLoan::new(loan_id, info, borrower, now))
+						.try_push(active_loan)
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
-					let loan = active_loans
-						.get_mut(index)
-						.ok_or(DispatchError::Other("Expect an active loan at given index"))?;
-
-					f(loan, portfolio)
+					result
 				})
 			})
 		}
@@ -745,8 +740,8 @@ mod pallet {
 						.find(|active_loan| active_loan.loan_id() == loan_id)
 						.ok_or(Error::<T>::LoanNotFound)?;
 
-					// Ensure we have the correct last_updated value before given
-					// the active_loan to the user callback.
+					// Ensure we have the correct last_updated loan value before given
+					// the loan to the user callback.
 					active_loan.update_time(portfolio.last_updated());
 
 					f(active_loan, portfolio)
