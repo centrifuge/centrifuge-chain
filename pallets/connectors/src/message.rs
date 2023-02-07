@@ -210,8 +210,6 @@ mod tests {
 	type TrancheId = [u8; 16];
 	type Balance = cfg_primitives::Balance;
 
-	const CURRENCY: Balance = 1_000_000_000_000_000_000;
-
 	pub mod encode {
 		use cfg_utils::vec_to_fixed_array;
 
@@ -353,17 +351,18 @@ mod tests {
 				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 				domain: domain_address.clone().into(),
 				address: domain_address.get_address(),
-				amount: 123 * CURRENCY,
+				amount: 1000000000000000000000000000,
 			};
 			let encoded = msg.encode();
-			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000006aaf7c8516d0c0000010000000000000504";
+			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000010000000000000504";
 
 			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
 		fn transfer_to_centrifuge() {
-			let address = <[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("");
+			let address =
+				<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("");
 
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 				pool_id: 1,
