@@ -232,11 +232,6 @@ where
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
 	T::Tokens::mint_into(CurrencyId::AUSD, &investor.clone().into(), MINT_AMOUNT)?;
-	T::Tokens::mint_into(
-		CurrencyId::Tranche(POOL, tranche_id),
-		&investor.clone().into(),
-		MINT_AMOUNT,
-	)?;
 	Ok(investor)
 }
 

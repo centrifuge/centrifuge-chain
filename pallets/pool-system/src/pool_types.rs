@@ -52,6 +52,7 @@ impl<Balance> ReserveDetails<Balance>
 where
 	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
 {
+	/// Update the total balance of the reserve based on the provided solution for in- and outflows of this epoc.
 	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
 		&mut self,
 		epoch_tranches: &EpochExecutionTranches<
@@ -274,8 +275,10 @@ impl<
 
 	pub fn execute_previous_epoch(&mut self) -> DispatchResult {
 		self.reserve.available = self.reserve.total;
-		self.epoch.last_executed += One::one();
-		Ok(())
+		self.epoch
+			.last_executed
+			.ensure_add_assign(One::one())
+			.map_err(Into::into)
 	}
 
 	pub fn essence<AssetRegistry, AssetId, MaxTokenNameLength, MaxTokenSymbolLength>(

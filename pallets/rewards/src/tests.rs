@@ -1,3 +1,4 @@
+mod command_based;
 mod common;
 mod currency_movement;
 
