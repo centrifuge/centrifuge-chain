@@ -272,10 +272,10 @@ where
 /// Diferents methods of how to compute the amount can be borrowed
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum MaxBorrowAmount<Rate> {
-	/// Ceiling computation using the total borrow
+	/// Max borrow amount computation using the total borrowed
 	UpToTotalBorrowed { advance_rate: Rate },
 
-	/// Ceiling computation using the outstanding debt
+	/// Max borrow amount computation using the outstanding debt
 	UpToOutstandingDebt { advance_rate: Rate },
 }
 
@@ -429,7 +429,7 @@ pub struct ActiveLoan<T: Config> {
 	borrower: T::AccountId,
 
 	/// Specify whether the loan has been writen off
-	written_off_status: WriteOffStatus<T::Rate>,
+	write_off_status: WriteOffStatus<T::Rate>,
 
 	/// Date when the loans becomes active
 	origination_date: Moment,
@@ -453,7 +453,7 @@ impl<T: Config> ActiveLoan<T> {
 			loan_id,
 			info,
 			borrower,
-			written_off_status: WriteOffStatus::default(),
+			write_off_status: WriteOffStatus::default(),
 			origination_date: now,
 			normalized_debt: T::Balance::zero(),
 			total_borrowed: T::Balance::zero(),
@@ -481,7 +481,7 @@ impl<T: Config> ActiveLoan<T> {
 	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
 		self.info
 			.interest_rate
-			.ensure_sub(self.written_off_status.penalty)?
+			.ensure_sub(self.write_off_status.penalty)?
 			.ensure_add(penalty)
 	}
 
@@ -499,7 +499,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
 		let debt = self.last_updated_debt()?;
-		let debt = self.written_off_status.write_down(debt)?;
+		let debt = self.write_off_status.write_down(debt)?;
 
 		match &self.info.valuation_method {
 			ValuationMethod::DiscountedCashFlows(dcf) => {
@@ -550,7 +550,7 @@ impl<T: Config> ActiveLoan<T> {
 		match self.info.restrictions.borrows {
 			BorrowRestrictions::WrittenOff => {
 				ensure!(
-					self.written_off_status.is_none(),
+					self.write_off_status.is_none(),
 					Error::<T>::from(BorrowLoanError::WrittenOffRestriction)
 				)
 			}
@@ -563,11 +563,14 @@ impl<T: Config> ActiveLoan<T> {
 		let current_debt =
 			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)?;
 
+		// Only repay until the current debt
+		let amount = amount.min(current_debt);
+
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),
 		};
 
-		Ok(amount.min(current_debt))
+		Ok(amount)
 	}
 
 	fn ensure_can_write_off(
@@ -648,7 +651,7 @@ impl<T: Config> ActiveLoan<T> {
 			next_interest_rate,
 			self.normalized_debt,
 		)?;
-		self.written_off_status = new_status.clone();
+		self.write_off_status = new_status.clone();
 		self.info.interest_rate = next_interest_rate;
 
 		T::InterestAccrual::unreference_rate(prev_interest_rate)

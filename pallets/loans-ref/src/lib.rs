@@ -225,11 +225,12 @@ mod pallet {
 		/// The Portfolio Valuation for a pool was updated.
 		PortfolioValuationUpdated {
 			pool_id: PoolIdOf<T>,
-			value: T::Balance,
+			valuation: T::Balance,
 			update_type: PortfolioValuationUpdateType,
 		},
-		WriteOffPoliciesUpdated {
+		WriteOffPolicyUpdated {
 			pool_id: PoolIdOf<T>,
+			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
 		},
 	}
 
@@ -239,7 +240,7 @@ mod pallet {
 		PoolNotFound,
 		/// Emits when loan doesn't exist
 		LoanNotFound,
-		/// Emits when a write of state is not fount in a policy for a specific loan
+		/// Emits when a write-off state is not found in a policy for a specific loan
 		NoValidWriteOffState,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
@@ -249,7 +250,7 @@ mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
-		/// Emits when the loan is bad specified and can not be created
+		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed
 		BorrowLoanError(BorrowLoanError),
@@ -262,9 +263,9 @@ mod pallet {
 	/// Error related to loan creation
 	#[derive(Encode, Decode, TypeInfo, PalletError)]
 	pub enum CreateLoanError {
-		/// Emits when valuation method is bad specified
+		/// Emits when valuation method is incorrectly specified
 		InvalidValuationMethod,
-		/// Emits when repayment schedule is bad specified
+		/// Emits when repayment schedule is incorrectly specified
 		InvalidRepaymentSchedule,
 	}
 
@@ -450,7 +451,7 @@ mod pallet {
 		///
 		/// This action will write off based on the write off policy configured by
 		/// [`Pallet::update_write_off_policy()`].
-		/// No especial permisions are required to this call.
+		/// No special permisions are required to this call.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
 		#[transactional]
@@ -569,9 +570,9 @@ mod pallet {
 				Ok(())
 			})?;
 
-			WriteOffPolicy::<T>::insert(pool_id, policy);
+			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
 
-			Self::deposit_event(Event::<T>::WriteOffPoliciesUpdated { pool_id });
+			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
 
 			Ok(())
 		}
@@ -595,7 +596,7 @@ mod pallet {
 
 			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 				pool_id,
-				value,
+				valuation: value,
 				update_type: PortfolioValuationUpdateType::Exact,
 			});
 
@@ -676,7 +677,7 @@ mod pallet {
 			if prev_value != portfolio.value() {
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
-					value: portfolio.value(),
+					valuation: portfolio.value(),
 					update_type: PortfolioValuationUpdateType::Inexact,
 				});
 			}
