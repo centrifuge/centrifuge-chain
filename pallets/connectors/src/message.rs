@@ -49,9 +49,9 @@ where
 	Transfer {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		domain: Domain,
-		destination: Address,
+		address: Address,
 		amount: Balance,
+		domain: Domain,
 	},
 }
 
@@ -172,7 +172,7 @@ impl<
 				pool_id,
 				tranche_id,
 				domain,
-				destination,
+				address,
 				amount,
 			} => {
 				let mut message: Vec<u8> = vec![];
@@ -183,9 +183,13 @@ impl<
 				message.append(&mut encoded_pool_id);
 
 				message.append(&mut tranche_id.encode());
+				message.append(&mut address.encode());
+
+				let mut encoded_amount = amount.encode();
+				encoded_amount.reverse();
+				message.append(&mut encoded_amount);
+
 				message.append(&mut domain.connector_encode());
-				message.append(&mut destination.encode());
-				message.append(&mut amount.encode());
 
 				message
 			}
@@ -348,12 +352,31 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 				domain: domain_address.clone().into(),
-				destination: domain_address.get_address(),
+				address: domain_address.get_address(),
 				amount: 123 * CURRENCY,
 			};
 			let encoded = msg.encode();
-			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b010000000000000504123123123123123123123123123123123123123100000000000000000000000000000c6d51c8f7aa0600000000000000";
+			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000006aaf7c8516d0c0000010000000000000504";
 
+			assert_eq!(hex::encode(encoded), expected);
+		}
+
+		#[test]
+		fn transfer_to_centrifuge() {
+			let address = <[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("");
+
+			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+				domain: Domain::Centrifuge,
+				address: vec_to_fixed_array(address.to_vec()),
+				amount: 1000000000000000000000000000,
+			};
+			let encoded = msg.encode();
+
+			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000000000000000000000";
+
+			// solidity is 172 chars, 86 bytes
 			assert_eq!(hex::encode(encoded), expected);
 		}
 	}

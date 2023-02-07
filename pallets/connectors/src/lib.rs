@@ -446,7 +446,7 @@ pub mod pallet {
 					tranche_id,
 					amount,
 					domain: address.clone().into(),
-					destination: address.clone().get_address(),
+					address: address.clone().get_address(),
 				},
 				address.into(),
 			)?;
