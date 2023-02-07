@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod types;
+pub mod valuation;
 
 pub use pallet::*;
 
@@ -32,9 +33,10 @@ mod pallet {
 	};
 	use types::{
 		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions,
-		PortfolioValuation, PortfolioValuationUpdateType, RepaymentSchedule, ValuationMethod,
-		WriteOffState, WriteOffStatus,
+		PortfolioValuation, PortfolioValuationUpdateType, RepaymentSchedule, WriteOffState,
+		WriteOffStatus,
 	};
+	use valuation::ValuationMethod;
 
 	use super::*;
 
