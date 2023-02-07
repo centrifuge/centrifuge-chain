@@ -45,10 +45,6 @@ pub enum ParachainId {
 	Moonbeam,
 }
 
-/// The EVM chain ID
-/// The type should accomodate all chain ids listed on https://chainlist.org/.
-type EVMChainId = u64;
-
 /// A Domain is a chain or network we can send a Connectors message to.
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
@@ -56,11 +52,17 @@ type EVMChainId = u64;
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
+	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
+	/// NOTE: Connectors messages CAN NOT be sent directly from the Centrifuge chain to the
+	/// Centrifuge chain itself.
+	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
 	EVM(EVMChainId),
-	/// A Polkadot Parachain domain
-	Parachain(ParachainId),
 }
+
+/// The EVM Chain ID
+/// The type should accomodate all chain ids listed on https://chainlist.org/.
+type EVMChainId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
 pub struct DomainLocator<Domain> {
@@ -71,14 +73,36 @@ impl<Domain> TypeId for DomainLocator<Domain> {
 	const TYPE_ID: [u8; 4] = *b"domn";
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct DomainAddress<Domain> {
-	pub domain: Domain,
-	pub address: [u8; 32],
+pub enum DomainAddress {
+	Centrifuge([u8; 32]),
+	EVM(EVMChainId, [u8; 20]),
 }
 
-impl<Domain> TypeId for DomainAddress<Domain> {
+impl Into<Domain> for DomainAddress {
+	fn into(self) -> Domain {
+		match self {
+			Self::Centrifuge(_) => Domain::Centrifuge,
+			Self::EVM(chain_id, _) => Domain::EVM(chain_id),
+		}
+	}
+}
+
+impl DomainAddress {
+	/// Get the address in a 32-byte long representation.
+	/// For EVM addresses, append 12 zeros.
+	fn get_address(&self) -> [u8; 32] {
+		match self.clone() {
+			Self::Centrifuge(x) => x,
+			Self::EVM(_, x) => vec_to_fixed_array(x.to_vec()),
+		}
+	}
+}
+
+// TODO(nuno): `DomainAddress` needs a custom encode function
+
+impl TypeId for DomainAddress {
 	const TYPE_ID: [u8; 4] = *b"dadr";
 }
 
@@ -315,7 +339,7 @@ pub mod pallet {
 		#[pallet::weight(< T as Config >::WeightInfo::update_member())]
 		pub fn update_member(
 			origin: OriginFor<T>,
-			address: DomainAddress<Domain>,
+			address: DomainAddress,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
 			valid_until: Moment,
@@ -345,9 +369,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					address: address.address,
+					address: address.get_address(),
 				},
-				address.domain,
+				address.into(),
 			)?;
 
 			Ok(())
@@ -359,7 +383,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
-			address: DomainAddress<Domain>,
+			address: DomainAddress,
 			amount: <T as pallet::Config>::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -380,8 +404,8 @@ pub mod pallet {
 			T::Tokens::transfer(
 				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into(),
 				&who,
-				&DomainLocator {
-					domain: address.domain.clone(),
+				&DomainLocator::<Domain> {
+					domain: address.clone().into(),
 				}
 				.into_account_truncating(),
 				amount,
@@ -394,10 +418,10 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					amount,
-					domain: address.clone().domain,
-					destination: address.clone().address,
+					domain: address.clone().into(),
+					destination: address.clone().get_address(),
 				},
-				address.domain,
+				address.into(),
 			)?;
 
 			Ok(())

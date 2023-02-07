@@ -89,7 +89,7 @@ fn add_pool() {
 			Connectors::add_pool(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
-				Domain::Parachain(ParachainId::Moonbeam),
+				Domain::EVM(1284),
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::PoolNotFound
 		);
@@ -101,7 +101,7 @@ fn add_pool() {
 		assert_ok!(Connectors::add_pool(
 			RuntimeOrigin::signed(ALICE.into()),
 			pool_id,
-			Domain::Parachain(ParachainId::Moonbeam),
+			Domain::EVM(1284),
 		));
 	});
 }
@@ -129,7 +129,7 @@ fn add_tranche() {
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id.clone(),
 				nonexistent_tranche,
-				Domain::Parachain(ParachainId::Moonbeam),
+				Domain::EVM(1284),
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::TrancheNotFound
 		);
@@ -150,7 +150,7 @@ fn add_tranche() {
 			RuntimeOrigin::signed(ALICE.into()),
 			pool_id.clone(),
 			tranche_id,
-			Domain::Parachain(ParachainId::Moonbeam),
+			Domain::EVM(1284),
 		));
 		// TODO(nuno): figure out how to convert the tranche metadata set by pool_system into the 32-bounded array expected by the Connectors::AddTranche message.
 	});
@@ -174,10 +174,7 @@ fn transfer() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
-		let dest_address = DomainAddress {
-			domain: Domain::Parachain(ParachainId::Moonbeam),
-			address: [99; 32],
-		};
+		let dest_address = DomainAddress::EVM(1284, [99; 20]);
 
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
@@ -228,8 +225,8 @@ fn transfer() {
 
 		// The account to which the tranche should have been transferred
 		// to on Centrifuge for bookkeeping purposes.
-		let domain_account: AccountId = DomainLocator {
-			domain: dest_address.domain.clone(),
+		let domain_account: AccountId = DomainLocator::<Domain> {
+			domain: dest_address.clone().into(),
 		}
 		.into_account_truncating();
 
@@ -358,7 +355,7 @@ mod utils {
 
 		assert_ok!(Connectors::set_domain_router(
 			RuntimeOrigin::root(),
-			Domain::Parachain(ParachainId::Moonbeam),
+			Domain::EVM(1284),
 			Router::Xcm(XcmDomain {
 				location: moonbeam_location
 					.clone()

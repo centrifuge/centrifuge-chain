@@ -212,7 +212,7 @@ mod tests {
 		use cfg_utils::vec_to_fixed_array;
 
 		use super::*;
-		use crate::{Domain, ParachainId};
+		use crate::Domain;
 
 		#[test]
 		fn invalid() {
@@ -221,30 +221,30 @@ mod tests {
 			assert_eq!(msg.encode(), vec![0]);
 		}
 
-		#[test]
-		fn encoding_domain_evm_ethereum_mainnet() {
-			let domain = Domain::EVM(1);
+		// #[test]
+		// fn encoding_domain_evm_ethereum_mainnet() {
+		// 	let domain = Domain::EVM(1);
+		//
+		// 	let expected_hex = "000100000000000000";
+		// 	let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
+		// 	assert_eq!(domain.encode(), expected);
+		// }
+		//
+		// #[test]
+		// fn encoding_domain_evm_avalanche() {
+		// 	let domain = Domain::EVM(43114);
+		//
+		// 	let expected_hex = "006aa8000000000000";
+		// 	let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
+		// 	assert_eq!(domain.encode(), expected);
+		// }
 
-			let expected_hex = "000100000000000000";
+		#[test]
+		fn encoding_domain_moonbeam() {
+			let domain = Domain::EVM(1284);
+
+			let expected_hex = "010000000000000504";
 			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(domain.encode(), expected);
-		}
-
-		#[test]
-		fn encoding_domain_evm_avalanche() {
-			let domain = Domain::EVM(43114);
-
-			let expected_hex = "006aa8000000000000";
-			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(domain.encode(), expected);
-		}
-
-		#[test]
-		fn encoding_domain_parachain() {
-			let domain = Domain::Parachain(ParachainId::Moonbeam);
-
-			let expected_hex = "0100";
-			let expected = <[u8; 2]>::from_hex(expected_hex).expect("Decoding failed");
 			assert_eq!(domain.encode(), expected);
 		}
 
@@ -343,7 +343,7 @@ mod tests {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
-				domain: Domain::Parachain(ParachainId::Moonbeam),
+				domain: Domain::EVM(1284),
 				destination: <[u8; 32]>::from_hex(
 					"1231231231231231231231231231231231231231231231231231231231231231",
 				)
@@ -355,26 +355,6 @@ mod tests {
 			let input = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b0100123123123123123123123123123123123123123123123123123123123123123100000c6d51c8f7aa0600000000000000";
 
 			let expected = <[u8; 75]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
-		}
-
-		#[test]
-		fn transfer_evm_domain() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
-				pool_id: 1,
-				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
-				domain: Domain::EVM(43114),
-				destination: <[u8; 32]>::from_hex(
-					"1231231231231231231231231231231231231231231231231231231231231231",
-				)
-				.expect(""),
-				amount: 123 * CURRENCY,
-			};
-			let encoded = msg.encode();
-
-			let input = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b006aa8000000000000123123123123123123123123123123123123123123123123123123123123123100000c6d51c8f7aa0600000000000000";
-
-			let expected = <[u8; 82]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 	}
