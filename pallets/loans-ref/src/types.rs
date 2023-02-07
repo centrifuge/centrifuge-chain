@@ -474,7 +474,7 @@ impl<T: Config> ActiveLoan<T> {
 		self.info.schedule.maturity.date()
 	}
 
-	/// Returns a penalized version of the interest rate in an absolutely way.
+	/// Returns a penalized version of the interest rate in an absolute way.
 	/// This method first unpenalized the rate based on the current write off status before
 	/// penalize it with the input parameter.
 	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization
