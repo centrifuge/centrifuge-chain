@@ -25,7 +25,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
 use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
-use sp_std::{boxed::Box, convert::TryInto, vec::Vec};
+use sp_std::{boxed::Box, convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
 mod message;
@@ -58,6 +58,35 @@ pub enum Domain {
 	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
 	EVM(EVMChainId),
+}
+
+pub(crate) trait ConnectorEncode {
+	fn connector_encode(&self) -> Vec<u8>;
+}
+
+/// Custom encode implementation for the `Domain` type
+/// Domain is encoded as a 9-byte long bytearray, where:
+/// Byte 0 - Flags the Domain variant, i.e, either Domain::Centrifuge (0) or Domain::EVM (1)
+/// Byte 1-9 - Encodes the domain id if applicable;
+///		- For Domain::Centrifuge there's no id, so we append 8 zeros
+///		- For Domain::EVM, encode the respective chain id (8 bytes) as little endian
+///
+/// We need to impl this as a custom encode to not overlap with the `#[derive(Encode, Decode)]`
+/// that are necessary for `Domain` to be used in the storage as a key.
+impl ConnectorEncode for Domain {
+	fn connector_encode(&self) -> Vec<u8> {
+		match self {
+			Self::Centrifuge => vec![0; 9],
+			Self::EVM(chain_id) => {
+				let mut output = vec![];
+				output.push(1u8);
+				let mut domain_id = chain_id.encode();
+				domain_id.reverse();
+				output.append(&mut domain_id);
+				output
+			}
+		}
+	}
 }
 
 /// The EVM Chain ID
@@ -99,8 +128,6 @@ impl DomainAddress {
 		}
 	}
 }
-
-// TODO(nuno): `DomainAddress` needs a custom encode function
 
 impl TypeId for DomainAddress {
 	const TYPE_ID: [u8; 4] = *b"dadr";
