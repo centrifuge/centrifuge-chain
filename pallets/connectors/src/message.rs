@@ -210,6 +210,7 @@ mod tests {
 
 	pub mod encode {
 		use cfg_utils::vec_to_fixed_array;
+
 		use super::*;
 		use crate::{Domain, ParachainId};
 
@@ -324,7 +325,10 @@ mod tests {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateMember {
 				pool_id: 2,
 				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
-				address: <[u8; 32]>::from_hex("1231231231231231231231231231231231231231231231231231231231231231").expect(""),
+				address: <[u8; 32]>::from_hex(
+					"1231231231231231231231231231231231231231231231231231231231231231",
+				)
+				.expect(""),
 				valid_until: 1706260138,
 			};
 			let encoded = msg.encode();
@@ -340,7 +344,10 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 				domain: Domain::Parachain(ParachainId::Moonbeam),
-				destination: <[u8; 32]>::from_hex("1231231231231231231231231231231231231231231231231231231231231231").expect(""),
+				destination: <[u8; 32]>::from_hex(
+					"1231231231231231231231231231231231231231231231231231231231231231",
+				)
+				.expect(""),
 				amount: 123 * CURRENCY,
 			};
 			let encoded = msg.encode();
@@ -357,7 +364,10 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 				domain: Domain::EVM(43114),
-				destination: <[u8; 32]>::from_hex("1231231231231231231231231231231231231231231231231231231231231231").expect(""),
+				destination: <[u8; 32]>::from_hex(
+					"1231231231231231231231231231231231231231231231231231231231231231",
+				)
+				.expect(""),
 				amount: 123 * CURRENCY,
 			};
 			let encoded = msg.encode();
@@ -373,5 +383,3 @@ mod tests {
 		<[u8; 16]>::from_hex(hex).expect("Should be valid tranche id")
 	}
 }
-
-

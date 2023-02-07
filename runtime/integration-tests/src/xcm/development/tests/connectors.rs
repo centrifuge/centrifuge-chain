@@ -37,8 +37,8 @@ use cfg_types::{
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Connectors, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem, RuntimeOrigin,
-	XTokens, XcmTransactor,
+	Balances, Connectors, Loans, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem,
+	RuntimeOrigin, XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
@@ -140,6 +140,9 @@ fn add_tranche() {
 			.tranches
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
+
+		Loans::update_nav(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
+			.expect("Should update nav");
 
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when given a valid pool + tranche id pair.
