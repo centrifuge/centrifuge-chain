@@ -1,3 +1,6 @@
+//! mod to build fuzzy tests based on commands that needs to be processed
+//! without modify the invariants
+
 use std::collections::BTreeSet;
 
 use super::*;
@@ -92,47 +95,43 @@ where
 	});
 }
 
-mod fuzzy {
-	use super::*;
+/// A sample that emulates a fuzzer that only generates and tests one hardcoded command combination
+/// from the following matrix:
+///
+/// | Action     | Participants | Calls  | Total  |
+/// |-           |-             |-       |-       |
+/// | stake      | A, B         | 2      | 4      |
+/// | unstake    | A, B         | 2      | 4      |
+/// | claim      | A, B         | 2      | 4      |
+/// | distribute |  -           | 2      | 2      |
+///
+/// It uses 1 group, 1 domain and 1 currency.
+/// It uses the `base` mechanism.
+#[test]
+fn silly_sample_for_fuzzer() {
+	const DOM_CURR: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
+	const AMOUNT_A1: u64 = 100;
+	const AMOUNT_B1: u64 = 200;
+	const AMOUNT_A2: u64 = 300;
+	const AMOUNT_B2: u64 = 400;
 
-	/// A fuzzer that only generates and tests one hardcoded command combination
-	/// from the next matrix:
-	///
-	/// | Action     | Participants | Calls  | Total  |
-	/// |-           |-             |-       |-       |
-	/// | stake      | A, B         | 2      | 4      |
-	/// | unstake    | A, B         | 2      | 4      |
-	/// | claim      | A, B         | 2      | 4      |
-	/// | distribute |  -           | 2      | 2      |
-	///
-	/// It uses 1 group, 1 domain and 1 currency.
-	/// It uses the `base` mechanism.
-	#[test]
-	fn silly_fuzzer() {
-		const DOM_CURR: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
-		const AMOUNT_A1: u64 = 100;
-		const AMOUNT_B1: u64 = 200;
-		const AMOUNT_A2: u64 = 300;
-		const AMOUNT_B2: u64 = 400;
+	let commands = [
+		Command::AttachCurrency(DOM_CURR, GROUP_1),
+		Command::Stake(DOM_CURR, USER_A, AMOUNT_A1),
+		Command::Stake(DOM_CURR, USER_A, AMOUNT_A2),
+		Command::Stake(DOM_CURR, USER_B, AMOUNT_B1),
+		Command::Stake(DOM_CURR, USER_B, AMOUNT_B2),
+		Command::Distribute(vec![GROUP_1], REWARD),
+		Command::Claim(DOM_CURR, USER_A),
+		Command::Claim(DOM_CURR, USER_B),
+		Command::Unstake(DOM_CURR, USER_A, AMOUNT_A1),
+		Command::Unstake(DOM_CURR, USER_A, AMOUNT_A2),
+		Command::Unstake(DOM_CURR, USER_B, AMOUNT_B1),
+		Command::Unstake(DOM_CURR, USER_B, AMOUNT_B2),
+		Command::Claim(DOM_CURR, USER_A),
+		Command::Claim(DOM_CURR, USER_B),
+		Command::Distribute(vec![GROUP_1], REWARD),
+	];
 
-		let commands = [
-			Command::AttachCurrency(DOM_CURR, GROUP_1),
-			Command::Stake(DOM_CURR, USER_A, AMOUNT_A1),
-			Command::Stake(DOM_CURR, USER_A, AMOUNT_A2),
-			Command::Stake(DOM_CURR, USER_B, AMOUNT_B1),
-			Command::Stake(DOM_CURR, USER_B, AMOUNT_B2),
-			Command::Distribute(vec![GROUP_1], REWARD),
-			Command::Claim(DOM_CURR, USER_A),
-			Command::Claim(DOM_CURR, USER_B),
-			Command::Unstake(DOM_CURR, USER_A, AMOUNT_A1),
-			Command::Unstake(DOM_CURR, USER_A, AMOUNT_A2),
-			Command::Unstake(DOM_CURR, USER_B, AMOUNT_B1),
-			Command::Unstake(DOM_CURR, USER_B, AMOUNT_B2),
-			Command::Claim(DOM_CURR, USER_A),
-			Command::Claim(DOM_CURR, USER_B),
-			Command::Distribute(vec![GROUP_1], REWARD),
-		];
-
-		evaluate_sample::<Rewards1>(commands);
-	}
+	evaluate_sample::<Rewards1>(commands);
 }

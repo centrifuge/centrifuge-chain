@@ -1,6 +1,6 @@
+mod command_based;
 mod common;
 mod currency_movement;
-mod fuzzy;
 
 use cfg_traits::rewards::DistributedRewards;
 use frame_support::{assert_noop, assert_ok, traits::fungibles::Inspect};
