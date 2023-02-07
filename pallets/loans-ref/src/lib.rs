@@ -8,7 +8,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 mod pallet {
 	use cfg_primitives::Moment;
-	use cfg_traits::{ops::EnsureAdd, InterestAccrual, Permissions, PoolInspect, PoolReserve};
+	use cfg_traits::{
+		ops::{EnsureAdd, EnsureAddAssign},
+		InterestAccrual, Permissions, PoolInspect, PoolReserve,
+	};
 	use cfg_types::{
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
@@ -28,8 +31,8 @@ mod pallet {
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
-		traits::{BadOrigin, Zero},
-		FixedPointOperand,
+		traits::{BadOrigin, One, Zero},
+		ArithmeticError, FixedPointOperand,
 	};
 	use types::{
 		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions,
@@ -82,7 +85,8 @@ mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen
 			+ Copy
-			+ AsRef<[u8]>;
+			+ EnsureAdd
+			+ One;
 
 		/// Used to generate [`Self::LoanId`] identifiers
 		type Hasher: StorageHasher<Output = Self::LoanId>;
@@ -136,7 +140,8 @@ mod pallet {
 
 	/// Contains the last loan id generated
 	#[pallet::storage]
-	pub(crate) type LastLoanId<T: Config> = StorageValue<_, T::LoanId, ValueQuery, GetDefault>;
+	pub(crate) type LastLoanId<T: Config> =
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, T::LoanId, ValueQuery>;
 
 	/// Storage for loans that has been created but are not still active.
 	#[pallet::storage]
@@ -353,7 +358,7 @@ mod pallet {
 				restrictions,
 				interest_rate_per_year,
 			)?;
-			let loan_id = Self::generate_loan_id();
+			let loan_id = Self::generate_loan_id(pool_id)?;
 
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
@@ -643,10 +648,10 @@ mod pallet {
 			Ok(())
 		}
 
-		fn generate_loan_id() -> T::LoanId {
-			LastLoanId::<T>::mutate(|last_loan_id| {
-				*last_loan_id = T::Hasher::hash(&*last_loan_id.as_ref());
-				*last_loan_id
+		fn generate_loan_id(pool_id: PoolIdOf<T>) -> Result<T::LoanId, ArithmeticError> {
+			LastLoanId::<T>::try_mutate(pool_id, |last_loan_id| {
+				last_loan_id.ensure_add_assign(One::one())?;
+				Ok(*last_loan_id)
 			})
 		}
 
