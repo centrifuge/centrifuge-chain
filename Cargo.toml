@@ -35,6 +35,7 @@ members = [
   "libs/utils",
   "pallets/anchors",
   "pallets/bridge",
+  "pallets/block-rewards",
   "pallets/connectors",
   "pallets/claims",
   "pallets/collator-allowlist",

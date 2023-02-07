@@ -30,7 +30,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_block_rewards.
 pub trait WeightInfo {
-	fn on_initialize(x: u32, y: u32, z: u32) -> Weight;
+	fn on_initialize(x: u32, y: u32) -> Weight;
 	fn stake() -> Weight;
 	fn unstake() -> Weight;
 	fn claim_reward() -> Weight;
@@ -43,16 +43,13 @@ pub trait WeightInfo {
 /// Weights for pallet_block_rewards using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn on_initialize(x: u32, y: u32, z: u32) -> Weight {
+	fn on_initialize(x: u32, y: u32) -> Weight {
 		Weight::from_ref_time(27_397_000) // Standard Error: 15_000
 			.saturating_add(Weight::from_ref_time(1_011_000).saturating_mul(x as u64)) // Standard Error: 6_000
 			.saturating_add(Weight::from_ref_time(50_000).saturating_mul(y as u64)) // Standard Error: 6_000
-			.saturating_add(Weight::from_ref_time(8_852_000).saturating_mul(z as u64))
 			.saturating_add(T::DbWeight::get().reads(5 as u64))
 			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(x as u64)))
-			.saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(z as u64)))
 			.saturating_add(T::DbWeight::get().writes(5 as u64))
-			.saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(z as u64)))
 	}
 
 	fn stake() -> Weight {
@@ -100,16 +97,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn on_initialize(x: u32, y: u32, z: u32) -> Weight {
+	fn on_initialize(x: u32, y: u32) -> Weight {
 		Weight::from_ref_time(27_397_000) // Standard Error: 15_000
 			.saturating_add(Weight::from_ref_time(1_011_000).saturating_mul(x as u64)) // Standard Error: 6_000
 			.saturating_add(Weight::from_ref_time(50_000).saturating_mul(y as u64)) // Standard Error: 6_000
-			.saturating_add(Weight::from_ref_time(8_852_000).saturating_mul(z as u64))
 			.saturating_add(RocksDbWeight::get().reads(5 as u64))
 			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(x as u64)))
-			.saturating_add(RocksDbWeight::get().reads((1 as u64).saturating_mul(z as u64)))
 			.saturating_add(RocksDbWeight::get().writes(5 as u64))
-			.saturating_add(RocksDbWeight::get().writes((1 as u64).saturating_mul(z as u64)))
 	}
 
 	fn stake() -> Weight {

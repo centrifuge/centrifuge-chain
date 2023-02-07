@@ -14,11 +14,14 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 cfg-traits = { path = "../../libs/traits", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+log = { version = "0.4.17", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+pallet-session = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 num-traits = { version = "0.2", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+sp-staking = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 # optional dependencies for benchmarking
@@ -34,9 +37,12 @@ try-runtime = ["frame-support/try-runtime"]
 runtime-benchmarks = ["frame-benchmarking"]
 std = [
   "codec/std",
+  "log/std",
   "frame-support/std",
   "frame-system/std",
+  "pallet-session/std",
   "sp-runtime/std",
+  "sp-staking/std",
   "sp-std/std",
   "cfg-traits/std",
 ]

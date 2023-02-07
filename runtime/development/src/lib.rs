@@ -1640,7 +1640,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 		MaxCurrencyMovements,
 	>;
 	type RuntimeEvent = RuntimeEvent;
-}   
+}
 
 frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]

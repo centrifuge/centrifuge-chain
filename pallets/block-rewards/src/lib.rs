@@ -56,6 +56,7 @@ pub use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
+use pallet_session::Validators;
 use sp_runtime::{traits::Zero, FixedPointOperand};
 use sp_std::mem;
 use weights::WeightInfo;
@@ -88,7 +89,6 @@ pub struct EpochChanges<T: Config> {
 	duration: Option<T::BlockNumber>,
 	reward: Option<T::Balance>,
 	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
-	currencies: BoundedBTreeMap<T::CurrencyId, T::GroupId, T::MaxChangesPerEpoch>,
 }
 
 pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
@@ -146,6 +146,15 @@ pub mod pallet {
 		#[pallet::constant]
 		type InitialEpochDuration: Get<Self::BlockNumber>;
 
+		#[pallet::constant]
+		type CollatorCurrencyId: Get<Self::CurrencyId> + TypeInfo;
+
+		#[pallet::constant]
+		type CollatorGroupId: Get<Self::GroupId> + TypeInfo;
+
+		#[pallet::constant]
+		type DefaultCollatorStake: Get<Self::Balance> + TypeInfo;
+
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
 	}
@@ -201,7 +210,6 @@ pub mod pallet {
 
 			let mut groups = 0;
 			let mut weight_changes = 0;
-			let mut currency_changes = 0;
 
 			transactional::with_storage_layer(|| -> DispatchResult {
 				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
@@ -215,11 +223,6 @@ pub mod pallet {
 						for (&group_id, &weight) in &changes.weights {
 							epoch_data.weights.try_insert(group_id, weight).ok();
 							weight_changes += 1;
-						}
-
-						for (&currency_id, &group_id) in &changes.currencies {
-							T::Rewards::attach_currency((T::Domain::get(), currency_id), group_id)?;
-							currency_changes += 1;
 						}
 
 						epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
@@ -241,13 +244,14 @@ pub mod pallet {
 			})
 			.ok();
 
-			T::WeightInfo::on_initialize(groups, weight_changes, currency_changes)
+			T::WeightInfo::on_initialize(groups, weight_changes)
 		}
 	}
 
+	// TODO: Handle group total stake reduction when single collator is changed
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Deposit a stake amount associated to a currency for the origin's account.
+		/// Admin method to deposit a stake amount associated to a currency for the target account.
 		/// The account must have enough currency to make the deposit,
 		/// if not, an Err will be returned.
 		#[pallet::weight(T::WeightInfo::stake())]
@@ -255,14 +259,15 @@ pub mod pallet {
 		pub fn stake(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
+			account_id: T::AccountId,
 			amount: T::Balance,
 		) -> DispatchResult {
-			let account_id = ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin)?;
 
 			T::Rewards::deposit_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
-		/// Withdraw a stake amount associated to a currency for the origin's account.
+		/// Admin method to reduce the stake amount associated to a currency for the target account.
 		/// The account must have enough currency staked to make the withdraw,
 		/// if not, an Err will be returned.
 		#[pallet::weight(T::WeightInfo::unstake())]
@@ -270,19 +275,24 @@ pub mod pallet {
 		pub fn unstake(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
+			account_id: T::AccountId,
 			amount: T::Balance,
 		) -> DispatchResult {
-			let account_id = ensure_signed(origin)?;
+			T::AdminOrigin::ensure_origin(origin)?;
 
 			T::Rewards::withdraw_stake((T::Domain::get(), currency_id), &account_id, amount)
 		}
 
 		/// Claims the reward the associated to a currency.
-		/// The reward will be transferred to the origin's account.
+		/// The reward will be transferred to the target account.
 		#[pallet::weight(T::WeightInfo::claim_reward())]
 		#[transactional]
-		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
-			let account_id = ensure_signed(origin)?;
+		pub fn claim_reward(
+			origin: OriginFor<T>,
+			currency_id: T::CurrencyId,
+			account_id: T::AccountId,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
 
 			T::Rewards::claim_reward((T::Domain::get(), currency_id), &account_id).map(|_| ())
 		}
@@ -328,26 +338,97 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
+}
 
-		/// Admin method to set the group used for a currency in the next epochs.
-		/// Current epoch is not affected by this call.
-		///
-		/// This method will do the currency available for using it in stake/unstake/claim calls.
-		#[pallet::weight(T::WeightInfo::set_currency_group())]
-		pub fn set_currency_group(
-			origin: OriginFor<T>,
-			currency_id: T::CurrencyId,
-			group_id: T::GroupId,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-			NextEpochChanges::<T>::try_mutate(|changes| {
-				changes
-					.currencies
-					.try_insert(currency_id, group_id)
-					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
-			})?;
+/// Extension to an existing `SessionManager` `I` which sets the collators for the next session.
+/// Executes the underlying `I::new_session` and adjusts stake for new and leaving collators inherently.
+struct SessionManager<T, S, I>(
+	sp_std::marker::PhantomData<T>,
+	sp_std::marker::PhantomData<S>,
+	sp_std::marker::PhantomData<I>,
+);
 
-			Ok(())
-		}
+impl<T, S, I, ValidatorId> pallet_session::SessionManager<ValidatorId> for SessionManager<T, S, I>
+where
+	T: Config,
+	S: pallet_session::Config,
+	I: pallet_session::SessionManager<ValidatorId>,
+	ValidatorId: Into<T::AccountId> + PartialEq<<S as pallet_session::Config>::ValidatorId> + Clone,
+	<S as pallet_session::Config>::ValidatorId: Into<T::AccountId> + PartialEq<ValidatorId>,
+{
+	// TODO: Maybe we want to wrap potential failures into transactional::with_storage_layer?
+	// TODO: Benchmark
+	fn new_session(index: sp_staking::SessionIndex) -> Option<Vec<ValidatorId>> {
+		// Get upcoming validators from original SessionManager
+		// NOTE: This call registers its own extra unchecked weight
+		let maybe_next_validators = I::new_session(index);
+
+		let current_validators = Validators::<S>::get();
+		let mut weight = T::DbWeight::get().reads(1);
+
+		// TODO: Try to get rid of as much cloning as possible
+		maybe_next_validators.clone().map(|next_validators| {
+			// Stake for new collators
+			next_validators
+				.clone()
+				.into_iter()
+				.filter(|next| !current_validators.iter().any(|current| next == current))
+				.for_each(|new| {
+					// Must not fail
+					let _ = T::Rewards::deposit_stake(
+						(T::Domain::get(), T::CollatorCurrencyId::get()),
+						&new.into(),
+						T::DefaultCollatorStake::get(),
+					)
+					.map_err(|_e| {
+						// Should never happen
+						log::error!(target: "runtime::block_rewards", "Staking for new collator failed");
+					});
+					// TODO: For now, add more than used (we don't need to validate signature)
+					weight.saturating_accrue(T::WeightInfo::stake());
+				});
+
+			// Unstake for leaving collators
+			current_validators
+				.into_iter()
+				.filter(|next| !next_validators.iter().any(|current| next == current))
+				.for_each(|leaving| {
+					let amount = T::Rewards::account_stake(
+						(T::Domain::get(), T::CollatorCurrencyId::get()),
+						&leaving.clone().into(),
+					);
+					weight.saturating_accrue(T::DbWeight::get().reads(1));
+
+					// Must not fail
+					let _ = T::Rewards::withdraw_stake(
+						(T::Domain::get(), T::CollatorCurrencyId::get()),
+						&leaving.into(),
+						amount,
+					)
+					.map_err(|_e| {
+						// Should never happen
+						log::error!(target: "runtime::block_rewards", "Unstaking for leaving collator failed");
+					});
+					// TODO: For now, add more than used (we don't need to validate signature)
+					weight.saturating_accrue(T::WeightInfo::unstake());
+				});
+		});
+
+		frame_system::Pallet::<T>::register_extra_weight_unchecked(
+			// T::WeightInfo::new_session(candidates_len_before as u32, removed as u32),
+			weight,
+			DispatchClass::Mandatory,
+		);
+
+		maybe_next_validators
+	}
+
+	fn start_session(_: sp_staking::SessionIndex) {
+		// we don't care.
+	}
+
+	fn end_session(_: sp_staking::SessionIndex) {
+		// we don't care.
 	}
 }
