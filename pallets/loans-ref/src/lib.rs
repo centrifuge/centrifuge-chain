@@ -259,7 +259,7 @@ mod pallet {
 		MaxActiveLoansReached,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
-		/// Emits when the loan can not be borrowed
+		/// Emits when the loan can not be borrowed from
 		BorrowLoanError(BorrowLoanError),
 		/// Emits when the loan can not be written off
 		WrittenOffError(WrittenOffError),
