@@ -544,9 +544,12 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Keystore(pallet_keystore::Call::add_keys { .. })
 					| RuntimeCall::Keystore(pallet_keystore::Call::revoke_keys { .. })
 			),
-			ProxyType::PodOperation => {
-				matches!(c, RuntimeCall::Uniques(..) | RuntimeCall::Anchor(..))
-			}
+			ProxyType::PodOperation => matches!(
+				c,
+				RuntimeCall::Uniques(..)
+					| RuntimeCall::Anchor(..)
+					| RuntimeCall::Utility(pallet_utility::Call::batch_all { .. })
+			),
 			// This type of proxy is used only for authenticating with the centrifuge POD,
 			// having it here also allows us to validate authentication with on-chain data.
 			ProxyType::PodAuth => false,
