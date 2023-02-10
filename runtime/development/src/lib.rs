@@ -485,6 +485,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
 					// `collect_investments`, `collect_redemptions`
 					RuntimeCall::LiquidityRewards(..) |
+					RuntimeCall::BlockRewards(..) |
 					// Specifically omitting Connectors
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
@@ -501,6 +502,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					| RuntimeCall::Elections(..)
 					| RuntimeCall::Utility(..)
 			),
+			// TODO: Should be no change when adding BlockRewards, right?
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {
 				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
@@ -1188,6 +1190,8 @@ impl pallet_crowdloan_claim::Config for Runtime {
 // Parameterize collator selection pallet
 parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
+
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const MaxVoters: u32 = 10 * 1000;
@@ -1669,6 +1673,39 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = ();
 }
 
+frame_support::parameter_types! {
+	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
+
+	// TODO: Convert to common consts
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
+	pub const CollatorCurrencyId: u32 = u32::from_be_bytes(*b"blrw");
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
+	pub const CollatorGroupId: u32 = 1u32;
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
+	pub const DefaultCollatorStake: Balance = 1000 * CFG;
+}
+
+impl pallet_block_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type AuthorityId = AuraId;
+	type Balance = Balance;
+	type CollatorCurrencyId = CollatorCurrencyId;
+	type CollatorGroupId = CollatorGroupId;
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type DefaultCollatorStake = DefaultCollatorStake;
+	type Domain = BlockRewardsDomain;
+	type GroupId = u32;
+	type InitialEpochDuration = InitialEpochDuration;
+	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxCollators = MaxCandidates;
+	type MaxGroups = MaxGroups;
+	type Rewards = Rewards;
+	type RuntimeEvent = RuntimeEvent;
+	type Weight = u64;
+	type WeightInfo = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1732,6 +1769,7 @@ construct_runtime!(
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
+		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>} = 110,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

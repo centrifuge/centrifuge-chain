@@ -116,6 +116,7 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git",
 # our custom pallets
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
+pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-connectors = { path = "../../pallets/connectors", default-features = false }
@@ -171,6 +172,7 @@ std = [
   "pallet-babe/std",
   "pallet-balances/std",
   "pallet-bridge/std",
+  "pallet-block-rewards/std",
   "pallet-claims/std",
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",

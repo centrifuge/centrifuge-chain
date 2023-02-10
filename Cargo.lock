@@ -2300,6 +2300,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-block-rewards",
  "pallet-bridge",
  "pallet-claims",
  "pallet-collator-allowlist",
