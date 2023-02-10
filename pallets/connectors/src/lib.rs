@@ -78,11 +78,9 @@ impl ConnectorEncode for Domain {
 		match self {
 			Self::Centrifuge => vec![0; 9],
 			Self::EVM(chain_id) => {
-				let mut output = vec![];
-				output.push(1u8);
-				let mut domain_id = chain_id.encode();
-				domain_id.reverse();
-				output.append(&mut domain_id);
+				let mut output: Vec<u8> = 1u8.encode();
+				output.append(&mut chain_id.to_be_bytes().to_vec());
+
 				output
 			}
 		}
