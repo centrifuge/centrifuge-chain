@@ -421,6 +421,7 @@ pub enum ProxyType {
 	KeystoreManagement,
 	PodOperation,
 	PodAuth,
+	PermissionManagement,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -553,6 +554,11 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			// This type of proxy is used only for authenticating with the centrifuge POD,
 			// having it here also allows us to validate authentication with on-chain data.
 			ProxyType::PodAuth => false,
+			ProxyType::PermissionManagement => matches!(
+				c,
+				RuntimeCall::Permissions(pallet_permissions::Call::add { .. })
+					| RuntimeCall::Permissions(pallet_permissions::Call::remove { .. })
+			),
 		}
 	}
 
