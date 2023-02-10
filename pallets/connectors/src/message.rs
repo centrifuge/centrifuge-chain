@@ -162,9 +162,7 @@ impl<
 				message.append(&mut tranche_id.encode());
 				message.append(&mut address.encode());
 
-				let mut encoded_valid_until = valid_until.encode();
-				encoded_valid_until.reverse();
-				message.append(&mut encoded_valid_until);
+				message.append(&mut valid_until.to_be_bytes().to_vec());
 
 				message
 			}
