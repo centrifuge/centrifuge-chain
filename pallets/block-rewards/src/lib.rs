@@ -11,21 +11,20 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-//! # Rewards Pallet
+//! # BlockRewards Pallet
 //!
-//! The Rewards pallet provides functionality for distributing rewards to
+//! The BlockRewards pallet provides functionality for distributing rewards to
 //! different accounts with different currencies.
 //! The distribution happens when an epoch (a constant time interval) finalizes.
-//! The user can stake an amount during one of more epochs to claim the reward.
+//! Users cannot stake manually as their collator membership is syncronized via
+//! a provider.
+//! Thus, when new collators join, they will automatically be staked and vice-versa
+//! when collators leave, they are unstaked.
 //!
-//! Rewards pallet can be configured with any implementation of [`cfg_traits::rewards`] traits
-//! which gives the reward behavior.
+//! The BlockRewards pallet provides functions for:
 //!
-//! The Rewards pallet provides functions for:
-//!
-//! - Stake/Unstake a currency amount.
-//! - Claim the reward given to a staked currency.
-//! - Admin methods to configure epochs, currencies and reward groups.
+//! - Claiming the reward given for a staked currency. The reward will be the native network's token.
+//! - Admin methods to configure epochs, currencies and reward rates as well as any user's stake.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -46,7 +45,11 @@ pub use cfg_traits::{
 };
 use frame_support::{
 	pallet_prelude::*,
-	traits::tokens::{AssetId, Balance},
+	traits::{
+		fungibles::Mutate,
+		tokens::{AssetId, Balance},
+		OneSessionHandler,
+	},
 	DefaultNoBound,
 };
 pub use frame_support::{
@@ -56,10 +59,18 @@ pub use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
-use pallet_session::Validators;
 use sp_runtime::{traits::Zero, FixedPointOperand};
 use sp_std::mem;
 use weights::WeightInfo;
+
+#[derive(
+	Encode, Decode, DefaultNoBound, Clone, TypeInfo, MaxEncodedLen, PartialEq, RuntimeDebugNoBound,
+)]
+#[scale_info(skip_type_params(T))]
+pub struct CollatorChanges<T: Config> {
+	inc: BoundedVec<T::AccountId, T::MaxCollators>,
+	out: BoundedVec<T::AccountId, T::MaxCollators>,
+}
 
 /// Type that contains the associated data of an epoch
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
@@ -89,6 +100,7 @@ pub struct EpochChanges<T: Config> {
 	duration: Option<T::BlockNumber>,
 	reward: Option<T::Balance>,
 	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
+	collators: CollatorChanges<T>,
 }
 
 pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
@@ -130,6 +142,9 @@ pub mod pallet {
 				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
 			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
+		/// Type used to handle currency minting and burning for collators.
+		type Currency: Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
+
 		/// Max groups used by this pallet.
 		/// If this limit is reached, the exceeded groups are either not computed and not stored.
 		#[pallet::constant]
@@ -154,6 +169,17 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type DefaultCollatorStake: Get<Self::Balance> + TypeInfo;
+
+		#[pallet::constant]
+		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
+
+		/// The identifier type for an authority.
+		type AuthorityId: Member
+			+ Parameter
+			+ sp_runtime::RuntimeAppPublic
+			+ Ord
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
@@ -201,6 +227,7 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		// TODO: Could be moved to SessionManager
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let ends_on = EndOfEpoch::<T>::get();
 
@@ -214,6 +241,13 @@ pub mod pallet {
 			transactional::with_storage_layer(|| -> DispatchResult {
 				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
 					ActiveEpochData::<T>::try_mutate(|epoch_data| {
+						for leaving in changes.collators.out.drain(..) {
+							Self::do_exit_collator(&leaving)?;
+						}
+						for joining in changes.collators.inc.drain(..) {
+							Self::do_init_collator(&joining)?;
+						}
+
 						groups = T::Rewards::distribute_reward_with_weights(
 							epoch_data.reward,
 							epoch_data.weights.iter().map(|(g, w)| (*g, *w)),
@@ -244,6 +278,7 @@ pub mod pallet {
 			})
 			.ok();
 
+			// TODO: Apply joining + leaving as param
 			T::WeightInfo::on_initialize(groups, weight_changes)
 		}
 	}
@@ -341,94 +376,92 @@ pub mod pallet {
 	}
 }
 
-/// Extension to an existing `SessionManager` `I` which sets the collators for the next session.
-/// Executes the underlying `I::new_session` and adjusts stake for new and leaving collators inherently.
-struct SessionManager<T, S, I>(
-	sp_std::marker::PhantomData<T>,
-	sp_std::marker::PhantomData<S>,
-	sp_std::marker::PhantomData<I>,
-);
-
-impl<T, S, I, ValidatorId> pallet_session::SessionManager<ValidatorId> for SessionManager<T, S, I>
-where
-	T: Config,
-	S: pallet_session::Config,
-	I: pallet_session::SessionManager<ValidatorId>,
-	ValidatorId: Into<T::AccountId> + PartialEq<<S as pallet_session::Config>::ValidatorId> + Clone,
-	<S as pallet_session::Config>::ValidatorId: Into<T::AccountId> + PartialEq<ValidatorId>,
-{
-	// TODO: Maybe we want to wrap potential failures into transactional::with_storage_layer?
-	// TODO: Benchmark
-	fn new_session(index: sp_staking::SessionIndex) -> Option<Vec<ValidatorId>> {
-		// Get upcoming validators from original SessionManager
-		// NOTE: This call registers its own extra unchecked weight
-		let maybe_next_validators = I::new_session(index);
-
-		let current_validators = Validators::<S>::get();
-		let mut weight = T::DbWeight::get().reads(1);
-
-		// TODO: Try to get rid of as much cloning as possible
-		maybe_next_validators.clone().map(|next_validators| {
-			// Stake for new collators
-			next_validators
-				.clone()
-				.into_iter()
-				.filter(|next| !current_validators.iter().any(|current| next == current))
-				.for_each(|new| {
-					// Must not fail
-					let _ = T::Rewards::deposit_stake(
-						(T::Domain::get(), T::CollatorCurrencyId::get()),
-						&new.into(),
-						T::DefaultCollatorStake::get(),
-					)
-					.map_err(|_e| {
-						// Should never happen
-						log::error!(target: "runtime::block_rewards", "Staking for new collator failed");
-					});
-					// TODO: For now, add more than used (we don't need to validate signature)
-					weight.saturating_accrue(T::WeightInfo::stake());
-				});
-
-			// Unstake for leaving collators
-			current_validators
-				.into_iter()
-				.filter(|next| !next_validators.iter().any(|current| next == current))
-				.for_each(|leaving| {
-					let amount = T::Rewards::account_stake(
-						(T::Domain::get(), T::CollatorCurrencyId::get()),
-						&leaving.clone().into(),
-					);
-					weight.saturating_accrue(T::DbWeight::get().reads(1));
-
-					// Must not fail
-					let _ = T::Rewards::withdraw_stake(
-						(T::Domain::get(), T::CollatorCurrencyId::get()),
-						&leaving.into(),
-						amount,
-					)
-					.map_err(|_e| {
-						// Should never happen
-						log::error!(target: "runtime::block_rewards", "Unstaking for leaving collator failed");
-					});
-					// TODO: For now, add more than used (we don't need to validate signature)
-					weight.saturating_accrue(T::WeightInfo::unstake());
-				});
-		});
-
-		frame_system::Pallet::<T>::register_extra_weight_unchecked(
-			// T::WeightInfo::new_session(candidates_len_before as u32, removed as u32),
-			weight,
-			DispatchClass::Mandatory,
-		);
-
-		maybe_next_validators
+impl<T: Config> Pallet<T> {
+	/// Mint default amount of stake for target address and deposit stake.
+	/// Enables receiving rewards onwards.
+	fn do_init_collator(who: &T::AccountId) -> DispatchResult {
+		T::Currency::mint_into(
+			T::CollatorCurrencyId::get(),
+			who,
+			T::DefaultCollatorStake::get(),
+		)?;
+		T::Rewards::deposit_stake(
+			(T::Domain::get(), T::CollatorCurrencyId::get()),
+			who,
+			T::DefaultCollatorStake::get(),
+		)
 	}
 
-	fn start_session(_: sp_staking::SessionIndex) {
+	/// Withdraw currently staked amount for target address and immediately burn it.
+	/// Disables receiving rewards onwards.
+	fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
+		let amount =
+			T::Rewards::account_stake((T::Domain::get(), T::CollatorCurrencyId::get()), who);
+		T::Rewards::withdraw_stake(
+			(T::Domain::get(), T::CollatorCurrencyId::get()),
+			who,
+			amount,
+		)?;
+		T::Currency::burn_from(T::CollatorCurrencyId::get(), who, amount).map(|_| ())
+	}
+}
+
+impl<T: Config> sp_runtime::BoundToRuntimeAppPublic for Pallet<T> {
+	type Public = T::AuthorityId;
+}
+
+impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
+	type Key = T::AuthorityId;
+
+	fn on_genesis_session<'a, I: 'a>(_validators: I)
+	where
+		I: Iterator<Item = (&'a T::AccountId, T::AuthorityId)>,
+	{
 		// we don't care.
 	}
 
-	fn end_session(_: sp_staking::SessionIndex) {
+	fn on_new_session<'a, I: 'a>(changed: bool, validators: I, queued_validators: I)
+	where
+		I: Iterator<Item = (&'a T::AccountId, T::AuthorityId)>,
+	{
+		if changed {
+			let current = validators
+				.map(|(acc_id, _)| acc_id.clone())
+				.collect::<Vec<_>>();
+			let next = queued_validators
+				.map(|(acc_id, _)| acc_id.clone())
+				.collect::<Vec<_>>();
+
+			// Prepare for next session
+			if current != next {
+				NextEpochChanges::<T>::mutate(|EpochChanges { collators, .. }| {
+					let inc = next
+						.clone()
+						.into_iter()
+						.filter(|n| !current.iter().any(|curr| curr == n))
+						.collect::<Vec<_>>();
+					let out = current
+						.clone()
+						.into_iter()
+						.filter(|curr| !next.iter().any(|n| n == curr))
+						.collect::<Vec<_>>();
+					collators.inc = BoundedVec::<_, T::MaxCollators>::truncate_from(inc);
+					collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
+				});
+			}
+
+			frame_system::Pallet::<T>::register_extra_weight_unchecked(
+				T::DbWeight::get().writes(1),
+				DispatchClass::Mandatory,
+			);
+		}
+	}
+
+	fn on_before_session_ending() {
+		// we don't care.
+	}
+
+	fn on_disabled(_validator_index: u32) {
 		// we don't care.
 	}
 }
