@@ -60,7 +60,7 @@ use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
 use sp_runtime::{traits::Zero, FixedPointOperand};
-use sp_std::mem;
+use sp_std::{mem, vec::Vec};
 use weights::WeightInfo;
 
 #[derive(
@@ -177,7 +177,6 @@ pub mod pallet {
 		type AuthorityId: Member
 			+ Parameter
 			+ sp_runtime::RuntimeAppPublic
-			+ Ord
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
@@ -283,41 +282,8 @@ pub mod pallet {
 		}
 	}
 
-	// TODO: Handle group total stake reduction when single collator is changed
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Admin method to deposit a stake amount associated to a currency for the target account.
-		/// The account must have enough currency to make the deposit,
-		/// if not, an Err will be returned.
-		#[pallet::weight(T::WeightInfo::stake())]
-		#[transactional]
-		pub fn stake(
-			origin: OriginFor<T>,
-			currency_id: T::CurrencyId,
-			account_id: T::AccountId,
-			amount: T::Balance,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			T::Rewards::deposit_stake((T::Domain::get(), currency_id), &account_id, amount)
-		}
-
-		/// Admin method to reduce the stake amount associated to a currency for the target account.
-		/// The account must have enough currency staked to make the withdraw,
-		/// if not, an Err will be returned.
-		#[pallet::weight(T::WeightInfo::unstake())]
-		#[transactional]
-		pub fn unstake(
-			origin: OriginFor<T>,
-			currency_id: T::CurrencyId,
-			account_id: T::AccountId,
-			amount: T::Balance,
-		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			T::Rewards::withdraw_stake((T::Domain::get(), currency_id), &account_id, amount)
-		}
-
 		/// Claims the reward the associated to a currency.
 		/// The reward will be transferred to the target account.
 		#[pallet::weight(T::WeightInfo::claim_reward())]

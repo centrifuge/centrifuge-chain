@@ -180,6 +180,16 @@ pub trait CurrencyGroupChange {
 	fn currency_group(currency_id: Self::CurrencyId) -> Option<Self::GroupId>;
 }
 
+// pub trait BlockRewards {
+// 	/// Type used to identify the group.
+// 	type GroupId;
+
+// 	/// Type used to identify the currency.
+// 	type CurrencyId;
+
+// 	fn
+// }
+
 #[cfg(feature = "std")]
 pub mod mock {
 	use std::sync::{Mutex, MutexGuard};
