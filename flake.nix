@@ -93,7 +93,7 @@
             };
 
             # This is a hash of all the Cargo dependencies, for reproducibility.
-            cargoSha256 = "sha256-/ER2haOwpYnTOa5FNhUDkEpZJMdM0Nb44ESndMc0wQ0=";
+            cargoSha256 = "sha256-FgnJKi1LfSw+JX/2dx7uXClb3hkdCwoWTefZ83x6Tf4=";
 
             nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
             buildInputs = with pkgs; [ openssl ] ++ (
