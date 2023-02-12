@@ -190,7 +190,7 @@ where
 	}
 
 	/// Update the debt of a Tranche by multiplying with the accrued interest since the last update:
-	/// 	debt = debt * interest_rate_per_second ^ (now - last_update)
+	///     debt = debt * interest_rate_per_second ^ (now - last_update)
 	pub fn accrue(&mut self, now: Moment) -> Result<(), ArithmeticError> {
 		let delta = now - self.last_updated_interest;
 		let interest = self.interest_rate_per_sec();
@@ -413,7 +413,7 @@ where
 	pub fn tranche_id(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheId> {
 		match id {
 			// to provide same validating behaviour as given by index tranche_id
-			TrancheLoc::Id(id) => self.ids.iter().find(|x| **x == id).and_then(|_| Some(id)),
+			TrancheLoc::Id(id) => self.ids.iter().find(|x| **x == id).map(|_| id),
 			TrancheLoc::Index(index) => index
 				.try_into()
 				.ok()
@@ -659,7 +659,7 @@ where
 	/// Removing should only be possible if the Tranche at the given index has zero balance and is not the residual one.
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
 		self.get_tranche(TrancheLoc::Index(at))
-			.ok_or_else(|| DispatchError::Arithmetic(ArithmeticError::Overflow))
+			.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))
 			.and_then(|tranche| -> DispatchResult {
 				ensure!(
 					tranche.tranche_type != TrancheType::Residual,

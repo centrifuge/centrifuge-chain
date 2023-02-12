@@ -14,7 +14,7 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
-#[derive(Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where

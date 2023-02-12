@@ -46,7 +46,7 @@ pub mod pallet {
 		pub fn value(pool_id: T::PoolId) -> T::Balance {
 			Nav::<T>::get(pool_id)
 				.map(|(nav, _)| nav)
-				.unwrap_or(T::Balance::zero())
+				.unwrap_or_else(T::Balance::zero)
 		}
 
 		pub fn update(pool_id: T::PoolId, balance: T::Balance, now: Moment) {

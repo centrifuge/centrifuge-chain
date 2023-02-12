@@ -302,7 +302,7 @@ pub mod pallet {
 
 				Groups::<T, I>::try_mutate(group_id, |group| {
 					StakeAccounts::<T, I>::try_mutate(account_id, currency_id, |account| {
-						if T::RewardMechanism::account_stake(&account) < amount {
+						if T::RewardMechanism::account_stake(account) < amount {
 							Err(TokenError::NoFunds)?;
 						}
 
@@ -401,7 +401,7 @@ pub mod pallet {
 						Groups::<T, I>::try_mutate(next_group_id, |to_group| {
 							T::RewardMechanism::move_currency(currency, from_group, to_group)
 								.map_err(|e| match e {
-									MoveCurrencyError::Internal(error) => error.into(),
+									MoveCurrencyError::Internal(error) => error,
 									MoveCurrencyError::MaxMovements => {
 										Error::<T, I>::CurrencyMaxMovementsReached.into()
 									}

@@ -4,6 +4,7 @@ use sp_core::H160;
 use sp_runtime::{traits::ConstU32, BoundedVec};
 use xcm::VersionedMultiLocation;
 
+#[allow(clippy::derive_partial_eq_without_eq)] // XcmDomain does not impl Eq
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Router<CurrencyId> {
@@ -13,7 +14,7 @@ pub enum Router<CurrencyId> {
 
 /// XcmDomain gathers all the required fields to build and send remote
 /// calls to a specific XCM-based Domain.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct XcmDomain<CurrencyId> {
 	/// the xcm multilocation of the domain
