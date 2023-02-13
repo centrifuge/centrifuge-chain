@@ -364,7 +364,7 @@ pub mod pallet {
 		#[pallet::weight(< T as Config >::WeightInfo::update_member())]
 		pub fn update_member(
 			origin: OriginFor<T>,
-			address: DomainAddress,
+			domain_address: DomainAddress,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
 			valid_until: Moment,
@@ -381,12 +381,21 @@ pub mod pallet {
 				BadOrigin
 			);
 
-			// Now add the destination address as a TrancheInvestor of the given tranche
-			T::Permission::add(
+			// Now add the destination address as a TrancheInvestor of the given tranche if
+			// not already one. This check is necessary shall a user have called `update_member`
+			// already but the call has failed on the EVM side and needs to be retried.
+			if !T::Permission::has(
 				PermissionScope::Pool(pool_id),
-				address.into_account_truncating(),
+				domain_address.into_account_truncating(),
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
-			)?;
+			) {
+				T::Permission::add(
+					PermissionScope::Pool(pool_id),
+					domain_address.into_account_truncating(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
+				)?;
+			}
+
 
 			Self::do_send_message(
 				who,
@@ -394,9 +403,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					address: address.get_address(),
+					address: domain_address.get_address(),
 				},
-				address.into(),
+				domain_address.into(),
 			)?;
 
 			Ok(())
@@ -537,5 +546,25 @@ pub mod pallet {
 
 			encoded
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use cfg_primitives::AccountId;
+	use sp_runtime::traits::AccountIdConversion;
+
+	use super::DomainAddress;
+
+	#[test]
+	fn domain_address_derivation() {
+		assert_eq!(
+			account_from(DomainAddress::EVM(1284, [9; 20])),
+			account_from(DomainAddress::EVM(1284, [3; 20])),
+		)
+	}
+
+	fn account_from(domain_address: DomainAddress) -> AccountId {
+		domain_address.into_account_truncating()
 	}
 }
