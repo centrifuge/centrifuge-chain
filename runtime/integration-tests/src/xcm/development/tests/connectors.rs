@@ -220,6 +220,15 @@ fn update_member() {
 				valid_until.clone()
 			)),
 		));
+
+		// Verify it can be called for another member
+		assert_ok!(Connectors::update_member(
+			RuntimeOrigin::signed(ALICE.into()),
+			DomainAddress::EVM(1284, [9; 20]),
+			pool_id.clone(),
+			tranche_id.clone(),
+			valid_until.clone(),
+		));
 	});
 }
 
@@ -241,7 +250,6 @@ fn update_token_price() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
-
 		// Verify we first need to call `Loands::update_nav`
 		// Verify it fails if the origin is not a MemberListAdmin
 		assert_noop!(
@@ -258,14 +266,12 @@ fn update_token_price() {
 			.expect("Should update nav");
 
 		// Verify it now works
-		assert_ok!(
-			Connectors::update_token_price(
-				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
-				tranche_id.clone(),
-				Domain::EVM(1284),
-			)
-		);
+		assert_ok!(Connectors::update_token_price(
+			RuntimeOrigin::signed(ALICE.into()),
+			pool_id.clone(),
+			tranche_id.clone(),
+			Domain::EVM(1284),
+		));
 	});
 }
 
