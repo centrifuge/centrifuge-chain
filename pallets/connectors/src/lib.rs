@@ -558,13 +558,17 @@ mod tests {
 	#[test]
 	fn domain_address_account_derivation() {
 		assert_eq!(
-			DomainAddress::EVM(1284, [9; 20]).into_account_truncating(),
-			DomainAddress::EVM(1284, [9; 20]).into_account_truncating(),
+			account_from(DomainAddress::EVM(1284, [9; 20])),
+			account_from(DomainAddress::EVM(1284, [9; 20])),
 		);
 
 		assert_ne!(
-			DomainAddress::EVM(1284, [42; 20]).into_account_truncating(),
-			DomainAddress::EVM(1284, [24; 20]).into_account_truncating(),
+			account_from(DomainAddress::EVM(1284, [42; 20])),
+			account_from(DomainAddress::EVM(1284, [24; 20])),
 		);
+	}
+
+	fn account_from(domain_address: DomainAddress) -> AccountId {
+		domain_address.into_account_truncating()
 	}
 }
