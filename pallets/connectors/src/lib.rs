@@ -396,7 +396,6 @@ pub mod pallet {
 				)?;
 			}
 
-
 			Self::do_send_message(
 				who,
 				Message::UpdateMember {
@@ -557,14 +556,15 @@ mod tests {
 	use super::DomainAddress;
 
 	#[test]
-	fn domain_address_derivation() {
+	fn domain_address_account_derivation() {
 		assert_eq!(
-			account_from(DomainAddress::EVM(1284, [9; 20])),
-			account_from(DomainAddress::EVM(1284, [3; 20])),
-		)
-	}
+			DomainAddress::EVM(1284, [9; 20]).into_account_truncating(),
+			DomainAddress::EVM(1284, [9; 20]).into_account_truncating(),
+		);
 
-	fn account_from(domain_address: DomainAddress) -> AccountId {
-		domain_address.into_account_truncating()
+		assert_ne!(
+			DomainAddress::EVM(1284, [42; 20]).into_account_truncating(),
+			DomainAddress::EVM(1284, [24; 20]).into_account_truncating(),
+		);
 	}
 }
