@@ -7,7 +7,9 @@ mod pallet_mock_pools {
 
 	use cfg_primitives::Moment;
 	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
+	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::pallet_prelude::*;
+	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedU128;
 
 	type PoolId = u64;
@@ -22,29 +24,27 @@ mod pallet_mock_pools {
 	type WithdrawFn = Box<dyn Fn((PoolId, AccountId, Balance)) -> DispatchResult>;
 	type DepositFn = Box<dyn Fn((PoolId, AccountId, Balance)) -> DispatchResult>;
 
-	type CallType<F> = LocalKey<RefCell<HashMap<u64, Box<F>>>>;
+	type CallId = u64;
+	type CallStorage<F> = LocalKey<RefCell<(CallType, HashMap<u64, Box<F>>)>>;
+
+	#[derive(Clone, Copy, Encode, Decode, TypeInfo, MaxEncodedLen)]
+	pub enum CallType {
+		PoolExists,
+		AccountFor,
+		Withdraw,
+		Deposit,
+	}
 
 	thread_local! {
-		static POOL_EXISTS_FNS: RefCell<HashMap<u64, PoolExistsFn>> = RefCell::new(HashMap::default());
-		static ACCOUNT_FOR_FNS: RefCell<HashMap<u64, AccountForFn>> = RefCell::new(HashMap::default());
-		static WITHDRAW_FNS: RefCell<HashMap<u64, WithdrawFn>> = RefCell::new(HashMap::default());
-		static DEPOSIT_FNS: RefCell<HashMap<u64, DepositFn>> = RefCell::new(HashMap::default());
+		static POOL_EXISTS_FNS: RefCell<(CallType, HashMap<CallId, PoolExistsFn>)>
+			= RefCell::new((CallType::PoolExists, HashMap::default()));
+		static ACCOUNT_FOR_FNS: RefCell<(CallType, HashMap<CallId, AccountForFn>)>
+			= RefCell::new((CallType::PoolExists, HashMap::default()));
+		static WITHDRAW_FNS: RefCell<(CallType, HashMap<CallId, WithdrawFn>)>
+			= RefCell::new((CallType::PoolExists, HashMap::default()));
+		static DEPOSIT_FNS: RefCell<(CallType, HashMap<CallId, DepositFn>)>
+			= RefCell::new((CallType::PoolExists, HashMap::default()));
 	}
-
-	/*
-	#[macro_export]
-	macro_rules! vec {
-		( $fns:item, ) => {
-			{
-				let mut temp_vec = Vec::new();
-				$(
-					temp_vec.push($x);
-				)*
-				temp_vec
-			}
-		};
-	}
-	*/
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {}
@@ -54,26 +54,29 @@ mod pallet_mock_pools {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type IdCall<T: Config> = StorageValue<_, u64, OptionQuery>;
+	pub(super) type IdCall<T: Config> = StorageMap<_, Blake2_128Concat, CallType, CallId>;
 
 	impl<T: Config> Pallet<T> {
 		fn register_call<F: Fn(Args) -> R + 'static, Args, R>(
-			call_type: &'static CallType<dyn Fn(Args) -> R>,
+			call_storage: &'static CallStorage<dyn Fn(Args) -> R>,
 			f: F,
 		) {
-			call_type.with(|state| {
-				let mut registry = state.borrow_mut();
+			call_storage.with(|state| {
+				let (call_type, registry) = &mut *state.borrow_mut();
 				let fn_id = registry.len() as u64;
 				registry.insert(fn_id, Box::new(f));
-				IdCall::<T>::put(fn_id);
+				IdCall::<T>::insert(call_type, fn_id);
 			});
 		}
 
-		fn execute_call<Args, R>(call_type: &'static CallType<dyn Fn(Args) -> R>, args: Args) -> R {
-			let fn_id = IdCall::<T>::get().expect("Must be an expectation for this call");
-
-			call_type.with(|state| {
-				let registry = state.borrow();
+		fn execute_call<Args, R>(
+			call_storage: &'static CallStorage<dyn Fn(Args) -> R>,
+			args: Args,
+		) -> R {
+			call_storage.with(|state| {
+				let (call_type, registry) = &*state.borrow();
+				let fn_id =
+					IdCall::<T>::get(call_type).expect("Must be an expectation for this call");
 				let call = registry.get(&fn_id).unwrap();
 				call(args)
 			})
