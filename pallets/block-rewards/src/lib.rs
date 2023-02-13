@@ -59,7 +59,11 @@ pub use frame_support::{
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
-use sp_runtime::{traits::Zero, FixedPointOperand};
+pub use sp_runtime::Saturating;
+use sp_runtime::{
+	traits::{AccountIdConversion, Zero},
+	FixedPointOperand,
+};
 use sp_std::{mem, vec::Vec};
 use weights::WeightInfo;
 
@@ -176,8 +180,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
+		/// Identifier for the currency used to give the reward.
+		type RewardCurrency: Get<Self::CurrencyId>;
+
 		#[pallet::constant]
-		type RemainderCollector: Get<PalletId>;
+		type RemainingRewardCollector: Get<Option<PalletId>>;
 
 		/// The identifier type for an authority.
 		type AuthorityId: Member
@@ -242,7 +249,6 @@ pub mod pallet {
 
 			let mut groups = 0;
 			let mut weight_changes = 0;
-
 			transactional::with_storage_layer(|| -> DispatchResult {
 				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
 					ActiveEpochData::<T>::try_mutate(|epoch_data| {
@@ -257,7 +263,24 @@ pub mod pallet {
 							epoch_data.reward,
 							epoch_data.weights.iter().map(|(g, w)| (*g, *w)),
 						)
-						.map(|results| results.len() as u32)?;
+						.map(|results| {
+							// Mint reward remainder into destination if specified
+							if let Some(pallet_id) = T::RemainingRewardCollector::get() {
+								let remaining_rewards =
+									results.iter().fold(epoch_data.reward, |acc, result| {
+										// Don't subtract from total rewards if group reward failed
+										acc.saturating_sub(result.unwrap_or_default())
+									});
+								T::Currency::mint_into(
+									T::RewardCurrency::get(),
+									&pallet_id.into_account_truncating(),
+									remaining_rewards,
+								)?;
+							}
+
+							Ok(results.len() as u32)
+						})
+						.and_then(|num_groups| num_groups)?;
 
 						for (&group_id, &weight) in &changes.weights {
 							epoch_data.weights.try_insert(group_id, weight).ok();

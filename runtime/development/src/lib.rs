@@ -1699,6 +1699,8 @@ frame_support::parameter_types! {
 	pub const CollatorGroupId: u32 = 1u32;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const DefaultCollatorStake: Balance = 1000 * CFG;
+
+	pub const RemainingRewardCollector: Option<PalletId> = Some(TreasuryPalletId::get());
 }
 
 impl pallet_block_rewards::Config for Runtime {
@@ -1716,6 +1718,8 @@ impl pallet_block_rewards::Config for Runtime {
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
 	type MaxGroups = MaxGroups;
+	type RemainingRewardCollector = RemainingRewardCollector;
+	type RewardCurrency = RewardCurrency;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
