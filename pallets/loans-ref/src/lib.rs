@@ -4,7 +4,13 @@ pub mod types;
 pub mod valuation;
 
 #[cfg(test)]
-pub mod pool_mock;
+mod mock_permissions;
+
+#[cfg(test)]
+mod mock_pool;
+
+#[cfg(test)]
+mod mock;
 
 pub use pallet::*;
 
@@ -28,7 +34,7 @@ mod pallet {
 			},
 			UnixTime,
 		},
-		transactional, PalletError, StorageHasher,
+		transactional, PalletError,
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
@@ -90,9 +96,6 @@ mod pallet {
 			+ Copy
 			+ EnsureAdd
 			+ One;
-
-		/// Used to generate [`Self::LoanId`] identifiers
-		type Hasher: StorageHasher<Output = Self::LoanId>;
 
 		/// Defines the rate type used for math computations
 		type Rate: Parameter
