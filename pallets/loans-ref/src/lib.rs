@@ -3,6 +3,9 @@
 pub mod types;
 pub mod valuation;
 
+#[cfg(test)]
+pub mod pool_mock;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
