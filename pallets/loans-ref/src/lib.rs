@@ -4,13 +4,10 @@ pub mod types;
 pub mod valuation;
 
 #[cfg(test)]
-mod mock_permissions;
-
-#[cfg(test)]
-mod mock_pool;
-
-#[cfg(test)]
 mod mock;
+
+#[cfg(test)]
+mod tests;
 
 pub use pallet::*;
 

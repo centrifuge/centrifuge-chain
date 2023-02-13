@@ -1,3 +1,6 @@
+mod permissions;
+mod pools;
+
 use cfg_primitives::Moment;
 use frame_support::traits::{AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64};
 use frame_system::{EnsureRoot, EnsureSigned};
@@ -8,8 +11,8 @@ use sp_runtime::{
 	FixedU128,
 };
 
+use self::{permissions as pallet_mock_permissions, pools as pallet_mock_pools};
 use crate as pallet_loans;
-use crate::{mock_permissions::pallet_mock_permissions, mock_pool::pallet_mock_pool};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -32,7 +35,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances,
 		Uniques: pallet_uniques,
 		InterestAccrual: pallet_interest_accrual,
-		MockPool: pallet_mock_pool,
+		MockPools: pallet_mock_pools,
 		Permissions: pallet_mock_permissions,
 		Loans: pallet_loans,
 	}
@@ -119,7 +122,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Weights = ();
 }
 
-impl pallet_mock_pool::Config for Runtime {}
+impl pallet_mock_pools::Config for Runtime {}
 impl pallet_mock_permissions::Config for Runtime {}
 
 impl pallet_loans::Config for Runtime {
@@ -133,7 +136,7 @@ impl pallet_loans::Config for Runtime {
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type NonFungible = Uniques;
 	type Permissions = pallet_mock_permissions::Pallet<Runtime>;
-	type Pool = pallet_mock_pool::Pallet<Runtime>;
+	type Pool = pallet_mock_pools::Pallet<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -146,17 +149,3 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	sp_io::TestExternalities::new(storage)
 }
-
-/*
-	#[test]
-	fn wrong_test_example() {
-		new_test_ext().execute_with(|| {
-			MockPool::expect_withdraw(|_, _, amount| {
-				assert_eq!(amount, 999);
-				Ok(())
-			});
-
-			assert_ok!(MockPool::withdraw(1, 2, 1000));
-		});
-	}
-*/

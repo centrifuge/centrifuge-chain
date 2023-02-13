@@ -1,6 +1,8 @@
+pub use pallet_mock_pools::*;
+
 #[allow(dead_code)]
 #[frame_support::pallet]
-pub mod pallet_mock_pool {
+mod pallet_mock_pools {
 	use std::{cell::RefCell, collections::HashMap};
 
 	use cfg_primitives::Moment;
