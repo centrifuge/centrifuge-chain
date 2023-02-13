@@ -119,6 +119,11 @@ pub mod pallet {
 		/// Specify the internal reward mechanism used by this pallet.
 		/// Check available mechanisms at [`mechanism`] module.
 		type RewardMechanism: RewardMechanism;
+
+		/// Type used to identify the income stream for rewards.
+		/// By setting this `None`, the rewards will be minted.
+		#[pallet::constant]
+		type RewardSource: Get<Option<frame_support::PalletId>>;
 	}
 
 	#[pallet::pallet]
@@ -227,11 +232,22 @@ pub mod pallet {
 			Groups::<T, I>::try_mutate(group_id, |group| {
 				let reward = T::RewardMechanism::reward_group(group, reward)?;
 
-				T::Currency::mint_into(
-					T::RewardCurrency::get(),
-					&T::PalletId::get().into_account_truncating(),
-					reward,
-				)?;
+				// TODO: Check with @Luis whether we want to move this into a trait
+				if let Some(pallet_id) = T::RewardSource::get() {
+					T::Currency::transfer(
+						T::RewardCurrency::get(),
+						&pallet_id.into_account_truncating(),
+						&T::PalletId::get().into_account_truncating(),
+						reward,
+						true,
+					)?;
+				} else {
+					T::Currency::mint_into(
+						T::RewardCurrency::get(),
+						&T::PalletId::get().into_account_truncating(),
+						reward,
+					)?;
+				}
 
 				Self::deposit_event(Event::GroupRewarded {
 					group_id,

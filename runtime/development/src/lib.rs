@@ -1628,6 +1628,10 @@ frame_support::parameter_types! {
 
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 50;
+
+	// TODO: Re-enable
+	// pub const RewardSource: Option<AccountId> = None;
+	pub const RewardSource: Option<PalletId> = Some(TreasuryPalletId::get());
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
@@ -1643,6 +1647,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 		FixedI128,
 		MaxCurrencyMovements,
 	>;
+	type RewardSource = RewardSource;
 	type RuntimeEvent = RuntimeEvent;
 }
 
@@ -1675,10 +1680,12 @@ impl pallet_liquidity_rewards::Config for Runtime {
 
 frame_support::parameter_types! {
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
+	pub const EpocDurationBlockRewards: BlockNumber = 2 * Period::get();
 
 	// TODO: Convert to common consts
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	pub const CollatorCurrencyId: u32 = u32::from_be_bytes(*b"blrw");
+	// TODO: Ensure uniqueness, currently abbreviates "blockrewards/collator"
+	pub const CollatorCurrencyId: u32 = u32::from_be_bytes(*b"br/c");
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const CollatorGroupId: u32 = 1u32;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
@@ -1696,7 +1703,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type DefaultCollatorStake = DefaultCollatorStake;
 	type Domain = BlockRewardsDomain;
 	type GroupId = u32;
-	type InitialEpochDuration = InitialEpochDuration;
+	type InitialEpochDuration = EpocDurationBlockRewards;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
 	type MaxGroups = MaxGroups;

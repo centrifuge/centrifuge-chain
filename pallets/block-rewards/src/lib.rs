@@ -107,6 +107,8 @@ pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::PalletId;
+
 	use super::*;
 
 	#[pallet::config]
@@ -156,6 +158,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
+		// TODO: Investigate if can be removed due to tight coupling to session length
 		/// Initial epoch duration.
 		/// This value can be updated later using [`Pallet::set_epoch_duration()`]`.
 		#[pallet::constant]
@@ -172,6 +175,9 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
+
+		#[pallet::constant]
+		type RemainderCollector: Get<PalletId>;
 
 		/// The identifier type for an authority.
 		type AuthorityId: Member
@@ -226,7 +232,7 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		// TODO: Could be moved to SessionManager
+		// TODO: Must be moved to SessionManager
 		fn on_initialize(current_block: T::BlockNumber) -> Weight {
 			let ends_on = EndOfEpoch::<T>::get();
 
@@ -415,6 +421,8 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 					collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
 				});
 			}
+
+			// TODO: Add on_initialize
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
 				T::DbWeight::get().writes(1),
