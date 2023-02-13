@@ -18,11 +18,11 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where
-	Domain: Encode + Decode,
-	PoolId: Encode + Decode,
-	TrancheId: Encode + Decode,
-	Balance: Encode + Decode,
-	Rate: Encode + Decode,
+	Domain: ConnectorEncode,
+	PoolId: Encode,
+	TrancheId: Encode,
+	Balance: Encode,
+	Rate: Encode,
 {
 	Invalid,
 	AddPool {
@@ -55,13 +55,8 @@ where
 	},
 }
 
-impl<
-		Domain: Encode + Decode,
-		PoolId: Encode + Decode,
-		TrancheId: Encode + Decode,
-		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Message<Domain, PoolId, TrancheId, Balance, Rate>
+impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode>
+	Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	/// The call type that identifies a specific Message variant. This value is used
 	/// to encode/decode a Message to/from a bytearray, whereas the head of the bytearray
@@ -81,13 +76,8 @@ impl<
 	}
 }
 
-impl<
-		Domain: ConnectorEncode + Encode + Decode,
-		PoolId: Encode + Decode,
-		TrancheId: Encode + Decode,
-		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Encode for Message<Domain, PoolId, TrancheId, Balance, Rate>
+impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode>
+	Encode for Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	fn encode(&self) -> Vec<u8> {
 		match self {
@@ -348,7 +338,7 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 				domain: domain_address.clone().into(),
-				address: domain_address.get_address(),
+				address: domain_address.address(),
 				amount: 1000000000000000000000000000,
 			};
 			let encoded = msg.encode();

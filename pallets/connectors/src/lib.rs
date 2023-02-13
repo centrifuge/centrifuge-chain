@@ -60,7 +60,7 @@ pub enum Domain {
 	EVM(EVMChainId),
 }
 
-pub(crate) trait ConnectorEncode {
+pub trait ConnectorEncode {
 	fn connector_encode(&self) -> Vec<u8>;
 }
 
@@ -119,11 +119,15 @@ impl Into<Domain> for DomainAddress {
 impl DomainAddress {
 	/// Get the address in a 32-byte long representation.
 	/// For EVM addresses, append 12 zeros.
-	fn get_address(&self) -> [u8; 32] {
+	fn address(&self) -> [u8; 32] {
 		match self.clone() {
 			Self::Centrifuge(x) => x,
 			Self::EVM(_, x) => vec_to_fixed_array(x.to_vec()),
 		}
+	}
+
+	fn domain(&self) -> Domain {
+		self.clone().into()
 	}
 }
 
@@ -315,8 +319,9 @@ pub mod pallet {
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
-			let latest_price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
-				.ok_or(Error::<T>::MissingTranchePrice)?;
+			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingTranchePrice)?
+				.price;
 
 			// Send the message to the domain
 			Self::do_send_message(
@@ -326,7 +331,7 @@ pub mod pallet {
 					tranche_id,
 					token_name,
 					token_symbol,
-					price: latest_price.price,
+					price,
 				},
 				domain,
 			)?;
@@ -344,15 +349,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			let latest_price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
-				.ok_or(Error::<T>::MissingTranchePrice)?;
+			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingTranchePrice)?
+				.price;
 
 			Self::do_send_message(
 				who,
 				Message::UpdateTokenPrice {
 					pool_id,
 					tranche_id,
-					price: latest_price.price,
+					price,
 				},
 				domain,
 			)?;
@@ -402,9 +408,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					address: domain_address.get_address(),
+					address: domain_address.address(),
 				},
-				domain_address.into(),
+				domain_address.domain(),
 			)?;
 
 			Ok(())
@@ -416,7 +422,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
-			address: DomainAddress,
+			domain_address: DomainAddress,
 			amount: <T as pallet::Config>::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -425,7 +431,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					address.into_account_truncating(),
+					domain_address.into_account_truncating(),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 				),
 				Error::<T>::UnauthorizedTransfer
@@ -438,7 +444,7 @@ pub mod pallet {
 				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into(),
 				&who,
 				&DomainLocator::<Domain> {
-					domain: address.clone().into(),
+					domain: domain_address.domain(),
 				}
 				.into_account_truncating(),
 				amount,
@@ -451,10 +457,10 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					amount,
-					domain: address.clone().into(),
-					address: address.clone().get_address(),
+					domain: domain_address.domain(),
+					address: domain_address.address(),
 				},
-				address.into(),
+				domain_address.domain(),
 			)?;
 
 			Ok(())
