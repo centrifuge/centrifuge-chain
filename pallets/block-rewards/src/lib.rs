@@ -80,7 +80,6 @@ pub struct CollatorChanges<T: Config> {
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
 pub struct EpochData<T: Config> {
-	duration: T::BlockNumber,
 	reward: T::Balance,
 	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxGroups>,
 }
@@ -88,7 +87,6 @@ pub struct EpochData<T: Config> {
 impl<T: Config> Default for EpochData<T> {
 	fn default() -> Self {
 		Self {
-			duration: T::InitialEpochDuration::get(),
 			reward: T::Balance::zero(),
 			weights: BoundedBTreeMap::default(),
 		}
@@ -101,7 +99,6 @@ impl<T: Config> Default for EpochData<T> {
 )]
 #[scale_info(skip_type_params(T))]
 pub struct EpochChanges<T: Config> {
-	duration: Option<T::BlockNumber>,
 	reward: Option<T::Balance>,
 	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
 	collators: CollatorChanges<T>,
@@ -162,12 +159,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
-		// TODO: Investigate if can be removed due to tight coupling to session length
-		/// Initial epoch duration.
-		/// This value can be updated later using [`Pallet::set_epoch_duration()`]`.
-		#[pallet::constant]
-		type InitialEpochDuration: Get<Self::BlockNumber>;
-
 		#[pallet::constant]
 		type CollatorCurrencyId: Get<Self::CurrencyId> + TypeInfo;
 
@@ -201,16 +192,6 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	/// Contains the timestamp in blocks when the current epoch is finalized.
-	//
-	// Although this value could be stored inside `EpochData`,
-	// we maintain it separately to avoid deserializing the whole EpochData struct each `on_initialize()` call.
-	// EpochData could be relatively big if there many groups.
-	// We dont have to deserialize the whole struct 99% of the time (assuming a duration of 100 blocks),
-	// we only need to perform that action when the epoch finalized, 1% of the time.
-	#[pallet::storage]
-	pub(super) type EndOfEpoch<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
-
 	/// Data associated to the current epoch.
 	#[pallet::storage]
 	pub(super) type ActiveEpochData<T: Config> = StorageValue<_, EpochData<T>, ValueQuery>;
@@ -224,7 +205,6 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		NewEpoch {
-			ends_on: T::BlockNumber,
 			reward: T::Balance,
 			last_changes: EpochChanges<T>,
 		},
@@ -235,80 +215,6 @@ pub mod pallet {
 		/// Limit of max calls with same id to [`Pallet::set_group_weight()`] or
 		/// [`Pallet::set_currency_group()`] reached.
 		MaxChangesPerEpochReached,
-	}
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		// TODO: Must be moved to SessionManager
-		fn on_initialize(current_block: T::BlockNumber) -> Weight {
-			let ends_on = EndOfEpoch::<T>::get();
-
-			if ends_on > current_block {
-				return T::DbWeight::get().reads(1);
-			}
-
-			let mut groups = 0;
-			let mut weight_changes = 0;
-			transactional::with_storage_layer(|| -> DispatchResult {
-				NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
-					ActiveEpochData::<T>::try_mutate(|epoch_data| {
-						for leaving in changes.collators.out.drain(..) {
-							Self::do_exit_collator(&leaving)?;
-						}
-						for joining in changes.collators.inc.drain(..) {
-							Self::do_init_collator(&joining)?;
-						}
-
-						groups = T::Rewards::distribute_reward_with_weights(
-							epoch_data.reward,
-							epoch_data.weights.iter().map(|(g, w)| (*g, *w)),
-						)
-						.map(|results| {
-							// Mint reward remainder into destination if specified
-							if let Some(pallet_id) = T::RemainingRewardCollector::get() {
-								let remaining_rewards =
-									results.iter().fold(epoch_data.reward, |acc, result| {
-										// Don't subtract from total rewards if group reward failed
-										acc.saturating_sub(result.unwrap_or_default())
-									});
-								T::Currency::mint_into(
-									T::RewardCurrency::get(),
-									&pallet_id.into_account_truncating(),
-									remaining_rewards,
-								)?;
-							}
-
-							Ok(results.len() as u32)
-						})
-						.and_then(|num_groups| num_groups)?;
-
-						for (&group_id, &weight) in &changes.weights {
-							epoch_data.weights.try_insert(group_id, weight).ok();
-							weight_changes += 1;
-						}
-
-						epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
-						epoch_data.duration = changes.duration.unwrap_or(epoch_data.duration);
-
-						let ends_on = ends_on.max(current_block).ensure_add(epoch_data.duration)?;
-
-						EndOfEpoch::<T>::set(ends_on);
-
-						Self::deposit_event(Event::NewEpoch {
-							ends_on: ends_on,
-							reward: epoch_data.reward,
-							last_changes: mem::take(changes),
-						});
-
-						Ok(())
-					})
-				})
-			})
-			.ok();
-
-			// TODO: Apply joining + leaving as param
-			T::WeightInfo::on_initialize(groups, weight_changes)
-		}
 	}
 
 	#[pallet::call]
@@ -334,17 +240,6 @@ pub mod pallet {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			NextEpochChanges::<T>::mutate(|changes| changes.reward = Some(balance));
-
-			Ok(())
-		}
-
-		/// Admin method to set the duration used for the next epochs.
-		/// Current epoch is not affected by this call.
-		#[pallet::weight(T::WeightInfo::set_epoch_duration())]
-		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-
-			NextEpochChanges::<T>::mutate(|changes| changes.duration = Some(blocks));
 
 			Ok(())
 		}
@@ -399,12 +294,88 @@ impl<T: Config> Pallet<T> {
 		)?;
 		T::Currency::burn_from(T::CollatorCurrencyId::get(), who, amount).map(|_| ())
 	}
+
+	/// Mint remaining rewards if not everything was distributed to the groups.
+	///
+	/// NOTE: Noop if [RemainingRewardCollector] is `None`.
+	fn do_mint_remainder(
+		total_reward: T::Balance,
+		reward_results: &Vec<Result<T::Balance, DispatchError>>,
+	) -> DispatchResult {
+		if let Some(pallet_id) = T::RemainingRewardCollector::get() {
+			let remaining_rewards = reward_results.iter().fold(total_reward, |acc, result| {
+				// Don't subtract from total rewards if group reward failed
+				acc.saturating_sub(result.unwrap_or_default())
+			});
+			T::Currency::mint_into(
+				T::RewardCurrency::get(),
+				&pallet_id.into_account_truncating(),
+				remaining_rewards,
+			)?;
+		}
+
+		Ok(())
+	}
+
+	/// Apply epoch changes and distribute rewards.
+	///
+	/// NOTE: Noop if any call fails.
+	fn do_advance_epoch() -> Weight {
+		let mut groups = 0;
+		let mut weight_changes = 0;
+		let mut num_joining = 0;
+		let mut num_leaving = 0;
+
+		transactional::with_storage_layer(|| -> DispatchResult {
+			NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
+				ActiveEpochData::<T>::try_mutate(|epoch_data| {
+					num_joining = changes.collators.inc.len();
+					num_leaving = changes.collators.out.len();
+					for leaving in changes.collators.out.drain(..) {
+						Self::do_exit_collator(&leaving)?;
+					}
+					for joining in changes.collators.inc.drain(..) {
+						Self::do_init_collator(&joining)?;
+					}
+
+					groups = T::Rewards::distribute_reward_with_weights(
+						epoch_data.reward,
+						epoch_data.weights.iter().map(|(g, w)| (*g, *w)),
+					)
+					.map(|results| {
+						Self::do_mint_remainder(epoch_data.reward, &results)?;
+						Ok(results.len() as u32)
+					})
+					.and_then(|num_groups| num_groups)?;
+
+					for (&group_id, &weight) in &changes.weights {
+						epoch_data.weights.try_insert(group_id, weight).ok();
+						weight_changes += 1;
+					}
+
+					epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
+
+					Self::deposit_event(Event::NewEpoch {
+						reward: epoch_data.reward,
+						last_changes: mem::take(changes),
+					});
+
+					Ok(())
+				})
+			})
+		})
+		.ok();
+
+		// TODO: Apply number of incoming and outgoing collators
+		T::WeightInfo::on_initialize(groups, weight_changes)
+	}
 }
 
 impl<T: Config> sp_runtime::BoundToRuntimeAppPublic for Pallet<T> {
 	type Public = T::AuthorityId;
 }
 
+// Should be instantiated after the original SessionHandler such that current and queued collators are up-to-date for the current session.
 impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	type Key = T::AuthorityId;
 
@@ -419,6 +390,11 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	where
 		I: Iterator<Item = (&'a T::AccountId, T::AuthorityId)>,
 	{
+		// MUST be called before updating collator set changes.
+		// Else the timing is off.
+		let mut weight = Self::do_advance_epoch();
+
+		// Prepare collator set changes for next session.
 		if changed {
 			let current = validators
 				.map(|(acc_id, _)| acc_id.clone())
@@ -445,13 +421,13 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 				});
 			}
 
-			// TODO: Add on_initialize
-
-			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::DbWeight::get().writes(1),
-				DispatchClass::Mandatory,
-			);
+			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 		}
+
+		frame_system::Pallet::<T>::register_extra_weight_unchecked(
+			weight,
+			DispatchClass::Mandatory,
+		);
 	}
 
 	fn on_before_session_ending() {

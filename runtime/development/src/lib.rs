@@ -342,8 +342,12 @@ impl pallet_session::Config for Runtime {
 	type Keys = SessionKeys;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
-	// Essentially just Aura, but lets be pedantic.
-	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
+	type SessionHandler = (
+		// TODO: Investigate solution for staying with <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders
+		Aura,
+		// Forwards collator set changes and executes scheduled BlockRewards epoch changes.
+		BlockRewards,
+	);
 	type SessionManager = CollatorSelection;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
@@ -1714,7 +1718,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type DefaultCollatorStake = DefaultCollatorStake;
 	type Domain = BlockRewardsDomain;
 	type GroupId = u32;
-	type InitialEpochDuration = EpocDurationBlockRewards;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
 	type MaxGroups = MaxGroups;
