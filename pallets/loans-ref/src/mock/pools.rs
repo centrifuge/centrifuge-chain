@@ -3,7 +3,7 @@ pub use pallet_mock_pools::*;
 #[allow(dead_code)]
 #[frame_support::pallet]
 mod pallet_mock_pools {
-	use std::{cell::RefCell, collections::HashMap};
+	use std::{cell::RefCell, collections::HashMap, thread::LocalKey};
 
 	use cfg_primitives::Moment;
 	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
@@ -19,8 +19,10 @@ mod pallet_mock_pools {
 
 	type PoolExistsFn = Box<dyn Fn(PoolId) -> bool>;
 	type AccountForFn = Box<dyn Fn(PoolId) -> AccountId>;
-	type WithdrawFn = Box<dyn Fn(PoolId, AccountId, Balance) -> DispatchResult>;
-	type DepositFn = Box<dyn Fn(PoolId, AccountId, Balance) -> DispatchResult>;
+	type WithdrawFn = Box<dyn Fn((PoolId, AccountId, Balance)) -> DispatchResult>;
+	type DepositFn = Box<dyn Fn((PoolId, AccountId, Balance)) -> DispatchResult>;
+
+	type CallType<F> = LocalKey<RefCell<HashMap<u64, Box<F>>>>;
 
 	thread_local! {
 		static POOL_EXISTS_FNS: RefCell<HashMap<u64, PoolExistsFn>> = RefCell::new(HashMap::default());
@@ -28,6 +30,21 @@ mod pallet_mock_pools {
 		static WITHDRAW_FNS: RefCell<HashMap<u64, WithdrawFn>> = RefCell::new(HashMap::default());
 		static DEPOSIT_FNS: RefCell<HashMap<u64, DepositFn>> = RefCell::new(HashMap::default());
 	}
+
+	/*
+	#[macro_export]
+	macro_rules! vec {
+		( $fns:item, ) => {
+			{
+				let mut temp_vec = Vec::new();
+				$(
+					temp_vec.push($x);
+				)*
+				temp_vec
+			}
+		};
+	}
+	*/
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {}
@@ -40,40 +57,42 @@ mod pallet_mock_pools {
 	pub(super) type IdCall<T: Config> = StorageValue<_, u64, OptionQuery>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn pool_exists_for(f: impl Fn(PoolId) -> bool + 'static) {
-			POOL_EXISTS_FNS.with(|state| {
+		fn register_call<F: Fn(Args) -> R + 'static, Args, R>(
+			call_type: &'static CallType<dyn Fn(Args) -> R>,
+			f: F,
+		) {
+			call_type.with(|state| {
 				let mut registry = state.borrow_mut();
 				let fn_id = registry.len() as u64;
 				registry.insert(fn_id, Box::new(f));
 				IdCall::<T>::put(fn_id);
+			});
+		}
+
+		fn execute_call<Args, R>(call_type: &'static CallType<dyn Fn(Args) -> R>, args: Args) -> R {
+			let fn_id = IdCall::<T>::get().expect("Must be an expectation for this call");
+
+			call_type.with(|state| {
+				let registry = state.borrow();
+				let call = registry.get(&fn_id).unwrap();
+				call(args)
 			})
+		}
+
+		pub fn pool_exists_for(f: impl Fn(PoolId) -> bool + 'static) {
+			Self::register_call(&POOL_EXISTS_FNS, f);
 		}
 
 		pub fn expect_account_for(f: impl Fn(PoolId) -> AccountId + 'static) {
-			ACCOUNT_FOR_FNS.with(|state| {
-				let mut registry = state.borrow_mut();
-				let fn_id = registry.len() as u64;
-				registry.insert(fn_id, Box::new(f));
-				IdCall::<T>::put(fn_id);
-			})
+			Self::register_call(&ACCOUNT_FOR_FNS, f);
 		}
 
 		pub fn expect_withdraw(f: impl Fn(PoolId, AccountId, Balance) -> DispatchResult + 'static) {
-			WITHDRAW_FNS.with(|state| {
-				let mut registry = state.borrow_mut();
-				let fn_id = registry.len() as u64;
-				registry.insert(fn_id, Box::new(f));
-				IdCall::<T>::put(fn_id);
-			})
+			Self::register_call(&WITHDRAW_FNS, move |(a, b, c)| f(a, b, c));
 		}
 
 		pub fn expect_deposit(f: impl Fn(PoolId, AccountId, Balance) -> DispatchResult + 'static) {
-			DEPOSIT_FNS.with(|state| {
-				let mut registry = state.borrow_mut();
-				let fn_id = registry.len() as u64;
-				registry.insert(fn_id, Box::new(f));
-				IdCall::<T>::put(fn_id);
-			})
+			Self::register_call(&DEPOSIT_FNS, move |(a, b, c)| f(a, b, c));
 		}
 	}
 
@@ -84,13 +103,7 @@ mod pallet_mock_pools {
 		type TrancheId = TrancheId;
 
 		fn pool_exists(pool_id: PoolId) -> bool {
-			let fn_id = IdCall::<T>::get().expect("Must be an expectation for this call");
-
-			POOL_EXISTS_FNS.with(|state| {
-				let registry = state.borrow();
-				let call = registry.get(&fn_id).expect("fn stored");
-				call(pool_id)
-			})
+			Self::execute_call(&POOL_EXISTS_FNS, pool_id)
 		}
 
 		fn tranche_exists(_: PoolId, _: TrancheId) -> bool {
@@ -98,20 +111,14 @@ mod pallet_mock_pools {
 		}
 
 		fn get_tranche_token_price(
-			_: Self::PoolId,
-			_: Self::TrancheId,
+			_: PoolId,
+			_: TrancheId,
 		) -> Option<PriceValue<CurrencyId, Rate, Moment>> {
 			unimplemented!()
 		}
 
-		fn account_for(pool_id: Self::PoolId) -> AccountId {
-			let fn_id = IdCall::<T>::get().expect("Must be an expectation for this call");
-
-			ACCOUNT_FOR_FNS.with(|state| {
-				let registry = state.borrow();
-				let call = registry.get(&fn_id).expect("fn stored");
-				call(pool_id)
-			})
+		fn account_for(pool_id: PoolId) -> AccountId {
+			Self::execute_call(&ACCOUNT_FOR_FNS, pool_id)
 		}
 	}
 
@@ -119,23 +126,11 @@ mod pallet_mock_pools {
 		type Balance = Balance;
 
 		fn withdraw(pool_id: PoolId, to: AccountId, amount: Balance) -> DispatchResult {
-			let fn_id = IdCall::<T>::get().expect("Must be an expectation for this call");
-
-			WITHDRAW_FNS.with(|state| {
-				let registry = state.borrow();
-				let call = registry.get(&fn_id).expect("fn stored");
-				call(pool_id, to, amount)
-			})
+			Self::execute_call(&WITHDRAW_FNS, (pool_id, to, amount))
 		}
 
 		fn deposit(pool_id: PoolId, from: AccountId, amount: Balance) -> DispatchResult {
-			let fn_id = IdCall::<T>::get().expect("Must be an expectation for this call");
-
-			DEPOSIT_FNS.with(|state| {
-				let registry = state.borrow();
-				let call = registry.get(&fn_id).expect("fn stored");
-				call(pool_id, from, amount)
-			})
+			Self::execute_call(&DEPOSIT_FNS, (pool_id, from, amount))
 		}
 	}
 }
