@@ -152,7 +152,6 @@ fn add_tranche() {
 			tranche_id,
 			Domain::EVM(1284),
 		));
-		// TODO(nuno): figure out how to convert the tranche metadata set by pool_system into the 32-bounded array expected by the Connectors::AddTranche message.
 	});
 }
 
@@ -221,6 +220,52 @@ fn update_member() {
 				valid_until.clone()
 			)),
 		));
+	});
+}
+
+#[test]
+fn update_token_price() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		// Now create the pool
+		let pool_id: u64 = 42;
+		utils::create_pool(pool_id);
+
+		// Find the right tranche id
+		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
+		let tranche_id = pool_details
+			.tranches
+			.tranche_id(TrancheLoc::Index(0))
+			.expect("Tranche at index 0 exists");
+
+
+		// Verify we first need to call `Loands::update_nav`
+		// Verify it fails if the origin is not a MemberListAdmin
+		assert_noop!(
+			Connectors::update_token_price(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id.clone(),
+				tranche_id.clone(),
+				Domain::EVM(1284),
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::MissingTranchePrice
+		);
+
+		Loans::update_nav(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
+			.expect("Should update nav");
+
+		// Verify it now works
+		assert_ok!(
+			Connectors::update_token_price(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id.clone(),
+				tranche_id.clone(),
+				Domain::EVM(1284),
+			)
+		);
 	});
 }
 
