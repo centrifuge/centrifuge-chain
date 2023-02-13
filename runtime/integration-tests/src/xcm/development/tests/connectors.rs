@@ -28,7 +28,7 @@ use ::xcm::{
 	VersionedMultiLocation,
 };
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
-use cfg_traits::PoolMutate;
+use cfg_traits::{Permissions as _, PoolMutate};
 use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
@@ -153,6 +153,74 @@ fn add_tranche() {
 			Domain::EVM(1284),
 		));
 		// TODO(nuno): figure out how to convert the tranche metadata set by pool_system into the 32-bounded array expected by the Connectors::AddTranche message.
+	});
+}
+
+#[test]
+fn update_member() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		// Now create the pool
+		let pool_id: u64 = 42;
+		utils::create_pool(pool_id);
+
+		// Find the right tranche id
+		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
+		let tranche_id = pool_details
+			.tranches
+			.tranche_id(TrancheLoc::Index(0))
+			.expect("Tranche at index 0 exists");
+
+		Loans::update_nav(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
+			.expect("Should update nav");
+
+		// Finally, verify we can call Connectors::add_tranche successfully
+		// when given a valid pool + tranche id pair.
+		let new_member = DomainAddress::EVM(1284, [3; 20]);
+		let valid_until = 2555583502;
+
+		// Verify it fails if the origin is not a MemberListAdmin
+		assert_noop!(
+			Connectors::update_member(
+				RuntimeOrigin::signed(ALICE.into()),
+				new_member.clone(),
+				pool_id.clone(),
+				tranche_id.clone(),
+				valid_until.clone(),
+			),
+			BadOrigin
+		);
+
+		// Make ALICE the MembersListAdmin of this Pool
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::root(),
+			Role::PoolRole(PoolRole::PoolAdmin),
+			ALICE.into(),
+			PermissionScope::Pool(pool_id.clone()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+		));
+
+		// Verify it now works
+		assert_ok!(Connectors::update_member(
+			RuntimeOrigin::signed(ALICE.into()),
+			new_member.clone(),
+			pool_id.clone(),
+			tranche_id.clone(),
+			valid_until.clone(),
+		));
+
+		// Verify the Investor role was set as expected in Permissions
+		assert!(Permissions::has(
+			PermissionScope::Pool(pool_id.clone()),
+			new_member.into_account_truncating(),
+			Role::PoolRole(PoolRole::TrancheInvestor(
+				tranche_id.clone(),
+				valid_until.clone()
+			)),
+		));
 	});
 }
 
