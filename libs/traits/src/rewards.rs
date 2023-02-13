@@ -33,8 +33,14 @@ pub trait GroupRewards {
 	fn is_ready(group_id: Self::GroupId) -> bool;
 
 	/// Reward a group distributing the reward amount proportionally to all associated accounts.
-	/// This method is called by distribution method only when the group has some stake.
-	fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult;
+	/// This method is called by distribution method only when the group is considered ready,
+	/// check [`GroupRewards::is_ready()`].
+	/// The method returns the minted reward. Depending on the implementation it may be less
+	/// than requested.
+	fn reward_group(
+		group_id: Self::GroupId,
+		reward: Self::Balance,
+	) -> Result<Self::Balance, DispatchError>;
 
 	/// Retrieve the total staked amount.
 	fn group_stake(group_id: Self::GroupId) -> Self::Balance;
@@ -56,7 +62,7 @@ where
 	fn distribute_reward<It>(
 		reward: Self::Balance,
 		groups: It,
-	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
+	) -> Result<Vec<Result<Self::Balance, DispatchError>>, DispatchError>
 	where
 		It: IntoIterator<Item = Self::GroupId>,
 		It::IntoIter: Clone,
@@ -77,7 +83,7 @@ where
 	fn distribute_reward_with_weights<Weight, It>(
 		reward: Self::Balance,
 		groups: It,
-	) -> Result<Vec<(Self::GroupId, DispatchError)>, DispatchError>
+	) -> Result<Vec<Result<Self::Balance, DispatchError>>, DispatchError>
 	where
 		Weight: FixedPointOperand + EnsureAdd + Unsigned,
 		It: IntoIterator<Item = (Self::GroupId, Weight)>,
@@ -92,21 +98,17 @@ where
 
 		Ok(groups
 			.map(|(group_id, weight)| {
-				let result = (|| {
-					let group_reward = if Self::is_ready(group_id.clone()) {
-						let reward_rate = FixedU128::checked_from_rational(weight, total_weight)
-							.ok_or(ArithmeticError::DivisionByZero)?;
+				let group_reward = if Self::is_ready(group_id.clone()) {
+					let reward_rate = FixedU128::checked_from_rational(weight, total_weight)
+						.ok_or(ArithmeticError::DivisionByZero)?;
 
-						reward_rate.ensure_mul_int(reward)?
-					} else {
-						Self::Balance::zero()
-					};
+					reward_rate.ensure_mul_int(reward)?
+				} else {
+					Self::Balance::zero()
+				};
 
-					Self::reward_group(group_id.clone(), group_reward)
-				})();
-				(group_id, result)
+				Self::reward_group(group_id.clone(), group_reward)
 			})
-			.filter_map(|(group_id, result)| result.err().map(|err| (group_id, err)))
 			.collect())
 	}
 }
@@ -213,7 +215,7 @@ pub mod mock {
 			fn reward_group(
 				group_id: <Self as GroupRewards>::GroupId,
 				reward: <Self as GroupRewards>::Balance
-			) -> DispatchResult;
+			) -> Result<<Self as GroupRewards>::Balance, DispatchError>;
 
 			fn group_stake(group_id: <Self as GroupRewards>::GroupId) -> <Self as GroupRewards>::Balance;
 		}
@@ -306,9 +308,9 @@ mod test {
 		ctx2.expect()
 			.times(4)
 			.withf(|_, reward| *reward == REWARD_ZERO)
-			.returning(|group_id, _| match group_id {
+			.returning(|group_id, reward| match group_id {
 				GroupId::Err => Err(DispatchError::Other("issue")),
-				_ => Ok(()),
+				_ => Ok(reward),
 			});
 
 		assert_ok!(
@@ -316,7 +318,7 @@ mod test {
 				REWARD_ZERO,
 				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
 			),
-			vec![(GroupId::Err, DispatchError::Other("issue"))]
+			vec![Ok(0), Err(DispatchError::Other("issue")), Ok(0), Ok(0)]
 		);
 	}
 
@@ -364,9 +366,9 @@ mod test {
 						GroupId::B => REWARD / 3,
 					}
 			})
-			.returning(|group_id, _| match group_id {
+			.returning(|group_id, reward| match group_id {
 				GroupId::Err => Err(DispatchError::Other("issue")),
-				_ => Ok(()),
+				_ => Ok(reward),
 			});
 
 		assert_ok!(
@@ -374,7 +376,12 @@ mod test {
 				REWARD,
 				[GroupId::Empty, GroupId::Err, GroupId::A, GroupId::B]
 			),
-			vec![(GroupId::Err, DispatchError::Other("issue"))]
+			vec![
+				Ok(0),
+				Err(DispatchError::Other("issue")),
+				Ok(REWARD / 3),
+				Ok(REWARD / 3)
+			]
 		);
 	}
 
@@ -403,9 +410,9 @@ mod test {
 						GroupId::B => 40 * REWARD / 90,
 					}
 			})
-			.returning(|group_id, _| match group_id {
+			.returning(|group_id, reward| match group_id {
 				GroupId::Err => Err(DispatchError::Other("issue")),
-				_ => Ok(()),
+				_ => Ok(reward),
 			});
 
 		assert_ok!(
@@ -418,7 +425,7 @@ mod test {
 					(GroupId::B, 40u32)
 				]
 			),
-			vec![(GroupId::Err, DispatchError::Other("issue"))]
+			vec![Ok(0), Err(DispatchError::Other("issue")), Ok(33), Ok(44)]
 		);
 	}
 }

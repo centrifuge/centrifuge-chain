@@ -228,9 +228,12 @@ pub mod pallet {
 			T::RewardMechanism::is_ready(&group)
 		}
 
-		fn reward_group(group_id: Self::GroupId, reward: Self::Balance) -> DispatchResult {
+		fn reward_group(
+			group_id: Self::GroupId,
+			reward: Self::Balance,
+		) -> Result<Self::Balance, DispatchError> {
 			Groups::<T, I>::try_mutate(group_id, |group| {
-				let reward = T::RewardMechanism::reward_group(group, reward)?;
+				let reward_to_mint = T::RewardMechanism::reward_group(group, reward)?;
 
 				// TODO: Check with @Luis whether we want to move this into a trait
 				if let Some(pallet_id) = T::RewardSource::get() {
@@ -251,10 +254,10 @@ pub mod pallet {
 
 				Self::deposit_event(Event::GroupRewarded {
 					group_id,
-					amount: reward,
+					amount: reward_to_mint,
 				});
 
-				Ok(())
+				Ok(reward_to_mint)
 			})
 		}
 
