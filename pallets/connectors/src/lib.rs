@@ -67,9 +67,9 @@ pub trait ConnectorEncode {
 /// Custom encode implementation for the `Domain` type
 /// Domain is encoded as a 9-byte long bytearray, where:
 /// Byte 0 - Flags the Domain variant, i.e, either Domain::Centrifuge (0) or Domain::EVM (1)
-/// Byte 1-9 - Encodes the domain id if applicable;
-///		- For Domain::Centrifuge there's no id, so we append 8 zeros
-///		- For Domain::EVM, encode the respective chain id (8 bytes) as little endian
+/// Byte 1-9 - Encodes the chain id if applicable:
+///	- For Domain::Centrifuge there's no id, so we append 8 zeros
+///	- For Domain::EVM, encode the respective chain id (8 bytes) as little endian
 ///
 /// We need to impl this as a custom encode to not overlap with the `#[derive(Encode, Decode)]`
 /// that are necessary for `Domain` to be used in the storage as a key.
@@ -107,11 +107,11 @@ pub enum DomainAddress {
 	EVM(EVMChainId, [u8; 20]),
 }
 
-impl Into<Domain> for DomainAddress {
-	fn into(self) -> Domain {
-		match self {
-			Self::Centrifuge(_) => Domain::Centrifuge,
-			Self::EVM(chain_id, _) => Domain::EVM(chain_id),
+impl From<DomainAddress> for Domain {
+	fn from(x: DomainAddress) -> Self {
+		match x {
+			DomainAddress::Centrifuge(_) => Domain::Centrifuge,
+			DomainAddress::EVM(chain_id, _) => Domain::EVM(chain_id),
 		}
 	}
 }
