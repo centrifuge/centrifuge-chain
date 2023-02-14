@@ -379,11 +379,16 @@ impl<T: Config> sp_runtime::BoundToRuntimeAppPublic for Pallet<T> {
 impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	type Key = T::AuthorityId;
 
-	fn on_genesis_session<'a, I: 'a>(_validators: I)
+	fn on_genesis_session<'a, I: 'a>(validators: I)
 	where
 		I: Iterator<Item = (&'a T::AccountId, T::AuthorityId)>,
 	{
-		// we don't care.
+		// Enables rewards already in genesis session.
+		for (collator, _) in validators {
+			let _ = Self::do_init_collator(collator).map_err(|e| {
+				log::error!("Failed to init genesis collators for rewards: {:?}", e);
+			});
+		}
 	}
 
 	fn on_new_session<'a, I: 'a>(changed: bool, validators: I, queued_validators: I)
