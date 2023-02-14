@@ -85,10 +85,7 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 			Message::AddPool { pool_id } => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
+				message.append(&mut to_be(pool_id));
 
 				message
 			}
@@ -101,18 +98,11 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
 				message.append(&mut token_name.encode());
 				message.append(&mut token_symbol.encode());
-
-				let mut encoded_price = price.encode();
-				encoded_price.reverse();
-				message.append(&mut encoded_price);
+				message.append(&mut to_be(price));
 
 				message
 			}
@@ -123,16 +113,9 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
-
-				let mut encoded_price = price.encode();
-				encoded_price.reverse();
-				message.append(&mut encoded_price);
+				message.append(&mut to_be(price));
 
 				message
 			}
@@ -144,14 +127,9 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
 				message.append(&mut address.encode());
-
 				message.append(&mut valid_until.to_be_bytes().to_vec());
 
 				message
@@ -165,23 +143,24 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
 				message.append(&mut domain.connector_encode());
 				message.append(&mut address.encode());
-
-				let mut encoded_amount = amount.encode();
-				encoded_amount.reverse();
-				message.append(&mut encoded_amount);
+				message.append(&mut to_be(amount));
 
 				message
 			}
 		}
 	}
+}
+
+// Encode a value in its big-endian representation. We use this for number types to make
+// sure they are encoded the way they are expected to be decoded on the Solidity side.
+fn to_be(x: impl Encode) -> Vec<u8> {
+	let mut output = x.encode();
+	output.reverse();
+	output
 }
 
 #[cfg(test)]
