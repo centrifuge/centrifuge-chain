@@ -1,3 +1,4 @@
+/// Provide methods for register/execute calls
 pub mod storage {
 	use std::{any::Any, cell::RefCell, collections::HashMap};
 
@@ -18,8 +19,11 @@ pub mod storage {
 
 	struct FnWrapper<Input, Output>(Box<dyn Fn(Input) -> Output>);
 
+	/// Identify a call in the call storage
 	pub type CallId = u64;
 
+	/// Register a call into the call storage.
+	/// The registered call can be uniquely identified by the returned `CallId`.
 	pub fn register_call<F: Fn(Args) -> R + 'static, Args: 'static, R: 'static>(f: F) -> CallId {
 		CALLS.with(|state| {
 			let registry = &mut *state.borrow_mut();
@@ -29,6 +33,7 @@ pub mod storage {
 		})
 	}
 
+	/// Execute a call from the call storage identified by a `call_id`.
 	pub fn execute_call<Args: 'static, R: 'static>(call_id: CallId, args: Args) -> R {
 		CALLS.with(|state| {
 			let registry = &*state.borrow();
@@ -43,9 +48,13 @@ pub mod storage {
 
 pub use storage::CallId;
 
+/// Prefix that the register functions should have.
 pub const EXPECTATION_FN_PREFIX: &str = "expect_";
+
+/// Error message if an expectation can not be found.
 pub const EXPECT_CALL_MSG: &str = "Must be an expectation for this call";
 
+/// Gives the absolute string identification of a function.
 #[macro_export]
 macro_rules! function_locator {
 	() => {{
@@ -58,6 +67,9 @@ macro_rules! function_locator {
 	}};
 }
 
+/// Gives the string identification of a function.
+/// The identification will be the same no matter if it belongs to a trait or has an `except_`
+/// prefix name.
 #[macro_export]
 macro_rules! call_locator {
 	() => {{
@@ -67,6 +79,7 @@ macro_rules! call_locator {
 		let base_name = name
 			.strip_prefix(crate::mock::shared::EXPECTATION_FN_PREFIX)
 			.unwrap_or(name);
+
 		let correct_path = path
 			.strip_prefix("<")
 			.map(|trait_path| trait_path.split_once(" as").expect("always ' as'").0)
@@ -76,12 +89,22 @@ macro_rules! call_locator {
 	}};
 }
 
+/// Register a call into the call storage.
+/// This macro should be called from the method that wants to register `f`.
+/// This macro must be called from a pallet with the following storage:
+/// ```no_run
+/// #[pallet::storage]
+/// pub(super) type CallIds<T: Config> = StorageMap<
+/// 	_,
+/// 	Blake2_128Concat,
+/// 	<Blake2_128 as frame_support::StorageHasher>::Output,
+/// 	CallId,
+/// >;
+/// ```
 #[macro_export]
 macro_rules! register_call {
 	($f:expr) => {{
 		use frame_support::StorageHasher;
-
-		println!("register >> {}", crate::call_locator!());
 
 		CallIds::<T>::insert(
 			frame_support::Blake2_128::hash(crate::call_locator!().as_bytes()),
@@ -90,12 +113,22 @@ macro_rules! register_call {
 	}};
 }
 
+/// Execute a call from the call storage.
+/// This macro should be called from the method that wants to execute `f`.
+/// This macro must be called from a pallet with the following storage:
+/// ```no_run
+/// #[pallet::storage]
+/// pub(super) type CallIds<T: Config> = StorageMap<
+/// 	_,
+/// 	Blake2_128Concat,
+/// 	<Blake2_128 as frame_support::StorageHasher>::Output,
+/// 	CallId,
+/// >;
+/// ```
 #[macro_export]
 macro_rules! execute_call {
 	($params:expr) => {{
 		use frame_support::StorageHasher;
-
-		println!("execute >> {}", crate::call_locator!());
 
 		let hash = frame_support::Blake2_128::hash(crate::call_locator!().as_bytes());
 		crate::mock::shared::storage::execute_call(
