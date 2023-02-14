@@ -317,8 +317,8 @@ impl<
 				.unwrap();
 
 			tranches.push(TrancheEssence {
-				currency: tranche.currency.into(),
-				ty: tranche.tranche_type.into(),
+				currency: tranche.currency,
+				ty: tranche.tranche_type,
 				metadata: TrancheMetadata {
 					token_name: BoundedVec::try_from(metadata.name)
 						.unwrap_or(BoundedVec::default()),
@@ -330,7 +330,7 @@ impl<
 
 		Ok(PoolEssence {
 			currency: self.currency,
-			max_reserve: self.reserve.max.into(),
+			max_reserve: self.reserve.max,
 			max_nav_age: self.parameters.max_nav_age,
 			min_epoch_time: self.parameters.min_epoch_time,
 			tranches,

@@ -38,7 +38,7 @@ mod contract;
 pub use contract::*;
 
 /// The Parachains that Centrifuge Connectors support.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum ParachainId {
 	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or Moonbase on a testnet.
@@ -53,7 +53,7 @@ type EVMChainId = u64;
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
 	/// An EVM domain, identified by its EVM Chain Id
@@ -62,7 +62,7 @@ pub enum Domain {
 	Parachain(ParachainId),
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 pub struct DomainLocator<Domain> {
 	pub domain: Domain,
 }
@@ -71,7 +71,7 @@ impl<Domain> TypeId for DomainLocator<Domain> {
 	const TYPE_ID: [u8; 4] = *b"domn";
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct DomainAddress<Domain> {
 	pub domain: Domain,
@@ -260,8 +260,7 @@ pub mod pallet {
 			);
 
 			// Look up the metadata of the tranche token
-			let currency_id =
-				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into();
+			let currency_id = T::TrancheCurrency::generate(pool_id, tranche_id).into();
 			let metadata = T::AssetRegistry::metadata(&currency_id)
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
@@ -375,7 +374,7 @@ pub mod pallet {
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
-				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into(),
+				T::TrancheCurrency::generate(pool_id, tranche_id).into(),
 				&who,
 				&DomainLocator {
 					domain: address.domain.clone(),

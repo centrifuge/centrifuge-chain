@@ -49,14 +49,14 @@ type CollectionIdOf<T> =
 type ItemIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ItemId;
 
 // Storage types
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Sale<AccountId, CurrencyId, Balance> {
 	pub seller: AccountId,
 	pub price: Price<CurrencyId, Balance>,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Price<CurrencyId, Balance> {
 	pub currency: CurrencyId,

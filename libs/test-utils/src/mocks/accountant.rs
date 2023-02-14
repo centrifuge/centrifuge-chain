@@ -35,33 +35,33 @@
 /// }
 ///
 /// impl Into<CurrencyId> for InvestmentId {
-/// 	fn into(self) -> CurrencyId {
-///    		CurrencyId::Tranche(self.0, self.1)
+///     fn into(self) -> CurrencyId {
+///            CurrencyId::Tranche(self.0, self.1)
 ///     }
 /// }
 ///
 ///
 /// impl_mock_accountant!(
-/// 	MockAccountant,
-///     AccountId,
-///     InvestmentId,
-///     CurrencyId,
-///     Balance
+///      MockAccountant,
+///      AccountId,
+///      InvestmentId,
+///      CurrencyId,
+///      Balance
 /// );
 ///
 /// // Using the `GenesisConfig`
 /// use accountant_mock::InvestmentInfo;
 /// let storage = GenesisBuild::build_storage(&accountant_mock::GenesisConfig {
-///			infos: vec![
-/// 			(
-/// 				InvestmentId::Tranche(0, [0;16]),
-/// 				accountant_mock::InvestmentInfo {
-/// 					owner: 1,
-/// 					id: InvestmentId::Tranches(0, [0;16]),
-/// 					payment_currency:CurrencyId::AUSD
-/// 				}
-/// 			)
-/// 		]
+///             infos: vec![
+///             (
+///                 InvestmentId::Tranche(0, [0;16]),
+///                 accountant_mock::InvestmentInfo {
+///                     owner: 1,
+///                     id: InvestmentId::Tranches(0, [0;16]),
+///                     payment_currency:CurrencyId::AUSD
+///                 }
+///             )
+///         ]
 /// }).expect("Must not fail");
 /// ```
 #[macro_export]

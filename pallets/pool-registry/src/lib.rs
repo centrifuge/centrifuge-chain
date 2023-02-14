@@ -250,7 +250,7 @@ pub mod pallet {
 			// (Democracy, Council, etc.) we assume that the
 			// parameters are vetted somehow and rely on the
 			// admin as our depositor.
-			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
+			let depositor = ensure_signed(origin).unwrap_or_else(|_| admin.clone());
 
 			if Pools::<T>::contains_key(pool_id) {
 				return Err(Error::<T>::PoolAlreadyRegistered.into());
@@ -265,13 +265,13 @@ pub mod pallet {
 				PoolMetadata::<T>::insert(
 					pool_id,
 					PoolMetadataOf::<T> {
-						metadata: checked_metadata.clone(),
+						metadata: checked_metadata,
 					},
 				);
 			}
 
 			T::ModifyPool::create(
-				admin.clone(),
+				admin,
 				depositor,
 				pool_id,
 				tranche_inputs,

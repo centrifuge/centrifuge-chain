@@ -91,20 +91,20 @@ pub use pallet::*;
 type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate>;
 
 // Storage types
-#[derive(Encode, Decode, Default, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct RateDetailsV1<InterestRate> {
 	pub accumulated_rate: InterestRate,
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct RateDetails<InterestRate> {
 	pub interest_rate_per_sec: InterestRate,
 	pub accumulated_rate: InterestRate,
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, TypeInfo, PartialEq, MaxEncodedLen, RuntimeDebug)]
+#[derive(Encode, Decode, TypeInfo, PartialEq, Eq, MaxEncodedLen, RuntimeDebug)]
 #[repr(u32)]
 pub enum Release {
 	V0,
@@ -267,9 +267,8 @@ pub mod pallet {
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
 			let rate = Self::get_rate(interest_rate_per_sec)?;
-			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-				.ok_or(Error::<T>::DebtCalculationFailed)?;
-			Ok(debt)
+			Self::calculate_debt(normalized_debt, rate.accumulated_rate)
+				.ok_or_else(|| Error::<T>::DebtCalculationFailed.into())
 		}
 
 		pub fn get_previous_debt(
@@ -287,7 +286,7 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Overflow)?;
 			let past_rate = rate.accumulated_rate.ensure_div(rate_adjustment)?;
 			Self::calculate_debt(normalized_debt, past_rate)
-				.ok_or(Error::<T>::DebtCalculationFailed.into())
+				.ok_or_else(|| Error::<T>::DebtCalculationFailed.into())
 		}
 
 		pub fn do_adjust_normalized_debt(
@@ -428,7 +427,7 @@ pub mod pallet {
 			Rates::<T>::get()
 				.into_iter()
 				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
-				.ok_or(Error::<T>::NoSuchRate.into())
+				.ok_or_else(|| Error::<T>::NoSuchRate.into())
 		}
 
 		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
