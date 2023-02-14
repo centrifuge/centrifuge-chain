@@ -48,7 +48,7 @@ use frame_support::{
 	traits::{
 		fungibles::Mutate,
 		tokens::{AssetId, Balance},
-		OneSessionHandler,
+		Currency as CurrencyT, OnUnbalanced, OneSessionHandler,
 	},
 	DefaultNoBound,
 };
@@ -60,10 +60,7 @@ use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
 pub use sp_runtime::Saturating;
-use sp_runtime::{
-	traits::{AccountIdConversion, Zero},
-	FixedPointOperand, SaturatedConversion,
-};
+use sp_runtime::{traits::Zero, FixedPointOperand, SaturatedConversion};
 use sp_std::{mem, vec::Vec};
 use weights::WeightInfo;
 
@@ -113,9 +110,12 @@ pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::PalletId;
 
 	use super::*;
+
+	type NegativeImbalanceOf<T> = <<T as Config>::Currency as CurrencyT<
+		<T as frame_system::Config>::AccountId,
+	>>::NegativeImbalance;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -125,7 +125,10 @@ pub mod pallet {
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Type used to handle balances.
-		type Balance: Balance + MaxEncodedLen + FixedPointOperand;
+		type Balance: Balance
+			+ MaxEncodedLen
+			+ FixedPointOperand
+			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>;
 
 		/// Domain identification used by this pallet
 		type Domain: TypedGet;
@@ -151,7 +154,8 @@ pub mod pallet {
 			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Type used to handle currency minting and burning for collators.
-		type Currency: Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
+		type Currency: Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
+			+ CurrencyT<Self::AccountId>;
 
 		/// Max groups used by this pallet.
 		/// If this limit is reached, the exceeded groups are either not computed and not stored.
@@ -176,13 +180,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
-		/// Identifier for the currency used to give the reward.
-		type RewardCurrency: Get<Self::CurrencyId>;
-
 		/// Target of receiving non-collator-rewards.
 		/// NOTE: If set to none, collators are the only group receiving rewards.
-		#[pallet::constant]
-		type Beneficiary: Get<Option<PalletId>>;
+		type Beneficiary: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
 		/// The identifier type for an authority.
 		type AuthorityId: Member
@@ -333,14 +333,10 @@ impl<T: Config> Pallet<T> {
 						.saturating_mul(num_collators.into());
 					T::Rewards::reward_group(T::CollatorGroupId::get(), total_collator_reward)?;
 
-					// Reward beneficiary
-					if let Some(pallet_id) = T::Beneficiary::get() {
-						T::Currency::mint_into(
-							T::RewardCurrency::get(),
-							&pallet_id.into_account_truncating(),
-							epoch_data.beneficiary_reward,
-						)?;
-					}
+					// Mint unassigned reward currency
+					let reward = T::Currency::issue(epoch_data.beneficiary_reward.into());
+					// If configured, assigns reward to Beneficiary, else automatically drops it
+					T::Beneficiary::on_unbalanced(reward);
 
 					// Apply changes
 					epoch_data.collator_reward = changes

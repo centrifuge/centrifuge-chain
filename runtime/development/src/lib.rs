@@ -1694,7 +1694,6 @@ impl pallet_liquidity_rewards::Config for Runtime {
 frame_support::parameter_types! {
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 	pub const EpocDurationBlockRewards: BlockNumber = 2 * Period::get();
-	pub const Beneficiary: Option<PalletId> = Some(TreasuryPalletId::get());
 
 	// TODO: Convert to common consts
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
@@ -1706,11 +1705,13 @@ frame_support::parameter_types! {
 	pub const DefaultCollatorStake: Balance = 1000 * CFG;
 }
 
+// type Beneficiary: Option<AccountId> = Some(TreasuryPalletId::get().into_account_truncating());
+
 impl pallet_block_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type AuthorityId = AuraId;
 	type Balance = Balance;
-	type Beneficiary = Beneficiary;
+	type Beneficiary = ();
 	type CollatorCurrencyId = CollatorCurrencyId;
 	type CollatorGroupId = CollatorGroupId;
 	type Currency = Tokens;
@@ -1721,7 +1722,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
 	type MaxGroups = MaxGroups;
-	type RewardCurrency = RewardCurrency;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
