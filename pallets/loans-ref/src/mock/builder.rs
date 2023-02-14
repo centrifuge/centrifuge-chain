@@ -2,14 +2,11 @@
 pub mod storage {
 	use std::{any::Any, cell::RefCell, collections::HashMap};
 
+	/// Identify a call in the call storage
+	pub type CallId = u64;
+
 	trait Callable {
 		fn as_any(&self) -> &dyn Any;
-	}
-
-	impl<Input: 'static, Output: 'static> Callable for FnWrapper<Input, Output> {
-		fn as_any(&self) -> &dyn Any {
-			self
-		}
 	}
 
 	thread_local! {
@@ -19,8 +16,11 @@ pub mod storage {
 
 	struct FnWrapper<Input, Output>(Box<dyn Fn(Input) -> Output>);
 
-	/// Identify a call in the call storage
-	pub type CallId = u64;
+	impl<Input: 'static, Output: 'static> Callable for FnWrapper<Input, Output> {
+		fn as_any(&self) -> &dyn Any {
+			self
+		}
+	}
 
 	/// Register a call into the call storage.
 	/// The registered call can be uniquely identified by the returned `CallId`.
