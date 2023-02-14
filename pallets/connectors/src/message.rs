@@ -49,9 +49,9 @@ where
 	Transfer {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
+		domain: Domain,
 		address: Address,
 		amount: Balance,
-		domain: Domain,
 	},
 }
 
@@ -171,13 +171,12 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 				message.append(&mut encoded_pool_id);
 
 				message.append(&mut tranche_id.encode());
+				message.append(&mut domain.connector_encode());
 				message.append(&mut address.encode());
 
 				let mut encoded_amount = amount.encode();
 				encoded_amount.reverse();
 				message.append(&mut encoded_amount);
-
-				message.append(&mut domain.connector_encode());
 
 				message
 			}
@@ -342,7 +341,7 @@ mod tests {
 				amount: 1000000000000000000000000000,
 			};
 			let encoded = msg.encode();
-			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000010000000000000504";
+			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b010000000000000504123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000";
 
 			assert_eq!(hex::encode(encoded), expected);
 		}
@@ -361,7 +360,7 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000000000000000000000";
+			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000000000000123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000";
 
 			// solidity is 172 chars, 86 bytes
 			assert_eq!(hex::encode(encoded), expected);
