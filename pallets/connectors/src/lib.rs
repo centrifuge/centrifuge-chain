@@ -498,7 +498,7 @@ pub mod pallet {
 				ethereum_xcm_call,
 				OriginKind::SovereignAccount,
 				TransactWeights {
-					// Specify a conservative max weight
+					// Convert the max gas_limit into a max transact weight following Moonbeam's formula.
 					transact_required_weight_at_most: xcm_domain.max_gas_limit * 25_000
 						+ 100_000_000,
 					overall_weight: None,
