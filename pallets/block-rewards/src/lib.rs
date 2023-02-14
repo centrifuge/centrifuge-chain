@@ -62,7 +62,7 @@ pub use pallet::*;
 pub use sp_runtime::Saturating;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
-	FixedPointOperand,
+	FixedPointOperand, SaturatedConversion,
 };
 use sp_std::{mem, vec::Vec};
 use weights::WeightInfo;
@@ -80,15 +80,19 @@ pub struct CollatorChanges<T: Config> {
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
 pub struct EpochData<T: Config> {
-	reward: T::Balance,
-	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxGroups>,
+	/// Amount of rewards per session for T::Beneficiary.
+	beneficiary_reward: T::Balance,
+	/// Amount of rewards per session for a single collator.
+	collator_reward: T::Balance,
+	num_collators: u32,
 }
 
 impl<T: Config> Default for EpochData<T> {
 	fn default() -> Self {
 		Self {
-			reward: T::Balance::zero(),
-			weights: BoundedBTreeMap::default(),
+			beneficiary_reward: T::Balance::zero(),
+			collator_reward: T::Balance::zero(),
+			num_collators: 0,
 		}
 	}
 }
@@ -99,9 +103,10 @@ impl<T: Config> Default for EpochData<T> {
 )]
 #[scale_info(skip_type_params(T))]
 pub struct EpochChanges<T: Config> {
-	reward: Option<T::Balance>,
-	weights: BoundedBTreeMap<T::GroupId, T::Weight, T::MaxChangesPerEpoch>,
+	beneficiary_reward: Option<T::Balance>,
+	collator_reward: Option<T::Balance>,
 	collators: CollatorChanges<T>,
+	num_collators: Option<u32>,
 }
 
 pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
@@ -174,8 +179,10 @@ pub mod pallet {
 		/// Identifier for the currency used to give the reward.
 		type RewardCurrency: Get<Self::CurrencyId>;
 
+		/// Target of receiving non-collator-rewards.
+		/// NOTE: If set to none, collators are the only group receiving rewards.
 		#[pallet::constant]
-		type RemainingRewardCollector: Get<Option<PalletId>>;
+		type Beneficiary: Get<Option<PalletId>>;
 
 		/// The identifier type for an authority.
 		type AuthorityId: Member
@@ -205,7 +212,8 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		NewEpoch {
-			reward: T::Balance,
+			collator_reward: T::Balance,
+			beneficiary_reward: T::Balance,
 			last_changes: EpochChanges<T>,
 		},
 	}
@@ -233,33 +241,34 @@ pub mod pallet {
 			T::Rewards::claim_reward((T::Domain::get(), currency_id), &account_id).map(|_| ())
 		}
 
-		/// Admin method to set the reward amount used for the next epochs.
+		/// Admin method to set the reward amount for a collator used for the next epochs.
 		/// Current epoch is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
-		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
+		pub fn set_collator_reward(
+			origin: OriginFor<T>,
+			collator_reward_per_session: T::Balance,
+		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::mutate(|changes| changes.reward = Some(balance));
+			NextEpochChanges::<T>::mutate(|changes| {
+				changes.collator_reward = Some(collator_reward_per_session);
+			});
 
 			Ok(())
 		}
 
-		/// Admin method to set the group weights used for the next epochs.
+		/// Admin method to set the inflation amount for the Beneficiary used for the next epochs.
 		/// Current epoch is not affected by this call.
-		#[pallet::weight(T::WeightInfo::set_group_weight())]
-		pub fn set_group_weight(
+		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
+		pub fn set_beneficiary_reward(
 			origin: OriginFor<T>,
-			group_id: T::GroupId,
-			weight: T::Weight,
+			beneficiary_reward_per_session: T::Balance,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::try_mutate(|changes| {
-				changes
-					.weights
-					.try_insert(group_id, weight)
-					.map_err(|_| Error::<T>::MaxChangesPerEpochReached)
-			})?;
+			NextEpochChanges::<T>::mutate(|changes| {
+				changes.beneficiary_reward = Some(beneficiary_reward_per_session)
+			});
 
 			Ok(())
 		}
@@ -295,34 +304,11 @@ impl<T: Config> Pallet<T> {
 		T::Currency::burn_from(T::CollatorCurrencyId::get(), who, amount).map(|_| ())
 	}
 
-	/// Mint remaining rewards if not everything was distributed to the groups.
-	///
-	/// NOTE: Noop if [RemainingRewardCollector] is `None`.
-	fn do_mint_remainder(
-		total_reward: T::Balance,
-		reward_results: &Vec<Result<T::Balance, DispatchError>>,
-	) -> DispatchResult {
-		if let Some(pallet_id) = T::RemainingRewardCollector::get() {
-			let remaining_rewards = reward_results.iter().fold(total_reward, |acc, result| {
-				// Don't subtract from total rewards if group reward failed
-				acc.saturating_sub(result.unwrap_or_default())
-			});
-			T::Currency::mint_into(
-				T::RewardCurrency::get(),
-				&pallet_id.into_account_truncating(),
-				remaining_rewards,
-			)?;
-		}
-
-		Ok(())
-	}
-
 	/// Apply epoch changes and distribute rewards.
 	///
 	/// NOTE: Noop if any call fails.
 	fn do_advance_epoch() -> Weight {
-		let mut groups = 0;
-		let mut weight_changes = 0;
+		let mut num_collators = 0;
 		let mut num_joining = 0;
 		let mut num_leaving = 0;
 
@@ -331,32 +317,42 @@ impl<T: Config> Pallet<T> {
 				ActiveEpochData::<T>::try_mutate(|epoch_data| {
 					num_joining = changes.collators.inc.len();
 					num_leaving = changes.collators.out.len();
-					for leaving in changes.collators.out.drain(..) {
-						Self::do_exit_collator(&leaving)?;
-					}
-					for joining in changes.collators.inc.drain(..) {
-						Self::do_init_collator(&joining)?;
-					}
 
-					groups = T::Rewards::distribute_reward_with_weights(
-						epoch_data.reward,
-						epoch_data.weights.iter().map(|(g, w)| (*g, *w)),
-					)
-					.map(|results| {
-						Self::do_mint_remainder(epoch_data.reward, &results)?;
-						Ok(results.len() as u32)
-					})
-					.and_then(|num_groups| num_groups)?;
-
-					for (&group_id, &weight) in &changes.weights {
-						epoch_data.weights.try_insert(group_id, weight).ok();
-						weight_changes += 1;
+					// Apply collator set changes before rewarding
+					for leaving in changes.collators.out.iter() {
+						Self::do_exit_collator(leaving)?;
+					}
+					for joining in changes.collators.inc.iter() {
+						Self::do_init_collator(joining)?;
 					}
 
-					epoch_data.reward = changes.reward.unwrap_or(epoch_data.reward);
+					// Reward collators
+					num_collators = changes.num_collators.unwrap_or(epoch_data.num_collators);
+					let total_collator_reward = epoch_data
+						.collator_reward
+						.saturating_mul(num_collators.into());
+					T::Rewards::reward_group(T::CollatorGroupId::get(), total_collator_reward)?;
+
+					// Reward beneficiary
+					if let Some(pallet_id) = T::Beneficiary::get() {
+						T::Currency::mint_into(
+							T::RewardCurrency::get(),
+							&pallet_id.into_account_truncating(),
+							epoch_data.beneficiary_reward,
+						)?;
+					}
+
+					// Apply changes
+					epoch_data.collator_reward = changes
+						.collator_reward
+						.unwrap_or(epoch_data.collator_reward);
+					epoch_data.beneficiary_reward = changes
+						.beneficiary_reward
+						.unwrap_or(epoch_data.beneficiary_reward);
 
 					Self::deposit_event(Event::NewEpoch {
-						reward: epoch_data.reward,
+						beneficiary_reward: epoch_data.beneficiary_reward,
+						collator_reward: epoch_data.collator_reward,
 						last_changes: mem::take(changes),
 					});
 
@@ -364,10 +360,13 @@ impl<T: Config> Pallet<T> {
 				})
 			})
 		})
+		.map_err(|e| {
+			log::error!("Failed to advance block rewards session: {:?}", e);
+		})
 		.ok();
 
 		// TODO: Apply number of incoming and outgoing collators
-		T::WeightInfo::on_initialize(groups, weight_changes)
+		T::WeightInfo::on_initialize(num_collators, num_collators)
 	}
 }
 
@@ -410,20 +409,28 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 
 			// Prepare for next session
 			if current != next {
-				NextEpochChanges::<T>::mutate(|EpochChanges { collators, .. }| {
-					let inc = next
-						.clone()
-						.into_iter()
-						.filter(|n| !current.iter().any(|curr| curr == n))
-						.collect::<Vec<_>>();
-					let out = current
-						.clone()
-						.into_iter()
-						.filter(|curr| !next.iter().any(|n| n == curr))
-						.collect::<Vec<_>>();
-					collators.inc = BoundedVec::<_, T::MaxCollators>::truncate_from(inc);
-					collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
-				});
+				NextEpochChanges::<T>::mutate(
+					|EpochChanges {
+					     collators,
+					     num_collators,
+					     ..
+					 }| {
+						let inc = next
+							.clone()
+							.into_iter()
+							.filter(|n| !current.iter().any(|curr| curr == n))
+							.collect::<Vec<_>>();
+						let out = current
+							.clone()
+							.into_iter()
+							.filter(|curr| !next.iter().any(|n| n == curr))
+							.collect::<Vec<_>>();
+						collators.inc = BoundedVec::<_, T::MaxCollators>::truncate_from(inc);
+						collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
+
+						*num_collators = Some(next.len().saturated_into::<u32>());
+					},
+				);
 			}
 
 			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));

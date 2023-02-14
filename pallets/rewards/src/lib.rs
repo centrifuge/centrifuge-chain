@@ -235,7 +235,6 @@ pub mod pallet {
 			Groups::<T, I>::try_mutate(group_id, |group| {
 				let reward_to_mint = T::RewardMechanism::reward_group(group, reward)?;
 
-				// TODO: Check with @Luis whether we want to move this into a trait
 				if let Some(pallet_id) = T::RewardSource::get() {
 					T::Currency::transfer(
 						T::RewardCurrency::get(),
