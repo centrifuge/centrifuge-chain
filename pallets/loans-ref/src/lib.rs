@@ -110,7 +110,6 @@ mod pallet {
 
 		/// Used to mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId>
-			+ Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, CollectionId = Self::CollectionId, ItemId = Self::ItemId>;
 
 		/// Access to the pool

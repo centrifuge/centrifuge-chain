@@ -1,7 +1,9 @@
 mod permissions;
 mod pools;
+mod shared;
 
 use cfg_primitives::Moment;
+use cfg_types::permissions::PermissionScope;
 use frame_support::traits::{AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64};
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
@@ -16,13 +18,14 @@ use crate as pallet_loans;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-
 type CollectionId = u16;
 type ItemId = u16;
 type AccountId = u64;
 type Balance = u128;
 type Rate = FixedU128;
 type CurrencyId = u32;
+type PoolId = u32;
+type TrancheId = u64;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -122,8 +125,17 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Weights = ();
 }
 
-impl pallet_mock_pools::Config for Runtime {}
-impl pallet_mock_permissions::Config for Runtime {}
+impl pallet_mock_pools::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type TrancheId = TrancheId;
+}
+
+impl pallet_mock_permissions::Config for Runtime {
+	type Scope = PermissionScope<PoolId, CurrencyId>;
+}
 
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;

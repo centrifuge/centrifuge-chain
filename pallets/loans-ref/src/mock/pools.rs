@@ -3,137 +3,102 @@ pub use pallet_mock_pools::*;
 #[allow(dead_code)]
 #[frame_support::pallet]
 mod pallet_mock_pools {
-	use std::{any::Any, cell::RefCell, collections::HashMap};
-
 	use cfg_primitives::Moment;
 	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::pallet_prelude::*;
 	use scale_info::TypeInfo;
-	use sp_arithmetic::FixedU128;
+	use sp_std::fmt::Debug;
 
-	type PoolId = u64;
-	type TrancheId = u64;
-	type Balance = u128;
-	type CurrencyId = u32;
-	type Rate = FixedU128;
-	type AccountId = u64;
-
-	type CallId = u64;
-
-	#[derive(Clone, Copy, Encode, Decode, TypeInfo, MaxEncodedLen)]
-	pub enum CallType {
-		PoolExists,
-		AccountFor,
-		Withdraw,
-		Deposit,
-	}
-
-	struct FnWrapper<Args, R>(Box<dyn Fn(Args) -> R>);
-
-	trait Callable {
-		fn as_any(&self) -> &dyn Any;
-	}
-
-	impl<Args: 'static, R: 'static> Callable for FnWrapper<Args, R> {
-		fn as_any(&self) -> &dyn Any {
-			self
-		}
-	}
-
-	thread_local! {
-		static CALLS: RefCell<HashMap<CallId, Box<dyn Callable>>>
-			= RefCell::new(HashMap::default());
-	}
+	use super::super::shared::CallId;
+	use crate::{execute_call, register_call};
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {}
+	pub trait Config: frame_system::Config {
+		type PoolId: Parameter
+			+ Member
+			+ Debug
+			+ Copy
+			+ Default
+			+ TypeInfo
+			+ Encode
+			+ Decode
+			+ MaxEncodedLen;
+		type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+		type Balance;
+		type Rate;
+		type CurrencyId;
+	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type IdCall<T: Config> = StorageMap<_, Blake2_128Concat, CallType, CallId>;
+	pub(super) type CallIds<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		<Blake2_128 as frame_support::StorageHasher>::Output,
+		CallId,
+	>;
 
 	impl<T: Config> Pallet<T> {
-		fn register_call<F: Fn(Args) -> R + 'static, Args: 'static, R: 'static>(
-			call_type: CallType,
-			f: F,
+		pub fn pool_exists_for(f: impl Fn(T::PoolId) -> bool + 'static) {
+			register_call!(f);
+		}
+
+		pub fn expect_account_for(f: impl Fn(T::PoolId) -> T::AccountId + 'static) {
+			register_call!(f);
+		}
+
+		pub fn expect_withdraw(
+			f: impl Fn(T::PoolId, T::AccountId, T::Balance) -> DispatchResult + 'static,
 		) {
-			CALLS.with(|state| {
-				let registry = &mut *state.borrow_mut();
-				let fn_id = registry.len() as u64;
-				registry.insert(fn_id, Box::new(FnWrapper(Box::new(f))));
-				IdCall::<T>::insert(call_type, fn_id);
-			});
+			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		fn execute_call<Args: 'static, R: 'static>(call_type: CallType, args: Args) -> R {
-			CALLS.with(|state| {
-				let registry = &*state.borrow();
-				let fn_id =
-					IdCall::<T>::get(call_type).expect("Must be an expectation for this call");
-				let call = registry.get(&fn_id).unwrap();
-				call.as_any()
-					.downcast_ref::<FnWrapper<Args, R>>()
-					.unwrap()
-					.0(args)
-			})
-		}
-
-		pub fn pool_exists_for(f: impl Fn(PoolId) -> bool + 'static) {
-			Self::register_call(CallType::PoolExists, f);
-		}
-
-		pub fn expect_account_for(f: impl Fn(PoolId) -> AccountId + 'static) {
-			Self::register_call(CallType::AccountFor, f);
-		}
-
-		pub fn expect_withdraw(f: impl Fn(PoolId, AccountId, Balance) -> DispatchResult + 'static) {
-			Self::register_call(CallType::Withdraw, move |(a, b, c)| f(a, b, c));
-		}
-
-		pub fn expect_deposit(f: impl Fn(PoolId, AccountId, Balance) -> DispatchResult + 'static) {
-			Self::register_call(CallType::Deposit, move |(a, b, c)| f(a, b, c));
+		pub fn expect_deposit(
+			f: impl Fn(T::PoolId, T::AccountId, T::Balance) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 	}
 
-	impl<T: Config> PoolInspect<AccountId, CurrencyId> for Pallet<T> {
+	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 		type Moment = Moment;
-		type PoolId = PoolId;
-		type Rate = Rate;
-		type TrancheId = TrancheId;
+		type PoolId = T::PoolId;
+		type Rate = T::Rate;
+		type TrancheId = T::TrancheId;
 
-		fn pool_exists(pool_id: PoolId) -> bool {
-			Self::execute_call(CallType::PoolExists, pool_id)
+		fn pool_exists(pool_id: T::PoolId) -> bool {
+			execute_call!(pool_id)
 		}
 
-		fn tranche_exists(_: PoolId, _: TrancheId) -> bool {
+		fn tranche_exists(_: T::PoolId, _: T::TrancheId) -> bool {
 			unimplemented!()
 		}
 
 		fn get_tranche_token_price(
-			_: PoolId,
-			_: TrancheId,
-		) -> Option<PriceValue<CurrencyId, Rate, Moment>> {
+			_: T::PoolId,
+			_: T::TrancheId,
+		) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
 			unimplemented!()
 		}
 
-		fn account_for(pool_id: PoolId) -> AccountId {
-			Self::execute_call(CallType::AccountFor, pool_id)
+		fn account_for(pool_id: T::PoolId) -> T::AccountId {
+			execute_call!(pool_id)
 		}
 	}
 
-	impl<T: Config> PoolReserve<AccountId, CurrencyId> for Pallet<T> {
-		type Balance = Balance;
+	impl<T: Config> PoolReserve<T::AccountId, T::CurrencyId> for Pallet<T> {
+		type Balance = T::Balance;
 
-		fn withdraw(pool_id: PoolId, to: AccountId, amount: Balance) -> DispatchResult {
-			Self::execute_call(CallType::Withdraw, (pool_id, to, amount))
+		fn withdraw(pool_id: T::PoolId, to: T::AccountId, amount: T::Balance) -> DispatchResult {
+			execute_call!((pool_id, to, amount))
 		}
 
-		fn deposit(pool_id: PoolId, from: AccountId, amount: Balance) -> DispatchResult {
-			Self::execute_call(CallType::Deposit, (pool_id, from, amount))
+		fn deposit(pool_id: T::PoolId, from: T::AccountId, amount: T::Balance) -> DispatchResult {
+			execute_call!((pool_id, from, amount))
 		}
 	}
 }
