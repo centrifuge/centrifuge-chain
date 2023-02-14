@@ -48,7 +48,7 @@ case $TARGET in
     ;;
 
   clippy)
-    cargo clippy
+    cargo clippy --workspace -- -D warnings -A clippy::unnecessary-cast
     ;;
 
   benchmark)

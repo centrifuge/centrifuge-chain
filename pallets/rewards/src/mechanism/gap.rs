@@ -312,7 +312,7 @@ pub mod pallet {
 		) -> Result<Self::Balance, DispatchError> {
 			account.update(group, currency)?;
 
-			let reward = Self::compute_reward(&account, currency, group)?;
+			let reward = Self::compute_reward(account, currency, group)?;
 
 			account
 				.reward_tally

@@ -227,18 +227,14 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::teleport_assets { .. }
 				| pallet_xcm::Call::reserve_transfer_assets { .. }
 				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
-				| pallet_xcm::Call::limited_teleport_assets { .. } => {
-					return false;
-				}
+				| pallet_xcm::Call::limited_teleport_assets { .. } => false,
 				pallet_xcm::Call::__Ignore { .. } => {
 					unimplemented!()
 				}
 				pallet_xcm::Call::force_xcm_version { .. }
 				| pallet_xcm::Call::force_default_xcm_version { .. }
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
-				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
-					return true;
-				}
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
 			_ => true,
 		}
@@ -1620,7 +1616,7 @@ impl<
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RewardDomain {
 	Liquidity,
@@ -1655,7 +1651,7 @@ frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 20;
 
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
 
 	pub const InitialEpochDuration: BlockNumber = 1 * MINUTES;

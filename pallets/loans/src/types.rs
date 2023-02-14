@@ -39,7 +39,7 @@ pub(crate) struct ClosedLoan<T: pallet::Config> {
 
 /// The data structure for storing pool nav details
 #[derive(
-	Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+	Encode, Decode, Copy, Clone, PartialEq, Eq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct NAVDetails<Balance> {
@@ -58,7 +58,7 @@ pub struct NAVDetails<Balance> {
 
 /// The data structure for storing a specific write off group
 #[derive(
-	Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+	Encode, Decode, Copy, Clone, PartialEq, Eq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct WriteOffGroup<Rate> {
@@ -74,7 +74,7 @@ pub struct WriteOffGroup<Rate> {
 
 /// The data structure as input for creating a write-off group
 #[derive(
-	Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
+	Encode, Decode, Copy, Clone, PartialEq, Eq, Default, RuntimeDebug, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct WriteOffGroupInput<Rate> {
@@ -88,7 +88,7 @@ pub struct WriteOffGroupInput<Rate> {
 	pub(crate) penalty_interest_rate_per_year: Rate,
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffStatus<Rate> {
@@ -106,7 +106,7 @@ pub enum WriteOffStatus<Rate> {
 	},
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum WriteOffAction<Rate> {
@@ -118,7 +118,7 @@ pub enum WriteOffAction<Rate> {
 }
 
 /// The data structure for storing loan status
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanStatus<BlockNumber> {
@@ -132,7 +132,7 @@ pub enum LoanStatus<BlockNumber> {
 }
 
 /// Information about how the nav was updated
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum NAVUpdateType {

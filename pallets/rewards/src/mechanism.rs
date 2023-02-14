@@ -67,7 +67,7 @@ pub trait RewardMechanism {
 	fn group_stake(group: &Self::Group) -> Self::Balance;
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum MoveCurrencyError {
 	Internal(DispatchError),
 	MaxMovements,

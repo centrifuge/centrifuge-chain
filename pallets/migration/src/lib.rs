@@ -29,7 +29,7 @@ type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
-#[derive(Encode, Decode, PartialEq, Clone, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, PartialEq, Eq, Clone, TypeInfo, MaxEncodedLen)]
 pub enum MigrationStatus {
 	Inactive,
 	Ongoing,
