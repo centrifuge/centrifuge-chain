@@ -10,7 +10,7 @@ mod pallet_mock_pools {
 	use scale_info::TypeInfo;
 	use sp_std::fmt::Debug;
 
-	use super::super::shared::CallId;
+	use super::super::builder::CallId;
 	use crate::{execute_call, register_call};
 
 	#[pallet::config]

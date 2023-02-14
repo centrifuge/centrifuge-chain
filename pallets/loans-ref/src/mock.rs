@@ -1,6 +1,6 @@
+mod builder;
 mod permissions;
 mod pools;
-mod shared;
 
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;

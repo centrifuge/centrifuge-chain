@@ -77,7 +77,7 @@ macro_rules! call_locator {
 		let (path, name) = path_name.rsplit_once("::").expect("always ::");
 
 		let base_name = name
-			.strip_prefix(crate::mock::shared::EXPECTATION_FN_PREFIX)
+			.strip_prefix(crate::mock::builder::EXPECTATION_FN_PREFIX)
 			.unwrap_or(name);
 
 		let correct_path = path
@@ -108,7 +108,7 @@ macro_rules! register_call {
 
 		CallIds::<T>::insert(
 			frame_support::Blake2_128::hash(crate::call_locator!().as_bytes()),
-			crate::mock::shared::storage::register_call($f),
+			crate::mock::builder::storage::register_call($f),
 		);
 	}};
 }
@@ -131,8 +131,8 @@ macro_rules! execute_call {
 		use frame_support::StorageHasher;
 
 		let hash = frame_support::Blake2_128::hash(crate::call_locator!().as_bytes());
-		crate::mock::shared::storage::execute_call(
-			CallIds::<T>::get(hash).expect(crate::mock::shared::EXPECT_CALL_MSG),
+		crate::mock::builder::storage::execute_call(
+			CallIds::<T>::get(hash).expect(crate::mock::builder::EXPECT_CALL_MSG),
 			$params,
 		)
 	}};
@@ -172,13 +172,13 @@ mod tests {
 	fn function_locator() {
 		assert_eq!(
 			Example::expect_function_locator(),
-			"pallet_loans_ref::mock::shared::tests::Example::expect_function_locator"
+			"pallet_loans_ref::mock::builder::tests::Example::expect_function_locator"
 		);
 
 		assert_eq!(
 			Example::function_locator(),
-			"<pallet_loans_ref::mock::shared::tests::Example as \
-            pallet_loans_ref::mock::shared::tests::TraitExample>::function_locator"
+			"<pallet_loans_ref::mock::builder::tests::Example as \
+            pallet_loans_ref::mock::builder::tests::TraitExample>::function_locator"
 		);
 	}
 
@@ -186,7 +186,7 @@ mod tests {
 	fn call_locator() {
 		assert_eq!(
 			Example::call_locator(),
-			"pallet_loans_ref::mock::shared::tests::Example::call_locator"
+			"pallet_loans_ref::mock::builder::tests::Example::call_locator"
 		);
 
 		assert_eq!(Example::call_locator(), Example::expect_call_locator());

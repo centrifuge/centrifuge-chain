@@ -7,7 +7,7 @@ pub mod pallet_mock_permissions {
 	use cfg_types::permissions::Role;
 	use frame_support::pallet_prelude::*;
 
-	use super::super::shared::CallId;
+	use super::super::builder::CallId;
 	use crate::{execute_call, register_call};
 
 	#[pallet::config]
