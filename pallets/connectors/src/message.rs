@@ -220,9 +220,8 @@ mod tests {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 0 };
 			let encoded = msg.encode();
 
-			let expected_hex = "010000000000000000";
-			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			let expected = "010000000000000000";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
@@ -231,9 +230,8 @@ mod tests {
 				Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 12378532 };
 			let encoded = msg.encode();
 
-			let expected_hex = "010000000000bce1a4";
-			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			let expected = "010000000000bce1a4";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
@@ -245,17 +243,10 @@ mod tests {
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 				price: Rate::one(),
 			};
-			let encoded_bytes = msg.encode();
+			let encoded = msg.encode();
 
-			// We encode the encoded bytes as hex to verify it's what we expect
-			let encoded_hex = hex::encode(encoded_bytes.clone());
-			let expected_hex = "020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000";
-			assert_eq!(expected_hex, encoded_hex);
-
-			// Now decode the bytes encoded as hex back to bytes and verify it's the same as
-			// the original `encoded_bytes`
-			let hex_as_bytes = hex::decode(encoded_hex).expect("Should go vec -> hex -> vec");
-			assert_eq!(hex_as_bytes, encoded_bytes);
+			let expected = "020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
@@ -267,28 +258,12 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			let input = "030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000";
-			let expected = <[u8; 41]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			let expected = "030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
 		fn update_member() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateMember {
-				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				address: [1; 32],
-				valid_until: 100,
-			};
-			let encoded = msg.encode();
-
-			let input = "0400000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101010000000000000064";
-			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
-		}
-
-		#[test]
-		fn update_member_that_failed() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateMember {
 				pool_id: 2,
 				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
@@ -300,9 +275,8 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			let input = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065b376aa";
-			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(hex::encode(encoded), hex::encode(expected));
+			let expected = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065b376aa";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
@@ -341,7 +315,6 @@ mod tests {
 
 			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000000000000123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000";
 
-			// solidity is 172 chars, 86 bytes
 			assert_eq!(hex::encode(encoded), expected);
 		}
 	}
