@@ -28,7 +28,7 @@ pub mod pallet_mock_permissions {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn expect_has(f: impl Fn(T::Scope, T::AccountId, Role) -> bool + 'static) {
+		pub fn mock_has(f: impl Fn(T::Scope, T::AccountId, Role) -> bool + 'static) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 	}

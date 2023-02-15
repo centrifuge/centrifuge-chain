@@ -49,7 +49,7 @@ pub mod storage {
 pub use storage::CallId;
 
 /// Prefix that the register functions should have.
-pub const EXPECTATION_FN_PREFIX: &str = "expect_";
+pub const MOCK_FN_PREFIX: &str = "mock_";
 
 /// Gives the absolute string identification of a function.
 #[macro_export]
@@ -74,7 +74,7 @@ macro_rules! call_locator {
 		let (path, name) = path_name.rsplit_once("::").expect("always ::");
 
 		let base_name = name
-			.strip_prefix(crate::mock::builder::EXPECTATION_FN_PREFIX)
+			.strip_prefix(crate::mock::builder::MOCK_FN_PREFIX)
 			.unwrap_or(name);
 
 		let correct_path = path
@@ -130,7 +130,7 @@ macro_rules! execute_call {
 		let hash = frame_support::Blake2_128::hash(crate::call_locator!().as_bytes());
 		crate::mock::builder::storage::execute_call(
 			CallIds::<T>::get(hash).expect(&format!(
-				"Called to {}, but not expectation found",
+				"Called to {}, but mock was not found",
 				crate::call_locator!()
 			)),
 			$params,
@@ -149,11 +149,11 @@ mod tests {
 	}
 
 	impl Example {
-		fn expect_function_locator() -> String {
+		fn mock_function_locator() -> String {
 			function_locator!().into()
 		}
 
-		fn expect_call_locator() -> String {
+		fn mock_call_locator() -> String {
 			call_locator!().into()
 		}
 	}
@@ -171,8 +171,8 @@ mod tests {
 	#[test]
 	fn function_locator() {
 		assert_eq!(
-			Example::expect_function_locator(),
-			"pallet_loans_ref::mock::builder::tests::Example::expect_function_locator"
+			Example::mock_function_locator(),
+			"pallet_loans_ref::mock::builder::tests::Example::mock_function_locator"
 		);
 
 		assert_eq!(
@@ -189,6 +189,6 @@ mod tests {
 			"pallet_loans_ref::mock::builder::tests::Example::call_locator"
 		);
 
-		assert_eq!(Example::call_locator(), Example::expect_call_locator());
+		assert_eq!(Example::call_locator(), Example::mock_call_locator());
 	}
 }

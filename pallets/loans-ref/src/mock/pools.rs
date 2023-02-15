@@ -43,21 +43,21 @@ mod pallet_mock_pools {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn expect_pool_exists(f: impl Fn(T::PoolId) -> bool + 'static) {
+		pub fn mock_pool_exists(f: impl Fn(T::PoolId) -> bool + 'static) {
 			register_call!(f);
 		}
 
-		pub fn expect_account_for(f: impl Fn(T::PoolId) -> T::AccountId + 'static) {
+		pub fn mock_account_for(f: impl Fn(T::PoolId) -> T::AccountId + 'static) {
 			register_call!(f);
 		}
 
-		pub fn expect_withdraw(
+		pub fn mock_withdraw(
 			f: impl Fn(T::PoolId, T::AccountId, T::Balance) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn expect_deposit(
+		pub fn mock_deposit(
 			f: impl Fn(T::PoolId, T::AccountId, T::Balance) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
