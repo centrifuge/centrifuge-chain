@@ -3,7 +3,7 @@ mod permissions;
 mod pools;
 
 use cfg_primitives::Moment;
-use cfg_types::permissions::{PermissionScope, PoolRole, Role};
+use cfg_types::permissions::PermissionScope;
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64,
@@ -190,28 +190,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 		Uniques::create_collection(&COLLECTION_B, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_B, &ITEM_A, &BORROWER).unwrap();
-
-		basic_mock_expectations();
 	});
 	ext
-}
-
-fn basic_mock_expectations() {
-	MockPermissions::expect_has(move |scope, who, role| {
-		let valid = matches!(scope, PermissionScope::Pool(POOL_A))
-			&& matches!(role, Role::PoolRole(PoolRole::Borrower))
-			&& who == BORROWER;
-
-		valid
-	});
-
-	MockPools::expect_pool_exists(move |pool_id| pool_id == POOL_A);
-
-	MockPools::expect_account_for(|pool_id| {
-		if pool_id == POOL_A {
-			POOL_A_ACCOUNT
-		} else {
-			POOL_OTHER_ACCOUNT
-		}
-	});
 }
