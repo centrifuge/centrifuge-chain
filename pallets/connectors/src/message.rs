@@ -155,8 +155,8 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 	}
 }
 
-// Encode a value in its big-endian representation. We use this for number types to make
-// sure they are encoded the way they are expected to be decoded on the Solidity side.
+/// Encode a value in its big-endian representation. We use this for number types to make
+/// sure they are encoded the way they are expected to be decoded on the Solidity side.
 fn to_be(x: impl Encode) -> Vec<u8> {
 	let mut output = x.encode();
 	output.reverse();
