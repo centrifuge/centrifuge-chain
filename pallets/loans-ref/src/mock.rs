@@ -4,7 +4,10 @@ mod pools;
 
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;
-use frame_support::traits::{AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64};
+use frame_support::traits::{
+	tokens::nonfungibles::{Create, Mutate},
+	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64,
+};
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
 use sp_runtime::{
@@ -17,6 +20,14 @@ use self::{permissions as pallet_mock_permissions, pools as pallet_mock_pools};
 use crate as pallet_loans;
 
 pub const BLOCK_TIME: u64 = 1000;
+
+pub const ASSET_COLLECTION_OWNER: AccountId = 1;
+pub const BORROWER: AccountId = 2;
+
+pub const COLLECTION_A: CollectionId = 1;
+pub const COLLECTION_B: CollectionId = 2;
+pub const ITEM_A: ItemId = 1;
+pub const ITEM_B: ItemId = 2;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -162,5 +173,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.build_storage::<Runtime>()
 		.unwrap();
 
-	sp_io::TestExternalities::new(storage)
+	let mut ext = sp_io::TestExternalities::new(storage);
+	ext.execute_with(|| {
+		Time::set_timestamp(BLOCK_TIME);
+
+		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
+		Uniques::mint_into(&COLLECTION_A, &ITEM_A, &BORROWER).unwrap();
+		Uniques::mint_into(&COLLECTION_A, &ITEM_B, &BORROWER).unwrap();
+
+		Uniques::create_collection(&COLLECTION_B, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
+		Uniques::mint_into(&COLLECTION_B, &ITEM_A, &BORROWER).unwrap();
+	});
+	ext
 }
