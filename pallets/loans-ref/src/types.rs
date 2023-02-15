@@ -10,12 +10,12 @@ use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
-	pallet_prelude::{DispatchResult, RuntimeDebugNoBound},
+	pallet_prelude::DispatchResult,
 	traits::{
 		tokens::{self},
 		UnixTime,
 	},
-	RuntimeDebug,
+	PalletError, RuntimeDebug,
 };
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
@@ -25,8 +25,44 @@ use sp_runtime::{
 };
 use sp_std::cmp::Ordering;
 
-use super::{BorrowLoanError, CloseLoanError, Config, CreateLoanError, Error, WrittenOffError};
+use super::{Config, Error};
 use crate::valuation::{ValuationMethod, SECONDS_PER_DAY};
+
+/// Error related to loan creation
+#[derive(Encode, Decode, TypeInfo, PalletError)]
+pub enum CreateLoanError {
+	/// Emits when valuation method is incorrectly specified
+	InvalidValuationMethod,
+	/// Emits when repayment schedule is incorrectly specified
+	InvalidRepaymentSchedule,
+}
+
+/// Error related to loan borrowing
+#[derive(Encode, Decode, TypeInfo, PalletError)]
+pub enum BorrowLoanError {
+	/// Emits when the borrowed amount is more than the allowed amount
+	MaxAmountExceeded,
+	/// Emits when the loan can not be borrowed because the loan is written off
+	WrittenOffRestriction,
+	/// Emits when maturity has passed and borrower tried to borrow more
+	MaturityDatePassed,
+}
+
+/// Error related to loan borrowing
+#[derive(Encode, Decode, TypeInfo, PalletError)]
+pub enum WrittenOffError {
+	/// Emits when maturity has not passed tried to writ off
+	MaturityDateNotPassed,
+	/// Emits when a write off action tries to write off the more than the policy allows
+	LessThanPolicy,
+}
+
+/// Error related to loan closing
+#[derive(Encode, Decode, TypeInfo, PalletError)]
+pub enum CloseLoanError {
+	/// Emits when close a loan that is not fully repaid
+	NotFullyRepaid,
+}
 
 // Portfolio valuation information.
 // It will be updated on these scenarios:
@@ -236,64 +272,34 @@ pub struct LoanRestrictions<Rate> {
 	pub repayments: RepayRestrictions,
 }
 
-// =================================================================
-//  High level types related to the pallet's Config and Error types
-// -----------------------------------------------------------------
-
-pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-
 /// Loan information.
 /// It contemplates the loan proposal by the borrower and the pricing properties by the issuer.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(T))]
-pub struct LoanInfo<T: Config> {
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct LoanInfo<Asset, Balance, Rate> {
 	/// Specify the repayments schedule of the loan
-	schedule: RepaymentSchedule,
+	pub schedule: RepaymentSchedule,
 
 	/// Collateral used for this loan
-	collateral: AssetOf<T>,
+	pub collateral: Asset,
 
 	/// Value of the collateral used for this loan
-	collateral_value: T::Balance,
+	pub collateral_value: Balance,
 
 	/// Valuation method of this loan
-	valuation_method: ValuationMethod<T::Rate>,
+	pub valuation_method: ValuationMethod<Rate>,
 
 	/// Restrictions of this loan
-	restrictions: LoanRestrictions<T::Rate>,
+	pub restrictions: LoanRestrictions<Rate>,
 
 	/// Interest rate per second with any penalty applied
-	interest_rate: T::Rate,
+	pub interest_rate: Rate,
 }
 
-impl<T: Config> LoanInfo<T> {
-	pub fn new(
-		schedule: RepaymentSchedule,
-		collateral: AssetOf<T>,
-		collateral_value: T::Balance,
-		valuation_method: ValuationMethod<T::Rate>,
-		restrictions: LoanRestrictions<T::Rate>,
-		interest_rate_per_year: T::Rate,
-	) -> Result<Self, DispatchError> {
-		Ok(LoanInfo {
-			schedule,
-			collateral,
-			collateral_value,
-			valuation_method,
-			restrictions,
-			interest_rate: T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?,
-		})
-	}
-
-	pub fn deactivate(&mut self) -> DispatchResult {
-		T::InterestAccrual::unreference_rate(self.interest_rate)
-	}
-
-	pub fn collateral(&self) -> AssetOf<T> {
-		self.collateral
-	}
-
-	pub fn validate(&self, now: Moment) -> DispatchResult {
+impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
+where
+	Rate: FixedPointNumber,
+{
+	pub fn validate<T: Config>(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
 			Error::<T>::from(CreateLoanError::InvalidValuationMethod)
@@ -308,12 +314,19 @@ impl<T: Config> LoanInfo<T> {
 	}
 }
 
+// =================================================================
+//  High level types related to the pallet's Config and Error types
+// -----------------------------------------------------------------
+
+pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
+pub type LoanInfoOf<T> = LoanInfo<AssetOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
+
 /// Data containing a loan that has been created but is not active yet.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct CreatedLoan<T: Config> {
 	/// Loan information
-	pub info: LoanInfo<T>,
+	pub info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
 
 	/// Borrower account that created this loan
 	pub borrower: T::AccountId,
@@ -327,13 +340,11 @@ pub struct ClosedLoan<T: Config> {
 	closed_at: T::BlockNumber,
 
 	/// Loan information
-	info: LoanInfo<T>,
+	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
 }
 
 impl<T: Config> ClosedLoan<T> {
-	pub fn new(mut info: LoanInfo<T>) -> Result<Self, DispatchError> {
-		info.deactivate()?;
-
+	pub fn new(info: LoanInfoOf<T>) -> Result<Self, DispatchError> {
 		Ok(Self {
 			closed_at: frame_system::Pallet::<T>::current_block_number(),
 			info,
@@ -349,7 +360,7 @@ pub struct ActiveLoan<T: Config> {
 	loan_id: T::LoanId,
 
 	/// Loan information
-	info: LoanInfo<T>,
+	info: LoanInfoOf<T>,
 
 	/// Borrower account that created this loan
 	borrower: T::AccountId,
@@ -371,17 +382,25 @@ pub struct ActiveLoan<T: Config> {
 }
 
 impl<T: Config> ActiveLoan<T> {
-	pub fn new(loan_id: T::LoanId, info: LoanInfo<T>, borrower: T::AccountId, now: Moment) -> Self {
-		ActiveLoan {
+	pub fn new(
+		loan_id: T::LoanId,
+		info: LoanInfoOf<T>,
+		borrower: T::AccountId,
+		now: Moment,
+	) -> Result<Self, DispatchError> {
+		Ok(ActiveLoan {
 			loan_id,
-			info,
+			info: LoanInfo {
+				interest_rate: T::InterestAccrual::reference_yearly_rate(info.interest_rate)?,
+				..info
+			},
 			borrower,
 			write_off_status: WriteOffStatus::default(),
 			origination_date: now,
 			normalized_debt: T::Balance::zero(),
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
-		}
+		})
 	}
 
 	pub fn loan_id(&self) -> T::LoanId {
@@ -575,8 +594,10 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::unreference_rate(prev_interest_rate)
 	}
 
-	pub fn close(self) -> Result<(LoanInfo<T>, T::AccountId), DispatchError> {
+	pub fn close(self) -> Result<(LoanInfoOf<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
+
+		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
 
 		Ok((self.info, self.borrower))
 	}

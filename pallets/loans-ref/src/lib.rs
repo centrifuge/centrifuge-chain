@@ -31,7 +31,7 @@ mod pallet {
 			},
 			UnixTime,
 		},
-		transactional, PalletError,
+		transactional,
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
@@ -41,11 +41,10 @@ mod pallet {
 		ArithmeticError, FixedPointOperand,
 	};
 	use types::{
-		ActiveLoan, AssetOf, ClosedLoan, CreatedLoan, LoanInfo, LoanRestrictions,
-		PortfolioValuation, PortfolioValuationUpdateType, RepaymentSchedule, WriteOffState,
-		WriteOffStatus,
+		ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, ClosedLoan, CreateLoanError,
+		CreatedLoan, LoanInfoOf, PortfolioValuation, PortfolioValuationUpdateType, WriteOffState,
+		WriteOffStatus, WrittenOffError,
 	};
-	use valuation::ValuationMethod;
 
 	use super::*;
 
@@ -207,7 +206,7 @@ mod pallet {
 		Created {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			loan_info: LoanInfo<T>,
+			loan_info: LoanInfoOf<T>,
 		},
 		/// An amount was borrowed for a loan
 		Borrowed {
@@ -271,30 +270,10 @@ mod pallet {
 		CloseLoanError(CloseLoanError),
 	}
 
-	/// Error related to loan creation
-	#[derive(Encode, Decode, TypeInfo, PalletError)]
-	pub enum CreateLoanError {
-		/// Emits when valuation method is incorrectly specified
-		InvalidValuationMethod,
-		/// Emits when repayment schedule is incorrectly specified
-		InvalidRepaymentSchedule,
-	}
-
 	impl<T> From<CreateLoanError> for Error<T> {
 		fn from(error: CreateLoanError) -> Self {
 			Error::<T>::CreateLoanError(error)
 		}
-	}
-
-	/// Error related to loan borrowing
-	#[derive(Encode, Decode, TypeInfo, PalletError)]
-	pub enum BorrowLoanError {
-		/// Emits when the borrowed amount is more than the allowed amount
-		MaxAmountExceeded,
-		/// Emits when the loan can not be borrowed because the loan is written off
-		WrittenOffRestriction,
-		/// Emits when maturity has passed and borrower tried to borrow more
-		MaturityDatePassed,
 	}
 
 	impl<T> From<BorrowLoanError> for Error<T> {
@@ -303,26 +282,10 @@ mod pallet {
 		}
 	}
 
-	/// Error related to loan borrowing
-	#[derive(Encode, Decode, TypeInfo, PalletError)]
-	pub enum WrittenOffError {
-		/// Emits when maturity has not passed tried to writ off
-		MaturityDateNotPassed,
-		/// Emits when a write off action tries to write off the more than the policy allows
-		LessThanPolicy,
-	}
-
 	impl<T> From<WrittenOffError> for Error<T> {
 		fn from(error: WrittenOffError) -> Self {
 			Error::<T>::WrittenOffError(error)
 		}
-	}
-
-	/// Error related to loan closing
-	#[derive(Encode, Decode, TypeInfo, PalletError)]
-	pub enum CloseLoanError {
-		/// Emits when close a loan that is not fully repaid
-		NotFullyRepaid,
 	}
 
 	impl<T> From<CloseLoanError> for Error<T> {
@@ -342,29 +305,20 @@ mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			schedule: RepaymentSchedule,
-			collateral: AssetOf<T>,
-			collateral_value: T::Balance,
-			valuation_method: ValuationMethod<T::Rate>,
-			restrictions: LoanRestrictions<T::Rate>,
-			interest_rate_per_year: T::Rate,
+			loan_info: LoanInfoOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
-			Self::ensure_collateral_owner(&who, collateral)?;
+			Self::ensure_collateral_owner(&who, loan_info.collateral)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			let loan_info = LoanInfo::new(
-				schedule,
-				collateral,
-				collateral_value,
-				valuation_method,
-				restrictions,
-				interest_rate_per_year,
-			)?;
-			loan_info.validate(T::Time::now().as_secs())?;
+			loan_info.validate::<T>(T::Time::now().as_secs())?;
 
-			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
+			T::NonFungible::transfer(
+				&loan_info.collateral.0,
+				&loan_info.collateral.1,
+				&T::Pool::account_for(pool_id),
+			)?;
 
 			let loan_id = Self::generate_loan_id(pool_id)?;
 			CreatedLoans::<T>::insert(
@@ -548,7 +502,7 @@ mod pallet {
 
 			Self::ensure_loan_borrower(&who, &borrower)?;
 
-			let collateral = info.collateral();
+			let collateral = info.collateral;
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
 			ClosedLoans::<T>::insert(pool_id, loan_id, ClosedLoan::new(info)?);
@@ -723,7 +677,7 @@ mod pallet {
 						created_loan.info,
 						created_loan.borrower,
 						Self::now(),
-					);
+					)?;
 
 					let result = f(&mut loan);
 					let last_updated = Self::now();

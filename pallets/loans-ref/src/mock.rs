@@ -3,7 +3,7 @@ mod permissions;
 mod pools;
 
 use cfg_primitives::Moment;
-use cfg_types::permissions::PermissionScope;
+use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64,
@@ -23,17 +23,24 @@ pub const BLOCK_TIME: u64 = 1000;
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 2;
+pub const NO_BORROWER: AccountId = 3;
 
 pub const COLLECTION_A: CollectionId = 1;
 pub const COLLECTION_B: CollectionId = 2;
 pub const ITEM_A: ItemId = 1;
 pub const ITEM_B: ItemId = 2;
 
+pub const POOL_A: PoolId = 1;
+pub const POOL_B: PoolId = 2;
+pub const POOL_A_ACCOUNT: AccountId = 10;
+pub const POOL_OTHER_ACCOUNT: AccountId = 100;
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type CollectionId = u16;
 pub type ItemId = u16;
+pub type Asset = (CollectionId, ItemId);
 pub type AccountId = u64;
 pub type Balance = u128;
 pub type Rate = FixedU128;
@@ -183,6 +190,28 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 		Uniques::create_collection(&COLLECTION_B, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_B, &ITEM_A, &BORROWER).unwrap();
+
+		basic_mock_expectations();
 	});
 	ext
+}
+
+fn basic_mock_expectations() {
+	MockPermissions::expect_has(move |scope, who, role| {
+		let valid = matches!(scope, PermissionScope::Pool(POOL_A))
+			&& matches!(role, Role::PoolRole(PoolRole::Borrower))
+			&& who == BORROWER;
+
+		valid
+	});
+
+	MockPools::expect_pool_exists(move |pool_id| pool_id == POOL_A);
+
+	MockPools::expect_account_for(|pool_id| {
+		if pool_id == POOL_A {
+			POOL_A_ACCOUNT
+		} else {
+			POOL_OTHER_ACCOUNT
+		}
+	});
 }
