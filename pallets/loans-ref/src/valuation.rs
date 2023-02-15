@@ -14,6 +14,7 @@ pub const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
 
 /// TODO
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[cfg_attr(test, derive(Default))]
 pub struct DiscountedCashFlows<Rate> {
 	/// TODO
 	probability_of_default: Rate,
@@ -26,6 +27,18 @@ pub struct DiscountedCashFlows<Rate> {
 }
 
 impl<Rate: FixedPointNumber> DiscountedCashFlows<Rate> {
+	pub fn new(
+		probability_of_default: Rate,
+		loss_given_default: Rate,
+		discount_rate: Rate,
+	) -> Self {
+		Self {
+			probability_of_default,
+			loss_given_default,
+			discount_rate,
+		}
+	}
+
 	pub fn compute_present_value<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
 		debt: Balance,
@@ -82,6 +95,28 @@ where
 		match self {
 			ValuationMethod::DiscountedCashFlows(dcf) => dcf.discount_rate >= One::one(),
 			ValuationMethod::OutstandingDebt => true,
+		}
+	}
+}
+
+#[cfg(test)]
+mod test_utils {
+	use super::*;
+
+	impl<Rate> DiscountedCashFlows<Rate> {
+		pub fn with_probability_of_default(mut self, input: Rate) -> Self {
+			self.probability_of_default = input;
+			self
+		}
+
+		pub fn with_loss_given_default(mut self, input: Rate) -> Self {
+			self.loss_given_default = input;
+			self
+		}
+
+		pub fn with_discount_rate(mut self, input: Rate) -> Self {
+			self.discount_rate = input;
+			self
 		}
 	}
 }

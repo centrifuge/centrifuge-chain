@@ -9,9 +9,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-mod test_util;
-
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -308,27 +305,24 @@ mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			loan_info: LoanInfoOf<T>,
+			info: LoanInfoOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
-			Self::ensure_collateral_owner(&who, loan_info.collateral)?;
+			Self::ensure_collateral_owner(&who, *info.collateral())?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			loan_info.validate::<T>(T::Time::now().as_secs())?;
+			info.validate::<T>(T::Time::now().as_secs())?;
 
-			T::NonFungible::transfer(
-				&loan_info.collateral.0,
-				&loan_info.collateral.1,
-				&T::Pool::account_for(pool_id),
-			)?;
+			let collateral = info.collateral();
+			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
 			let loan_id = Self::generate_loan_id(pool_id)?;
 			CreatedLoans::<T>::insert(
 				pool_id,
 				loan_id,
 				CreatedLoan {
-					info: loan_info.clone(),
+					info: info.clone(),
 					borrower: who,
 				},
 			);
@@ -336,7 +330,7 @@ mod pallet {
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
 				loan_id,
-				loan_info,
+				loan_info: info,
 			});
 
 			Ok(())
@@ -505,7 +499,7 @@ mod pallet {
 
 			Self::ensure_loan_borrower(&who, &borrower)?;
 
-			let collateral = info.collateral;
+			let collateral = *info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
 			ClosedLoans::<T>::insert(pool_id, loan_id, ClosedLoan::new(info)?);

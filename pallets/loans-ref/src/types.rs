@@ -277,28 +277,32 @@ pub struct LoanRestrictions<Rate> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct LoanInfo<Asset, Balance, Rate> {
 	/// Specify the repayments schedule of the loan
-	pub schedule: RepaymentSchedule,
+	schedule: RepaymentSchedule,
 
 	/// Collateral used for this loan
-	pub collateral: Asset,
+	collateral: Asset,
 
 	/// Value of the collateral used for this loan
-	pub collateral_value: Balance,
+	collateral_value: Balance,
 
 	/// Valuation method of this loan
-	pub valuation_method: ValuationMethod<Rate>,
+	valuation_method: ValuationMethod<Rate>,
 
 	/// Restrictions of this loan
-	pub restrictions: LoanRestrictions<Rate>,
+	restrictions: LoanRestrictions<Rate>,
 
 	/// Interest rate per second with any penalty applied
-	pub interest_rate: Rate,
+	interest_rate: Rate,
 }
 
 impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
 where
 	Rate: FixedPointNumber,
 {
+	pub fn collateral(&self) -> &Asset {
+		&self.collateral
+	}
+
 	pub fn validate<T: Config>(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
@@ -600,5 +604,71 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
 
 		Ok((self.info, self.borrower))
+	}
+}
+
+#[cfg(test)]
+mod test_utils {
+	use super::*;
+
+	impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
+	where
+		Rate: Default,
+		Balance: Default,
+	{
+		pub fn new(collateral: Asset) -> Self {
+			LoanInfo {
+				schedule: RepaymentSchedule {
+					maturity: Maturity::Fixed(0),
+					interest_payments: InterestPayments::None,
+					pay_down_schedule: PayDownSchedule::None,
+				},
+				collateral: collateral,
+				collateral_value: Balance::default(),
+				valuation_method: ValuationMethod::OutstandingDebt,
+				restrictions: LoanRestrictions {
+					max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
+						advance_rate: Rate::default(),
+					},
+					borrows: BorrowRestrictions::WrittenOff,
+					repayments: RepayRestrictions::None,
+				},
+				interest_rate: Rate::default(),
+			}
+		}
+
+		pub fn with_schedule(mut self, input: RepaymentSchedule) -> Self {
+			self.schedule = input;
+			self
+		}
+
+		pub fn with_maturity(mut self, moment: Moment) -> Self {
+			self.schedule = RepaymentSchedule {
+				maturity: Maturity::Fixed(moment),
+				interest_payments: InterestPayments::None,
+				pay_down_schedule: PayDownSchedule::None,
+			};
+			self
+		}
+
+		pub fn with_collateral_value(mut self, input: Balance) -> Self {
+			self.collateral_value = input;
+			self
+		}
+
+		pub fn with_valuation_method(mut self, input: ValuationMethod<Rate>) -> Self {
+			self.valuation_method = input;
+			self
+		}
+
+		pub fn with_restrictions(mut self, input: LoanRestrictions<Rate>) -> Self {
+			self.restrictions = input;
+			self
+		}
+
+		pub fn with_interest_rate(mut self, input: Rate) -> Self {
+			self.interest_rate = input;
+			self
+		}
 	}
 }

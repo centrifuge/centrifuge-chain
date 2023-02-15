@@ -19,7 +19,7 @@ use sp_runtime::{
 use self::{permissions as pallet_mock_permissions, pools as pallet_mock_pools};
 use crate as pallet_loans;
 
-pub const BLOCK_TIME: u64 = 1000;
+pub const SLOT_MS: u64 = 10_000;
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
@@ -102,7 +102,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<BLOCK_TIME>;
+	type MinimumPeriod = ConstU64<SLOT_MS>;
 	type Moment = Moment;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
@@ -186,7 +186,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {
-		Time::set_timestamp(BLOCK_TIME);
+		Time::set_timestamp(SLOT_MS);
 
 		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_A, &ASSET_AA.1, &BORROWER).unwrap();
