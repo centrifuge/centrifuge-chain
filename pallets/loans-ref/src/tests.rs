@@ -34,7 +34,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(ASSET_AA).with_maturity(Time::now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(Time::now());
 			assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
 		});
 	}
@@ -44,7 +44,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(ASSET_AA).with_maturity(Time::now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(Time::now());
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(NO_BORROWER), POOL_A, loan),
 				BadOrigin
@@ -57,7 +57,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_B);
 
-			let loan = LoanInfo::new(ASSET_AA).with_maturity(Time::now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(Time::now());
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_B, loan),
 				Error::<Runtime>::PoolNotFound
@@ -70,23 +70,23 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(NO_ASSET).with_maturity(Time::now());
+			let loan = LoanInfo::new(NO_ASSET).maturity(Time::now());
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::NFTOwnerNotFound
 			);
 
-			let loan = LoanInfo::new(ASSET_AB).with_maturity(Time::now());
+			let loan = LoanInfo::new(ASSET_AB).maturity(Time::now());
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::NotNFTOwner
 			);
 
-			let loan = LoanInfo::new(ASSET_AA).with_maturity(Time::now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(Time::now());
 			assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
 
 			// Using the same NFT no longer works, because the pool owns it.
-			let loan = LoanInfo::new(ASSET_AA).with_maturity(Time::now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(Time::now());
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::NotNFTOwner
@@ -99,7 +99,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(ASSET_AA).with_maturity(Time::now() - SLOT_MS);
+			let loan = LoanInfo::new(ASSET_AA).maturity(Time::now() - SLOT_MS);
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::from(CreateLoanError::InvalidRepaymentSchedule)
@@ -113,9 +113,9 @@ mod create_loan {
 			config_mocks(POOL_A);
 
 			let loan = LoanInfo::new(ASSET_AA)
-				.with_maturity(Time::now())
-				.with_valuation_method(ValuationMethod::DiscountedCashFlows(
-					DiscountedCashFlows::default().with_discount_rate(Rate::from_float(0.9)),
+				.maturity(Time::now())
+				.valuation_method(ValuationMethod::DiscountedCashFlows(
+					DiscountedCashFlows::default().discount_rate(Rate::from_float(0.9)),
 				));
 
 			assert_noop!(

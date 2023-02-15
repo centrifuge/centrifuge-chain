@@ -637,12 +637,12 @@ mod test_utils {
 			}
 		}
 
-		pub fn with_schedule(mut self, input: RepaymentSchedule) -> Self {
+		pub fn schedule(mut self, input: RepaymentSchedule) -> Self {
 			self.schedule = input;
 			self
 		}
 
-		pub fn with_maturity(mut self, moment: Moment) -> Self {
+		pub fn maturity(mut self, moment: Moment) -> Self {
 			self.schedule = RepaymentSchedule {
 				maturity: Maturity::Fixed(moment),
 				interest_payments: InterestPayments::None,
@@ -651,22 +651,22 @@ mod test_utils {
 			self
 		}
 
-		pub fn with_collateral_value(mut self, input: Balance) -> Self {
+		pub fn collateral_value(mut self, input: Balance) -> Self {
 			self.collateral_value = input;
 			self
 		}
 
-		pub fn with_valuation_method(mut self, input: ValuationMethod<Rate>) -> Self {
+		pub fn valuation_method(mut self, input: ValuationMethod<Rate>) -> Self {
 			self.valuation_method = input;
 			self
 		}
 
-		pub fn with_restrictions(mut self, input: LoanRestrictions<Rate>) -> Self {
+		pub fn restrictions(mut self, input: LoanRestrictions<Rate>) -> Self {
 			self.restrictions = input;
 			self
 		}
 
-		pub fn with_interest_rate(mut self, input: Rate) -> Self {
+		pub fn interest_rate(mut self, input: Rate) -> Self {
 			self.interest_rate = input;
 			self
 		}

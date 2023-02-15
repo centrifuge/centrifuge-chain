@@ -104,17 +104,17 @@ mod test_utils {
 	use super::*;
 
 	impl<Rate> DiscountedCashFlows<Rate> {
-		pub fn with_probability_of_default(mut self, input: Rate) -> Self {
+		pub fn probability_of_default(mut self, input: Rate) -> Self {
 			self.probability_of_default = input;
 			self
 		}
 
-		pub fn with_loss_given_default(mut self, input: Rate) -> Self {
+		pub fn loss_given_default(mut self, input: Rate) -> Self {
 			self.loss_given_default = input;
 			self
 		}
 
-		pub fn with_discount_rate(mut self, input: Rate) -> Self {
+		pub fn discount_rate(mut self, input: Rate) -> Self {
 			self.discount_rate = input;
 			self
 		}
