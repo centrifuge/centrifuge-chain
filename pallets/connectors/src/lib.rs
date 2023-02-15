@@ -571,6 +571,11 @@ mod tests {
 			account_from(DomainAddress::EVM(1284, [42; 20])),
 			account_from(DomainAddress::EVM(1284, [24; 20])),
 		);
+
+		assert_ne!(
+			account_from(DomainAddress::EVM(1284, [9; 20])),
+			account_from(DomainAddress::EVM(1285, [9; 20])),
+		);
 	}
 
 	fn account_from(domain_address: DomainAddress) -> AccountId {
