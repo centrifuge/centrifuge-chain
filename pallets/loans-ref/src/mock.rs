@@ -22,13 +22,17 @@ use crate as pallet_loans;
 pub const BLOCK_TIME: u64 = 1000;
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
-pub const BORROWER: AccountId = 2;
-pub const NO_BORROWER: AccountId = 3;
+pub const BORROWER: AccountId = 1;
+pub const BORROWER_2: AccountId = 2;
+pub const NO_BORROWER: AccountId = 10;
 
 pub const COLLECTION_A: CollectionId = 1;
 pub const COLLECTION_B: CollectionId = 2;
-pub const ITEM_A: ItemId = 1;
-pub const ITEM_B: ItemId = 2;
+pub const ASSET_AA: (CollectionId, ItemId) = (COLLECTION_A, 1);
+pub const ASSET_AB: (CollectionId, ItemId) = (COLLECTION_A, 2);
+pub const ASSET_BA: (CollectionId, ItemId) = (COLLECTION_B, 1);
+pub const ASSET_BB: (CollectionId, ItemId) = (COLLECTION_B, 2);
+pub const NO_ASSET: (CollectionId, ItemId) = (42, 1);
 
 pub const POOL_A: PoolId = 1;
 pub const POOL_B: PoolId = 2;
@@ -185,11 +189,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Time::set_timestamp(BLOCK_TIME);
 
 		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
-		Uniques::mint_into(&COLLECTION_A, &ITEM_A, &BORROWER).unwrap();
-		Uniques::mint_into(&COLLECTION_A, &ITEM_B, &BORROWER).unwrap();
+		Uniques::mint_into(&COLLECTION_A, &ASSET_AA.1, &BORROWER).unwrap();
+		Uniques::mint_into(&COLLECTION_A, &ASSET_AB.1, &BORROWER_2).unwrap();
 
 		Uniques::create_collection(&COLLECTION_B, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
-		Uniques::mint_into(&COLLECTION_B, &ITEM_A, &BORROWER).unwrap();
+		Uniques::mint_into(&COLLECTION_B, &ASSET_BA.1, &BORROWER).unwrap();
+		Uniques::mint_into(&COLLECTION_B, &ASSET_BB.1, &BORROWER).unwrap();
 	});
 	ext
 }

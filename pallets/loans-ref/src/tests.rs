@@ -2,38 +2,9 @@ use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::BadOrigin;
 
-use super::{
-	mock::*,
-	types::{
-		BorrowRestrictions, InterestPayments, LoanInfo, LoanRestrictions, Maturity,
-		MaxBorrowAmount, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
-	},
-	valuation::ValuationMethod,
-	Error,
-};
+use super::{mock::*, types::LoanInfo, Error};
 
-fn loan_info() -> LoanInfo<Asset, Balance, Rate> {
-	LoanInfo {
-		schedule: RepaymentSchedule {
-			maturity: Maturity::Fixed(BLOCK_TIME),
-			interest_payments: InterestPayments::None,
-			pay_down_schedule: PayDownSchedule::None,
-		},
-		collateral: (COLLECTION_A, ITEM_A),
-		collateral_value: 1000,
-		valuation_method: ValuationMethod::OutstandingDebt,
-		restrictions: LoanRestrictions {
-			max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
-				advance_rate: Rate::from_float(0.5),
-			},
-			borrows: BorrowRestrictions::WrittenOff,
-			repayments: RepayRestrictions::None,
-		},
-		interest_rate: Rate::from_float(0.03),
-	}
-}
-
-fn mock_permissions_expectations(pool_id: PoolId) {
+fn mock_expectations_for_create(pool_id: PoolId) {
 	MockPermissions::expect_has(move |scope, who, role| {
 		let valid = matches!(scope, PermissionScope::Pool(id) if pool_id == id)
 			&& matches!(role, Role::PoolRole(PoolRole::Borrower))
@@ -41,9 +12,6 @@ fn mock_permissions_expectations(pool_id: PoolId) {
 
 		valid
 	});
-}
-
-fn mock_pools_expectations() {
 	MockPools::expect_pool_exists(|pool_id| pool_id == POOL_A);
 	MockPools::expect_account_for(|pool_id| {
 		if pool_id == POOL_A {
@@ -57,39 +25,54 @@ fn mock_pools_expectations() {
 #[test]
 fn create_successful_loan() {
 	new_test_ext().execute_with(|| {
-		mock_permissions_expectations(POOL_A);
-		mock_pools_expectations();
+		mock_expectations_for_create(POOL_A);
 
-		assert_ok!(Loans::create(
-			RuntimeOrigin::signed(BORROWER),
-			POOL_A,
-			loan_info()
-		));
+		let loan = LoanInfo::empty(ASSET_AA).with_maturity(Time::now());
+		assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
 	});
 }
 
 #[test]
-fn create_loan_bad_permission() {
+fn create_loan_with_wrong_permissions() {
 	new_test_ext().execute_with(|| {
-		mock_permissions_expectations(POOL_A);
-		mock_pools_expectations();
+		mock_expectations_for_create(POOL_A);
 
+		let loan = LoanInfo::empty(ASSET_AA).with_maturity(Time::now());
 		assert_noop!(
-			Loans::create(RuntimeOrigin::signed(NO_BORROWER), POOL_A, loan_info()),
+			Loans::create(RuntimeOrigin::signed(NO_BORROWER), POOL_A, loan),
 			BadOrigin
 		);
 	});
 }
 
 #[test]
-fn create_loan_over_inexistent_pool() {
+fn create_loan_with_wrong_pool() {
 	new_test_ext().execute_with(|| {
-		mock_permissions_expectations(POOL_B);
-		mock_pools_expectations();
+		mock_expectations_for_create(POOL_B);
 
+		let loan = LoanInfo::empty(ASSET_AA).with_maturity(Time::now());
 		assert_noop!(
-			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_B, loan_info()),
+			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_B, loan),
 			Error::<Runtime>::PoolNotFound
+		);
+	});
+}
+
+#[test]
+fn create_loan_with_wrong_assets() {
+	new_test_ext().execute_with(|| {
+		mock_expectations_for_create(POOL_A);
+
+		let loan = LoanInfo::empty(NO_ASSET).with_maturity(Time::now());
+		assert_noop!(
+			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
+			Error::<Runtime>::NFTOwnerNotFound
+		);
+
+		let loan = LoanInfo::empty(ASSET_AB).with_maturity(Time::now());
+		assert_noop!(
+			Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
+			Error::<Runtime>::NotNFTOwner
 		);
 	});
 }

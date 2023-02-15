@@ -9,6 +9,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod test_util;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
