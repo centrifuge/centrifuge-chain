@@ -28,11 +28,11 @@ pub const NO_BORROWER: AccountId = 10;
 
 pub const COLLECTION_A: CollectionId = 1;
 pub const COLLECTION_B: CollectionId = 2;
-pub const ASSET_AA: (CollectionId, ItemId) = (COLLECTION_A, 1);
-pub const ASSET_AB: (CollectionId, ItemId) = (COLLECTION_A, 2);
-pub const ASSET_BA: (CollectionId, ItemId) = (COLLECTION_B, 1);
-pub const ASSET_BB: (CollectionId, ItemId) = (COLLECTION_B, 2);
-pub const NO_ASSET: (CollectionId, ItemId) = (42, 1);
+pub const ASSET_AA: Asset = (COLLECTION_A, 1);
+pub const ASSET_AB: Asset = (COLLECTION_A, 2);
+pub const ASSET_BA: Asset = (COLLECTION_B, 1);
+pub const ASSET_BB: Asset = (COLLECTION_B, 2);
+pub const NO_ASSET: Asset = (42, 1);
 
 pub const POOL_A: PoolId = 1;
 pub const POOL_B: PoolId = 2;
