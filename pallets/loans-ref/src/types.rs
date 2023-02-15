@@ -4,7 +4,7 @@ use cfg_traits::{
 		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
 		EnsureSubAssign,
 	},
-	InterestAccrual,
+	InterestAccrual, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -415,34 +415,15 @@ impl<T: Config> ActiveLoan<T> {
 			.ensure_add(penalty)
 	}
 
-	fn last_updated_debt(&self) -> Result<T::Balance, DispatchError> {
-		if self.last_updated == T::Time::now().as_secs() {
-			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)
-		} else {
-			T::InterestAccrual::previous_debt(
-				self.info.interest_rate,
-				self.normalized_debt,
-				self.last_updated,
-			)
-		}
-	}
-
-	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let debt = self.last_updated_debt()?;
+	fn present_value(&self, debt: T::Balance, when: Moment) -> Result<T::Balance, DispatchError> {
 		let debt = self.write_off_status.write_down(debt)?;
 
 		match &self.info.valuation_method {
 			ValuationMethod::DiscountedCashFlows(dcf) => {
-				// If the loan is overdue, there are no future cash flows to discount,
-				// hence we use the outstanding debt as the value.
 				let maturity_date = self.info.schedule.maturity.date();
-				if self.last_updated > maturity_date {
-					return Ok(debt);
-				}
-
 				Ok(dcf.compute_present_value(
 					debt,
-					self.last_updated,
+					when,
 					self.info.interest_rate,
 					self.origination_date,
 					maturity_date,
@@ -450,6 +431,31 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ValuationMethod::OutstandingDebt => Ok(debt),
 		}
+	}
+
+	pub fn latest_present_value(&self) -> Result<T::Balance, DispatchError> {
+		let debt = if self.last_updated == T::Time::now().as_secs() {
+			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)
+		} else {
+			T::InterestAccrual::previous_debt(
+				self.info.interest_rate,
+				self.normalized_debt,
+				self.last_updated,
+			)
+		}?;
+
+		self.present_value(debt, self.last_updated)
+	}
+
+	/// An optimized version of `ActiveLoan::latest_present_value()` when last updated is now.
+	/// Instead of fetch the current deb from the accrual,
+	/// it get it from a cache previously fetched.
+	pub fn current_present_value<C>(&self, rate_cache: &C) -> Result<T::Balance, DispatchError>
+	where
+		C: RateCollection<T::Rate, T::Balance, T::Balance>,
+	{
+		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
+		self.present_value(debt, T::Time::now().as_secs())
 	}
 
 	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {

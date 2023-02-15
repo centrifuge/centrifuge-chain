@@ -34,6 +34,12 @@ impl<Rate: FixedPointNumber> DiscountedCashFlows<Rate> {
 		maturity_date: Moment,
 		origination_date: Moment,
 	) -> Result<Balance, ArithmeticError> {
+		// If the loan is overdue, there are no future cash flows to discount,
+		// hence we use the outstanding debt as the value.
+		if at > maturity_date {
+			return Ok(debt);
+		}
+
 		// Calculate the expected loss over the term of the loan
 		let tel = Rate::saturating_from_rational(
 			maturity_date.ensure_sub(origination_date)?,

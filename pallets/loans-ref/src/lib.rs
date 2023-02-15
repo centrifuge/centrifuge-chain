@@ -27,7 +27,7 @@ mod pallet {
 		traits::{
 			tokens::{
 				self,
-				nonfungibles::{Inspect, Mutate, Transfer},
+				nonfungibles::{Inspect, Transfer},
 			},
 			UnixTime,
 		},
@@ -695,10 +695,11 @@ mod pallet {
 		}
 
 		fn portfolio_valuation_for_pool(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+			let rates = T::InterestAccrual::rates();
 			ActiveLoans::<T>::get(pool_id).into_iter().try_fold(
 				T::Balance::zero(),
 				|sum, loan| -> Result<T::Balance, DispatchError> {
-					Ok(sum.ensure_add(loan.present_value()?)?)
+					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
 				},
 			)
 		}
@@ -722,7 +723,7 @@ mod pallet {
 					);
 
 					let result = f(&mut loan);
-					let new_pv = loan.present_value()?;
+					let new_pv = loan.latest_present_value()?;
 					Self::update_portfolio_valuation_with_pv(
 						pool_id,
 						portfolio,
@@ -755,11 +756,11 @@ mod pallet {
 						.ok_or(Error::<T>::LoanNotFound)?;
 
 					loan.update_time(portfolio.last_updated());
-					let old_pv = loan.present_value()?;
+					let old_pv = loan.latest_present_value()?;
 
 					loan.update_time(Self::now());
 					let result = f(loan);
-					let new_pv = loan.present_value()?;
+					let new_pv = loan.latest_present_value()?;
 
 					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
 
