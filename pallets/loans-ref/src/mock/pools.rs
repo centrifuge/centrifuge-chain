@@ -43,7 +43,7 @@ mod pallet_mock_pools {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn pool_exists_for(f: impl Fn(T::PoolId) -> bool + 'static) {
+		pub fn expect_pool_exists(f: impl Fn(T::PoolId) -> bool + 'static) {
 			register_call!(f);
 		}
 

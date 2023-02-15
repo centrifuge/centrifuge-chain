@@ -40,7 +40,7 @@ pub mod storage {
 			let call = registry.get(&call_id).unwrap();
 			call.as_any()
 				.downcast_ref::<FnWrapper<Args, R>>()
-				.expect("Expected other function type")
+				.expect("Bad mock implementation: expected other function type")
 				.0(args)
 		})
 	}
@@ -50,9 +50,6 @@ pub use storage::CallId;
 
 /// Prefix that the register functions should have.
 pub const EXPECTATION_FN_PREFIX: &str = "expect_";
-
-/// Error message if an expectation can not be found.
-pub const EXPECT_CALL_MSG: &str = "Must be an expectation for this call";
 
 /// Gives the absolute string identification of a function.
 #[macro_export]
@@ -132,7 +129,10 @@ macro_rules! execute_call {
 
 		let hash = frame_support::Blake2_128::hash(crate::call_locator!().as_bytes());
 		crate::mock::builder::storage::execute_call(
-			CallIds::<T>::get(hash).expect(crate::mock::builder::EXPECT_CALL_MSG),
+			CallIds::<T>::get(hash).expect(&format!(
+				"Called to {}, but not expectation found",
+				crate::call_locator!()
+			)),
 			$params,
 		)
 	}};

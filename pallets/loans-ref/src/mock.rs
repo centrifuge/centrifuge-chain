@@ -16,16 +16,19 @@ use sp_runtime::{
 use self::{permissions as pallet_mock_permissions, pools as pallet_mock_pools};
 use crate as pallet_loans;
 
+pub const BLOCK_TIME: u64 = 1000;
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type CollectionId = u16;
-type ItemId = u16;
-type AccountId = u64;
-type Balance = u128;
-type Rate = FixedU128;
-type CurrencyId = u32;
-type PoolId = u32;
-type TrancheId = u64;
+
+pub type CollectionId = u16;
+pub type ItemId = u16;
+pub type AccountId = u64;
+pub type Balance = u128;
+pub type Rate = FixedU128;
+pub type CurrencyId = u32;
+pub type PoolId = u32;
+pub type TrancheId = u64;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -34,12 +37,12 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
-		Timestamp: pallet_timestamp,
+		Time: pallet_timestamp,
 		Balances: pallet_balances,
 		Uniques: pallet_uniques,
 		InterestAccrual: pallet_interest_accrual,
 		MockPools: pallet_mock_pools,
-		Permissions: pallet_mock_permissions,
+		MockPermissions: pallet_mock_permissions,
 		Loans: pallet_loans,
 	}
 );
@@ -77,7 +80,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<1000>;
+	type MinimumPeriod = ConstU64<BLOCK_TIME>;
 	type Moment = Moment;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
@@ -121,7 +124,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type InterestRate = Rate;
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
+	type Time = Time;
 	type Weights = ();
 }
 
@@ -151,7 +154,7 @@ impl pallet_loans::Config for Runtime {
 	type Pool = pallet_mock_pools::Pallet<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
+	type Time = Time;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
