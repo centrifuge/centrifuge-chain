@@ -1722,6 +1722,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
 	type MaxGroups = MaxGroups;
+	type RewardCurrency = Balances;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;

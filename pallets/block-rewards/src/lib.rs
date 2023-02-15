@@ -113,7 +113,7 @@ pub mod pallet {
 
 	use super::*;
 
-	type NegativeImbalanceOf<T> = <<T as Config>::Currency as CurrencyT<
+	type NegativeImbalanceOf<T> = <<T as Config>::RewardCurrency as CurrencyT<
 		<T as frame_system::Config>::AccountId,
 	>>::NegativeImbalance;
 
@@ -128,7 +128,7 @@ pub mod pallet {
 		type Balance: Balance
 			+ MaxEncodedLen
 			+ FixedPointOperand
-			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>;
+			+ Into<<<Self as Config>::RewardCurrency as CurrencyT<Self::AccountId>>::Balance>;
 
 		/// Domain identification used by this pallet
 		type Domain: TypedGet;
@@ -154,8 +154,9 @@ pub mod pallet {
 			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Type used to handle currency minting and burning for collators.
-		type Currency: Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
-			+ CurrencyT<Self::AccountId>;
+		type Currency: Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
+
+		type RewardCurrency: CurrencyT<Self::AccountId>;
 
 		/// Max groups used by this pallet.
 		/// If this limit is reached, the exceeded groups are either not computed and not stored.
@@ -334,7 +335,7 @@ impl<T: Config> Pallet<T> {
 					T::Rewards::reward_group(T::CollatorGroupId::get(), total_collator_reward)?;
 
 					// Mint unassigned reward currency
-					let reward = T::Currency::issue(epoch_data.beneficiary_reward.into());
+					let reward = T::RewardCurrency::issue(epoch_data.beneficiary_reward.into());
 					// If configured, assigns reward to Beneficiary, else automatically drops it
 					T::Beneficiary::on_unbalanced(reward);
 
