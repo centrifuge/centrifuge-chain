@@ -275,18 +275,14 @@ impl<T: Config> LoanInfo<T> {
 		restrictions: LoanRestrictions<T::Rate>,
 		interest_rate_per_year: T::Rate,
 	) -> Result<Self, DispatchError> {
-		let loan_info = LoanInfo {
+		Ok(LoanInfo {
 			schedule,
 			collateral,
 			collateral_value,
 			valuation_method,
 			restrictions,
 			interest_rate: T::InterestAccrual::reference_yearly_rate(interest_rate_per_year)?,
-		};
-
-		loan_info.validate(T::Time::now().as_secs())?;
-
-		Ok(loan_info)
+		})
 	}
 
 	pub fn deactivate(&mut self) -> DispatchResult {
@@ -297,7 +293,7 @@ impl<T: Config> LoanInfo<T> {
 		self.collateral
 	}
 
-	fn validate(&self, now: Moment) -> DispatchResult {
+	pub fn validate(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
 			Error::<T>::from(CreateLoanError::InvalidValuationMethod)
@@ -372,9 +368,6 @@ pub struct ActiveLoan<T: Config> {
 
 	/// Total repaid amount of this loan
 	total_repaid: T::Balance,
-
-	/// When the loans's Present Value (PV) was last updated
-	last_updated: Moment,
 }
 
 impl<T: Config> ActiveLoan<T> {
@@ -388,7 +381,6 @@ impl<T: Config> ActiveLoan<T> {
 			normalized_debt: T::Balance::zero(),
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
-			last_updated: now,
 		}
 	}
 
@@ -433,18 +425,14 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	pub fn latest_present_value(&self) -> Result<T::Balance, DispatchError> {
-		let debt = if self.last_updated == T::Time::now().as_secs() {
+	pub fn present_value_at(&self, when: Moment) -> Result<T::Balance, DispatchError> {
+		let debt = if when == T::Time::now().as_secs() {
 			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)
 		} else {
-			T::InterestAccrual::previous_debt(
-				self.info.interest_rate,
-				self.normalized_debt,
-				self.last_updated,
-			)
+			T::InterestAccrual::previous_debt(self.info.interest_rate, self.normalized_debt, when)
 		}?;
 
-		self.present_value(debt, self.last_updated)
+		self.present_value(debt, when)
 	}
 
 	/// An optimized version of `ActiveLoan::latest_present_value()` when last updated is now.
@@ -534,12 +522,6 @@ impl<T: Config> ActiveLoan<T> {
 		);
 
 		Ok(())
-	}
-
-	pub fn update_time(&mut self, when: Moment) {
-		if when > self.last_updated {
-			self.last_updated = when;
-		}
 	}
 
 	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {

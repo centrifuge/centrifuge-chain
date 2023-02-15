@@ -158,14 +158,16 @@ mod pallet {
 	>;
 
 	/// Storage for active loans.
-	/// The indexation of this storage changes regarding the `CreatedLoans` or `ClosedLoans`
+	/// The indexation of this storage differs from `CreatedLoans` or `ClosedLoans`
 	/// because here we try to minimize the iteration speed over all active loans in a pool.
+	/// `Moment` value along with the `ActiveLoan` correspond to the last moment the active loan was
+	/// used to compute the portfolio valuation in an inexact way.
 	#[pallet::storage]
 	pub(crate) type ActiveLoans<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<ActiveLoan<T>, T::MaxActiveLoansPerPool>,
+		BoundedVec<(ActiveLoan<T>, Moment), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -360,10 +362,11 @@ mod pallet {
 				restrictions,
 				interest_rate_per_year,
 			)?;
-			let loan_id = Self::generate_loan_id(pool_id)?;
+			loan_info.validate(T::Time::now().as_secs())?;
 
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
+			let loan_id = Self::generate_loan_id(pool_id)?;
 			CreatedLoans::<T>::insert(
 				pool_id,
 				loan_id,
@@ -698,7 +701,7 @@ mod pallet {
 			let rates = T::InterestAccrual::rates();
 			ActiveLoans::<T>::get(pool_id).into_iter().try_fold(
 				T::Balance::zero(),
-				|sum, loan| -> Result<T::Balance, DispatchError> {
+				|sum, (loan, _)| -> Result<T::Balance, DispatchError> {
 					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
 				},
 			)
@@ -723,7 +726,8 @@ mod pallet {
 					);
 
 					let result = f(&mut loan);
-					let new_pv = loan.latest_present_value()?;
+					let last_updated = Self::now();
+					let new_pv = loan.present_value_at(last_updated)?;
 					Self::update_portfolio_valuation_with_pv(
 						pool_id,
 						portfolio,
@@ -732,7 +736,7 @@ mod pallet {
 					)?;
 
 					active_loans
-						.try_push(loan)
+						.try_push((loan, last_updated))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					result
@@ -750,17 +754,18 @@ mod pallet {
 		{
 			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let loan = active_loans
+					let (loan, last_updated) = active_loans
 						.iter_mut()
-						.find(|loan| loan.loan_id() == loan_id)
+						.find(|(loan, _)| loan.loan_id() == loan_id)
 						.ok_or(Error::<T>::LoanNotFound)?;
 
-					loan.update_time(portfolio.last_updated());
-					let old_pv = loan.latest_present_value()?;
+					*last_updated = (*last_updated).max(portfolio.last_updated());
+					let old_pv = loan.present_value_at(*last_updated)?;
 
-					loan.update_time(Self::now());
 					let result = f(loan);
-					let new_pv = loan.latest_present_value()?;
+
+					*last_updated = Self::now();
+					let new_pv = loan.present_value_at(*last_updated)?;
 
 					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
 
@@ -776,10 +781,10 @@ mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
-					.position(|loan| loan.loan_id() == loan_id)
+					.position(|(loan, _)| loan.loan_id() == loan_id)
 					.ok_or(Error::<T>::LoanNotFound)?;
 
-				Ok(active_loans.swap_remove(index))
+				Ok(active_loans.swap_remove(index).0)
 			})
 		}
 	}
