@@ -28,8 +28,8 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// #[cfg(test)]
-// mod mock;
+#[cfg(test)]
+mod mock;
 
 // #[cfg(test)]
 // mod tests;
@@ -43,12 +43,11 @@ pub use cfg_traits::{
 	ops::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
 };
+use cfg_types::tokens::CurrencyId as CfgCurrencyId;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		fungibles::Mutate,
-		tokens::{AssetId, Balance},
-		Currency as CurrencyT, OnUnbalanced, OneSessionHandler,
+		fungibles::Mutate, tokens::Balance, Currency as CurrencyT, OnUnbalanced, OneSessionHandler,
 	},
 	DefaultNoBound,
 };
@@ -106,6 +105,10 @@ pub struct EpochChanges<T: Config> {
 	num_collators: Option<u32>,
 }
 
+pub const COLLATOR_GROUP_ID: u32 = 1;
+pub const DEFAULT_COLLATOR_STAKE: u32 = 1000;
+pub const STAKE_CURRENCY_ID: CfgCurrencyId = CfgCurrencyId::Rewards { id: *b"blkrwrds" };
+
 pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
 
 #[frame_support::pallet]
@@ -133,50 +136,30 @@ pub mod pallet {
 		/// Domain identification used by this pallet
 		type Domain: TypedGet;
 
-		/// Type used to identify currencies.
-		type CurrencyId: AssetId + MaxEncodedLen + Clone + Ord;
-
-		/// Type used to identify groups.
-		type GroupId: Parameter + MaxEncodedLen + Ord + Copy;
-
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
 		/// The reward system used.
-		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = Self::GroupId>
+		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = u32>
 			+ AccountRewards<
 				Self::AccountId,
 				Balance = Self::Balance,
-				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
-			> + CurrencyGroupChange<
-				GroupId = Self::GroupId,
-				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
-			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
+				CurrencyId = (DomainIdOf<Self>, CfgCurrencyId),
+			> + CurrencyGroupChange<GroupId = u32, CurrencyId = (DomainIdOf<Self>, CfgCurrencyId)>
+			+ DistributedRewards<Balance = Self::Balance, GroupId = u32>;
 
 		/// Type used to handle currency minting and burning for collators.
-		type Currency: Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>;
+		type Currency: Mutate<Self::AccountId, AssetId = CfgCurrencyId, Balance = Self::Balance>;
 
+		// TODO: Check for pulling from Rewards possible
+		/// Type used to identify the currency of the rewards, should be native.
 		type RewardCurrency: CurrencyT<Self::AccountId>;
-
-		/// Max groups used by this pallet.
-		/// If this limit is reached, the exceeded groups are either not computed and not stored.
-		#[pallet::constant]
-		type MaxGroups: Get<u32> + TypeInfo;
 
 		/// Max number of changes of the same type enqueued to apply in the next epoch.
 		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::set_currency_group()`] with
 		/// the same id.
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
-
-		#[pallet::constant]
-		type CollatorCurrencyId: Get<Self::CurrencyId> + TypeInfo;
-
-		#[pallet::constant]
-		type CollatorGroupId: Get<Self::GroupId> + TypeInfo;
-
-		#[pallet::constant]
-		type DefaultCollatorStake: Get<Self::Balance> + TypeInfo;
 
 		#[pallet::constant]
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
@@ -232,14 +215,10 @@ pub mod pallet {
 		/// The reward will be transferred to the target account.
 		#[pallet::weight(T::WeightInfo::claim_reward())]
 		#[transactional]
-		pub fn claim_reward(
-			origin: OriginFor<T>,
-			currency_id: T::CurrencyId,
-			account_id: T::AccountId,
-		) -> DispatchResult {
+		pub fn claim_reward(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			T::Rewards::claim_reward((T::Domain::get(), currency_id), &account_id).map(|_| ())
+			T::Rewards::claim_reward((T::Domain::get(), STAKE_CURRENCY_ID), &account_id).map(|_| ())
 		}
 
 		/// Admin method to set the reward amount for a collator used for the next epochs.
@@ -280,29 +259,20 @@ impl<T: Config> Pallet<T> {
 	/// Mint default amount of stake for target address and deposit stake.
 	/// Enables receiving rewards onwards.
 	fn do_init_collator(who: &T::AccountId) -> DispatchResult {
-		T::Currency::mint_into(
-			T::CollatorCurrencyId::get(),
-			who,
-			T::DefaultCollatorStake::get(),
-		)?;
+		T::Currency::mint_into(STAKE_CURRENCY_ID, who, DEFAULT_COLLATOR_STAKE.into())?;
 		T::Rewards::deposit_stake(
-			(T::Domain::get(), T::CollatorCurrencyId::get()),
+			(T::Domain::get(), STAKE_CURRENCY_ID),
 			who,
-			T::DefaultCollatorStake::get(),
+			DEFAULT_COLLATOR_STAKE.into(),
 		)
 	}
 
 	/// Withdraw currently staked amount for target address and immediately burn it.
 	/// Disables receiving rewards onwards.
 	fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
-		let amount =
-			T::Rewards::account_stake((T::Domain::get(), T::CollatorCurrencyId::get()), who);
-		T::Rewards::withdraw_stake(
-			(T::Domain::get(), T::CollatorCurrencyId::get()),
-			who,
-			amount,
-		)?;
-		T::Currency::burn_from(T::CollatorCurrencyId::get(), who, amount).map(|_| ())
+		let amount = T::Rewards::account_stake((T::Domain::get(), STAKE_CURRENCY_ID), who);
+		T::Rewards::withdraw_stake((T::Domain::get(), STAKE_CURRENCY_ID), who, amount)?;
+		T::Currency::burn_from(STAKE_CURRENCY_ID, who, amount).map(|_| ())
 	}
 
 	/// Apply epoch changes and distribute rewards.
@@ -332,7 +302,7 @@ impl<T: Config> Pallet<T> {
 					let total_collator_reward = epoch_data
 						.collator_reward
 						.saturating_mul(num_collators.into());
-					T::Rewards::reward_group(T::CollatorGroupId::get(), total_collator_reward)?;
+					T::Rewards::reward_group(COLLATOR_GROUP_ID, total_collator_reward)?;
 
 					// Mint unassigned reward currency
 					let reward = T::RewardCurrency::issue(epoch_data.beneficiary_reward.into());

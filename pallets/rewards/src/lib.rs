@@ -120,6 +120,7 @@ pub mod pallet {
 		/// Check available mechanisms at [`mechanism`] module.
 		type RewardMechanism: RewardMechanism;
 
+		// TODO: Refactor, see https://github.com/centrifuge/centrifuge-chain/pull/1198#discussion_r1106085881
 		/// Type used to identify the income stream for rewards.
 		/// By setting this `None`, the rewards will be minted.
 		#[pallet::constant]

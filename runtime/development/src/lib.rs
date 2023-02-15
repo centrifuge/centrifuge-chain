@@ -1046,7 +1046,10 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _)
+			| CurrencyId::Native
+			| CurrencyId::KSM
+			| CurrencyId::Rewards { .. } => false,
 			CurrencyId::AUSD => true,
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
 				.map(|m| m.additional.pool_currency)
@@ -1693,16 +1696,6 @@ impl pallet_liquidity_rewards::Config for Runtime {
 
 frame_support::parameter_types! {
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
-	pub const EpocDurationBlockRewards: BlockNumber = 2 * Period::get();
-
-	// TODO: Convert to common consts
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	// TODO: Ensure uniqueness, currently abbreviates "blockrewards/collator"
-	pub const CollatorCurrencyId: u32 = u32::from_be_bytes(*b"br/c");
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	pub const CollatorGroupId: u32 = 1u32;
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	pub const DefaultCollatorStake: Balance = 1000 * CFG;
 }
 
 // type Beneficiary: Option<AccountId> = Some(TreasuryPalletId::get().into_account_truncating());
@@ -1712,16 +1705,10 @@ impl pallet_block_rewards::Config for Runtime {
 	type AuthorityId = AuraId;
 	type Balance = Balance;
 	type Beneficiary = ();
-	type CollatorCurrencyId = CollatorCurrencyId;
-	type CollatorGroupId = CollatorGroupId;
 	type Currency = Tokens;
-	type CurrencyId = CurrencyId;
-	type DefaultCollatorStake = DefaultCollatorStake;
 	type Domain = BlockRewardsDomain;
-	type GroupId = u32;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
-	type MaxGroups = MaxGroups;
 	type RewardCurrency = Balances;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
