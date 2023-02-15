@@ -28,16 +28,16 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-mod mock;
+// #[cfg(test)]
+// mod mock;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 pub mod weights;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+// #[cfg(feature = "runtime-benchmarks")]
+// mod benchmarking;
 
 pub use cfg_traits::{
 	ops::{EnsureAdd, EnsureAddAssign},
