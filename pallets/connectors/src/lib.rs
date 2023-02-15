@@ -103,7 +103,9 @@ impl<Domain> TypeId for DomainLocator<Domain> {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum DomainAddress {
+	/// A Centrifuge-Chain based account address, 32-bytes long
 	Centrifuge([u8; 32]),
+	/// An EVM chain address, 20-bytes long
 	EVM(EVMChainId, [u8; 20]),
 }
 
