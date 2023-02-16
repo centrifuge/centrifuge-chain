@@ -18,7 +18,7 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where
-	Domain: ConnectorEncode,
+	Domain: Encode,
 	PoolId: Encode,
 	TrancheId: Encode,
 	Balance: Encode,
@@ -55,7 +55,7 @@ where
 	},
 }
 
-impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode>
+impl<Domain: Encode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode>
 	Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	/// The call type that identifies a specific Message variant. This value is used
@@ -76,8 +76,8 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 	}
 }
 
-impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode>
-	Encode for Message<Domain, PoolId, TrancheId, Balance, Rate>
+impl<Domain: Encode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode> Encode
+	for Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	fn encode(&self) -> Vec<u8> {
 		match self {
@@ -145,7 +145,7 @@ impl<Domain: ConnectorEncode, PoolId: Encode, TrancheId: Encode, Balance: Encode
 				message.push(self.call_type());
 				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
-				message.append(&mut domain.connector_encode());
+				message.append(&mut domain.encode());
 				message.append(&mut address.encode());
 				message.append(&mut to_be(amount));
 
@@ -191,26 +191,23 @@ mod tests {
 
 		#[test]
 		fn encoding_domain() {
-			use crate::ConnectorEncode;
+			use crate::Encode;
 
 			// The Centrifuge substrate chain
 			assert_eq!(
-				hex::encode(Domain::Centrifuge.connector_encode()),
+				hex::encode(Domain::Centrifuge.encode()),
 				"000000000000000000"
 			);
 			// Ethereum MainNet
-			assert_eq!(
-				hex::encode(Domain::EVM(1).connector_encode()),
-				"010000000000000001"
-			);
+			assert_eq!(hex::encode(Domain::EVM(1).encode()), "010000000000000001");
 			// Moonbeam EVM chain
 			assert_eq!(
-				hex::encode(Domain::EVM(1284).connector_encode()),
+				hex::encode(Domain::EVM(1284).encode()),
 				"010000000000000504"
 			);
 			// Avalanche Chain
 			assert_eq!(
-				hex::encode(Domain::EVM(43114).connector_encode()),
+				hex::encode(Domain::EVM(43114).encode()),
 				"01000000000000a86a"
 			);
 		}

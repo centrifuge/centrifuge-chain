@@ -15,7 +15,7 @@ use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
 use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, Encode, EncodeLike, Input, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
@@ -49,7 +49,7 @@ pub enum ParachainId {
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
@@ -60,21 +60,8 @@ pub enum Domain {
 	EVM(EVMChainId),
 }
 
-pub trait ConnectorEncode {
-	fn connector_encode(&self) -> Vec<u8>;
-}
-
-/// Custom encode implementation for the `Domain` type
-/// Domain is encoded as a 9-byte long bytearray, where:
-/// Byte 0 - Flags the Domain variant, i.e, either Domain::Centrifuge (0) or Domain::EVM (1)
-/// Byte 1-9 - Encodes the chain id if applicable:
-/// - For Domain::Centrifuge there's no id, so we append 8 zeros
-/// - For Domain::EVM, encode the respective chain id (8 bytes) as little endian
-///
-/// We need to impl this as a custom encode to not overlap with the `#[derive(Encode, Decode)]`
-/// that are necessary for `Domain` to be used in the storage as a key.
-impl ConnectorEncode for Domain {
-	fn connector_encode(&self) -> Vec<u8> {
+impl Encode for Domain {
+	fn encode(&self) -> Vec<u8> {
 		match self {
 			Self::Centrifuge => vec![0; 9],
 			Self::EVM(chain_id) => {
@@ -83,6 +70,26 @@ impl ConnectorEncode for Domain {
 
 				output
 			}
+		}
+	}
+}
+
+impl EncodeLike for Domain {}
+
+impl Decode for Domain {
+	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let variant = input.read_byte()?;
+
+		match variant {
+			0 => Ok(Self::Centrifuge),
+			1 => {
+				let mut chain_id_be_bytes = [0; 8];
+				input.read(&mut chain_id_be_bytes[..])?;
+
+				let chain_id = EVMChainId::from_be_bytes(chain_id_be_bytes);
+				Ok(Self::EVM(chain_id))
+			}
+			_ => Err(codec::Error::from("Unknown Domain variant")),
 		}
 	}
 }
@@ -558,9 +565,26 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::AccountId;
+	use codec::{Decode, Encode};
 	use sp_runtime::traits::AccountIdConversion;
 
 	use super::DomainAddress;
+	use crate::Domain;
+
+	#[test]
+	fn test_domain_encode_decode() {
+		test_domain_identity(Domain::Centrifuge);
+		test_domain_identity(Domain::EVM(1284));
+		test_domain_identity(Domain::EVM(1));
+	}
+
+	/// Test that decode . encode results in the original value
+	fn test_domain_identity(domain: Domain) {
+		let encoded = domain.encode();
+		let decoded: Domain = Domain::decode(&mut encoded.as_slice()).expect("");
+
+		assert_eq!(domain, decoded);
+	}
 
 	#[test]
 	fn domain_address_account_derivation() {
