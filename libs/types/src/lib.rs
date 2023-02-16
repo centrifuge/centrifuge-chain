@@ -24,7 +24,6 @@ pub mod ids;
 pub mod investments;
 pub mod orders;
 pub mod permissions;
-pub mod rewards;
 pub mod time;
 pub mod tokens;
 pub mod xcm;

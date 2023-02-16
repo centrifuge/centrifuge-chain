@@ -64,10 +64,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod issuance;
 pub mod mechanism;
 
-use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
-use cfg_types::rewards::RewardSource;
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards, RewardIssuance};
 use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
@@ -89,6 +89,7 @@ type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::B
 
 #[frame_support::pallet]
 pub mod pallet {
+
 	use super::*;
 
 	#[pallet::config]
@@ -121,11 +122,12 @@ pub mod pallet {
 		/// Check available mechanisms at [`mechanism`] module.
 		type RewardMechanism: RewardMechanism;
 
-		// TODO: Refactor, see https://github.com/centrifuge/centrifuge-chain/pull/1198#discussion_r1106085881
 		/// Type used to identify the income stream for rewards.
-		/// By setting this `None`, the rewards will be minted.
-		#[pallet::constant]
-		type RewardSource: Get<RewardSource<Self::AccountId>>;
+		type RewardIssuance: RewardIssuance<
+			AccountId = Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			Balance = BalanceOf<Self, I>,
+		>;
 	}
 
 	#[pallet::pallet]
@@ -237,23 +239,11 @@ pub mod pallet {
 			Groups::<T, I>::try_mutate(group_id, |group| {
 				let reward_to_mint = T::RewardMechanism::reward_group(group, reward)?;
 
-				match T::RewardSource::get() {
-					RewardSource::Mint => T::Currency::mint_into(
-						T::RewardCurrency::get(),
-						&T::PalletId::get().into_account_truncating(),
-						reward,
-					)?,
-					RewardSource::Transfer(acc_id) => {
-						T::Currency::transfer(
-							T::RewardCurrency::get(),
-							&acc_id,
-							&T::PalletId::get().into_account_truncating(),
-							reward,
-							true,
-						)
-						.map(|_| ())?;
-					}
-				};
+				T::RewardIssuance::issue_reward(
+					T::RewardCurrency::get(),
+					&T::PalletId::get().into_account_truncating(),
+					reward,
+				)?;
 
 				Self::deposit_event(Event::GroupRewarded {
 					group_id,

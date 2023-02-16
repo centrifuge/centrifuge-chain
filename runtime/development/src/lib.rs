@@ -1644,10 +1644,6 @@ frame_support::parameter_types! {
 
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 50;
-
-	// pub const RewardSource: cfg_types::rewards::RewardSource::<AccountId> = cfg_types::rewards::RewardSource::Mint;
-	// Altair Treasury AccountId
-	pub const RewardSource: cfg_types::rewards::RewardSource::<AccountId> = cfg_types::rewards::RewardSource::Transfer(AccountId::new(hex_literal::hex!("6d6f646c70792f74727372790000000000000000000000000000000000000000")));
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
@@ -1657,13 +1653,21 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
+	// type RewardIssuance = pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>; // Non-Altair config
+	type RewardIssuance = pallet_rewards::issuance::TransferReward<
+		AccountId,
+		Balance,
+		CurrencyId,
+		Tokens,
+		TreasuryAccount,
+	>;
+	// Altair config
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
 		Balance,
 		IBalance,
 		FixedI128,
 		MaxCurrencyMovements,
 	>;
-	type RewardSource = RewardSource;
 	type RuntimeEvent = RuntimeEvent;
 }
 
