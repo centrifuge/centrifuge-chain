@@ -67,6 +67,7 @@ mod tests;
 pub mod mechanism;
 
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
+use cfg_types::rewards::RewardSource;
 use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
@@ -124,7 +125,7 @@ pub mod pallet {
 		/// Type used to identify the income stream for rewards.
 		/// By setting this `None`, the rewards will be minted.
 		#[pallet::constant]
-		type RewardSource: Get<Option<frame_support::PalletId>>;
+		type RewardSource: Get<RewardSource<Self::AccountId>>;
 	}
 
 	#[pallet::pallet]
@@ -236,21 +237,23 @@ pub mod pallet {
 			Groups::<T, I>::try_mutate(group_id, |group| {
 				let reward_to_mint = T::RewardMechanism::reward_group(group, reward)?;
 
-				if let Some(pallet_id) = T::RewardSource::get() {
-					T::Currency::transfer(
-						T::RewardCurrency::get(),
-						&pallet_id.into_account_truncating(),
-						&T::PalletId::get().into_account_truncating(),
-						reward,
-						true,
-					)?;
-				} else {
-					T::Currency::mint_into(
+				match T::RewardSource::get() {
+					RewardSource::Mint => T::Currency::mint_into(
 						T::RewardCurrency::get(),
 						&T::PalletId::get().into_account_truncating(),
 						reward,
-					)?;
-				}
+					)?,
+					RewardSource::Transfer(acc_id) => {
+						T::Currency::transfer(
+							T::RewardCurrency::get(),
+							&acc_id,
+							&T::PalletId::get().into_account_truncating(),
+							reward,
+							true,
+						)
+						.map(|_| ())?;
+					}
+				};
 
 				Self::deposit_event(Event::GroupRewarded {
 					group_id,

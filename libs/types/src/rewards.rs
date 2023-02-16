@@ -10,21 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// Ensure we're `no_std` when compiling for WebAssembly.
-#![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::unit_arg)]
+use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 
-///! Common-types of the Centrifuge chain.
-pub mod adjustments;
-pub mod consts;
-pub mod epoch;
-pub mod fee_keys;
-pub mod fixed_point;
-pub mod ids;
-pub mod investments;
-pub mod orders;
-pub mod permissions;
-pub mod rewards;
-pub mod time;
-pub mod tokens;
-pub mod xcm;
+#[derive(Encode, Decode, TypeInfo)]
+pub enum RewardSource<AccountId> {
+	Mint,
+	Transfer(AccountId),
+}

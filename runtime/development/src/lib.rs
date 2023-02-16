@@ -1645,9 +1645,9 @@ frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 50;
 
-	// TODO: Re-enable
-	// pub const RewardSource: Option<AccountId> = None;
-	pub const RewardSource: Option<PalletId> = Some(TreasuryPalletId::get());
+	// pub const RewardSource: cfg_types::rewards::RewardSource::<AccountId> = cfg_types::rewards::RewardSource::Mint;
+	// Altair Treasury AccountId
+	pub const RewardSource: cfg_types::rewards::RewardSource::<AccountId> = cfg_types::rewards::RewardSource::Transfer(AccountId::new(hex_literal::hex!("6d6f646c70792f74727372790000000000000000000000000000000000000000")));
 }
 
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
