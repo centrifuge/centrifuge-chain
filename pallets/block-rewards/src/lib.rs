@@ -76,18 +76,21 @@ pub struct CollatorChanges<T: Config> {
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
 pub struct EpochData<T: Config> {
-	/// Amount of rewards per session for T::Beneficiary.
-	beneficiary_reward: T::Balance,
 	/// Amount of rewards per session for a single collator.
 	collator_reward: T::Balance,
+	/// Total amount of rewards per session
+	/// NOTE: Is ensured to be at least collator_reward * num_collators.
+	total_reward: T::Balance,
+	/// Number of current collators.
+	/// NOTE: Updated automatically and thus not adjustable via extrinsic.
 	num_collators: u32,
 }
 
 impl<T: Config> Default for EpochData<T> {
 	fn default() -> Self {
 		Self {
-			beneficiary_reward: T::Balance::zero(),
 			collator_reward: T::Balance::zero(),
+			total_reward: T::Balance::zero(),
 			num_collators: 0,
 		}
 	}
@@ -99,8 +102,8 @@ impl<T: Config> Default for EpochData<T> {
 )]
 #[scale_info(skip_type_params(T))]
 pub struct EpochChanges<T: Config> {
-	beneficiary_reward: Option<T::Balance>,
 	collator_reward: Option<T::Balance>,
+	total_reward: Option<T::Balance>,
 	collators: CollatorChanges<T>,
 	num_collators: Option<u32>,
 }
@@ -197,7 +200,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		NewEpoch {
 			collator_reward: T::Balance,
-			beneficiary_reward: T::Balance,
+			total_reward: T::Balance,
 			last_changes: EpochChanges<T>,
 		},
 	}
@@ -207,6 +210,7 @@ pub mod pallet {
 		/// Limit of max calls with same id to [`Pallet::set_group_weight()`] or
 		/// [`Pallet::set_currency_group()`] reached.
 		MaxChangesPerEpochReached,
+		InsufficientTotalReward,
 	}
 
 	#[pallet::call]
@@ -237,20 +241,36 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Admin method to set the inflation amount for the Beneficiary used for the next epochs.
+		/// Admin method to set the total reward distribution for the next epochs.
 		/// Current epoch is not affected by this call.
+		///
+		/// Throws if total_reward < collator_reward * num_collators.
 		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
-		pub fn set_beneficiary_reward(
+		pub fn set_total_reward(
 			origin: OriginFor<T>,
-			beneficiary_reward_per_session: T::Balance,
+			total_reward_per_session: T::Balance,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::mutate(|changes| {
-				changes.beneficiary_reward = Some(beneficiary_reward_per_session)
-			});
+			NextEpochChanges::<T>::try_mutate(|changes| {
+				let current = ActiveEpochData::<T>::get();
+				let total_collator_rewards = changes
+					.collator_reward
+					.unwrap_or(current.collator_reward)
+					.saturating_mul(
+						changes
+							.num_collators
+							.unwrap_or(current.num_collators)
+							.into(),
+					);
+				ensure!(
+					total_reward_per_session >= total_collator_rewards,
+					Error::<T>::InsufficientTotalReward
+				);
 
-			Ok(())
+				changes.total_reward = Some(total_reward_per_session);
+				Ok(())
+			})
 		}
 	}
 }
@@ -297,28 +317,32 @@ impl<T: Config> Pallet<T> {
 						Self::do_init_collator(joining)?;
 					}
 
-					// Reward collators
+					// Reward collator group
 					num_collators = changes.num_collators.unwrap_or(epoch_data.num_collators);
 					let total_collator_reward = epoch_data
 						.collator_reward
 						.saturating_mul(num_collators.into());
 					T::Rewards::reward_group(COLLATOR_GROUP_ID, total_collator_reward)?;
 
-					// Mint unassigned reward currency
-					let reward = T::RewardCurrency::issue(epoch_data.beneficiary_reward.into());
-					// If configured, assigns reward to Beneficiary, else automatically drops it
-					T::Beneficiary::on_unbalanced(reward);
+					// Mint remaining reward
+					let remaining = epoch_data
+						.total_reward
+						.saturating_sub(total_collator_reward);
+					if !remaining.is_zero() {
+						let reward = T::RewardCurrency::issue(remaining.into());
+						// If configured, assigns reward to Beneficiary, else automatically drops it
+						T::Beneficiary::on_unbalanced(reward);
+					}
 
 					// Apply changes
 					epoch_data.collator_reward = changes
 						.collator_reward
 						.unwrap_or(epoch_data.collator_reward);
-					epoch_data.beneficiary_reward = changes
-						.beneficiary_reward
-						.unwrap_or(epoch_data.beneficiary_reward);
+					epoch_data.total_reward =
+						changes.total_reward.unwrap_or(epoch_data.total_reward);
 
 					Self::deposit_event(Event::NewEpoch {
-						beneficiary_reward: epoch_data.beneficiary_reward,
+						total_reward: epoch_data.total_reward,
 						collator_reward: epoch_data.collator_reward,
 						last_changes: mem::take(changes),
 					});
