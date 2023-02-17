@@ -182,6 +182,24 @@ pub trait CurrencyGroupChange {
 	fn currency_group(currency_id: Self::CurrencyId) -> Option<Self::GroupId>;
 }
 
+pub trait RewardIssuance {
+	/// Type used to identify the beneficiary.
+	type AccountId;
+
+	/// Type used to identify the currency
+	type CurrencyId;
+
+	/// Type used as balance for all currencies and reward.
+	type Balance;
+
+	/// Issue the provided reward amount to a beneficiary account address.
+	fn issue_reward(
+		currency_id: Self::CurrencyId,
+		to: &Self::AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult;
+}
+
 #[cfg(feature = "std")]
 pub mod mock {
 	use std::sync::{Mutex, MutexGuard};

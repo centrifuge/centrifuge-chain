@@ -1638,6 +1638,17 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
+	// Non-Altair config
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	// Altair config
+	// type RewardIssuance = pallet_rewards::issuance::TransferReward<
+	// 	AccountId,
+	// 	Balance,
+	// 	CurrencyId,
+	// 	Tokens,
+	// 	TreasuryAccount,
+	// >;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
 		Balance,
 		IBalance,
