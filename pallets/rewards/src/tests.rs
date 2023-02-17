@@ -110,6 +110,16 @@ mod mechanism {
 		#[macro_export]
 		macro_rules! gap_tests {
 			($pallet:ident) => {
+				// The all_in test follows the next order, making claims for each distribution:
+				//
+				//        D0     |     D1    |          D2           |     D3    |    D4    |  D5
+				// G1 -----------------------------------------------------------------------------
+				//     Stake X A | Stake Z A | MOVE Z ·              | Stake M A | MOVE X · |
+				//               |           |        ·              |           |        · |
+				//               |           |        v              |           |        v |
+				// G2 -----------------------------------------------------------------------------
+				//     Stake Y B |           |         Unstake Z A/2 |           |          |
+				//
 				#[test]
 				fn all_in() {
 					new_test_ext().execute_with(|| {
