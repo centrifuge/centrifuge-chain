@@ -112,16 +112,15 @@ pub const COLLATOR_GROUP_ID: u32 = 1;
 pub const DEFAULT_COLLATOR_STAKE: u32 = 1000;
 pub const STAKE_CURRENCY_ID: CfgCurrencyId = CfgCurrencyId::Rewards { id: *b"blkrwrds" };
 
-pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
+pub(crate) type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
+pub(crate) type NegativeImbalanceOf<T> = <<T as Config>::RewardCurrency as CurrencyT<
+	<T as frame_system::Config>::AccountId,
+>>::NegativeImbalance;
 
 #[frame_support::pallet]
 pub mod pallet {
 
 	use super::*;
-
-	type NegativeImbalanceOf<T> = <<T as Config>::RewardCurrency as CurrencyT<
-		<T as frame_system::Config>::AccountId,
-	>>::NegativeImbalance;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
