@@ -242,6 +242,11 @@ pub mod pallet {
 			domain: Domain,
 			router: Router<CurrencyIdOf<T>>,
 		},
+
+		IncomingMessage {
+			sender: T::AccountId,
+			message: MessageOf<T>,
+		},
 	}
 
 	#[pallet::storage]
@@ -471,6 +476,18 @@ pub mod pallet {
 				domain_address.domain(),
 			)?;
 
+			Ok(())
+		}
+
+		/// Handle an incoming message
+		/// TODO(nuno): we probably need a custom origin type for these messages to ensure they have
+		/// come in through XCM. Probably even handle it in a separate pallet? For now, let's have a
+		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
+		#[pallet::call_index(99)]
+		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
+		pub fn handle(origin: OriginFor<T>, message: MessageOf<T>) -> DispatchResult {
+			let sender = ensure_signed(origin.clone())?;
+			Self::deposit_event(Event::IncomingMessage { sender, message });
 			Ok(())
 		}
 	}

@@ -29,6 +29,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_connectors.
 pub trait WeightInfo {
+	fn handle() -> Weight;
 	fn add_pool() -> Weight;
 	fn add_tranche() -> Weight;
 	fn update_token_price() -> Weight;
@@ -40,6 +41,12 @@ pub trait WeightInfo {
 /// Weights for pallet_connectors using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+	fn handle() -> Weight {
+		(Weight::from_ref_time(32_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64)))
+	}
+
 	fn set_domain_router() -> Weight {
 		(Weight::from_ref_time(32_000_000_u64)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
@@ -79,6 +86,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
+	fn handle() -> Weight {
+		(Weight::from_ref_time(32_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64)))
+	}
+
 	fn set_domain_router() -> Weight {
 		(Weight::from_ref_time(32_000_000_u64)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
