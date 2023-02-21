@@ -1673,6 +1673,29 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 
 frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
+	pub const SingleCurrencyMovement: u32 = 1;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type DomainId = RewardDomain;
+	type GroupId = u32;
+	type PalletId = RewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
+		Balance,
+		IBalance,
+		FixedI128,
+		SingleCurrencyMovement,
+	>;
+	type RuntimeEvent = RuntimeEvent;
+}
+
+frame_support::parameter_types! {
+	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 20;
 
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
@@ -1783,7 +1806,8 @@ construct_runtime!(
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
-		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>} = 110,
+		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>} = 110,
+		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>} = 111,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2048,10 +2072,17 @@ impl_runtime_apis! {
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
 		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
 			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id)
+			.into_iter().chain(
+				pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(account_id).into_iter()
+			).collect()
 		}
 
 		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
-			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok()
+			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
+			.or(
+				<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
+			)
+			.ok()
 		}
 	}
 
