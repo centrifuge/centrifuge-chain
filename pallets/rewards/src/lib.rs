@@ -238,11 +238,10 @@ pub mod pallet {
 		) -> Result<Self::Balance, DispatchError> {
 			Groups::<T, I>::try_mutate(group_id, |group| {
 				let reward_to_mint = T::RewardMechanism::reward_group(group, reward)?;
-
 				T::RewardIssuance::issue_reward(
 					T::RewardCurrency::get(),
 					&T::PalletId::get().into_account_truncating(),
-					reward,
+					reward_to_mint,
 				)?;
 
 				Self::deposit_event(Event::GroupRewarded {
