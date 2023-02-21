@@ -1,10 +1,13 @@
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange};
 use cfg_types::tokens::CurrencyId;
+use codec::MaxEncodedLen;
 use frame_support::{
 	parameter_types,
 	traits::{
-		ConstU16, ConstU32, ConstU64, GenesisBuild, Imbalance, OnFinalize, OnInitialize,
-		OnUnbalanced,
+		fungibles::Inspect, tokens::WithdrawConsequence, ConstU16, ConstU32, ConstU64,
+		Currency as CurrencyT, GenesisBuild, Imbalance, OnFinalize, OnInitialize, OnUnbalanced,
 	},
+	PalletId,
 };
 use frame_system::EnsureRoot;
 use num_traits::Zero;
@@ -15,10 +18,15 @@ use sp_runtime::{
 	traits::{BlakeTwo256, ConvertInto, IdentityLookup},
 };
 
-use crate::{self as pallet_block_rewards, NegativeImbalanceOf};
+use crate::{
+	self as pallet_block_rewards, ActiveEpochData, Config, NegativeImbalanceOf, COLLATOR_GROUP_ID,
+	DEFAULT_COLLATOR_STAKE, STAKE_CURRENCY_ID,
+};
 
-pub const DOMAIN: u8 = 23;
-pub const MAX_COLLATORS: u32 = 10;
+pub(crate) const DOMAIN: u8 = 23;
+pub(crate) const MAX_COLLATORS: u32 = 10;
+pub(crate) const SESSION_DURATION: BlockNumber = 5;
+pub(crate) const TREASURY_ADDRESS: AccountId = u64::MAX;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -36,6 +44,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		Tokens: orml_tokens,
+		Rewards: pallet_rewards::<Instance1>,
 		Session: pallet_session,
 		BlockRewards: pallet_block_rewards,
 	}
@@ -76,16 +85,16 @@ impl_opaque_keys! {
 /// Enforces a changing collator set for every session.
 pub struct MockSessionManager;
 impl pallet_session::SessionManager<u64> for MockSessionManager {
-	fn end_session(_: sp_staking::SessionIndex) {}
+	fn end_session(idx: sp_staking::SessionIndex) {}
 
-	fn start_session(_: sp_staking::SessionIndex) {}
+	fn start_session(idx: sp_staking::SessionIndex) {}
 
-	fn new_session(idx: sp_staking::SessionIndex) -> Option<Vec<u64>> {
+	fn new_session(idx: sp_staking::SessionIndex) -> Option<Vec<AccountId>> {
 		match idx {
-			0 => Some(vec![1]),
+			0 | 1 => Some(vec![1]),
 			k => Some(
 				(k..(k + k.min(MAX_COLLATORS)))
-					.map(|i| (i + 1).into())
+					.map(|i| (i).into())
 					.collect(),
 			),
 		}
@@ -93,7 +102,7 @@ impl pallet_session::SessionManager<u64> for MockSessionManager {
 }
 
 parameter_types! {
-	pub const Period: BlockNumber = 5;
+	pub const Period: BlockNumber = SESSION_DURATION;
 	pub const Offset: BlockNumber = 0;
 }
 impl pallet_session::Config for Test {
@@ -131,10 +140,8 @@ parameter_types! {
 pub struct RewardRemainderMock;
 impl OnUnbalanced<NegativeImbalanceOf<Test>> for RewardRemainderMock {
 	fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<Test>) {
-		RewardRemainderUnbalanced::mutate(|v| {
-			*v += amount.peek();
-		});
-		drop(amount);
+		let numeric_amount = amount.peek();
+		let _ = Balances::resolve_creating(&TREASURY_ADDRESS, amount);
 	}
 }
 
@@ -156,6 +163,44 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
+// TODO: Assess whether bringing back MockRewards makes sense
+#[derive(
+	scale_info::TypeInfo, Debug, Copy, codec::Encode, codec::Decode, PartialEq, Clone, MaxEncodedLen,
+)]
+pub enum RewardDomain {
+	Liquidity,
+	Block,
+}
+
+frame_support::parameter_types! {
+	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
+	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
+
+	#[derive(scale_info::TypeInfo)]
+	pub const MaxCurrencyMovements: u32 = 1;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type DomainId = RewardDomain;
+	type GroupId = u32;
+	type PalletId = RewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
+		Balance,
+		i64,
+		sp_runtime::FixedI128,
+		MaxCurrencyMovements,
+	>;
+	type RuntimeEvent = RuntimeEvent;
+}
+
+// pub type MockRewards =
+// 	cfg_traits::rewards::mock::MockRewards<Balance, u32, (u8, CurrencyId), AccountId>;
+
 frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 1;
@@ -163,11 +208,8 @@ frame_support::parameter_types! {
 	pub const MaxChangesPerEpoch: u32 = 50;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCollators: u32 = MAX_COLLATORS;
-	pub const BlockRewardsDomain: u8 = DOMAIN;
+	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 }
-
-pub type MockRewards =
-	cfg_traits::rewards::mock::MockRewards<Balance, u32, (u8, CurrencyId), AccountId>;
 
 impl pallet_block_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<AccountId>;
@@ -179,10 +221,37 @@ impl pallet_block_rewards::Config for Test {
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCollators;
 	type RewardCurrency = Balances;
-	type Rewards = MockRewards;
+	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
 	type WeightInfo = ();
+}
+
+pub(crate) fn assert_staked(who: &AccountId) {
+	assert_eq!(
+		<Test as Config>::Rewards::account_stake(
+			(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+			who
+		),
+		DEFAULT_COLLATOR_STAKE as u64
+	);
+	assert_eq!(
+		<Test as Config>::Currency::balance(STAKE_CURRENCY_ID, who),
+		DEFAULT_COLLATOR_STAKE as u64
+	);
+	assert_eq!(
+		<Test as Config>::Currency::can_withdraw(STAKE_CURRENCY_ID, who, 1),
+		WithdrawConsequence::NoFunds
+	);
+}
+
+pub(crate) fn assert_not_staked(who: &AccountId) {
+	assert!(<Test as Config>::Rewards::account_stake(
+		(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+		who
+	)
+	.is_zero());
+	assert!(<Test as Config>::Currency::balance(STAKE_CURRENCY_ID, who).is_zero());
 }
 
 /// Progress to the given block triggering session changes.
@@ -222,16 +291,66 @@ pub(crate) fn advance_session() {
 	start_session(current_index + 1);
 }
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::default()
-		.build_storage::<Test>()
-		.unwrap();
+pub(crate) struct ExtBuilder {
+	collator_reward: Balance,
+	total_reward: Balance,
+}
 
-	pallet_session::GenesisConfig::<Test> {
-		keys: vec![(1, 1, MockSessionKeys { other: 1.into() })],
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			collator_reward: Balance::zero(),
+			total_reward: Balance::zero(),
+		}
 	}
-	.assimilate_storage(&mut storage)
-	.unwrap();
+}
 
-	sp_io::TestExternalities::new(storage)
+impl ExtBuilder {
+	pub(crate) fn set_collator_reward(mut self, reward: Balance) -> Self {
+		self.collator_reward = reward;
+		self
+	}
+
+	pub(crate) fn set_total_reward(mut self, reward: Balance) -> Self {
+		self.total_reward = reward;
+		self
+	}
+
+	pub(crate) fn build(self) -> sp_io::TestExternalities {
+		let mut storage = frame_system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap();
+
+		pallet_block_rewards::GenesisConfig::<Test> { collators: vec![1] }
+			.assimilate_storage(&mut storage)
+			.expect("BlockRewards pallet's storage can be assimilated");
+
+		pallet_session::GenesisConfig::<Test> {
+			keys: (1..100u64)
+				.map(|i| {
+					(
+						i,
+						i,
+						MockSessionKeys {
+							other: UintAuthorityId(i),
+						},
+					)
+				})
+				.collect(),
+		}
+		.assimilate_storage(&mut storage)
+		.expect("Session pallet's storage can be assimilated");
+
+		let mut ext = sp_io::TestExternalities::new(storage);
+
+		ext.execute_with(|| {
+			ActiveEpochData::<Test>::mutate(|epoch_data| {
+				epoch_data.collator_reward = self.collator_reward;
+				epoch_data.total_reward = self.total_reward;
+			});
+			System::set_block_number(1);
+		});
+
+		ext
+	}
 }
