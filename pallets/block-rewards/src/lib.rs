@@ -31,8 +31,8 @@
 #[cfg(test)]
 mod mock;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 pub mod weights;
 
@@ -141,6 +141,7 @@ pub mod pallet {
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
+		// TODO: How to limit to no other Currency Movement?
 		/// The reward system used.
 		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = u32>
 			+ AccountRewards<
@@ -210,6 +211,42 @@ pub mod pallet {
 		/// [`Pallet::set_currency_group()`] reached.
 		MaxChangesPerEpochReached,
 		InsufficientTotalReward,
+	}
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub collators: Vec<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				collators: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			T::Rewards::attach_currency((T::Domain::get(), STAKE_CURRENCY_ID), COLLATOR_GROUP_ID)
+				.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
+				.ok();
+
+			ActiveEpochData::<T>::mutate(|epoch_data| {
+				epoch_data.num_collators = self.collators.len().saturated_into();
+			});
+
+			// Enables rewards already in genesis session.
+			for collator in &self.collators {
+				Pallet::<T>::do_init_collator(collator)
+					.map_err(|e| {
+						log::error!("Failed to init genesis collators for rewards: {:?}", e);
+					})
+					.ok();
+			}
+		}
 	}
 
 	#[pallet::call]
@@ -339,6 +376,7 @@ impl<T: Config> Pallet<T> {
 						.unwrap_or(epoch_data.collator_reward);
 					epoch_data.total_reward =
 						changes.total_reward.unwrap_or(epoch_data.total_reward);
+					epoch_data.num_collators = num_collators;
 
 					Self::deposit_event(Event::NewEpoch {
 						total_reward: epoch_data.total_reward,
@@ -368,60 +406,52 @@ impl<T: Config> sp_runtime::BoundToRuntimeAppPublic for Pallet<T> {
 impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	type Key = T::AuthorityId;
 
-	fn on_genesis_session<'a, I: 'a>(validators: I)
+	fn on_genesis_session<'a, I: 'a>(_validators: I)
 	where
 		I: Iterator<Item = (&'a T::AccountId, T::AuthorityId)>,
 	{
-		// Enables rewards already in genesis session.
-		for (collator, _) in validators {
-			let _ = Self::do_init_collator(collator).map_err(|e| {
-				log::error!("Failed to init genesis collators for rewards: {:?}", e);
-			});
-		}
+		// Handled in genesis builder.
 	}
 
-	fn on_new_session<'a, I: 'a>(changed: bool, validators: I, queued_validators: I)
+	fn on_new_session<'a, I: 'a>(_: bool, validators: I, queued_validators: I)
 	where
 		I: Iterator<Item = (&'a T::AccountId, T::AuthorityId)>,
 	{
 		// MUST be called before updating collator set changes.
 		// Else the timing is off.
 		let mut weight = Self::do_advance_epoch();
+		let current = validators
+			.map(|(acc_id, _)| acc_id.clone())
+			.collect::<Vec<_>>();
+		let next = queued_validators
+			.map(|(acc_id, _)| acc_id.clone())
+			.collect::<Vec<_>>();
 
 		// Prepare collator set changes for next session.
-		if changed {
-			let current = validators
-				.map(|(acc_id, _)| acc_id.clone())
-				.collect::<Vec<_>>();
-			let next = queued_validators
-				.map(|(acc_id, _)| acc_id.clone())
-				.collect::<Vec<_>>();
-
+		if current != next {
 			// Prepare for next session
-			if current != next {
-				NextEpochChanges::<T>::mutate(
-					|EpochChanges {
-					     collators,
-					     num_collators,
-					     ..
-					 }| {
-						let inc = next
-							.clone()
-							.into_iter()
-							.filter(|n| !current.iter().any(|curr| curr == n))
-							.collect::<Vec<_>>();
-						let out = current
-							.clone()
-							.into_iter()
-							.filter(|curr| !next.iter().any(|n| n == curr))
-							.collect::<Vec<_>>();
-						collators.inc = BoundedVec::<_, T::MaxCollators>::truncate_from(inc);
-						collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
+			NextEpochChanges::<T>::mutate(
+				|EpochChanges {
+				     collators,
+				     num_collators,
+				     ..
+				 }| {
+					let inc = next
+						.clone()
+						.into_iter()
+						.filter(|n| !current.iter().any(|curr| curr == n))
+						.collect::<Vec<_>>();
+					let out = current
+						.clone()
+						.into_iter()
+						.filter(|curr| !next.iter().any(|n| n == curr))
+						.collect::<Vec<_>>();
+					collators.inc = BoundedVec::<_, T::MaxCollators>::truncate_from(inc);
+					collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
 
-						*num_collators = Some(next.len().saturated_into::<u32>());
-					},
-				);
-			}
+					*num_collators = Some(next.len().saturated_into::<u32>());
+				},
+			);
 
 			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 		}
