@@ -11,6 +11,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
+hex = { version = "0.4.3", default_features = false }
 hex-literal = { version = "0.3.4", optional = true }
 integer-sqrt = { version = "0.1.2" }
 log = "0.4"
@@ -19,7 +20,6 @@ safe-mix = { version = "1.0", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119", optional = true }
 smallvec = "1.6.1"
-hex = { version = "0.4.3", default_features = false }
 static_assertions = "1.1.0"
 
 # parachain

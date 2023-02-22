@@ -245,7 +245,7 @@ pub mod pallet {
 
 		IncomingMessage {
 			sender: T::AccountId,
-			message: MessageOf<T>,
+			message_hex: String,
 		},
 	}
 
@@ -485,9 +485,9 @@ pub mod pallet {
 		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
-		pub fn handle(origin: OriginFor<T>, message: MessageOf<T>) -> DispatchResult {
+		pub fn handle(origin: OriginFor<T>, message: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			Self::deposit_event(Event::IncomingMessage { sender, message });
+			Self::deposit_event(Event::IncomingMessage { sender, message_hex: hex::encode(message) });
 			Ok(())
 		}
 	}

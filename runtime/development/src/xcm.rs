@@ -140,6 +140,7 @@ impl TakeRevenue for ToTreasury {
 /// Barrier is a filter-like option controlling what messages are allows to be executed.
 pub type Barrier = (
 	TakeWeightCredit,
+	xcm_primitives::AllowTopLevelPaidExecutionDescendOriginFirst<Everything>,
 	AllowTopLevelPaidExecutionFrom<Everything>,
 	// Expected responses are OK.
 	AllowKnownQueryResponses<PolkadotXcm>,
