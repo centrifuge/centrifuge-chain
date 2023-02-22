@@ -1,16 +1,16 @@
-use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange};
+use cfg_traits::rewards::AccountRewards;
 use cfg_types::tokens::CurrencyId;
 use codec::MaxEncodedLen;
 use frame_support::{
 	parameter_types,
 	traits::{
 		fungibles::Inspect, tokens::WithdrawConsequence, ConstU16, ConstU32, ConstU64,
-		Currency as CurrencyT, GenesisBuild, Imbalance, OnFinalize, OnInitialize, OnUnbalanced,
+		Currency as CurrencyT, GenesisBuild, OnFinalize, OnInitialize, OnUnbalanced,
 	},
 	PalletId,
 };
 use frame_system::EnsureRoot;
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use sp_core::H256;
 use sp_runtime::{
 	impl_opaque_keys,
@@ -19,11 +19,10 @@ use sp_runtime::{
 };
 
 use crate::{
-	self as pallet_block_rewards, ActiveEpochData, Config, NegativeImbalanceOf, COLLATOR_GROUP_ID,
+	self as pallet_block_rewards, ActiveEpochData, Config, NegativeImbalanceOf,
 	DEFAULT_COLLATOR_STAKE, STAKE_CURRENCY_ID,
 };
 
-pub(crate) const DOMAIN: u8 = 23;
 pub(crate) const MAX_COLLATORS: u32 = 10;
 pub(crate) const SESSION_DURATION: BlockNumber = 5;
 pub(crate) const TREASURY_ADDRESS: AccountId = u64::MAX;
@@ -85,9 +84,9 @@ impl_opaque_keys! {
 /// Enforces a changing collator set for every session.
 pub struct MockSessionManager;
 impl pallet_session::SessionManager<u64> for MockSessionManager {
-	fn end_session(idx: sp_staking::SessionIndex) {}
+	fn end_session(_idx: sp_staking::SessionIndex) {}
 
-	fn start_session(idx: sp_staking::SessionIndex) {}
+	fn start_session(_idx: sp_staking::SessionIndex) {}
 
 	fn new_session(idx: sp_staking::SessionIndex) -> Option<Vec<AccountId>> {
 		match idx {
@@ -140,7 +139,6 @@ parameter_types! {
 pub struct RewardRemainderMock;
 impl OnUnbalanced<NegativeImbalanceOf<Test>> for RewardRemainderMock {
 	fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<Test>) {
-		let numeric_amount = amount.peek();
 		let _ = Balances::resolve_creating(&TREASURY_ADDRESS, amount);
 	}
 }
@@ -294,6 +292,7 @@ pub(crate) fn advance_session() {
 pub(crate) struct ExtBuilder {
 	collator_reward: Balance,
 	total_reward: Balance,
+	run_to_block: BlockNumber,
 }
 
 impl Default for ExtBuilder {
@@ -301,6 +300,7 @@ impl Default for ExtBuilder {
 		Self {
 			collator_reward: Balance::zero(),
 			total_reward: Balance::zero(),
+			run_to_block: BlockNumber::one(),
 		}
 	}
 }
@@ -313,6 +313,11 @@ impl ExtBuilder {
 
 	pub(crate) fn set_total_reward(mut self, reward: Balance) -> Self {
 		self.total_reward = reward;
+		self
+	}
+
+	pub(crate) fn set_run_to_block(mut self, run_to_block: BlockNumber) -> Self {
+		self.run_to_block = run_to_block;
 		self
 	}
 
@@ -348,7 +353,8 @@ impl ExtBuilder {
 				epoch_data.collator_reward = self.collator_reward;
 				epoch_data.total_reward = self.total_reward;
 			});
-			System::set_block_number(1);
+
+			run_to_block(self.run_to_block);
 		});
 
 		ext

@@ -76,9 +76,9 @@ pub struct CollatorChanges<T: Config> {
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
 pub struct EpochData<T: Config> {
-	/// Amount of rewards per session for a single collator.
+	/// Amount of rewards per epoch for a single collator.
 	collator_reward: T::Balance,
-	/// Total amount of rewards per session
+	/// Total amount of rewards per epoch
 	/// NOTE: Is ensured to be at least collator_reward * num_collators.
 	total_reward: T::Balance,
 	/// Number of current collators.
@@ -238,7 +238,7 @@ pub mod pallet {
 				epoch_data.num_collators = self.collators.len().saturated_into();
 			});
 
-			// Enables rewards already in genesis session.
+			// Enables rewards already in genesis epoch.
 			for collator in &self.collators {
 				Pallet::<T>::do_init_collator(collator)
 					.map_err(|e| {
@@ -266,12 +266,12 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
 		pub fn set_collator_reward(
 			origin: OriginFor<T>,
-			collator_reward_per_session: T::Balance,
+			collator_reward_per_epoch: T::Balance,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
 			NextEpochChanges::<T>::mutate(|changes| {
-				changes.collator_reward = Some(collator_reward_per_session);
+				changes.collator_reward = Some(collator_reward_per_epoch);
 			});
 
 			Ok(())
@@ -284,7 +284,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
 		pub fn set_total_reward(
 			origin: OriginFor<T>,
-			total_reward_per_session: T::Balance,
+			total_reward_per_epoch: T::Balance,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
@@ -300,11 +300,11 @@ pub mod pallet {
 							.into(),
 					);
 				ensure!(
-					total_reward_per_session >= total_collator_rewards,
+					total_reward_per_epoch >= total_collator_rewards,
 					Error::<T>::InsufficientTotalReward
 				);
 
-				changes.total_reward = Some(total_reward_per_session);
+				changes.total_reward = Some(total_reward_per_epoch);
 				Ok(())
 			})
 		}
@@ -335,32 +335,20 @@ impl<T: Config> Pallet<T> {
 	///
 	/// NOTE: Noop if any call fails.
 	fn do_advance_epoch() -> Weight {
-		let mut num_collators = 0;
-		let mut num_joining = 0;
-		let mut num_leaving = 0;
+		let mut num_joining = 0u32;
+		let mut num_leaving = 0u32;
 
 		transactional::with_storage_layer(|| -> DispatchResult {
 			NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
 				ActiveEpochData::<T>::try_mutate(|epoch_data| {
-					num_joining = changes.collators.inc.len();
-					num_leaving = changes.collators.out.len();
-
-					// Apply collator set changes before rewarding
-					for leaving in changes.collators.out.iter() {
-						Self::do_exit_collator(leaving)?;
-					}
-					for joining in changes.collators.inc.iter() {
-						Self::do_init_collator(joining)?;
-					}
-
-					// Reward collator group
-					num_collators = changes.num_collators.unwrap_or(epoch_data.num_collators);
+					// Reward collator group of last epoch
 					let total_collator_reward = epoch_data
 						.collator_reward
-						.saturating_mul(num_collators.into());
+						.saturating_mul(epoch_data.num_collators.into())
+						.min(epoch_data.total_reward);
 					T::Rewards::reward_group(COLLATOR_GROUP_ID, total_collator_reward)?;
 
-					// Mint remaining reward
+					// Hanbdle remaining reward
 					let remaining = epoch_data
 						.total_reward
 						.saturating_sub(total_collator_reward);
@@ -370,13 +358,25 @@ impl<T: Config> Pallet<T> {
 						T::Beneficiary::on_unbalanced(reward);
 					}
 
-					// Apply changes
+					num_joining = changes.collators.inc.len().saturated_into();
+					num_leaving = changes.collators.out.len().saturated_into();
+
+					// Apply collator set changes AFTER rewarding
+					for leaving in changes.collators.out.iter() {
+						Self::do_exit_collator(leaving)?;
+					}
+					for joining in changes.collators.inc.iter() {
+						Self::do_init_collator(joining)?;
+					}
+
+					// Apply epoch changes
 					epoch_data.collator_reward = changes
 						.collator_reward
 						.unwrap_or(epoch_data.collator_reward);
 					epoch_data.total_reward =
 						changes.total_reward.unwrap_or(epoch_data.total_reward);
-					epoch_data.num_collators = num_collators;
+					epoch_data.num_collators =
+						changes.num_collators.unwrap_or(epoch_data.num_collators);
 
 					Self::deposit_event(Event::NewEpoch {
 						total_reward: epoch_data.total_reward,
@@ -394,7 +394,7 @@ impl<T: Config> Pallet<T> {
 		.ok();
 
 		// TODO: Apply number of incoming and outgoing collators
-		T::WeightInfo::on_initialize(num_collators, num_collators)
+		T::WeightInfo::on_initialize(num_joining, num_leaving)
 	}
 }
 

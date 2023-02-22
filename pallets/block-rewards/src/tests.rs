@@ -6,20 +6,17 @@ use sp_runtime::traits::BadOrigin;
 use super::*;
 use crate::mock::*;
 
-const USER_A: u64 = 2;
-
-const GROUP_COLLATORS: u32 = 1;
 const REWARD: u64 = 100;
 
 #[test]
 fn check_special_privileges() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			BlockRewards::set_collator_reward(RuntimeOrigin::signed(USER_A), 10),
+			BlockRewards::set_collator_reward(RuntimeOrigin::signed(2), 10),
 			BadOrigin
 		);
 		assert_noop!(
-			BlockRewards::set_total_reward(RuntimeOrigin::signed(USER_A), 100),
+			BlockRewards::set_total_reward(RuntimeOrigin::signed(2), 100),
 			BadOrigin
 		);
 	});
@@ -229,10 +226,10 @@ fn single_claim_reward() {
 			assert_eq!(ActiveEpochData::<Test>::get().total_reward, 10 * REWARD);
 			assert_eq!(mock::RewardRemainderUnbalanced::get(), 0);
 
-			// Advance two epochs for rewards to be non-zero
+			// EPOCH 0 -> EPOCH 1
 			advance_session();
 
-			// EPOCH 1 as one collator
+			// EPOCH 1 has one collator
 			assert_eq!(
 				<Test as Config>::Rewards::group_stake(COLLATOR_GROUP_ID),
 				1 * DEFAULT_COLLATOR_STAKE as u64
@@ -259,20 +256,178 @@ fn single_claim_reward() {
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 9 * REWARD);
 			assert_eq!(Balances::total_issuance(), 9 * REWARD);
 			assert_ok!(Tokens::ensure_can_withdraw(CurrencyId::Native, &1, REWARD));
+		});
+}
 
-			// TODO: Maybe in another test
-			// Re-claiming possible but amount is zero
-			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(3), 1));
+#[test]
+fn collator_rewards_greater_than_remainder() {
+	ExtBuilder::default()
+		.set_collator_reward(REWARD)
+		.set_total_reward(2 * REWARD)
+		.build()
+		.execute_with(|| {
+			// EPOCH 0 -> EPOCH 1
+			advance_session();
+
+			// EPOCH 0 had one collator [1].
+			// Thus, equal distribution of total_reward to collator and Treasury.
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&1
+				),
+				Ok(REWARD)
+			);
+			// Only non-treasury rewards are taken into account
+			assert_eq!(Tokens::total_issuance(CurrencyId::Native), REWARD);
+			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), REWARD);
+			assert_eq!(Balances::total_issuance(), REWARD);
+
+			// EPOCH 1 -> EPOCH 2
+			advance_session();
+
+			// EPOCH 1 had one collator [1].
+			// Thus, equal distribution of total_reward to collator and Treasury.
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&1
+				),
+				Ok(2 * REWARD)
+			);
+			assert_eq!(Tokens::total_issuance(CurrencyId::Native), 2 * REWARD);
+			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
+			assert_eq!(Balances::total_issuance(), 2 * REWARD);
+
+			// EPOCH 2 -> EPOCH 3
+			advance_session();
+
+			// EPOCH 2 had two collators [2, 3].
+			// Thus, both consume the entire total_reward.
+			// Additionally, 1 should not have higher claimable reward.
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&1
+				),
+				Ok(2 * REWARD)
+			);
+			for collator in [2, 3].iter() {
+				assert_eq!(
+					<Test as Config>::Rewards::compute_reward(
+						(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+						collator
+					),
+					Ok(REWARD)
+				);
+			}
+			assert_eq!(Tokens::total_issuance(CurrencyId::Native), 4 * REWARD);
+			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
+			assert_eq!(Balances::total_issuance(), 2 * REWARD);
+
+			// EPOCH 3 -> EPOCH 4
+			advance_session();
+
+			// EPOCH 3 had three collators [3, 4, 5].
+			// Thus, all three consume the entire total_reward
+			// and reseive less than collator_reward each.
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&3
+				),
+				Ok(REWARD + 2 * REWARD / 3)
+			);
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&4
+				),
+				Ok(2 * REWARD / 3)
+			);
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&5
+				),
+				Ok(2 * REWARD / 3)
+			);
+			assert_eq!(Tokens::total_issuance(CurrencyId::Native), 6 * REWARD);
+			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
+			assert_eq!(Balances::total_issuance(), 2 * REWARD);
+		});
+}
+
+#[test]
+fn late_claiming_works() {
+	ExtBuilder::default()
+		.set_collator_reward(REWARD)
+		.set_total_reward(2 * REWARD)
+		.set_run_to_block(100)
+		.build()
+		.execute_with(|| {
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&2
+				),
+				Ok(REWARD)
+			);
+			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(1), 2));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
 					group_id: COLLATOR_GROUP_ID,
 					domain_id: <Test as Config>::Domain::get(),
 					currency_id: STAKE_CURRENCY_ID,
-					account_id: 1,
-					amount: 0,
+					account_id: 2,
+					amount: REWARD,
 				},
 			));
 		});
 }
 
-// TODO: Remainder distribution for total_reward < n * collator_reward
+#[test]
+fn duplicate_claiming_works_but_ineffective() {
+	ExtBuilder::default()
+		.set_collator_reward(REWARD)
+		.set_total_reward(2 * REWARD)
+		.set_run_to_block(100)
+		.build()
+		.execute_with(|| {
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&2
+				),
+				Ok(REWARD)
+			);
+			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(3), 2));
+			System::assert_last_event(mock::RuntimeEvent::Rewards(
+				pallet_rewards::Event::RewardClaimed {
+					group_id: COLLATOR_GROUP_ID,
+					domain_id: <Test as Config>::Domain::get(),
+					currency_id: STAKE_CURRENCY_ID,
+					account_id: 2,
+					amount: REWARD,
+				},
+			));
+
+			assert_eq!(
+				<Test as Config>::Rewards::compute_reward(
+					(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+					&2
+				),
+				Ok(0)
+			);
+			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(1), 2));
+			System::assert_last_event(mock::RuntimeEvent::Rewards(
+				pallet_rewards::Event::RewardClaimed {
+					group_id: COLLATOR_GROUP_ID,
+					domain_id: <Test as Config>::Domain::get(),
+					currency_id: STAKE_CURRENCY_ID,
+					account_id: 2,
+					amount: 0,
+				},
+			));
+		});
+}
