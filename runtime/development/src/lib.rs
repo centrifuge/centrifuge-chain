@@ -1203,7 +1203,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
 
-	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const MaxVoters: u32 = 10 * 1000;
@@ -2067,15 +2067,15 @@ impl_runtime_apis! {
 	// RewardsApi
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
 		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
-			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id)
+			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id)
 			.into_iter().chain(
-				pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(account_id).into_iter()
+				pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id).into_iter()
 			).collect()
 		}
 
 		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
 			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
-			.or(
+			.or_else(|_|
 				<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
 			)
 			.ok()

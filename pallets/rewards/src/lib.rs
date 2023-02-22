@@ -441,7 +441,7 @@ pub mod pallet {
 		RewardAccountOf<T, I>: FullCodec + Default,
 	{
 		pub fn list_currencies(
-			account_id: T::AccountId,
+			account_id: &T::AccountId,
 		) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
 			StakeAccounts::<T, I>::iter_prefix(account_id)
 				.map(|(currency_id, _)| currency_id)
