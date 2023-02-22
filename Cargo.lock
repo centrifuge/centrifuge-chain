@@ -6076,6 +6076,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-restricted-tokens",
  "pallet-rewards",
  "pallet-session",
  "parity-scale-codec 3.2.1",

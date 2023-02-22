@@ -27,9 +27,9 @@ pub(crate) const MAX_COLLATORS: u32 = 10;
 pub(crate) const SESSION_DURATION: BlockNumber = 5;
 pub(crate) const TREASURY_ADDRESS: AccountId = u64::MAX;
 
+pub(crate) type AccountId = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-type AccountId = u64;
 type Balance = u64;
 type BlockNumber = u64;
 type SessionIndex = u32;
@@ -42,7 +42,8 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
-		Tokens: orml_tokens,
+		Tokens: pallet_restricted_tokens,
+		OrmlTokens: orml_tokens,
 		Rewards: pallet_rewards::<Instance1>,
 		Session: pallet_session,
 		BlockRewards: pallet_block_rewards,
@@ -117,7 +118,7 @@ impl pallet_session::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
+	pub const ExistentialDeposit: Balance = 0;
 }
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
@@ -161,6 +162,29 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
+impl pallet_restricted_tokens::Config for Test {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Fungibles = OrmlTokens;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
+	type PreCurrency = cfg_traits::Always;
+	type PreExtrTransfer = cfg_traits::Always;
+	type PreFungibleInspect = pallet_restricted_tokens::FungibleInspectPassthrough;
+	type PreFungibleInspectHold = cfg_traits::Always;
+	type PreFungibleMutate = cfg_traits::Always;
+	type PreFungibleMutateHold = cfg_traits::Always;
+	type PreFungibleTransfer = cfg_traits::Always;
+	type PreFungiblesInspect = pallet_restricted_tokens::FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = cfg_traits::Always;
+	type PreFungiblesMutate = cfg_traits::Always;
+	type PreFungiblesMutateHold = cfg_traits::Always;
+	type PreFungiblesTransfer = cfg_traits::Always;
+	type PreReservableCurrency = cfg_traits::Always;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
 // TODO: Assess whether bringing back MockRewards makes sense
 #[derive(
 	scale_info::TypeInfo, Debug, Copy, codec::Encode, codec::Decode, PartialEq, Clone, MaxEncodedLen,
@@ -172,7 +196,7 @@ pub enum RewardDomain {
 
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
-	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
+	pub const NativeToken: CurrencyId = CurrencyId::Native;
 
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxCurrencyMovements: u32 = 1;
@@ -184,7 +208,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
-	type RewardCurrency = RewardCurrency;
+	type RewardCurrency = NativeToken;
 	type RewardIssuance =
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<

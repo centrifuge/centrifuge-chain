@@ -1,6 +1,4 @@
-use cfg_types::tokens::CurrencyId;
-use frame_support::{assert_noop, assert_ok};
-use orml_traits::MultiCurrency;
+use frame_support::{assert_noop, assert_ok, traits::fungibles};
 use sp_runtime::traits::BadOrigin;
 
 use super::*;
@@ -142,7 +140,7 @@ fn joining_leaving_collators() {
 		assert!(NextEpochChanges::<Test>::get().collators.out.is_empty());
 		assert_staked(&1);
 		assert_eq!(
-			<Test as Config>::Currency::total_issuance(STAKE_CURRENCY_ID),
+			<Tokens as fungibles::Inspect<AccountId>>::total_issuance(STAKE_CURRENCY_ID),
 			DEFAULT_COLLATOR_STAKE as u64
 		);
 
@@ -161,7 +159,7 @@ fn joining_leaving_collators() {
 		assert_not_staked(&2);
 		assert_not_staked(&3);
 		assert_eq!(
-			<Test as Config>::Currency::total_issuance(STAKE_CURRENCY_ID),
+			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(STAKE_CURRENCY_ID),
 			DEFAULT_COLLATOR_STAKE as u64
 		);
 
@@ -182,7 +180,7 @@ fn joining_leaving_collators() {
 		assert_not_staked(&4);
 		assert_not_staked(&5);
 		assert_eq!(
-			<Test as Config>::Currency::total_issuance(STAKE_CURRENCY_ID),
+			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(STAKE_CURRENCY_ID),
 			2 * DEFAULT_COLLATOR_STAKE as u64
 		);
 
@@ -204,7 +202,7 @@ fn joining_leaving_collators() {
 		assert_not_staked(&6);
 		assert_not_staked(&7);
 		assert_eq!(
-			<Test as Config>::Currency::total_issuance(STAKE_CURRENCY_ID),
+			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(STAKE_CURRENCY_ID),
 			3 * DEFAULT_COLLATOR_STAKE as u64
 		);
 	});
@@ -251,11 +249,9 @@ fn single_claim_reward() {
 					amount: REWARD,
 				},
 			));
-			// Only non-treasury rewards are taken into account
-			assert_eq!(Tokens::total_issuance(CurrencyId::Native), REWARD);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 9 * REWARD);
-			assert_eq!(Balances::total_issuance(), 9 * REWARD);
-			assert_ok!(Tokens::ensure_can_withdraw(CurrencyId::Native, &1, REWARD));
+			assert_eq!(Balances::total_issuance(), 10 * REWARD);
+			assert_eq!(Balances::free_balance(&1), REWARD);
 		});
 }
 
@@ -278,10 +274,8 @@ fn collator_rewards_greater_than_remainder() {
 				),
 				Ok(REWARD)
 			);
-			// Only non-treasury rewards are taken into account
-			assert_eq!(Tokens::total_issuance(CurrencyId::Native), REWARD);
+			assert_eq!(Balances::total_issuance(), 2 * REWARD);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), REWARD);
-			assert_eq!(Balances::total_issuance(), REWARD);
 
 			// EPOCH 1 -> EPOCH 2
 			advance_session();
@@ -295,9 +289,8 @@ fn collator_rewards_greater_than_remainder() {
 				),
 				Ok(2 * REWARD)
 			);
-			assert_eq!(Tokens::total_issuance(CurrencyId::Native), 2 * REWARD);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
-			assert_eq!(Balances::total_issuance(), 2 * REWARD);
+			assert_eq!(Balances::total_issuance(), 4 * REWARD);
 
 			// EPOCH 2 -> EPOCH 3
 			advance_session();
@@ -321,9 +314,8 @@ fn collator_rewards_greater_than_remainder() {
 					Ok(REWARD)
 				);
 			}
-			assert_eq!(Tokens::total_issuance(CurrencyId::Native), 4 * REWARD);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
-			assert_eq!(Balances::total_issuance(), 2 * REWARD);
+			assert_eq!(Balances::total_issuance(), 6 * REWARD);
 
 			// EPOCH 3 -> EPOCH 4
 			advance_session();
@@ -352,9 +344,8 @@ fn collator_rewards_greater_than_remainder() {
 				),
 				Ok(2 * REWARD / 3)
 			);
-			assert_eq!(Tokens::total_issuance(CurrencyId::Native), 6 * REWARD);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
-			assert_eq!(Balances::total_issuance(), 2 * REWARD);
+			assert_eq!(Balances::total_issuance(), 8 * REWARD);
 		});
 }
 
