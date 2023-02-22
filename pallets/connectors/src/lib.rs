@@ -245,7 +245,7 @@ pub mod pallet {
 
 		IncomingMessage {
 			sender: T::AccountId,
-			message_hex: String,
+			message: Vec<u8>,
 		},
 	}
 
@@ -487,7 +487,7 @@ pub mod pallet {
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
 		pub fn handle(origin: OriginFor<T>, message: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			Self::deposit_event(Event::IncomingMessage { sender, message_hex: hex::encode(message) });
+			Self::deposit_event(Event::IncomingMessage { sender, message });
 			Ok(())
 		}
 	}
