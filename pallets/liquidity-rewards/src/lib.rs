@@ -230,7 +230,7 @@ pub mod pallet {
 						EndOfEpoch::<T>::set(ends_on);
 
 						Self::deposit_event(Event::NewEpoch {
-							ends_on: ends_on,
+							ends_on,
 							reward: epoch_data.reward,
 							last_changes: mem::take(changes),
 						});

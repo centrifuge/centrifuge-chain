@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
+// This missing impl comes from the Substrate ChainSpecGroup derive macro
+//
+// That macro does not forward deny/allow directives to its internal
+// struct, so there is no way to specifically target the output of
+// that macro for an allow. Unfortunately, we need to allow this at
+// module level.
+#![allow(clippy::derive_partial_eq_without_eq)]
+
 use altair_runtime::constants::currency::AIR;
 use cfg_primitives::{currency_decimals, parachains, Balance, CFG};
 use cfg_types::{

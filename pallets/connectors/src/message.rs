@@ -14,15 +14,15 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
-#[derive(Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where
-	Domain: Encode + Decode,
-	PoolId: Encode + Decode,
-	TrancheId: Encode + Decode,
-	Balance: Encode + Decode,
-	Rate: Encode + Decode,
+	Domain: Encode,
+	PoolId: Encode,
+	TrancheId: Encode,
+	Balance: Encode,
+	Rate: Encode,
 {
 	Invalid,
 	AddPool {
@@ -33,6 +33,7 @@ where
 		tranche_id: TrancheId,
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+		price: Rate,
 	},
 	UpdateTokenPrice {
 		pool_id: PoolId,
@@ -49,18 +50,13 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		domain: Domain,
-		destination: Address,
+		address: Address,
 		amount: Balance,
 	},
 }
 
-impl<
-		Domain: Encode + Decode,
-		PoolId: Encode + Decode,
-		TrancheId: Encode + Decode,
-		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Message<Domain, PoolId, TrancheId, Balance, Rate>
+impl<Domain: Encode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode>
+	Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	/// The call type that identifies a specific Message variant. This value is used
 	/// to encode/decode a Message to/from a bytearray, whereas the head of the bytearray
@@ -80,13 +76,8 @@ impl<
 	}
 }
 
-impl<
-		Domain: Encode + Decode,
-		PoolId: Encode + Decode,
-		TrancheId: Encode + Decode,
-		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Encode for Message<Domain, PoolId, TrancheId, Balance, Rate>
+impl<Domain: Encode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode> Encode
+	for Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	fn encode(&self) -> Vec<u8> {
 		match self {
@@ -94,10 +85,7 @@ impl<
 			Message::AddPool { pool_id } => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
+				message.append(&mut to_be(pool_id));
 
 				message
 			}
@@ -106,17 +94,15 @@ impl<
 				tranche_id,
 				token_name,
 				token_symbol,
+				price,
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
 				message.append(&mut token_name.encode());
 				message.append(&mut token_symbol.encode());
+				message.append(&mut to_be(price));
 
 				message
 			}
@@ -127,13 +113,9 @@ impl<
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
-				message.append(&mut price.encode());
+				message.append(&mut to_be(price));
 
 				message
 			}
@@ -145,14 +127,10 @@ impl<
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
 				message.append(&mut address.encode());
-				message.append(&mut valid_until.encode());
+				message.append(&mut valid_until.to_be_bytes().to_vec());
 
 				message
 			}
@@ -160,25 +138,29 @@ impl<
 				pool_id,
 				tranche_id,
 				domain,
-				destination,
+				address,
 				amount,
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
+				message.append(&mut to_be(pool_id));
 				message.append(&mut tranche_id.encode());
 				message.append(&mut domain.encode());
-				message.append(&mut destination.encode());
-				message.append(&mut amount.encode());
+				message.append(&mut address.encode());
+				message.append(&mut to_be(amount));
 
 				message
 			}
 		}
 	}
+}
+
+/// Encode a value in its big-endian representation. We use this for number types to make
+/// sure they are encoded the way they are expected to be decoded on the Solidity side.
+fn to_be(x: impl Encode) -> Vec<u8> {
+	let mut output = x.encode();
+	output.reverse();
+	output
 }
 
 #[cfg(test)]
@@ -194,11 +176,11 @@ mod tests {
 	type TrancheId = [u8; 16];
 	type Balance = cfg_primitives::Balance;
 
-	const CURRENCY: Balance = 1_000_000_000_000_000_000;
-
 	pub mod encode {
+		use cfg_utils::vec_to_fixed_array;
+
 		use super::*;
-		use crate::{Domain, ParachainId};
+		use crate::{Domain, DomainAddress};
 
 		#[test]
 		fn invalid() {
@@ -208,13 +190,35 @@ mod tests {
 		}
 
 		#[test]
+		fn encoding_domain() {
+			use crate::Encode;
+
+			// The Centrifuge substrate chain
+			assert_eq!(
+				hex::encode(Domain::Centrifuge.encode()),
+				"000000000000000000"
+			);
+			// Ethereum MainNet
+			assert_eq!(hex::encode(Domain::EVM(1).encode()), "010000000000000001");
+			// Moonbeam EVM chain
+			assert_eq!(
+				hex::encode(Domain::EVM(1284).encode()),
+				"010000000000000504"
+			);
+			// Avalanche Chain
+			assert_eq!(
+				hex::encode(Domain::EVM(43114).encode()),
+				"01000000000000a86a"
+			);
+		}
+
+		#[test]
 		fn add_pool_zero() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 0 };
 			let encoded = msg.encode();
 
-			let expected_hex = "010000000000000000";
-			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			let expected = "010000000000000000";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
@@ -223,77 +227,96 @@ mod tests {
 				Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 12378532 };
 			let encoded = msg.encode();
 
-			let expected_hex = "010000000000bce1a4";
-			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			let expected = "010000000000bce1a4";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
 		fn add_tranche() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddTranche {
 				pool_id: 12378532,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				token_name: [5; 128],
-				token_symbol: [6; 32],
+				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
+				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+				price: Rate::one(),
 			};
-			let encoded_bytes = msg.encode();
+			let encoded = msg.encode();
 
-			// We encode the encoded bytes as hex to verify it's what we expect
-			let encoded_hex = hex::encode(encoded_bytes.clone());
-			let expected_hex = "020000000000bce1a40000000000000000000000000000000105050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050606060606060606060606060606060606060606060606060606060606060606";
-			assert_eq!(expected_hex, encoded_hex);
-
-			// Now decode the bytes encoded as hex back to bytes and verify it's the same as
-			// the original `encoded_bytes`
-			let hex_as_bytes = hex::decode(encoded_hex).expect("Should go vec -> hex -> vec");
-			assert_eq!(hex_as_bytes, encoded_bytes);
+			let expected = "020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
 		fn update_token_price() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateTokenPrice {
 				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 				price: Rate::one(),
 			};
 			let encoded = msg.encode();
 
-			let input = "03000000000000000100000000000000000000000000000001000000e83c80d09f3c2e3b0300000000";
-			let expected = <[u8; 41]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			let expected = "030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
 		fn update_member() {
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateMember {
-				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				address: [1; 32],
-				valid_until: 100,
+				pool_id: 2,
+				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+				address: <[u8; 32]>::from_hex(
+					"1231231231231231231231231231231231231231231231231231231231231231",
+				)
+				.expect(""),
+				valid_until: 1706260138,
 			};
 			let encoded = msg.encode();
 
-			let input = "0400000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101016400000000000000";
-			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			let expected = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065b376aa";
+			assert_eq!(hex::encode(encoded), expected);
 		}
 
 		#[test]
-		#[ignore = "wip"]
-		fn transfer() {
+		fn transfer_to_moonbeam() {
+			let domain_address = DomainAddress::EVM(
+				1284,
+				<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect(""),
+			);
+
 			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
 				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				domain: Domain::Parachain(ParachainId::Moonbeam),
-				destination: [1; 32],
-				amount: 100 * CURRENCY,
+				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+				domain: domain_address.clone().into(),
+				address: domain_address.address(),
+				amount: 1000000000000000000000000000,
 			};
 			let encoded = msg.encode();
-			println!("{}", hex::encode(encoded.clone()));
+			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b010000000000000504123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000";
 
-			let input = "0500000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101016400000000000000";
-			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
+			assert_eq!(hex::encode(encoded), expected);
 		}
+
+		#[test]
+		fn transfer_to_centrifuge() {
+			let address =
+				<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("");
+
+			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+				domain: Domain::Centrifuge,
+				address: vec_to_fixed_array(address.to_vec()),
+				amount: 1000000000000000000000000000,
+			};
+			let encoded = msg.encode();
+
+			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000000000000123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000";
+
+			assert_eq!(hex::encode(encoded), expected);
+		}
+	}
+
+	fn tranche_id_from_hex(hex: &str) -> TrancheId {
+		<[u8; 16]>::from_hex(hex).expect("Should be valid tranche id")
 	}
 }

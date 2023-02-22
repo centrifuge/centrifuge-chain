@@ -18,7 +18,7 @@ mod mock;
 /// Deposit address
 pub type DepositAddress = [u8; 20];
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof<Hash> {
 	pub leaf_hash: Hash,

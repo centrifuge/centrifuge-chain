@@ -19,7 +19,7 @@ use sp_std::cmp::PartialEq;
 
 /// Different fees keys available.
 /// Each variant represents a balance previously determined and configured.
-#[derive(Encode, Decode, Clone, Copy, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum FeeKey {
 	/// Key to identify the balance reserved for the author.

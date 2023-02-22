@@ -1284,7 +1284,7 @@ where
 					.checked_sub(1)
 					.ok_or(ArithmeticError::Underflow)?;
 
-				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
+				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment);
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
 				ActiveInvestOrders::<T>::try_mutate(
@@ -1365,7 +1365,7 @@ where
 					.checked_sub(1)
 					.ok_or(ArithmeticError::Underflow)?;
 
-				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
+				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment);
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
 				ActiveRedeemOrders::<T>::try_mutate(

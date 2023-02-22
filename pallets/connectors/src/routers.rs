@@ -4,6 +4,7 @@ use sp_core::H160;
 use sp_runtime::{traits::ConstU32, BoundedVec};
 use xcm::VersionedMultiLocation;
 
+#[allow(clippy::derive_partial_eq_without_eq)] // XcmDomain does not impl Eq
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Router<CurrencyId> {
@@ -13,7 +14,7 @@ pub enum Router<CurrencyId> {
 
 /// XcmDomain gathers all the required fields to build and send remote
 /// calls to a specific XCM-based Domain.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct XcmDomain<CurrencyId> {
 	/// the xcm multilocation of the domain
@@ -28,6 +29,8 @@ pub struct XcmDomain<CurrencyId> {
 	pub contract_address: H160,
 	/// The currency in which execution fees will be paid on
 	pub fee_currency: CurrencyId,
+	/// The max gas_limit we want to propose for a remote evm execution
+	pub max_gas_limit: u64,
 }
 
 // NOTE: Remove this custom implementation once the following underlying data implements MaxEncodedLen:

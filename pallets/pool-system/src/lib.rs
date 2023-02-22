@@ -157,6 +157,15 @@ pub type PoolChangesOf<T> = PoolChanges<
 	<T as Config>::MaxTranches,
 >;
 
+pub type PoolEssenceOf<T> = PoolEssence<
+	<T as Config>::CurrencyId,
+	<T as Config>::Balance,
+	<T as Config>::TrancheCurrency,
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+>;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
@@ -392,34 +401,13 @@ pub mod pallet {
 			admin: T::AccountId,
 			depositor: T::AccountId,
 			pool_id: T::PoolId,
-			essence: PoolEssence<
-				T::CurrencyId,
-				T::Balance,
-				T::TrancheCurrency,
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>,
+			essence: PoolEssenceOf<T>,
 		},
 		/// A pool was updated.
 		Updated {
 			id: T::PoolId,
-			old: PoolEssence<
-				T::CurrencyId,
-				T::Balance,
-				T::TrancheCurrency,
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>,
-			new: PoolEssence<
-				T::CurrencyId,
-				T::Balance,
-				T::TrancheCurrency,
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>,
+			old: PoolEssenceOf<T>,
+			new: PoolEssenceOf<T>,
 		},
 	}
 
@@ -632,32 +620,26 @@ pub mod pallet {
 					.into());
 				}
 
-				let epoch_tranches: Vec<
-					EpochExecutionTranche<
-						T::Balance,
-						T::Rate,
-						T::TrancheWeight,
-						T::TrancheCurrency,
-					>,
-				> = pool.tranches.combine_with_residual_top(
-					epoch_tranche_prices
-						.iter()
-						.zip(orders.invest_redeem_residual_top()),
-					|tranche, (price, (invest, redeem))| {
-						let epoch_tranche = EpochExecutionTranche {
-							currency: tranche.currency,
-							supply: tranche.balance()?,
-							price: *price,
-							invest: invest,
-							redeem: redeem,
-							seniority: tranche.seniority,
-							min_risk_buffer: tranche.min_risk_buffer(),
-							_phantom: Default::default(),
-						};
+				let epoch_tranches: Vec<EpochExecutionTrancheOf<T>> =
+					pool.tranches.combine_with_residual_top(
+						epoch_tranche_prices
+							.iter()
+							.zip(orders.invest_redeem_residual_top()),
+						|tranche, (price, (invest, redeem))| {
+							let epoch_tranche = EpochExecutionTranche {
+								currency: tranche.currency,
+								supply: tranche.balance()?,
+								price: *price,
+								invest,
+								redeem,
+								seniority: tranche.seniority,
+								min_risk_buffer: tranche.min_risk_buffer(),
+								_phantom: Default::default(),
+							};
 
-						Ok(epoch_tranche)
-					},
-				)?;
+							Ok(epoch_tranche)
+						},
+					)?;
 
 				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,

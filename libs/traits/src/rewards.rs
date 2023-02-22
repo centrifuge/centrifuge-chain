@@ -107,7 +107,7 @@ where
 					Self::Balance::zero()
 				};
 
-				Self::reward_group(group_id.clone(), group_reward)
+				Self::reward_group(group_id, group_reward)
 			})
 			.collect())
 	}
@@ -256,11 +256,15 @@ pub mod mock {
 				amount: <Self as AccountRewards<AccountId>>::Balance,
 			) -> DispatchResult;
 
+			// Return type is too messy for clippy, but not messy enough to really clean up
+			#[allow(clippy::type_complexity)]
 			fn compute_reward(
 				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
 			) -> Result<<Self as AccountRewards<AccountId>>::Balance, DispatchError>;
 
+			// Return type is too messy for clippy, but not messy enough to really clean up
+			#[allow(clippy::type_complexity)]
 			fn claim_reward(
 				currency_id: <Self as AccountRewards<AccountId>>::CurrencyId,
 				account_id: &AccountId,
