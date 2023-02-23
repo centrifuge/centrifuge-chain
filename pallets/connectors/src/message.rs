@@ -14,15 +14,15 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
-#[derive(Decode, Clone, PartialEq, Eq, TypeInfo)]
+#[derive(Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where
-	Domain: Encode,
-	PoolId: Encode,
-	TrancheId: Encode,
-	Balance: Encode,
-	Rate: Encode,
+	Domain: Encode + Decode,
+	PoolId: Encode + Decode,
+	TrancheId: Encode + Decode,
+	Balance: Encode + Decode,
+	Rate: Encode + Decode,
 {
 	Invalid,
 	AddPool {
@@ -55,8 +55,13 @@ where
 	},
 }
 
-impl<Domain: Encode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode>
-	Message<Domain, PoolId, TrancheId, Balance, Rate>
+impl<
+		Domain: Encode + Decode,
+		PoolId: Encode + Decode,
+		TrancheId: Encode + Decode,
+		Balance: Encode + Decode,
+		Rate: Encode + Decode,
+	> Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	/// The call type that identifies a specific Message variant. This value is used
 	/// to encode/decode a Message to/from a bytearray, whereas the head of the bytearray
@@ -76,8 +81,74 @@ impl<Domain: Encode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: E
 	}
 }
 
-impl<Domain: Encode, PoolId: Encode, TrancheId: Encode, Balance: Encode, Rate: Encode> Encode
-	for Message<Domain, PoolId, TrancheId, Balance, Rate>
+impl<
+		Domain: Encode + Decode,
+		PoolId: Encode + Decode,
+		TrancheId: Encode + Decode,
+		Balance: Encode + Decode,
+		Rate: Encode + Decode,
+	> EncodeLike for Message<Domain, PoolId, TrancheId, Balance, Rate>
+{
+}
+
+impl<
+		Domain: Encode + Decode,
+		PoolId: Encode + Decode,
+		TrancheId: Encode + Decode,
+		Balance: Encode + Decode,
+		Rate: Encode + Decode,
+	> Decode for Message<Domain, PoolId, TrancheId, Balance, Rate>
+{
+	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let call_type = input.read_byte()?;
+
+		match call_type {
+			5 => {
+				let mut pool_id_bytes = [0; 8];
+				input.read(&mut pool_id_bytes[..])?;
+				pool_id_bytes.reverse();
+				let pool_id = PoolId::decode(&mut pool_id_bytes.as_slice())?;
+
+				let mut tranche_id_bytes = [0; 16];
+				input.read(&mut tranche_id_bytes[..])?;
+				let tranche_id = TrancheId::decode(&mut tranche_id_bytes.as_slice())?;
+
+				let mut domain_bytes = [0; 9];
+				input.read(&mut domain_bytes[..])?;
+				let domain = Domain::decode(&mut domain_bytes.as_slice())?;
+
+				let mut address: Address = [0; 32];
+				input.read(&mut address[..])?;
+
+				let mut amount_bytes = [0; 16];
+				input.read(&mut amount_bytes[..])?;
+				amount_bytes.reverse();
+				let amount = Balance::decode(&mut amount_bytes.as_slice())?;
+
+				return Ok(Self::Transfer {
+					pool_id,
+					tranche_id,
+					domain,
+					address,
+					amount,
+				});
+			}
+			_ => {
+				return Err(codec::Error::from(
+					"Unsupported decoding for this Message variant",
+				))
+			}
+		}
+	}
+}
+
+impl<
+		Domain: Encode + Decode,
+		PoolId: Encode + Decode,
+		TrancheId: Encode + Decode,
+		Balance: Encode + Decode,
+		Rate: Encode + Decode,
+	> Encode for Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
 	fn encode(&self) -> Vec<u8> {
 		match self {
@@ -166,15 +237,39 @@ fn to_be(x: impl Encode) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
 	use cfg_types::fixed_point::Rate;
-	use codec::Encode;
+	use codec::{Decode, Encode};
 	use hex::FromHex;
 	use sp_runtime::traits::One;
 
-	use crate::Message;
+	use crate::{Domain, Message};
 
 	type PoolId = u64;
 	type TrancheId = [u8; 16];
 	type Balance = cfg_primitives::Balance;
+
+	pub mod decode {
+		use super::*;
+
+		/// Test that decode . encode results in the original value
+		#[test]
+		fn transfer() {
+			let msg = Message::Transfer {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+				domain: Domain::Centrifuge,
+				address: <[u8; 32]>::from_hex(
+					"1231231231231231231231231231231231231231231231231231231231231231",
+				)
+				.expect(""),
+				amount: 1000000000000000000000000000,
+			};
+			let encoded = msg.encode();
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut encoded.as_slice()).expect("");
+
+			assert_eq!(msg, decoded);
+		}
+	}
 
 	pub mod encode {
 		use cfg_utils::vec_to_fixed_array;

@@ -253,12 +253,10 @@ pub mod pallet {
 	pub(crate) type DomainRouter<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
 
-
 	/// The set of known connectors. This set is used as an allow-list when authorizing
 	/// the origin of incoming messages through the `handle` extrinsic.
 	#[pallet::storage]
-	pub(crate) type KnownConnectors<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
+	pub(crate) type KnownConnectors<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -506,7 +504,10 @@ pub mod pallet {
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
 		pub fn handle(origin: OriginFor<T>, message: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			ensure!(<KnownConnectors<T>>::contains_key(&sender), Error::<T>::InvalidIncomingMessageOrigin);
+			ensure!(
+				<KnownConnectors<T>>::contains_key(&sender),
+				Error::<T>::InvalidIncomingMessageOrigin
+			);
 
 			Self::deposit_event(Event::IncomingMessage { sender, message });
 			Ok(())
