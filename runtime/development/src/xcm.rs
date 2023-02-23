@@ -320,6 +320,8 @@ pub type LocationToAccountId = (
 	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
+	// TODO(nuno): We probably should drop this because this allows for the relay-chain
+	// to impersonate a local, native user.
 	AccountId32Aliases<RelayNetwork, AccountId>,
 	AccountIdHash<AccountId>,
 );

@@ -253,6 +253,13 @@ pub mod pallet {
 	pub(crate) type DomainRouter<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
 
+
+	/// The set of known connectors. This set is used as an allow-list when authorizing
+	/// the origin of incoming messages through the `handle` extrinsic.
+	#[pallet::storage]
+	pub(crate) type KnownConnectors<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
+
 	#[pallet::error]
 	pub enum Error<T> {
 		/// A pool could not be found
@@ -273,6 +280,8 @@ pub mod pallet {
 		UnauthorizedTransfer,
 		/// Failed to build Ethereum_Xcm call
 		FailedToBuildEthereumXcmCall,
+		/// The origin of an incoming message is not in the allow-list
+		InvalidIncomingMessageOrigin,
 	}
 
 	#[pallet::call]
@@ -288,6 +297,16 @@ pub mod pallet {
 
 			<DomainRouter<T>>::insert(domain.clone(), router.clone());
 			Self::deposit_event(Event::SetDomainRouter { domain, router });
+
+			Ok(())
+		}
+
+		/// Add an AccountId to the set of known connectors, allowing that origin
+		/// to send incoming messages.
+		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
+		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+			<KnownConnectors<T>>::insert(connector, ());
 
 			Ok(())
 		}
@@ -487,6 +506,8 @@ pub mod pallet {
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
 		pub fn handle(origin: OriginFor<T>, message: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
+			ensure!(<KnownConnectors<T>>::contains_key(&sender), Error::<T>::InvalidIncomingMessageOrigin);
+
 			Self::deposit_event(Event::IncomingMessage { sender, message });
 			Ok(())
 		}
