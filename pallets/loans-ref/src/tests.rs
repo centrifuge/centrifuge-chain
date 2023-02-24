@@ -11,6 +11,18 @@ use super::{
 
 const COLLATERAL_VALUE: Balance = 100;
 
+fn total_borrowed_rate(value: f64) -> MaxBorrowAmount<Rate> {
+	MaxBorrowAmount::UpToTotalBorrowed {
+		advance_rate: Rate::from_float(value),
+	}
+}
+
+fn outstanding_debt_rate(value: f64) -> MaxBorrowAmount<Rate> {
+	MaxBorrowAmount::UpToOutstandingDebt {
+		advance_rate: Rate::from_float(value),
+	}
+}
+
 mod create_loan {
 	use super::*;
 
@@ -206,42 +218,12 @@ mod borrow_loan {
 	#[test]
 	fn with_correct_amounts() {
 		let borrow_inputs = [
-			(
-				COLLATERAL_VALUE,
-				MaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: Rate::from_float(1.0),
-				},
-			),
-			(
-				COLLATERAL_VALUE / 2,
-				MaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: Rate::from_float(0.5),
-				},
-			),
-			(
-				0,
-				MaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: Rate::from_float(0.0),
-				},
-			),
-			(
-				COLLATERAL_VALUE,
-				MaxBorrowAmount::UpToOutstandingDebt {
-					advance_rate: Rate::from_float(1.0),
-				},
-			),
-			(
-				COLLATERAL_VALUE / 2,
-				MaxBorrowAmount::UpToOutstandingDebt {
-					advance_rate: Rate::from_float(0.5),
-				},
-			),
-			(
-				0,
-				MaxBorrowAmount::UpToOutstandingDebt {
-					advance_rate: Rate::from_float(0.0),
-				},
-			),
+			(COLLATERAL_VALUE, total_borrowed_rate(1.0)),
+			(COLLATERAL_VALUE / 2, total_borrowed_rate(0.5)),
+			(0, total_borrowed_rate(0.0)),
+			(COLLATERAL_VALUE, outstanding_debt_rate(1.0)),
+			(COLLATERAL_VALUE / 2, outstanding_debt_rate(0.5)),
+			(0, outstanding_debt_rate(0.0)),
 		];
 
 		for (amount, max_borrow_amount) in borrow_inputs {
@@ -249,7 +231,6 @@ mod borrow_loan {
 				let loan_id = create_loan::do_it(max_borrow_amount);
 
 				config_mocks(amount);
-
 				assert_ok!(Loans::borrow(
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
@@ -263,42 +244,12 @@ mod borrow_loan {
 	#[test]
 	fn with_wrong_amounts() {
 		let borrow_inputs = [
-			(
-				COLLATERAL_VALUE + 1,
-				MaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: Rate::from_float(1.0),
-				},
-			),
-			(
-				COLLATERAL_VALUE / 2 + 1,
-				MaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: Rate::from_float(0.5),
-				},
-			),
-			(
-				1,
-				MaxBorrowAmount::UpToTotalBorrowed {
-					advance_rate: Rate::from_float(0.0),
-				},
-			),
-			(
-				COLLATERAL_VALUE + 1,
-				MaxBorrowAmount::UpToOutstandingDebt {
-					advance_rate: Rate::from_float(1.0),
-				},
-			),
-			(
-				COLLATERAL_VALUE / 2 + 1,
-				MaxBorrowAmount::UpToOutstandingDebt {
-					advance_rate: Rate::from_float(0.5),
-				},
-			),
-			(
-				1,
-				MaxBorrowAmount::UpToOutstandingDebt {
-					advance_rate: Rate::from_float(0.0),
-				},
-			),
+			(COLLATERAL_VALUE + 1, total_borrowed_rate(1.0)),
+			(COLLATERAL_VALUE / 2 + 1, total_borrowed_rate(0.5)),
+			(1, total_borrowed_rate(0.0)),
+			(COLLATERAL_VALUE + 1, outstanding_debt_rate(1.0)),
+			(COLLATERAL_VALUE / 2 + 1, outstanding_debt_rate(0.5)),
+			(1, outstanding_debt_rate(0.0)),
 		];
 
 		for (amount, max_borrow_amount) in borrow_inputs {
@@ -306,7 +257,6 @@ mod borrow_loan {
 				let loan_id = create_loan::do_it(max_borrow_amount);
 
 				config_mocks(amount);
-
 				assert_noop!(
 					Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
 					Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
@@ -318,9 +268,7 @@ mod borrow_loan {
 	#[test]
 	fn twice() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
 			config_mocks(COLLATERAL_VALUE / 2);
 
@@ -339,11 +287,10 @@ mod borrow_loan {
 			));
 
 			// At this point the loan has been totally borrowed.
-
-			config_mocks(1);
-
+			let extra = 1;
+			config_mocks(extra);
 			assert_noop!(
-				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, 1),
+				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
 				Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
 			);
 		});
@@ -364,9 +311,7 @@ mod borrow_loan {
 	#[test]
 	fn from_other_borrower() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
 			config_mocks(COLLATERAL_VALUE);
 
@@ -385,9 +330,7 @@ mod borrow_loan {
 	#[test]
 	fn with_maturity_passed() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
 			advance_block_time(1);
 
@@ -406,9 +349,7 @@ mod borrow_loan {
 	#[test]
 	fn has_been_written_off() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
 			config_mocks(COLLATERAL_VALUE / 2);
 
@@ -451,14 +392,10 @@ mod repay_loan {
 	#[test]
 	fn with_success() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
-
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE);
-
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
@@ -471,14 +408,10 @@ mod repay_loan {
 	#[test]
 	fn with_more_than_required() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
-
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE);
-
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
@@ -491,21 +424,16 @@ mod repay_loan {
 	#[test]
 	fn twice() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
-
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE / 2);
-
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
 				COLLATERAL_VALUE / 2
 			));
-
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
@@ -518,12 +446,9 @@ mod repay_loan {
 	#[test]
 	fn without_borrow_first() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
 			config_mocks(COLLATERAL_VALUE);
-
 			assert_noop!(
 				Loans::repay(
 					RuntimeOrigin::signed(BORROWER),
@@ -551,14 +476,10 @@ mod repay_loan {
 	#[test]
 	fn from_other_borrower() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(MaxBorrowAmount::UpToOutstandingDebt {
-				advance_rate: Rate::from_float(1.0),
-			});
-
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE);
-
 			assert_noop!(
 				Loans::repay(
 					RuntimeOrigin::signed(OTHER_BORROWER),
@@ -570,4 +491,16 @@ mod repay_loan {
 			);
 		});
 	}
+}
+
+mod write_off_loan {
+	use super::*;
+
+	//TODO
+}
+
+mod close_loan {
+	use super::*;
+
+	//TODO
 }
