@@ -328,7 +328,11 @@ mod tests {
 			let encoded = msg.encode();
 
 			let expected = "010000000000000000";
-			assert_eq!(hex::encode(encoded), expected);
+			assert_eq!(hex::encode(encoded.clone()), expected);
+
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut encoded.as_slice()).expect("");
+			assert_eq!(msg, decoded);
 		}
 
 		#[test]
@@ -338,7 +342,11 @@ mod tests {
 			let encoded = msg.encode();
 
 			let expected = "010000000000bce1a4";
-			assert_eq!(hex::encode(encoded), expected);
+			assert_eq!(hex::encode(encoded.clone()), expected);
+
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut encoded.as_slice()).expect("");
+			assert_eq!(msg, decoded);
 		}
 
 		#[test]
@@ -353,7 +361,11 @@ mod tests {
 			let encoded = msg.encode();
 
 			let expected = "020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000";
-			assert_eq!(hex::encode(encoded), expected);
+			assert_eq!(hex::encode(encoded.clone()), expected);
+
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut encoded.as_slice()).expect("");
+			assert_eq!(msg, decoded);
 		}
 
 		#[test]
@@ -366,7 +378,11 @@ mod tests {
 			let encoded = msg.encode();
 
 			let expected = "030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000";
-			assert_eq!(hex::encode(encoded), expected);
+			assert_eq!(hex::encode(encoded.clone()), expected);
+
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut hex::decode(expected).expect("").as_slice()).expect("");
+			assert_eq!(msg, decoded);
 		}
 
 		#[test]
@@ -383,7 +399,11 @@ mod tests {
 			let encoded = msg.encode();
 
 			let expected = "040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065b376aa";
-			assert_eq!(hex::encode(encoded), expected);
+			assert_eq!(hex::encode(encoded.clone()), expected);
+
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut hex::decode(expected).expect("").as_slice()).expect("");
+			assert_eq!(msg, decoded);
 		}
 
 		#[test]
@@ -402,8 +422,11 @@ mod tests {
 			};
 			let encoded = msg.encode();
 			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b010000000000000504123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000";
+			assert_eq!(hex::encode(encoded.clone()), expected);
 
-			assert_eq!(hex::encode(encoded), expected);
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut hex::decode(expected).expect("").as_slice()).expect("");
+			assert_eq!(msg, decoded);
 		}
 
 		#[test]
@@ -421,8 +444,11 @@ mod tests {
 			let encoded = msg.encode();
 
 			let expected = "050000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000000000000123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000";
+			assert_eq!(hex::encode(encoded.clone()), expected);
 
-			assert_eq!(hex::encode(encoded), expected);
+			let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+				Message::decode(&mut hex::decode(expected).expect("").as_slice()).expect("");
+			assert_eq!(msg, decoded);
 		}
 	}
 
