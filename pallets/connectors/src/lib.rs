@@ -242,7 +242,7 @@ pub mod pallet {
 
 		IncomingMessage {
 			sender: T::AccountId,
-			message: Vec<u8>,
+			message: MessageOf<T>,
 		},
 	}
 
@@ -277,6 +277,8 @@ pub mod pallet {
 		FailedToBuildEthereumXcmCall,
 		/// The origin of an incoming message is not in the allow-list
 		InvalidIncomingMessageOrigin,
+		/// Failed to decode an incoming message
+		InvalidIncomingMessage,
 	}
 
 	#[pallet::call]
@@ -499,12 +501,14 @@ pub mod pallet {
 		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
-		pub fn handle(origin: OriginFor<T>, message: Vec<u8>) -> DispatchResult {
+		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
 			ensure!(
 				<KnownConnectors<T>>::contains_key(&sender),
 				Error::<T>::InvalidIncomingMessageOrigin
 			);
+
+			let message = Message::decode(&mut bytes.as_slice()).map_err(|_| Error::<T>::InvalidIncomingMessage)?;
 
 			Self::deposit_event(Event::IncomingMessage { sender, message });
 			Ok(())
