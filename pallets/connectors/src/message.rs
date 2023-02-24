@@ -103,12 +103,34 @@ impl<
 		let call_type = input.read_byte()?;
 
 		match call_type {
+			0 => Ok(Self::Invalid),
+			1 => Ok(Self::AddPool {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+			}),
+			2 => Ok(Self::AddTranche {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
+				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
+				price: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			3 => Ok(Self::UpdateTokenPrice {
+				pool_id: decode_be_bytes::<8_, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				price: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			4 => Ok(Self::UpdateMember {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				valid_until: decode_be_bytes::<8, _, _>(input)?,
+			}),
 			5 => Ok(Self::Transfer {
-				pool_id: decode_be_bytes::<PoolId, 8, _>(input)?,
-				tranche_id: decode::<TrancheId, 16, _>(input)?,
-				domain: decode::<Domain, 9, _>(input)?,
-				address: decode::<Address, 32, _>(input)?,
-				amount: decode_be_bytes::<Balance, 16, _>(input)?,
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				domain: decode::<9, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -119,7 +141,7 @@ impl<
 
 /// Decode a type O by reading S bytes from I. Those bytes are expected to be encoded
 /// as big-endian and thus needs reversing to little-endian before decoding to O.
-fn decode_be_bytes<O: Decode, const S: usize, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+fn decode_be_bytes<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 	bytes.reverse();
@@ -128,7 +150,7 @@ fn decode_be_bytes<O: Decode, const S: usize, I: Input>(input: &mut I) -> Result
 }
 
 /// Decode a type 0 by reading S bytes from I.
-fn decode<O: Decode, const S: usize, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 
