@@ -127,6 +127,7 @@ fn decode_be_bytes<O: Decode, const S: usize, I: Input>(input: &mut I) -> Result
 	O::decode(&mut bytes.as_slice())
 }
 
+/// Decode a type 0 by reading S bytes from I.
 fn decode<O: Decode, const S: usize, I: Input>(input: &mut I) -> Result<O, codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
