@@ -1,5 +1,5 @@
 use cfg_primitives::Moment;
-use cfg_utils::{decode, decode_be_bytes, to_be};
+use cfg_utils::{decode, decode_be_bytes, encode_be};
 use codec::{Decode, Encode, EncodeLike, Input};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
@@ -151,7 +151,7 @@ impl<
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![self.call_type()],
-			Message::AddPool { pool_id } => encoded_message(self.call_type(), vec![to_be(pool_id)]),
+			Message::AddPool { pool_id } => encoded_message(self.call_type(), vec![encode_be(pool_id)]),
 			Message::AddTranche {
 				pool_id,
 				tranche_id,
@@ -161,11 +161,11 @@ impl<
 			} => encoded_message(
 				self.call_type(),
 				vec![
-					to_be(pool_id),
+					encode_be(pool_id),
 					tranche_id.encode(),
 					token_name.encode(),
 					token_symbol.encode(),
-					to_be(price),
+					encode_be(price),
 				],
 			),
 			Message::UpdateTokenPrice {
@@ -174,7 +174,7 @@ impl<
 				price,
 			} => encoded_message(
 				self.call_type(),
-				vec![to_be(pool_id), tranche_id.encode(), to_be(price)],
+				vec![encode_be(pool_id), tranche_id.encode(), encode_be(price)],
 			),
 			Message::UpdateMember {
 				pool_id,
@@ -184,7 +184,7 @@ impl<
 			} => encoded_message(
 				self.call_type(),
 				vec![
-					to_be(pool_id),
+					encode_be(pool_id),
 					tranche_id.encode(),
 					address.encode(),
 					valid_until.to_be_bytes().to_vec(),
@@ -199,11 +199,11 @@ impl<
 			} => encoded_message(
 				self.call_type(),
 				vec![
-					to_be(pool_id),
+					encode_be(pool_id),
 					tranche_id.encode(),
 					domain.encode(),
 					address.encode(),
-					to_be(amount),
+					encode_be(amount),
 				],
 			),
 		}

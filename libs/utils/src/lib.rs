@@ -30,7 +30,7 @@ pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
 /// Encode a value in its big-endian representation of which all we know is that it
 /// implements Encode. We use this for number types to make sure they are encoded
 /// the way they are expected to be decoded on the Solidity side.
-pub fn to_be(x: impl Encode) -> Vec<u8> {
+pub fn encode_be(x: impl Encode) -> Vec<u8> {
 	let mut output = x.encode();
 	output.reverse();
 	output
