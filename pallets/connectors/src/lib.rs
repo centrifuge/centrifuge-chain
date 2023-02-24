@@ -83,10 +83,7 @@ impl Decode for Domain {
 		match variant {
 			0 => Ok(Self::Centrifuge),
 			1 => {
-				let mut chain_id_be_bytes = [0; 8];
-				input.read(&mut chain_id_be_bytes[..])?;
-
-				let chain_id = EVMChainId::from_be_bytes(chain_id_be_bytes);
+				let chain_id = decode_be_bytes::<8, _, _>(input)?;
 				Ok(Self::EVM(chain_id))
 			}
 			_ => Err(codec::Error::from("Unknown Domain variant")),

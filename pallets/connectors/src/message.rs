@@ -141,7 +141,9 @@ impl<
 
 /// Decode a type O by reading S bytes from I. Those bytes are expected to be encoded
 /// as big-endian and thus needs reversing to little-endian before decoding to O.
-fn decode_be_bytes<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
+	input: &mut I,
+) -> Result<O, codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 	bytes.reverse();
@@ -150,7 +152,7 @@ fn decode_be_bytes<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result
 }
 
 /// Decode a type 0 by reading S bytes from I.
-fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
 	let mut bytes = [0; S];
 	input.read(&mut bytes[..])?;
 
@@ -168,85 +170,67 @@ impl<
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![self.call_type()],
-			Message::AddPool { pool_id } => {
-				encoded_message(
-					self.call_type(),
-					vec![to_be(pool_id)],
-				)
-			}
+			Message::AddPool { pool_id } => encoded_message(self.call_type(), vec![to_be(pool_id)]),
 			Message::AddTranche {
 				pool_id,
 				tranche_id,
 				token_name,
 				token_symbol,
 				price,
-			} => {
-				encoded_message(
-					self.call_type(),
-					vec![
-						to_be(pool_id),
-						tranche_id.encode(),
-						token_name.encode(),
-						token_symbol.encode(),
-						to_be(price),
-					]
-				)
-			}
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					to_be(pool_id),
+					tranche_id.encode(),
+					token_name.encode(),
+					token_symbol.encode(),
+					to_be(price),
+				],
+			),
 			Message::UpdateTokenPrice {
 				pool_id,
 				tranche_id,
 				price,
-			} => {
-				encoded_message(
-					self.call_type(),
-					vec![
-						to_be(pool_id),
-						tranche_id.encode(),
-						to_be(price),
-					]
-				)
-			}
+			} => encoded_message(
+				self.call_type(),
+				vec![to_be(pool_id), tranche_id.encode(), to_be(price)],
+			),
 			Message::UpdateMember {
 				pool_id,
 				tranche_id,
 				address,
 				valid_until,
-			} => {
-				encoded_message(
-					self.call_type(),
-					vec![
-						to_be(pool_id),
-						tranche_id.encode(),
-						address.encode(),
-						valid_until.to_be_bytes().to_vec(),
-					]
-				)
-			}
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					to_be(pool_id),
+					tranche_id.encode(),
+					address.encode(),
+					valid_until.to_be_bytes().to_vec(),
+				],
+			),
 			Message::Transfer {
 				pool_id,
 				tranche_id,
 				domain,
 				address,
 				amount,
-			} => {
-				encoded_message(
-					self.call_type(),
-					vec![
-						to_be(pool_id),
-						tranche_id.encode(),
-						domain.encode(),
-						address.encode(),
-						to_be(amount),
-					]
-				)
-			}
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					to_be(pool_id),
+					tranche_id.encode(),
+					domain.encode(),
+					address.encode(),
+					to_be(amount),
+				],
+			),
 		}
 	}
 }
 
 fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
 	let mut message: Vec<u8> = vec![];
-
 	message.push(call_type);
 	for x in fields {
 		message.append(&mut x.clone());
