@@ -232,9 +232,12 @@ mod tests {
 	use super::*;
 	use crate::{Domain, DomainAddress};
 
+	pub type ConnectorMessage =
+		Message<Domain, PoolId, TrancheId, Balance, Rate>;
+
 	#[test]
 	fn invalid() {
-		let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Invalid;
+		let msg = ConnectorMessage::Invalid;
 		assert_eq!(msg.encode(), vec![msg.call_type()]);
 		assert_eq!(msg.encode(), vec![0]);
 	}
@@ -265,7 +268,7 @@ mod tests {
 	#[test]
 	fn add_pool_zero() {
 		test_encode_decode_identity(
-			Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 0 },
+			ConnectorMessage::AddPool { pool_id: 0 },
 			"010000000000000000",
 		)
 	}
@@ -273,7 +276,7 @@ mod tests {
 	#[test]
 	fn add_pool_long() {
 		test_encode_decode_identity(
-			Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 12378532 },
+			ConnectorMessage::AddPool { pool_id: 12378532 },
 			"010000000000bce1a4",
 		)
 	}
@@ -281,7 +284,7 @@ mod tests {
 	#[test]
 	fn add_tranche() {
 		test_encode_decode_identity(
-				Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddTranche {
+				ConnectorMessage::AddTranche {
 					pool_id: 12378532,
 					tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 					token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
@@ -295,7 +298,7 @@ mod tests {
 	#[test]
 	fn update_token_price() {
 		test_encode_decode_identity(
-			Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateTokenPrice {
+			ConnectorMessage::UpdateTokenPrice {
 				pool_id: 1,
 				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 				price: Rate::one(),
@@ -307,7 +310,7 @@ mod tests {
 	#[test]
 	fn update_member() {
 		test_encode_decode_identity(
-				Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateMember {
+				ConnectorMessage::UpdateMember {
 					pool_id: 2,
 					tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 					address: <[u8; 32]>::from_hex(
@@ -328,7 +331,7 @@ mod tests {
 		);
 
 		test_encode_decode_identity(
-				Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+				ConnectorMessage::Transfer {
 					pool_id: 1,
 					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 					domain: domain_address.clone().into(),
@@ -342,7 +345,7 @@ mod tests {
 	#[test]
 	fn transfer_to_centrifuge() {
 		test_encode_decode_identity(
-				Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
+				ConnectorMessage::Transfer {
 					pool_id: 1,
 					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 					domain: Domain::Centrifuge,
