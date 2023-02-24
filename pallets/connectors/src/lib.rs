@@ -508,9 +508,10 @@ pub mod pallet {
 				Error::<T>::InvalidIncomingMessageOrigin
 			);
 
-			let message = Message::decode(&mut bytes.as_slice()).map_err(|_| Error::<T>::InvalidIncomingMessage)?;
-
+			let message = Message::decode(&mut bytes.as_slice())
+				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
 			Self::deposit_event(Event::IncomingMessage { sender, message });
+
 			Ok(())
 		}
 	}
