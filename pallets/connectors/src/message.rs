@@ -103,43 +103,35 @@ impl<
 		let call_type = input.read_byte()?;
 
 		match call_type {
-			5 => {
-				let mut pool_id_bytes = [0; 8];
-				input.read(&mut pool_id_bytes[..])?;
-				pool_id_bytes.reverse();
-				let pool_id = PoolId::decode(&mut pool_id_bytes.as_slice())?;
-
-				let mut tranche_id_bytes = [0; 16];
-				input.read(&mut tranche_id_bytes[..])?;
-				let tranche_id = TrancheId::decode(&mut tranche_id_bytes.as_slice())?;
-
-				let mut domain_bytes = [0; 9];
-				input.read(&mut domain_bytes[..])?;
-				let domain = Domain::decode(&mut domain_bytes.as_slice())?;
-
-				let mut address: Address = [0; 32];
-				input.read(&mut address[..])?;
-
-				let mut amount_bytes = [0; 16];
-				input.read(&mut amount_bytes[..])?;
-				amount_bytes.reverse();
-				let amount = Balance::decode(&mut amount_bytes.as_slice())?;
-
-				return Ok(Self::Transfer {
-					pool_id,
-					tranche_id,
-					domain,
-					address,
-					amount,
-				});
-			}
-			_ => {
-				return Err(codec::Error::from(
-					"Unsupported decoding for this Message variant",
-				))
-			}
+			5 => Ok(Self::Transfer {
+				pool_id: decode_be_bytes::<PoolId, 8, _>(input)?,
+				tranche_id: decode::<TrancheId, 16, _>(input)?,
+				domain: decode::<Domain, 9, _>(input)?,
+				address: decode::<Address, 32, _>(input)?,
+				amount: decode_be_bytes::<Balance, 16, _>(input)?,
+			}),
+			_ => Err(codec::Error::from(
+				"Unsupported decoding for this Message variant",
+			)),
 		}
 	}
+}
+
+/// Decode a type O by reading S bytes from I. Those bytes are expected to be encoded
+/// as big-endian and thus needs reversing to little-endian before decoding to O.
+fn decode_be_bytes<O: Decode, const S: usize, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+	let mut bytes = [0; S];
+	input.read(&mut bytes[..])?;
+	bytes.reverse();
+
+	O::decode(&mut bytes.as_slice())
+}
+
+fn decode<O: Decode, const S: usize, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+	let mut bytes = [0; S];
+	input.read(&mut bytes[..])?;
+
+	O::decode(&mut bytes.as_slice())
 }
 
 impl<
