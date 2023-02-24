@@ -250,6 +250,8 @@ mod pallet {
 		PoolNotFound,
 		/// Emits when loan doesn't exist
 		LoanNotFound,
+		/// Emits when a loan exist but it's not active
+		LoanNotActive,
 		/// Emits when a write-off state is not found in a policy for a specific loan
 		NoValidWriteOffState,
 		/// Emits when the NFT owner is not found
@@ -708,7 +710,13 @@ mod pallet {
 					let (loan, last_updated) = active_loans
 						.iter_mut()
 						.find(|(loan, _)| loan.loan_id() == loan_id)
-						.ok_or(Error::<T>::LoanNotFound)?;
+						.ok_or_else(|| {
+							if CreatedLoans::<T>::contains_key(pool_id, loan_id) {
+								Error::<T>::LoanNotActive
+							} else {
+								Error::<T>::LoanNotFound
+							}
+						})?;
 
 					*last_updated = (*last_updated).max(portfolio.last_updated());
 					let old_pv = loan.present_value_at(*last_updated)?;
