@@ -2,24 +2,28 @@ mod builder;
 mod permissions;
 mod pools;
 
+use std::time::Duration;
+
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
-	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64,
+	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64, Hooks, UnixTime,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	FixedU128,
 };
 
 use self::{permissions as pallet_mock_permissions, pools as pallet_mock_pools};
 use crate as pallet_loans;
 
-pub const SLOT_MS: u64 = 10_000;
+pub const BLOCK_TIME: Duration = Duration::from_secs(10);
+pub const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
+pub const DAY_IN_BLOCKS: u64 = 24 * 3600 / BLOCK_TIME.as_secs();
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
@@ -51,6 +55,7 @@ pub type Rate = FixedU128;
 pub type CurrencyId = u32;
 pub type PoolId = u32;
 pub type TrancheId = u64;
+pub type LoanId = u64;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -59,7 +64,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
-		Time: pallet_timestamp,
+		Timer: pallet_timestamp,
 		Balances: pallet_balances,
 		Uniques: pallet_uniques,
 		InterestAccrual: pallet_interest_accrual,
@@ -102,7 +107,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<SLOT_MS>;
+	type MinimumPeriod = ConstU64<BLOCK_TIME_MS>;
 	type Moment = Moment;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
@@ -146,7 +151,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type InterestRate = Rate;
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Time;
+	type Time = Timer;
 	type Weights = ();
 }
 
@@ -168,7 +173,7 @@ impl pallet_loans::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
 	type ItemId = ItemId;
-	type LoanId = u64;
+	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type NonFungible = Uniques;
@@ -176,7 +181,7 @@ impl pallet_loans::Config for Runtime {
 	type Pool = pallet_mock_pools::Pallet<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
-	type Time = Time;
+	type Time = Timer;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -186,7 +191,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {
-		Time::set_timestamp(SLOT_MS);
+		advance_block_time(1);
 
 		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_A, &ASSET_AA.1, &BORROWER).unwrap();
@@ -197,4 +202,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		Uniques::mint_into(&COLLECTION_B, &ASSET_BB.1, &BORROWER).unwrap();
 	});
 	ext
+}
+
+pub fn now() -> Duration {
+	<Timer as UnixTime>::now()
+}
+
+pub fn advance_block_time(blocks: u64) {
+	Timer::set_timestamp(Timer::get() + BLOCK_TIME_MS * blocks);
+	InterestAccrual::on_initialize(System::current_block_number() + blocks);
 }

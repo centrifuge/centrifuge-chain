@@ -44,8 +44,6 @@ pub enum BorrowLoanError {
 	MaxAmountExceeded,
 	/// Emits when the loan can not be borrowed because the loan is written off
 	WrittenOffRestriction,
-	/// Emits when maturity has passed and borrower tried to borrow more
-	MaturityDatePassed,
 }
 
 /// Error related to loan borrowing
@@ -125,7 +123,7 @@ pub enum PortfolioValuationUpdateType {
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffState<Rate> {
 	/// Number in days after the maturity has passed at which this write off policy is valid
-	overdue_days: u32,
+	pub overdue_days: u32,
 
 	/// Percentage of present value we are going to write off on a loan
 	pub percentage: Rate,
@@ -190,7 +188,7 @@ where
 /// Specify the expected repayments date
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum Maturity {
-	/// Fixed point in time
+	/// Fixed point in time, in secs
 	Fixed(Moment),
 }
 
@@ -198,6 +196,12 @@ impl Maturity {
 	pub fn date(&self) -> Moment {
 		match self {
 			Maturity::Fixed(moment) => *moment,
+		}
+	}
+
+	pub fn is_valid(&self, now: Moment) -> bool {
+		match self {
+			Maturity::Fixed(moment) => *moment >= now,
 		}
 	}
 }
@@ -231,7 +235,7 @@ pub struct RepaymentSchedule {
 
 impl RepaymentSchedule {
 	pub fn is_valid(&self, now: Moment) -> bool {
-		self.maturity.date() > now
+		self.maturity.is_valid(now)
 	}
 }
 
@@ -484,16 +488,6 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
-		ensure!(
-			amount <= self.max_borrow_amount()?,
-			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
-		);
-
-		ensure!(
-			self.info.schedule.maturity.date() > T::Time::now().as_secs(),
-			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
-		);
-
 		match self.info.restrictions.borrows {
 			BorrowRestrictions::WrittenOff => {
 				ensure!(
@@ -502,6 +496,11 @@ impl<T: Config> ActiveLoan<T> {
 				)
 			}
 		}
+
+		ensure!(
+			amount <= self.max_borrow_amount()?,
+			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
+		);
 
 		Ok(())
 	}
@@ -525,8 +524,10 @@ impl<T: Config> ActiveLoan<T> {
 		limit: &WriteOffState<T::Rate>,
 		status: &WriteOffStatus<T::Rate>,
 	) -> DispatchResult {
+		let now = T::Time::now().as_secs();
+
 		ensure!(
-			T::Time::now().as_secs() > self.info.schedule.maturity.date(),
+			!self.info.schedule.maturity.is_valid(now),
 			Error::<T>::from(WrittenOffError::MaturityDateNotPassed)
 		);
 
@@ -609,6 +610,8 @@ impl<T: Config> ActiveLoan<T> {
 
 #[cfg(test)]
 mod test_utils {
+	use std::time::Duration;
+
 	use super::*;
 
 	impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
@@ -642,12 +645,13 @@ mod test_utils {
 			self
 		}
 
-		pub fn maturity(mut self, moment: Moment) -> Self {
-			self.schedule = RepaymentSchedule {
-				maturity: Maturity::Fixed(moment),
-				interest_payments: InterestPayments::None,
-				pay_down_schedule: PayDownSchedule::None,
-			};
+		pub fn maturity(mut self, duration: Duration) -> Self {
+			self.schedule.maturity = Maturity::Fixed(duration.as_secs());
+			self
+		}
+
+		pub fn max_borrow_amount(mut self, input: MaxBorrowAmount<Rate>) -> Self {
+			self.restrictions.max_borrow_amount = input;
 			self
 		}
 
