@@ -27,7 +27,7 @@ pub const DAY_IN_BLOCKS: u64 = 24 * 3600 / BLOCK_TIME.as_secs();
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
-pub const BORROWER_2: AccountId = 2;
+pub const OTHER_BORROWER: AccountId = 2;
 pub const NO_BORROWER: AccountId = 10;
 
 pub const COLLECTION_A: CollectionId = 1;
@@ -195,7 +195,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_A, &ASSET_AA.1, &BORROWER).unwrap();
-		Uniques::mint_into(&COLLECTION_A, &ASSET_AB.1, &BORROWER_2).unwrap();
+		Uniques::mint_into(&COLLECTION_A, &ASSET_AB.1, &OTHER_BORROWER).unwrap();
 
 		Uniques::create_collection(&COLLECTION_B, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_B, &ASSET_BA.1, &BORROWER).unwrap();
