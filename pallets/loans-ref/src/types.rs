@@ -436,15 +436,34 @@ impl<T: Config> ActiveLoan<T> {
 		self.info.schedule.maturity.date()
 	}
 
-	/// Returns a penalized version of the interest rate in an absolute way.
-	/// This method first unpenalized the rate based on the current write off status before
-	/// penalize it with the input parameter.
-	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization
-	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
-		self.info
-			.interest_rate
-			.ensure_sub(self.write_off_status.penalty)?
-			.ensure_add(penalty)
+	/// Returns the debt for the current loan.
+	/// If None, it returns the corresponding debt at now().
+	pub fn debt(&self, when: Option<Moment>) -> Result<T::Balance, DispatchError> {
+		// TODO: simplify this once issue
+		// https://github.com/centrifuge/centrifuge-chain/issues/1203 is merged.
+		match when {
+			Some(when) if when != T::Time::now().as_secs() => T::InterestAccrual::previous_debt(
+				self.info.interest_rate,
+				self.normalized_debt,
+				when,
+			),
+			_ => T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt),
+		}
+	}
+
+	pub fn present_value_at(&self, when: Moment) -> Result<T::Balance, DispatchError> {
+		self.present_value(self.debt(None)?, when)
+	}
+
+	/// An optimized version of `ActiveLoan::present_value_at()` when last updated is now.
+	/// Instead of fetch the current deb from the accrual,
+	/// it get it from a cache previously fetched.
+	pub fn current_present_value<C>(&self, rate_cache: &C) -> Result<T::Balance, DispatchError>
+	where
+		C: RateCollection<T::Rate, T::Balance, T::Balance>,
+	{
+		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
+		self.present_value(debt, T::Time::now().as_secs())
 	}
 
 	fn present_value(&self, debt: T::Balance, when: Moment) -> Result<T::Balance, DispatchError> {
@@ -465,25 +484,15 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	pub fn present_value_at(&self, when: Moment) -> Result<T::Balance, DispatchError> {
-		let debt = if when == T::Time::now().as_secs() {
-			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)
-		} else {
-			T::InterestAccrual::previous_debt(self.info.interest_rate, self.normalized_debt, when)
-		}?;
-
-		self.present_value(debt, when)
-	}
-
-	/// An optimized version of `ActiveLoan::latest_present_value()` when last updated is now.
-	/// Instead of fetch the current deb from the accrual,
-	/// it get it from a cache previously fetched.
-	pub fn current_present_value<C>(&self, rate_cache: &C) -> Result<T::Balance, DispatchError>
-	where
-		C: RateCollection<T::Rate, T::Balance, T::Balance>,
-	{
-		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
-		self.present_value(debt, T::Time::now().as_secs())
+	/// Returns a penalized version of the interest rate in an absolute way.
+	/// This method first unpenalized the rate based on the current write off status before
+	/// penalize it with the input parameter.
+	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization
+	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
+		self.info
+			.interest_rate
+			.ensure_sub(self.write_off_status.penalty)?
+			.ensure_add(penalty)
 	}
 
 	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
@@ -493,10 +502,7 @@ impl<T: Config> ActiveLoan<T> {
 				.saturating_sub(self.total_borrowed),
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(T::InterestAccrual::current_debt(
-					self.info.interest_rate,
-					self.normalized_debt,
-				)?),
+				.saturating_sub(self.debt(None)?),
 		})
 	}
 
@@ -519,11 +525,8 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		let current_debt =
-			T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt)?;
-
 		// Only repay until the current debt
-		let amount = amount.min(current_debt);
+		let amount = amount.min(self.debt(None)?);
 
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),

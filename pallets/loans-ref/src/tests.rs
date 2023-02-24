@@ -6,7 +6,7 @@ use super::{
 	mock::*,
 	types::{BorrowLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount, WriteOffState},
 	valuation::{DiscountedCashFlows, ValuationMethod},
-	Error, LastLoanId,
+	ActiveLoans, Error, LastLoanId,
 };
 
 const COLLATERAL_VALUE: Balance = 100;
@@ -21,6 +21,16 @@ fn outstanding_debt_rate(value: f64) -> MaxBorrowAmount<Rate> {
 	MaxBorrowAmount::UpToOutstandingDebt {
 		advance_rate: Rate::from_float(value),
 	}
+}
+
+fn current_debt(loan_id: LoanId) -> Balance {
+	ActiveLoans::<Runtime>::get(POOL_A)
+		.iter()
+		.find(|(loan, _)| loan.loan_id() == loan_id)
+		.unwrap()
+		.0
+		.debt(None)
+		.unwrap()
 }
 
 mod create_loan {
@@ -186,7 +196,7 @@ mod borrow_loan {
 		));
 	}
 
-	fn config_mocks(withdraw_amount: u128) {
+	fn config_mocks(withdraw_amount: Balance) {
 		MockPools::mock_withdraw(move |pool_id, to, amount| {
 			assert_eq!(to, BORROWER);
 			assert_eq!(pool_id, POOL_A);
@@ -237,6 +247,7 @@ mod borrow_loan {
 					loan_id,
 					amount
 				));
+				assert_eq!(amount, current_debt(loan_id));
 			});
 		}
 	}
@@ -278,6 +289,7 @@ mod borrow_loan {
 				loan_id,
 				COLLATERAL_VALUE / 2
 			));
+			assert_eq!(COLLATERAL_VALUE / 2, current_debt(loan_id));
 
 			assert_ok!(Loans::borrow(
 				RuntimeOrigin::signed(BORROWER),
@@ -285,6 +297,7 @@ mod borrow_loan {
 				loan_id,
 				COLLATERAL_VALUE / 2
 			));
+			assert_eq!(COLLATERAL_VALUE, current_debt(loan_id));
 
 			// At this point the loan has been totally borrowed.
 			let extra = 1;
@@ -380,7 +393,7 @@ mod repay_loan {
 
 	const COLLATERAL_VALUE: Balance = 100;
 
-	pub fn config_mocks(deposit_amount: u128) {
+	pub fn config_mocks(deposit_amount: Balance) {
 		MockPools::mock_deposit(move |pool_id, to, amount| {
 			assert_eq!(to, BORROWER);
 			assert_eq!(pool_id, POOL_A);
