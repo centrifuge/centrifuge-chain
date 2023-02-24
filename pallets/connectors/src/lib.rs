@@ -14,7 +14,7 @@
 use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
-use cfg_utils::vec_to_fixed_array;
+use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, EncodeLike, Input, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},

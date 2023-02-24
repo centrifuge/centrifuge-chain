@@ -13,6 +13,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode, Input};
 use sp_std::{cmp::min, vec::Vec};
 
 /// Build a fixed-size array using as many elements from `src` as possible without
@@ -26,13 +27,41 @@ pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
 	dest
 }
 
+/// Encode a value in its big-endian representation of which all we know is that it
+/// implements Encode. We use this for number types to make sure they are encoded
+/// the way they are expected to be decoded on the Solidity side.
+pub fn to_be(x: impl Encode) -> Vec<u8> {
+	let mut output = x.encode();
+	output.reverse();
+	output
+}
+
+/// Decode a type O by reading S bytes from I. Those bytes are expected to be encoded
+/// as big-endian and thus needs reversing to little-endian before decoding to O.
+pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
+	input: &mut I,
+) -> Result<O, codec::Error> {
+	let mut bytes = [0; S];
+	input.read(&mut bytes[..])?;
+	bytes.reverse();
+
+	O::decode(&mut bytes.as_slice())
+}
+
+/// Decode a type 0 by reading S bytes from I.
+pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+	let mut bytes = [0; S];
+	input.read(&mut bytes[..])?;
+
+	O::decode(&mut bytes.as_slice())
+}
+
 /// Function that initializes the frame system & Aura, so a timestamp can be set and pass validation
 #[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
 where
 	T: pallet_aura::Config + frame_system::Config + pallet_timestamp::Config,
 {
-	use codec::Encode;
 	use frame_support::traits::Hooks;
 	use sp_consensus_aura::AURA_ENGINE_ID;
 	use sp_runtime::{Digest, DigestItem};

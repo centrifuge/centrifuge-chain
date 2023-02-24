@@ -1,7 +1,8 @@
 use cfg_primitives::Moment;
+use cfg_utils::{decode, decode_be_bytes, to_be};
+use codec::{Decode, Encode, EncodeLike, Input};
+use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
-
-use crate::*;
 
 /// Address type
 /// Note: It can be used to represent any address type with a length <= 32 bytes;
@@ -139,26 +140,6 @@ impl<
 	}
 }
 
-/// Decode a type O by reading S bytes from I. Those bytes are expected to be encoded
-/// as big-endian and thus needs reversing to little-endian before decoding to O.
-pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
-	input: &mut I,
-) -> Result<O, codec::Error> {
-	let mut bytes = [0; S];
-	input.read(&mut bytes[..])?;
-	bytes.reverse();
-
-	O::decode(&mut bytes.as_slice())
-}
-
-/// Decode a type 0 by reading S bytes from I.
-pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, codec::Error> {
-	let mut bytes = [0; S];
-	input.read(&mut bytes[..])?;
-
-	O::decode(&mut bytes.as_slice())
-}
-
 impl<
 		Domain: Encode + Decode,
 		PoolId: Encode + Decode,
@@ -239,16 +220,9 @@ fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
 	message
 }
 
-/// Encode a value in its big-endian representation. We use this for number types to make
-/// sure they are encoded the way they are expected to be decoded on the Solidity side.
-fn to_be(x: impl Encode) -> Vec<u8> {
-	let mut output = x.encode();
-	output.reverse();
-	output
-}
-
 #[cfg(test)]
 mod tests {
+	use cfg_primitives::{Balance, PoolId, TrancheId};
 	use cfg_types::fixed_point::Rate;
 	use cfg_utils::vec_to_fixed_array;
 	use codec::{Decode, Encode};
@@ -256,10 +230,7 @@ mod tests {
 	use sp_runtime::traits::One;
 
 	use super::*;
-
-	type PoolId = u64;
-	type TrancheId = [u8; 16];
-	type Balance = cfg_primitives::Balance;
+	use crate::{Domain, DomainAddress};
 
 	#[test]
 	fn invalid() {
