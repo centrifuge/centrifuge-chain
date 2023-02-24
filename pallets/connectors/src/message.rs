@@ -169,11 +169,10 @@ impl<
 		match self {
 			Message::Invalid => vec![self.call_type()],
 			Message::AddPool { pool_id } => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-				message.append(&mut to_be(pool_id));
-
-				message
+				encoded_message(
+					self.call_type(),
+					vec![to_be(pool_id)],
+				)
 			}
 			Message::AddTranche {
 				pool_id,
@@ -182,28 +181,30 @@ impl<
 				token_symbol,
 				price,
 			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-				message.append(&mut to_be(pool_id));
-				message.append(&mut tranche_id.encode());
-				message.append(&mut token_name.encode());
-				message.append(&mut token_symbol.encode());
-				message.append(&mut to_be(price));
-
-				message
+				encoded_message(
+					self.call_type(),
+					vec![
+						to_be(pool_id),
+						tranche_id.encode(),
+						token_name.encode(),
+						token_symbol.encode(),
+						to_be(price),
+					]
+				)
 			}
 			Message::UpdateTokenPrice {
 				pool_id,
 				tranche_id,
 				price,
 			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-				message.append(&mut to_be(pool_id));
-				message.append(&mut tranche_id.encode());
-				message.append(&mut to_be(price));
-
-				message
+				encoded_message(
+					self.call_type(),
+					vec![
+						to_be(pool_id),
+						tranche_id.encode(),
+						to_be(price),
+					]
+				)
 			}
 			Message::UpdateMember {
 				pool_id,
@@ -211,14 +212,15 @@ impl<
 				address,
 				valid_until,
 			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-				message.append(&mut to_be(pool_id));
-				message.append(&mut tranche_id.encode());
-				message.append(&mut address.encode());
-				message.append(&mut valid_until.to_be_bytes().to_vec());
-
-				message
+				encoded_message(
+					self.call_type(),
+					vec![
+						to_be(pool_id),
+						tranche_id.encode(),
+						address.encode(),
+						valid_until.to_be_bytes().to_vec(),
+					]
+				)
 			}
 			Message::Transfer {
 				pool_id,
@@ -227,18 +229,30 @@ impl<
 				address,
 				amount,
 			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-				message.append(&mut to_be(pool_id));
-				message.append(&mut tranche_id.encode());
-				message.append(&mut domain.encode());
-				message.append(&mut address.encode());
-				message.append(&mut to_be(amount));
-
-				message
+				encoded_message(
+					self.call_type(),
+					vec![
+						to_be(pool_id),
+						tranche_id.encode(),
+						domain.encode(),
+						address.encode(),
+						to_be(amount),
+					]
+				)
 			}
 		}
 	}
+}
+
+fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
+	let mut message: Vec<u8> = vec![];
+
+	message.push(call_type);
+	for x in fields {
+		message.append(&mut x.clone());
+	}
+
+	message
 }
 
 /// Encode a value in its big-endian representation. We use this for number types to make
@@ -258,7 +272,6 @@ mod tests {
 	use sp_runtime::traits::One;
 
 	use super::*;
-	use crate::{Domain, DomainAddress, Message};
 
 	type PoolId = u64;
 	type TrancheId = [u8; 16];
