@@ -125,6 +125,22 @@ mod create_loan {
 			);
 		});
 	}
+
+	#[test]
+	fn with_wrong_interest_rate() {
+		new_test_ext().execute_with(|| {
+			config_mocks(POOL_A);
+
+			let loan = LoanInfo::new(ASSET_AA)
+				.maturity(now())
+				.interest_rate(Rate::from_float(1.1));
+
+			assert_noop!(
+				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
+				pallet_interest_accrual::Error::<Runtime>::InvalidRate
+			);
+		});
+	}
 }
 
 mod borrow_loan {
@@ -133,7 +149,6 @@ mod borrow_loan {
 	const AMOUNT: Balance = 100;
 
 	pub fn config_mocks(withdraw_amount: u128) {
-		create_loan::config_mocks(POOL_A);
 		MockPools::mock_withdraw(move |pool_id, to, amount| {
 			assert_eq!(to, BORROWER);
 			assert_eq!(pool_id, POOL_A);
@@ -143,6 +158,8 @@ mod borrow_loan {
 	}
 
 	fn create_successful_loan(max_borrow_amount: MaxBorrowAmount<Rate>) -> LoanId {
+		create_loan::config_mocks(POOL_A);
+
 		assert_ok!(Loans::create(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
@@ -287,6 +304,7 @@ mod borrow_loan {
 		}
 	}
 
+	#[test]
 	fn twice() {
 		new_test_ext().execute_with(|| {
 			config_mocks(AMOUNT / 2);

@@ -299,15 +299,22 @@ pub struct LoanInfo<Asset, Balance, Rate> {
 	interest_rate: Rate,
 }
 
+impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate> {
+	pub fn collateral(&self) -> &Asset {
+		&self.collateral
+	}
+}
+
+// =================================================================
+//  High level types related to the pallet's Config and Error types
+// -----------------------------------------------------------------
+
 impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
 where
 	Rate: FixedPointNumber,
 {
-	pub fn collateral(&self) -> &Asset {
-		&self.collateral
-	}
-
-	pub fn validate<T: Config>(&self, now: Moment) -> DispatchResult {
+	/// Validates the loan information againts to a T configuration.
+	pub fn validate<T: Config<Rate = Rate>>(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
 			Error::<T>::from(CreateLoanError::InvalidValuationMethod)
@@ -318,13 +325,19 @@ where
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
+		// TODO: correct rate validation.
+		// Ideally we would like only to check here if the yearly rate is valid,
+		// without reference_yearly_rate() and popule the accrual storage.
+		// Once the loan becomes active, it will be referenced.
+		// Thus, a validate method should be inmutable, without alter any storage.
+		// This can be easier modeled once:
+		// https://github.com/centrifuge/centrifuge-chain/issues/1189 be merged.
+		// By now, the following line does the trick.
+		T::InterestAccrual::convert_additive_rate_to_per_sec(self.interest_rate)?;
+
 		Ok(())
 	}
 }
-
-// =================================================================
-//  High level types related to the pallet's Config and Error types
-// -----------------------------------------------------------------
 
 pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 pub type LoanInfoOf<T> = LoanInfo<AssetOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
