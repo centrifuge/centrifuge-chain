@@ -35,6 +35,7 @@ pub trait WeightInfo {
 	fn update_token_price() -> Weight;
 	fn update_member() -> Weight;
 	fn transfer() -> Weight;
+	fn add_connector() -> Weight;
 	fn set_domain_router() -> Weight;
 }
 
@@ -42,6 +43,12 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn handle() -> Weight {
+		(Weight::from_ref_time(32_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64)))
+	}
+
+	fn add_connector() -> Weight {
 		(Weight::from_ref_time(32_000_000_u64)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64)))
@@ -87,6 +94,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn handle() -> Weight {
+		(Weight::from_ref_time(32_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64)))
+	}
+
+	fn add_connector() -> Weight {
 		(Weight::from_ref_time(32_000_000_u64)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64)))

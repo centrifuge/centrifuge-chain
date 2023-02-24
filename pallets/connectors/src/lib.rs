@@ -300,7 +300,7 @@ pub mod pallet {
 
 		/// Add an AccountId to the set of known connectors, allowing that origin
 		/// to send incoming messages.
-		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
+		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
 		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			<KnownConnectors<T>>::insert(connector, ());
@@ -500,7 +500,7 @@ pub mod pallet {
 		/// come in through XCM. Probably even handle it in a separate pallet? For now, let's have a
 		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
 		#[pallet::call_index(99)]
-		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
+		#[pallet::weight(< T as Config >::WeightInfo::handle())]
 		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
 			ensure!(
