@@ -242,6 +242,11 @@ mod create_loan {
 
 			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
 			assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
+
+			assert_eq!(
+				Uniques::owner(ASSET_AA.0, ASSET_AA.1).unwrap(),
+				POOL_A_ACCOUNT
+			);
 		});
 	}
 }
@@ -472,6 +477,73 @@ mod repay_loan {
 	}
 
 	#[test]
+	fn without_borrow_first() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_noop!(
+				Loans::repay(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					COLLATERAL_VALUE
+				),
+				Error::<Runtime>::LoanNotActive
+			);
+		});
+	}
+
+	#[test]
+	fn with_wrong_loan_id() {
+		new_test_ext().execute_with(|| {
+			config_mocks(COLLATERAL_VALUE);
+
+			assert_noop!(
+				Loans::repay(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
+				Error::<Runtime>::LoanNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn from_other_borrower() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_noop!(
+				Loans::repay(
+					RuntimeOrigin::signed(OTHER_BORROWER),
+					POOL_A,
+					loan_id,
+					COLLATERAL_VALUE
+				),
+				Error::<Runtime>::NotLoanBorrower
+			);
+		});
+	}
+
+	#[test]
+	fn has_been_written_off() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			util::advance_time_and_write_off(loan_id);
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE
+			));
+		});
+	}
+
+	#[test]
 	fn with_success() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
@@ -581,73 +653,6 @@ mod repay_loan {
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
-		});
-	}
-
-	#[test]
-	fn without_borrow_first() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
-
-			config_mocks(COLLATERAL_VALUE);
-			assert_noop!(
-				Loans::repay(
-					RuntimeOrigin::signed(BORROWER),
-					POOL_A,
-					loan_id,
-					COLLATERAL_VALUE
-				),
-				Error::<Runtime>::LoanNotActive
-			);
-		});
-	}
-
-	#[test]
-	fn with_wrong_loan_id() {
-		new_test_ext().execute_with(|| {
-			config_mocks(COLLATERAL_VALUE);
-
-			assert_noop!(
-				Loans::repay(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
-				Error::<Runtime>::LoanNotFound
-			);
-		});
-	}
-
-	#[test]
-	fn from_other_borrower() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
-			util::borrow_loan(loan_id, COLLATERAL_VALUE);
-
-			config_mocks(COLLATERAL_VALUE);
-			assert_noop!(
-				Loans::repay(
-					RuntimeOrigin::signed(OTHER_BORROWER),
-					POOL_A,
-					loan_id,
-					COLLATERAL_VALUE
-				),
-				Error::<Runtime>::NotLoanBorrower
-			);
-		});
-	}
-
-	#[test]
-	fn has_been_written_off() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
-			util::borrow_loan(loan_id, COLLATERAL_VALUE);
-
-			util::advance_time_and_write_off(loan_id);
-
-			config_mocks(COLLATERAL_VALUE);
-			assert_ok!(Loans::repay(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				COLLATERAL_VALUE
-			));
 		});
 	}
 }
@@ -913,6 +918,8 @@ mod close_loan {
 				POOL_A,
 				loan_id
 			));
+
+			assert_eq!(Uniques::owner(ASSET_AA.0, ASSET_AA.1).unwrap(), BORROWER);
 		});
 	}
 
@@ -926,6 +933,8 @@ mod close_loan {
 				POOL_A,
 				loan_id
 			));
+
+			assert_eq!(Uniques::owner(ASSET_AA.0, ASSET_AA.1).unwrap(), BORROWER);
 		});
 	}
 }
