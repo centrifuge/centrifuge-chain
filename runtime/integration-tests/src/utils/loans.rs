@@ -23,7 +23,7 @@ use pallet_loans::{
 };
 use pallet_uniques::Call as UniquesCall;
 
-use crate::{chain::centrifuge::RuntimeCall, pools::utils::tokens::rate_from_percent};
+use crate::{chain::centrifuge::RuntimeCall, utils::tokens::rate_from_percent};
 
 /// Structure that manages collateral and loan nft ids
 pub struct NftManager {

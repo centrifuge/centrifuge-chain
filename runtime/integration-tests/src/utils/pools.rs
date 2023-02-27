@@ -35,7 +35,7 @@ use crate::{
 	chain::centrifuge::{
 		Loans, OrmlTokens, Permissions, PoolSystem, RuntimeCall, Timestamp, PARA_ID,
 	},
-	pools::utils::{
+	utils::{
 		accounts::Keyring,
 		env::TestEnv,
 		loans::NftManager,
