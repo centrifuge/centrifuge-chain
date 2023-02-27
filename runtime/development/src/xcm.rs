@@ -35,7 +35,7 @@ use runtime_common::{
 use sp_runtime::traits::{Convert, Zero};
 use xcm::latest::prelude::*;
 use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
 	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentIsPreset, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
@@ -323,32 +323,8 @@ pub type LocationToAccountId = (
 	// TODO(nuno): We probably should drop this because this allows for the relay-chain
 	// to impersonate a local, native user.
 	AccountId32Aliases<RelayNetwork, AccountId>,
-	AccountIdHash<AccountId>,
+	Account32Hash<RelayNetwork, AccountId>,
 );
-
-use codec::Encode;
-use sp_io::hashing::blake2_256;
-use sp_std::borrow::Borrow;
-
-// A wildcard to convert a MultiLocation to a Centrifuge AccountId
-pub struct AccountIdHash<AccountId>(PhantomData<AccountId>);
-impl<AccountId: From<[u8; 32]> + Into<[u8; 32]> + Clone>
-	xcm_executor::traits::Convert<MultiLocation, AccountId> for AccountIdHash<AccountId>
-{
-	fn convert_ref(location: impl Borrow<MultiLocation>) -> Result<AccountId, ()> {
-		let hash: [u8; 32] = ("multiloc", location.borrow())
-			.borrow()
-			.using_encoded(blake2_256);
-		let account_id: AccountId = hash.into();
-		log::trace!(target: "xcm::convert_origin", "AccountIdHash with location {:?} converting to AccountId {}", location.borrow(), hex::encode(hash));
-
-		Ok(account_id)
-	}
-
-	fn reverse_ref(_: impl Borrow<AccountId>) -> Result<MultiLocation, ()> {
-		Err(())
-	}
-}
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
