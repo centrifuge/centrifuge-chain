@@ -679,8 +679,10 @@ mod pallet {
 					)?;
 
 					let result = f(&mut loan);
+
 					let last_updated = Self::now();
 					let new_pv = loan.present_value_at(last_updated)?;
+
 					Self::update_portfolio_valuation_with_pv(
 						pool_id,
 						portfolio,
@@ -727,6 +729,7 @@ mod pallet {
 					let new_pv = loan.present_value_at(*last_updated)?;
 
 					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
+
 					result
 				})
 			})

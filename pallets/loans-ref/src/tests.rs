@@ -649,7 +649,6 @@ mod write_off_loan {
 
 			valid
 		});
-		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
 	}
 
 	fn aux_set_up_policy() {
@@ -833,6 +832,9 @@ mod write_off_loan {
 	// - multiple write off
 	// - addmin write off with values less than policy
 	// - interest rate change after written off
+	// - write_down
+	//   - write_up being less than policy.
+	//   - write_up being higher than policy.
 }
 
 mod close_loan {
@@ -841,29 +843,119 @@ mod close_loan {
 	//TODO
 }
 
-/*
 mod write_off_policy {
 	use super::*;
 
-	fn config_mocks() {
-		todo!()
+	fn config_mocks(pool_id: PoolId) {
+		MockPermissions::mock_has(move |scope, who, role| {
+			let valid = matches!(scope, PermissionScope::Pool(id) if pool_id == id)
+				&& matches!(role, Role::PoolRole(PoolRole::LoanAdmin))
+				&& who == ADMIN;
+			valid
+		});
+		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
 	}
 
 	#[test]
-	fn with_wrong_loan_id() {
+	fn with_wrong_permissions() {
 		new_test_ext().execute_with(|| {
-			config_mocks();
-
-			Loans::update_write_off_policy(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
+			config_mocks(POOL_A);
 
 			assert_noop!(
-				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
-				Error::<Runtime>::LoanNotFound
+				Loans::update_write_off_policy(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					vec![WriteOffState {
+						overdue_days: 1,
+						percentage: Rate::from_float(0.5),
+						penalty: Rate::from_float(0.5),
+					}]
+					.try_into()
+					.unwrap(),
+				),
+				BadOrigin
 			);
 		});
 	}
+
+	#[test]
+	fn with_wrong_pool() {
+		new_test_ext().execute_with(|| {
+			config_mocks(POOL_B);
+
+			assert_noop!(
+				Loans::update_write_off_policy(
+					RuntimeOrigin::signed(ADMIN),
+					POOL_B,
+					vec![WriteOffState {
+						overdue_days: 1,
+						percentage: Rate::from_float(0.5),
+						penalty: Rate::from_float(0.5),
+					}]
+					.try_into()
+					.unwrap(),
+				),
+				Error::<Runtime>::PoolNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn with_overwrite() {
+		new_test_ext().execute_with(|| {
+			config_mocks(POOL_A);
+
+			assert_ok!(Loans::update_write_off_policy(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				vec![WriteOffState {
+					overdue_days: 1,
+					percentage: Rate::from_float(0.5),
+					penalty: Rate::from_float(0.5),
+				}]
+				.try_into()
+				.unwrap(),
+			));
+
+			assert_ok!(Loans::update_write_off_policy(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				vec![].try_into().unwrap(),
+			));
+		});
+	}
+
+	#[test]
+	fn with_success() {
+		new_test_ext().execute_with(|| {
+			config_mocks(POOL_A);
+
+			assert_ok!(Loans::update_write_off_policy(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				vec![
+					WriteOffState {
+						overdue_days: 1,
+						percentage: Rate::from_float(0.2),
+						penalty: Rate::from_float(0.2),
+					},
+					WriteOffState {
+						overdue_days: 4,
+						percentage: Rate::from_float(0.5),
+						penalty: Rate::from_float(0.5),
+					},
+					WriteOffState {
+						overdue_days: 9,
+						percentage: Rate::from_float(0.3),
+						penalty: Rate::from_float(0.3),
+					}
+				]
+				.try_into()
+				.unwrap(),
+			));
+		});
+	}
 }
-*/
 
 mod portfolio_valuation {
 	use super::*;
