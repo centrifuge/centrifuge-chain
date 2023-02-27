@@ -123,7 +123,7 @@ impl<
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			3 => Ok(Self::UpdateTokenPrice {
-				pool_id: decode_be_bytes::<8_, _, _>(input)?,
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
