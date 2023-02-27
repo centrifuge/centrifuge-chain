@@ -524,6 +524,20 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
+	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
+		self.ensure_can_borrow(amount)?;
+
+		self.total_borrowed.ensure_add_assign(amount)?;
+
+		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+			self.info.interest_rate,
+			self.normalized_debt,
+			Adjustment::Increase(amount),
+		)?;
+
+		Ok(())
+	}
+
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
 		// Only repay until the current debt
 		let amount = amount.min(self.debt(None)?);
@@ -531,6 +545,20 @@ impl<T: Config> ActiveLoan<T> {
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),
 		};
+
+		Ok(amount)
+	}
+
+	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
+		let amount = self.ensure_can_repay(amount)?;
+
+		self.total_repaid.ensure_add_assign(amount)?;
+
+		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+			self.info.interest_rate,
+			self.normalized_debt,
+			Adjustment::Decrease(amount),
+		)?;
 
 		Ok(amount)
 	}
@@ -555,43 +583,6 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	fn ensure_can_close(&self) -> DispatchResult {
-		ensure!(
-			self.normalized_debt.is_zero(),
-			Error::<T>::from(CloseLoanError::NotFullyRepaid)
-		);
-
-		Ok(())
-	}
-
-	pub fn borrow(&mut self, amount: T::Balance) -> DispatchResult {
-		self.ensure_can_borrow(amount)?;
-
-		self.total_borrowed.ensure_add_assign(amount)?;
-
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate,
-			self.normalized_debt,
-			Adjustment::Increase(amount),
-		)?;
-
-		Ok(())
-	}
-
-	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		let amount = self.ensure_can_repay(amount)?;
-
-		self.total_repaid.ensure_add_assign(amount)?;
-
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate,
-			self.normalized_debt,
-			Adjustment::Decrease(amount),
-		)?;
-
-		Ok(amount)
-	}
-
 	pub fn write_off(
 		&mut self,
 		limit: &WriteOffState<T::Rate>,
@@ -613,6 +604,15 @@ impl<T: Config> ActiveLoan<T> {
 		self.info.interest_rate = next_interest_rate;
 
 		T::InterestAccrual::unreference_rate(prev_interest_rate)
+	}
+
+	fn ensure_can_close(&self) -> DispatchResult {
+		ensure!(
+			self.normalized_debt.is_zero(),
+			Error::<T>::from(CloseLoanError::NotFullyRepaid)
+		);
+
+		Ok(())
 	}
 
 	pub fn close(self) -> Result<(LoanInfoOf<T>, T::AccountId), DispatchError> {

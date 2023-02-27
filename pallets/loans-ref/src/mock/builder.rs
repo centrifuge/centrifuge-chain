@@ -140,13 +140,12 @@ macro_rules! execute_call {
 
 #[cfg(test)]
 mod tests {
-
-	struct Example;
-
 	trait TraitExample {
 		fn function_locator() -> String;
 		fn call_locator() -> String;
 	}
+
+	struct Example;
 
 	impl Example {
 		fn mock_function_locator() -> String {

@@ -501,8 +501,8 @@ pub mod pallet {
 		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
 			let four_decimals = T::InterestRate::saturating_from_integer(10000);
 			ensure!(
-				interest_rate_per_year <= One::one()
-					&& interest_rate_per_year > Zero::zero()
+				interest_rate_per_year < One::one()
+					&& interest_rate_per_year >= Zero::zero()
 					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
 						== Zero::zero(),
 				Error::<T>::InvalidRate
