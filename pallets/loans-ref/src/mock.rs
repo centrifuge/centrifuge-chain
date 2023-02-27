@@ -14,7 +14,7 @@ use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup},
 	FixedU128,
 };
 
@@ -22,8 +22,10 @@ use self::{permissions as pallet_mock_permissions, pools as pallet_mock_pools};
 use crate as pallet_loans;
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(10);
-pub const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
-pub const DAY_IN_BLOCKS: u64 = 24 * 3600 / BLOCK_TIME.as_secs();
+pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
+pub const DAY: Duration = Duration::from_secs(24 * 3600);
+
+const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
 
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
@@ -191,7 +193,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {
-		advance_block_time(1);
+		advance_time(BLOCK_TIME);
 
 		Uniques::create_collection(&COLLECTION_A, &BORROWER, &ASSET_COLLECTION_OWNER).unwrap();
 		Uniques::mint_into(&COLLECTION_A, &ASSET_AA.1, &BORROWER).unwrap();
@@ -208,7 +210,7 @@ pub fn now() -> Duration {
 	<Timer as UnixTime>::now()
 }
 
-pub fn advance_block_time(blocks: u64) {
-	Timer::set_timestamp(Timer::get() + BLOCK_TIME_MS * blocks);
-	InterestAccrual::on_initialize(System::current_block_number() + blocks);
+pub fn advance_time(elapsed: Duration) {
+	Timer::set_timestamp(Timer::get() + elapsed.as_millis() as u64);
+	InterestAccrual::on_initialize(0);
 }

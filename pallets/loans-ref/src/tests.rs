@@ -1,6 +1,8 @@
+use std::time::Duration;
+
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::traits::BadOrigin;
+use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 
 use super::{
 	mock::*,
@@ -10,6 +12,7 @@ use super::{
 };
 
 const COLLATERAL_VALUE: Balance = 100;
+const DEFAULT_INTEREST_RATE: f64 = 0.5;
 
 fn total_borrowed_rate(value: f64) -> MaxBorrowAmount<Rate> {
 	MaxBorrowAmount::UpToTotalBorrowed {
@@ -33,6 +36,12 @@ fn current_debt(loan_id: LoanId) -> Balance {
 		.unwrap()
 }
 
+fn compute_debt_for(amount: Balance, elapsed: Duration) -> Balance {
+	// amount * (1 + rate_sec) ^ elapsed
+	((1.0 + DEFAULT_INTEREST_RATE / YEAR.as_secs() as f64).powi(elapsed.as_secs() as i32)
+		* amount as f64) as Balance
+}
+
 mod create_loan {
 	use super::*;
 
@@ -43,7 +52,8 @@ mod create_loan {
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
 			LoanInfo::new(ASSET_AA)
-				.maturity(now())
+				.maturity(now() + YEAR)
+				.interest_rate(Rate::from_float(DEFAULT_INTEREST_RATE))
 				.collateral_value(COLLATERAL_VALUE)
 				.max_borrow_amount(max_borrow_amount)
 		));
@@ -220,7 +230,7 @@ mod borrow_loan {
 			.unwrap()
 		));
 
-		advance_block_time(DAY_IN_BLOCKS);
+		advance_time(YEAR + DAY);
 
 		assert_ok!(Loans::write_off(RuntimeOrigin::signed(0), POOL_A, loan_id));
 	}
@@ -310,6 +320,55 @@ mod borrow_loan {
 	}
 
 	#[test]
+	fn twice_with_elapsed() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_loan::do_it(outstanding_debt_rate(1.0));
+
+			let borrow_amount_1 = COLLATERAL_VALUE / 2;
+			config_mocks(borrow_amount_1);
+
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				borrow_amount_1
+			));
+			assert_eq!(borrow_amount_1, current_debt(loan_id));
+
+			advance_time(YEAR / 2);
+
+			assert_eq!(
+				compute_debt_for(borrow_amount_1, YEAR / 2),
+				current_debt(loan_id)
+			);
+
+			let borrow_amount_2 = COLLATERAL_VALUE - compute_debt_for(borrow_amount_1, YEAR / 2);
+			config_mocks(borrow_amount_2);
+
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				borrow_amount_2
+			));
+
+			assert_eq!(
+				compute_debt_for(borrow_amount_1, YEAR / 2)
+					+ compute_debt_for(borrow_amount_2, Duration::ZERO),
+				current_debt(loan_id)
+			);
+
+			// At this point the loan has been totally borrowed.
+			let extra = 1;
+			config_mocks(extra);
+			assert_noop!(
+				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
+				Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
+			);
+		});
+	}
+
+	#[test]
 	fn with_wrong_loan_id() {
 		new_test_ext().execute_with(|| {
 			config_mocks(COLLATERAL_VALUE);
@@ -345,7 +404,7 @@ mod borrow_loan {
 		new_test_ext().execute_with(|| {
 			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
-			advance_block_time(1);
+			advance_time(YEAR + BLOCK_TIME);
 
 			config_mocks(COLLATERAL_VALUE);
 
@@ -415,6 +474,7 @@ mod repay_loan {
 				loan_id,
 				COLLATERAL_VALUE
 			));
+			assert_eq!(0, current_debt(loan_id));
 		});
 	}
 
@@ -447,13 +507,21 @@ mod repay_loan {
 				loan_id,
 				COLLATERAL_VALUE / 2
 			));
+			assert_eq!(COLLATERAL_VALUE / 2, current_debt(loan_id));
+
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
 				COLLATERAL_VALUE / 2
 			));
+			assert_eq!(0, current_debt(loan_id));
 		});
+	}
+
+	#[test]
+	fn twice_with_elapsed() {
+		// TODO
 	}
 
 	#[test]
