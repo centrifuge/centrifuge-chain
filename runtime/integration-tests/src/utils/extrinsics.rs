@@ -39,7 +39,7 @@ use crate::{
 			SignedExtra as RelaySignedExtra, UncheckedExtrinsic as RelayUnchecked,
 		},
 	},
-	pools::utils::{accounts::Keyring, env::TestEnv},
+	utils::{accounts::Keyring, env::TestEnv},
 };
 
 /// Generates an signed-extrinisc for centrifuge-chain.

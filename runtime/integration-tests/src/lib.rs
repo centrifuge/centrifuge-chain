@@ -16,6 +16,7 @@
 
 mod pools;
 mod runtime_apis;
+mod utils;
 mod xcm;
 
 /// Re-exports the correct runtimes that we run the integration tests with
