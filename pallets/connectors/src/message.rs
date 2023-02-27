@@ -15,6 +15,13 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
+/// A Connector Message
+///
+/// A connector message requires a custom decoding & encoding, meeting the Connector Generic
+/// Message Passing Format (CGMPF): Every message is encoded with a u8 at head flagging the
+/// message type, followed by its field. Integers are big-endian encoded and enum values
+/// (such as `[crate::Domain]`) also have a custom CGMPF implementation, aiming for a
+/// fixed-size encoded representation for each message variant.
 #[derive(Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
@@ -151,7 +158,9 @@ impl<
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![self.call_type()],
-			Message::AddPool { pool_id } => encoded_message(self.call_type(), vec![encode_be(pool_id)]),
+			Message::AddPool { pool_id } => {
+				encoded_message(self.call_type(), vec![encode_be(pool_id)])
+			}
 			Message::AddTranche {
 				pool_id,
 				tranche_id,
@@ -232,8 +241,7 @@ mod tests {
 	use super::*;
 	use crate::{Domain, DomainAddress};
 
-	pub type ConnectorMessage =
-		Message<Domain, PoolId, TrancheId, Balance, Rate>;
+	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
 	#[test]
 	fn invalid() {
