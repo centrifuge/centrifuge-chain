@@ -64,9 +64,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod issuance;
 pub mod mechanism;
 
-use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards};
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards, RewardIssuance};
 use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
@@ -88,6 +89,7 @@ type BalanceOf<T, I> = <<T as Config<I>>::RewardMechanism as RewardMechanism>::B
 
 #[frame_support::pallet]
 pub mod pallet {
+
 	use super::*;
 
 	#[pallet::config]
@@ -119,6 +121,13 @@ pub mod pallet {
 		/// Specify the internal reward mechanism used by this pallet.
 		/// Check available mechanisms at [`mechanism`] module.
 		type RewardMechanism: RewardMechanism;
+
+		/// Type used to identify the income stream for rewards.
+		type RewardIssuance: RewardIssuance<
+			AccountId = Self::AccountId,
+			CurrencyId = Self::CurrencyId,
+			Balance = BalanceOf<Self, I>,
+		>;
 	}
 
 	#[pallet::pallet]
@@ -230,7 +239,7 @@ pub mod pallet {
 			Groups::<T, I>::try_mutate(group_id, |group| {
 				let reward_to_mint = T::RewardMechanism::reward_group(group, reward)?;
 
-				T::Currency::mint_into(
+				T::RewardIssuance::issue_reward(
 					T::RewardCurrency::get(),
 					&T::PalletId::get().into_account_truncating(),
 					reward_to_mint,
