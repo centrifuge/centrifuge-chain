@@ -311,7 +311,6 @@ mod borrow_loan {
 
 			// At this point the loan has been totally borrowed.
 			let extra = 1;
-			config_mocks(extra);
 			assert_noop!(
 				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
 				Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
@@ -320,47 +319,36 @@ mod borrow_loan {
 	}
 
 	#[test]
-	fn twice_with_elapsed() {
+	fn twice_with_elapsed_time() {
 		new_test_ext().execute_with(|| {
-			let loan_id = create_loan::do_it(outstanding_debt_rate(1.0));
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
-			let borrow_amount_1 = COLLATERAL_VALUE / 2;
-			config_mocks(borrow_amount_1);
+			config_mocks(COLLATERAL_VALUE / 2);
 
 			assert_ok!(Loans::borrow(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				borrow_amount_1
+				COLLATERAL_VALUE / 2
 			));
-			assert_eq!(borrow_amount_1, current_debt(loan_id));
+			assert_eq!(COLLATERAL_VALUE / 2, current_debt(loan_id));
 
 			advance_time(YEAR / 2);
 
 			assert_eq!(
-				compute_debt_for(borrow_amount_1, YEAR / 2),
+				compute_debt_for(COLLATERAL_VALUE / 2, YEAR / 2),
 				current_debt(loan_id)
 			);
-
-			let borrow_amount_2 = COLLATERAL_VALUE - compute_debt_for(borrow_amount_1, YEAR / 2);
-			config_mocks(borrow_amount_2);
 
 			assert_ok!(Loans::borrow(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				borrow_amount_2
+				COLLATERAL_VALUE / 2
 			));
-
-			assert_eq!(
-				compute_debt_for(borrow_amount_1, YEAR / 2)
-					+ compute_debt_for(borrow_amount_2, Duration::ZERO),
-				current_debt(loan_id)
-			);
 
 			// At this point the loan has been totally borrowed.
 			let extra = 1;
-			config_mocks(extra);
 			assert_noop!(
 				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
 				Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
@@ -516,12 +504,62 @@ mod repay_loan {
 				COLLATERAL_VALUE / 2
 			));
 			assert_eq!(0, current_debt(loan_id));
+
+			// At this point the loan has been fully repaid.
+			let extra = 1;
+			config_mocks(0);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				extra
+			));
 		});
 	}
 
 	#[test]
-	fn twice_with_elapsed() {
-		// TODO
+	fn twice_with_elapsed_time() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE / 2
+			));
+
+			advance_time(YEAR / 2);
+
+			assert_eq!(
+				compute_debt_for(COLLATERAL_VALUE / 2, YEAR / 2),
+				current_debt(loan_id)
+			);
+
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE / 2
+			));
+
+			// Because of the interest, it has no fully repaid, we need an extra payment.
+			assert_ne!(0, current_debt(loan_id));
+
+			config_mocks(current_debt(loan_id));
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				compute_debt_for(COLLATERAL_VALUE / 2, YEAR / 2)
+					+ compute_debt_for(COLLATERAL_VALUE / 2, Duration::ZERO)
+					- COLLATERAL_VALUE
+			));
+
+			assert_eq!(0, current_debt(loan_id));
+		});
 	}
 
 	#[test]

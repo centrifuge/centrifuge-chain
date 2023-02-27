@@ -452,7 +452,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn present_value_at(&self, when: Moment) -> Result<T::Balance, DispatchError> {
-		self.present_value(self.debt(None)?, when)
+		self.present_value(self.debt(Some(when))?, when)
 	}
 
 	/// An optimized version of `ActiveLoan::present_value_at()` when last updated is now.
