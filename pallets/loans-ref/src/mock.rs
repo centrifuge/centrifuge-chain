@@ -30,6 +30,7 @@ const BLOCK_TIME_MS: u64 = BLOCK_TIME.as_millis() as u64;
 pub const ASSET_COLLECTION_OWNER: AccountId = 1;
 pub const BORROWER: AccountId = 1;
 pub const OTHER_BORROWER: AccountId = 2;
+pub const ADMIN: AccountId = 5;
 pub const NO_BORROWER: AccountId = 10;
 
 pub const COLLECTION_A: CollectionId = 1;

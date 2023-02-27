@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::{traits::BadOrigin, FixedPointNumber};
+use sp_runtime::traits::BadOrigin;
 
 use super::{
 	mock::*,
@@ -40,6 +40,26 @@ fn compute_debt_for(amount: Balance, elapsed: Duration) -> Balance {
 	// amount * (1 + rate_sec) ^ elapsed
 	((1.0 + DEFAULT_INTEREST_RATE / YEAR.as_secs() as f64).powi(elapsed.as_secs() as i32)
 		* amount as f64) as Balance
+}
+
+fn advance_time_and_write_off(loan_id: LoanId) {
+	MockPermissions::mock_has(|_, _, _| true);
+
+	assert_ok!(Loans::update_write_off_policy(
+		RuntimeOrigin::signed(0),
+		POOL_A,
+		vec![WriteOffState {
+			overdue_days: 1,
+			percentage: Rate::from_float(0.1),
+			penalty: Rate::from_float(0.0)
+		}]
+		.try_into()
+		.unwrap()
+	));
+
+	advance_time(YEAR + DAY + BLOCK_TIME);
+
+	assert_ok!(Loans::write_off(RuntimeOrigin::signed(0), POOL_A, loan_id));
 }
 
 mod create_loan {
@@ -213,26 +233,6 @@ mod borrow_loan {
 			assert_eq!(withdraw_amount, amount);
 			Ok(())
 		});
-	}
-
-	fn write_off_loan(loan_id: LoanId) {
-		MockPermissions::mock_has(|_, _, _| true);
-
-		assert_ok!(Loans::update_write_off_policy(
-			RuntimeOrigin::signed(0),
-			POOL_A,
-			vec![WriteOffState {
-				overdue_days: 1,
-				percentage: Rate::from_float(0.1),
-				penalty: Rate::from_float(0.0)
-			}]
-			.try_into()
-			.unwrap()
-		));
-
-		advance_time(YEAR + DAY);
-
-		assert_ok!(Loans::write_off(RuntimeOrigin::signed(0), POOL_A, loan_id));
 	}
 
 	#[test]
@@ -412,7 +412,6 @@ mod borrow_loan {
 			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
 
 			config_mocks(COLLATERAL_VALUE / 2);
-
 			assert_ok!(Loans::borrow(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
@@ -420,7 +419,7 @@ mod borrow_loan {
 				COLLATERAL_VALUE / 2
 			));
 
-			write_off_loan(loan_id);
+			advance_time_and_write_off(loan_id);
 
 			assert_noop!(
 				Loans::borrow(
@@ -610,15 +609,254 @@ mod repay_loan {
 			);
 		});
 	}
+
+	#[test]
+	fn has_been_written_off() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			advance_time_and_write_off(loan_id);
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE
+			));
+		});
+	}
 }
 
 mod write_off_loan {
 	use super::*;
 
-	//TODO
+	fn config_mocks() {
+		MockPermissions::mock_has(move |scope, who, role| {
+			let valid = matches!(scope, PermissionScope::Pool(id) if id == POOL_A)
+				&& matches!(role, Role::PoolRole(PoolRole::LoanAdmin))
+				&& who == ADMIN;
+
+			valid
+		});
+		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
+	}
+
+	fn aux_set_up_policy() {
+		MockPools::mock_pool_exists(|_| true);
+		MockPermissions::mock_has(|_, _, _| true);
+
+		assert_ok!(Loans::update_write_off_policy(
+			RuntimeOrigin::signed(0),
+			POOL_A,
+			vec![WriteOffState {
+				overdue_days: 1,
+				percentage: Rate::from_float(0.5),
+				penalty: Rate::from_float(0.5)
+			}]
+			.try_into()
+			.unwrap()
+		));
+	}
+
+	#[test]
+	fn without_policy() {
+		new_test_ext().execute_with(|| {
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			assert_noop!(
+				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::NoValidWriteOffState
+			);
+		});
+	}
+
+	#[test]
+	fn with_policy_but_not_overdue() {
+		new_test_ext().execute_with(|| {
+			aux_set_up_policy();
+
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + BLOCK_TIME);
+
+			// The loan maturity date has passed, but the policy can no be applied yet.
+			assert_noop!(
+				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::NoValidWriteOffState
+			);
+		});
+	}
+
+	#[test]
+	fn with_valid_maturity() {
+		new_test_ext().execute_with(|| {
+			aux_set_up_policy();
+
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR / 2);
+
+			// The loan maturity date has no passed.
+			assert_noop!(
+				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::NoValidWriteOffState
+			);
+		});
+	}
+
+	#[test]
+	fn with_wrong_loan_id() {
+		new_test_ext().execute_with(|| {
+			aux_set_up_policy();
+
+			config_mocks();
+			assert_noop!(
+				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, 0),
+				Error::<Runtime>::LoanNotFound
+			);
+			assert_noop!(
+				Loans::admin_write_off(
+					RuntimeOrigin::signed(ADMIN),
+					POOL_A,
+					0,
+					Rate::from_float(0.8),
+					Rate::from_float(0.8)
+				),
+				Error::<Runtime>::LoanNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn with_no_active_loan() {
+		new_test_ext().execute_with(|| {
+			aux_set_up_policy();
+
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+
+			config_mocks();
+			assert_noop!(
+				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::LoanNotActive
+			);
+			assert_noop!(
+				Loans::admin_write_off(
+					RuntimeOrigin::signed(ADMIN),
+					POOL_A,
+					loan_id,
+					Rate::from_float(0.8),
+					Rate::from_float(0.8)
+				),
+				Error::<Runtime>::LoanNotActive
+			);
+		});
+	}
+
+	#[test]
+	fn with_wrong_permission() {
+		new_test_ext().execute_with(|| {
+			aux_set_up_policy();
+
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			config_mocks();
+			assert_noop!(
+				Loans::admin_write_off(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					Rate::from_float(0.8),
+					Rate::from_float(0.8)
+				),
+				BadOrigin
+			);
+		});
+	}
+
+	#[test]
+	fn with_success() {
+		new_test_ext().execute_with(|| {
+			aux_set_up_policy();
+
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(NO_BORROWER),
+				POOL_A,
+				loan_id
+			));
+		});
+	}
+
+	#[test]
+	fn with_admin_success() {
+		new_test_ext().execute_with(|| {
+			aux_set_up_policy();
+
+			let loan_id = create_loan::do_it(total_borrowed_rate(1.0));
+			borrow_loan::do_it(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			config_mocks();
+			assert_ok!(Loans::admin_write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id,
+				Rate::from_float(0.8),
+				Rate::from_float(0.8)
+			));
+		});
+	}
+
+	// TODO:
+	// - multiple write off
+	// - addmin write off with values less than policy
+	// - interest rate change after written off
 }
 
 mod close_loan {
+	use super::*;
+
+	//TODO
+}
+
+/*
+mod write_off_policy {
+	use super::*;
+
+	fn config_mocks() {
+		todo!()
+	}
+
+	#[test]
+	fn with_wrong_loan_id() {
+		new_test_ext().execute_with(|| {
+			config_mocks();
+
+			Loans::update_write_off_policy(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
+
+			assert_noop!(
+				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
+				Error::<Runtime>::LoanNotFound
+			);
+		});
+	}
+}
+*/
+
+mod portfolio_valuation {
 	use super::*;
 
 	//TODO
