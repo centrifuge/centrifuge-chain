@@ -61,7 +61,7 @@ mod util {
 		)
 		.expect("successful policy");
 
-		advance_time(YEAR + DAY + BLOCK_TIME);
+		advance_time(YEAR + DAY);
 
 		Loans::write_off(RuntimeOrigin::signed(0), POOL_A, loan_id).expect("successful write off");
 	}
@@ -124,7 +124,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(ASSET_AA).maturity(now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
 			assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
 		});
 	}
@@ -134,7 +134,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(ASSET_AA).maturity(now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(NO_BORROWER), POOL_A, loan),
 				BadOrigin
@@ -147,7 +147,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_B);
 
-			let loan = LoanInfo::new(ASSET_AA).maturity(now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_B, loan),
 				Error::<Runtime>::PoolNotFound
@@ -160,23 +160,23 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(NO_ASSET).maturity(now());
+			let loan = LoanInfo::new(NO_ASSET).maturity(now() + BLOCK_TIME);
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::NFTOwnerNotFound
 			);
 
-			let loan = LoanInfo::new(ASSET_AB).maturity(now());
+			let loan = LoanInfo::new(ASSET_AB).maturity(now() + BLOCK_TIME);
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::NotNFTOwner
 			);
 
-			let loan = LoanInfo::new(ASSET_AA).maturity(now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
 			assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
 
 			// Using the same NFT no longer works, because the pool owns it.
-			let loan = LoanInfo::new(ASSET_AA).maturity(now());
+			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::NotNFTOwner
@@ -189,7 +189,7 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(ASSET_AA).maturity(now() - BLOCK_TIME);
+			let loan = LoanInfo::new(ASSET_AA).maturity(now());
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::from(CreateLoanError::InvalidRepaymentSchedule)
@@ -202,11 +202,11 @@ mod create_loan {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
 
-			let loan = LoanInfo::new(ASSET_AA).maturity(now()).valuation_method(
-				ValuationMethod::DiscountedCashFlows(
+			let loan = LoanInfo::new(ASSET_AA)
+				.maturity(now() + BLOCK_TIME)
+				.valuation_method(ValuationMethod::DiscountedCashFlows(
 					DiscountedCashFlows::default().discount_rate(Rate::from_float(0.9)),
-				),
-			);
+				));
 
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
@@ -221,7 +221,7 @@ mod create_loan {
 			config_mocks(POOL_A);
 
 			let loan = LoanInfo::new(ASSET_AA)
-				.maturity(now())
+				.maturity(now() + BLOCK_TIME)
 				.interest_rate(Rate::from_float(1.1));
 
 			assert_noop!(

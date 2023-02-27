@@ -201,7 +201,7 @@ impl Maturity {
 
 	pub fn is_valid(&self, now: Moment) -> bool {
 		match self {
-			Maturity::Fixed(moment) => *moment >= now,
+			Maturity::Fixed(moment) => *moment > now,
 		}
 	}
 }
