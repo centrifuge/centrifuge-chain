@@ -319,10 +319,11 @@ pub type LocationToAccountId = (
 	ParentIsPreset<AccountId>,
 	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
 	SiblingParachainConvertsVia<Sibling, AccountId>,
-	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
-	// TODO(nuno): We probably should drop this because this allows for the relay-chain
-	// to impersonate a local, native user.
+	// If we receive a MultiLocation of type AccountId32 that is within Centrifuge,
+	// just alias it to a local [AccountId].
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	// A wildcard MultiLocation to AccountId conversion for all the other MultiLocations
+	// within the same Relay network.
 	Account32Hash<RelayNetwork, AccountId>,
 );
 
