@@ -54,7 +54,7 @@ use crate::{
 		relay,
 		relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode},
 	},
-	pools::utils::{
+	utils::{
 		accounts::{Keyring, NonceManager},
 		extrinsics::{xt_centrifuge, xt_relay},
 		logs,
@@ -85,7 +85,7 @@ pub mod macros {
 	macro_rules! assert_events {
 		($env:expr, $chain:expr, $event:ty, $range:expr, $($pattern:pat_param $(if $extra:tt)? ,)+ ) => {{
 			use frame_system::EventRecord as __hidden_EventRecord;
-			use crate::pools::utils::env::macros::{extra_guards, extra_counts};
+			use crate::utils::env::macros::{extra_guards, extra_counts};
 			use sp_core::H256 as __hidden_H256;
 			use codec::Decode as _;
 

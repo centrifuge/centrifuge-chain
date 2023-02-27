@@ -14,7 +14,7 @@
 use cfg_types::fixed_point::Rate;
 use sp_runtime::FixedPointNumber;
 
-use crate::pools::utils::time::secs::SECONDS_PER_YEAR;
+use crate::utils::time::secs::SECONDS_PER_YEAR;
 
 pub const DECIMAL_BASE_12: u128 = 1_000_000_000_000;
 pub const DECIMAL_BASE_18: u128 = DECIMAL_BASE_12 * 1_000_000;

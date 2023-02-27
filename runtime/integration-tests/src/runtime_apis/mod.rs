@@ -170,7 +170,7 @@ impl ApiEnv {
 	pub fn new_with_genesis(handle: Handle, genesis: impl BuildStorage) -> Self {
 		// TODO: Actually make a lot of the utils in pools not specific to pools
 		//       testing. Like init logs, creating builder and so on.
-		crate::pools::utils::logs::init_logs();
+		crate::utils::logs::init_logs();
 		Self {
 			builder: create_builder(handle, Some(genesis)),
 		}

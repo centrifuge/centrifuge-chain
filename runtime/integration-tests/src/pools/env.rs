@@ -20,7 +20,7 @@ use crate::{
 		centrifuge,
 		centrifuge::{Runtime, PARA_ID},
 	},
-	pools::utils::{
+	utils::{
 		accounts::Keyring,
 		extrinsics::{nonce_centrifuge, xt_centrifuge},
 		*,

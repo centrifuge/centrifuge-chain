@@ -39,6 +39,7 @@ pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	MemberListAdmin,
 	LoanAdmin,
 	TrancheInvestor(TrancheId, Moment),
+	PODReadAccess,
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
@@ -93,6 +94,7 @@ bitflags::bitflags! {
 		const LIQUIDITY_ADMIN = 0b00001000;
 		const MEMBER_LIST_ADMIN = 0b00010000;
 		const RISK_ADMIN = 0b00100000;
+		const POD_READ_ACCESS = 0b01000000;
 	}
 
 	/// The current admin roles we support
@@ -220,6 +222,9 @@ where
 				}
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
+				PoolRole::PODReadAccess => {
+					self.pool_admin.contains(PoolAdminRoles::POD_READ_ACCESS)
+				}
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -258,6 +263,9 @@ where
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
+				PoolRole::PODReadAccess => {
+					Ok(self.pool_admin.remove(PoolAdminRoles::POD_READ_ACCESS))
+				}
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -289,6 +297,9 @@ where
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
+				PoolRole::PODReadAccess => {
+					Ok(self.pool_admin.insert(PoolAdminRoles::POD_READ_ACCESS))
+				}
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -603,8 +614,10 @@ mod tests {
 		// Adding roles works normally
 		assert!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
 		assert!(roles.add(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 		assert!(roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
 
 		// Role exists for as long as permission is given
 		assert!(roles
@@ -644,8 +657,10 @@ mod tests {
 		// Removing roles work normally for Non-TrancheInvestor roles
 		assert!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
 		assert!(roles.rm(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.rm(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
 	}
 
 	/// Sanity check for every CurrencyId variant's encoding value.
