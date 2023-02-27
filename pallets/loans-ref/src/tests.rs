@@ -6,7 +6,9 @@ use sp_runtime::traits::BadOrigin;
 
 use super::{
 	mock::*,
-	types::{BorrowLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount, WriteOffState},
+	types::{
+		BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount, WriteOffState,
+	},
 	valuation::{DiscountedCashFlows, ValuationMethod},
 	ActiveLoans, Error, LastLoanId,
 };
@@ -95,6 +97,18 @@ mod util {
 			borrow_amount,
 		)
 		.expect("successful borrowing");
+	}
+
+	pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
+		MockPools::mock_deposit(|_, _, _| Ok(()));
+
+		Loans::repay(
+			RuntimeOrigin::signed(BORROWER),
+			POOL_A,
+			loan_id,
+			repay_amount,
+		)
+		.expect("successful repaying");
 	}
 }
 
@@ -835,12 +849,85 @@ mod write_off_loan {
 	// - write_down
 	//   - write_up being less than policy.
 	//   - write_up being higher than policy.
+	//
+	// Check asset movement in create()
 }
 
 mod close_loan {
 	use super::*;
 
-	//TODO
+	#[test]
+	fn with_wrong_loan_id() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(
+				Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, 0),
+				Error::<Runtime>::LoanNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn with_wrong_borrower() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+
+			assert_noop!(
+				Loans::close(RuntimeOrigin::signed(OTHER_BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::NotLoanBorrower
+			);
+
+			// Make the loan active and ready to be closed
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::repay_loan(loan_id, COLLATERAL_VALUE);
+
+			assert_noop!(
+				Loans::close(RuntimeOrigin::signed(OTHER_BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::NotLoanBorrower
+			);
+		});
+	}
+
+	#[test]
+	fn without_fully_repaid() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::repay_loan(loan_id, COLLATERAL_VALUE / 2);
+
+			assert_noop!(
+				Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::from(CloseLoanError::NotFullyRepaid)
+			);
+		});
+	}
+
+	#[test]
+	fn with_fully_repaid() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::repay_loan(loan_id, COLLATERAL_VALUE);
+
+			assert_ok!(Loans::close(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id
+			));
+		});
+	}
+
+	#[test]
+	fn just_created() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+
+			assert_ok!(Loans::close(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id
+			));
+		});
+	}
 }
 
 mod write_off_policy {
