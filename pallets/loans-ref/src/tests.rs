@@ -134,16 +134,6 @@ mod create_loan {
 	}
 
 	#[test]
-	fn with_success() {
-		new_test_ext().execute_with(|| {
-			config_mocks(POOL_A);
-
-			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
-			assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
-		});
-	}
-
-	#[test]
 	fn with_wrong_permissions() {
 		new_test_ext().execute_with(|| {
 			config_mocks(POOL_A);
@@ -244,6 +234,16 @@ mod create_loan {
 			);
 		});
 	}
+
+	#[test]
+	fn with_success() {
+		new_test_ext().execute_with(|| {
+			config_mocks(POOL_A);
+
+			let loan = LoanInfo::new(ASSET_AA).maturity(now() + BLOCK_TIME);
+			assert_ok!(Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan));
+		});
+	}
 }
 
 mod borrow_loan {
@@ -256,6 +256,88 @@ mod borrow_loan {
 			assert_eq!(withdraw_amount, amount);
 			Ok(())
 		});
+	}
+
+	#[test]
+	fn with_wrong_loan_id() {
+		new_test_ext().execute_with(|| {
+			config_mocks(COLLATERAL_VALUE);
+
+			assert_noop!(
+				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
+				Error::<Runtime>::LoanNotFound
+			);
+		});
+	}
+
+	#[test]
+	fn from_other_borrower() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+
+			config_mocks(COLLATERAL_VALUE);
+
+			assert_noop!(
+				Loans::borrow(
+					RuntimeOrigin::signed(OTHER_BORROWER),
+					POOL_A,
+					loan_id,
+					COLLATERAL_VALUE
+				),
+				Error::<Runtime>::NotLoanBorrower
+			);
+		});
+	}
+
+	#[test]
+	fn has_been_written_off() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE / 2
+			));
+
+			util::advance_time_and_write_off(loan_id);
+
+			assert_noop!(
+				Loans::borrow(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					COLLATERAL_VALUE / 2
+				),
+				Error::<Runtime>::from(BorrowLoanError::WrittenOffRestriction)
+			);
+		});
+	}
+
+	#[test]
+	fn with_wrong_amounts() {
+		let borrow_inputs = [
+			(COLLATERAL_VALUE + 1, util::total_borrowed_rate(1.0)),
+			(COLLATERAL_VALUE / 2 + 1, util::total_borrowed_rate(0.5)),
+			(1, util::total_borrowed_rate(0.0)),
+			(COLLATERAL_VALUE + 1, util::outstanding_debt_rate(1.0)),
+			(COLLATERAL_VALUE / 2 + 1, util::outstanding_debt_rate(0.5)),
+			(1, util::outstanding_debt_rate(0.0)),
+		];
+
+		for (amount, max_borrow_amount) in borrow_inputs {
+			new_test_ext().execute_with(|| {
+				let loan_id = util::create_loan(max_borrow_amount);
+
+				config_mocks(amount);
+				assert_noop!(
+					Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
+					Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
+				);
+			});
+		}
 	}
 
 	#[test]
@@ -286,27 +368,22 @@ mod borrow_loan {
 	}
 
 	#[test]
-	fn with_wrong_amounts() {
-		let borrow_inputs = [
-			(COLLATERAL_VALUE + 1, util::total_borrowed_rate(1.0)),
-			(COLLATERAL_VALUE / 2 + 1, util::total_borrowed_rate(0.5)),
-			(1, util::total_borrowed_rate(0.0)),
-			(COLLATERAL_VALUE + 1, util::outstanding_debt_rate(1.0)),
-			(COLLATERAL_VALUE / 2 + 1, util::outstanding_debt_rate(0.5)),
-			(1, util::outstanding_debt_rate(0.0)),
-		];
+	fn with_maturity_passed() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
 
-		for (amount, max_borrow_amount) in borrow_inputs {
-			new_test_ext().execute_with(|| {
-				let loan_id = util::create_loan(max_borrow_amount);
+			advance_time(YEAR + BLOCK_TIME);
 
-				config_mocks(amount);
-				assert_noop!(
-					Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
-					Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
-				);
-			});
-		}
+			config_mocks(COLLATERAL_VALUE);
+
+			// It's ok because should be written off to avoid borrowing
+			assert_ok!(Loans::borrow(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE
+			));
+		});
 	}
 
 	#[test]
@@ -375,83 +452,6 @@ mod borrow_loan {
 			assert_noop!(
 				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
 				Error::<Runtime>::from(BorrowLoanError::MaxAmountExceeded)
-			);
-		});
-	}
-
-	#[test]
-	fn with_wrong_loan_id() {
-		new_test_ext().execute_with(|| {
-			config_mocks(COLLATERAL_VALUE);
-
-			assert_noop!(
-				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
-				Error::<Runtime>::LoanNotFound
-			);
-		});
-	}
-
-	#[test]
-	fn from_other_borrower() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
-
-			config_mocks(COLLATERAL_VALUE);
-
-			assert_noop!(
-				Loans::borrow(
-					RuntimeOrigin::signed(OTHER_BORROWER),
-					POOL_A,
-					loan_id,
-					COLLATERAL_VALUE
-				),
-				Error::<Runtime>::NotLoanBorrower
-			);
-		});
-	}
-
-	#[test]
-	fn with_maturity_passed() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
-
-			advance_time(YEAR + BLOCK_TIME);
-
-			config_mocks(COLLATERAL_VALUE);
-
-			// It's ok because should be written off to avoid borrowing
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				COLLATERAL_VALUE
-			));
-		});
-	}
-
-	#[test]
-	fn has_been_written_off() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
-
-			config_mocks(COLLATERAL_VALUE / 2);
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				COLLATERAL_VALUE / 2
-			));
-
-			util::advance_time_and_write_off(loan_id);
-
-			assert_noop!(
-				Loans::borrow(
-					RuntimeOrigin::signed(BORROWER),
-					POOL_A,
-					loan_id,
-					COLLATERAL_VALUE / 2
-				),
-				Error::<Runtime>::from(BorrowLoanError::WrittenOffRestriction)
 			);
 		});
 	}
