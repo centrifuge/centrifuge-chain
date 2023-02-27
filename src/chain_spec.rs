@@ -90,7 +90,10 @@ pub fn get_centrifuge_session_keys(
 pub fn get_development_session_keys(
 	keys: development_runtime::AuraId,
 ) -> development_runtime::SessionKeys {
-	development_runtime::SessionKeys { aura: keys }
+	development_runtime::SessionKeys {
+		aura: keys,
+		block_rewards: keys,
+	}
 }
 
 type AccountPublic = <cfg_primitives::Signature as Verify>::Signer;
@@ -1053,7 +1056,8 @@ fn development_genesis(
 					(
 						acc.clone(),                        // account id
 						acc,                                // validator id
-						get_development_session_keys(aura), // session keys
+						get_development_session_keys(aura), // aura session keys
+						get_development_session_keys(aura), // block_reward session keys
 					)
 				})
 				.collect(),

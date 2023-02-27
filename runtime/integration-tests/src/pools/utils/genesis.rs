@@ -16,6 +16,7 @@ use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};
 
+use super::accounts::Keyring;
 use crate::pools::utils::{
 	accounts::default_accounts,
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
@@ -147,3 +148,67 @@ where
 		}
 	}
 }
+
+/// Sets up dummy session keys for all `accounts::default_accounts()` by assigning their sr25519 public keys.
+pub fn default_session_keys<Runtime>(storage: &mut Storage)
+where
+	Runtime: pallet_session::Config,
+	Runtime::AccountId: From<AccountId32>,
+	<Runtime as pallet_session::Config>::ValidatorId: From<AccountId32>,
+	<Runtime as pallet_session::Config>::Keys: From<development_runtime::SessionKeys>, // <Runtime as pallet_session::Config>::Keys: From<sp_core::sr25519::Public>,
+{
+	pallet_session::GenesisConfig::<Runtime> {
+		keys: default_accounts()
+			.into_iter()
+			.map(|acc| {
+				(
+					AccountId32::from(acc.clone()).into(),
+					AccountId32::from(acc.clone()).into(),
+					development_runtime::SessionKeys {
+						aura: acc.public().into(),
+						block_rewards: acc.public().into(),
+					}
+					.into(),
+				)
+			})
+			.collect(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+pub fn admin_invulnerable<Runtime>(storage: &mut Storage)
+where
+	Runtime::AccountId: From<AccountId32>,
+	Runtime: pallet_collator_selection::Config,
+	<<Runtime as pallet_collator_selection::Config>::Currency as frame_support::traits::Currency<
+		<Runtime as frame_system::Config>::AccountId,
+	>>::Balance: From<u128>,
+{
+	use sp_core::Get;
+
+	pallet_collator_selection::GenesisConfig::<Runtime> {
+		invulnerables: vec![Keyring::Admin.to_account_id().into()],
+		candidacy_bond: cfg_primitives::MILLI_CFG.into(),
+		desired_candidates: <Runtime as pallet_collator_selection::Config>::MaxCandidates::get(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+pub fn admin_collator<Runtime>(storage: &mut Storage)
+where
+	Runtime::AccountId: From<AccountId32>,
+	Runtime: pallet_block_rewards::Config,
+	<Runtime as pallet_block_rewards::Config>::Balance: From<u128>,
+{
+	pallet_block_rewards::GenesisConfig::<Runtime> {
+		collators: vec![Keyring::Admin.to_account_id().into()],
+		collator_reward: (1000 * cfg_primitives::CFG).into(),
+		total_reward: (10_000 * cfg_primitives::CFG).into(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+// TODO: Add builder for block rewards

@@ -114,6 +114,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub aura: Aura,
+		pub block_rewards: BlockRewards,
 	}
 }
 
@@ -330,7 +331,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const Period: u32 = 6 * HOURS;
+	pub Period: u32 = polkadot_runtime_common::prod_or_fast!(6 * HOURS, 1 * MINUTES, "DEV_SESSION_PERIOD");
 	pub const Offset: u32 = 0;
 }
 
@@ -338,12 +339,13 @@ impl pallet_session::Config for Runtime {
 	type Keys = SessionKeys;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
-	type SessionHandler = (
-		// TODO: Investigate solution for staying with <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders
-		Aura,
-		// Forwards collator set changes and executes scheduled BlockRewards epoch changes.
-		BlockRewards,
-	);
+	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
+	// type SessionHandler = (
+	// 	// TODO: Investigate solution for staying with <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders
+	// 	Aura,
+	// 	// Forwards collator set changes and executes scheduled BlockRewards epoch changes.
+	// 	BlockRewards,
+	// );
 	type SessionManager = CollatorSelection;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
@@ -1649,15 +1651,8 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
-	// type RewardIssuance = pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>; // Non-Altair config
-	type RewardIssuance = pallet_rewards::issuance::TransferReward<
-		AccountId,
-		Balance,
-		CurrencyId,
-		Tokens,
-		TreasuryAccount,
-	>;
-	// Altair config
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
 		Balance,
 		IBalance,
@@ -1733,7 +1728,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
 	type RewardCurrency = Balances;
-	type Rewards = Rewards;
+	type Rewards = BlockRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
 	type WeightInfo = ();

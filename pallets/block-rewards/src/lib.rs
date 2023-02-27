@@ -1,5 +1,4 @@
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
-// This file is part of Centrifuge chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -68,12 +67,12 @@ use weights::WeightInfo;
 )]
 #[scale_info(skip_type_params(T))]
 pub struct CollatorChanges<T: Config> {
-	inc: BoundedVec<T::AccountId, T::MaxCollators>,
-	out: BoundedVec<T::AccountId, T::MaxCollators>,
+	pub inc: BoundedVec<T::AccountId, T::MaxCollators>,
+	pub out: BoundedVec<T::AccountId, T::MaxCollators>,
 }
 
 /// Type that contains the associated data of an epoch
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
+#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
 pub struct EpochData<T: Config> {
 	/// Amount of rewards per epoch for a single collator.
@@ -83,7 +82,7 @@ pub struct EpochData<T: Config> {
 	total_reward: T::Balance,
 	/// Number of current collators.
 	/// NOTE: Updated automatically and thus not adjustable via extrinsic.
-	num_collators: u32,
+	pub num_collators: u32,
 }
 
 impl<T: Config> Default for EpochData<T> {
@@ -102,10 +101,10 @@ impl<T: Config> Default for EpochData<T> {
 )]
 #[scale_info(skip_type_params(T))]
 pub struct EpochChanges<T: Config> {
+	pub collators: CollatorChanges<T>,
+	pub num_collators: Option<u32>,
 	collator_reward: Option<T::Balance>,
 	total_reward: Option<T::Balance>,
-	collators: CollatorChanges<T>,
-	num_collators: Option<u32>,
 }
 
 pub const COLLATOR_GROUP_ID: u32 = 1;
@@ -133,7 +132,8 @@ pub mod pallet {
 		type Balance: Balance
 			+ MaxEncodedLen
 			+ FixedPointOperand
-			+ Into<<<Self as Config>::RewardCurrency as CurrencyT<Self::AccountId>>::Balance>;
+			+ Into<<<Self as Config>::RewardCurrency as CurrencyT<Self::AccountId>>::Balance>
+			+ MaybeSerializeDeserialize;
 
 		/// Domain identification used by this pallet
 		type Domain: TypedGet;
@@ -188,11 +188,13 @@ pub mod pallet {
 
 	/// Data associated to the current epoch.
 	#[pallet::storage]
+	#[pallet::getter(fn active_epoch_data)]
 	pub(super) type ActiveEpochData<T: Config> = StorageValue<_, EpochData<T>, ValueQuery>;
 
 	/// Pending update data used when the current epoch finalizes.
 	/// Once it's used for the update, it's reset.
 	#[pallet::storage]
+	#[pallet::getter(fn next_epoch_changes)]
 	pub(super) type NextEpochChanges<T: Config> = StorageValue<_, EpochChanges<T>, ValueQuery>;
 
 	#[pallet::event]
@@ -216,6 +218,8 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub collators: Vec<T::AccountId>,
+		pub collator_reward: T::Balance,
+		pub total_reward: T::Balance,
 	}
 
 	#[cfg(feature = "std")]
@@ -223,6 +227,8 @@ pub mod pallet {
 		fn default() -> Self {
 			GenesisConfig {
 				collators: Default::default(),
+				collator_reward: Default::default(),
+				total_reward: Default::default(),
 			}
 		}
 	}
@@ -236,6 +242,8 @@ pub mod pallet {
 
 			ActiveEpochData::<T>::mutate(|epoch_data| {
 				epoch_data.num_collators = self.collators.len().saturated_into();
+				epoch_data.collator_reward = self.collator_reward;
+				epoch_data.total_reward = self.total_reward;
 			});
 
 			// Enables rewards already in genesis epoch.

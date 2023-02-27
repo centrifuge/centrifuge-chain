@@ -95,14 +95,19 @@ pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
+pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-rewards = { path = "../../pallets/rewards" }
 
+pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.32" }
 
+pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.32" }
+
 [features]
 default = ["runtime-development"]
+fast-runtime = ["development-runtime/fast-runtime"]
 runtime-benchmarks = [
   "default",
   "development-runtime/runtime-benchmarks",

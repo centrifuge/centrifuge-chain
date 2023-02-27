@@ -350,9 +350,13 @@ impl ExtBuilder {
 			.build_storage::<Test>()
 			.unwrap();
 
-		pallet_block_rewards::GenesisConfig::<Test> { collators: vec![1] }
-			.assimilate_storage(&mut storage)
-			.expect("BlockRewards pallet's storage can be assimilated");
+		pallet_block_rewards::GenesisConfig::<Test> {
+			collators: vec![1],
+			collator_reward: self.collator_reward,
+			total_reward: self.total_reward,
+		}
+		.assimilate_storage(&mut storage)
+		.expect("BlockRewards pallet's storage can be assimilated");
 
 		pallet_session::GenesisConfig::<Test> {
 			keys: (1..100u64)
@@ -373,11 +377,6 @@ impl ExtBuilder {
 		let mut ext = sp_io::TestExternalities::new(storage);
 
 		ext.execute_with(|| {
-			ActiveEpochData::<Test>::mutate(|epoch_data| {
-				epoch_data.collator_reward = self.collator_reward;
-				epoch_data.total_reward = self.total_reward;
-			});
-
 			run_to_block(self.run_to_block);
 		});
 
