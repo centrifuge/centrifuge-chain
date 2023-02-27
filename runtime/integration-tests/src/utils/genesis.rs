@@ -16,7 +16,7 @@ use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};
 
-use crate::pools::utils::{
+use crate::utils::{
 	accounts::default_accounts,
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 };

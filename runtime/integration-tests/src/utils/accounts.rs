@@ -26,7 +26,7 @@ use sp_runtime::AccountId32;
 
 use crate::{
 	chain::{centrifuge, centrifuge::PARA_ID, relay},
-	pools::utils::env::TestEnv,
+	utils::env::TestEnv,
 };
 
 /// Struct that takes care of handling nonces for accounts

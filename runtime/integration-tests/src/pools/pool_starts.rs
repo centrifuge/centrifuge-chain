@@ -18,7 +18,7 @@ use tokio::runtime::Handle;
 
 use crate::{
 	chain::centrifuge::{Runtime, RuntimeCall, RuntimeEvent, PARA_ID},
-	pools::utils::{
+	utils::{
 		accounts::Keyring,
 		env::{ChainState, EventRange},
 		loans::{borrow_call, init_loans_for_pool, issue_default_loan, NftManager},
