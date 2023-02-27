@@ -210,5 +210,3 @@ where
 	.assimilate_storage(storage)
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
-
-// TODO: Add builder for block rewards
