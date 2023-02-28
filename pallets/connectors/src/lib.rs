@@ -242,7 +242,7 @@ pub mod pallet {
 
 		IncomingMessage {
 			sender: T::AccountId,
-			message: MessageOf<T>,
+			message: Vec<u8>,
 		},
 	}
 
@@ -508,9 +508,13 @@ pub mod pallet {
 				Error::<T>::InvalidIncomingMessageOrigin
 			);
 
-			let message = Message::decode(&mut bytes.as_slice())
+			Self::deposit_event(Event::IncomingMessage {
+				sender,
+				message: bytes.clone(),
+			});
+			// todo: do someting with the decoded message later on
+			let _: MessageOf<T> = Message::decode(&mut bytes.as_slice())
 				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
-			Self::deposit_event(Event::IncomingMessage { sender, message });
 
 			Ok(())
 		}
