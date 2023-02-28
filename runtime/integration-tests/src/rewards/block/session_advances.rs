@@ -23,17 +23,17 @@ use crate::{
 		BlockRewards, BlockRewardsBase, CollatorSelection, Period, Runtime, RuntimeCall,
 		RuntimeEvent, Tokens, PARA_ID,
 	},
-	pools::utils::{
+	rewards::block::{
+		env::{default_collators, default_genesis_block_rewards},
+		invariants::assert_session_invariants,
+	},
+	utils::{
 		accounts::Keyring,
 		env::{
 			assert_events, pass_n, test_env_with_centrifuge_storage, ChainState, EventRange,
 			TestEnv,
 		},
 		extrinsics::{nonce_centrifuge, xt_centrifuge},
-	},
-	rewards::block::{
-		env::{default_collators, default_genesis_block_rewards},
-		invariants::assert_session_invariants,
 	},
 };
 

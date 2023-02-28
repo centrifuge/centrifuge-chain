@@ -16,8 +16,7 @@ use frame_support::traits::GenesisBuild;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};
 
-use super::accounts::Keyring;
-use crate::pools::utils::{
+use crate::utils::{
 	accounts::default_accounts,
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 };
@@ -177,6 +176,7 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
+/// Sets `Keyring::Admin` as the genesis invulnerable of `pallet_collator_selection`.
 pub fn admin_invulnerable<Runtime>(storage: &mut Storage)
 where
 	Runtime::AccountId: From<AccountId32>,
@@ -196,6 +196,7 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
+/// Sets `Keyring::Admin` as the genesis staker of `pallet_block_rewards`.
 pub fn admin_collator<Runtime>(storage: &mut Storage)
 where
 	Runtime::AccountId: From<AccountId32>,

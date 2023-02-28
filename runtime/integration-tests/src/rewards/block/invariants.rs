@@ -20,7 +20,7 @@ use crate::{
 		BlockRewards, BlockRewardsBase, CollatorSelection, Period, Runtime, RuntimeCall,
 		RuntimeEvent, Tokens, PARA_ID,
 	},
-	pools::utils::env::{assert_events, EventRange, TestEnv},
+	utils::env::{assert_events, EventRange, TestEnv},
 };
 
 /// Verify assumptions about joining and leaving collators.

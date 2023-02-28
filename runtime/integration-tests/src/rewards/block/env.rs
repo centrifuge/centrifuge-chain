@@ -17,7 +17,7 @@ use tokio::runtime::Handle;
 
 use crate::{
 	chain::centrifuge::{CollatorSelection, Runtime, PARA_ID},
-	pools::utils::{
+	utils::{
 		accounts::Keyring,
 		env::test_env_with_centrifuge_storage,
 		genesis::{
