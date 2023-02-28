@@ -29,21 +29,21 @@ fn collator_reward_change() {
 			REWARD
 		));
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collator_reward,
+			NextSessionChanges::<Test>::get().collator_reward,
 			Some(REWARD)
 		);
-		assert_eq!(ActiveEpochData::<Test>::get().collator_reward, 0);
+		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, 0);
 
 		advance_session();
 
 		// EPOCH 1
-		assert_eq!(NextEpochChanges::<Test>::get().collator_reward, None);
-		assert_eq!(ActiveEpochData::<Test>::get().collator_reward, REWARD);
+		assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
+		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
 
 		advance_session();
 
 		// EPOCH 2
-		assert_eq!(ActiveEpochData::<Test>::get().collator_reward, REWARD);
+		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
 	});
 }
 
@@ -55,24 +55,24 @@ fn total_reward_change_isolated() {
 			RuntimeOrigin::root(),
 			REWARD
 		));
-		assert_eq!(NextEpochChanges::<Test>::get().total_reward, Some(REWARD));
-		assert_eq!(ActiveEpochData::<Test>::get().total_reward, 0);
+		assert_eq!(NextSessionChanges::<Test>::get().total_reward, Some(REWARD));
+		assert_eq!(ActiveSessionData::<Test>::get().total_reward, 0);
 
 		advance_session();
 
 		// EPOCH 1
-		assert_eq!(NextEpochChanges::<Test>::get().total_reward, None);
-		assert_eq!(ActiveEpochData::<Test>::get().total_reward, REWARD);
+		assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
+		assert_eq!(ActiveSessionData::<Test>::get().total_reward, REWARD);
 
 		advance_session();
 
 		// EPOCH 2
-		assert_eq!(ActiveEpochData::<Test>::get().total_reward, REWARD);
+		assert_eq!(ActiveSessionData::<Test>::get().total_reward, REWARD);
 	});
 }
 
 #[test]
-fn total_reward_change_over_epochs() {
+fn total_reward_change_over_sessions() {
 	ExtBuilder::default().build().execute_with(|| {
 		// EPOCH 0
 		assert_ok!(BlockRewards::set_collator_reward(
@@ -84,24 +84,24 @@ fn total_reward_change_over_epochs() {
 			REWARD
 		));
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collator_reward,
+			NextSessionChanges::<Test>::get().collator_reward,
 			Some(REWARD)
 		);
-		assert_eq!(ActiveEpochData::<Test>::get().collator_reward, 0);
-		assert_eq!(NextEpochChanges::<Test>::get().total_reward, Some(REWARD));
-		assert_eq!(ActiveEpochData::<Test>::get().total_reward, 0);
+		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, 0);
+		assert_eq!(NextSessionChanges::<Test>::get().total_reward, Some(REWARD));
+		assert_eq!(ActiveSessionData::<Test>::get().total_reward, 0);
 
 		advance_session();
 
 		// EPOCH 1
-		assert_eq!(NextEpochChanges::<Test>::get().collator_reward, None);
-		assert_eq!(ActiveEpochData::<Test>::get().collator_reward, REWARD);
-		assert_eq!(NextEpochChanges::<Test>::get().total_reward, None);
-		assert_eq!(ActiveEpochData::<Test>::get().total_reward, REWARD);
+		assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
+		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
+		assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
+		assert_eq!(ActiveSessionData::<Test>::get().total_reward, REWARD);
 
 		// Total reward update must be at least 2 * collator_reward since collator size increases by one
-		assert_eq!(ActiveEpochData::<Test>::get().num_collators, 1);
-		assert_eq!(NextEpochChanges::<Test>::get().num_collators, Some(2));
+		assert_eq!(ActiveSessionData::<Test>::get().collator_count, 1);
+		assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(2));
 		assert_noop!(
 			BlockRewards::set_total_reward(RuntimeOrigin::root(), 2 * REWARD - 1),
 			Error::<Test>::InsufficientTotalReward
@@ -111,21 +111,21 @@ fn total_reward_change_over_epochs() {
 			2 * REWARD
 		));
 		assert_eq!(
-			NextEpochChanges::<Test>::get().total_reward,
+			NextSessionChanges::<Test>::get().total_reward,
 			Some(2 * REWARD)
 		);
 
 		advance_session();
 
 		// EPOCH 2
-		assert_eq!(NextEpochChanges::<Test>::get().collator_reward, None);
-		assert_eq!(ActiveEpochData::<Test>::get().collator_reward, REWARD);
-		assert_eq!(NextEpochChanges::<Test>::get().total_reward, None);
-		assert_eq!(ActiveEpochData::<Test>::get().total_reward, 2 * REWARD);
+		assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
+		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
+		assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
+		assert_eq!(ActiveSessionData::<Test>::get().total_reward, 2 * REWARD);
 
 		// Total reward update must be at least 3 * collator_reward since collator size increases by one
-		assert_eq!(ActiveEpochData::<Test>::get().num_collators, 2);
-		assert_eq!(NextEpochChanges::<Test>::get().num_collators, Some(3));
+		assert_eq!(ActiveSessionData::<Test>::get().collator_count, 2);
+		assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(3));
 		assert_noop!(
 			BlockRewards::set_total_reward(RuntimeOrigin::root(), 3 * REWARD - 1),
 			Error::<Test>::InsufficientTotalReward
@@ -136,8 +136,8 @@ fn total_reward_change_over_epochs() {
 #[test]
 fn joining_leaving_collators() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert!(NextEpochChanges::<Test>::get().collators.inc.is_empty());
-		assert!(NextEpochChanges::<Test>::get().collators.out.is_empty());
+		assert!(NextSessionChanges::<Test>::get().collators.inc.is_empty());
+		assert!(NextSessionChanges::<Test>::get().collators.out.is_empty());
 		assert_staked(&1);
 		assert_eq!(
 			<Tokens as fungibles::Inspect<AccountId>>::total_issuance(STAKE_CURRENCY_ID),
@@ -148,11 +148,11 @@ fn joining_leaving_collators() {
 
 		// EPOCH 1
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collators.out.into_inner(),
+			NextSessionChanges::<Test>::get().collators.out.into_inner(),
 			vec![1]
 		);
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collators.inc.into_inner(),
+			NextSessionChanges::<Test>::get().collators.inc.into_inner(),
 			vec![2, 3]
 		);
 		assert_staked(&1);
@@ -167,11 +167,11 @@ fn joining_leaving_collators() {
 
 		// EPOCH 2
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collators.out.into_inner(),
+			NextSessionChanges::<Test>::get().collators.out.into_inner(),
 			vec![2]
 		);
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collators.inc.into_inner(),
+			NextSessionChanges::<Test>::get().collators.inc.into_inner(),
 			vec![4, 5]
 		);
 		assert_not_staked(&1);
@@ -188,11 +188,11 @@ fn joining_leaving_collators() {
 
 		// EPOCH 3
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collators.out.into_inner(),
+			NextSessionChanges::<Test>::get().collators.out.into_inner(),
 			vec![3]
 		);
 		assert_eq!(
-			NextEpochChanges::<Test>::get().collators.inc.into_inner(),
+			NextSessionChanges::<Test>::get().collators.inc.into_inner(),
 			vec![6, 7]
 		);
 		assert_not_staked(&2);
@@ -220,8 +220,8 @@ fn single_claim_reward() {
 				<Test as Config>::Rewards::group_stake(COLLATOR_GROUP_ID),
 				DEFAULT_COLLATOR_STAKE as u64
 			);
-			assert_eq!(ActiveEpochData::<Test>::get().collator_reward, REWARD);
-			assert_eq!(ActiveEpochData::<Test>::get().total_reward, 10 * REWARD);
+			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
+			assert_eq!(ActiveSessionData::<Test>::get().total_reward, 10 * REWARD);
 			assert_eq!(mock::RewardRemainderUnbalanced::get(), 0);
 
 			// EPOCH 0 -> EPOCH 1

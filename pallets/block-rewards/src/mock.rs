@@ -19,8 +19,8 @@ use sp_runtime::{
 };
 
 use crate::{
-	self as pallet_block_rewards, Config, NegativeImbalanceOf,
-	DEFAULT_COLLATOR_STAKE, STAKE_CURRENCY_ID,
+	self as pallet_block_rewards, Config, NegativeImbalanceOf, DEFAULT_COLLATOR_STAKE,
+	STAKE_CURRENCY_ID,
 };
 
 pub(crate) const MAX_COLLATORS: u32 = 10;
@@ -207,6 +207,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
+	type RewardCurrency = NativeToken;
 	type RewardIssuance =
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
@@ -225,7 +226,7 @@ frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
-	pub const MaxChangesPerEpoch: u32 = 50;
+	pub const MaxChangesPerSession: u32 = 50;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCollators: u32 = MAX_COLLATORS;
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
@@ -238,7 +239,7 @@ impl pallet_block_rewards::Config for Test {
 	type Beneficiary = RewardRemainderMock;
 	type Currency = Tokens;
 	type Domain = BlockRewardsDomain;
-	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;

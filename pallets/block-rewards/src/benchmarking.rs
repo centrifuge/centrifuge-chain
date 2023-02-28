@@ -49,13 +49,13 @@ benchmarks! {
 	set_collator_reward {
 	}: _(RawOrigin::Root, REWARD.into())
 	verify {
-		assert_eq!(BlockRewards::<T>::next_epoch_changes().collator_reward, Some(REWARD.into()));
+		assert_eq!(BlockRewards::<T>::next_session_changes().collator_reward, Some(REWARD.into()));
 	}
 
 	set_total_reward {
 	}: _(RawOrigin::Root, (20 * REWARD).into())
 	verify {
-		assert_eq!(BlockRewards::<T>::next_epoch_changes().total_reward, Some((20 * REWARD).into()));
+		assert_eq!(BlockRewards::<T>::next_session_changes().total_reward, Some((20 * REWARD).into()));
 	}
 
 	impl_benchmark_test_suite!(

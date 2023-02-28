@@ -1718,7 +1718,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type Beneficiary = ();
 	type Currency = Tokens;
 	type Domain = BlockRewardsDomain;
-	type MaxChangesPerEpoch = MaxChangesPerEpoch;
+	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
 	type Rewards = BlockRewardsBase;
 	type RuntimeEvent = RuntimeEvent;

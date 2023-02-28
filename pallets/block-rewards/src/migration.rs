@@ -1,1 +1,1 @@
-// TODO: Set ActiveEpochData, attach Currency to Group
+// TODO: Set ActiveSessionData, attach Currency to Group

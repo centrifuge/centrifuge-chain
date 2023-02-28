@@ -27,7 +27,7 @@ use crate::{
 pub(crate) fn assert_session_invariants(
 	env: &mut TestEnv,
 	session_index: u32,
-	num_collators: u32,
+	collator_count: u32,
 	joining: Vec<AccountId>,
 	leaving: Vec<AccountId>,
 ) {
@@ -39,32 +39,32 @@ pub(crate) fn assert_session_invariants(
 		BoundedVec::<_, <Runtime as pallet_block_rewards::Config>::MaxCollators>::truncate_from(
 			leaving.clone(),
 		);
-	let next_num_collators: u32 = num_collators
+	let next_collator_count: u32 = collator_count
 		.saturating_add(inc.len().saturated_into())
 		.saturating_sub(out.len().saturated_into());
 
 	env.with_state(Chain::Para(PARA_ID), || {
 		assert_eq!(
 			inc,
-			BlockRewards::next_epoch_changes().collators.inc,
+			BlockRewards::next_session_changes().collators.inc,
 			"Joining collators mismatch in session {}",
 			session_index
 		);
 		assert_eq!(
 			out,
-			BlockRewards::next_epoch_changes().collators.out,
+			BlockRewards::next_session_changes().collators.out,
 			"Leaving collators mismatch in session {}",
 			session_index
 		);
 		assert_eq!(
-			num_collators,
-			BlockRewards::active_epoch_data().num_collators,
+			collator_count,
+			BlockRewards::active_session_data().collator_count,
 			"Active collator count mismatch in session {}",
 			session_index
 		);
 		assert_eq!(
-			Some(next_num_collators),
-			BlockRewards::next_epoch_changes().num_collators,
+			Some(next_collator_count),
+			BlockRewards::next_session_changes().collator_count,
 			"Next collator count mismatch in session {}",
 			session_index
 		);
@@ -92,7 +92,7 @@ pub(crate) fn assert_session_invariants(
 		RuntimeEvent,
 		EventRange::One(Period::get().saturating_mul(session_index)),
 		RuntimeEvent::BlockRewardsBase(pallet_rewards::Event::GroupRewarded { .. }) if [count 1],
-		RuntimeEvent::BlockRewards(pallet_block_rewards::Event::NewEpoch { .. }) if [count 1],
+		RuntimeEvent::BlockRewards(pallet_block_rewards::Event::NewSession { .. }) if [count 1],
 	);
 }
 

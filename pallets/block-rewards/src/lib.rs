@@ -14,7 +14,7 @@
 //!
 //! The BlockRewards pallet provides functionality for distributing rewards to
 //! different accounts with different currencies.
-//! The distribution happens when an epoch (a constant time interval) finalizes.
+//! The distribution happens when an session (a constant time interval) finalizes.
 //! Users cannot stake manually as their collator membership is syncronized via
 //! a provider.
 //! Thus, when new collators join, they will automatically be staked and vice-versa
@@ -23,7 +23,7 @@
 //! The BlockRewards pallet provides functions for:
 //!
 //! - Claiming the reward given for a staked currency. The reward will be the native network's token.
-//! - Admin methods to configure epochs, currencies and reward rates as well as any user's stake.
+//! - Admin methods to configure sessions, currencies and reward rates as well as any user's stake.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -71,26 +71,26 @@ pub struct CollatorChanges<T: Config> {
 	pub out: BoundedVec<T::AccountId, T::MaxCollators>,
 }
 
-/// Type that contains the associated data of an epoch
+/// Type that contains the associated data of an session
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, PartialEq, Eq, RuntimeDebugNoBound)]
 #[scale_info(skip_type_params(T))]
-pub struct EpochData<T: Config> {
-	/// Amount of rewards per epoch for a single collator.
+pub struct SessionData<T: Config> {
+	/// Amount of rewards per session for a single collator.
 	collator_reward: T::Balance,
-	/// Total amount of rewards per epoch
-	/// NOTE: Is ensured to be at least collator_reward * num_collators.
+	/// Total amount of rewards per session
+	/// NOTE: Is ensured to be at least collator_reward * collator_count.
 	total_reward: T::Balance,
 	/// Number of current collators.
 	/// NOTE: Updated automatically and thus not adjustable via extrinsic.
-	pub num_collators: u32,
+	pub collator_count: u32,
 }
 
-impl<T: Config> Default for EpochData<T> {
+impl<T: Config> Default for SessionData<T> {
 	fn default() -> Self {
 		Self {
 			collator_reward: T::Balance::zero(),
 			total_reward: T::Balance::zero(),
-			num_collators: 0,
+			collator_count: 0,
 		}
 	}
 }
@@ -100,9 +100,9 @@ impl<T: Config> Default for EpochData<T> {
 	PartialEq, Clone, DefaultNoBound, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound,
 )]
 #[scale_info(skip_type_params(T))]
-pub struct EpochChanges<T: Config> {
+pub struct SessionChanges<T: Config> {
 	pub collators: CollatorChanges<T>,
-	pub num_collators: Option<u32>,
+	pub collator_count: Option<u32>,
 	collator_reward: Option<T::Balance>,
 	total_reward: Option<T::Balance>,
 }
@@ -154,11 +154,11 @@ pub mod pallet {
 		type Currency: Mutate<Self::AccountId, AssetId = CfgCurrencyId, Balance = Self::Balance>
 			+ CurrencyT<Self::AccountId>;
 
-		/// Max number of changes of the same type enqueued to apply in the next epoch.
+		/// Max number of changes of the same type enqueued to apply in the next session.
 		/// Max calls to [`Pallet::set_collator_reward()`] or to [`Pallet::set_total_reward()`] with
 		/// the same id.
 		#[pallet::constant]
-		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
+		type MaxChangesPerSession: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
 		#[pallet::constant]
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
@@ -182,24 +182,24 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	/// Data associated to the current epoch.
+	/// Data associated to the current session.
 	#[pallet::storage]
-	#[pallet::getter(fn active_epoch_data)]
-	pub(super) type ActiveEpochData<T: Config> = StorageValue<_, EpochData<T>, ValueQuery>;
+	#[pallet::getter(fn active_session_data)]
+	pub(super) type ActiveSessionData<T: Config> = StorageValue<_, SessionData<T>, ValueQuery>;
 
-	/// Pending update data used when the current epoch finalizes.
+	/// Pending update data used when the current session finalizes.
 	/// Once it's used for the update, it's reset.
 	#[pallet::storage]
-	#[pallet::getter(fn next_epoch_changes)]
-	pub(super) type NextEpochChanges<T: Config> = StorageValue<_, EpochChanges<T>, ValueQuery>;
+	#[pallet::getter(fn next_session_changes)]
+	pub(super) type NextSessionChanges<T: Config> = StorageValue<_, SessionChanges<T>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NewEpoch {
+		NewSession {
 			collator_reward: T::Balance,
 			total_reward: T::Balance,
-			last_changes: EpochChanges<T>,
+			last_changes: SessionChanges<T>,
 		},
 	}
 
@@ -207,7 +207,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Limit of max calls with same id to [`Pallet::set_collator_reward()`] or
 		/// [`Pallet::set_total_group()`] reached.
-		MaxChangesPerEpochReached,
+		MaxChangesPerSessionReached,
 		InsufficientTotalReward,
 	}
 
@@ -236,13 +236,13 @@ pub mod pallet {
 				.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
 				.ok();
 
-			ActiveEpochData::<T>::mutate(|epoch_data| {
-				epoch_data.num_collators = self.collators.len().saturated_into();
-				epoch_data.collator_reward = self.collator_reward;
-				epoch_data.total_reward = self.total_reward;
+			ActiveSessionData::<T>::mutate(|session_data| {
+				session_data.collator_count = self.collators.len().saturated_into();
+				session_data.collator_reward = self.collator_reward;
+				session_data.total_reward = self.total_reward;
 			});
 
-			// Enables rewards already in genesis epoch.
+			// Enables rewards already in genesis session.
 			for collator in &self.collators {
 				Pallet::<T>::do_init_collator(collator)
 					.map_err(|e| {
@@ -265,50 +265,50 @@ pub mod pallet {
 			T::Rewards::claim_reward((T::Domain::get(), STAKE_CURRENCY_ID), &account_id).map(|_| ())
 		}
 
-		/// Admin method to set the reward amount for a collator used for the next epochs.
-		/// Current epoch is not affected by this call.
+		/// Admin method to set the reward amount for a collator used for the next sessions.
+		/// Current session is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_collator_reward())]
 		pub fn set_collator_reward(
 			origin: OriginFor<T>,
-			collator_reward_per_epoch: T::Balance,
+			collator_reward_per_session: T::Balance,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::mutate(|changes| {
-				changes.collator_reward = Some(collator_reward_per_epoch);
+			NextSessionChanges::<T>::mutate(|changes| {
+				changes.collator_reward = Some(collator_reward_per_session);
 			});
 
 			Ok(())
 		}
 
-		/// Admin method to set the total reward distribution for the next epochs.
-		/// Current epoch is not affected by this call.
+		/// Admin method to set the total reward distribution for the next sessions.
+		/// Current session is not affected by this call.
 		///
-		/// Throws if total_reward < collator_reward * num_collators.
+		/// Throws if total_reward < collator_reward * collator_count.
 		#[pallet::weight(T::WeightInfo::set_total_reward())]
 		pub fn set_total_reward(
 			origin: OriginFor<T>,
-			total_reward_per_epoch: T::Balance,
+			total_reward_per_session: T::Balance,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextEpochChanges::<T>::try_mutate(|changes| {
-				let current = ActiveEpochData::<T>::get();
+			NextSessionChanges::<T>::try_mutate(|changes| {
+				let current = ActiveSessionData::<T>::get();
 				let total_collator_rewards = changes
 					.collator_reward
 					.unwrap_or(current.collator_reward)
 					.saturating_mul(
 						changes
-							.num_collators
-							.unwrap_or(current.num_collators)
+							.collator_count
+							.unwrap_or(current.collator_count)
 							.into(),
 					);
 				ensure!(
-					total_reward_per_epoch >= total_collator_rewards,
+					total_reward_per_session >= total_collator_rewards,
 					Error::<T>::InsufficientTotalReward
 				);
 
-				changes.total_reward = Some(total_reward_per_epoch);
+				changes.total_reward = Some(total_reward_per_session);
 				Ok(())
 			})
 		}
@@ -335,25 +335,25 @@ impl<T: Config> Pallet<T> {
 		T::Currency::burn_from(STAKE_CURRENCY_ID, who, amount).map(|_| ())
 	}
 
-	/// Apply epoch changes and distribute rewards.
+	/// Apply session changes and distribute rewards.
 	///
 	/// NOTE: Noop if any call fails.
-	fn do_advance_epoch() {
+	fn do_advance_session() {
 		let mut num_joining = 0u32;
 		let mut num_leaving = 0u32;
 
 		transactional::with_storage_layer(|| -> DispatchResult {
-			NextEpochChanges::<T>::try_mutate(|changes| -> DispatchResult {
-				ActiveEpochData::<T>::try_mutate(|epoch_data| {
-					// Reward collator group of last epoch
-					let total_collator_reward = epoch_data
+			NextSessionChanges::<T>::try_mutate(|changes| -> DispatchResult {
+				ActiveSessionData::<T>::try_mutate(|session_data| {
+					// Reward collator group of last session
+					let total_collator_reward = session_data
 						.collator_reward
-						.saturating_mul(epoch_data.num_collators.into())
-						.min(epoch_data.total_reward);
+						.saturating_mul(session_data.collator_count.into())
+						.min(session_data.total_reward);
 					T::Rewards::reward_group(COLLATOR_GROUP_ID, total_collator_reward)?;
 
 					// Hanbdle remaining reward
-					let remaining = epoch_data
+					let remaining = session_data
 						.total_reward
 						.saturating_sub(total_collator_reward);
 					if !remaining.is_zero() {
@@ -373,18 +373,19 @@ impl<T: Config> Pallet<T> {
 						Self::do_init_collator(joining)?;
 					}
 
-					// Apply epoch changes
-					epoch_data.collator_reward = changes
+					// Apply session changes
+					session_data.collator_reward = changes
 						.collator_reward
-						.unwrap_or(epoch_data.collator_reward);
-					epoch_data.total_reward =
-						changes.total_reward.unwrap_or(epoch_data.total_reward);
-					epoch_data.num_collators =
-						changes.num_collators.unwrap_or(epoch_data.num_collators);
+						.unwrap_or(session_data.collator_reward);
+					session_data.total_reward =
+						changes.total_reward.unwrap_or(session_data.total_reward);
+					session_data.collator_count = changes
+						.collator_count
+						.unwrap_or(session_data.collator_count);
 
-					Self::deposit_event(Event::NewEpoch {
-						total_reward: epoch_data.total_reward,
-						collator_reward: epoch_data.collator_reward,
+					Self::deposit_event(Event::NewSession {
+						total_reward: session_data.total_reward,
+						collator_reward: session_data.collator_reward,
 						last_changes: mem::take(changes),
 					});
 
@@ -420,7 +421,7 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	{
 		// MUST be called before updating collator set changes.
 		// Else the timing is off.
-		Self::do_advance_epoch();
+		Self::do_advance_session();
 		let current = validators
 			.map(|(acc_id, _)| acc_id.clone())
 			.collect::<Vec<_>>();
@@ -431,10 +432,10 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 		// Prepare collator set changes for next session.
 		if current != next {
 			// Prepare for next session
-			NextEpochChanges::<T>::mutate(
-				|EpochChanges {
+			NextSessionChanges::<T>::mutate(
+				|SessionChanges {
 				     collators,
-				     num_collators,
+				     collator_count,
 				     ..
 				 }| {
 					let inc = next
@@ -450,7 +451,7 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 					collators.inc = BoundedVec::<_, T::MaxCollators>::truncate_from(inc);
 					collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
 
-					*num_collators = Some(next.len().saturated_into::<u32>());
+					*collator_count = Some(next.len().saturated_into::<u32>());
 				},
 			);
 		}
