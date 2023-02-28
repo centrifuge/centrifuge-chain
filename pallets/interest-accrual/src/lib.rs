@@ -51,6 +51,74 @@
 //!            nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
 //!            debt = 10      debt = 35
 //! ```
+//!
+//! ## Basics of shared rate accrual and "normalized debts"
+//!
+//! When we want to compute the interest accrued on some value, the
+//! high-level equation is:
+//!
+//! ```ignore
+//! rate_per_second.pow(debt_age) * debt_base_value
+//! ```
+//!
+//! Computing that pow for everything is expensive, so we want to only
+//! do it once for any given `rate_per_second` and share that result
+//! across multiple loans. Because these loans might not have been
+//! created at the same time as each other (or the rate), we must
+//! include a correction factor to the shared interest rate accrual:
+//!
+//! ```ignore
+//! correction_factor = ???;
+//! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
+//! ```
+//!
+//! This correction factor is just the accumulated interest at the
+//! time the loan was created:
+//!
+//! ```ignore
+//! correction_factor = rate_per_second.pow(rate_age_at_time_of_loan_creation);
+//! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
+//! // Equivalent to:
+//! rate_per_second.pow(rate_age - rate_ag_at_time_of_loan_creation) * debt_base_value
+//! ```
+//!
+//! And in the classic trade-off of space vs time complexity, we
+//! precompute the correction factor applied to the base debt as the
+//! normalized debt
+//!
+//! ```ignore
+//! normalized_debt = debt_base_value / rate_per_second.pow(rate_age_at_time_of_loan_creation);
+//! ```
+//!
+//! In the actual code, `rate_per_second.pow(...)` will be precomputed
+//! for us at block initialize and is just queried as the "accrued
+//! rate".
+//!
+//! The case of `rate_age_at_time_of_loan_creation == 0` creates a
+//! correction factor of 1, since no debt has yet accumulated on that
+//! rate. This leads to the behavior of `normalize` apparently doing
+//! nothing. The debt in that case is "synced" to the interest rate,
+//! and doesn't need any correction.
+//!
+//! ## Renormalization
+//!
+//! Renormalization is the operation of saying "from now one, I want
+//! to accrue this debt at a new rate". Implicit in that is that all
+//! previous debt has been accounted for. We are essentially "starting
+//! over" with a new base debt - our accrued debt from the old rate -
+//! and a new interest rate.
+//!
+//! ```ignore
+//! current_debt = normalized_debt * accrued_rate(old_interest_rate);
+//! normalized_debt = current_debt / accrued_rate(new_interest_rate);
+//! ```
+//!
+//! Two things to note here:
+//! * If `old_interest_rate` and `new_interest_rate` are identical,
+//!   this is a no-op.
+//! * If `new_interest_rate` is newly created (and thus its age is `0`),
+//!   the correction factor is `1` just as for any other rate.  See the
+//!   note above regarding zero-age rates.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
