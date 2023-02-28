@@ -1,4 +1,4 @@
-use cfg_primitives::Moment;
+use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use cfg_traits::ops::{EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -9,24 +9,21 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
 use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedPointOperand};
 
-pub const SECONDS_PER_DAY: Moment = 3600 * 24;
-pub const SECONDS_PER_YEAR: Moment = SECONDS_PER_DAY * 365;
-
-/// TODO
+/// Discounted cash flow values
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 #[cfg_attr(test, derive(Default))]
-pub struct DiscountedCashFlows<Rate> {
-	/// TODO
+pub struct DiscountedCashFlow<Rate> {
+	/// The probability of a borrower defaulting a loan repayments.
 	probability_of_default: Rate,
 
-	/// TODO
+	/// The share of an asset that is lost if a borrower defaults.
 	loss_given_default: Rate,
 
-	/// TODO
+	/// Rate of return used to discount future cash flows back to their present value.
 	discount_rate: Rate,
 }
 
-impl<Rate: FixedPointNumber> DiscountedCashFlows<Rate> {
+impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 	pub fn new(
 		probability_of_default: Rate,
 		loss_given_default: Rate,
@@ -42,14 +39,14 @@ impl<Rate: FixedPointNumber> DiscountedCashFlows<Rate> {
 	pub fn compute_present_value<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
 		debt: Balance,
-		at: Moment,
+		when: Moment,
 		interest_rate_per_sec: Rate,
 		maturity_date: Moment,
 		origination_date: Moment,
 	) -> Result<Balance, ArithmeticError> {
 		// If the loan is overdue, there are no future cash flows to discount,
 		// hence we use the outstanding debt as the value.
-		if at > maturity_date {
+		if when > maturity_date {
 			return Ok(debt);
 		}
 
@@ -65,7 +62,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlows<Rate> {
 		let tel_inv = Rate::one().ensure_sub(tel)?;
 
 		// Calculate the risk-adjusted expected cash flows
-		let exp = maturity_date.ensure_sub(at)?.ensure_into()?;
+		let exp = maturity_date.ensure_sub(when)?.ensure_into()?;
 		let acc_rate = checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
 		let ecf = acc_rate.ensure_mul_int(debt)?;
 		let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
@@ -81,9 +78,9 @@ impl<Rate: FixedPointNumber> DiscountedCashFlows<Rate> {
 /// Defines the valuation method of a loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum ValuationMethod<Rate> {
-	/// TODO
-	DiscountedCashFlows(DiscountedCashFlows<Rate>),
-	/// TODO
+	/// Dicounted cash flow valuation
+	DiscountedCashFlow(DiscountedCashFlow<Rate>),
+	/// Outstanding debt valuation
 	OutstandingDebt,
 }
 
@@ -93,7 +90,7 @@ where
 {
 	pub fn is_valid(&self) -> bool {
 		match self {
-			ValuationMethod::DiscountedCashFlows(dcf) => dcf.discount_rate >= One::one(),
+			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate >= One::one(),
 			ValuationMethod::OutstandingDebt => true,
 		}
 	}
@@ -103,7 +100,7 @@ where
 mod test_utils {
 	use super::*;
 
-	impl<Rate> DiscountedCashFlows<Rate> {
+	impl<Rate> DiscountedCashFlow<Rate> {
 		pub fn probability_of_default(mut self, input: Rate) -> Self {
 			self.probability_of_default = input;
 			self

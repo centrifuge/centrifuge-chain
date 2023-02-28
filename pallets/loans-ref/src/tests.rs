@@ -10,7 +10,7 @@ use super::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
 		WriteOffState, WrittenOffError,
 	},
-	valuation::{DiscountedCashFlows, ValuationMethod},
+	valuation::{DiscountedCashFlow, ValuationMethod},
 	ActiveLoans, Error, LastLoanId,
 };
 
@@ -232,8 +232,8 @@ mod create_loan {
 
 			let loan = LoanInfo::new(ASSET_AA)
 				.maturity(now() + BLOCK_TIME)
-				.valuation_method(ValuationMethod::DiscountedCashFlows(
-					DiscountedCashFlows::default().discount_rate(Rate::from_float(0.9)),
+				.valuation_method(ValuationMethod::DiscountedCashFlow(
+					DiscountedCashFlow::default().discount_rate(Rate::from_float(0.9)),
 				));
 
 			assert_noop!(

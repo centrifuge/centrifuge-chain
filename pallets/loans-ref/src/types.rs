@@ -1,4 +1,4 @@
-use cfg_primitives::Moment;
+use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
 	ops::{
 		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
@@ -26,7 +26,7 @@ use sp_runtime::{
 use sp_std::cmp::Ordering;
 
 use super::{Config, Error};
-use crate::valuation::{ValuationMethod, SECONDS_PER_DAY};
+use crate::valuation::ValuationMethod;
 
 /// Error related to loan creation
 #[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -257,7 +257,7 @@ pub enum BorrowRestrictions {
 /// Specify how offer a loan can be repaid
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum RepayRestrictions {
-	/// TODO
+	/// No restrictions
 	None,
 }
 
@@ -468,7 +468,7 @@ impl<T: Config> ActiveLoan<T> {
 		let debt = self.write_off_status.write_down(debt)?;
 
 		match &self.info.valuation_method {
-			ValuationMethod::DiscountedCashFlows(dcf) => {
+			ValuationMethod::DiscountedCashFlow(dcf) => {
 				let maturity_date = self.info.schedule.maturity.date();
 				Ok(dcf.compute_present_value(
 					debt,
