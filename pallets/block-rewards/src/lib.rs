@@ -112,7 +112,7 @@ pub const DEFAULT_COLLATOR_STAKE: u32 = 1000;
 pub const STAKE_CURRENCY_ID: CfgCurrencyId = CfgCurrencyId::Rewards { id: *b"blkrwrds" };
 
 pub(crate) type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
-pub(crate) type NegativeImbalanceOf<T> = <<T as Config>::RewardCurrency as CurrencyT<
+pub(crate) type NegativeImbalanceOf<T> = <<T as Config>::Currency as CurrencyT<
 	<T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
 
@@ -132,7 +132,7 @@ pub mod pallet {
 		type Balance: Balance
 			+ MaxEncodedLen
 			+ FixedPointOperand
-			+ Into<<<Self as Config>::RewardCurrency as CurrencyT<Self::AccountId>>::Balance>
+			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>
 			+ MaybeSerializeDeserialize;
 
 		/// Domain identification used by this pallet
@@ -141,7 +141,6 @@ pub mod pallet {
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
-		// TODO: How to limit to no other Currency Movement?
 		/// The reward system used.
 		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = u32>
 			+ AccountRewards<
@@ -152,14 +151,11 @@ pub mod pallet {
 			+ DistributedRewards<Balance = Self::Balance, GroupId = u32>;
 
 		/// Type used to handle currency minting and burning for collators.
-		type Currency: Mutate<Self::AccountId, AssetId = CfgCurrencyId, Balance = Self::Balance>;
-
-		// TODO: Check for pulling from Rewards possible
-		/// Type used to identify the currency of the rewards, should be native.
-		type RewardCurrency: CurrencyT<Self::AccountId>;
+		type Currency: Mutate<Self::AccountId, AssetId = CfgCurrencyId, Balance = Self::Balance>
+			+ CurrencyT<Self::AccountId>;
 
 		/// Max number of changes of the same type enqueued to apply in the next epoch.
-		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::set_currency_group()`] with
+		/// Max calls to [`Pallet::set_collator_reward()`] or to [`Pallet::set_total_reward()`] with
 		/// the same id.
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
@@ -209,8 +205,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Limit of max calls with same id to [`Pallet::set_group_weight()`] or
-		/// [`Pallet::set_currency_group()`] reached.
+		/// Limit of max calls with same id to [`Pallet::set_collator_reward()`] or
+		/// [`Pallet::set_total_group()`] reached.
 		MaxChangesPerEpochReached,
 		InsufficientTotalReward,
 	}
@@ -361,7 +357,7 @@ impl<T: Config> Pallet<T> {
 						.total_reward
 						.saturating_sub(total_collator_reward);
 					if !remaining.is_zero() {
-						let reward = T::RewardCurrency::issue(remaining.into());
+						let reward = T::Currency::issue(remaining.into());
 						// If configured, assigns reward to Beneficiary, else automatically drops it
 						T::Beneficiary::on_unbalanced(reward);
 					}

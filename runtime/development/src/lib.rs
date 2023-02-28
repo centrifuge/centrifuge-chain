@@ -340,12 +340,6 @@ impl pallet_session::Config for Runtime {
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
-	// type SessionHandler = (
-	// 	// TODO: Investigate solution for staying with <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders
-	// 	Aura,
-	// 	// Forwards collator set changes and executes scheduled BlockRewards epoch changes.
-	// 	BlockRewards,
-	// );
 	type SessionManager = CollatorSelection;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
@@ -1663,6 +1657,7 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 }
 
 frame_support::parameter_types! {
+	// BlockRewards have exactly one group and currency
 	#[derive(scale_info::TypeInfo)]
 	pub const SingleCurrencyMovement: u32 = 1;
 }
@@ -1716,8 +1711,6 @@ frame_support::parameter_types! {
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 }
 
-// type Beneficiary: Option<AccountId> = Some(TreasuryPalletId::get().into_account_truncating());
-
 impl pallet_block_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type AuthorityId = AuraId;
@@ -1727,7 +1720,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type Domain = BlockRewardsDomain;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCandidates;
-	type RewardCurrency = Balances;
 	type Rewards = BlockRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;

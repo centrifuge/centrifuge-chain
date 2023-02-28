@@ -185,7 +185,6 @@ impl pallet_restricted_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
-// TODO: Assess whether bringing back MockRewards makes sense
 #[derive(
 	scale_info::TypeInfo, Debug, Copy, codec::Encode, codec::Decode, PartialEq, Clone, MaxEncodedLen,
 )]
@@ -208,7 +207,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
-	type RewardCurrency = NativeToken;
 	type RewardIssuance =
 		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
 	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
@@ -242,7 +240,6 @@ impl pallet_block_rewards::Config for Test {
 	type Domain = BlockRewardsDomain;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxCollators = MaxCollators;
-	type RewardCurrency = Balances;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
