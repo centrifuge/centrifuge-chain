@@ -86,7 +86,7 @@ impl frame_system::Config for Runtime {
 	RuntimeDebug,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum CurrencyId {
+pub(crate) enum CurrencyId {
 	Reward,
 	A,
 	B,

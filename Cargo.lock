@@ -6066,6 +6066,7 @@ dependencies = [
 name = "pallet-block-rewards"
 version = "0.1.0"
 dependencies = [
+ "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",

@@ -26,6 +26,7 @@ sp-staking = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 # optional dependencies for benchmarking
+cfg-primitives = { path = "../../libs/primitives", default-features = false,  optional = true }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
 
 [dev-dependencies]
@@ -40,8 +41,12 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "p
 [features]
 default = ["std"]
 try-runtime = ["frame-support/try-runtime"]
-runtime-benchmarks = ["frame-benchmarking"]
+runtime-benchmarks = [
+  "frame-benchmarking",
+  "cfg-primitives/runtime-benchmarks",
+]
 std = [
+  "cfg-primitives?/std",
   "cfg-traits/std",
   "cfg-types/std",
   "codec/std",

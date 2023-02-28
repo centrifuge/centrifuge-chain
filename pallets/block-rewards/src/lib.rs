@@ -35,8 +35,8 @@ mod tests;
 
 pub mod weights;
 
-// #[cfg(feature = "runtime-benchmarks")]
-// mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 pub use cfg_traits::{
 	ops::{EnsureAdd, EnsureAddAssign},
@@ -271,7 +271,7 @@ pub mod pallet {
 
 		/// Admin method to set the reward amount for a collator used for the next epochs.
 		/// Current epoch is not affected by this call.
-		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
+		#[pallet::weight(T::WeightInfo::set_collator_reward())]
 		pub fn set_collator_reward(
 			origin: OriginFor<T>,
 			collator_reward_per_epoch: T::Balance,
@@ -289,7 +289,7 @@ pub mod pallet {
 		/// Current epoch is not affected by this call.
 		///
 		/// Throws if total_reward < collator_reward * num_collators.
-		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
+		#[pallet::weight(T::WeightInfo::set_total_reward())]
 		pub fn set_total_reward(
 			origin: OriginFor<T>,
 			total_reward_per_epoch: T::Balance,
@@ -322,7 +322,7 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	/// Mint default amount of stake for target address and deposit stake.
 	/// Enables receiving rewards onwards.
-	fn do_init_collator(who: &T::AccountId) -> DispatchResult {
+	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
 		T::Currency::mint_into(STAKE_CURRENCY_ID, who, DEFAULT_COLLATOR_STAKE.into())?;
 		T::Rewards::deposit_stake(
 			(T::Domain::get(), STAKE_CURRENCY_ID),
@@ -333,7 +333,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Withdraw currently staked amount for target address and immediately burn it.
 	/// Disables receiving rewards onwards.
-	fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
+	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
 		let amount = T::Rewards::account_stake((T::Domain::get(), STAKE_CURRENCY_ID), who);
 		T::Rewards::withdraw_stake((T::Domain::get(), STAKE_CURRENCY_ID), who, amount)?;
 		T::Currency::burn_from(STAKE_CURRENCY_ID, who, amount).map(|_| ())
@@ -342,7 +342,7 @@ impl<T: Config> Pallet<T> {
 	/// Apply epoch changes and distribute rewards.
 	///
 	/// NOTE: Noop if any call fails.
-	fn do_advance_epoch() -> Weight {
+	fn do_advance_epoch() {
 		let mut num_joining = 0u32;
 		let mut num_leaving = 0u32;
 
@@ -400,9 +400,6 @@ impl<T: Config> Pallet<T> {
 			log::error!("Failed to advance block rewards session: {:?}", e);
 		})
 		.ok();
-
-		// TODO: Apply number of incoming and outgoing collators
-		T::WeightInfo::on_initialize(num_joining, num_leaving)
 	}
 }
 
@@ -427,7 +424,7 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	{
 		// MUST be called before updating collator set changes.
 		// Else the timing is off.
-		let mut weight = Self::do_advance_epoch();
+		Self::do_advance_epoch();
 		let current = validators
 			.map(|(acc_id, _)| acc_id.clone())
 			.collect::<Vec<_>>();
@@ -460,14 +457,7 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 					*num_collators = Some(next.len().saturated_into::<u32>());
 				},
 			);
-
-			weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 		}
-
-		frame_system::Pallet::<T>::register_extra_weight_unchecked(
-			weight,
-			DispatchClass::Mandatory,
-		);
 	}
 
 	fn on_before_session_ending() {
