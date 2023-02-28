@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::{AccountId32, Storage};
 
 use crate::utils::{
-	accounts::default_accounts,
+	accounts::{default_accounts, Keyring},
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 };
 

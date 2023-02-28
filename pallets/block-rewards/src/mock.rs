@@ -19,7 +19,7 @@ use sp_runtime::{
 };
 
 use crate::{
-	self as pallet_block_rewards, ActiveEpochData, Config, NegativeImbalanceOf,
+	self as pallet_block_rewards, Config, NegativeImbalanceOf,
 	DEFAULT_COLLATOR_STAKE, STAKE_CURRENCY_ID,
 };
 
