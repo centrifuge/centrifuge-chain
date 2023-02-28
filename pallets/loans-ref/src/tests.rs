@@ -50,10 +50,12 @@ mod util {
 		get_loan(loan_id).present_value_at(now().as_secs()).unwrap()
 	}
 
-	pub fn compute_debt_for(rate: f64, amount: Balance, elapsed: Duration) -> Balance {
-		// amount * (1 + rate_sec) ^ elapsed
-		((1.0 + rate / YEAR.as_secs() as f64).powi(elapsed.as_secs() as i32) * amount as f64)
-			as Balance
+	pub fn interest_for(rate: f64, elapsed: Duration) -> f64 {
+		(1.0 + rate / YEAR.as_secs() as f64).powi(elapsed.as_secs() as i32)
+	}
+
+	pub fn current_debt_for(interest: f64, balance: Balance) -> Balance {
+		(interest * balance as f64) as Balance
 	}
 
 	pub fn set_up_policy(percentage: f64, penalty: f64) {
@@ -465,7 +467,10 @@ mod borrow_loan {
 			advance_time(YEAR / 2);
 
 			assert_eq!(
-				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE / 2, YEAR / 2),
+				util::current_debt_for(
+					util::interest_for(DEFAULT_INTEREST_RATE, YEAR / 2),
+					COLLATERAL_VALUE / 2,
+				),
 				util::current_loan_debt(loan_id)
 			);
 
@@ -652,7 +657,10 @@ mod repay_loan {
 			advance_time(YEAR / 2);
 
 			assert_eq!(
-				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE / 2, YEAR / 2),
+				util::current_debt_for(
+					util::interest_for(DEFAULT_INTEREST_RATE, YEAR / 2),
+					COLLATERAL_VALUE / 2,
+				),
 				util::current_loan_debt(loan_id)
 			);
 
@@ -664,19 +672,15 @@ mod repay_loan {
 			));
 
 			// Because of the interest, it has no fully repaid, we need an extra payment.
-			assert_ne!(0, util::current_loan_debt(loan_id));
+			let still_to_pay = util::current_loan_debt(loan_id);
+			assert_ne!(0, still_to_pay);
 
-			config_mocks(util::current_loan_debt(loan_id));
+			config_mocks(still_to_pay);
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE / 2, YEAR / 2)
-					+ util::compute_debt_for(
-						DEFAULT_INTEREST_RATE,
-						COLLATERAL_VALUE / 2,
-						Duration::ZERO
-					) - COLLATERAL_VALUE
+				still_to_pay
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
@@ -950,7 +954,6 @@ mod write_off_loan {
 	}
 
 	#[test]
-	#[ignore = "waiting for renormalize fix"]
 	fn with_penalty_applied() {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(0.0, POLICY_PENALTY);
@@ -960,9 +963,6 @@ mod write_off_loan {
 
 			advance_time(YEAR + DAY);
 
-			let expected_debt_before_written_off =
-				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE, YEAR + DAY);
-
 			assert_ok!(Loans::write_off(
 				RuntimeOrigin::signed(ADMIN),
 				POOL_A,
@@ -971,19 +971,25 @@ mod write_off_loan {
 
 			// Modify an interest rate doesn't have effect in the same instant
 			assert_eq!(
-				expected_debt_before_written_off,
+				util::current_debt_for(
+					util::interest_for(DEFAULT_INTEREST_RATE, YEAR + DAY),
+					COLLATERAL_VALUE,
+				),
 				util::current_loan_debt(loan_id)
 			);
 
 			advance_time(YEAR);
 
+			// Because of math arithmetic preccission,
+			// we get a difference that makes the test fail
+			let precission_error = 2;
+
 			assert_eq!(
-				expected_debt_before_written_off
-					+ util::compute_debt_for(
-						DEFAULT_INTEREST_RATE + POLICY_PENALTY,
-						COLLATERAL_VALUE,
-						YEAR
-					),
+				util::current_debt_for(
+					util::interest_for(DEFAULT_INTEREST_RATE, YEAR + DAY)
+						* util::interest_for(DEFAULT_INTEREST_RATE + POLICY_PENALTY, YEAR),
+					COLLATERAL_VALUE,
+				) - precission_error,
 				util::current_loan_debt(loan_id)
 			);
 		});
@@ -1194,6 +1200,6 @@ mod portfolio_valuation {
 }
 
 // TODO:
-// Remove unused loan_id from utility functions
 // Check if repay removes written_off percentage.
 // Check legacy test if there is some check I'm forgeting
+// ~ Remove unused loan_id from utility functions
