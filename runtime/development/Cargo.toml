@@ -261,6 +261,7 @@ runtime-benchmarks = [
   "hex-literal",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
+  "pallet-block-rewards/runtime-benchmarks",
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",

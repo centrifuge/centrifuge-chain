@@ -91,7 +91,7 @@ pub fn get_development_session_keys(
 	keys: development_runtime::AuraId,
 ) -> development_runtime::SessionKeys {
 	development_runtime::SessionKeys {
-		aura: keys,
+		aura: keys.clone(),
 		block_rewards: keys,
 	}
 }
@@ -1056,8 +1056,7 @@ fn development_genesis(
 					(
 						acc.clone(),                        // account id
 						acc,                                // validator id
-						get_development_session_keys(aura), // aura session keys
-						get_development_session_keys(aura), // block_reward session keys
+						get_development_session_keys(aura), // session keys
 					)
 				})
 				.collect(),
@@ -1087,6 +1086,15 @@ fn development_genesis(
 		parachain_system: Default::default(),
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		block_rewards: development_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 1000 * CFG,
+			total_reward: 10_048 * CFG,
+		},
 	}
 }
 
