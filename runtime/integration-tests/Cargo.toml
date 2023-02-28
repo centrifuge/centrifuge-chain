@@ -90,12 +90,12 @@ hex = { version = "0.4.3", default_features = false }
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
+pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-connectors = { path = "../../pallets/connectors" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
-pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-rewards = { path = "../../pallets/rewards" }
 
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }

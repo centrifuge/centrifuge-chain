@@ -24,12 +24,12 @@ static_assertions = "1.1.0"
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
+cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32", optional = true }
 cumulus-pallet-xcm = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 cumulus-primitives-timestamp = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 cumulus-primitives-utility = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
-cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32", optional = true }
 pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 
@@ -116,8 +116,8 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git",
 
 # our custom pallets
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
+pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-connectors = { path = "../../pallets/connectors", default-features = false }
