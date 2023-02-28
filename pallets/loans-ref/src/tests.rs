@@ -7,14 +7,17 @@ use sp_runtime::traits::BadOrigin;
 use super::{
 	mock::*,
 	types::{
-		BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount, WriteOffState,
+		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
+		WriteOffState, WrittenOffError,
 	},
 	valuation::{DiscountedCashFlows, ValuationMethod},
 	ActiveLoans, Error, LastLoanId,
 };
 
-const COLLATERAL_VALUE: Balance = 100;
+const COLLATERAL_VALUE: Balance = 10000;
 const DEFAULT_INTEREST_RATE: f64 = 0.5;
+const POLICY_PERCENTAGE: f64 = 0.5;
+const POLICY_PENALTY: f64 = 0.5;
 
 mod util {
 	use super::*;
@@ -31,38 +34,51 @@ mod util {
 		}
 	}
 
-	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
+	pub fn get_loan(loan_id: LoanId) -> ActiveLoan<Runtime> {
 		ActiveLoans::<Runtime>::get(POOL_A)
-			.iter()
+			.into_iter()
 			.find(|(loan, _)| loan.loan_id() == loan_id)
 			.unwrap()
 			.0
-			.debt(None)
-			.unwrap()
 	}
 
-	pub fn compute_debt_for(amount: Balance, elapsed: Duration) -> Balance {
+	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
+		get_loan(loan_id).debt(None).unwrap()
+	}
+
+	pub fn current_loan_pv(loan_id: LoanId) -> Balance {
+		get_loan(loan_id).present_value_at(now().as_secs()).unwrap()
+	}
+
+	pub fn compute_debt_for(rate: f64, amount: Balance, elapsed: Duration) -> Balance {
 		// amount * (1 + rate_sec) ^ elapsed
-		((1.0 + DEFAULT_INTEREST_RATE / YEAR.as_secs() as f64).powi(elapsed.as_secs() as i32)
-			* amount as f64) as Balance
+		((1.0 + rate / YEAR.as_secs() as f64).powi(elapsed.as_secs() as i32) * amount as f64)
+			as Balance
 	}
 
-	pub fn advance_time_and_write_off(loan_id: LoanId) {
+	pub fn set_up_policy(percentage: f64, penalty: f64) {
 		MockPermissions::mock_has(|_, _, _| true);
+		MockPools::mock_pool_exists(|_| true);
 
 		Loans::update_write_off_policy(
 			RuntimeOrigin::signed(0),
 			POOL_A,
 			vec![WriteOffState {
 				overdue_days: 1,
-				percentage: Rate::from_float(0.5),
-				penalty: Rate::from_float(0.5),
+				percentage: Rate::from_float(percentage),
+				penalty: Rate::from_float(penalty),
 			}]
 			.try_into()
 			.unwrap(),
 		)
 		.expect("successful policy");
 
+		MockPermissions::mock_has(|_, _, _| panic!("no mock"));
+		MockPools::mock_pool_exists(|_| panic!("no mock"));
+	}
+
+	pub fn advance_time_and_write_off(loan_id: LoanId) {
+		set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 		advance_time(YEAR + DAY);
 
 		Loans::write_off(RuntimeOrigin::signed(0), POOL_A, loan_id).expect("successful write off");
@@ -84,6 +100,10 @@ mod util {
 		)
 		.expect("successful creation");
 
+		MockPermissions::mock_has(|_, _, _| panic!("no mock"));
+		MockPools::mock_pool_exists(|_| panic!("no mock"));
+		MockPools::mock_account_for(|_| panic!("no mock"));
+
 		LastLoanId::<Runtime>::get(POOL_A)
 	}
 
@@ -97,6 +117,8 @@ mod util {
 			borrow_amount,
 		)
 		.expect("successful borrowing");
+
+		MockPools::mock_withdraw(|_, _, _| panic!("no mock"));
 	}
 
 	pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
@@ -109,6 +131,8 @@ mod util {
 			repay_amount,
 		)
 		.expect("successful repaying");
+
+		MockPools::mock_deposit(|_, _, _| panic!("no mock"));
 	}
 }
 
@@ -441,7 +465,7 @@ mod borrow_loan {
 			advance_time(YEAR / 2);
 
 			assert_eq!(
-				util::compute_debt_for(COLLATERAL_VALUE / 2, YEAR / 2),
+				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE / 2, YEAR / 2),
 				util::current_loan_debt(loan_id)
 			);
 
@@ -628,7 +652,7 @@ mod repay_loan {
 			advance_time(YEAR / 2);
 
 			assert_eq!(
-				util::compute_debt_for(COLLATERAL_VALUE / 2, YEAR / 2),
+				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE / 2, YEAR / 2),
 				util::current_loan_debt(loan_id)
 			);
 
@@ -647,9 +671,12 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				util::compute_debt_for(COLLATERAL_VALUE / 2, YEAR / 2)
-					+ util::compute_debt_for(COLLATERAL_VALUE / 2, Duration::ZERO)
-					- COLLATERAL_VALUE
+				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE / 2, YEAR / 2)
+					+ util::compute_debt_for(
+						DEFAULT_INTEREST_RATE,
+						COLLATERAL_VALUE / 2,
+						Duration::ZERO
+					) - COLLATERAL_VALUE
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
@@ -670,23 +697,6 @@ mod write_off_loan {
 		});
 	}
 
-	fn aux_set_up_policy() {
-		MockPools::mock_pool_exists(|_| true);
-		MockPermissions::mock_has(|_, _, _| true);
-
-		assert_ok!(Loans::update_write_off_policy(
-			RuntimeOrigin::signed(0),
-			POOL_A,
-			vec![WriteOffState {
-				overdue_days: 1,
-				percentage: Rate::from_float(0.5),
-				penalty: Rate::from_float(0.5)
-			}]
-			.try_into()
-			.unwrap()
-		));
-	}
-
 	#[test]
 	fn without_policy() {
 		new_test_ext().execute_with(|| {
@@ -703,7 +713,7 @@ mod write_off_loan {
 	#[test]
 	fn with_policy_but_not_overdue() {
 		new_test_ext().execute_with(|| {
-			aux_set_up_policy();
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -721,7 +731,7 @@ mod write_off_loan {
 	#[test]
 	fn with_valid_maturity() {
 		new_test_ext().execute_with(|| {
-			aux_set_up_policy();
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -739,7 +749,7 @@ mod write_off_loan {
 	#[test]
 	fn with_wrong_loan_id() {
 		new_test_ext().execute_with(|| {
-			aux_set_up_policy();
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 			config_mocks();
 			assert_noop!(
@@ -751,8 +761,8 @@ mod write_off_loan {
 					RuntimeOrigin::signed(ADMIN),
 					POOL_A,
 					0,
-					Rate::from_float(0.8),
-					Rate::from_float(0.8)
+					Rate::from_float(POLICY_PERCENTAGE + 0.1),
+					Rate::from_float(POLICY_PENALTY + 0.1)
 				),
 				Error::<Runtime>::LoanNotFound
 			);
@@ -762,7 +772,7 @@ mod write_off_loan {
 	#[test]
 	fn with_no_active_loan() {
 		new_test_ext().execute_with(|| {
-			aux_set_up_policy();
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
 
@@ -776,8 +786,8 @@ mod write_off_loan {
 					RuntimeOrigin::signed(ADMIN),
 					POOL_A,
 					loan_id,
-					Rate::from_float(0.8),
-					Rate::from_float(0.8)
+					Rate::from_float(POLICY_PERCENTAGE + 0.1),
+					Rate::from_float(POLICY_PENALTY + 0.1)
 				),
 				Error::<Runtime>::LoanNotActive
 			);
@@ -787,7 +797,7 @@ mod write_off_loan {
 	#[test]
 	fn with_wrong_permission() {
 		new_test_ext().execute_with(|| {
-			aux_set_up_policy();
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -800,8 +810,8 @@ mod write_off_loan {
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
 					loan_id,
-					Rate::from_float(0.8),
-					Rate::from_float(0.8)
+					Rate::from_float(POLICY_PERCENTAGE + 0.1),
+					Rate::from_float(POLICY_PENALTY + 0.1)
 				),
 				BadOrigin
 			);
@@ -811,7 +821,7 @@ mod write_off_loan {
 	#[test]
 	fn with_success() {
 		new_test_ext().execute_with(|| {
-			aux_set_up_policy();
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -829,7 +839,7 @@ mod write_off_loan {
 	#[test]
 	fn with_admin_success() {
 		new_test_ext().execute_with(|| {
-			aux_set_up_policy();
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
 			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -837,25 +847,147 @@ mod write_off_loan {
 			advance_time(YEAR + DAY);
 
 			config_mocks();
+
+			// Write down percentage
 			assert_ok!(Loans::admin_write_off(
 				RuntimeOrigin::signed(ADMIN),
 				POOL_A,
 				loan_id,
-				Rate::from_float(0.8),
-				Rate::from_float(0.8)
+				Rate::from_float(POLICY_PERCENTAGE + 0.1),
+				Rate::from_float(POLICY_PENALTY)
+			));
+
+			// Write down penalty
+			assert_ok!(Loans::admin_write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id,
+				Rate::from_float(POLICY_PERCENTAGE + 0.1),
+				Rate::from_float(POLICY_PENALTY + 0.1)
+			));
+
+			// Write up percentage
+			assert_ok!(Loans::admin_write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id,
+				Rate::from_float(POLICY_PERCENTAGE),
+				Rate::from_float(POLICY_PENALTY + 0.1)
+			));
+
+			// Write up penalty
+			assert_ok!(Loans::admin_write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id,
+				Rate::from_float(POLICY_PERCENTAGE),
+				Rate::from_float(POLICY_PENALTY)
 			));
 		});
 	}
 
-	// TODO:
-	// - multiple write off
-	// - addmin write off with values less than policy
-	// - interest rate change after written off
-	// - write_down
-	//   - write_up being less than policy.
-	//   - write_up being higher than policy.
-	//
-	// Check asset movement in create()
+	#[test]
+	fn with_admin_less_than_policy() {
+		new_test_ext().execute_with(|| {
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
+
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			config_mocks();
+
+			// Less percentage
+			assert_noop!(
+				Loans::admin_write_off(
+					RuntimeOrigin::signed(ADMIN),
+					POOL_A,
+					loan_id,
+					Rate::from_float(POLICY_PERCENTAGE - 0.1),
+					Rate::from_float(POLICY_PENALTY)
+				),
+				Error::<Runtime>::from(WrittenOffError::LessThanPolicy)
+			);
+
+			// Less penalty
+			assert_noop!(
+				Loans::admin_write_off(
+					RuntimeOrigin::signed(ADMIN),
+					POOL_A,
+					loan_id,
+					Rate::from_float(POLICY_PERCENTAGE),
+					Rate::from_float(POLICY_PENALTY - 0.1)
+				),
+				Error::<Runtime>::from(WrittenOffError::LessThanPolicy)
+			);
+		});
+	}
+
+	#[test]
+	fn with_percentage_applied() {
+		new_test_ext().execute_with(|| {
+			util::set_up_policy(POLICY_PERCENTAGE, 0.0);
+
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			let pv = util::current_loan_pv(loan_id);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(
+				(pv as f64 * POLICY_PERCENTAGE) as Balance,
+				util::current_loan_pv(loan_id)
+			);
+		});
+	}
+
+	#[test]
+	#[ignore = "waiting for renormalize fix"]
+	fn with_penalty_applied() {
+		new_test_ext().execute_with(|| {
+			util::set_up_policy(0.0, POLICY_PENALTY);
+
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			let expected_debt_before_written_off =
+				util::compute_debt_for(DEFAULT_INTEREST_RATE, COLLATERAL_VALUE, YEAR + DAY);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id
+			));
+
+			// Modify an interest rate doesn't have effect in the same instant
+			assert_eq!(
+				expected_debt_before_written_off,
+				util::current_loan_debt(loan_id)
+			);
+
+			advance_time(YEAR);
+
+			assert_eq!(
+				expected_debt_before_written_off
+					+ util::compute_debt_for(
+						DEFAULT_INTEREST_RATE + POLICY_PENALTY,
+						COLLATERAL_VALUE,
+						YEAR
+					),
+				util::current_loan_debt(loan_id)
+			);
+		});
+	}
 }
 
 mod close_loan {
@@ -963,8 +1095,8 @@ mod write_off_policy {
 					POOL_A,
 					vec![WriteOffState {
 						overdue_days: 1,
-						percentage: Rate::from_float(0.5),
-						penalty: Rate::from_float(0.5),
+						percentage: Rate::from_float(POLICY_PERCENTAGE),
+						penalty: Rate::from_float(POLICY_PENALTY),
 					}]
 					.try_into()
 					.unwrap(),
@@ -985,8 +1117,8 @@ mod write_off_policy {
 					POOL_B,
 					vec![WriteOffState {
 						overdue_days: 1,
-						percentage: Rate::from_float(0.5),
-						penalty: Rate::from_float(0.5),
+						percentage: Rate::from_float(POLICY_PERCENTAGE),
+						penalty: Rate::from_float(POLICY_PENALTY),
 					}]
 					.try_into()
 					.unwrap(),
@@ -1006,8 +1138,8 @@ mod write_off_policy {
 				POOL_A,
 				vec![WriteOffState {
 					overdue_days: 1,
-					percentage: Rate::from_float(0.5),
-					penalty: Rate::from_float(0.5),
+					percentage: Rate::from_float(POLICY_PERCENTAGE),
+					penalty: Rate::from_float(POLICY_PENALTY),
 				}]
 				.try_into()
 				.unwrap(),
@@ -1054,7 +1186,14 @@ mod write_off_policy {
 }
 
 mod portfolio_valuation {
-	use super::*;
+	//use super::*;
 
-	//TODO
+	// Check if write_off 100% is allowing that the debt still increases
+
+	// TODO
 }
+
+// TODO:
+// Remove unused loan_id from utility functions
+// Check if repay removes written_off percentage.
+// Check legacy test if there is some check I'm forgeting

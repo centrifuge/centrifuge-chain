@@ -252,7 +252,8 @@ mod pallet {
 		LoanNotFound,
 		/// Emits when a loan exist but it's not active
 		LoanNotActive,
-		/// Emits when a write-off state is not found in a policy for a specific loan
+		/// Emits when a write-off state is not found in a policy for a specific loan.
+		/// It happens when there is no policy or the loan is not overdue.
 		NoValidWriteOffState,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,

@@ -49,8 +49,6 @@ pub enum BorrowLoanError {
 /// Error related to loan borrowing
 #[derive(Encode, Decode, TypeInfo, PalletError)]
 pub enum WrittenOffError {
-	/// Emits when maturity has not passed tried to writ off
-	MaturityDateNotPassed,
 	/// Emits when a write off action tries to write off the more than the policy allows
 	LessThanPolicy,
 }
@@ -566,17 +564,10 @@ impl<T: Config> ActiveLoan<T> {
 	fn ensure_can_write_off(
 		&self,
 		limit: &WriteOffState<T::Rate>,
-		status: &WriteOffStatus<T::Rate>,
+		new_status: &WriteOffStatus<T::Rate>,
 	) -> DispatchResult {
-		let now = T::Time::now().as_secs();
-
 		ensure!(
-			!self.info.schedule.maturity.is_valid(now),
-			Error::<T>::from(WrittenOffError::MaturityDateNotPassed)
-		);
-
-		ensure!(
-			status.percentage >= limit.percentage && status.penalty >= limit.penalty,
+			new_status.percentage >= limit.percentage && new_status.penalty >= limit.penalty,
 			Error::<T>::from(WrittenOffError::LessThanPolicy)
 		);
 
