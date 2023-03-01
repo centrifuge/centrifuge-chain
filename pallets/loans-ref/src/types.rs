@@ -44,6 +44,8 @@ pub enum BorrowLoanError {
 	MaxAmountExceeded,
 	/// Emits when the loan can not be borrowed because the loan is written off
 	WrittenOffRestriction,
+	/// Emits when maturity has passed and borrower tried to borrow more
+	MaturityDatePassed,
 }
 
 /// Error related to loan borrowing
@@ -516,6 +518,8 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
+		let now = T::Time::now().as_secs();
+
 		match self.info.restrictions.borrows {
 			BorrowRestrictions::WrittenOff => {
 				ensure!(
@@ -524,6 +528,11 @@ impl<T: Config> ActiveLoan<T> {
 				)
 			}
 		}
+
+		ensure!(
+			self.info.schedule.maturity.is_valid(now),
+			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
+		);
 
 		ensure!(
 			amount <= self.max_borrow_amount()?,

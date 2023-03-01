@@ -358,6 +358,26 @@ mod borrow_loan {
 	}
 
 	#[test]
+	fn with_maturity_passed() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+
+			advance_time(YEAR);
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_noop!(
+				Loans::borrow(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					COLLATERAL_VALUE
+				),
+				Error::<Runtime>::from(BorrowLoanError::MaturityDatePassed)
+			);
+		});
+	}
+
+	#[test]
 	fn with_wrong_amounts() {
 		let borrow_inputs = [
 			(COLLATERAL_VALUE + 1, util::total_borrowed_rate(1.0)),
@@ -406,25 +426,6 @@ mod borrow_loan {
 				assert_eq!(amount, util::current_loan_debt(loan_id));
 			});
 		}
-	}
-
-	#[test]
-	fn with_maturity_passed() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
-
-			advance_time(YEAR + BLOCK_TIME);
-
-			config_mocks(COLLATERAL_VALUE);
-
-			// It's ok because should be written off to avoid borrowing
-			assert_ok!(Loans::borrow(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id,
-				COLLATERAL_VALUE
-			));
-		});
 	}
 
 	#[test]
