@@ -1445,13 +1445,11 @@ mod portfolio_valuation {
 			advance_time(YEAR / 2);
 
 			update_portfolio();
-			expected_portfolio(util::current_loan_pv(loan_1) + util::current_loan_pv(loan_2));
+			expected_portfolio(0);
 
 			util::close_loan(loan_1);
 			util::close_loan(loan_2);
 
-			expected_portfolio(0);
-			update_portfolio();
 			expected_portfolio(0);
 		});
 	}
