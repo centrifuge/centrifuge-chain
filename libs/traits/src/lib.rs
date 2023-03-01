@@ -233,7 +233,7 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 
 	/// Calculate the current debt using normalized debt * cumulative rate
 	fn current_debt(
-		interest_rate_per_sec: InterestRate,
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Balance, DispatchError>;
 
@@ -244,14 +244,14 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	/// (effectively "rewinding the clock" to before the value was
 	/// valid)
 	fn previous_debt(
-		interest_rate_per_sec: InterestRate,
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt
 	fn adjust_normalized_debt(
-		interest_rate_per_sec: InterestRate,
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
