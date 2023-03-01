@@ -32,6 +32,7 @@ pub const BORROWER: AccountId = 1;
 pub const OTHER_BORROWER: AccountId = 2;
 pub const ADMIN: AccountId = 5;
 pub const NO_BORROWER: AccountId = 10;
+pub const ANY: AccountId = 100;
 
 pub const COLLECTION_A: CollectionId = 1;
 pub const COLLECTION_B: CollectionId = 2;
