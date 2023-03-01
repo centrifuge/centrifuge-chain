@@ -440,7 +440,7 @@ mod borrow_loan {
 			));
 			assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_id));
 
-			// At this point the loan has been totally borrowed.
+			// At this point the loan has been fully borrowed.
 			let extra = 1;
 			assert_noop!(
 				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
@@ -481,7 +481,7 @@ mod borrow_loan {
 				COLLATERAL_VALUE / 2
 			));
 
-			// At this point the loan has been totally borrowed.
+			// At this point the loan has been fully borrowed.
 			let extra = 1;
 			assert_noop!(
 				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
@@ -682,6 +682,26 @@ mod repay_loan {
 				loan_id,
 				still_to_pay
 			));
+
+			assert_eq!(0, util::current_loan_debt(loan_id));
+		});
+	}
+
+	#[test]
+	fn outstanding_debt_rate_no_increase_if_fully_repaid() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::outstanding_debt_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE
+			));
+
+			advance_time(YEAR);
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
 		});
@@ -1031,6 +1051,7 @@ mod write_off_loan {
 				loan_id
 			));
 
+			// Because we are using ValuationMethod::OutstandingDebt:
 			assert_eq!(
 				(pv as f64 * POLICY_PERCENTAGE) as Balance,
 				util::current_loan_pv(loan_id)
@@ -1077,6 +1098,31 @@ mod write_off_loan {
 				) - precission_error,
 				util::current_loan_debt(loan_id)
 			);
+		});
+	}
+
+	#[test]
+	fn fully() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			config_mocks();
+			assert_ok!(Loans::admin_write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id,
+				Rate::from_float(1.0),
+				Rate::from_float(0.0)
+			));
+
+			assert_eq!(0, util::current_loan_pv(loan_id));
+
+			advance_time(YEAR);
+
+			assert_eq!(0, util::current_loan_pv(loan_id));
 		});
 	}
 }
@@ -1279,12 +1325,5 @@ mod write_off_policy {
 mod portfolio_valuation {
 	//use super::*;
 
-	// Check if write_off 100% is allowing that the debt still increases
-
 	// TODO
 }
-
-// TODO:
-// Check if repay removes written_off percentage.
-// Check legacy test if there is some check I'm forgeting
-// ~ Remove unused loan_id from utility functions
