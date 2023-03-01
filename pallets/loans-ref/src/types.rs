@@ -506,6 +506,21 @@ impl<T: Config> ActiveLoan<T> {
 			.ensure_add(penalty)
 	}
 
+	fn update_interest_rate(&mut self, new_interest_rate: T::Rate) -> DispatchResult {
+		let old_interest_rate = self.info.interest_rate;
+
+		T::InterestAccrual::reference_rate(new_interest_rate)?;
+
+		self.normalized_debt = T::InterestAccrual::renormalize_debt(
+			old_interest_rate,
+			new_interest_rate,
+			self.normalized_debt,
+		)?;
+		self.info.interest_rate = new_interest_rate;
+
+		T::InterestAccrual::unreference_rate(old_interest_rate)
+	}
+
 	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
 		Ok(match self.info.restrictions.max_borrow_amount {
 			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
@@ -585,13 +600,13 @@ impl<T: Config> ActiveLoan<T> {
 		&self,
 		limit: &WriteOffStatus<T::Rate>,
 		new_status: &WriteOffStatus<T::Rate>,
-	) -> DispatchResult {
+	) -> Result<T::Rate, DispatchError> {
 		ensure!(
 			new_status.percentage >= limit.percentage && new_status.penalty >= limit.penalty,
 			Error::<T>::from(WrittenOffError::LessThanPolicy)
 		);
 
-		Ok(())
+		Ok(self.interest_rate_with(new_status.penalty)?)
 	}
 
 	pub fn write_off(
@@ -599,22 +614,12 @@ impl<T: Config> ActiveLoan<T> {
 		limit: &WriteOffStatus<T::Rate>,
 		new_status: &WriteOffStatus<T::Rate>,
 	) -> DispatchResult {
-		self.ensure_can_write_off(limit, new_status)?;
+		let new_interest_rate = self.ensure_can_write_off(limit, new_status)?;
 
-		let prev_interest_rate = self.info.interest_rate;
-		let next_interest_rate = self.interest_rate_with(new_status.penalty)?;
-
-		T::InterestAccrual::reference_rate(next_interest_rate)?;
-
-		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			prev_interest_rate,
-			next_interest_rate,
-			self.normalized_debt,
-		)?;
+		self.update_interest_rate(new_interest_rate)?;
 		self.write_off_status = new_status.clone();
-		self.info.interest_rate = next_interest_rate;
 
-		T::InterestAccrual::unreference_rate(prev_interest_rate)
+		Ok(())
 	}
 
 	fn ensure_can_close(&self) -> DispatchResult {

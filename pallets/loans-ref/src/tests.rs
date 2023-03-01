@@ -1455,6 +1455,3 @@ mod portfolio_valuation {
 		});
 	}
 }
-
-//Check:
-//first loan borrow if maturity date exceeded.
