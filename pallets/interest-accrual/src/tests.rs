@@ -23,15 +23,15 @@ use crate::{
 
 #[test]
 fn test_rate_validation() {
-	let max_rate = Rate::saturating_from_rational(9999, 10000);
+	let high_rate = Rate::saturating_from_rational(300000, 10000);
 	let min_rate = Rate::saturating_from_rational(1, 10000);
 	let normal_rate = Rate::saturating_from_rational(5, 100);
 	let too_many_decimals = Rate::saturating_from_rational(55, 100000);
 
-	assert!(Pallet::<Runtime>::validate_rate(max_rate).is_ok());
+	assert!(Pallet::<Runtime>::validate_rate(high_rate).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(min_rate).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(normal_rate).is_ok());
-	assert!(Pallet::<Runtime>::validate_rate(One::one()).is_err());
+	assert!(Pallet::<Runtime>::validate_rate(One::one()).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(Zero::zero()).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(too_many_decimals).is_err());
 }

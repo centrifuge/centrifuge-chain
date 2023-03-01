@@ -263,23 +263,11 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
-	/// Indicate that a yearly rate is in use
-	///
-	/// Validates that the rate is allowed, and converts it to a per-second rate for future operations
-	fn reference_yearly_rate(
-		interest_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
-
-	/// Indicate that a rate is in use
-	fn reference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
+	/// Validate and indicate that a yearly rate is in use
+	fn reference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
 	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
-
-	/// Verifies a yearly additive rate and converts it to a per-second additive rate
-	fn convert_additive_rate_to_per_sec(
-		interset_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
+	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
 	/// Returns a collection of pre-computed rates to perform multiple operations with
 	fn rates() -> Self::Rates;
