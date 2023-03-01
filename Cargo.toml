@@ -55,6 +55,7 @@ members = [
   "pallets/pool-system",
   "pallets/pool-registry",
   "pallets/restricted-tokens",
+  "pallets/transfer-allowlist",
   "pallets/rewards",
   "runtime/altair",
   "runtime/centrifuge",

@@ -7788,6 +7788,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-transfer-allowlist"
+version = "0.1.0"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "pallet-connectors",
+ "parity-scale-codec 3.2.1",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "pallet-treasury"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29#f38bd6671d460293c93062cc1e4fe9e9e490cb29"
