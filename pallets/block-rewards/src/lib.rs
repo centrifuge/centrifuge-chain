@@ -33,6 +33,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -76,10 +77,10 @@ pub struct CollatorChanges<T: Config> {
 #[scale_info(skip_type_params(T))]
 pub struct SessionData<T: Config> {
 	/// Amount of rewards per session for a single collator.
-	collator_reward: T::Balance,
+	pub(crate) collator_reward: T::Balance,
 	/// Total amount of rewards per session
 	/// NOTE: Is ensured to be at least collator_reward * collator_count.
-	total_reward: T::Balance,
+	pub(crate) total_reward: T::Balance,
 	/// Number of current collators.
 	/// NOTE: Updated automatically and thus not adjustable via extrinsic.
 	pub collator_count: u32,
@@ -120,6 +121,8 @@ pub(crate) type NegativeImbalanceOf<T> = <<T as Config>::Currency as CurrencyT<
 pub mod pallet {
 
 	use super::*;
+
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -206,7 +209,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Limit of max calls with same id to [`Pallet::set_collator_reward()`] or
-		/// [`Pallet::set_total_group()`] reached.
+		/// [`Pallet::set_total_reward()`] reached.
 		MaxChangesPerSessionReached,
 		InsufficientTotalReward,
 	}
@@ -318,6 +321,10 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	/// Mint default amount of stake for target address and deposit stake.
 	/// Enables receiving rewards onwards.
+	///
+	/// Weight (6 reads, 6 writes):
+	///  * mint_into (2 reads, 2 writes): Account, TotalIssuance
+	///  * deposit_stake (4 reads, 4 writes): Currencies, Groups, StakeAccounts, Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
 		T::Currency::mint_into(STAKE_CURRENCY_ID, who, DEFAULT_COLLATOR_STAKE.into())?;
 		T::Rewards::deposit_stake(

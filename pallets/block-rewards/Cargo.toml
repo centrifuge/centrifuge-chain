@@ -19,6 +19,7 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 log = { version = "0.4.17", default-features = false }
 num-traits = { version = "0.2", default-features = false }
+pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-session = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -53,6 +54,7 @@ std = [
   "log/std",
   "frame-support/std",
   "frame-system/std",
+  "pallet-collator-selection/std",
   "pallet-rewards/std",
   "pallet-session/std",
   "sp-runtime/std",

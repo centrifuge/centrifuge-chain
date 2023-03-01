@@ -1861,6 +1861,13 @@ pub type UncheckedExtrinsic =
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
+parameter_types! {
+	// = 16.65 CFG per epoch (12h)
+	pub const CollatorRewards: Balance = 8_325 * MILLI_CFG;
+	// = 20,096 CFG per epoch (12h)
+	pub const TotalRewards: Balance = 10_048 * CFG;
+}
+
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -1868,16 +1875,8 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	SchedulerMigrationV3,
+	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>,
 >;
-
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct SchedulerMigrationV3;
-impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v4()
-	}
-}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
