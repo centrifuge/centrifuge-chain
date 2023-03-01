@@ -1076,6 +1076,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "cfg-mocks"
+version = "0.0.1"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-support",
+ "frame-system",
+ "mock-builder",
+ "parity-scale-codec 3.2.1",
+ "scale-info",
+ "sp-std",
+]
+
+[[package]]
 name = "cfg-primitives"
 version = "2.0.0"
 dependencies = [

@@ -49,6 +49,10 @@ pallets/restricted-tokens/* @mustermeiszer
 
 # Changes to libs
 ## Changes to specific libraries
+
+### mock-builder crate
+libs/mock-builder/* @lemunozm
+
 ### cfg-traits crate
 #### rewards module
 libs/traits/src/rewards.rs @lemunozm

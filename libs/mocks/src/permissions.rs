@@ -6,9 +6,7 @@ pub mod pallet_mock_permissions {
 	use cfg_traits::Permissions;
 	use cfg_types::permissions::Role;
 	use frame_support::pallet_prelude::*;
-
-	use super::super::builder::CallId;
-	use crate::{execute_call, register_call};
+	use mock_builder::{execute_call, register_call};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -24,7 +22,7 @@ pub mod pallet_mock_permissions {
 		_,
 		Blake2_128Concat,
 		<Blake2_128 as frame_support::StorageHasher>::Output,
-		CallId,
+		mock_builder::CallId,
 	>;
 
 	impl<T: Config> Pallet<T> {

@@ -109,10 +109,10 @@ macro_rules! function_locator {
 #[macro_export]
 macro_rules! call_locator {
 	() => {{
-		let path_name = crate::function_locator!();
+		let path_name = $crate::function_locator!();
 		let (path, name) = path_name.rsplit_once("::").expect("always ::");
 
-		let base_name = name.strip_prefix(crate::MOCK_FN_PREFIX).unwrap_or(name);
+		let base_name = name.strip_prefix($crate::MOCK_FN_PREFIX).unwrap_or(name);
 		let correct_path = path
 			.strip_prefix("<")
 			.map(|trait_path| trait_path.split_once(" as").expect("always ' as'").0)
@@ -132,8 +132,8 @@ macro_rules! register_call {
 		use frame_support::StorageHasher;
 
 		CallIds::<T>::insert(
-			frame_support::Blake2_128::hash(crate::call_locator!().as_bytes()),
-			crate::storage::register_call($f),
+			frame_support::Blake2_128::hash($crate::call_locator!().as_bytes()),
+			$crate::storage::register_call($f),
 		);
 	}};
 }
@@ -147,11 +147,11 @@ macro_rules! execute_call {
 	($params:expr) => {{
 		use frame_support::StorageHasher;
 
-		let hash = frame_support::Blake2_128::hash(crate::call_locator!().as_bytes());
-		crate::storage::execute_call(
+		let hash = frame_support::Blake2_128::hash($crate::call_locator!().as_bytes());
+		$crate::storage::execute_call(
 			CallIds::<T>::get(hash).expect(&format!(
 				"Called to {}, but mock was not found",
-				crate::call_locator!()
+				$crate::call_locator!()
 			)),
 			$params,
 		)

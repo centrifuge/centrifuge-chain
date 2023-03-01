@@ -7,11 +7,9 @@ mod pallet_mock_pools {
 	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::pallet_prelude::*;
+	use mock_builder::{execute_call, register_call};
 	use scale_info::TypeInfo;
 	use sp_std::fmt::Debug;
-
-	use super::super::builder::CallId;
-	use crate::{execute_call, register_call};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -39,7 +37,7 @@ mod pallet_mock_pools {
 		_,
 		Blake2_128Concat,
 		<Blake2_128 as frame_support::StorageHasher>::Output,
-		CallId,
+		mock_builder::CallId,
 	>;
 
 	impl<T: Config> Pallet<T> {
