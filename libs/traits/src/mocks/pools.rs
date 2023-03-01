@@ -1,0 +1,115 @@
+pub use pallet_mock_pools::*;
+
+#[allow(dead_code)]
+#[frame_support::pallet]
+mod pallet_mock_pools {
+	use cfg_primitives::Moment;
+	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
+	use codec::{Decode, Encode, MaxEncodedLen};
+	use frame_support::pallet_prelude::*;
+	use scale_info::TypeInfo;
+	use sp_std::fmt::Debug;
+
+	use super::super::builder::CallId;
+	use crate::{execute_call, register_call};
+
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type PoolId: Parameter
+			+ Member
+			+ Debug
+			+ Copy
+			+ Default
+			+ TypeInfo
+			+ Encode
+			+ Decode
+			+ MaxEncodedLen;
+		type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
+		type Balance;
+		type Rate;
+		type CurrencyId;
+	}
+
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	pub struct Pallet<T>(_);
+
+	#[pallet::storage]
+	pub(super) type CallIds<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		<Blake2_128 as frame_support::StorageHasher>::Output,
+		CallId,
+	>;
+
+	impl<T: Config> Pallet<T> {
+		pub fn mock_pool_exists(f: impl Fn(T::PoolId) -> bool + 'static) {
+			register_call!(f);
+		}
+
+		pub fn tranche_exists(f: impl Fn(T::PoolId, T::TrancheId) -> bool + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn get_tranche_token_price(
+			f: impl Fn(T::PoolId, T::TrancheId) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>>
+				+ 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_account_for(f: impl Fn(T::PoolId) -> T::AccountId + 'static) {
+			register_call!(f);
+		}
+
+		pub fn mock_withdraw(
+			f: impl Fn(T::PoolId, T::AccountId, T::Balance) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
+
+		pub fn mock_deposit(
+			f: impl Fn(T::PoolId, T::AccountId, T::Balance) -> DispatchResult + 'static,
+		) {
+			register_call!(move |(a, b, c)| f(a, b, c));
+		}
+	}
+
+	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
+		type Moment = Moment;
+		type PoolId = T::PoolId;
+		type Rate = T::Rate;
+		type TrancheId = T::TrancheId;
+
+		fn pool_exists(a: T::PoolId) -> bool {
+			execute_call!(a)
+		}
+
+		fn tranche_exists(a: T::PoolId, b: T::TrancheId) -> bool {
+			execute_call!((a, b))
+		}
+
+		fn get_tranche_token_price(
+			a: T::PoolId,
+			b: T::TrancheId,
+		) -> Option<PriceValue<T::CurrencyId, T::Rate, Moment>> {
+			execute_call!((a, b))
+		}
+
+		fn account_for(a: T::PoolId) -> T::AccountId {
+			execute_call!(a)
+		}
+	}
+
+	impl<T: Config> PoolReserve<T::AccountId, T::CurrencyId> for Pallet<T> {
+		type Balance = T::Balance;
+
+		fn withdraw(a: T::PoolId, b: T::AccountId, c: T::Balance) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+
+		fn deposit(a: T::PoolId, b: T::AccountId, c: T::Balance) -> DispatchResult {
+			execute_call!((a, b, c))
+		}
+	}
+}

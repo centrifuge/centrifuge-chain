@@ -1,0 +1,17 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Build mock pallets from traits"
+edition = "2021"
+license = "LGPL-3.0"
+name = "mock-builder"
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "0.0.1"
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dev-dependencies]
+scale-info = { version = "2.3.0", features = ["derive"] }
+codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }

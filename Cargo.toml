@@ -27,6 +27,7 @@ path = "src/main.rs"
 
 [workspace]
 members = [
+  "libs/mock-builder",
   "libs/primitives",
   "libs/proofs",
   "libs/test-utils",
