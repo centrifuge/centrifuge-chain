@@ -31,6 +31,10 @@ use crate::{
 async fn env_works() {
 	let mut env = env::test_env_default(Handle::current());
 
+	// Breaks on >= 10 for fast-runtime since session length is 5 blocks
+	#[cfg(feature = "fast-runtime")]
+	let num_blocks = 9;
+	#[cfg(not(feature = "fast-runtime"))]
 	let num_blocks = 10;
 	let block_before = env
 		.with_state(Chain::Para(PARA_ID), || {
@@ -38,7 +42,7 @@ async fn env_works() {
 		})
 		.expect("Cannot create block before");
 
-	env::pass_n(&mut env, num_blocks).unwrap();
+	frame_support::assert_ok!(env::pass_n(&mut env, num_blocks));
 
 	let block_after = env
 		.with_state(Chain::Para(PARA_ID), || {
