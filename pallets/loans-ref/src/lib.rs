@@ -417,6 +417,8 @@ mod pallet {
 		///
 		/// This action will write off based on the write off policy configured by
 		/// [`Pallet::update_write_off_policy()`].
+		/// The write off action will only take effect if it writes down than the current write
+		/// off status of the loan. This action will never writes up.
 		/// No special permisions are required to this call.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
@@ -429,12 +431,12 @@ mod pallet {
 			ensure_signed(origin)?;
 
 			let status = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
-				let status = limit.status();
+				let state = Self::find_write_off_state(pool_id, loan.maturity_date())?;
+				let limit = state.status().max(loan.write_off_status());
 
-				loan.write_off(&limit, &status)?;
+				loan.write_off(&limit, &limit)?;
 
-				Ok(status)
+				Ok(limit)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -450,6 +452,7 @@ mod pallet {
 		///
 		/// Forces a writing off of a loan if the `percentage` and `penalty` parameters
 		/// respect the policy values as the minimum.
+		/// This action can write down/up the current write off status of the loan.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
 		#[transactional]
@@ -469,7 +472,9 @@ mod pallet {
 			};
 
 			Self::update_active_loan(pool_id, loan_id, |loan| {
-				let limit = Self::find_write_off_state(pool_id, loan.maturity_date())?;
+				let state = Self::find_write_off_state(pool_id, loan.maturity_date());
+				let limit = state.map(|s| s.status()).unwrap_or(status.clone());
+
 				loan.write_off(&limit, &status)
 			})?;
 

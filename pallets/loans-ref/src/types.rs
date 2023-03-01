@@ -178,6 +178,13 @@ where
 		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
 	}
 
+	pub fn max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
+		Self {
+			percentage: self.percentage.max(other.percentage),
+			penalty: self.penalty.max(other.penalty),
+		}
+	}
+
 	pub fn is_none(&self) -> bool {
 		self.percentage.is_zero() && self.penalty.is_zero()
 	}
@@ -434,6 +441,10 @@ impl<T: Config> ActiveLoan<T> {
 		self.info.schedule.maturity.date()
 	}
 
+	pub fn write_off_status(&self) -> &WriteOffStatus<T::Rate> {
+		&self.write_off_status
+	}
+
 	/// Returns the debt for the current loan.
 	/// If None, it returns the corresponding debt at now().
 	pub fn debt(&self, when: Option<Moment>) -> Result<T::Balance, DispatchError> {
@@ -563,7 +574,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	fn ensure_can_write_off(
 		&self,
-		limit: &WriteOffState<T::Rate>,
+		limit: &WriteOffStatus<T::Rate>,
 		new_status: &WriteOffStatus<T::Rate>,
 	) -> DispatchResult {
 		ensure!(
@@ -576,7 +587,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off(
 		&mut self,
-		limit: &WriteOffState<T::Rate>,
+		limit: &WriteOffStatus<T::Rate>,
 		new_status: &WriteOffStatus<T::Rate>,
 	) -> DispatchResult {
 		self.ensure_can_write_off(limit, new_status)?;

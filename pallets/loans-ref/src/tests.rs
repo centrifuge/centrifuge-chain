@@ -8,7 +8,7 @@ use super::{
 	mock::*,
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
-		WriteOffState, WrittenOffError,
+		WriteOffState, WriteOffStatus, WrittenOffError,
 	},
 	valuation::{DiscountedCashFlow, ValuationMethod},
 	ActiveLoans, Error, LastLoanId,
@@ -711,6 +711,15 @@ mod write_off_loan {
 				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
 				Error::<Runtime>::NoValidWriteOffState
 			);
+
+			config_mocks();
+			assert_ok!(Loans::admin_write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id,
+				Rate::from_float(0.1),
+				Rate::from_float(0.1)
+			));
 		});
 	}
 
@@ -755,11 +764,12 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			config_mocks();
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(BORROWER), POOL_A, 0),
 				Error::<Runtime>::LoanNotFound
 			);
+
+			config_mocks();
 			assert_noop!(
 				Loans::admin_write_off(
 					RuntimeOrigin::signed(ADMIN),
@@ -924,6 +934,81 @@ mod write_off_loan {
 					Rate::from_float(POLICY_PENALTY - 0.1)
 				),
 				Error::<Runtime>::from(WrittenOffError::LessThanPolicy)
+			);
+		});
+	}
+
+	#[test]
+	fn with_policy_change_after() {
+		new_test_ext().execute_with(|| {
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
+
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id
+			));
+
+			util::set_up_policy(POLICY_PERCENTAGE / 2.0, POLICY_PENALTY / 2.0);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(
+				WriteOffStatus {
+					percentage: Rate::from_float(POLICY_PERCENTAGE),
+					penalty: Rate::from_float(
+						// TODO: Simplify when issue #1189 is merged
+						POLICY_PENALTY / cfg_primitives::SECONDS_PER_YEAR as f64
+					),
+				},
+				*util::get_loan(loan_id).write_off_status()
+			);
+		});
+	}
+
+	#[test]
+	fn with_policy_change_after_admin() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			config_mocks();
+			assert_ok!(Loans::admin_write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id,
+				Rate::from_float(POLICY_PERCENTAGE + 0.1),
+				Rate::from_float(POLICY_PENALTY + 0.1)
+			));
+
+			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
+
+			advance_time(YEAR + DAY);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ADMIN),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(
+				WriteOffStatus {
+					percentage: Rate::from_float(POLICY_PERCENTAGE + 0.1),
+					penalty: Rate::from_float(
+						// TODO: Simplify when issue #1189 is merged
+						(POLICY_PENALTY + 0.1) / cfg_primitives::SECONDS_PER_YEAR as f64
+					),
+				},
+				*util::get_loan(loan_id).write_off_status()
 			);
 		});
 	}
