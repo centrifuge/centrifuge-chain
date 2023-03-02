@@ -266,6 +266,20 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "pallet-authority-discovery/try-runtime",
+  "pallet-babe/try-runtime",
+  "pallet-grandpa/try-runtime",
+  "pallet-im-online/try-runtime",
+  "pallet-indices/try-runtime",
+  "pallet-membership/try-runtime",
+  "pallet-offences/try-runtime",
+  "pallet-staking/try-runtime",
+  "polkadot-runtime-common/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",

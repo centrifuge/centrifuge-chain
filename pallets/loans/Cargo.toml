@@ -94,4 +94,14 @@ std = [
   'cfg-types/std',
   'cfg-primitives/std',
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "cfg-types/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-interest-accrual/try-runtime",
+  "pallet-permissions/try-runtime",
+  "parachain-info/try-runtime",
+  "cfg-utils/try-runtime",
+]

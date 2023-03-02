@@ -30,7 +30,11 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 
 [features]
 default = ["std"]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+]
 runtime-benchmarks = ["frame-benchmarking"]
 std = [
   "codec/std",

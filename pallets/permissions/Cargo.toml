@@ -46,4 +46,9 @@ std = [
   'sp-std/std',
   'cfg-traits/std',
 ]
-try-runtime = ['frame-support/try-runtime']
+try-runtime = [
+  "cfg-traits/try-runtime",
+  'frame-support/try-runtime',
+  "cfg-types/try-runtime",
+  "frame-system/try-runtime",
+]

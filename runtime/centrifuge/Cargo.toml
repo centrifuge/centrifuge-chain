@@ -257,6 +257,10 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "polkadot-runtime-common/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",

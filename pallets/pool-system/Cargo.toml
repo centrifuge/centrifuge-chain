@@ -84,7 +84,17 @@ std = [
   'orml-asset-registry/std',
   'xcm/std',
 ]
-try-runtime = ['frame-support/try-runtime', "lazy_static/spin_no_std"]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  'frame-support/try-runtime',
+  "lazy_static/spin_no_std",
+  "cfg-types/try-runtime",
+  "frame-system/try-runtime",
+  "orml-asset-registry/try-runtime",
+  "pallet-permissions/try-runtime",
+  "pallet-timestamp/try-runtime",
+]
 test-benchmarks = [
   'frame-support/try-runtime',
 ]
