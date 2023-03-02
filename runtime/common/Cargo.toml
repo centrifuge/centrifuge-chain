@@ -77,10 +77,26 @@ std = [
   "frame-system/std",
   "cfg-primitives/std",
   "cfg-types/std",
+  "orml-traits/std",
+  "pallet-pool-system/std",
+  "pallet-rewards/std",
+  "scale-info/std",
+  "xcm/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "pallet-anchors/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-collective/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-system/runtime-benchmarks",
+  "pallet-treasury/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm/runtime-benchmarks",
 ]
 
 on-chain-release-build = [

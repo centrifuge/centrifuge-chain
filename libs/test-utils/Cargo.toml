@@ -40,6 +40,7 @@ std = [
   'frame-system/std',
   'sp-runtime/std',
   'sp-std/std',
+  "frame-benchmarking/std",
 ]
 runtime-benchmarks = [
   "cfg-primitives/try-runtime",

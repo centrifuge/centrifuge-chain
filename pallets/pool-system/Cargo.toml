@@ -83,6 +83,8 @@ std = [
   'polkadot-parachain/std',
   'orml-asset-registry/std',
   'xcm/std',
+  "frame-benchmarking/std",
+  "serde/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

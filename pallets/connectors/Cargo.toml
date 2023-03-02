@@ -75,6 +75,18 @@ runtime-benchmarks = [
   "frame-benchmarking",
   "pallet-balances",
   "orml-tokens",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-ethereum-xcm/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
 ]
 std = [
   'codec/std',
@@ -100,6 +112,9 @@ std = [
   'pallet-loans/std',
   'pallet-pool-system/std',
   'pallet-uniques/std',
+  "cfg-primitives/std",
+  "frame-benchmarking/std",
+  "scale-info/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

@@ -43,4 +43,6 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "cfg-traits/std",
+  "num-traits/std",
+  "scale-info/std",
 ]

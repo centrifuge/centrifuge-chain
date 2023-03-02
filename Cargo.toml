@@ -186,6 +186,7 @@ tempfile = "3.1.0"
 [features]
 default = ["std", "cli"]
 std = [
+  "serde/std",
   "sc-service/rocksdb",
   "substrate-build-script-utils",
   "sp-consensus-babe/std",
@@ -240,6 +241,21 @@ runtime-benchmarks = [
   "development-runtime/runtime-benchmarks",
   "runtime-common/runtime-benchmarks",
   "polkadot-cli/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-benchmarking-cli/runtime-benchmarks",
+  "pallet-anchors/runtime-benchmarks",
+  "pallet-im-online/runtime-benchmarks",
+  "pallet-loans/runtime-benchmarks",
+  "pallet-pool-system/runtime-benchmarks",
+  "polkadot-parachain/runtime-benchmarks",
+  "polkadot-primitives/runtime-benchmarks",
+  "polkadot-service/runtime-benchmarks",
+  "runtime-integration-tests/runtime-benchmarks",
+  "sc-client-db/runtime-benchmarks",
+  "sc-service/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm/runtime-benchmarks",
 ]
 test-benchmarks = [
   "runtime-benchmarks",

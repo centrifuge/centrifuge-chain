@@ -32,7 +32,12 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 [features]
 default = ['std']
-runtime-benchmarks = []
+runtime-benchmarks = [
+  "cfg-primitives/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+]
 std = [
   "serde/std",
   "codec/std",
@@ -44,6 +49,7 @@ std = [
   "orml-asset-registry/std",
   "mockall",
   "lazy_static",
+  "scale-info/std",
 ]
 try-runtime = [
   "frame-support/try-runtime",

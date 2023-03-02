@@ -40,6 +40,8 @@ std = [
   'pallet-balances/std',
   'sp-std/std',
   'sp-core/std',
+  "frame-benchmarking/std",
+  "sp-runtime/std",
 ]
 
 try-runtime = [

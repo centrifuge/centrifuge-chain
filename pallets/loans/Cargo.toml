@@ -76,6 +76,12 @@ runtime-benchmarks = [
   "orml-asset-registry/runtime-benchmarks",
   "cfg-test-utils/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "pallet-interest-accrual/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 std = [
   'serde/std',
@@ -93,6 +99,8 @@ std = [
   'cfg-traits/std',
   'cfg-types/std',
   'cfg-primitives/std',
+  "cfg-utils/std",
+  "frame-benchmarking/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
