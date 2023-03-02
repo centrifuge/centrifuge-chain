@@ -717,3 +717,14 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.32" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.32" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.32" }
+
+# Cargo patch rules for all the PureStake/frontier crates
+[patch."https://github.com/PureStake/frontier"]
+fp-consensus = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
+fp-ethereum = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
+fp-evm = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
+fp-rpc = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
+fp-self-contained = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
+fp-storage = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
+pallet-ethereum = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
+pallet-evm = { git = "https://github.com/PureStake//frontier", rev="68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0" }
