@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_traits::rewards::CurrencyGroupChange;
 use frame_support::{
 	dispatch::GetStorageVersion,
 	inherent::Vec,
@@ -18,6 +19,13 @@ use frame_support::{
 };
 use sp_runtime::{BoundedVec, SaturatedConversion};
 use sp_std::marker::PhantomData;
+#[cfg(feature = "try-runtime")]
+use {
+	cfg_traits::rewards::AccountRewards,
+	codec::{Decode, Encode},
+	frame_support::traits::TypedGet,
+	num_traits::Zero,
+};
 
 use crate::{ActiveSessionData, Config, Pallet, SessionData};
 
@@ -47,7 +55,7 @@ where
 	TotalReward: Get<u128>,
 {
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<T::AccountId>, &'static str> {
+	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 		assert_eq!(
 			Pallet::<T>::on_chain_storage_version(),
 			StorageVersion::new(0),
@@ -64,17 +72,24 @@ where
 
 		log::info!("💰 BlockRewards: Pre migration checks successful");
 
-		Ok(collators)
+		Ok(collators.encode())
 	}
 
 	// Weight: 2 + collator_count reads and writes
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(2) {
+		if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(0) {
 			log::info!("💰 BlockRewards: Initiating migration");
 			let mut weight: Weight = Weight::zero();
 
 			let collators = get_collators::<T>();
 			weight.saturating_accrue(T::DbWeight::get().reads(2));
+
+			<T as Config>::Rewards::attach_currency(
+				(T::Domain::get(), crate::STAKE_CURRENCY_ID),
+				crate::COLLATOR_GROUP_ID,
+			)
+			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
+			.ok();
 
 			ActiveSessionData::<T>::set(SessionData::<T> {
 				collator_reward: CollatorReward::get().into(),
@@ -93,7 +108,6 @@ where
 					.ok();
 				weight.saturating_accrue(T::DbWeight::get().reads_writes(6, 6));
 			}
-
 			Pallet::<T>::current_storage_version().put::<Pallet<T>>();
 			weight.saturating_add(T::DbWeight::get().writes(1))
 		} else {
@@ -106,12 +120,15 @@ where
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(collators: Vec<T::AccountId>) -> Result<(), &'static str> {
+	fn post_upgrade(pre_state: Vec<u8>) -> Result<(), &'static str> {
 		assert_eq!(
 			Pallet::<T>::on_chain_storage_version(),
 			StorageVersion::new(1),
 			"On-chain storage version should be updated"
 		);
+		let collators: Vec<T::AccountId> = Decode::decode(&mut pre_state.as_slice())
+			.expect("pre_ugprade provides a valid state; qed");
+		
 		assert_eq!(
 			Pallet::<T>::active_session_data(),
 			SessionData::<T> {
@@ -123,7 +140,7 @@ where
 
 		for collator in collators.iter() {
 			assert!(!<T as Config>::Rewards::account_stake(
-				(<T as Config>::Domain::get(), STAKE_CURRENCY_ID,),
+				(<T as Config>::Domain::get(), crate::STAKE_CURRENCY_ID,),
 				collator,
 			)
 			.is_zero())
