@@ -63,7 +63,7 @@
 //!
 //! Computing that pow for everything is expensive, so we want to only
 //! do it once for any given `rate_per_second` and share that result
-//! across multiple loans. Because these loans might not have been
+//! across multiple debts. Because these debts might not have been
 //! created at the same time as each other (or the rate), we must
 //! include a correction factor to the shared interest rate accrual:
 //!
@@ -73,13 +73,13 @@
 //! ```
 //!
 //! This correction factor is just the accumulated interest at the
-//! time the loan was created:
+//! time the debt was created:
 //!
 //! ```ignore
-//! correction_factor = rate_per_second.pow(rate_age_at_time_of_loan_creation);
+//! correction_factor = rate_per_second.pow(rate_age_at_time_of_debt_creation);
 //! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
 //! // Equivalent to:
-//! rate_per_second.pow(rate_age - rate_ag_at_time_of_loan_creation) * debt_base_value
+//! rate_per_second.pow(rate_age - rate_ag_at_time_of_debt_creation) * debt_base_value
 //! ```
 //!
 //! And in the classic trade-off of space vs time complexity, we
@@ -87,14 +87,14 @@
 //! normalized debt
 //!
 //! ```ignore
-//! normalized_debt = debt_base_value / rate_per_second.pow(rate_age_at_time_of_loan_creation);
+//! normalized_debt = debt_base_value / rate_per_second.pow(rate_age_at_time_of_debt_creation);
 //! ```
 //!
 //! In the actual code, `rate_per_second.pow(...)` will be precomputed
 //! for us at block initialize and is just queried as the "accrued
 //! rate".
 //!
-//! The case of `rate_age_at_time_of_loan_creation == 0` creates a
+//! The case of `rate_age_at_time_of_debt_creation == 0` creates a
 //! correction factor of 1, since no debt has yet accumulated on that
 //! rate. This leads to the behavior of `normalize` apparently doing
 //! nothing. The debt in that case is "synced" to the interest rate,
