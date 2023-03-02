@@ -1,8 +1,9 @@
 use cfg_primitives::Moment;
 use cfg_utils::{decode, decode_be_bytes, encode_be};
-use codec::{Decode, Encode, EncodeLike, Input};
+use codec::{Decode, Encode, Input};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
+use crate::Codec;
 
 /// Address type
 /// Note: It can be used to represent any address type with a length <= 32 bytes;
@@ -22,11 +23,11 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 /// message type, followed by its field. Integers are big-endian encoded and enum values
 /// (such as `[crate::Domain]`) also have a custom CGMPF implementation, aiming for a
 /// fixed-size encoded representation for each message variant.
-#[derive(Clone, PartialEq, Eq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where
-	Domain: Encode + Decode,
+	Domain: Codec,
 	PoolId: Encode + Decode,
 	TrancheId: Encode + Decode,
 	Balance: Encode + Decode,
@@ -64,7 +65,7 @@ where
 }
 
 impl<
-		Domain: Encode + Decode,
+		Domain: Codec,
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
@@ -90,72 +91,14 @@ impl<
 }
 
 impl<
-		Domain: Encode + Decode,
+		Domain: Codec,
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
 		Rate: Encode + Decode,
-	> EncodeLike for Message<Domain, PoolId, TrancheId, Balance, Rate>
+	> Codec for Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
-}
-
-impl<
-		Domain: Encode + Decode,
-		PoolId: Encode + Decode,
-		TrancheId: Encode + Decode,
-		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Decode for Message<Domain, PoolId, TrancheId, Balance, Rate>
-{
-	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-		let call_type = input.read_byte()?;
-
-		match call_type {
-			0 => Ok(Self::Invalid),
-			1 => Ok(Self::AddPool {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-			}),
-			2 => Ok(Self::AddTranche {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				tranche_id: decode::<16, _, _>(input)?,
-				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
-				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
-				price: decode_be_bytes::<16, _, _>(input)?,
-			}),
-			3 => Ok(Self::UpdateTokenPrice {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				tranche_id: decode::<16, _, _>(input)?,
-				price: decode_be_bytes::<16, _, _>(input)?,
-			}),
-			4 => Ok(Self::UpdateMember {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
-				valid_until: decode_be_bytes::<8, _, _>(input)?,
-			}),
-			5 => Ok(Self::Transfer {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				tranche_id: decode::<16, _, _>(input)?,
-				domain: decode::<9, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
-				amount: decode_be_bytes::<16, _, _>(input)?,
-			}),
-			_ => Err(codec::Error::from(
-				"Unsupported decoding for this Message variant",
-			)),
-		}
-	}
-}
-
-impl<
-		Domain: Encode + Decode,
-		PoolId: Encode + Decode,
-		TrancheId: Encode + Decode,
-		Balance: Encode + Decode,
-		Rate: Encode + Decode,
-	> Encode for Message<Domain, PoolId, TrancheId, Balance, Rate>
-{
-	fn encode(&self) -> Vec<u8> {
+	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![self.call_type()],
 			Message::AddPool { pool_id } => {
@@ -210,13 +153,60 @@ impl<
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					domain.encode(),
+					domain.serialize(),
 					address.encode(),
 					encode_be(amount),
 				],
 			),
 		}
 	}
+
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let call_type = input.read_byte()?;
+
+		match call_type {
+			0 => Ok(Self::Invalid),
+			1 => Ok(Self::AddPool {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+			}),
+			2 => Ok(Self::AddTranche {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
+				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
+				price: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			3 => Ok(Self::UpdateTokenPrice {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				price: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			4 => Ok(Self::UpdateMember {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				valid_until: decode_be_bytes::<8, _, _>(input)?,
+			}),
+			5 => Ok(Self::Transfer {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				domain: deserialize::<9, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			_ => Err(codec::Error::from(
+				"Unsupported decoding for this Message variant",
+			)),
+		}
+	}
+}
+
+/// Decode a type that implements our custom [Codec] trait
+pub fn deserialize<const S: usize, O: Codec, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+	let mut bytes = [0; S];
+	input.read(&mut bytes[..])?;
+
+	O::deserialize(&mut bytes.as_slice())
 }
 
 fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
@@ -234,41 +224,41 @@ mod tests {
 	use cfg_primitives::{Balance, PoolId, TrancheId};
 	use cfg_types::fixed_point::Rate;
 	use cfg_utils::vec_to_fixed_array;
-	use codec::{Decode, Encode};
 	use hex::FromHex;
 	use sp_runtime::traits::One;
 
 	use super::*;
-	use crate::{Domain, DomainAddress};
+	use crate::{Codec, Domain, DomainAddress};
 
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
 	#[test]
 	fn invalid() {
 		let msg = ConnectorMessage::Invalid;
-		assert_eq!(msg.encode(), vec![msg.call_type()]);
-		assert_eq!(msg.encode(), vec![0]);
+		assert_eq!(msg.serialize(), vec![msg.call_type()]);
+		assert_eq!(msg.serialize(), vec![0]);
 	}
 
 	#[test]
 	fn encoding_domain() {
-		use crate::Encode;
-
 		// The Centrifuge substrate chain
 		assert_eq!(
-			hex::encode(Domain::Centrifuge.encode()),
+			hex::encode(Domain::Centrifuge.serialize()),
 			"000000000000000000"
 		);
 		// Ethereum MainNet
-		assert_eq!(hex::encode(Domain::EVM(1).encode()), "010000000000000001");
+		assert_eq!(
+			hex::encode(Domain::EVM(1).serialize()),
+			"010000000000000001"
+		);
 		// Moonbeam EVM chain
 		assert_eq!(
-			hex::encode(Domain::EVM(1284).encode()),
+			hex::encode(Domain::EVM(1284).serialize()),
 			"010000000000000504"
 		);
 		// Avalanche Chain
 		assert_eq!(
-			hex::encode(Domain::EVM(43114).encode()),
+			hex::encode(Domain::EVM(43114).serialize()),
 			"01000000000000a86a"
 		);
 	}
@@ -370,11 +360,11 @@ mod tests {
 		msg: Message<Domain, PoolId, TrancheId, Balance, Rate>,
 		expected_hex: &str,
 	) {
-		let encoded = msg.encode();
+		let encoded = msg.serialize();
 		assert_eq!(hex::encode(encoded.clone()), expected_hex);
 
 		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
-			Message::decode(&mut hex::decode(expected_hex).expect("").as_slice()).expect("");
+			Message::deserialize(&mut hex::decode(expected_hex).expect("").as_slice()).expect("");
 		assert_eq!(msg, decoded);
 	}
 

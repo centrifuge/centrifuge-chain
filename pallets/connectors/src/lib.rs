@@ -15,7 +15,7 @@ use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
-use codec::{Decode, Encode, EncodeLike, Input, MaxEncodedLen};
+use codec::{Decode, Encode, Input, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
@@ -49,7 +49,7 @@ pub enum ParachainId {
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
@@ -60,8 +60,15 @@ pub enum Domain {
 	EVM(EVMChainId),
 }
 
-impl Encode for Domain {
-	fn encode(&self) -> Vec<u8> {
+/// An encoding & decoding trait for the purpose of meeting the
+/// Connectors General Message Passing Format
+pub trait Codec: Sized {
+	fn serialize(&self) -> Vec<u8>;
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
+}
+
+impl Codec for Domain {
+	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Self::Centrifuge => vec![0; 9],
 			Self::EVM(chain_id) => {
@@ -72,12 +79,8 @@ impl Encode for Domain {
 			}
 		}
 	}
-}
 
-impl EncodeLike for Domain {}
-
-impl Decode for Domain {
-	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
 		let variant = input.read_byte()?;
 
 		match variant {
@@ -513,7 +516,7 @@ pub mod pallet {
 				message: bytes.clone(),
 			});
 			// todo: do someting with the decoded message later on
-			let _: MessageOf<T> = Message::decode(&mut bytes.as_slice())
+			let _: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
 				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
 
 			Ok(())
@@ -534,7 +537,7 @@ pub mod pallet {
 			let Router::Xcm(xcm_domain) =
 				<DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
-			let contract_call = contract::encoded_contract_call(message.encode());
+			let contract_call = contract::encoded_contract_call(message.serialize());
 			let ethereum_xcm_call =
 				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
 
