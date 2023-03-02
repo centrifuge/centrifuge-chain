@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Proofs'
-edition = '2021'
+description = "Proofs"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'proofs'
+name = "proofs"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '2.0.0'
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
@@ -19,9 +19,9 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 std = [
-  'codec/std',
+  "codec/std",
   "sp-std/std",
   "scale-info/std",
 ]

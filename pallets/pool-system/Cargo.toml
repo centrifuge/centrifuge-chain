@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Centrifuge Pool System pallet'
-edition = '2021'
+description = "Centrifuge Pool System pallet"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'pallet-pool-system'
+name = "pallet-pool-system"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '3.0.0'
+version = "3.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 lazy_static = { version = "1.4.0", optional = true, default-features = false }
 rev_slice = { version = "0.1.5", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
@@ -49,47 +49,47 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
-  'frame-benchmarking/runtime-benchmarks',
-  'frame-support/runtime-benchmarks',
-  'frame-system/runtime-benchmarks',
-  'sp-runtime/runtime-benchmarks',
-  'cfg-traits/runtime-benchmarks',
-  'cfg-primitives/runtime-benchmarks',
-  'cfg-types/runtime-benchmarks',
-  'pallet-timestamp/runtime-benchmarks',
-  'pallet-investments/runtime-benchmarks',
-  'pallet-permissions/runtime-benchmarks',
-  'xcm/runtime-benchmarks',
-  'polkadot-parachain/runtime-benchmarks',
-  'orml-asset-registry/runtime-benchmarks',
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
+  "pallet-investments/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "xcm/runtime-benchmarks",
+  "polkadot-parachain/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
 ]
 std = [
-  'codec/std',
-  'scale-info/std',
-  'rev_slice/std',
-  'frame-support/std',
-  'frame-system/std',
-  'pallet-timestamp/std',
-  'sp-arithmetic/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'orml-traits/std',
-  'cfg-traits/std',
-  'cfg-types/std',
-  'cfg-primitives/std',
-  'pallet-permissions/std',
-  'polkadot-parachain/std',
-  'orml-asset-registry/std',
-  'xcm/std',
+  "codec/std",
+  "scale-info/std",
+  "rev_slice/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-timestamp/std",
+  "sp-arithmetic/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "orml-traits/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-primitives/std",
+  "pallet-permissions/std",
+  "polkadot-parachain/std",
+  "orml-asset-registry/std",
+  "xcm/std",
   "frame-benchmarking/std",
   "serde/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
-  'frame-support/try-runtime',
+  "frame-support/try-runtime",
   "lazy_static/spin_no_std",
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
@@ -98,5 +98,5 @@ try-runtime = [
   "pallet-timestamp/try-runtime",
 ]
 test-benchmarks = [
-  'frame-support/try-runtime',
+  "frame-support/try-runtime",
 ]

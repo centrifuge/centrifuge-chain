@@ -13,7 +13,7 @@ serde = { version = "1.0.119", optional = true }
 smallvec = "1.6.1"
 
 # Substrate dependencies
-codec = { package = 'parity-scale-codec', version = '3.0.0', default-features = false, features = ['derive'] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }

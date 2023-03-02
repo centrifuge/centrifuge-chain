@@ -22,7 +22,7 @@ column_width = 160
 # Indent based on tables and arrays of tables and their subtables, subtables out of order are not indented.
 indent_tables = false
 # The substring that is used for indentation, should be tabs or spaces (but technically can be anything).
-indent_string = '  '
+indent_string = "  "
 # Alphabetically reorder keys that are not separated by empty lines.
 reorder_keys = false
 # Add trailing newline at the end of the file if not present.

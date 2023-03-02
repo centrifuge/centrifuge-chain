@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Pools Registration for runtime'
-edition = '2021'
+description = "Pools Registration for runtime"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'pallet-pool-registry'
+name = "pallet-pool-registry"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '1.0.0'
+version = "1.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.102" }
 
@@ -49,10 +49,10 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
-  'frame-benchmarking',
-  'pallet-investments/runtime-benchmarks',
+  "frame-benchmarking",
+  "pallet-investments/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
@@ -64,18 +64,18 @@ runtime-benchmarks = [
   "xcm/runtime-benchmarks",
 ]
 std = [
-  'codec/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'cfg-traits/std',
-  'cfg-types/std',
-  'cfg-primitives/std',
-  'polkadot-parachain/std',
-  'xcm/std',
-  'orml-traits/std',
-  'orml-asset-registry/std',
+  "codec/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-primitives/std",
+  "polkadot-parachain/std",
+  "xcm/std",
+  "orml-traits/std",
+  "orml-asset-registry/std",
   "frame-benchmarking/std",
   "pallet-investments/std",
   "scale-info/std",
@@ -85,12 +85,12 @@ std = [
 try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
-  'frame-support/try-runtime',
+  "frame-support/try-runtime",
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
   "orml-asset-registry/try-runtime",
   "pallet-investments/try-runtime",
 ]
 test-benchmarks = [
-  'frame-support/try-runtime',
+  "frame-support/try-runtime",
 ]

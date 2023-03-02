@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Centrifuge Connectors Pallet'
-edition = '2018'
+description = "Centrifuge Connectors Pallet"
+edition = "2018"
 license = "LGPL-3.0"
-name = 'pallet-connectors'
+name = "pallet-connectors"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '0.0.1'
+version = "0.0.1"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 ethabi = { version = "16.0", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -70,7 +70,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 runtime-common = { path = "../../runtime/common", default-features = true }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking",
   "pallet-balances",
@@ -89,29 +89,29 @@ runtime-benchmarks = [
   "xcm-primitives/runtime-benchmarks",
 ]
 std = [
-  'codec/std',
-  'cfg-types/std',
-  'cfg-traits/std',
-  'cfg-utils/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-std/std',
-  'sp-runtime/std',
-  'orml-tokens/std',
-  'orml-traits/std',
-  'pallet-balances/std',
-  'runtime-common/std',
-  'xcm/std',
-  'pallet-xcm-transactor/std',
-  'pallet-ethereum-xcm/std',
-  'pallet-ethereum/std',
-  'xcm-primitives/std',
-  'ethabi/std',
-  'pallet-interest-accrual/std',
-  'pallet-permissions/std',
-  'pallet-loans/std',
-  'pallet-pool-system/std',
-  'pallet-uniques/std',
+  "codec/std",
+  "cfg-types/std",
+  "cfg-traits/std",
+  "cfg-utils/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-std/std",
+  "sp-runtime/std",
+  "orml-tokens/std",
+  "orml-traits/std",
+  "pallet-balances/std",
+  "runtime-common/std",
+  "xcm/std",
+  "pallet-xcm-transactor/std",
+  "pallet-ethereum-xcm/std",
+  "pallet-ethereum/std",
+  "xcm-primitives/std",
+  "ethabi/std",
+  "pallet-interest-accrual/std",
+  "pallet-permissions/std",
+  "pallet-loans/std",
+  "pallet-pool-system/std",
+  "pallet-uniques/std",
   "cfg-primitives/std",
   "frame-benchmarking/std",
   "scale-info/std",

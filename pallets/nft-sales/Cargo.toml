@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'NFT Sales pallet'
-edition = '2021'
+description = "NFT Sales pallet"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'pallet-nft-sales'
+name = "pallet-nft-sales"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '2.0.0'
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
@@ -43,7 +43,7 @@ cfg-primitives = { path = "../../libs/primitives", default-features = true }
 cfg-types = { path = "../../libs/types", default-features = true }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking",
   "pallet-balances",
@@ -57,16 +57,16 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
 ]
 std = [
-  'codec/std',
-  'cfg-types/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-std/std',
-  'sp-runtime/std',
-  'orml-tokens/std',
-  'orml-traits/std',
-  'pallet-balances/std',
-  'cfg-primitives/std',
+  "codec/std",
+  "cfg-types/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-std/std",
+  "sp-runtime/std",
+  "orml-tokens/std",
+  "orml-traits/std",
+  "pallet-balances/std",
+  "cfg-primitives/std",
   "frame-benchmarking/std",
   "scale-info/std",
 ]

@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Migration pallet for the runtime'
-edition = '2021'
+description = "Migration pallet for the runtime"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'pallet-migration-manager'
+name = "pallet-migration-manager"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '0.1.0'
+version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 log = { version = "0.4.14", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
@@ -32,7 +32,7 @@ hex = "0.4.3"
 rand = "0.8.5"
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking",
   "frame-support/runtime-benchmarks",
@@ -43,12 +43,12 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
 ]
 std = [
-  'codec/std',
-  'frame-support/std',
-  'frame-system/std',
-  'pallet-vesting/std',
-  'pallet-balances/std',
-  'pallet-proxy/std',
+  "codec/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-vesting/std",
+  "pallet-balances/std",
+  "pallet-proxy/std",
   "frame-benchmarking/std",
   "log/std",
   "scale-info/std",

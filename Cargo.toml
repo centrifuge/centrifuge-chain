@@ -262,7 +262,7 @@ test-benchmarks = [
   "runtime-integration-tests/runtime-benchmarks",
 ]
 cli = [
-  'try-runtime-cli',
+  "try-runtime-cli",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
@@ -502,8 +502,8 @@ cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech
 #
 # Cargo patch for PureStake-based crates
 #
-# PureStake maintains their own forks of Parity's Substrate, Polkadot, and Cumulus,
-# and of open-web3-stack's ORML. By depending on crates from the Moonbeam repository, we are indirectly pulling crates
+# PureStake maintains their own forks of Parity"s Substrate, Polkadot, and Cumulus,
+# and of open-web3-stack"s ORML. By depending on crates from the Moonbeam repository, we are indirectly pulling crates
 # from these forked reposities, which lead to multiple cargo issues due to duplication versions of crates being found.
 # With the rules below, we tell cargo that whenever it finds a crate with source in `PureStake/`, that it should use
 # the specific official revision of the respective repository at hand.
