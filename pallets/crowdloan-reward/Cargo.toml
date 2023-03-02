@@ -50,4 +50,10 @@ std = [
   'pallet-vesting/std',
   'cfg-traits/std',
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-balances/try-runtime",
+  "pallet-indices/try-runtime",
+]

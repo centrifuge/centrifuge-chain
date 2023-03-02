@@ -45,3 +45,8 @@ std = [
   "mockall",
   "lazy_static",
 ]
+try-runtime = [
+  "frame-support/try-runtime",
+  "cfg-primitives/try-runtime",
+  "orml-asset-registry/try-runtime",
+]

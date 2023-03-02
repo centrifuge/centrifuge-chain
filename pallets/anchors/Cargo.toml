@@ -44,7 +44,14 @@ runtime-benchmarks = [
   "pallet-timestamp/runtime-benchmarks",
   'cfg-utils/runtime-benchmarks',
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-utils/try-runtime",
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-aura/try-runtime",
+  "pallet-timestamp/try-runtime",
+]
 std = [
   'codec/std',
   'sp-core/std',

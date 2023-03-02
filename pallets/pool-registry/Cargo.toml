@@ -68,7 +68,15 @@ std = [
   'orml-traits/std',
   'orml-asset-registry/std',
 ]
-try-runtime = ['frame-support/try-runtime']
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  'frame-support/try-runtime',
+  "cfg-types/try-runtime",
+  "frame-system/try-runtime",
+  "orml-asset-registry/try-runtime",
+  "pallet-investments/try-runtime",
+]
 test-benchmarks = [
   'frame-support/try-runtime',
 ]

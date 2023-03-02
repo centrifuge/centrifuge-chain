@@ -49,4 +49,9 @@ std = [
   'chainbridge/std',
   'cfg-traits/std',
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "chainbridge/try-runtime",
+  "frame-system/try-runtime",
+]

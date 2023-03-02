@@ -86,4 +86,20 @@ runtime-benchmarks = [
 on-chain-release-build = [
   "sp-api/disable-logging",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "cfg-types/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-anchors/try-runtime",
+  "pallet-authorship/try-runtime",
+  "pallet-balances/try-runtime",
+  "pallet-collective/try-runtime",
+  "pallet-permissions/try-runtime",
+  "pallet-pool-system/try-runtime",
+  "pallet-rewards/try-runtime",
+  "pallet-treasury/try-runtime",
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+]
