@@ -3,6 +3,7 @@ use cfg_utils::{decode, decode_be_bytes, encode_be};
 use codec::{Decode, Encode, Input};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
+
 use crate::Codec;
 
 /// Address type
