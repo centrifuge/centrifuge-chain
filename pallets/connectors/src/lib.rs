@@ -14,8 +14,8 @@
 use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
-use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode, EncodeLike, Input, MaxEncodedLen};
+use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
+use codec::{Decode, Encode, Input, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
@@ -49,7 +49,7 @@ pub enum ParachainId {
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
 	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
@@ -60,8 +60,15 @@ pub enum Domain {
 	EVM(EVMChainId),
 }
 
-impl Encode for Domain {
-	fn encode(&self) -> Vec<u8> {
+/// An encoding & decoding trait for the purpose of meeting the
+/// Connectors General Message Passing Format
+pub trait Codec: Sized {
+	fn serialize(&self) -> Vec<u8>;
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
+}
+
+impl Codec for Domain {
+	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Self::Centrifuge => vec![0; 9],
 			Self::EVM(chain_id) => {
@@ -72,21 +79,14 @@ impl Encode for Domain {
 			}
 		}
 	}
-}
 
-impl EncodeLike for Domain {}
-
-impl Decode for Domain {
-	fn decode<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
 		let variant = input.read_byte()?;
 
 		match variant {
 			0 => Ok(Self::Centrifuge),
 			1 => {
-				let mut chain_id_be_bytes = [0; 8];
-				input.read(&mut chain_id_be_bytes[..])?;
-
-				let chain_id = EVMChainId::from_be_bytes(chain_id_be_bytes);
+				let chain_id = decode_be_bytes::<8, _, _>(input)?;
 				Ok(Self::EVM(chain_id))
 			}
 			_ => Err(codec::Error::from("Unknown Domain variant")),
@@ -242,11 +242,21 @@ pub mod pallet {
 			domain: Domain,
 			router: Router<CurrencyIdOf<T>>,
 		},
+
+		IncomingMessage {
+			sender: T::AccountId,
+			message: Vec<u8>,
+		},
 	}
 
 	#[pallet::storage]
 	pub(crate) type DomainRouter<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
+
+	/// The set of known connectors. This set is used as an allow-list when authorizing
+	/// the origin of incoming messages through the `handle` extrinsic.
+	#[pallet::storage]
+	pub(crate) type KnownConnectors<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -268,6 +278,10 @@ pub mod pallet {
 		UnauthorizedTransfer,
 		/// Failed to build Ethereum_Xcm call
 		FailedToBuildEthereumXcmCall,
+		/// The origin of an incoming message is not in the allow-list
+		InvalidIncomingMessageOrigin,
+		/// Failed to decode an incoming message
+		InvalidIncomingMessage,
 	}
 
 	#[pallet::call]
@@ -283,6 +297,16 @@ pub mod pallet {
 
 			<DomainRouter<T>>::insert(domain.clone(), router.clone());
 			Self::deposit_event(Event::SetDomainRouter { domain, router });
+
+			Ok(())
+		}
+
+		/// Add an AccountId to the set of known connectors, allowing that origin
+		/// to send incoming messages.
+		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+			<KnownConnectors<T>>::insert(connector, ());
 
 			Ok(())
 		}
@@ -473,6 +497,30 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Handle an incoming message
+		/// TODO(nuno): we probably need a custom origin type for these messages to ensure they have
+		/// come in through XCM. Probably even handle it in a separate pallet? For now, let's have a
+		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
+		#[pallet::call_index(99)]
+		#[pallet::weight(< T as Config >::WeightInfo::handle())]
+		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
+			let sender = ensure_signed(origin.clone())?;
+			ensure!(
+				<KnownConnectors<T>>::contains_key(&sender),
+				Error::<T>::InvalidIncomingMessageOrigin
+			);
+
+			Self::deposit_event(Event::IncomingMessage {
+				sender,
+				message: bytes.clone(),
+			});
+			// todo: do someting with the decoded message later on
+			let _: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
+				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -489,7 +537,7 @@ pub mod pallet {
 			let Router::Xcm(xcm_domain) =
 				<DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
-			let contract_call = contract::encoded_contract_call(message.encode());
+			let contract_call = contract::encoded_contract_call(message.serialize());
 			let ethereum_xcm_call =
 				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
 
