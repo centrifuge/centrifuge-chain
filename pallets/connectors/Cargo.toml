@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Centrifuge Connectors Pallet'
-edition = '2018'
+description = "Centrifuge Connectors Pallet"
+edition = "2018"
 license = "LGPL-3.0"
-name = 'pallet-connectors'
+name = "pallet-connectors"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '0.0.1'
+version = "0.0.1"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 ethabi = { version = "16.0", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -35,13 +35,11 @@ cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
-runtime-common = { path = "../../runtime/common", default-features = false }
 
 # Polkadot
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.32" }
-pallet-ethereum-xcm = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "621220fb0b7a491256b27d70c93ac507ba6519ce" }
 pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "621220fb0b7a491256b27d70c93ac507ba6519ce" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "621220fb0b7a491256b27d70c93ac507ba6519ce" }
 
@@ -70,34 +68,59 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 runtime-common = { path = "../../runtime/common", default-features = true }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking",
   "pallet-balances",
   "orml-tokens",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-xcm-transactor/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm/runtime-benchmarks",
+  "xcm-primitives/runtime-benchmarks",
 ]
 std = [
-  'codec/std',
-  'cfg-types/std',
-  'cfg-traits/std',
-  'cfg-utils/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-std/std',
-  'sp-runtime/std',
-  'orml-tokens/std',
-  'orml-traits/std',
-  'pallet-balances/std',
-  'runtime-common/std',
-  'xcm/std',
-  'pallet-xcm-transactor/std',
-  'pallet-ethereum-xcm/std',
-  'pallet-ethereum/std',
-  'xcm-primitives/std',
-  'ethabi/std',
-  'pallet-interest-accrual/std',
-  'pallet-permissions/std',
-  'pallet-loans/std',
-  'pallet-pool-system/std',
-  'pallet-uniques/std',
+  "codec/std",
+  "cfg-types/std",
+  "cfg-traits/std",
+  "cfg-utils/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-std/std",
+  "sp-runtime/std",
+  "orml-tokens/std",
+  "orml-traits/std",
+  "pallet-balances/std",
+  "runtime-common/std",
+  "xcm/std",
+  "pallet-xcm-transactor/std",
+  "pallet-ethereum/std",
+  "xcm-primitives/std",
+  "ethabi/std",
+  "pallet-interest-accrual/std",
+  "pallet-permissions/std",
+  "pallet-loans/std",
+  "pallet-pool-system/std",
+  "pallet-uniques/std",
+  "cfg-primitives/std",
+  "frame-benchmarking/std",
+  "scale-info/std",
+]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+  "cfg-utils/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-ethereum/try-runtime",
+  "pallet-xcm-transactor/try-runtime",
 ]

@@ -1,23 +1,22 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Loans pallet for runtime'
-edition = '2021'
+description = "Loans pallet for runtime"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'pallet-loans'
+name = "pallet-loans"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '1.0.0'
+version = "1.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -61,7 +60,7 @@ cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 pallet-pool-system = { path = "../pool-system", default-features = true }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking",
   "frame-system/runtime-benchmarks",
@@ -76,22 +75,38 @@ runtime-benchmarks = [
   "orml-asset-registry/runtime-benchmarks",
   "cfg-test-utils/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "pallet-interest-accrual/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 std = [
-  'serde/std',
-  'scale-info/std',
-  'pallet-permissions/std',
-  'codec/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-core/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'sp-arithmetic/std',
-  'parachain-info/std',
-  'pallet-interest-accrual/std',
-  'cfg-traits/std',
-  'cfg-types/std',
-  'cfg-primitives/std',
+  "serde/std",
+  "scale-info/std",
+  "pallet-permissions/std",
+  "codec/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "sp-arithmetic/std",
+  "pallet-interest-accrual/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-primitives/std",
+  "cfg-utils/std",
+  "frame-benchmarking/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "cfg-types/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-interest-accrual/try-runtime",
+  "pallet-permissions/try-runtime",
+  "cfg-utils/try-runtime",
+]

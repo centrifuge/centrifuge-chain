@@ -1,15 +1,15 @@
 [package]
-name = 'pallet-bridge'
-description = 'Bridge pallet'
-authors = ['The Centrifugians Tribe']
-edition = '2021'
-homepage = 'https://centrifuge.io'
+name = "pallet-bridge"
+description = "Bridge pallet"
+authors = ["The Centrifugians Tribe"]
+edition = "2021"
+homepage = "https://centrifuge.io"
 license = "LGPL-3.0"
-repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '2.0.0'
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
@@ -36,17 +36,27 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
-runtime-benchmarks = ["chainbridge/runtime-benchmarks", "frame-support/runtime-benchmarks"]
-std = [
-  'codec/std',
-  'scale-info/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-core/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'chainbridge/std',
-  'cfg-traits/std',
+default = ["std"]
+runtime-benchmarks = [
+  "chainbridge/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
 ]
-try-runtime = ["frame-support/try-runtime"]
+std = [
+  "codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "chainbridge/std",
+  "cfg-traits/std",
+]
+try-runtime = [
+  "cfg-traits/try-runtime",
+  "frame-support/try-runtime",
+  "chainbridge/try-runtime",
+  "frame-system/try-runtime",
+]
