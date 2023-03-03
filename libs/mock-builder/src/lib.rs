@@ -28,10 +28,10 @@
 //!
 //! #[pallet::storage]
 //! pub(super) type CallIds<T: Config> = StorageMap<
-//!	    _,
-//!	    Blake2_128Concat,
-//!	    <Blake2_128 as frame_support::StorageHasher>::Output,
-//!	    mock_builder::CallId,
+//!     _,
+//!     Blake2_128Concat,
+//!     <Blake2_128 as frame_support::StorageHasher>::Output,
+//!     mock_builder::CallId,
 //! >;
 //!
 //! # }
