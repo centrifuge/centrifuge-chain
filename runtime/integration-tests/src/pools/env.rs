@@ -9,6 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
 use codec::Encode;
 use fudge::primitives::Chain;
 use pallet_balances::Call as BalancesCall;
@@ -31,6 +32,7 @@ use crate::{
 async fn env_works() {
 	let mut env = env::test_env_default(Handle::current());
 
+	// FIXME: https://github.com/centrifuge/centrifuge-chain/issues/1219
 	// Breaks on >= 10 for fast-runtime since session length is 5 blocks
 	#[cfg(feature = "fast-runtime")]
 	let num_blocks = 9;

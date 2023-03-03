@@ -57,10 +57,10 @@ benchmarks! {
 	verify {
 		assert_eq!(BlockRewards::<T>::next_session_changes().total_reward, Some((20 * REWARD).into()));
 	}
-
-	impl_benchmark_test_suite!(
-		BlockRewards,
-		crate::mock::ExtBuilder::default().build(),
-		crate::mock::Test,
-	);
 }
+
+impl_benchmark_test_suite!(
+	BlockRewards,
+	crate::mock::ExtBuilder::default().build(),
+	crate::mock::Test,
+);

@@ -23,7 +23,7 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::AIR;
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG};
+use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
@@ -1092,7 +1092,7 @@ fn development_genesis(
 				.cloned()
 				.map(|(acc, _)| acc)
 				.collect(),
-			collator_reward: 1000 * CFG,
+			collator_reward: 8_325 * MILLI_CFG,
 			total_reward: 10_048 * CFG,
 		},
 	}

@@ -85,7 +85,7 @@ where
 			weight.saturating_accrue(T::DbWeight::get().reads(2));
 
 			<T as Config>::Rewards::attach_currency(
-				(T::Domain::get(), crate::STAKE_CURRENCY_ID),
+				(<T as Config>::Domain::get(), crate::STAKE_CURRENCY_ID),
 				crate::COLLATOR_GROUP_ID,
 			)
 			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))

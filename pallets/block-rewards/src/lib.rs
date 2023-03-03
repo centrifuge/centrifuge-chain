@@ -360,7 +360,7 @@ impl<T: Config> Pallet<T> {
 						.min(session_data.total_reward);
 					T::Rewards::reward_group(COLLATOR_GROUP_ID, total_collator_reward)?;
 
-					// Hanbdle remaining reward
+					// Handle remaining reward
 					let remaining = session_data
 						.total_reward
 						.saturating_sub(total_collator_reward);
