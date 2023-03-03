@@ -2266,7 +2266,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.4"
+version = "0.10.17"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -2286,8 +2286,10 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "hex",
  "hex-literal 0.3.4",
  "integer-sqrt",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",

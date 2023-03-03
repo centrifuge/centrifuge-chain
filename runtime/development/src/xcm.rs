@@ -35,7 +35,7 @@ use runtime_common::{
 use sp_runtime::traits::{Convert, Zero};
 use xcm::latest::prelude::*;
 use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
 	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentIsPreset, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
@@ -140,6 +140,7 @@ impl TakeRevenue for ToTreasury {
 /// Barrier is a filter-like option controlling what messages are allows to be executed.
 pub type Barrier = (
 	TakeWeightCredit,
+	xcm_primitives::AllowTopLevelPaidExecutionDescendOriginFirst<Everything>,
 	AllowTopLevelPaidExecutionFrom<Everything>,
 	// Expected responses are OK.
 	AllowKnownQueryResponses<PolkadotXcm>,
@@ -318,8 +319,12 @@ pub type LocationToAccountId = (
 	ParentIsPreset<AccountId>,
 	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
 	SiblingParachainConvertsVia<Sibling, AccountId>,
-	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
+	// If we receive a MultiLocation of type AccountId32 that is within Centrifuge,
+	// just alias it to a local [AccountId].
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	// A wildcard MultiLocation to AccountId conversion for all the other MultiLocations
+	// within the same Relay network.
+	Account32Hash<RelayNetwork, AccountId>,
 );
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
