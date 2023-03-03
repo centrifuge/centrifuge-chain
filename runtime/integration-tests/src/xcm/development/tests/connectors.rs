@@ -43,7 +43,10 @@ use development_runtime::{
 use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-use pallet_connectors::{encoded_contract_call, Domain, DomainAddress, DomainLocator, Error::UnauthorizedTransfer, Message, ParachainId, Router, XcmDomain, Codec};
+use pallet_connectors::{
+	encoded_contract_call, Codec, Domain, DomainAddress, DomainLocator,
+	Error::UnauthorizedTransfer, Message, ParachainId, Router, XcmDomain,
+};
 use pallet_pool_system::{
 	pool_types::PoolDetails,
 	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
