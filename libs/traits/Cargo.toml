@@ -15,9 +15,7 @@ cfg-primitives = { path = "../primitives", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 impl-trait-for-tuples = "0.2.1"
-orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.32" }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.119" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -35,18 +33,15 @@ default = ["std"]
 runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 std = [
-  "serde/std",
   "codec/std",
   "frame-support/std",
   "sp-runtime/std",
   "sp-arithmetic/std",
   "sp-std/std",
   "cfg-primitives/std",
-  "orml-asset-registry/std",
   "mockall",
   "lazy_static",
   "scale-info/std",
@@ -54,5 +49,4 @@ std = [
 try-runtime = [
   "frame-support/try-runtime",
   "cfg-primitives/try-runtime",
-  "orml-asset-registry/try-runtime",
 ]

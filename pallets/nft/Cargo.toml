@@ -31,7 +31,6 @@ cfg-types = { path = "../../libs/types", default-features = false }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-anchors = { path = "../anchors", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.32" }
 
 [dev-dependencies]
 # Testing and mocking dependencies
@@ -74,7 +73,6 @@ std = [
   "cfg-primitives/std",
   "cfg-types/std",
   "frame-benchmarking/std",
-  "unique-assets/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

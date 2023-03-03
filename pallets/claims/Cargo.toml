@@ -21,9 +21,6 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
-# optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
-
 [dev-dependencies]
 cfg-primitives = { path = "../../libs/primitives", default_features = true }
 cfg-types = { path = "../../libs/types", default_features = true }
@@ -40,7 +37,6 @@ std = [
   "pallet-balances/std",
   "sp-std/std",
   "sp-core/std",
-  "frame-benchmarking/std",
   "sp-runtime/std",
 ]
 

@@ -17,7 +17,6 @@ serde = { version = "1.0.119" }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.32" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -94,7 +93,6 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "sp-arithmetic/std",
-  "parachain-info/std",
   "pallet-interest-accrual/std",
   "cfg-traits/std",
   "cfg-types/std",
@@ -110,6 +108,5 @@ try-runtime = [
   "frame-system/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-permissions/try-runtime",
-  "parachain-info/try-runtime",
   "cfg-utils/try-runtime",
 ]

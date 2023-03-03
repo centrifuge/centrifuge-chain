@@ -35,13 +35,11 @@ cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
-runtime-common = { path = "../../runtime/common", default-features = false }
 
 # Polkadot
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.32" }
-pallet-ethereum-xcm = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "621220fb0b7a491256b27d70c93ac507ba6519ce" }
 pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "621220fb0b7a491256b27d70c93ac507ba6519ce" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "621220fb0b7a491256b27d70c93ac507ba6519ce" }
 
@@ -82,7 +80,6 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
-  "pallet-ethereum-xcm/runtime-benchmarks",
   "pallet-xcm-transactor/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm/runtime-benchmarks",
@@ -103,7 +100,6 @@ std = [
   "runtime-common/std",
   "xcm/std",
   "pallet-xcm-transactor/std",
-  "pallet-ethereum-xcm/std",
   "pallet-ethereum/std",
   "xcm-primitives/std",
   "ethabi/std",
@@ -126,6 +122,5 @@ try-runtime = [
   "cfg-utils/try-runtime",
   "frame-system/try-runtime",
   "pallet-ethereum/try-runtime",
-  "pallet-ethereum-xcm/try-runtime",
   "pallet-xcm-transactor/try-runtime",
 ]
