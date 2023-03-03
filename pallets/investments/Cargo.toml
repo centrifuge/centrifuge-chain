@@ -1,12 +1,10 @@
 [package]
-authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
-description = "FRAME pallet template for defining custom runtime logic."
-edition = "2018"
-homepage = "https://substrate.dev"
-license = "Unlicense"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Provides orders for assests and allows user to collect these orders"
+edition = "2021"
+license = "LGPL-3.0"
 name = "pallet-investments"
-readme = "README.md"
-repository = "https://github.com/substrate-developer-hub/substrate-node-template/"
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "1.0.0"
 
 [package.metadata.docs.rs]
