@@ -94,12 +94,14 @@ pub const MOCK_FN_PREFIX: &str = "mock_";
 #[macro_export]
 macro_rules! function_locator {
 	() => {{
+		// Aux function to extract the path
 		fn f() {}
+
 		fn type_name_of<T>(_: T) -> &'static str {
 			std::any::type_name::<T>()
 		}
 		let name = type_name_of(f);
-		&name[..name.len() - 3]
+		&name[..name.len() - "::f".len()]
 	}};
 }
 
