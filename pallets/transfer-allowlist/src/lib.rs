@@ -12,16 +12,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::AccountId;
+use codec::{Decode, Encode, MaxEncodedLen};
 pub use pallet::*;
 use pallet_connectors::DomainAddress;
+use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::AccountId32;
-use xcm::VersionedMultiLocation;
+use xcm::v1::MultiLocation;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 pub enum Location {
 	Local(AccountId32),
-	XCM(VersionedMultiLocation),
+	// unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
+	// both are foreign, and therefore can't be implemented here.
+	// may move back to new type off VersionedMultiLocation w/ MaxEncodedLen implemented
+	// if it looks like nothing will be Location enum outside of pallet
+	XCMV1(MultiLocation),
 	Address(DomainAddress),
 }
 
@@ -31,9 +37,10 @@ impl From<AccountId32> for Location {
 	}
 }
 
-impl From<VersionedMultiLocation> for Location {
-	fn from(vml: VersionedMultiLocation) -> Location {
-		Self::XCM(vml)
+// using
+impl From<MultiLocation> for Location {
+	fn from(ml: MultiLocation) -> Location {
+		Self::XCMV1(ml)
 	}
 }
 
@@ -47,25 +54,61 @@ impl From<DomainAddress> for Location {
 pub mod pallet {
 	use frame_support::{
 		dispatch::{DispatchError, DispatchResult},
-		pallet_prelude::*,
-		traits::Currency,
+		pallet_prelude::{OptionQuery, StorageDoubleMap, StorageNMap, *},
+		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::*;
 
 	use super::*;
 
-	pub type BalanceOf<T> =
-		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
+	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Deposit: Get<BalanceOf<Self>>;
-		type Currency: Currency<Self::AccountId>;
+		/// The currency-id type of this pallet
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen;
 	}
+
+	#[derive(
+		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
+	)]
+	pub struct AllowanceDetails<BlockNumberOf> {
+		allowed_at: BlockNumberOf, // Defaults to 0
+		blocked_at: BlockNumberOf, // Defaults to BlockNumber::MAX
+	}
+	#[pallet::storage]
+	pub type AccountCurrencyTransferRestriction<T> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		AccountIdOf<T>,
+		Twox64Concat,
+		CurrencyIdOf<T>,
+		bool,
+		OptionQuery,
+	>;
+
+	#[pallet::storage]
+	pub type AccountCurrencyAllowances<T> = StorageNMap<
+		_,
+		(
+			NMapKey<Twox64Concat, AccountIdOf<T>>,
+			NMapKey<Twox64Concat, CurrencyIdOf<T>>,
+			NMapKey<Blake2_128Concat, Location>,
+		),
+		AllowanceDetails<BlockNumberOf<T>>,
+		OptionQuery,
+	>;
 }
 
 #[cfg(test)]
@@ -84,15 +127,10 @@ mod test {
 		let l = Location::from(a.clone());
 		assert_eq!(l, Location::Local(a))
 	}
-
-	#[test]
 	fn from_xcm_address_works() {
-		let xa = VersionedMultiLocation::V1(MultiLocation::default());
+		let xa = MultiLocation::default();
 		let l = Location::from(xa.clone());
-		assert_eq!(
-			l,
-			Location::XCM(VersionedMultiLocation::V1(MultiLocation::default()))
-		)
+		assert_eq!(l, Location::XCMV1(MultiLocation::default()))
 	}
 	#[test]
 	fn from_domain_address_works() {

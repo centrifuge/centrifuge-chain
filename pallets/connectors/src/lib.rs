@@ -107,7 +107,7 @@ impl<Domain> TypeId for DomainLocator<Domain> {
 	const TYPE_ID: [u8; 4] = *b"domn";
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum DomainAddress {
 	/// A Centrifuge-Chain based account address, 32-bytes long
