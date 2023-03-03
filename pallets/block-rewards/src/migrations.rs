@@ -128,7 +128,7 @@ where
 		);
 		let collators: Vec<T::AccountId> = Decode::decode(&mut pre_state.as_slice())
 			.expect("pre_ugprade provides a valid state; qed");
-		
+
 		assert_eq!(
 			Pallet::<T>::active_session_data(),
 			SessionData::<T> {
