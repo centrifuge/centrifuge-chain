@@ -15,3 +15,6 @@ codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 scale-info = { version = "2.3.0", features = ["derive"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }

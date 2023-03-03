@@ -28,14 +28,16 @@
 //!
 //! #[pallet::storage]
 //! pub(super) type CallIds<T: Config> = StorageMap<
-//! 	_,
-//! 	Blake2_128Concat,
-//! 	<Blake2_128 as frame_support::StorageHasher>::Output,
-//! 	mock_builder::CallId,
+//!	    _,
+//!	    Blake2_128Concat,
+//!	    <Blake2_128 as frame_support::StorageHasher>::Output,
+//!	    mock_builder::CallId,
 //! >;
 //!
 //! # }
 //! ```
+//!
+//! Take a look to the [pallet tests](`tests/pallet.rs`) to have a user view of how to use this crate.
 
 /// Provide methods for register/execute calls
 pub mod storage {
