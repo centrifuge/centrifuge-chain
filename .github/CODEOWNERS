@@ -19,6 +19,7 @@ pallets/connectors/* @NunoAlexandre @offerijns
 ## Rewards related logic
 pallets/rewards/* @lemunozm @mikiquantum
 pallets/liquidity-rewards/* @lemunozm @mikiquantum
+pallets/block-rewards/* @wischli @lemunozm
 
 ## Nft-sales related logic
 pallets/nft-sales/* @NunoAlexandre
@@ -66,6 +67,9 @@ runtime/centrifuge/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerij
 ## Changes to folders inside runtime
 ### Changes to runtime/integration-tests
 runtime/integration-tests/* @mustermeiszer @NunoAlexandre
+
+### Changes to runtime/integration-tests/rewards
+runtime/integration-tests/rewards/* @wischli
 
 ### Changes to runtime/integration-tests/xcm/
 runtime/integration-tests/xcm/* @NunoAlexandre
