@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [main, 'release-v**', docker-build-clean]
+    branches: [main, 'release-v**']
   workflow_dispatch:
     inputs:
       docker_tag:
@@ -63,5 +63,5 @@ jobs:
         run: docker tag centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-latest "centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
       - name: List images
         run: docker images
-#      - name: Push image to Docker Hub
-#        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
+      - name: Push image to Docker Hub
+        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
