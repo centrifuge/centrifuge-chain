@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [main, 'release-v**']
+    branches: [main, 'release-v**', docker-build-clean]
   workflow_dispatch:
     inputs:
       docker_tag:
@@ -27,6 +27,15 @@ jobs:
         run: |
           echo "Listing 100 largest packages"
           dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+          df -h
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y azure-cli google-cloud-sdk microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          rm -rf /usr/share/dotnet/
           df -h
       - name: Set docker tag
         run: |
@@ -54,5 +63,5 @@ jobs:
         run: docker tag centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-latest "centrifugeio/centrifuge-chain:test-${{ env.DOCKER_TAG }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
       - name: List images
         run: docker images
-      - name: Push image to Docker Hub
-        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
+#      - name: Push image to Docker Hub
+#        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
