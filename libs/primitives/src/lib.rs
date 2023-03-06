@@ -173,8 +173,8 @@ pub mod types {
 
 /// Common constants for all runtimes
 pub mod constants {
-	use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
-	use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
+	use cumulus_primitives_core::relay_chain::MAX_POV_SIZE;
+	use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 	use sp_runtime::Perbill;
 
 	use super::types::{Balance, BlockNumber};
@@ -210,7 +210,7 @@ pub mod constants {
 	pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
-	pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND
+	pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND)
 		.saturating_div(2)
 		.set_proof_size(MAX_POV_SIZE as u64);
 
