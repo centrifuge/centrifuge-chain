@@ -51,6 +51,40 @@ impl From<DomainAddress> for Location {
 	}
 }
 
+/// Trait to determine whether a sending account and currency have a restriction,
+/// and if so is there an allowance for the reciever location.
+trait TransferAllowance<AccountId, Location> {
+	type CurrencyId;
+	fn allowance(send: AccountId, recieve: Location, currency: Self::CurrencyId) -> DispatchResult;
+}
+
+impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
+	type CurrencyId = T::CurrencyId;
+
+	fn allowance(
+		send: T::AccountId,
+		recieve: T::AccountId,
+		currency: T::CurrencyId,
+	) -> DispatchResult {
+		if <AccountCurrencyTransferRestriction<T>>::get(send, currency) {
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			match <AccountCurrencyTransferAllowance<T>>::get((
+				send,
+				currency,
+				Location::Local(recieve),
+			)) {
+				Some(AllowanceDetails {
+					allowed_at: allowed_at,
+					blocked_at: blocked_at,
+				}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
+				_ => Ok(false),
+			}
+		} else {
+			Ok(true)
+		}
+	}
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
@@ -105,33 +139,6 @@ pub mod pallet {
 			+ MaxEncodedLen;
 	}
 
-	/// Trait to determine whether a sending account and currency have a restriction,
-	/// and if so is there an allowance for the reciever location.
-	trait TransferAllowance<AccountId, Location> {
-		type CurrencyId;
-		fn allowance(
-			send: AccountId,
-			recieve: Location,
-			currency: Self::CurrencyId,
-		) -> DispatchResult;
-	}
-
-	impl<T: Config> TransferAllowance<Self::AccountId, Self::AccountId> for Pallet<T> {
-		type CurrencyId = Self::CurrencyId;
-
-	// 	fn allowance(
-	// 		send: Self::AccountId,
-	// 		recieve: VersionedMultiLocation,
-	// 		currency: Self::Currency,
-	// 	) -> DispatchResult {
-	// 		if <AccountCurrencyTransferRestriction<T>>::get(send, currency) {
-  //         match <AccountCurr>
-	// 		} else {
-	// 			Ok(())
-	// 		}
-	// 	}
-	// }
-
 	/// Default value for whether an account and currency have transfer restrictions
 	#[pallet::type_value]
 	pub fn DefaultHasRestrictions<T: Config>() -> bool {
@@ -162,7 +169,7 @@ pub mod pallet {
 
 	/// Storage item for allowances specified for a sending account, currency type and drecieving location
 	#[pallet::storage]
-	pub type AccountCurrencyAllowances<T> = StorageNMap<
+	pub type AccountCurrencyTransferAllowance<T> = StorageNMap<
 		_,
 		(
 			NMapKey<Twox64Concat, AccountIdOf<T>>,
