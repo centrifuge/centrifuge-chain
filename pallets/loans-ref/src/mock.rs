@@ -1,9 +1,6 @@
-mod builder;
-mod permissions;
-mod pools;
-
 use std::time::Duration;
 
+use cfg_mocks::{pallet_mock_permissions, pallet_mock_pools};
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;
 use frame_support::traits::{
@@ -18,7 +15,6 @@ use sp_runtime::{
 	FixedU128,
 };
 
-use self::{permissions as pallet_mock_permissions, pools as pallet_mock_pools};
 use crate as pallet_loans;
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(10);

@@ -1,8 +1,5 @@
-pub use pallet_mock_pools::*;
-
-#[allow(dead_code)]
 #[frame_support::pallet]
-mod pallet_mock_pools {
+pub mod pallet_mock_pools {
 	use cfg_primitives::Moment;
 	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
 	use codec::{Decode, Encode, MaxEncodedLen};

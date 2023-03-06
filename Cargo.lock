@@ -6526,6 +6526,7 @@ dependencies = [
 name = "pallet-loans-ref"
 version = "1.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",

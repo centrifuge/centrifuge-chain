@@ -33,6 +33,8 @@ pallet-interest-accrual = { path = "../interest-accrual" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 
+cfg-mocks = { path = "../../libs/mocks" }
+
 [features]
 default = ["std"]
 std = [
