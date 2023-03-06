@@ -1,4 +1,40 @@
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 #![cfg_attr(not(feature = "std"), no_std)]
+
+//! This pallet offers extrinsics to handle loans.
+//!
+//! The following actions are performed over loans:
+//!
+//! | Extrinsics                    | Role      |
+//! |-------------------------------|-----------|
+//! | [`Pallet::create()`]          | Borrower  |
+//! | [`Pallet::borrow()`]          | Borrower  |
+//! | [`Pallet::repay()`]           | Borrower  |
+//! | [`Pallet::write_off()`]       | Any       |
+//! | [`Pallet::admin_write_off()`] | LoanAdmin |
+//! | [`Pallet::close()`]           | Borrower  |
+//!
+//! The following actions are performed over a pool of loans:
+//!
+//! | Extrinsics                               | Role      |
+//! |------------------------------------------|-----------|
+//! | [`Pallet::update_write_off_policy()`]    | LoanAdmin |
+//! | [`Pallet::update_portfolio_valuation()`] | Any       |
+//!
+//! The whole pallet is optimized for the more expensive extrinsic that is
+//! [`Pallet::update_portfolio_valuation()`] that should go through all active loans.
 
 pub mod types;
 pub mod valuation;
