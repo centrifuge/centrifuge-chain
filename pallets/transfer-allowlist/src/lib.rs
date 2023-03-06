@@ -60,6 +60,7 @@ pub mod pallet {
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::*;
+	use sp_runtime::traits::AtLeast32BitUnsigned;
 	use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 	use super::*;
@@ -70,6 +71,27 @@ pub mod pallet {
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
+	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
+
+	#[derive(
+		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
+	)]
+	pub struct AllowanceDetails<BlockNumber> {
+		allowed_at: BlockNumber,
+		blocked_at: BlockNumber,
+	}
+
+	impl<BlockNumber> AllowanceDetails<BlockNumber>
+	where
+		BlockNumber: AtLeast32BitUnsigned,
+	{
+		fn default() -> Self {
+			Self {
+				allowed_at: BlockNumber::zero(),
+				blocked_at: BlockNumber::max_value(),
+			}
+		}
+	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -83,14 +105,8 @@ pub mod pallet {
 			+ MaxEncodedLen;
 	}
 
-	#[derive(
-		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
-	)]
-	pub struct AllowanceDetails<BlockNumberOf> {
-		allowed_at: BlockNumberOf, // Defaults to 0
-		blocked_at: BlockNumberOf, // Defaults to BlockNumber::MAX
-	}
-
+	/// Trait to determine whether a sending account and currency have a restriction,
+	/// and if so is there an allowance for the reciever location.
 	trait TransferAllowance<AccountId, Location> {
 		type CurrencyId;
 		fn allowance(
@@ -100,19 +116,38 @@ pub mod pallet {
 		) -> DispatchResult;
 	}
 
-	// impl<T: Config> TransferAllowance<Self::AccountId, Self::AccountId> for Pallet<T> {
-	// 	type CurrencyId = Self::CurrencyId;
-	//   fn allowance(send: Self::AccountId, recieve: VersionedMultiLocation, currency: Self::Currency) -> DispatchResult {
-	//       match <AccountCurrencyAllowances<T>>::get(send, currency) {
-	//           Some(true)
-	//       }
-	//   }
+	impl<T: Config> TransferAllowance<Self::AccountId, Self::AccountId> for Pallet<T> {
+		type CurrencyId = Self::CurrencyId;
+
+	// 	fn allowance(
+	// 		send: Self::AccountId,
+	// 		recieve: VersionedMultiLocation,
+	// 		currency: Self::Currency,
+	// 	) -> DispatchResult {
+	// 		if <AccountCurrencyTransferRestriction<T>>::get(send, currency) {
+  //         match <AccountCurr>
+	// 		} else {
+	// 			Ok(())
+	// 		}
+	// 	}
 	// }
 
+	/// Default value for whether an account and currency have transfer restrictions
 	#[pallet::type_value]
 	pub fn DefaultHasRestrictions<T: Config>() -> bool {
 		false
 	}
+	/// Storage item for whether a sending account and currency have restrictions set
+	/// a double map is used here as we need to know whether there is a restriction set
+	/// for the account and currency.
+	/// Using an StorageNMap would not allow us to look up whether there was a restriction for the sending account and currency, given that:
+	/// - we're checking whether there's an allowance specified for the receiver location
+	///   - we would only find whether a restriction was set for the account in this caseif:
+	///     - an allowance was specified for the receiving location, which would render blocked restrictions useless
+	/// - we would otherwise need to store a vec of locations, which is problematic given that there isn't a set limit on receivers
+	/// If a transfer restriction is in place, then a second lookup is done on
+	/// AccountCurrencyAllowances to see if there is an allowance for the reciever
+	/// This allows us to keep storage map vals to known/bounded sizes.
 	#[pallet::storage]
 	pub type AccountCurrencyTransferRestriction<T> = StorageDoubleMap<
 		_,
@@ -125,6 +160,7 @@ pub mod pallet {
 		DefaultHasRestrictions<T>,
 	>;
 
+	/// Storage item for allowances specified for a sending account, currency type and drecieving location
 	#[pallet::storage]
 	pub type AccountCurrencyAllowances<T> = StorageNMap<
 		_,
