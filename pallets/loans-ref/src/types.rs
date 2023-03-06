@@ -38,7 +38,7 @@ use sp_runtime::{
 };
 use sp_std::cmp::Ordering;
 
-use super::{Config, Error};
+use super::pallet::{Config, Error};
 use crate::valuation::ValuationMethod;
 
 /// Error related to loan creation

@@ -6,12 +6,12 @@ use sp_runtime::traits::BadOrigin;
 
 use super::{
 	mock::*,
+	pallet::{ActiveLoans, Error, LastLoanId, LatestPortfolioValuations},
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
 		WriteOffState, WriteOffStatus, WrittenOffError,
 	},
 	valuation::{DiscountedCashFlow, ValuationMethod},
-	ActiveLoans, Error, LastLoanId, LatestPortfolioValuations,
 };
 
 const COLLATERAL_VALUE: Balance = 10000;

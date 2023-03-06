@@ -45,10 +45,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub use pallet::*;
-
 #[frame_support::pallet]
-mod pallet {
+pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
 		ops::{EnsureAdd, EnsureAddAssign},

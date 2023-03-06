@@ -15,7 +15,7 @@ use sp_runtime::{
 	FixedU128,
 };
 
-use crate as pallet_loans;
+use crate::pallet as pallet_loans;
 
 pub const BLOCK_TIME: Duration = Duration::from_secs(10);
 pub const YEAR: Duration = Duration::from_secs(365 * 24 * 3600);
