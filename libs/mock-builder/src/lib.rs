@@ -135,10 +135,9 @@ macro_rules! register_call {
 	($f:expr) => {{
 		use frame_support::StorageHasher;
 
-		CallIds::<T>::insert(
-			frame_support::Blake2_128::hash($crate::call_locator!().as_bytes()),
-			$crate::storage::register_call($f),
-		);
+		let call_id = frame_support::Blake2_128::hash($crate::call_locator!().as_bytes());
+
+		CallIds::<T>::insert(call_id, $crate::storage::register_call($f));
 	}};
 }
 
@@ -152,13 +151,12 @@ macro_rules! execute_call {
 		use frame_support::StorageHasher;
 
 		let hash = frame_support::Blake2_128::hash($crate::call_locator!().as_bytes());
-		$crate::storage::execute_call(
-			CallIds::<T>::get(hash).expect(&format!(
-				"Called to {}, but mock was not found",
-				$crate::call_locator!()
-			)),
-			$params,
-		)
+		let call_id = CallIds::<T>::get(hash).expect(&format!(
+			"Called to {}, but mock was not found",
+			$crate::call_locator!()
+		));
+
+		$crate::storage::execute_call(call_id, $params)
 	}};
 }
 

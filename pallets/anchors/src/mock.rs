@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
+use cfg_mocks::pallet_mock_fees;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU8, Everything, FindAuthor},
@@ -25,6 +25,12 @@ use sp_runtime::{
 
 use crate::{self as pallet_anchors, Config};
 
+pub const COMMIT_FEE_KEY: u8 = 1;
+pub const COMMIT_FEE_VALUE: Balance = 23;
+
+pub const PRE_COMMIT_FEE_KEY: u8 = 2;
+pub const PRE_COMMIT_FEE_VALUE: Balance = 42;
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Balance = u64;
@@ -36,13 +42,14 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Storage} = 5,
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 6,
-		Aura: pallet_aura::{Pallet, Storage, Config<T>},
+		System: frame_system,
+		Timestamp: pallet_timestamp,
+		Authorship: pallet_authorship,
+		Balances: pallet_balances,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip,
+		Aura: pallet_aura,
+		MockFees: pallet_mock_fees,
+		Anchors: pallet_anchors,
 	}
 );
 
@@ -124,16 +131,10 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl_mock_fees_state!(
-	MockFeesState,
-	<Runtime as frame_system::Config>::AccountId,
-	Balance,
-	u8,
-	|key| match key {
-		2 => 42,
-		_ => 0,
-	}
-);
+impl pallet_mock_fees::Config for Runtime {
+	type Balance = Balance;
+	type FeeKey = u8;
+}
 
 parameter_types! {
 	pub const MaxAuthorities: u32 = 32;
@@ -146,10 +147,10 @@ impl pallet_aura::Config for Runtime {
 }
 
 impl Config for Runtime {
-	type CommitAnchorFeeKey = ConstU8<1>;
+	type CommitAnchorFeeKey = ConstU8<COMMIT_FEE_KEY>;
 	type Currency = Balances;
-	type Fees = MockFees<Self::AccountId, Balance, u8, MockFeesState>;
-	type PreCommitDepositFeeKey = ConstU8<2>;
+	type Fees = MockFees;
+	type PreCommitDepositFeeKey = ConstU8<PRE_COMMIT_FEE_KEY>;
 	type WeightInfo = ();
 }
 
@@ -197,5 +198,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
-	t.into()
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| {
+		MockFees::mock_fee_value(|key| match key {
+			COMMIT_FEE_KEY => COMMIT_FEE_VALUE,
+			PRE_COMMIT_FEE_KEY => PRE_COMMIT_FEE_VALUE,
+			_ => panic!("No valid fee key"),
+		});
+		MockFees::mock_fee_to_author(|_, _| Ok(()));
+	});
+	ext
 }

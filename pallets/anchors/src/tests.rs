@@ -53,14 +53,13 @@ fn basic_pre_commit() {
 
 		let origin = RuntimeOrigin::signed(1);
 
-		// happy
 		assert_ok!(Anchors::pre_commit(origin.clone(), anchor_id, signing_root));
 
 		assert_eq!(
 			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(
 				ensure_signed(origin).unwrap()
 			),
-			42,
+			PRE_COMMIT_FEE_VALUE,
 		);
 
 		// asserting that the stored pre-commit has the intended values set
@@ -132,10 +131,6 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			common::MILLISECS_PER_DAY + 1
 		));
-
-		MockFeesState::get().with(|fees| {
-			assert_eq!(fees.borrow().author_fees.len(), 1);
-		});
 
 		// fails because of existing anchor
 		assert_noop!(
@@ -495,7 +490,7 @@ fn pre_commit_and_then_evict() {
 
 		assert_eq!(
 			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(account_id),
-			42 * 3,
+			PRE_COMMIT_FEE_VALUE * 3,
 		);
 
 		// ------ Evict the pre-commits ------
