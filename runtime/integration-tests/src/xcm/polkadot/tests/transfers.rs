@@ -104,7 +104,7 @@ fn transfer_cfg_to_sibling() {
 					X2(
 						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)
@@ -173,7 +173,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: ALICE.into(),
 						}
 					)
@@ -249,7 +249,7 @@ fn transfer_ausd_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)
@@ -302,7 +302,7 @@ fn transfer_dot_from_relay_chain() {
 			),
 			Box::new(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None(),
 					id: BOB,
 				}
 				.into()
@@ -335,7 +335,7 @@ fn transfer_dot_to_relay_chain() {
 					1,
 					X1(Junction::AccountId32 {
 						id: BOB,
-						network: NetworkId::Any,
+						network: None(),
 					})
 				)
 				.into()
@@ -401,7 +401,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)
@@ -491,7 +491,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)

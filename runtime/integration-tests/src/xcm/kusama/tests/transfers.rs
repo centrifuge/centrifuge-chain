@@ -103,7 +103,7 @@ fn transfer_air_to_sibling() {
 					X2(
 						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)
@@ -172,7 +172,7 @@ fn transfer_air_sibling_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: ALICE.into(),
 						}
 					)
@@ -248,7 +248,7 @@ fn transfer_ausd_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)
@@ -295,7 +295,7 @@ fn transfer_ksm_from_relay_chain() {
 			Box::new(Parachain(parachains::kusama::altair::ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None(),
 					id: BOB,
 				}
 				.into()
@@ -326,7 +326,7 @@ fn transfer_ksm_to_relay_chain() {
 					1,
 					X1(Junction::AccountId32 {
 						id: BOB,
-						network: NetworkId::Any,
+						network: None(),
 					})
 				)
 				.into()
@@ -392,7 +392,7 @@ fn transfer_foreign_sibling_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)
@@ -483,7 +483,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None(),
 							id: BOB.into(),
 						}
 					)

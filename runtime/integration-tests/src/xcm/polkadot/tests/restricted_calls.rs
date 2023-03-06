@@ -77,7 +77,7 @@ pub mod blocked {
 							X2(
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
-									network: NetworkId::Any,
+									network: None(),
 									id: BOB.into(),
 								}
 							)
@@ -120,7 +120,7 @@ pub mod blocked {
 							X2(
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
-									network: NetworkId::Any,
+									network: None(),
 									id: BOB.into(),
 								}
 							)
@@ -164,7 +164,7 @@ pub mod blocked {
 							X2(
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
-									network: NetworkId::Any,
+									network: None(),
 									id: BOB.into(),
 								}
 							)
