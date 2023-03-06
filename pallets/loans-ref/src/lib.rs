@@ -30,7 +30,7 @@
 //!
 //! | Extrinsics                               | Role      |
 //! |------------------------------------------|-----------|
-//! | [`Pallet::update_write_off_policy()`]    | LoanAdmin |
+//! | [`Pallet::update_write_off_policy()`]    | PoolAdmin |
 //! | [`Pallet::update_portfolio_valuation()`] | Any       |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
@@ -569,7 +569,7 @@ mod pallet {
 			mut policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
+			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
 			policy.iter_mut().try_for_each(|state| -> DispatchResult {

@@ -729,7 +729,7 @@ mod write_off_loan {
 		MockPermissions::mock_has(move |scope, who, role| {
 			let valid = matches!(scope, PermissionScope::Pool(id) if id == POOL_A)
 				&& matches!(role, Role::PoolRole(PoolRole::LoanAdmin))
-				&& who == ADMIN;
+				&& who == LOAN_ADMIN;
 
 			valid
 		});
@@ -748,7 +748,7 @@ mod write_off_loan {
 
 			config_mocks();
 			assert_ok!(Loans::admin_write_off(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
 				Rate::from_float(0.1),
@@ -806,7 +806,7 @@ mod write_off_loan {
 			config_mocks();
 			assert_noop!(
 				Loans::admin_write_off(
-					RuntimeOrigin::signed(ADMIN),
+					RuntimeOrigin::signed(LOAN_ADMIN),
 					POOL_A,
 					0,
 					Rate::from_float(POLICY_PERCENTAGE + 0.1),
@@ -831,7 +831,7 @@ mod write_off_loan {
 			);
 			assert_noop!(
 				Loans::admin_write_off(
-					RuntimeOrigin::signed(ADMIN),
+					RuntimeOrigin::signed(LOAN_ADMIN),
 					POOL_A,
 					loan_id,
 					Rate::from_float(POLICY_PERCENTAGE + 0.1),
@@ -898,7 +898,7 @@ mod write_off_loan {
 
 			// Write down percentage
 			assert_ok!(Loans::admin_write_off(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
 				Rate::from_float(POLICY_PERCENTAGE + 0.1),
@@ -907,7 +907,7 @@ mod write_off_loan {
 
 			// Write down penalty
 			assert_ok!(Loans::admin_write_off(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
 				Rate::from_float(POLICY_PERCENTAGE + 0.1),
@@ -916,7 +916,7 @@ mod write_off_loan {
 
 			// Write up percentage
 			assert_ok!(Loans::admin_write_off(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
 				Rate::from_float(POLICY_PERCENTAGE),
@@ -925,7 +925,7 @@ mod write_off_loan {
 
 			// Write up penalty
 			assert_ok!(Loans::admin_write_off(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
 				Rate::from_float(POLICY_PERCENTAGE),
@@ -949,7 +949,7 @@ mod write_off_loan {
 			// Less percentage
 			assert_noop!(
 				Loans::admin_write_off(
-					RuntimeOrigin::signed(ADMIN),
+					RuntimeOrigin::signed(LOAN_ADMIN),
 					POOL_A,
 					loan_id,
 					Rate::from_float(POLICY_PERCENTAGE - 0.1),
@@ -961,7 +961,7 @@ mod write_off_loan {
 			// Less penalty
 			assert_noop!(
 				Loans::admin_write_off(
-					RuntimeOrigin::signed(ADMIN),
+					RuntimeOrigin::signed(LOAN_ADMIN),
 					POOL_A,
 					loan_id,
 					Rate::from_float(POLICY_PERCENTAGE),
@@ -1017,7 +1017,7 @@ mod write_off_loan {
 
 			config_mocks();
 			assert_ok!(Loans::admin_write_off(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
 				Rate::from_float(POLICY_PERCENTAGE + 0.1),
@@ -1125,7 +1125,7 @@ mod write_off_loan {
 
 			config_mocks();
 			assert_ok!(Loans::admin_write_off(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(LOAN_ADMIN),
 				POOL_A,
 				loan_id,
 				Rate::from_float(1.0),
@@ -1228,8 +1228,8 @@ mod write_off_policy {
 	fn config_mocks(pool_id: PoolId) {
 		MockPermissions::mock_has(move |scope, who, role| {
 			let valid = matches!(scope, PermissionScope::Pool(id) if pool_id == id)
-				&& matches!(role, Role::PoolRole(PoolRole::LoanAdmin))
-				&& who == ADMIN;
+				&& matches!(role, Role::PoolRole(PoolRole::PoolAdmin))
+				&& who == POOL_ADMIN;
 			valid
 		});
 		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
@@ -1264,7 +1264,7 @@ mod write_off_policy {
 
 			assert_noop!(
 				Loans::update_write_off_policy(
-					RuntimeOrigin::signed(ADMIN),
+					RuntimeOrigin::signed(POOL_ADMIN),
 					POOL_B,
 					vec![WriteOffState {
 						overdue_days: 1,
@@ -1285,7 +1285,7 @@ mod write_off_policy {
 			config_mocks(POOL_A);
 
 			assert_ok!(Loans::update_write_off_policy(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![WriteOffState {
 					overdue_days: 1,
@@ -1297,7 +1297,7 @@ mod write_off_policy {
 			));
 
 			assert_ok!(Loans::update_write_off_policy(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![].try_into().unwrap(),
 			));
@@ -1310,7 +1310,7 @@ mod write_off_policy {
 			config_mocks(POOL_A);
 
 			assert_ok!(Loans::update_write_off_policy(
-				RuntimeOrigin::signed(ADMIN),
+				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![
 					WriteOffState {
