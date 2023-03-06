@@ -177,8 +177,8 @@ impl pallet_loans::Config for Runtime {
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type NonFungible = Uniques;
-	type Permissions = pallet_mock_permissions::Pallet<Runtime>;
-	type Pool = pallet_mock_pools::Pallet<Runtime>;
+	type Permissions = MockPermissions;
+	type Pool = MockPools;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
