@@ -40,7 +40,6 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "xcm/runtime-benchmarks",
 ]
 std = [
   "cfg-primitives/std",

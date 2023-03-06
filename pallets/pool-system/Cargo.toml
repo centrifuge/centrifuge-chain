@@ -61,7 +61,7 @@ runtime-benchmarks = [
   "pallet-timestamp/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
   "pallet-permissions/runtime-benchmarks",
-  "xcm/runtime-benchmarks",
+#  "xcm/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
 ]
