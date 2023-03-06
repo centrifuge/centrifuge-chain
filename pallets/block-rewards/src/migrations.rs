@@ -17,13 +17,12 @@ use frame_support::{
 	pallet_prelude::{StorageVersion, Weight},
 	traits::{Get, OnRuntimeUpgrade},
 };
-use sp_runtime::{BoundedVec, SaturatedConversion};
+use sp_runtime::{traits::TypedGet, BoundedVec, SaturatedConversion};
 use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
 use {
 	cfg_traits::rewards::AccountRewards,
 	codec::{Decode, Encode},
-	frame_support::traits::TypedGet,
 	num_traits::Zero,
 };
 

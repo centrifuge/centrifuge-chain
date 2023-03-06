@@ -2969,22 +2969,7 @@ source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.
 dependencies = [
  "ethereum",
  "ethereum-types 0.14.1",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.32)",
- "frame-support",
- "num_enum",
- "parity-scale-codec 3.2.1",
- "sp-core",
- "sp-std",
-]
-
-[[package]]
-name = "fp-ethereum"
-version = "1.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0#68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0"
-dependencies = [
- "ethereum",
- "ethereum-types 0.14.1",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
+ "fp-evm",
  "frame-support",
  "num_enum",
  "parity-scale-codec 3.2.1",
@@ -3006,43 +2991,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "fp-evm"
-version = "3.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0#68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0"
-dependencies = [
- "evm",
- "frame-support",
- "parity-scale-codec 3.2.1",
- "serde",
- "sp-core",
- "sp-std",
-]
-
-[[package]]
 name = "fp-rpc"
 version = "3.0.0-dev"
 source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.32#2b405d4fd5f81b2a4d398a0c3a03b79e39fd2bd5"
 dependencies = [
  "ethereum",
  "ethereum-types 0.14.1",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.32)",
- "parity-scale-codec 3.2.1",
- "scale-info",
- "sp-api",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "fp-rpc"
-version = "3.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0#68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0"
-dependencies = [
- "ethereum",
- "ethereum-types 0.14.1",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
+ "fp-evm",
  "parity-scale-codec 3.2.1",
  "scale-info",
  "sp-api",
@@ -3056,20 +3011,6 @@ dependencies = [
 name = "fp-self-contained"
 version = "1.0.0-dev"
 source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.32#2b405d4fd5f81b2a4d398a0c3a03b79e39fd2bd5"
-dependencies = [
- "ethereum",
- "frame-support",
- "parity-scale-codec 3.2.1",
- "parity-util-mem",
- "scale-info",
- "serde",
- "sp-runtime",
-]
-
-[[package]]
-name = "fp-self-contained"
-version = "1.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0#68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0"
 dependencies = [
  "ethereum",
  "frame-support",
@@ -6335,14 +6276,14 @@ dependencies = [
  "ethereum-types 0.14.1",
  "evm",
  "fp-consensus",
- "fp-ethereum 1.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
- "fp-rpc 3.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
- "fp-self-contained 1.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
+ "fp-ethereum",
+ "fp-evm",
+ "fp-rpc",
+ "fp-self-contained",
  "fp-storage",
  "frame-support",
  "frame-system",
- "pallet-evm 6.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
+ "pallet-evm",
  "pallet-timestamp",
  "parity-scale-codec 3.2.1",
  "rlp",
@@ -6360,32 +6301,7 @@ source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.
 dependencies = [
  "environmental",
  "evm",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.32)",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "log",
- "pallet-timestamp",
- "parity-scale-codec 3.2.1",
- "primitive-types 0.12.1",
- "rlp",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-evm"
-version = "6.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0#68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0"
-dependencies = [
- "environmental",
- "evm",
- "fp-evm 3.0.0-dev (git+https://github.com/PureStake/frontier?rev=68ee8a260c0f2014dfd63fd2554fa9e1a32c22f0)",
+ "fp-evm",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

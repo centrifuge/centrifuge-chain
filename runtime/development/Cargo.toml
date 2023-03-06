@@ -328,9 +328,7 @@ try-runtime = [
   "orml-xtokens/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-aura/try-runtime",
-  "pallet-authority-discovery/try-runtime",
   "pallet-authorship/try-runtime",
-  "pallet-babe/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-bridge/try-runtime",
   "pallet-claims/try-runtime",
@@ -342,7 +340,6 @@ try-runtime = [
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
   "pallet-fees/try-runtime",
-  "pallet-grandpa/try-runtime",
   "pallet-identity/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
@@ -361,6 +358,8 @@ try-runtime = [
   "pallet-xcm/try-runtime",
   "parachain-info/try-runtime",
   "runtime-common/try-runtime",
+  "pallet-block-rewards/try-runtime",
+
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

@@ -189,6 +189,7 @@ std = [
   "sp-timestamp/std",
   "sp-transaction-pool/std",
   "xcm/std",
+  "cumulus-pallet-session-benchmarking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -200,6 +201,7 @@ runtime-benchmarks = [
   "polkadot-cli/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "frame-benchmarking-cli/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",

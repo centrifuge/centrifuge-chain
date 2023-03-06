@@ -50,8 +50,3 @@ try-runtime = [
   "frame-support/try-runtime",
   "cfg-primitives/try-runtime",
 ]
-try-runtime = [
-  "frame-support/try-runtime",
-  "cfg-primitives/try-runtime",
-  "orml-asset-registry/try-runtime",
-]

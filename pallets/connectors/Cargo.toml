@@ -124,16 +124,3 @@ try-runtime = [
   "pallet-ethereum/try-runtime",
   "pallet-xcm-transactor/try-runtime",
 ]
-try-runtime = [
-  "cfg-primitives/try-runtime",
-  "cfg-traits/try-runtime",
-  "frame-support/try-runtime",
-  "cfg-primitives/try-runtime",
-  "cfg-traits/try-runtime",
-  "cfg-types/try-runtime",
-  "cfg-utils/try-runtime",
-  "frame-system/try-runtime",
-  "pallet-ethereum/try-runtime",
-  "pallet-ethereum-xcm/try-runtime",
-  "pallet-xcm-transactor/try-runtime",
-]

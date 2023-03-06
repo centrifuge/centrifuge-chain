@@ -36,6 +36,7 @@ try-runtime = [
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
+  "cfg-types/try-runtime",
 ]
 std = [
   "codec/std",
@@ -45,5 +46,6 @@ std = [
   "sp-std/std",
   "cfg-traits/std",
   "num-traits/std",
+  "cfg-types/std",
   "scale-info/std",
 ]
