@@ -8,24 +8,19 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
-# third-party dependencies
-serde = { version = "1.0.119", optional = true }
 smallvec = "1.6.1"
 
 # Substrate dependencies
-codec = { package = 'parity-scale-codec', version = '3.0.0', default-features = false, features = ['derive'] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-node-primitives = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-pallet-collective = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -38,12 +33,9 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
-cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
-pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -51,36 +43,40 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = fa
 [features]
 default = ["std"]
 std = [
-  "serde/std",
   "codec/std",
-  "serde/std",
   "frame-support/std",
   "frame-system/std",
-  "node-primitives/std",
   "pallet-authorship/std",
   "pallet-balances/std",
-  "pallet-collective/std",
   "pallet-treasury/std",
-  "pallet-permissions/std",
-  "serde",
   "sp-core/std",
   "sp-api/std",
   "sp-std/std",
   "sp-arithmetic/std",
   "sp-core/std",
-  "sp-consensus-aura/std",
   "sp-runtime/std",
   "cfg-types/std",
   "pallet-anchors/std",
-  "cfg-traits/std",
   "frame-support/std",
   "frame-system/std",
   "cfg-primitives/std",
   "cfg-types/std",
+  "orml-traits/std",
+  "pallet-pool-system/std",
+  "scale-info/std",
+  "xcm/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "pallet-anchors/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+  "pallet-pool-system/runtime-benchmarks",
+  "pallet-treasury/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -88,18 +84,13 @@ on-chain-release-build = [
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
-  "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
-  "pallet-collective/try-runtime",
-  "pallet-permissions/try-runtime",
   "pallet-pool-system/try-runtime",
-  "pallet-rewards/try-runtime",
   "pallet-treasury/try-runtime",
   "cfg-primitives/try-runtime",
-  "cfg-traits/try-runtime",
 ]

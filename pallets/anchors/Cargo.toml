@@ -1,17 +1,17 @@
 [package]
-name = 'pallet-anchors'
+name = "pallet-anchors"
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Anchors pallet for runtime'
-edition = '2021'
+description = "Anchors pallet for runtime"
+edition = "2021"
 license = "LGPL-3.0"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '2.0.0'
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
 
@@ -38,11 +38,15 @@ sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-f
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
-  'cfg-utils/runtime-benchmarks',
+  "cfg-utils/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "cfg-utils/try-runtime",
@@ -53,14 +57,18 @@ try-runtime = [
   "pallet-timestamp/try-runtime",
 ]
 std = [
-  'codec/std',
-  'sp-core/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-runtime/std',
-  'sp-std/std',
+  "codec/std",
+  "sp-core/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-runtime/std",
+  "sp-std/std",
   "sp-arithmetic/std",
-  'pallet-timestamp/std',
-  'cfg-traits/std',
-  'cfg-utils/std',
+  "pallet-timestamp/std",
+  "cfg-traits/std",
+  "cfg-utils/std",
+  "frame-benchmarking/std",
+  "pallet-aura/std",
+  "scale-info/std",
+  "serde/std",
 ]

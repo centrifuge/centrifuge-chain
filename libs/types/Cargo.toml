@@ -1,61 +1,64 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Common types for Centrifuge runtime'
-edition = '2021'
+description = "Common types for Centrifuge runtime"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'cfg-types'
+name = "cfg-types"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '2.0.0'
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 bitflags = { version = "1.3", default-features = false }
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
-rev_slice = { version = "0.1.5", default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
 
 # substrate dependencies
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.32" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.32" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 
 # local dependencies
-cfg-primitives = { path = '../primitives', default-features = false }
-cfg-traits = { path = '../traits', default-features = false }
+cfg-primitives = { path = "../primitives", default-features = false }
+cfg-traits = { path = "../traits", default-features = false }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
-  'frame-support/runtime-benchmarks',
-  'frame-system/runtime-benchmarks',
+  "frame-support/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "xcm/runtime-benchmarks",
 ]
 std = [
-  'cfg-primitives/std',
-  'cfg-traits/std',
-  'codec/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-runtime/std',
-  'sp-runtime/std',
-  'sp-std/std',
+  "cfg-primitives/std",
+  "cfg-traits/std",
+  "codec/std",
+  "frame-support/std",
+  "sp-runtime/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "orml-asset-registry/std",
+  "scale-info/std",
+  "serde/std",
+  "sp-arithmetic/std",
+  "xcm/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
-  'frame-support/try-runtime',
-  'frame-system/try-runtime',
-  'orml-asset-registry/try-runtime',
+  "frame-support/try-runtime",
+  "orml-asset-registry/try-runtime",
 ]

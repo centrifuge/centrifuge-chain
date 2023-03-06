@@ -1,15 +1,15 @@
 [package]
-name = 'pallet-nft'
-description = 'Pallet for non-fungible token (NFT) processing'
-authors = ['The Centrifugians Tribe']
-edition = '2021'
-homepage = 'https://centrifuge.io'
+name = "pallet-nft"
+description = "Pallet for non-fungible token (NFT) processing"
+authors = ["The Centrifugians Tribe"]
+edition = "2021"
+homepage = "https://centrifuge.io"
 license = "LGPL-3.0"
-repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '2.0.0'
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 # Substrate dependencies
@@ -25,13 +25,12 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 # Centrifuge Chain dependencies
-cfg-primitives = { path = '../../libs/primitives', default-features = false }
+cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-anchors = { path = "../anchors", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.32" }
 
 [dev-dependencies]
 # Testing and mocking dependencies
@@ -45,24 +44,35 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
-runtime-benchmarks = ["chainbridge/runtime-benchmarks", "frame-benchmarking"]
+default = ["std"]
+runtime-benchmarks = [
+  "chainbridge/runtime-benchmarks",
+  "frame-benchmarking",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "pallet-balances/runtime-benchmarks",
+]
 std = [
-  'codec/std',
-  'scale-info/std',
-  'frame-support/std',
-  'frame-system/std',
-  'pallet-balances/std',
-  'proofs/std',
-  'sp-core/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'sp-io/std',
-  'chainbridge/std',
-  'pallet-anchors/std',
-  'proofs/std',
-  'cfg-traits/std',
-  'cfg-primitives/std',
+  "codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-balances/std",
+  "proofs/std",
+  "sp-core/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "sp-io/std",
+  "chainbridge/std",
+  "pallet-anchors/std",
+  "proofs/std",
+  "cfg-traits/std",
+  "cfg-primitives/std",
+  "cfg-types/std",
+  "frame-benchmarking/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",

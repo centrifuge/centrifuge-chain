@@ -35,7 +35,6 @@ default = ["std"]
 try-runtime = [
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",
-  "cfg-types/try-runtime",
   "frame-system/try-runtime",
 ]
 std = [
@@ -45,5 +44,6 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "cfg-traits/std",
-  "cfg-types/std",
+  "num-traits/std",
+  "scale-info/std",
 ]

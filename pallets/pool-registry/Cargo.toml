@@ -1,30 +1,26 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Pools Registration for runtime'
-edition = '2021'
+description = "Pools Registration for runtime"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'pallet-pool-registry'
+name = "pallet-pool-registry"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '1.0.0'
+version = "1.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.102" }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.32" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.32" }
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 
 # Our own pallets
 pallet-pool-system = { path = "../pool-system", default-features = false }
@@ -45,38 +41,48 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = tr
 pallet-pool-system = { path = "../pool-system", default-features = true }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 parachain-info = { git = "https://github.com/paritytech/cumulus", default-features = true, branch = "polkadot-v0.9.32" }
+serde = { version = "1.0.102" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 runtime-benchmarks = [
-  'frame-benchmarking',
-  'pallet-investments/runtime-benchmarks',
+  "frame-benchmarking",
+  "pallet-investments/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "orml-asset-registry/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 std = [
-  'codec/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'cfg-traits/std',
-  'cfg-types/std',
-  'cfg-primitives/std',
-  'polkadot-parachain/std',
-  'xcm/std',
-  'orml-traits/std',
-  'orml-asset-registry/std',
+  "codec/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-primitives/std",
+  "orml-traits/std",
+  "orml-asset-registry/std",
+  "frame-benchmarking/std",
+  "pallet-investments/std",
+  "scale-info/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
-  'frame-support/try-runtime',
+  "frame-support/try-runtime",
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
   "orml-asset-registry/try-runtime",
   "pallet-investments/try-runtime",
 ]
 test-benchmarks = [
-  'frame-support/try-runtime',
+  "frame-support/try-runtime",
 ]

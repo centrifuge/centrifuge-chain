@@ -1,17 +1,17 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Fees pallet for runtime'
-edition = '2021'
+description = "Fees pallet for runtime"
+edition = "2021"
 license = "LGPL-3.0"
-name = 'pallet-fees'
+name = "pallet-fees"
 repository = "https://github.com/centrifuge/centrifuge-chain"
-version = '2.0.0'
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -33,18 +33,25 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
-runtime-benchmarks = ["frame-benchmarking"]
+default = ["std"]
+runtime-benchmarks = [
+  "frame-benchmarking",
+  "cfg-traits/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+]
 std = [
-  'codec/std',
-  'scale-info/std',
-  'sp-runtime/std',
-  'sp-std/std',
-  'cfg-traits/std',
-  'frame-support/std',
-  'frame-system/std',
-  'pallet-authorship/std',
-  'pallet-treasury/std',
+  "codec/std",
+  "scale-info/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "cfg-traits/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-authorship/std",
+  "pallet-treasury/std",
+  "frame-benchmarking/std",
 ]
 try-runtime = [
 
