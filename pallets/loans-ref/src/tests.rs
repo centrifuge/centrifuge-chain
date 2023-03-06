@@ -243,9 +243,11 @@ mod create_loan {
 
 			let loan = LoanInfo::new(ASSET_AA)
 				.maturity(now() + BLOCK_TIME)
-				.valuation_method(ValuationMethod::DiscountedCashFlow(
-					DiscountedCashFlow::default().discount_rate(Rate::from_float(0.9)),
-				));
+				.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
+					probability_of_default: Rate::from_float(0.0),
+					loss_given_default: Rate::from_float(0.0),
+					discount_rate: Rate::from_float(0.9),
+				}));
 
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),

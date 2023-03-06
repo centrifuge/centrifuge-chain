@@ -27,13 +27,13 @@ use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedPointOpera
 #[cfg_attr(test, derive(Default))]
 pub struct DiscountedCashFlow<Rate> {
 	/// The probability of a borrower defaulting a loan repayments.
-	probability_of_default: Rate,
+	pub probability_of_default: Rate,
 
 	/// The share of an asset that is lost if a borrower defaults.
-	loss_given_default: Rate,
+	pub loss_given_default: Rate,
 
 	/// Rate of return used to discount future cash flows back to their present value.
-	discount_rate: Rate,
+	pub discount_rate: Rate,
 }
 
 impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
@@ -105,28 +105,6 @@ where
 		match self {
 			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate >= One::one(),
 			ValuationMethod::OutstandingDebt => true,
-		}
-	}
-}
-
-#[cfg(test)]
-mod test_utils {
-	use super::*;
-
-	impl<Rate> DiscountedCashFlow<Rate> {
-		pub fn probability_of_default(mut self, input: Rate) -> Self {
-			self.probability_of_default = input;
-			self
-		}
-
-		pub fn loss_given_default(mut self, input: Rate) -> Self {
-			self.loss_given_default = input;
-			self
-		}
-
-		pub fn discount_rate(mut self, input: Rate) -> Self {
-			self.discount_rate = input;
-			self
 		}
 	}
 }
