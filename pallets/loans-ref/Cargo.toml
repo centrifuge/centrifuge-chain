@@ -13,7 +13,6 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 codec = { package = "parity-scale-codec", default-features = false, version = "3.0.0", features = ["derive"] }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
-serde = { version = "1.0.119" }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
@@ -24,24 +23,21 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
-cfg-utils = { path = "../../libs/utils", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 pallet-interest-accrual = { path = "../interest-accrual" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["pallet-uniques/runtime-benchmarks"]
 std = [
   "codec/std",
   "scale-info/std",
-  "serde/std",
   "frame-support/std",
   "frame-system/std",
   "sp-arithmetic/std",
@@ -50,6 +46,19 @@ std = [
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
-  "cfg-utils/std",
 ]
-try-runtime = ["frame-support/try-runtime"]
+runtime-benchmarks = [
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
+  "cfg-types/runtime-benchmarks",
+]
+try-runtime = [
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+  "cfg-types/try-runtime",
+]
