@@ -13,6 +13,7 @@
 
 use cfg_primitives::AccountId;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::dispatch::{DispatchError, DispatchResult};
 pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
@@ -53,11 +54,13 @@ impl From<DomainAddress> for Location {
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
-		dispatch::{DispatchError, DispatchResult},
-		pallet_prelude::{OptionQuery, StorageDoubleMap, StorageNMap, *},
+		pallet_prelude::{
+			DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, ValueQuery, *,
+		},
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::*;
+	use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 	use super::*;
 
@@ -87,6 +90,29 @@ pub mod pallet {
 		allowed_at: BlockNumberOf, // Defaults to 0
 		blocked_at: BlockNumberOf, // Defaults to BlockNumber::MAX
 	}
+
+	trait TransferAllowance<AccountId, Location> {
+		type CurrencyId;
+		fn allowance(
+			send: AccountId,
+			recieve: Location,
+			currency: Self::CurrencyId,
+		) -> DispatchResult;
+	}
+
+	// impl<T: Config> TransferAllowance<Self::AccountId, Self::AccountId> for Pallet<T> {
+	// 	type CurrencyId = Self::CurrencyId;
+	//   fn allowance(send: Self::AccountId, recieve: VersionedMultiLocation, currency: Self::Currency) -> DispatchResult {
+	//       match <AccountCurrencyAllowances<T>>::get(send, currency) {
+	//           Some(true)
+	//       }
+	//   }
+	// }
+
+	#[pallet::type_value]
+	pub fn DefaultHasRestrictions<T: Config>() -> bool {
+		false
+	}
 	#[pallet::storage]
 	pub type AccountCurrencyTransferRestriction<T> = StorageDoubleMap<
 		_,
@@ -95,7 +121,8 @@ pub mod pallet {
 		Twox64Concat,
 		CurrencyIdOf<T>,
 		bool,
-		OptionQuery,
+		ValueQuery,
+		DefaultHasRestrictions<T>,
 	>;
 
 	#[pallet::storage]
@@ -127,6 +154,7 @@ mod test {
 		let l = Location::from(a.clone());
 		assert_eq!(l, Location::Local(a))
 	}
+	#[test]
 	fn from_xcm_address_works() {
 		let xa = MultiLocation::default();
 		let l = Location::from(xa.clone());
