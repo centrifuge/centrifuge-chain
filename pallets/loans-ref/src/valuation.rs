@@ -71,7 +71,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		let rate = checked_pow(self.discount_rate, exp).ok_or(ArithmeticError::Overflow)?;
 		let d = Rate::one().ensure_div(rate)?;
 
-		Ok(d.ensure_mul_int(ra_ecf)?)
+		d.ensure_mul_int(ra_ecf)
 	}
 }
 

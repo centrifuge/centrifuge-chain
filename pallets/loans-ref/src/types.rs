@@ -111,7 +111,7 @@ where
 }
 
 /// Information about how the portfolio valuation was updated
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum PortfolioValuationUpdateType {
 	/// Portfolio Valuation was fully recomputed to an exact value
 	Exact,
@@ -120,7 +120,7 @@ pub enum PortfolioValuationUpdateType {
 }
 
 /// The data structure for storing a specific write off policy
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffState<Rate> {
 	/// Number in days after the maturity has passed at which this write off policy is valid
 	pub overdue_days: u32,
@@ -160,7 +160,7 @@ where
 }
 
 /// Diferent kinds of write off status that a loan can be
-#[derive(Encode, Decode, Clone, PartialEq, Default, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffStatus<Rate> {
 	/// Percentage of present value we are going to write off on a loan
 	pub percentage: Rate,

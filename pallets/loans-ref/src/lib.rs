@@ -342,7 +342,7 @@ mod pallet {
 		/// Transfers borrow amount to the borrower.
 		///
 		/// The origin must be the borrower of the loan.
-		/// The borrow action should fulfill the borrow restrictions configured at [`LoanRestrictions`].
+		/// The borrow action should fulfill the borrow restrictions configured at [`types::LoanRestrictions`].
 		/// The `amount` will be transferred from pool reserve to borrower.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		/// Rate accumulation will start after the first borrow.
@@ -364,7 +364,7 @@ mod pallet {
 					})?
 				}
 				None => Self::update_active_loan(pool_id, loan_id, |loan| {
-					Self::ensure_loan_borrower(&who, &loan.borrower())?;
+					Self::ensure_loan_borrower(&who, loan.borrower())?;
 					loan.borrow(amount)
 				})?,
 			};
@@ -384,7 +384,7 @@ mod pallet {
 		///
 		/// The origin must be the borrower of the loan.
 		/// If the repaying amount is more than current debt, only current debt is transferred.
-		/// The borrow action should fulfill the borrow restrictions configured at [`LoanRestrictions`].
+		/// The borrow action should fulfill the borrow restrictions configured at [`types::LoanRestrictions`].
 		/// The `amount` will be transferred from borrower to pool reserve.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
@@ -398,7 +398,7 @@ mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let amount = Self::update_active_loan(pool_id, loan_id, |loan| {
-				Self::ensure_loan_borrower(&who, &loan.borrower())?;
+				Self::ensure_loan_borrower(&who, loan.borrower())?;
 				loan.repay(amount)
 			})?;
 
@@ -473,7 +473,7 @@ mod pallet {
 
 			Self::update_active_loan(pool_id, loan_id, |loan| {
 				let state = Self::find_write_off_state(pool_id, loan.maturity_date());
-				let limit = state.map(|s| s.status()).unwrap_or(status.clone());
+				let limit = state.map(|s| s.status()).unwrap_or_else(|_| status.clone());
 
 				loan.write_off(&limit, &status)
 			})?;
@@ -588,7 +588,7 @@ mod pallet {
 				Role::PoolRole(role),
 			)
 			.then_some(())
-			.ok_or(BadOrigin.into())
+			.ok_or_else(|| BadOrigin.into())
 		}
 
 		fn ensure_collateral_owner(
@@ -599,7 +599,7 @@ mod pallet {
 				.ok_or(Error::<T>::NFTOwnerNotFound)?
 				.eq(owner)
 				.then_some(())
-				.ok_or(Error::<T>::NotNFTOwner.into())
+				.ok_or_else(|| Error::<T>::NotNFTOwner.into())
 		}
 
 		fn ensure_loan_borrower(owner: &T::AccountId, borrower: &T::AccountId) -> DispatchResult {
@@ -632,7 +632,7 @@ mod pallet {
 				maturity_date,
 				T::Time::now().as_secs(),
 			)
-			.ok_or(Error::<T>::NoValidWriteOffState.into())
+			.ok_or_else(|| Error::<T>::NoValidWriteOffState.into())
 		}
 
 		fn update_portfolio_valuation_with_pv(
