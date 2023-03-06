@@ -2122,7 +2122,7 @@ dependencies = [
  "futures",
  "lru 0.9.0",
  "polkadot-core-primitives",
- "polkadot-network-bridge 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
+ "polkadot-network-bridge",
  "polkadot-node-network-protocol",
  "polkadot-node-subsystem-util",
  "polkadot-overseer",
@@ -8208,13 +8208,13 @@ version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3#909567fe6da7af8a6b99ae86e293698cb9b4bae3"
 dependencies = [
  "futures",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-primitives",
  "rand 0.8.5",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8228,7 +8228,7 @@ dependencies = [
  "polkadot-node-subsystem-util",
  "polkadot-primitives",
  "rand 0.8.5",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8251,7 +8251,7 @@ dependencies = [
  "sp-core",
  "sp-keystore",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8272,7 +8272,7 @@ dependencies = [
  "rand 0.8.5",
  "sc-network",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8286,7 +8286,7 @@ dependencies = [
  "log",
  "polkadot-client",
  "polkadot-node-core-pvf",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-performance-test",
  "polkadot-service",
  "sc-cli",
@@ -8364,7 +8364,7 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8401,7 +8401,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-keystore",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8435,31 +8435,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-core",
  "sp-keystore",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
-]
-
-[[package]]
-name = "polkadot-network-bridge"
-version = "0.9.38"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#72309a2b2e68413305a56dce1097041309bd29c6"
-dependencies = [
- "always-assert",
- "async-trait",
- "bytes",
- "fatality",
- "futures",
- "parity-scale-codec 3.4.0",
- "parking_lot 0.12.1",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
- "polkadot-node-network-protocol",
- "polkadot-node-subsystem",
- "polkadot-overseer",
- "polkadot-primitives",
- "sc-network",
- "sc-network-common",
- "sp-consensus",
- "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8474,7 +8450,7 @@ dependencies = [
  "futures",
  "parity-scale-codec 3.4.0",
  "parking_lot 0.12.1",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-node-network-protocol",
  "polkadot-node-subsystem",
  "polkadot-overseer",
@@ -8483,7 +8459,7 @@ dependencies = [
  "sc-network-common",
  "sp-consensus",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8501,7 +8477,7 @@ dependencies = [
  "sp-core",
  "sp-maybe-compressed-blob",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8517,7 +8493,7 @@ dependencies = [
  "lru 0.9.0",
  "merlin",
  "parity-scale-codec 3.4.0",
- "polkadot-node-jaeger 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-jaeger",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-util",
@@ -8530,7 +8506,7 @@ dependencies = [
  "sp-consensus-slots",
  "sp-runtime",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8550,7 +8526,7 @@ dependencies = [
  "polkadot-overseer",
  "polkadot-primitives",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8569,7 +8545,7 @@ dependencies = [
  "polkadot-statement-table",
  "sp-keystore",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8583,7 +8559,7 @@ dependencies = [
  "polkadot-primitives",
  "sp-keystore",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
  "wasm-timer",
 ]
 
@@ -8597,13 +8573,13 @@ dependencies = [
  "futures-timer",
  "parity-scale-codec 3.4.0",
  "polkadot-node-core-pvf",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
  "polkadot-parachain",
  "polkadot-primitives",
  "sp-maybe-compressed-blob",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8612,13 +8588,13 @@ version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3#909567fe6da7af8a6b99ae86e293698cb9b4bae3"
 dependencies = [
  "futures",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-node-subsystem",
  "polkadot-primitives",
  "sc-client-api",
  "sc-consensus-babe",
  "sp-blockchain",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8635,7 +8611,7 @@ dependencies = [
  "polkadot-node-subsystem-util",
  "polkadot-primitives",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8654,7 +8630,7 @@ dependencies = [
  "polkadot-primitives",
  "sc-keystore",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8671,7 +8647,7 @@ dependencies = [
  "sp-blockchain",
  "sp-inherents",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8689,7 +8665,7 @@ dependencies = [
  "polkadot-primitives",
  "rand 0.8.5",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8705,7 +8681,7 @@ dependencies = [
  "parity-scale-codec 3.4.0",
  "pin-project",
  "polkadot-core-primitives",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-parachain",
  "rand 0.8.5",
  "rayon",
@@ -8721,7 +8697,7 @@ dependencies = [
  "sp-wasm-interface",
  "tempfile",
  "tokio",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8737,7 +8713,7 @@ dependencies = [
  "polkadot-primitives",
  "sp-keystore",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8747,30 +8723,12 @@ source = "git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae
 dependencies = [
  "futures",
  "lru 0.9.0",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-node-subsystem",
  "polkadot-node-subsystem-types",
  "polkadot-primitives",
  "sp-consensus-babe",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
-]
-
-[[package]]
-name = "polkadot-node-jaeger"
-version = "0.9.38"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#72309a2b2e68413305a56dce1097041309bd29c6"
-dependencies = [
- "lazy_static",
- "log",
- "mick-jaeger",
- "parity-scale-codec 3.4.0",
- "parking_lot 0.12.1",
- "polkadot-node-primitives",
- "polkadot-primitives",
- "sc-network",
- "sp-core",
- "thiserror",
- "tokio",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8794,25 +8752,6 @@ dependencies = [
 [[package]]
 name = "polkadot-node-metrics"
 version = "0.9.38"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#72309a2b2e68413305a56dce1097041309bd29c6"
-dependencies = [
- "bs58",
- "futures",
- "futures-timer",
- "log",
- "parity-scale-codec 3.4.0",
- "polkadot-primitives",
- "prioritized-metered-channel",
- "sc-cli",
- "sc-service",
- "sc-tracing",
- "substrate-prometheus-endpoint",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
-]
-
-[[package]]
-name = "polkadot-node-metrics"
-version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3#909567fe6da7af8a6b99ae86e293698cb9b4bae3"
 dependencies = [
  "bs58",
@@ -8826,7 +8765,7 @@ dependencies = [
  "sc-service",
  "sc-tracing",
  "substrate-prometheus-endpoint",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8840,7 +8779,7 @@ dependencies = [
  "futures",
  "hex",
  "parity-scale-codec 3.4.0",
- "polkadot-node-jaeger 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-jaeger",
  "polkadot-node-primitives",
  "polkadot-primitives",
  "rand 0.8.5",
@@ -8849,7 +8788,7 @@ dependencies = [
  "sc-network-common",
  "strum",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8879,7 +8818,7 @@ name = "polkadot-node-subsystem"
 version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3#909567fe6da7af8a6b99ae86e293698cb9b4bae3"
 dependencies = [
- "polkadot-node-jaeger 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-jaeger",
  "polkadot-node-subsystem-types",
  "polkadot-overseer",
 ]
@@ -8893,7 +8832,7 @@ dependencies = [
  "derive_more",
  "futures",
  "orchestra",
- "polkadot-node-jaeger 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-jaeger",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-primitives",
@@ -8924,8 +8863,8 @@ dependencies = [
  "parity-scale-codec 3.4.0",
  "parking_lot 0.11.2",
  "pin-project",
- "polkadot-node-jaeger 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-jaeger",
+ "polkadot-node-metrics",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem",
@@ -8937,7 +8876,7 @@ dependencies = [
  "sp-core",
  "sp-keystore",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -8951,7 +8890,7 @@ dependencies = [
  "lru 0.9.0",
  "orchestra",
  "parking_lot 0.12.1",
- "polkadot-node-metrics 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-metrics",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
  "polkadot-node-subsystem-types",
@@ -8960,7 +8899,7 @@ dependencies = [
  "sp-api",
  "sp-core",
  "tikv-jemalloc-ctl",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -9290,7 +9229,7 @@ dependencies = [
  "polkadot-collator-protocol",
  "polkadot-dispute-distribution",
  "polkadot-gossip-support",
- "polkadot-network-bridge 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-network-bridge",
  "polkadot-node-collation-generation",
  "polkadot-node-core-approval-voting",
  "polkadot-node-core-av-store",
@@ -9363,7 +9302,7 @@ dependencies = [
  "sp-trie",
  "substrate-prometheus-endpoint",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
  "westend-runtime",
 ]
 
@@ -9385,7 +9324,7 @@ dependencies = [
  "sp-keystore",
  "sp-staking",
  "thiserror",
- "tracing-gum 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "tracing-gum",
 ]
 
 [[package]]
@@ -13586,35 +13525,12 @@ dependencies = [
 [[package]]
 name = "tracing-gum"
 version = "0.9.38"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#72309a2b2e68413305a56dce1097041309bd29c6"
-dependencies = [
- "polkadot-node-jaeger 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
- "polkadot-primitives",
- "tracing",
- "tracing-gum-proc-macro 0.9.38 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.38)",
-]
-
-[[package]]
-name = "tracing-gum"
-version = "0.9.38"
 source = "git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3#909567fe6da7af8a6b99ae86e293698cb9b4bae3"
 dependencies = [
- "polkadot-node-jaeger 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
+ "polkadot-node-jaeger",
  "polkadot-primitives",
  "tracing",
- "tracing-gum-proc-macro 0.9.38 (git+https://github.com/paritytech//polkadot?rev=909567fe6da7af8a6b99ae86e293698cb9b4bae3)",
-]
-
-[[package]]
-name = "tracing-gum-proc-macro"
-version = "0.9.38"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.38#72309a2b2e68413305a56dce1097041309bd29c6"
-dependencies = [
- "expander 0.0.6",
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
+ "tracing-gum-proc-macro",
 ]
 
 [[package]]
@@ -14963,9 +14879,9 @@ checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 
 [[package]]
 name = "winnow"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c95fb4ff192527911dd18eb138ac30908e7165b8944e528b6af93aa4c842d345"
+checksum = "ee7b2c67f962bf5042bfd8b6a916178df33a26eec343ae064cb8e069f638fa6f"
 dependencies = [
  "memchr",
 ]
