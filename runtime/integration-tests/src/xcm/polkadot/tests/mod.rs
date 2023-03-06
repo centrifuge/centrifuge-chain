@@ -19,7 +19,7 @@ use cfg_types::{
 use frame_support::assert_ok;
 use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::xcm_fees::ksm_per_second;
-use xcm::{latest::MultiLocation, VersionedMultiLocation};
+use xcm::{v2::MultiLocation, VersionedMultiLocation};
 
 use super::setup::DOT_ASSET_ID;
 

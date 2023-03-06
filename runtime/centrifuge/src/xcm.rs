@@ -33,7 +33,7 @@ use runtime_common::{
 	xcm_fees::{default_per_second, native_per_second},
 };
 use sp_runtime::traits::{Convert, Zero};
-use xcm::latest::prelude::*;
+use xcm::v2::{MultiLocation, Junctions::{X3}, Junction::{GeneralKey, PalletInstance, Parachain}};
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,

@@ -40,7 +40,7 @@ use sp_runtime::{
 	WeakBoundedVec,
 };
 use xcm::{
-	latest::MultiLocation,
+	v2::MultiLocation,
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
 };
 

@@ -41,8 +41,7 @@ use sp_runtime::{
 };
 use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};
 use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, PalletInstance, Parachain, X3},
+	v2::{MultiLocation, Junctions::{X3}, Junction::{GeneralKey, PalletInstance, Parachain}},
 	VersionedMultiLocation,
 };
 
@@ -253,7 +252,7 @@ where
 			name: token_name,
 			symbol: token_symbol,
 			existential_deposit: Zero::zero(),
-			location: Some(VersionedMultiLocation::V1(MultiLocation {
+			location: Some(VersionedMultiLocation::V2(MultiLocation {
 				parents: 1,
 				interior: X3(
 					Parachain(parachain_id.into()),

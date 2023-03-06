@@ -26,7 +26,7 @@ use sp_runtime::{
 	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
 };
 use xcm::{
-	latest::MultiLocation,
+	v2::MultiLocation,
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
 };
