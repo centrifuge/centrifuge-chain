@@ -15,12 +15,12 @@ codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
 
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
 # our pallets
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
@@ -33,28 +33,28 @@ pallet-pool-system = { path = "../pool-system", default-features = false }
 
 # optional dependencies for benchmarking
 cfg-test-utils = { path = "../../libs/test-utils", default-features = false, optional = true }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.32" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
-pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
+pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 [dev-dependencies]
-pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
+pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.38" }
 
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.32" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.32" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.32" }
 
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.32" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.38" }
 
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 pallet-pool-system = { path = "../pool-system", default-features = true }
