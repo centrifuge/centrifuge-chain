@@ -299,7 +299,6 @@ pallet-beefy-mmr = { git = "https://github.com/paritytech//substrate", rev = "18
 pallet-bags-list = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 pallet-election-provider-support-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 pallet-preimage = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
-beefy-primitives = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 beefy-merkle-tree = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 beefy-gadget = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
@@ -514,7 +513,6 @@ pallet-beefy = { git = "https://github.com/paritytech//substrate", rev = "18bb7c
 pallet-beefy-mmr = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 pallet-bags-list = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 pallet-preimage = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
-beefy-primitives = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 beefy-merkle-tree = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 beefy-gadget = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech//substrate", rev = "18bb7c7c841b101c19a8d1881b893ae8e37de460" }
