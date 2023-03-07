@@ -1280,7 +1280,6 @@ impl pallet_loans_ref::Config for Runtime {
 }
 
 parameter_types! {
-	#[derive(Encode, Decode, Debug, Eq, PartialEq, PartialOrd, scale_info::TypeInfo, Clone)]
 	#[cfg_attr(feature = "std", derive(frame_support::Serialize, frame_support::Deserialize))]
 	pub const MaxTranches: u32 = 5;
 
@@ -1296,7 +1295,6 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
-	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;

@@ -352,7 +352,6 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Everything;
 	type MaxRolesPerScope = MaxRoles;
-	type MaxTranches = MaxTranches;
 	type Role = Role;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
