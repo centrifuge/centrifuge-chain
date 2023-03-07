@@ -500,8 +500,8 @@ impl<T: Config> ActiveLoan<T> {
 					debt,
 					when,
 					self.info.interest_rate,
-					self.origination_date,
 					maturity_date,
+					self.origination_date,
 				)?)
 			}
 			ValuationMethod::OutstandingDebt => Ok(debt),
