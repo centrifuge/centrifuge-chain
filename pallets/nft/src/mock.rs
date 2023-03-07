@@ -20,8 +20,8 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+use cfg_mocks::pallet_mock_fees;
 use cfg_primitives::{Balance, CFG};
-use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
@@ -84,13 +84,14 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
-		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Storage} = 7,
+		System: frame_system,
+		Balances: pallet_balances,
+		Timestamp: pallet_timestamp,
+		Authorship: pallet_authorship,
+		ChainBridge: chainbridge,
+		Anchors: pallet_anchors,
+		MockFees: pallet_mock_fees,
+		Nft: pallet_nft,
 	}
 );
 
@@ -203,18 +204,15 @@ impl chainbridge::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl_mock_fees_state!(
-	MockFeesState,
-	<Runtime as frame_system::Config>::AccountId,
-	Balance,
-	(),
-	|_key| NFT_PROOF_VALIDATION_FEE
-);
+impl pallet_mock_fees::Config for Runtime {
+	type Balance = Balance;
+	type FeeKey = u8;
+}
 
 impl pallet_anchors::Config for Runtime {
 	type CommitAnchorFeeKey = ();
 	type Currency = Balances;
-	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
+	type Fees = MockFees;
 	type PreCommitDepositFeeKey = ();
 	type WeightInfo = ();
 }
@@ -263,7 +261,13 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		TestExternalities::new(storage)
+		let mut ext = sp_io::TestExternalities::new(storage);
+		ext.execute_with(|| {
+			// Make it pallet anchors works
+			MockFees::mock_fee_value(|_| 0);
+			MockFees::mock_fee_to_author(|_, _| Ok(()));
+		});
+		ext
 	}
 }
 

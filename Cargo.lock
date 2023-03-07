@@ -5756,6 +5756,7 @@ checksum = "9b7820b9daea5457c9f21c69448905d723fbd21136ccf521748f23fd49e723ee"
 name = "pallet-anchors"
 version = "2.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-traits",
  "cfg-utils",
  "frame-benchmarking",
@@ -6611,6 +6612,7 @@ dependencies = [
 name = "pallet-nft"
 version = "2.0.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
