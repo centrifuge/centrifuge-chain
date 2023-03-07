@@ -208,10 +208,6 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm/runtime-benchmarks",
 ]
-test-benchmarks = [
-  "runtime-benchmarks",
-  "runtime-integration-tests/runtime-benchmarks",
-]
 cli = [
   "try-runtime-cli",
 ]
