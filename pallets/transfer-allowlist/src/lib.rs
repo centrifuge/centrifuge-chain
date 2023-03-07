@@ -21,9 +21,11 @@ use sp_core::H160;
 use sp_runtime::AccountId32;
 use xcm::v1::MultiLocation;
 
+pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+
 #[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-pub enum Location {
-	Local(AccountId32),
+pub enum Location<T: Config> {
+	Local(AccountIdOf<T>),
 	// unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
 	// both are foreign, and therefore can't be implemented here.
 	// may move back to new type off VersionedMultiLocation w/ MaxEncodedLen implemented
@@ -32,21 +34,20 @@ pub enum Location {
 	Address(DomainAddress),
 }
 
-impl From<AccountId32> for Location {
-	fn from(a: AccountId32) -> Location {
+impl<T: Config> From<AccountIdOf<T>> for Location<T> {
+	fn from(a: AccountId32) -> Self {
 		Self::Local(a)
 	}
 }
 
-// using
-impl From<MultiLocation> for Location {
-	fn from(ml: MultiLocation) -> Location {
+impl<T: Config> From<MultiLocation> for Location<T> {
+	fn from(ml: MultiLocation) -> Self {
 		Self::XCMV1(ml)
 	}
 }
 
-impl From<DomainAddress> for Location {
-	fn from(da: DomainAddress) -> Location {
+impl<T: Config> From<DomainAddress> for Location<T> {
+	fn from(da: DomainAddress) -> Self {
 		Self::Address(da)
 	}
 }
@@ -55,7 +56,11 @@ impl From<DomainAddress> for Location {
 /// and if so is there an allowance for the reciever location.
 trait TransferAllowance<AccountId, Location> {
 	type CurrencyId;
-	fn allowance(send: AccountId, recieve: Location, currency: Self::CurrencyId) -> DispatchResult;
+	fn allowance(
+		send: AccountId,
+		recieve: Location,
+		currency: Self::CurrencyId,
+	) -> Result<bool, DispatchError>;
 }
 
 impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
@@ -65,7 +70,7 @@ impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
 		send: T::AccountId,
 		recieve: T::AccountId,
 		currency: T::CurrencyId,
-	) -> DispatchResult {
+	) -> Result<bool, DispatchError> {
 		if <AccountCurrencyTransferRestriction<T>>::get(send, currency) {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			match <AccountCurrencyTransferAllowance<T>>::get((
@@ -174,7 +179,7 @@ pub mod pallet {
 		(
 			NMapKey<Twox64Concat, AccountIdOf<T>>,
 			NMapKey<Twox64Concat, CurrencyIdOf<T>>,
-			NMapKey<Blake2_128Concat, Location>,
+			NMapKey<Blake2_128Concat, Location<T>>,
 		),
 		AllowanceDetails<BlockNumberOf<T>>,
 		OptionQuery,
