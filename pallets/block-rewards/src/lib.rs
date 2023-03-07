@@ -39,6 +39,7 @@ pub mod weights;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+use cfg_traits::ops::{EnsureMul, EnsureSub};
 pub use cfg_traits::{
 	ops::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
@@ -205,6 +206,9 @@ pub mod pallet {
 			total_reward: T::Balance,
 			last_changes: SessionChanges<T>,
 		},
+		SessionAdvancementFailed {
+			error: DispatchError,
+		},
 	}
 
 	#[pallet::error]
@@ -356,14 +360,14 @@ impl<T: Config> Pallet<T> {
 					// Reward collator group of last session
 					let total_collator_reward = session_data
 						.collator_reward
-						.saturating_mul(session_data.collator_count.into())
+						.ensure_mul(session_data.collator_count.into())?
 						.min(session_data.total_reward);
 					T::Rewards::reward_group(COLLATOR_GROUP_ID, total_collator_reward)?;
 
 					// Handle remaining reward
 					let remaining = session_data
 						.total_reward
-						.saturating_sub(total_collator_reward);
+						.ensure_sub(total_collator_reward)?;
 					if !remaining.is_zero() {
 						let reward = T::Currency::issue(remaining.into());
 						// If configured, assigns reward to Beneficiary, else automatically drops it
@@ -401,8 +405,8 @@ impl<T: Config> Pallet<T> {
 				})
 			})
 		})
-		.map_err(|e| {
-			log::error!("Failed to advance block rewards session: {:?}", e);
+		.map_err(|error| {
+			Self::deposit_event(Event::SessionAdvancementFailed { error });
 		})
 		.ok();
 	}
