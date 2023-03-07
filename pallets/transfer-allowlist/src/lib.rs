@@ -24,6 +24,7 @@ use xcm::v1::MultiLocation;
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub enum Location<T: Config> {
 	Local(AccountIdOf<T>),
 	// unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
@@ -34,23 +35,23 @@ pub enum Location<T: Config> {
 	Address(DomainAddress),
 }
 
-impl<T: Config> From<AccountIdOf<T>> for Location<T> {
-	fn from(a: AccountId32) -> Self {
-		Self::Local(a)
-	}
-}
+// impl<T: Config> From<AccountIdOf<T>> for Location<T> {
+// 	fn from(a: AccountId32) -> Self {
+// 		Self::Local(a)
+// 	}
+// }
 
-impl<T: Config> From<MultiLocation> for Location<T> {
-	fn from(ml: MultiLocation) -> Self {
-		Self::XCMV1(ml)
-	}
-}
+// impl<T: Config> From<MultiLocation> for Location<T> {
+// 	fn from(ml: MultiLocation) -> Self {
+// 		Self::XCMV1(ml)
+// 	}
+// }
 
-impl<T: Config> From<DomainAddress> for Location<T> {
-	fn from(da: DomainAddress) -> Self {
-		Self::Address(da)
-	}
-}
+// impl<T: Config> From<DomainAddress> for Location<T> {
+// 	fn from(da: DomainAddress) -> Self {
+// 		Self::Address(da)
+// 	}
+// }
 
 /// Trait to determine whether a sending account and currency have a restriction,
 /// and if so is there an allowance for the reciever location.
@@ -71,11 +72,11 @@ impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
 		recieve: T::AccountId,
 		currency: T::CurrencyId,
 	) -> Result<bool, DispatchError> {
-		if <AccountCurrencyTransferRestriction<T>>::get(send, currency) {
+		if <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			match <AccountCurrencyTransferAllowance<T>>::get((
-				send,
-				currency,
+				&send,
+				&currency,
 				Location::Local(recieve),
 			)) {
 				Some(AllowanceDetails {
@@ -107,6 +108,7 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
+
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
@@ -116,8 +118,8 @@ pub mod pallet {
 		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
 	)]
 	pub struct AllowanceDetails<BlockNumber> {
-		allowed_at: BlockNumber,
-		blocked_at: BlockNumber,
+		pub allowed_at: BlockNumber,
+		pub blocked_at: BlockNumber,
 	}
 
 	impl<BlockNumber> AllowanceDetails<BlockNumber>
