@@ -96,9 +96,14 @@ pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
+pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
+pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
+pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
+pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 # bridge pallets
@@ -148,9 +153,14 @@ std = [
   "pallet-fees/std",
   "pallet-fees/std",
   "pallet-identity/std",
+  "pallet-interest-accrual/std",
+  "pallet-investments/std",
   "pallet-migration-manager/std",
   "pallet-multisig/std",
   "pallet-nft/std",
+  "pallet-permissions/std",
+  "pallet-pool-registry/std",
+  "pallet-pool-system/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
   "pallet-randomness-collective-flip/std",
@@ -210,10 +220,15 @@ runtime-benchmarks = [
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
+  "pallet-interest-accrual/runtime-benchmarks",
+  "pallet-investments/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-system/runtime-benchmarks",
+  "pallet-pool-registry/runtime-benchmarks",
   "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
@@ -272,9 +287,14 @@ try-runtime = [
   "pallet-elections-phragmen/try-runtime",
   "pallet-fees/try-runtime",
   "pallet-identity/try-runtime",
+  "pallet-interest-accrual/try-runtime",
+  "pallet-investments/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
   "pallet-nft/try-runtime",
+  "pallet-permissions/try-runtime",
+  "pallet-pool-system/try-runtime",
+  "pallet-pool-registry/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
   "pallet-randomness-collective-flip/try-runtime",
