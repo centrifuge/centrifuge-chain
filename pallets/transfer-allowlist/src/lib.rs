@@ -18,7 +18,6 @@ pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
 use sp_core::H160;
-use sp_runtime::AccountId32;
 use xcm::v1::MultiLocation;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -36,22 +35,22 @@ pub enum Location<T: Config> {
 }
 
 // impl<T: Config> From<AccountIdOf<T>> for Location<T> {
-// 	fn from(a: AccountId32) -> Self {
+// 	fn from(a: AccountIdOf<T>) -> Self {
 // 		Self::Local(a)
 // 	}
 // }
 
-// impl<T: Config> From<MultiLocation> for Location<T> {
-// 	fn from(ml: MultiLocation) -> Self {
-// 		Self::XCMV1(ml)
-// 	}
-// }
+impl<T: Config> From<MultiLocation> for Location<T> {
+	fn from(ml: MultiLocation) -> Self {
+		Self::XCMV1(ml)
+	}
+}
 
-// impl<T: Config> From<DomainAddress> for Location<T> {
-// 	fn from(da: DomainAddress) -> Self {
-// 		Self::Address(da)
-// 	}
-// }
+impl<T: Config> From<DomainAddress> for Location<T> {
+	fn from(da: DomainAddress) -> Self {
+		Self::Address(da)
+	}
+}
 
 /// Trait to determine whether a sending account and currency have a restriction,
 /// and if so is there an allowance for the reciever location.
