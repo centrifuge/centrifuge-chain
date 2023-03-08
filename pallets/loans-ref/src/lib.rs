@@ -220,7 +220,7 @@ pub mod pallet {
 
 	/// Stores write off policy used in each pool
 	#[pallet::storage]
-	pub(crate) type WriteOffPolicy<T: Config> = StorageMap<
+	pub(crate) type WriteOffPolicies<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
@@ -592,7 +592,7 @@ pub mod pallet {
 				Ok(())
 			})?;
 
-			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
+			WriteOffPolicies::<T>::insert(pool_id, policy.clone());
 
 			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
 
@@ -679,7 +679,7 @@ pub mod pallet {
 			maturity_date: Moment,
 		) -> Result<WriteOffState<T::Rate>, DispatchError> {
 			WriteOffState::find_best(
-				WriteOffPolicy::<T>::get(pool_id).into_iter(),
+				WriteOffPolicies::<T>::get(pool_id).into_iter(),
 				maturity_date,
 				T::Time::now().as_secs(),
 			)
