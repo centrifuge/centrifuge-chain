@@ -47,6 +47,9 @@ mod tests;
 
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
@@ -83,7 +86,7 @@ pub mod pallet {
 
 	use super::*;
 
-	type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
+	pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::CurrencyId,
 	>>::PoolId;

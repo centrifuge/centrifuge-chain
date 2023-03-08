@@ -6530,6 +6530,7 @@ dependencies = [
  "cfg-primitives",
  "cfg-traits",
  "cfg-types",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
