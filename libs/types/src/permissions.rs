@@ -74,7 +74,7 @@ pub enum PermissionScope<PoolId, CurrencyId> {
 
 /// This is only used by the permission pallet benchmarks.
 // TODO: use conditional compilation to only add this on benchmarks and tests.
-// #[cfg(any(test, feature = "runtime-benchmarks", feature = "test-benchmarks"))]
+// #[cfg(any(test, feature = "runtime-benchmarks"))]
 impl<PoolId, CurrencyId> Default for PermissionScope<PoolId, CurrencyId>
 where
 	PoolId: Default,
