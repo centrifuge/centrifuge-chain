@@ -1217,6 +1217,25 @@ parameter_types! {
 	pub const MaxWriteOffGroups: u32 = 10;
 }
 
+impl pallet_loans::Config for Runtime {
+	type Balance = Balance;
+	type BlockNumberProvider = System;
+	type ClassId = CollectionId;
+	type CurrencyId = CurrencyId;
+	type InterestAccrual = InterestAccrual;
+	type LoanId = ItemId;
+	type LoansPalletId = LoansPalletId;
+	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
+	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type NonFungible = Uniques;
+	type Permission = Permissions;
+	type Pool = PoolSystem;
+	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
+}
+
 parameter_types! {
 	pub const MaxKeys: u32 = 10;
 	pub const DefaultKeyDeposit: Balance = 100 * CFG;
@@ -1347,6 +1366,7 @@ construct_runtime!(
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 184,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 187,
 	}
 );
 
