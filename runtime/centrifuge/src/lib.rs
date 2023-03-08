@@ -1217,6 +1217,58 @@ parameter_types! {
 	pub const MaxWriteOffGroups: u32 = 10;
 }
 
+parameter_types! {
+	pub const MaxKeys: u32 = 10;
+	pub const DefaultKeyDeposit: Balance = 100 * CFG;
+}
+
+impl pallet_keystore::pallet::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+	type Balance = Balance;
+	type Currency = Balances;
+	type DefaultKeyDeposit = DefaultKeyDeposit;
+	type MaxKeys = MaxKeys;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_keystore::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	// per byte deposit is 0.01 AIR
+	pub const DepositPerByte: Balance = CENTI_CFG;
+	// Base deposit to add attribute is 0.1 AIR
+	pub const AttributeDepositBase: Balance = 10 * CENTI_CFG;
+	// Base deposit to add metadata is 0.1 AIR
+	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
+	// Deposit to create a class is 1 AIR
+	pub const CollectionDeposit: Balance = CFG;
+	// Deposit to create a class is 0.1 AIR
+	pub const ItemDeposit: Balance = 10 * CENTI_CFG;
+	// Maximum limit of bytes for Metadata, Attribute key and Value
+	pub const Limit: u32 = 256;
+}
+
+impl pallet_uniques::Config for Runtime {
+	type AttributeDepositBase = AttributeDepositBase;
+	type CollectionDeposit = CollectionDeposit;
+	type CollectionId = CollectionId;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type DepositPerByte = DepositPerByte;
+	// a straight majority of council can act as force origin
+	type ForceOrigin = EnsureRoot;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type ItemDeposit = ItemDeposit;
+	type ItemId = ItemId;
+	type KeyLimit = Limit;
+	type Locker = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = weights::pallet_uniques::WeightInfo<Self>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1293,7 +1345,8 @@ construct_runtime!(
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 182,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 183,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 184,
-
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
+		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
 	}
 );
 

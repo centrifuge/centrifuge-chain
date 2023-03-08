@@ -74,6 +74,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-fe
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
@@ -98,6 +99,7 @@ pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-fea
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
+pallet-keystore = { path = "../../pallets/keystore", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
@@ -158,6 +160,7 @@ std = [
   "pallet-identity/std",
   "pallet-interest-accrual/std",
   "pallet-investments/std",
+  "pallet-keystore/std",
   "pallet-migration-manager/std",
   "pallet-multisig/std",
   "pallet-nft/std",
@@ -174,6 +177,7 @@ std = [
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
   "pallet-treasury/std",
+  "pallet-uniques/std",
   "pallet-utility/std",
   "pallet-vesting/std",
   "pallet-xcm/std",
@@ -228,6 +232,7 @@ runtime-benchmarks = [
   "pallet-identity/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
+  "pallet-keystore/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
   "pallet-nft/runtime-benchmarks",
@@ -240,6 +245,7 @@ runtime-benchmarks = [
   "pallet-scheduler/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
+  "pallet-uniques/runtime-benchmarks",
   "pallet-utility/runtime-benchmarks",
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
@@ -286,6 +292,7 @@ try-runtime = [
   "pallet-identity/try-runtime",
   "pallet-interest-accrual/try-runtime",
   "pallet-investments/try-runtime",
+  "pallet-keystore/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
   "pallet-nft/try-runtime",
@@ -301,6 +308,7 @@ try-runtime = [
   "pallet-timestamp/try-runtime",
   "pallet-transaction-payment/try-runtime",
   "pallet-treasury/try-runtime",
+  "pallet-uniques/try-runtime",
   "pallet-utility/try-runtime",
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
