@@ -149,18 +149,29 @@ impl<Rate> WriteOffState<Rate>
 where
 	Rate: FixedPointNumber,
 {
-	fn is_not_overdue(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
+	fn is_overdue(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
 		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
 		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
 	}
 
+	/// From all overdue write off states, it returns the minor.
+	///
+	/// Suppose a policy with the following states:
+	/// - overdue_days: 5
+	/// - overdue_days: 10
+	/// - overdue_days: 15
+	///
+	/// If the loan is not overdue, it will not return any state.
+	/// If the loan overdue by 4 days, it will not return any state.
+	/// If the loan is overdue by 9 days, it will return the first state.
+	/// If the loan is overdue by 60 days, it will return the third state.
 	pub fn find_best(
 		policy: impl Iterator<Item = WriteOffState<Rate>>,
 		maturity_date: Moment,
 		now: Moment,
 	) -> Option<WriteOffState<Rate>> {
 		policy
-			.filter_map(|p| p.is_not_overdue(maturity_date, now).ok()?.then_some(p))
+			.filter_map(|p| p.is_overdue(maturity_date, now).ok()?.then_some(p))
 			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
 	}
 
@@ -349,7 +360,7 @@ where
 		// Ideally we would like only to check here if the yearly rate is valid,
 		// without reference_yearly_rate() and popule the accrual storage.
 		// Once the loan becomes active, it will be referenced.
-		// Thus, a validate method should be inmutable, without alter any storage.
+		// Thus, a validate method should be immutable, without alter any storage.
 		// This can be easier modeled once:
 		// https://github.com/centrifuge/centrifuge-chain/issues/1189 be merged.
 		// By now, the following line does the trick.

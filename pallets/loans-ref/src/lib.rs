@@ -393,15 +393,23 @@ pub mod pallet {
 			match CreatedLoans::<T>::take(pool_id, loan_id) {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, &created_loan.borrower)?;
-					Self::make_active_loan(pool_id, loan_id, created_loan, |loan| {
-						loan.borrow(amount)
-					})?
+
+					let mut loan = ActiveLoan::new(
+						loan_id,
+						created_loan.info,
+						created_loan.borrower,
+						Self::now(),
+					)?;
+
+					loan.borrow(amount)?;
+
+					Self::insert_active_loan(pool_id, loan)
 				}
 				None => Self::update_active_loan(pool_id, loan_id, |loan| {
 					Self::ensure_loan_borrower(&who, loan.borrower())?;
 					loan.borrow(amount)
-				})?,
-			};
+				}),
+			}?;
 
 			T::Pool::withdraw(pool_id, who, amount)?;
 
@@ -451,8 +459,14 @@ pub mod pallet {
 		///
 		/// This action will write off based on the write off policy configured by
 		/// [`Pallet::update_write_off_policy()`].
-		/// The write off action will only take effect if it writes down than the current write
-		/// off status of the loan. This action will never writes up.
+		/// The write off action will only take effect if it writes down more (percentage or penalty)
+		/// than the current write off status of the loan. This action will never writes up. i.e:
+		/// - Write off by admin with percentage 0.5 and penalty 0.2
+		/// - Time passes and the policy can be applied.
+		/// - Write of with a policy that says: percentage 0.3, penaly 0.4
+		/// - The loan is written off with the maximum between the policy and the current state:
+		///   percentage 0.5, penaly 0.4
+		///
 		/// No special permisions are required to this call.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
@@ -485,8 +499,11 @@ pub mod pallet {
 		/// Writes off a loan from admin origin.
 		///
 		/// Forces a writing off of a loan if the `percentage` and `penalty` parameters
-		/// respect the policy values as the minimum.
+		/// respecting the policy values as the minimum.
 		/// This action can write down/up the current write off status of the loan.
+		/// If there is no active policy, an admin write off action can write up the write off
+		/// status. But if there is a policy applied, the admin can only write up until the policy.
+		/// Write down more than the policy is always allowed.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(10_000)]
 		#[transactional]
@@ -700,41 +717,19 @@ pub mod pallet {
 			)
 		}
 
-		fn make_active_loan<F, R>(
-			pool_id: PoolIdOf<T>,
-			loan_id: T::LoanId,
-			created_loan: CreatedLoan<T>,
-			f: F,
-		) -> Result<R, DispatchError>
-		where
-			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
-		{
+		fn insert_active_loan(pool_id: PoolIdOf<T>, loan: ActiveLoan<T>) -> DispatchResult {
 			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
+				let last_updated = Self::now();
+				let new_pv = loan.present_value_at(last_updated)?;
+
+				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, Zero::zero(), new_pv)?;
+
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let mut loan = ActiveLoan::new(
-						loan_id,
-						created_loan.info,
-						created_loan.borrower,
-						Self::now(),
-					)?;
-
-					let result = f(&mut loan);
-
-					let last_updated = Self::now();
-					let new_pv = loan.present_value_at(last_updated)?;
-
-					Self::update_portfolio_valuation_with_pv(
-						pool_id,
-						portfolio,
-						Zero::zero(),
-						new_pv,
-					)?;
-
 					active_loans
 						.try_push((loan, last_updated))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
-					result
+					Ok(())
 				})
 			})
 		}
