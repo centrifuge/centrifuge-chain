@@ -1240,7 +1240,7 @@ impl pallet_pool_system::Config for Runtime {
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = ();
+	type NAV = Loans;
 	// TODO: Add actual pallet-loans, after https://github.com/centrifuge/centrifuge-chain/pull/1180 is merged
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
@@ -1781,6 +1781,7 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1807,8 +1808,9 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
-			list_benchmark!(list, extra, pallet_uniquess, Permissions);
-			list_benchmark!(list, extra, pallet_keystore, InterestAccrual);
+			list_benchmark!(list, extra, pallet_uniquess, Uniques);
+			list_benchmark!(list, extra, pallet_keystore, Keystore);
+			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1840,6 +1842,11 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
+			impl pallet_loans::benchmarking::Config for Runtime {
+				type IM = Investments;
+			}
+
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;
 
@@ -1866,8 +1873,9 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
-			add_benchmark!(params, batches, pallet_uniques, InterestAccrual);
-			add_benchmark!(params, batches, pallet_keystore, InterestAccrual);
+			add_benchmark!(params, batches, pallet_uniques, Uniques);
+			add_benchmark!(params, batches, pallet_keystore, Keystore);
+			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
