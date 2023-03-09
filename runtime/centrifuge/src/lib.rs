@@ -634,6 +634,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				c,
 				RuntimeCall::Permissions(pallet_permissions::Call::add { .. })
 					| RuntimeCall::Permissions(pallet_permissions::Call::remove { .. })
+					| RuntimeCall::Utility(pallet_utility::Call::batch_all { .. })
+					| RuntimeCall::Utility(pallet_utility::Call::batch { .. })
 			),
 		}
 	}
@@ -1085,22 +1087,22 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const MinUpdateDelay: u64 = 7 * SECONDS_PER_DAY; // 7 days notice
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
 		// Disable challenge time in benchmarks
 		0
 	} else {
-		2 * MINUTES
+		30 * MINUTES
 	};
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 5 * SECONDS_PER_MINUTE; // 5 minutes
-	pub const DefaultMaxNAVAge: u64 = 1 * SECONDS_PER_MINUTE; // 1 minute
+	pub const DefaultMinEpochTime: u64 = 23 * SECONDS_PER_HOUR + 50 * SECONDS_PER_MINUTE; // 23h and 50 minutes
+	pub const DefaultMaxNAVAge: u64 = 0; // forcing update_nav + close epoch in same block
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1; // at least 1 second (i.e. do not allow multiple epochs closed in 1 block)
+	pub const MinEpochTimeLowerBound: u64 = 1 * SECONDS_PER_HOUR; // at least 1 second (i.e. do not allow multiple epochs closed in 1 block)
 	pub const MinEpochTimeUpperBound: u64 = 30 * SECONDS_PER_DAY; // 1 month
-	pub const MaxNAVAgeUpperBound: u64 = SECONDS_PER_HOUR; // 1 hour
+	pub const MaxNAVAgeUpperBound: u64 = 1 * SECONDS_PER_HOUR; // 1 hour
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
@@ -1271,7 +1273,7 @@ parameter_types! {
 	pub const MinDelay: Moment = 7 * SECONDS_PER_DAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxRolesPerPool: u32 = 1_000;
+	pub const MaxRolesPerPool: u32 = 10_000;
 }
 
 pub struct Editors;
@@ -1408,7 +1410,7 @@ impl pallet_interest_accrual::Config for Runtime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 50;
-	pub const MaxWriteOffGroups: u32 = 10;
+	pub const MaxWriteOffGroups: u32 = 100;
 }
 
 impl pallet_loans::Config for Runtime {
