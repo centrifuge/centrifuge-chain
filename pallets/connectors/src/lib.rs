@@ -377,7 +377,7 @@ pub mod pallet {
 
 		/// Update a token price
 		#[pallet::weight(< T as Config >::WeightInfo::update_token_price())]
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -405,7 +405,7 @@ pub mod pallet {
 
 		/// Update a member
 		#[pallet::weight(< T as Config >::WeightInfo::update_member())]
-		#[pallet::call_index(4)]
+		#[pallet::call_index(5)]
 		pub fn update_member(
 			origin: OriginFor<T>,
 			domain_address: DomainAddress,
@@ -456,7 +456,7 @@ pub mod pallet {
 
 		/// Transfer tranche tokens to a given address
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
-		#[pallet::call_index(5)]
+		#[pallet::call_index(6)]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,

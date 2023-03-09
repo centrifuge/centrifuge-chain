@@ -18,7 +18,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::v2::MultiLocation;
+use ::xcm::v2::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
@@ -1237,23 +1237,31 @@ impl xcm_primitives::XcmTransact for NullTransactor {
 	}
 }
 
+parameter_types! {
+	// 1 ROC should be enough to cover for fees opening/accepting hrmp channels
+	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
+}
+
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
-	type AssetTransactor = xcm::FungiblesTransactor;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
-	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
+	type Transactor = NullTransactor;
+	type AssetTransactor = xcm::FungiblesTransactor;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
+	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
+	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
+	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
-	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
-	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
-	type Transactor = NullTransactor;
-	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type WeightInfo = ();
 	type XcmSender = XcmRouter;
+	type BaseXcmWeight = BaseXcmWeight;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
+	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
+	type WeightInfo = ();
 }
 
 parameter_types! {

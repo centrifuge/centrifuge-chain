@@ -148,6 +148,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "affix"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50e7ea84d3fa2009f355f8429a0b418a96849135a4188fadf384f59127d5d4bc"
+dependencies = [
+ "convert_case 0.5.0",
+]
+
+[[package]]
 name = "ahash"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -889,6 +898,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "case"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd6c0e7b807d60291f42f33f58480c0bfafe28ed08286446f45e463728cf9c1c"
+
+[[package]]
 name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1412,6 +1427,12 @@ name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
+
+[[package]]
+name = "convert_case"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb4a24b1aaf0fd0ce8b45161144d6f42cd91677fd5940fd431183eb023b3a2b8"
 
 [[package]]
 name = "core-foundation"
@@ -2405,7 +2426,7 @@ version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
 dependencies = [
- "convert_case",
+ "convert_case 0.4.0",
  "proc-macro2",
  "quote",
  "rustc_version 0.4.0",
@@ -2437,6 +2458,7 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal 0.3.4",
+ "moonbeam-relay-encoder",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -5720,6 +5742,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "moonbeam-relay-encoder"
+version = "0.1.0"
+source = "git+https://github.com/PureStake/moonbeam?rev=4c22f7c010573513076b618c09d2824ece6c51eb#4c22f7c010573513076b618c09d2824ece6c51eb"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-system",
+ "pallet-evm-precompile-relay-encoder",
+ "pallet-staking",
+ "parity-scale-codec 3.4.0",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-primitives",
+]
+
+[[package]]
 name = "multiaddr"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6854,6 +6892,28 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-evm-precompile-relay-encoder"
+version = "0.1.0"
+source = "git+https://github.com/PureStake/moonbeam?rev=4c22f7c010573513076b618c09d2824ece6c51eb#4c22f7c010573513076b618c09d2824ece6c51eb"
+dependencies = [
+ "cumulus-primitives-core",
+ "fp-evm",
+ "frame-support",
+ "frame-system",
+ "log",
+ "num_enum",
+ "pallet-evm",
+ "pallet-staking",
+ "parity-scale-codec 3.4.0",
+ "precompile-utils",
+ "rustc-hex",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+ "xcm-primitives",
 ]
 
 [[package]]
@@ -9457,6 +9517,45 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
+name = "precompile-utils"
+version = "0.1.0"
+source = "git+https://github.com/PureStake/moonbeam?rev=4c22f7c010573513076b618c09d2824ece6c51eb#4c22f7c010573513076b618c09d2824ece6c51eb"
+dependencies = [
+ "affix",
+ "evm",
+ "fp-evm",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "impl-trait-for-tuples",
+ "log",
+ "num_enum",
+ "pallet-evm",
+ "parity-scale-codec 3.4.0",
+ "paste",
+ "precompile-utils-macro",
+ "sha3 0.10.6",
+ "sp-core",
+ "sp-io",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "precompile-utils-macro"
+version = "0.1.0"
+source = "git+https://github.com/PureStake/moonbeam?rev=4c22f7c010573513076b618c09d2824ece6c51eb#4c22f7c010573513076b618c09d2824ece6c51eb"
+dependencies = [
+ "case",
+ "num_enum",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "sha3 0.10.6",
+ "syn",
+]
 
 [[package]]
 name = "predicates"
@@ -13936,7 +14035,7 @@ checksum = "e7141e445af09c8919f1d5f8a20dae0b20c3b57a45dee0d5823c6ed5d237f15a"
 dependencies = [
  "bitflags",
  "chrono",
- "rustc_version 0.4.0",
+ "rustc_version 0.2.3",
 ]
 
 [[package]]
