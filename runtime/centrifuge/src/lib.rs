@@ -1087,7 +1087,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheId = TrancheId;
-	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
+	type WeightInfo = pallet_pool_registry::weights::SubstrateWeight<Runtime>;
 }
 
 // Pool config parameters
@@ -1159,7 +1159,7 @@ impl pallet_pool_system::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
-	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
+	type WeightInfo = pallet_pool_system::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1183,7 +1183,7 @@ impl pallet_permissions::Config for Runtime {
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage =
 		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
-	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
+	type WeightInfo = pallet_permissions::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1248,7 +1248,7 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type DefaultKeyDeposit = DefaultKeyDeposit;
 	type MaxKeys = MaxKeys;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_keystore::WeightInfo<Runtime>;
+	type WeightInfo = pallet_keystore::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1285,7 +1285,7 @@ impl pallet_uniques::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = Limit;
 	type ValueLimit = Limit;
-	type WeightInfo = weights::pallet_uniques::WeightInfo<Self>;
+	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
