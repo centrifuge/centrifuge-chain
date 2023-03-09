@@ -2365,3 +2365,13 @@ fn create_tranche_token_metadata() {
 		);
 	});
 }
+
+#[test]
+#[cfg(feature = "runtime-benchmarks")]
+fn benchmark_pool() {
+	use cfg_traits::PoolBenchmarkHelper;
+
+	new_test_ext().execute_with(|| {
+		PoolSystem::benchmark_create_pool(0, &0);
+	});
+}

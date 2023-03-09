@@ -1,8 +1,6 @@
-use std::time::Duration;
-
-use cfg_traits::{InterestAccrual, PoolInspect};
+use cfg_traits::{InterestAccrual, PoolBenchmarkHelper};
 use cfg_types::adjustments::Adjustment;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	UnixTime,
@@ -10,6 +8,7 @@ use frame_support::traits::{
 use frame_system::RawOrigin;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Get, One, Zero};
+use sp_std::time::Duration;
 
 use super::{
 	pallet::*,
@@ -18,34 +17,67 @@ use super::{
 };
 
 const OFFSET: Duration = Duration::from_secs(100);
-const LOAN_BENCHMARK_COLLECTION_ID: u16 = 29482;
+const COLLECION_ID: u16 = 42;
 
-#[cfg(test)]
-fn config_mocks() {
-	use crate::mock::{MockPermissions, MockPools};
+fn prepare_benchmark<T: Config>(admin: &T::AccountId, borrower: &T::AccountId) -> PoolIdOf<T>
+where
+	T::Balance: From<u128>,
+	T::Pool:
+		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+{
+	#[cfg(test)]
+	{
+		let _ = (admin, borrower);
 
-	MockPermissions::mock_has(|_, _, _| true);
-	MockPools::mock_pool_exists(|_| true);
-	MockPools::mock_account_for(|_| 0);
-	MockPools::mock_withdraw(|_, _, _| Ok(()));
-	MockPools::mock_deposit(|_, _, _| Ok(()));
+		use crate::mock::{MockPermissions, MockPools};
+
+		MockPermissions::mock_has(|_, _, _| true);
+		MockPools::mock_pool_exists(|_| true);
+		MockPools::mock_account_for(|_| 0);
+		MockPools::mock_withdraw(|_, _, _| Ok(()));
+		MockPools::mock_deposit(|_, _, _| Ok(()));
+
+		Default::default()
+	}
+
+	#[cfg(not(test))]
+	{
+		use cfg_primitives::CFG;
+		use cfg_traits::Permissions;
+		use cfg_types::permissions::{PermissionScope, PoolRole, Role};
+
+		let pool_id = Default::default();
+		T::Pool::benchmark_create_pool(pool_id, admin);
+
+		T::Permissions::add(
+			PermissionScope::Pool(pool_id),
+			borrower.clone(),
+			Role::PoolRole(PoolRole::Borrower),
+		)
+		.unwrap();
+
+		let funds = 1_000_000_000;
+		T::Pool::benchmark_give_ausd(borrower, (funds * CFG).into());
+
+		pool_id
+	}
 }
 
 fn create_loan<T: Config>(
-	caller: &T::AccountId,
+	borrower: &T::AccountId,
 	pool_id: PoolIdOf<T>,
 	asset: (T::CollectionId, T::ItemId),
 ) -> T::LoanId
 where
-	T::Balance: From<u32>,
+	T::Balance: From<u128>,
 {
 	Pallet::<T>::create(
-		RawOrigin::Signed(caller.clone()).into(),
+		RawOrigin::Signed(borrower.clone()).into(),
 		pool_id,
 		LoanInfo::new(asset)
 			.maturity(T::Time::now() + OFFSET)
 			.interest_rate(T::Rate::saturating_from_rational(1, 2))
-			.collateral_value(10000.into())
+			.collateral_value((1_000_000).into())
 			.max_borrow_amount(MaxBorrowAmount::UpToOutstandingDebt {
 				advance_rate: T::Rate::one(),
 			})
@@ -60,15 +92,15 @@ where
 	LastLoanId::<T>::get(pool_id)
 }
 
-fn borrow_loan<T: Config>(caller: &T::AccountId, pool_id: PoolIdOf<T>, loan_id: T::LoanId)
+fn borrow_loan<T: Config>(borrower: &T::AccountId, pool_id: PoolIdOf<T>, loan_id: T::LoanId)
 where
-	T::Balance: From<u32>,
+	T::Balance: From<u128>,
 {
 	Pallet::<T>::borrow(
-		RawOrigin::Signed(caller.clone()).into(),
+		RawOrigin::Signed(borrower.clone()).into(),
 		pool_id,
 		loan_id,
-		100.into(),
+		10.into(),
 	)
 	.unwrap();
 }
@@ -76,34 +108,37 @@ where
 benchmarks! {
 	where_clause {
 		where
-		<T::Pool as PoolInspect<T::AccountId, T::CurrencyId>>::PoolId: From<u32>,
-		T::Balance: From<u32>,
+		PoolIdOf<T>: From<u32>,
+		T::Balance: From<u128>,
 		T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
+		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 	}
 
 	update_portfolio_valuation {
 		let n in 1..T::MaxActiveLoansPerPool::get();
-		let m in 1..<T::InterestAccrual as InterestAccrual<T::Rate, T::Balance, Adjustment<T::Balance>>>::MaxRateCount::get();
+		let m in 1..<T::InterestAccrual as InterestAccrual<
+			T::Rate,
+			T::Balance,
+			Adjustment<T::Balance>>
+		>::MaxRateCount::get();
 
-		#[cfg(test)]
-		config_mocks();
+		let pool_admin = account::<T::AccountId>("pool_admin", 0, 0);
+		let borrower = account::<T::AccountId>("borrower", 0, 0);
+		let pool_id = prepare_benchmark::<T>(&pool_admin, &borrower);
 
-		let caller = whitelisted_caller();
-		let pool_id = 1.into();
-
-		let collection_id = LOAN_BENCHMARK_COLLECTION_ID.into();
-		T::NonFungible::create_collection(&collection_id, &caller, &caller).unwrap();
+		let collection_id = COLLECION_ID.into();
+		T::NonFungible::create_collection(&collection_id, &borrower, &borrower).unwrap();
 
 		for i in 0..n {
 			let item_id = (i as u16).into();
-			T::NonFungible::mint_into(&collection_id, &item_id, &caller).unwrap();
+			T::NonFungible::mint_into(&collection_id, &item_id, &borrower).unwrap();
 
-			let loan_id = create_loan::<T>(&caller, pool_id, (collection_id, item_id));
-			borrow_loan::<T>(&caller, pool_id, loan_id);
+			let loan_id = create_loan::<T>(&borrower, pool_id, (collection_id, item_id));
+			borrow_loan::<T>(&borrower, pool_id, loan_id);
 		}
-	}: _(RawOrigin::Signed(caller), pool_id)
+	}: _(RawOrigin::Signed(borrower), pool_id)
 	verify {
 	}
 }

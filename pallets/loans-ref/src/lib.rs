@@ -50,6 +50,8 @@ pub use pallet::*;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub use pallet::*;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;

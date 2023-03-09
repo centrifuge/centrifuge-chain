@@ -1283,6 +1283,23 @@ impl pallet_loans::Config for Runtime {
 	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
 }
 
+impl pallet_loans_ref::Config for Runtime {
+	type Balance = Balance;
+	type CollectionId = CollectionId;
+	type CurrencyId = CurrencyId;
+	type InterestAccrual = InterestAccrual;
+	type ItemId = ItemId;
+	type LoanId = u64;
+	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
+	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type NonFungible = Uniques;
+	type Permissions = Permissions;
+	type Pool = PoolSystem;
+	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+}
+
 parameter_types! {
 	#[derive(Encode, Decode, Debug, Eq, PartialEq, PartialOrd, scale_info::TypeInfo, Clone)]
 	#[cfg_attr(feature = "std", derive(frame_support::Serialize, frame_support::Deserialize))]
@@ -1741,6 +1758,7 @@ construct_runtime!(
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
+		LoansRef: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 110,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2060,6 +2078,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_loans_ref, LoansRef);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
@@ -2093,6 +2112,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_loans_ref, LoansRef);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
