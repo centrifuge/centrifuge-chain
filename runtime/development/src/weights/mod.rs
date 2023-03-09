@@ -12,6 +12,7 @@
 pub mod frame_system;
 pub mod pallet_balances;
 pub mod pallet_collator_allowlist;
+pub mod pallet_collator_selection;
 pub mod pallet_crowdloan_claim;
 pub mod pallet_crowdloan_reward;
 pub mod pallet_fees;
@@ -22,3 +23,4 @@ pub mod pallet_nft_sales;
 pub mod pallet_permissions;
 pub mod pallet_pool_registry;
 pub mod pallet_pool_system;
+pub mod pallet_session;
