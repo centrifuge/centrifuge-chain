@@ -19,11 +19,14 @@
 #![allow(clippy::identity_op)]
 
 pub use cfg_primitives::{constants::*, types::*};
+use cfg_traits::{
+	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, TrancheCurrency as _,
+};
 use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	fee_keys::FeeKey,
 	fixed_point::Rate,
-	permissions::{PermissionRoles, PermissionScope, Role},
+	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	time::TimeProvider,
 	tokens::{CustomMetadata, TrancheCurrency},
 };
@@ -31,7 +34,9 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
+	pallet_prelude::{DispatchError, DispatchResult},
 	parameter_types,
+	sp_std::marker::PhantomData,
 	traits::{
 		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
 		PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
@@ -50,6 +55,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
+use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -68,7 +74,7 @@ use sp_inherents::{CheckInherentsResult, InherentData};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto},
+	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, Perbill, Permill,
 };
@@ -1072,24 +1078,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
-impl pallet_pool_registry::Config for Runtime {
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type InterestRate = Rate;
-	type MaxSizeMetadata = MaxSizeMetadata;
-	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
-	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
-	type MaxTranches = MaxTranches;
-	type ModifyPool = pallet_pool_system::Pallet<Self>;
-	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
-	type PoolId = PoolId;
-	type Rate = Rate;
-	type RuntimeEvent = RuntimeEvent;
-	type TrancheId = TrancheId;
-	type WeightInfo = pallet_pool_registry::weights::SubstrateWeight<Runtime>;
-}
-
 // Pool config parameters
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = cfg_types::ids::POOLS_PALLET_ID;
@@ -1121,6 +1109,110 @@ parameter_types! {
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	// TODO: Define deposit?
 	pub const PoolDeposit: Balance = 100 * CFG;
+}
+
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
+		match id {
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::AUSD => true,
+			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
+				.map(|m| m.additional.pool_currency)
+				.unwrap_or(false),
+		}
+	}
+}
+
+pub struct UpdateGuard;
+impl PoolUpdateGuard for UpdateGuard {
+	type Moment = Moment;
+	type PoolDetails = PoolDetails<
+		CurrencyId,
+		TrancheCurrency,
+		u32,
+		Balance,
+		Rate,
+		MaxSizeMetadata,
+		TrancheWeight,
+		TrancheId,
+		PoolId,
+		MaxTranches,
+	>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<
+		Rate,
+		MaxTrancheNameLengthBytes,
+		MaxTrancheSymbolLengthBytes,
+		MaxTranches,
+	>;
+
+	fn released(
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
+	) -> bool {
+		if now < update.scheduled_time {
+			return false;
+		}
+
+		// The epoch in which the redemptions were fulfilled,
+		// should have closed after the scheduled time already,
+		// to ensure that investors had the `MinUpdateDelay`
+		// to submit their redemption orders.
+		if now < pool.epoch.last_closed {
+			return false;
+		}
+
+		let pool_id = pool.tranches.of_pool();
+
+		// We do not allow releasing updates during epoch
+		// closing.
+		//
+		// This is needed as:
+		// - investment side starts new order round with zero orders at epoch_closing
+		// - the pool might only fulfill x < 100% of redemptions
+		//         -> not all redemptions would be fulfilled after epoch_execution
+		if PoolSystem::epoch_targets(pool_id).is_some() {
+			return false;
+		}
+
+		// There should be no outstanding redemption orders.
+		let acc_outstanding_redemptions = pool
+			.tranches
+			.ids_non_residual_top()
+			.iter()
+			.map(|tranche_id| {
+				let investment_id = TrancheCurrency::generate(pool_id, *tranche_id);
+				Investments::redeem_orders(investment_id).amount
+			})
+			.fold(Balance::zero(), |acc, redemption| {
+				acc.saturating_add(redemption)
+			});
+
+		if acc_outstanding_redemptions != 0u128 {
+			return false;
+		}
+
+		true
+	}
+}
+
+impl pallet_pool_registry::Config for Runtime {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type InterestRate = Rate;
+	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
+	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
+	type MaxTranches = MaxTranches;
+	type ModifyPool = pallet_pool_system::Pallet<Self>;
+	type Permission = Permissions;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolId = PoolId;
+	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
+	type TrancheId = TrancheId;
+	type WeightInfo = pallet_pool_registry::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_pool_system::Config for Runtime {
@@ -1174,6 +1266,49 @@ parameter_types! {
 	pub const MaxRolesPerPool: u32 = 1_000;
 }
 
+pub struct Editors;
+impl
+	Contains<(
+		AccountId,
+		Option<Role<TrancheId, Moment>>,
+		PermissionScope<PoolId, CurrencyId>,
+		Role<TrancheId, Moment>,
+	)> for Editors
+{
+	fn contains(
+		t: &(
+			AccountId,
+			Option<Role<TrancheId, Moment>>,
+			PermissionScope<PoolId, CurrencyId>,
+			Role<TrancheId, Moment>,
+		),
+	) -> bool {
+		let (_editor, maybe_role, _scope, role) = t;
+		if let Some(with_role) = maybe_role {
+			match *with_role {
+				Role::PoolRole(PoolRole::PoolAdmin) => match *role {
+					// PoolAdmins can manage all other admins, but not tranche investors
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => false,
+					Role::PoolRole(..) => true,
+					_ => false,
+				},
+				Role::PoolRole(PoolRole::MemberListAdmin) => matches!(
+					*role,
+					// MemberlistAdmins can manage tranche investors
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _))
+				),
+				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => matches!(
+					*role,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_))
+				),
+				_ => false,
+			}
+		} else {
+			false
+		}
+	}
+}
+
 impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
@@ -1189,6 +1324,57 @@ impl pallet_permissions::Config for Runtime {
 parameter_types! {
 	pub const MaxOutstandingCollects: u32 = 10;
 }
+
+/// Checks whether the given `who` has the role
+/// of a `TrancehInvestor` for the given pool.
+pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
+impl<
+		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
+		T: UnixTime,
+	> PreConditions<OrderType<AccountId, TrancheCurrency, Balance>> for IsTrancheInvestor<P, T>
+{
+	type Result = DispatchResult;
+
+	fn check(order: OrderType<AccountId, TrancheCurrency, Balance>) -> Self::Result {
+		let is_tranche_investor = match order {
+			OrderType::Investment {
+				who,
+				investment_id: tranche,
+				..
+			} => P::has(
+				PermissionScope::Pool(tranche.of_pool()),
+				who,
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					tranche.of_tranche(),
+					T::now().as_secs(),
+				)),
+			),
+			OrderType::Redemption {
+				who,
+				investment_id: tranche,
+				..
+			} => P::has(
+				PermissionScope::Pool(tranche.of_pool()),
+				who,
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					tranche.of_tranche(),
+					T::now().as_secs(),
+				)),
+			),
+		};
+
+		if is_tranche_investor {
+			Ok(())
+		} else {
+			// TODO: We should adapt the permissions pallets interface to return an error instead of a boolen. This makes the redundant has not role error
+			//       that downstream pallets always need to generate not needed anymore.
+			Err(DispatchError::Other(
+				"Account does not have the TrancheInvestor permission.",
+			))
+		}
+	}
+}
+
 impl pallet_investments::Config for Runtime {
 	type Accountant = PoolSystem;
 	type Amount = Balance;
