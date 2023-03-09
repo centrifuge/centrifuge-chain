@@ -1082,7 +1082,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1147,7 +1147,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
@@ -1274,7 +1274,7 @@ impl pallet_uniques::Config for Runtime {
 	type Currency = Balances;
 	type DepositPerByte = DepositPerByte;
 	// a straight majority of council can act as force origin
-	type ForceOrigin = EnsureRoot;
+	type ForceOrigin = EnsureRoot<AccountId>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
 	type ItemDeposit = ItemDeposit;
