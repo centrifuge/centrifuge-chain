@@ -21,6 +21,12 @@ use sp_core::H160;
 use sp_runtime::{traits::IdentifyAccount, AccountId32};
 use xcm::v1::MultiLocation;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
@@ -192,34 +198,4 @@ pub mod pallet {
 }
 
 #[cfg(test)]
-mod test {
-	use cfg_primitives::AccountId;
-	use hex::FromHex;
-	use pallet_connectors::DomainAddress;
-	use sp_core::H160;
-	use xcm::{v1::MultiLocation, VersionedMultiLocation};
-
-	use super::*;
-
-	#[test]
-	fn from_account_works() {
-		let a: AccountId = AccountId::new([0; 32]);
-		let l = Location::from(a.clone());
-		assert_eq!(l, Location::Local(a))
-	}
-	#[test]
-	fn from_xcm_address_works() {
-		let xa = MultiLocation::default();
-		let l = Location::from(xa.clone());
-		assert_eq!(l, Location::XCMV1(MultiLocation::default()))
-	}
-	#[test]
-	fn from_domain_address_works() {
-		let da = DomainAddress::EVM(
-			1284,
-			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect(""),
-		);
-		let l = Location::from(da.clone());
-		assert_eq!(l, Location::Address(da))
-	}
-}
+mod test {}
