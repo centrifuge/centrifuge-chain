@@ -18,6 +18,7 @@ pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
 use sp_core::H160;
+use sp_runtime::{traits::IdentifyAccount, AccountId32};
 use xcm::v1::MultiLocation;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -34,11 +35,14 @@ pub enum Location<T: Config> {
 	Address(DomainAddress),
 }
 
-// impl<T: Config> From<AccountIdOf<T>> for Location<T> {
-// 	fn from(a: AccountIdOf<T>) -> Self {
-// 		Self::Local(a)
-// 	}
-// }
+impl<T: Config + frame_system::Config<AccountId = T>> From<T> for Location<T>
+where
+	T::AccountId: IdentifyAccount,
+{
+	fn from(a: AccountIdOf<T>) -> Self {
+		Self::Local(a)
+	}
+}
 
 impl<T: Config> From<MultiLocation> for Location<T> {
 	fn from(ml: MultiLocation) -> Self {
