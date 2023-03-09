@@ -1197,6 +1197,13 @@ impl PoolUpdateGuard for UpdateGuard {
 	}
 }
 
+// The pool benchmarks can't handle a required root origin (yet).
+// TODO: Fix those benchmarks and remove this
+#[cfg(not(feature = "runtime-benchmarks"))]
+type PoolCreateOrigin = EnsureRoot<AccountId>;
+#[cfg(feature = "runtime-benchmarks")]
+type PoolCreateOrigin = EnsureSigned<AccountId>;
+
 impl pallet_pool_registry::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -1207,7 +1214,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
