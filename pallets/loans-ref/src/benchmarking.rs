@@ -116,7 +116,10 @@ benchmarks! {
 	}
 
 	update_portfolio_valuation {
-		for i in 1..MaxRateCountOf::<T>::get() {
+		let n in 1..T::MaxActiveLoansPerPool::get();
+		let m in 1..MaxRateCountOf::<T>::get();
+
+		for i in 1..m {
 			// First `i` (with value 0) used by the loan's interest rate.
 			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
 			T::InterestAccrual::reference_yearly_rate(rate).unwrap();
@@ -129,7 +132,7 @@ benchmarks! {
 		let collection_id = COLLECION_ID.into();
 		T::NonFungible::create_collection(&collection_id, &borrower, &borrower).unwrap();
 
-		for i in 0..T::MaxActiveLoansPerPool::get() {
+		for i in 0..n {
 			let item_id = (i as u16).into();
 			T::NonFungible::mint_into(&collection_id, &item_id, &borrower).unwrap();
 

@@ -57,7 +57,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		ops::{EnsureAdd, EnsureAddAssign},
+		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
 		InterestAccrual, Permissions, PoolInspect, PoolReserve,
 	};
 	use cfg_types::{
@@ -398,20 +398,23 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			match CreatedLoan::<T>::take(pool_id, loan_id) {
+			let _count = match CreatedLoan::<T>::take(pool_id, loan_id) {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
 					let mut active_loan = created_loan.activate(loan_id)?;
 					active_loan.borrow(amount)?;
 
-					Self::insert_active_loan(pool_id, active_loan)
+					Self::insert_active_loan(pool_id, active_loan)?
 				}
-				None => Self::update_active_loan(pool_id, loan_id, |loan| {
-					Self::ensure_loan_borrower(&who, loan.borrower())?;
-					loan.borrow(amount)
-				}),
-			}?;
+				None => {
+					Self::update_active_loan(pool_id, loan_id, |loan| {
+						Self::ensure_loan_borrower(&who, loan.borrower())?;
+						loan.borrow(amount)
+					})?
+					.1
+				}
+			};
 
 			T::Pool::withdraw(pool_id, who, amount)?;
 
@@ -440,7 +443,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let amount = Self::update_active_loan(pool_id, loan_id, |loan| {
+			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, loan.borrower())?;
 				loan.repay(amount)
 			})?;
@@ -478,7 +481,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let status = Self::update_active_loan(pool_id, loan_id, |loan| {
+			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				let state = Self::find_write_off_state(pool_id, loan.maturity_date())?;
 				let limit = state.status().max(loan.write_off_status());
 
@@ -521,7 +524,7 @@ pub mod pallet {
 				penalty: Self::to_rate_per_sec(penalty)?,
 			};
 
-			Self::update_active_loan(pool_id, loan_id, |loan| {
+			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
 				let state = Self::find_write_off_state(pool_id, loan.maturity_date());
 				let limit = state.map(|s| s.status()).unwrap_or_else(|_| status.clone());
 
@@ -549,9 +552,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (closed_loan, borrower) = match CreatedLoan::<T>::take(pool_id, loan_id) {
-				Some(created_loan) => created_loan.close()?,
-				None => Self::take_active_loan(pool_id, loan_id)?.close()?,
+			let ((closed_loan, borrower), _count) = match CreatedLoan::<T>::take(pool_id, loan_id) {
+				Some(created_loan) => (created_loan.close()?, Zero::zero()),
+				None => {
+					let (active_loan, count) = Self::take_active_loan(pool_id, loan_id)?;
+					(active_loan.close()?, count)
+				}
 			};
 
 			Self::ensure_loan_borrower(&who, &borrower)?;
@@ -597,15 +603,18 @@ pub mod pallet {
 		}
 
 		/// Updates the porfolio valuation for the given pool
-		#[pallet::weight(T::WeightInfo::update_portfolio_valuation())]
+		#[pallet::weight(T::WeightInfo::update_portfolio_valuation(
+            T::MaxActiveLoansPerPool::get(),
+            MaxRateCountOf::<T>::get()
+        ))]
 		pub fn update_portfolio_valuation(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			let value = Self::portfolio_valuation_for_pool(pool_id)?;
+			let (value, count) = Self::portfolio_valuation_for_pool(pool_id)?;
 
 			LatestPortfolioValuations::<T>::insert(
 				pool_id,
@@ -618,7 +627,11 @@ pub mod pallet {
 				update_type: PortfolioValuationUpdateType::Exact,
 			});
 
-			Ok(())
+			Ok(Some(T::WeightInfo::update_portfolio_valuation(
+				count,
+				MaxRateCountOf::<T>::get(),
+			))
+			.into())
 		}
 	}
 
@@ -703,17 +716,26 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn portfolio_valuation_for_pool(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+		fn portfolio_valuation_for_pool(
+			pool_id: PoolIdOf<T>,
+		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
-			ActiveLoans::<T>::get(pool_id).into_iter().try_fold(
+			let loans = ActiveLoans::<T>::get(pool_id);
+			let count = loans.len().ensure_into()?;
+			let value = loans.into_iter().try_fold(
 				T::Balance::zero(),
 				|sum, (loan, _)| -> Result<T::Balance, DispatchError> {
 					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
 				},
-			)
+			)?;
+
+			Ok((value, count))
 		}
 
-		fn insert_active_loan(pool_id: PoolIdOf<T>, loan: ActiveLoan<T>) -> DispatchResult {
+		fn insert_active_loan(
+			pool_id: PoolIdOf<T>,
+			loan: ActiveLoan<T>,
+		) -> Result<u32, DispatchError> {
 			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
 				let last_updated = Self::now();
 				let new_pv = loan.present_value_at(last_updated)?;
@@ -725,7 +747,7 @@ pub mod pallet {
 						.try_push((loan, last_updated))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
-					Ok(())
+					Ok(active_loans.len().ensure_into()?)
 				})
 			})
 		}
@@ -734,7 +756,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			f: F,
-		) -> Result<R, DispatchError>
+		) -> Result<(R, u32), DispatchError>
 		where
 			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
@@ -754,14 +776,14 @@ pub mod pallet {
 					*last_updated = (*last_updated).max(portfolio.last_updated());
 					let old_pv = loan.present_value_at(*last_updated)?;
 
-					let result = f(loan);
+					let result = f(loan)?;
 
 					*last_updated = Self::now();
 					let new_pv = loan.present_value_at(*last_updated)?;
 
 					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
 
-					result
+					Ok((result, active_loans.len().ensure_into()?))
 				})
 			})
 		}
@@ -769,14 +791,17 @@ pub mod pallet {
 		fn take_active_loan(
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-		) -> Result<ActiveLoan<T>, DispatchError> {
+		) -> Result<(ActiveLoan<T>, u32), DispatchError> {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
 					.position(|(loan, _)| loan.loan_id() == loan_id)
 					.ok_or(Error::<T>::LoanNotFound)?;
 
-				Ok(active_loans.swap_remove(index).0)
+				Ok((
+					active_loans.swap_remove(index).0,
+					active_loans.len().ensure_into()?,
+				))
 			})
 		}
 	}
