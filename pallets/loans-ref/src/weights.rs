@@ -36,9 +36,10 @@ pub trait WeightInfo {
 /// Weights for pallet_loans_ref using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn update_portfolio_valuation(n: u32, _m: u32) -> Weight {
-		Weight::from_ref_time(33_405_920) // Standard Error: 6_289
-			.saturating_add(Weight::from_ref_time(5_313_769).saturating_mul(n as u64))
+	fn update_portfolio_valuation(n: u32, m: u32) -> Weight {
+		Weight::from_ref_time(31_800_621) // Standard Error: 4_929
+			.saturating_add(Weight::from_ref_time(5_443_785).saturating_mul(n as u64)) // Standard Error: 4_929
+			.saturating_add(Weight::from_ref_time(64_886).saturating_mul(m as u64))
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
@@ -46,9 +47,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn update_portfolio_valuation(n: u32, _m: u32) -> Weight {
-		Weight::from_ref_time(33_405_920) // Standard Error: 6_289
-			.saturating_add(Weight::from_ref_time(5_313_769).saturating_mul(n as u64))
+	fn update_portfolio_valuation(n: u32, m: u32) -> Weight {
+		Weight::from_ref_time(31_800_621) // Standard Error: 4_929
+			.saturating_add(Weight::from_ref_time(5_443_785).saturating_mul(n as u64)) // Standard Error: 4_929
+			.saturating_add(Weight::from_ref_time(64_886).saturating_mul(m as u64))
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}

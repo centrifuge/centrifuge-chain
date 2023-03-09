@@ -126,8 +126,9 @@ benchmarks! {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let m in 1..MaxRateCountOf::<T>::get();
 
-		for idx in 1..m {
-			let rate = T::Rate::saturating_from_rational(idx + 1, 5000);
+		for i in 1..m {
+			// First `i` (with value 0) used by the loan's interest rate.
+			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
 			T::InterestAccrual::reference_yearly_rate(rate).unwrap();
 		}
 
@@ -145,9 +146,9 @@ benchmarks! {
 			let loan_id = create_loan::<T>(&borrower, pool_id, (collection_id, item_id));
 			borrow_loan::<T>(&borrower, pool_id, loan_id);
 		}
-
 	}: _(RawOrigin::Signed(borrower), pool_id)
 	verify {
+		assert!(Pallet::<T>::portfolio_valuation(pool_id).value() > Zero::zero());
 	}
 }
 

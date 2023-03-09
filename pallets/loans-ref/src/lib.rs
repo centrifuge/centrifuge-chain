@@ -240,6 +240,7 @@ pub mod pallet {
 
 	/// Stores the portfolio valuation associated to each pool
 	#[pallet::storage]
+	#[pallet::getter(fn portfolio_valuation)]
 	pub(crate) type LatestPortfolioValuations<T: Config> =
 		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, PortfolioValuation<T::Balance>, ValueQuery>;
 
