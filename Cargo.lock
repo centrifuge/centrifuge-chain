@@ -7864,7 +7864,7 @@ dependencies = [
 [[package]]
 name = "pallet-xcm-transactor"
 version = "0.2.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=621220fb0b7a491256b27d70c93ac507ba6519ce#621220fb0b7a491256b27d70c93ac507ba6519ce"
+source = "git+https://github.com/PureStake/moonbeam?rev=4c22f7c010573513076b618c09d2824ece6c51eb#4c22f7c010573513076b618c09d2824ece6c51eb"
 dependencies = [
  "cumulus-primitives-core",
  "frame-benchmarking",
@@ -15091,13 +15091,15 @@ dependencies = [
 [[package]]
 name = "xcm-primitives"
 version = "0.1.0"
-source = "git+https://github.com/PureStake/moonbeam?rev=621220fb0b7a491256b27d70c93ac507ba6519ce#621220fb0b7a491256b27d70c93ac507ba6519ce"
+source = "git+https://github.com/PureStake/moonbeam?rev=4c22f7c010573513076b618c09d2824ece6c51eb#4c22f7c010573513076b618c09d2824ece6c51eb"
 dependencies = [
+ "cumulus-primitives-core",
  "ethereum",
  "ethereum-types 0.14.1",
  "frame-support",
  "frame-system",
  "hex",
+ "impl-trait-for-tuples",
  "log",
  "orml-traits",
  "parity-scale-codec 3.4.0",
