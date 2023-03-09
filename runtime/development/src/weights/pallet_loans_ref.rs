@@ -31,15 +31,9 @@ impl<T: frame_system::Config> pallet_loans_ref::WeightInfo for WeightInfo<T> {
 	// Storage: LoansRef ActiveLoans (r:1 w:0)
 	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: LoansRef LatestPortfolioValuations (r:0 w:1)
-	/// The range of component `n` is `[1, 50]`.
-	/// The range of component `m` is `[1, 50]`.
-	fn update_portfolio_valuation(n: u32, m: u32, ) -> Weight {
-		// Minimum execution time: 33_000 nanoseconds.
-		Weight::from_ref_time(33_000_000 as u64)
-			// Standard Error: 380_142
-			.saturating_add(Weight::from_ref_time(4_619_571 as u64).saturating_mul(n as u64))
-			// Standard Error: 380_142
-			.saturating_add(Weight::from_ref_time(313_449 as u64).saturating_mul(m as u64))
+	fn update_portfolio_valuation() -> Weight {
+		// Minimum execution time: 481_000 nanoseconds.
+		Weight::from_ref_time(308_000_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}

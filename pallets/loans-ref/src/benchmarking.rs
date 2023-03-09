@@ -1,5 +1,4 @@
 use cfg_traits::{InterestAccrual, PoolBenchmarkHelper};
-use cfg_types::adjustments::Adjustment;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
@@ -105,12 +104,6 @@ where
 	.unwrap();
 }
 
-type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
-	<T as Config>::Rate,
-	<T as Config>::Balance,
-	Adjustment<<T as Config>::Balance>,
->>::MaxRateCount;
-
 benchmarks! {
 	where_clause {
 		where
@@ -123,10 +116,7 @@ benchmarks! {
 	}
 
 	update_portfolio_valuation {
-		let n in 1..T::MaxActiveLoansPerPool::get();
-		let m in 1..MaxRateCountOf::<T>::get();
-
-		for i in 1..m {
+		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (with value 0) used by the loan's interest rate.
 			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
 			T::InterestAccrual::reference_yearly_rate(rate).unwrap();
@@ -139,7 +129,7 @@ benchmarks! {
 		let collection_id = COLLECION_ID.into();
 		T::NonFungible::create_collection(&collection_id, &borrower, &borrower).unwrap();
 
-		for i in 0..n {
+		for i in 0..T::MaxActiveLoansPerPool::get() {
 			let item_id = (i as u16).into();
 			T::NonFungible::mint_into(&collection_id, &item_id, &borrower).unwrap();
 
