@@ -29,8 +29,8 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 [dev-dependencies]
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 cfg-types = { path = "../../libs/types", default-features = true }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.32" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.32" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.37" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.37" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.37" }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true }
 rand = "0.8.5"

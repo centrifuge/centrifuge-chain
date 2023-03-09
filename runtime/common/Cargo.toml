@@ -29,7 +29,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
 
 # ORML dependencies
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.32" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
