@@ -45,12 +45,13 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub use pallet::*;
+mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
 pub use pallet::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -177,6 +178,9 @@ pub mod pallet {
 		/// Max number of write-off groups per pool.
 		#[pallet::constant]
 		type MaxWriteOffGroups: Get<u32>;
+
+		/// Information of runtime weights
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Contains the last loan id generated

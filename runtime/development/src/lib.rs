@@ -1298,6 +1298,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
+	type WeightInfo = weights::pallet_loans_ref::WeightInfo<Self>;
 }
 
 parameter_types! {
