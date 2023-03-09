@@ -226,6 +226,7 @@ pub mod pallet {
 		/// For a more detailed explanation refer section 3.4 of
 		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::pre_commit())]
+
 		pub fn pre_commit(
 			origin: OriginFor<T>,
 			anchor_id: T::Hash,

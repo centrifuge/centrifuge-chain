@@ -116,6 +116,10 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 			<T::Fungibles as Inspect<T::AccountId>>::can_withdraw(asset, who, amount)
 		}
 	}
+
+	fn asset_exists(_asset: Self::AssetId) -> bool {
+		todo!("nuno")
+	}
 }
 
 /// Represents the trait `fungibles::InspectHold` effects that are called via
