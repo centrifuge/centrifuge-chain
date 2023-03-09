@@ -351,20 +351,13 @@ pub mod pallet {
 			Self::ensure_collateral_owner(&who, *info.collateral())?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			info.validate::<T>(T::Time::now().as_secs())?;
+			info.validate::<T>(Self::now())?;
 
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
 			let loan_id = Self::generate_loan_id(pool_id)?;
-			CreatedLoan::<T>::insert(
-				pool_id,
-				loan_id,
-				types::CreatedLoan {
-					info: info.clone(),
-					borrower: who,
-				},
-			);
+			CreatedLoan::<T>::insert(pool_id, loan_id, types::CreatedLoan::new(info.clone(), who));
 
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
@@ -394,18 +387,12 @@ pub mod pallet {
 
 			match CreatedLoan::<T>::take(pool_id, loan_id) {
 				Some(created_loan) => {
-					Self::ensure_loan_borrower(&who, &created_loan.borrower)?;
+					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
-					let mut loan = ActiveLoan::new(
-						loan_id,
-						created_loan.info,
-						created_loan.borrower,
-						Self::now(),
-					)?;
+					let mut active_loan = created_loan.activate(loan_id)?;
+					active_loan.borrow(amount)?;
 
-					loan.borrow(amount)?;
-
-					Self::insert_active_loan(pool_id, loan)
+					Self::insert_active_loan(pool_id, active_loan)
 				}
 				None => Self::update_active_loan(pool_id, loan_id, |loan| {
 					Self::ensure_loan_borrower(&who, loan.borrower())?;
@@ -553,17 +540,17 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (info, borrower) = match CreatedLoan::<T>::take(pool_id, loan_id) {
-				Some(loan) => (loan.info, loan.borrower),
+			let (closed_loan, borrower) = match CreatedLoan::<T>::take(pool_id, loan_id) {
+				Some(created_loan) => created_loan.close()?,
 				None => Self::take_active_loan(pool_id, loan_id)?.close()?,
 			};
 
 			Self::ensure_loan_borrower(&who, &borrower)?;
 
-			let collateral = *info.collateral();
+			let collateral = closed_loan.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
-			ClosedLoan::<T>::insert(pool_id, loan_id, types::ClosedLoan::new(info)?);
+			ClosedLoan::<T>::insert(pool_id, loan_id, closed_loan);
 
 			Self::deposit_event(Event::<T>::Closed {
 				pool_id,

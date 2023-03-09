@@ -378,10 +378,35 @@ pub type LoanInfoOf<T> = LoanInfo<AssetOf<T>, <T as Config>::Balance, <T as Conf
 #[scale_info(skip_type_params(T))]
 pub struct CreatedLoan<T: Config> {
 	/// Loan information
-	pub info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
 
 	/// Borrower account that created this loan
-	pub borrower: T::AccountId,
+	borrower: T::AccountId,
+}
+
+impl<T: Config> CreatedLoan<T> {
+	pub fn new(info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>, borrower: T::AccountId) -> Self {
+		Self { info, borrower }
+	}
+
+	pub fn borrower(&self) -> &T::AccountId {
+		&self.borrower
+	}
+
+	pub fn activate(self, loan_id: T::LoanId) -> Result<ActiveLoan<T>, DispatchError> {
+		ActiveLoan::new(loan_id, self.info, self.borrower, T::Time::now().as_secs())
+	}
+
+	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
+		let loan = ClosedLoan {
+			closed_at: frame_system::Pallet::<T>::current_block_number(),
+			info: self.info,
+			total_borrowed: Zero::zero(),
+			total_repaid: Zero::zero(),
+		};
+
+		Ok((loan, self.borrower))
+	}
 }
 
 /// Data containing a closed loan for historical purposes.
@@ -393,14 +418,17 @@ pub struct ClosedLoan<T: Config> {
 
 	/// Loan information
 	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+
+	/// Total borrowed amount of this loan
+	total_borrowed: T::Balance,
+
+	/// Total repaid amount of this loan
+	total_repaid: T::Balance,
 }
 
 impl<T: Config> ClosedLoan<T> {
-	pub fn new(info: LoanInfoOf<T>) -> Result<Self, DispatchError> {
-		Ok(Self {
-			closed_at: frame_system::Pallet::<T>::current_block_number(),
-			info,
-		})
+	pub fn collateral(&self) -> AssetOf<T> {
+		self.info.collateral
 	}
 }
 
@@ -655,12 +683,19 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn close(self) -> Result<(LoanInfoOf<T>, T::AccountId), DispatchError> {
+	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
 		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
 
-		Ok((self.info, self.borrower))
+		let loan = ClosedLoan {
+			closed_at: frame_system::Pallet::<T>::current_block_number(),
+			info: self.info,
+			total_borrowed: self.total_borrowed,
+			total_repaid: self.total_repaid,
+		};
+
+		Ok((loan, self.borrower))
 	}
 }
 
