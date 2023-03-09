@@ -149,7 +149,8 @@ impl<Rate> WriteOffState<Rate>
 where
 	Rate: FixedPointNumber,
 {
-	fn is_overdue(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
+	/// Check if a `WriteOffState` is applicable for a loan with the specified `maturity_date`.
+	fn applicable(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
 		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
 		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
 	}
@@ -171,7 +172,7 @@ where
 		now: Moment,
 	) -> Option<WriteOffState<Rate>> {
 		policy
-			.filter_map(|p| p.is_overdue(maturity_date, now).ok()?.then_some(p))
+			.filter_map(|p| p.applicable(maturity_date, now).ok()?.then_some(p))
 			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
 	}
 
