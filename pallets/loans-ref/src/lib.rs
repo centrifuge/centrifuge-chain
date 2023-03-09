@@ -75,9 +75,9 @@ pub mod pallet {
 		ArithmeticError, FixedPointOperand,
 	};
 	use types::{
-		ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, ClosedLoan, CreateLoanError,
-		CreatedLoan, LoanInfoOf, PortfolioValuation, PortfolioValuationUpdateType, WriteOffState,
-		WriteOffStatus, WrittenOffError,
+		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
+		PortfolioValuation, PortfolioValuationUpdateType, WriteOffState, WriteOffStatus,
+		WrittenOffError,
 	};
 
 	use super::*;
@@ -180,18 +180,18 @@ pub mod pallet {
 
 	/// Storage for loans that has been created but are not still active.
 	#[pallet::storage]
-	pub(crate) type CreatedLoans<T: Config> = StorageDoubleMap<
+	pub(crate) type CreatedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		CreatedLoan<T>,
+		types::CreatedLoan<T>,
 		OptionQuery,
 	>;
 
 	/// Storage for active loans.
-	/// The indexation of this storage differs from `CreatedLoans` or `ClosedLoans`
+	/// The indexation of this storage differs from `CreatedLoan` or `ClosedLoan`
 	/// because here we try to minimize the iteration speed over all active loans in a pool.
 	/// `Moment` value along with the `ActiveLoan` correspond to the last moment the active loan was
 	/// used to compute the portfolio valuation in an inexact way.
@@ -208,19 +208,19 @@ pub mod pallet {
 	/// No mutations are expected in this storage.
 	/// Loans are stored here for historical purposes.
 	#[pallet::storage]
-	pub(crate) type ClosedLoans<T: Config> = StorageDoubleMap<
+	pub(crate) type ClosedLoan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		ClosedLoan<T>,
+		types::ClosedLoan<T>,
 		OptionQuery,
 	>;
 
 	/// Stores write off policy used in each pool
 	#[pallet::storage]
-	pub(crate) type WriteOffPolicies<T: Config> = StorageMap<
+	pub(crate) type WriteOffPolicy<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
@@ -355,10 +355,10 @@ pub mod pallet {
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
 			let loan_id = Self::generate_loan_id(pool_id)?;
-			CreatedLoans::<T>::insert(
+			CreatedLoan::<T>::insert(
 				pool_id,
 				loan_id,
-				CreatedLoan {
+				types::CreatedLoan {
 					info: info.clone(),
 					borrower: who,
 				},
@@ -390,7 +390,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			match CreatedLoans::<T>::take(pool_id, loan_id) {
+			match CreatedLoan::<T>::take(pool_id, loan_id) {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, &created_loan.borrower)?;
 
@@ -551,7 +551,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let (info, borrower) = match CreatedLoans::<T>::take(pool_id, loan_id) {
+			let (info, borrower) = match CreatedLoan::<T>::take(pool_id, loan_id) {
 				Some(loan) => (loan.info, loan.borrower),
 				None => Self::take_active_loan(pool_id, loan_id)?.close()?,
 			};
@@ -561,7 +561,7 @@ pub mod pallet {
 			let collateral = *info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &who)?;
 
-			ClosedLoans::<T>::insert(pool_id, loan_id, ClosedLoan::new(info)?);
+			ClosedLoan::<T>::insert(pool_id, loan_id, types::ClosedLoan::new(info)?);
 
 			Self::deposit_event(Event::<T>::Closed {
 				pool_id,
@@ -592,7 +592,7 @@ pub mod pallet {
 				Ok(())
 			})?;
 
-			WriteOffPolicies::<T>::insert(pool_id, policy.clone());
+			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
 
 			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
 
@@ -679,7 +679,7 @@ pub mod pallet {
 			maturity_date: Moment,
 		) -> Result<WriteOffState<T::Rate>, DispatchError> {
 			WriteOffState::find_best(
-				WriteOffPolicies::<T>::get(pool_id).into_iter(),
+				WriteOffPolicy::<T>::get(pool_id).into_iter(),
 				maturity_date,
 				T::Time::now().as_secs(),
 			)
@@ -748,7 +748,7 @@ pub mod pallet {
 						.iter_mut()
 						.find(|(loan, _)| loan.loan_id() == loan_id)
 						.ok_or_else(|| {
-							if CreatedLoans::<T>::contains_key(pool_id, loan_id) {
+							if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
 								Error::<T>::LoanNotActive
 							} else {
 								Error::<T>::LoanNotFound
