@@ -212,6 +212,7 @@ pub mod pallet {
 		/// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native())]
 		#[transactional]
+		#[pallet::call_index(0)]
 		pub fn transfer_native(
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
@@ -246,6 +247,7 @@ pub mod pallet {
 		/// Executes a simple currency transfer using the chainbridge account as the source
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
 		#[transactional]
+		#[pallet::call_index(1)]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: <T as frame_system::Config>::AccountId,
@@ -260,6 +262,7 @@ pub mod pallet {
 
 		/// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.
 		#[pallet::weight(<T as Config>::WeightInfo::remark())]
+		#[pallet::call_index(2)]
 		pub fn remark(
 			origin: OriginFor<T>,
 			hash: <T as frame_system::Config>::Hash,

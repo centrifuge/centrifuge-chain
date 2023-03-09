@@ -257,6 +257,7 @@ pub mod pallet {
 		/// - Based on hashes length
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::claim(sorted_hashes.len()))]
+		#[pallet::call_index(0)]
 		pub fn claim(
 			origin: OriginFor<T>,
 			account_id: T::AccountId,
@@ -308,6 +309,7 @@ pub mod pallet {
 		/// - Based on origin check and write op
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::set_upload_account())]
+		#[pallet::call_index(1)]
 		pub fn set_upload_account(
 			origin: OriginFor<T>,
 			account_id: T::AccountId,
@@ -325,6 +327,7 @@ pub mod pallet {
 		/// - Based on origin check and write op
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::store_root_hash())]
+		#[pallet::call_index(2)]
 		pub fn store_root_hash(
 			origin: OriginFor<T>,
 			root_hash: T::Hash,

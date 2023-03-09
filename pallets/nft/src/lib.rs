@@ -161,6 +161,7 @@ pub mod pallet {
 		/// - depends on the arguments
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::validate_mint())]
+		#[pallet::call_index(0)]
 		pub fn validate_mint(
 			origin: OriginFor<T>,
 			anchor_id: SystemHashOf<T>,

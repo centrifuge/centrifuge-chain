@@ -118,6 +118,7 @@ pub mod pallet {
 		///   - `collator_id` did not yet load their keys into the session pallet
 		///   - `collator_id` is already part of the allowlist
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add())]
+		#[pallet::call_index(0)]
 		pub fn add(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 
@@ -142,6 +143,7 @@ pub mod pallet {
 		///   - `origin` fails the `ensure_root` check
 		///   - `collator_id` is not part of the allowlist
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove())]
+		#[pallet::call_index(1)]
 		pub fn remove(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 

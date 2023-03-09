@@ -460,6 +460,7 @@ pub mod pallet {
 		/// will be transferred from the pool to the calling
 		/// account.
 		#[pallet::weight(80_000_000)]
+		#[pallet::call_index(0)]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -479,6 +480,7 @@ pub mod pallet {
 		/// will be transferred from the pool to the calling
 		/// account.
 		#[pallet::weight(80_000_000)]
+		#[pallet::call_index(1)]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -493,6 +495,7 @@ pub mod pallet {
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
 		#[pallet::weight(80_000_000)]
+		#[pallet::call_index(2)]
 		pub fn collect_investments(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -506,6 +509,7 @@ pub mod pallet {
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
 		#[pallet::weight(80_000_000)]
+		#[pallet::call_index(3)]
 		pub fn collect_redemptions(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -519,6 +523,7 @@ pub mod pallet {
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
 		#[pallet::weight(80_000_000)]
+		#[pallet::call_index(4)]
 		pub fn collect_investments_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,
@@ -533,6 +538,7 @@ pub mod pallet {
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
 		#[pallet::weight(80_000_000)]
+		#[pallet::call_index(5)]
 		pub fn collect_redemptions_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,

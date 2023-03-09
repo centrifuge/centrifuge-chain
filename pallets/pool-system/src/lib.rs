@@ -497,6 +497,7 @@ pub mod pallet {
 		/// added with the Permissions pallet before this
 		/// extrinsic can be called.
 		#[pallet::weight(T::WeightInfo::set_max_reserve())]
+		#[pallet::call_index(0)]
 		pub fn set_max_reserve(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -542,6 +543,7 @@ pub mod pallet {
                              .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get()))
                              .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get())))]
 		#[transactional]
+		#[pallet::call_index(1)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
@@ -710,6 +712,7 @@ pub mod pallet {
 		/// challenge time begins. The pool can be executed once
 		/// the challenge time has expired.
 		#[pallet::weight(T::WeightInfo::submit_solution(T::MaxTranches::get()))]
+		#[pallet::call_index(2)]
 		pub fn submit_solution(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -763,6 +766,7 @@ pub mod pallet {
 		///   assigned to each tranche, based on the investments
 		///   and redemptions to those tranches.
 		#[pallet::weight(T::WeightInfo::execute_epoch(T::MaxTranches::get()))]
+		#[pallet::call_index(3)]
 		pub fn execute_epoch(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
