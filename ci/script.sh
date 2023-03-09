@@ -17,9 +17,9 @@ rustup --version
 cargo --version
 
 case $TARGET in
-	build-node)
-		cargo build --release "$@"
-		;;
+  build-node)
+    cargo build --release "$@"
+    ;;
 
   build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
@@ -36,7 +36,7 @@ case $TARGET in
     ;;
 
   integration)
-    RUST_MIN_STACK=8388608 cargo test --release --package runtime-integration-tests
+    RUST_MIN_STACK=8388608 cargo test --package runtime-integration-tests
     ;;
 
   fmt)
