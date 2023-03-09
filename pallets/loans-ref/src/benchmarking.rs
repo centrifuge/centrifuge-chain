@@ -112,7 +112,11 @@ benchmarks! {
 		T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
-		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+		T::Pool: PoolBenchmarkHelper<
+			PoolId = PoolIdOf<T>,
+			AccountId = T::AccountId,
+			Balance = T::Balance
+		>,
 	}
 
 	update_portfolio_valuation {
