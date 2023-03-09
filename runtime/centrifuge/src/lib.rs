@@ -1800,6 +1800,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
+			list_benchmark!(list, extra, pallet_uniquess, Permissions);
+			list_benchmark!(list, extra, pallet_keystore, InterestAccrual);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1857,6 +1859,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
+			add_benchmark!(params, batches, pallet_uniques, InterestAccrual);
+			add_benchmark!(params, batches, pallet_keystore, InterestAccrual);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
