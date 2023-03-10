@@ -710,7 +710,7 @@ fn test_env(
 			Box::new(move |parent: H256, ()| {
 				let client = clone_client.clone();
 				let parent_header = client
-					.header(&BlockId::Hash(parent.clone()))
+					.header(parent.clone())
 					.expect("ESSENTIAL: Relay CIDP must not fail.")
 					.expect("ESSENTIAL: Relay CIDP must not fail.");
 
