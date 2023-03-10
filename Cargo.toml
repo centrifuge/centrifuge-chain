@@ -223,6 +223,7 @@ try-runtime = [
   "polkadot-cli/try-runtime",
   "polkadot-service/try-runtime",
   "runtime-common/try-runtime",
+  'sp-runtime/try-runtime',
 ]
 
 fast-runtime = [
