@@ -102,7 +102,7 @@ runtime-benchmarks = [
   "development-runtime/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "kusama-runtime/runtime-benchmarks",
-#  "fudge/runtime-benchmarks",
+  #  "fudge/runtime-benchmarks",
   "altair-runtime/runtime-benchmarks",
   "centrifuge-runtime/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",

@@ -1243,25 +1243,25 @@ parameter_types! {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
+	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
+	type AssetTransactor = xcm::FungiblesTransactor;
 	type Balance = Balance;
+	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
-	type Transactor = NullTransactor;
-	type AssetTransactor = xcm::FungiblesTransactor;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
+	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
-	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
-	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
+	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
-	type XcmSender = XcmRouter;
-	type BaseXcmWeight = BaseXcmWeight;
-	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
-	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
-	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
+	type Transactor = NullTransactor;
+	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type WeightInfo = ();
+	type XcmSender = XcmRouter;
 }
 
 parameter_types! {

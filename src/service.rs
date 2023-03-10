@@ -26,6 +26,7 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
+use sc_consensus::ImportQueue;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::{NetworkBlock, NetworkService};
 use sc_rpc_api::DenyUnsafe;
@@ -34,7 +35,6 @@ use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerH
 use sp_api::ConstructRuntimeApi;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
-use sc_consensus::ImportQueue;
 use substrate_prometheus_endpoint::Registry;
 
 use crate::{
@@ -518,7 +518,6 @@ pub async fn start_altair_node(
 				prometheus_registry,
 				telemetry.clone(),
 			);
-
 
 			// pub proposer_factory: PF,
 			// pub create_inherent_data_providers: CIDP,
