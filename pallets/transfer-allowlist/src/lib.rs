@@ -81,21 +81,22 @@ impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
 		recieve: T::AccountId,
 		currency: T::CurrencyId,
 	) -> Result<bool, DispatchError> {
-		if <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			match <AccountCurrencyTransferAllowance<T>>::get((
-				&send,
-				&currency,
-				Location::Local(recieve),
-			)) {
-				Some(AllowanceDetails {
-					allowed_at: allowed_at,
-					blocked_at: blocked_at,
-				}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
-				_ => Ok(false),
+		match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
+			Some(count) if count > 0 => {
+				let current_block = <frame_system::Pallet<T>>::block_number();
+				match <AccountCurrencyTransferAllowance<T>>::get((
+					&send,
+					&currency,
+					Location::Local(recieve),
+				)) {
+					Some(AllowanceDetails {
+						allowed_at: allowed_at,
+						blocked_at: blocked_at,
+					}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
+					_ => Ok(false),
+				}
 			}
-		} else {
-			Ok(true)
+			_ => Ok(true),
 		}
 	}
 }
@@ -106,9 +107,10 @@ pub mod pallet {
 		pallet_prelude::{
 			DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, ValueQuery, *,
 		},
-		Twox64Concat,
+		traits::{tokens::AssetId, GenesisBuild},
+		transactional, Twox64Concat,
 	};
-	use frame_system::pallet_prelude::*;
+	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_runtime::traits::AtLeast32BitUnsigned;
 	use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
@@ -118,11 +120,31 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		type CurrencyId: AssetId
+			+ Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen;
+	}
+
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
 
+	// Storage items for transfer restrictions
+	/// Struct to define when a transfer should be allowed from
+	/// the sender, receiver, and currency combination.
+	/// Transfer allowed time set by range of block numbers
+	/// Defaults to starting at 0, and ending at MAX block value
+	/// as per default.
 	#[derive(
 		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
 	)]
@@ -143,23 +165,6 @@ pub mod pallet {
 		}
 	}
 
-	#[pallet::config]
-	pub trait Config: frame_system::Config {
-		/// The currency-id type of this pallet
-		type CurrencyId: Parameter
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
-	}
-
-	/// Default value for whether an account and currency have transfer restrictions
-	#[pallet::type_value]
-	pub fn DefaultHasRestrictions<T: Config>() -> bool {
-		false
-	}
 	/// Storage item for whether a sending account and currency have restrictions set
 	/// a double map is used here as we need to know whether there is a restriction set
 	/// for the account and currency.
@@ -178,9 +183,8 @@ pub mod pallet {
 		AccountIdOf<T>,
 		Twox64Concat,
 		CurrencyIdOf<T>,
-		bool,
-		ValueQuery,
-		DefaultHasRestrictions<T>,
+		u64,
+		OptionQuery,
 	>;
 
 	/// Storage item for allowances specified for a sending account, currency type and drecieving location
@@ -195,6 +199,27 @@ pub mod pallet {
 		AllowanceDetails<BlockNumberOf<T>>,
 		OptionQuery,
 	>;
+
+	#[pallet::error]
+	pub enum Error<T> {}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[transactional]
+		#[pallet::call_index(0)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
+		pub fn add_sender_account_transfer_restriction(
+			origin: OriginFor<T>,
+			currency: CurrencyIdOf<T>,
+			receiver: Location<T>,
+		) -> DispatchResult {
+			Ok()
+		}
+	}
 }
 
 #[cfg(test)]

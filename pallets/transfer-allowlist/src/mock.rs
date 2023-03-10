@@ -36,8 +36,8 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
 			System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		  TransferAllowList: transfer_allowlist::{Pallet, Storage, Config<T>, Event<T>},
-			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		  TransferAllowList: transfer_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>},
+			// Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 	  }
 );
 
@@ -77,20 +77,28 @@ parameter_types! {
 	  pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = Balance;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = ();
-	type WeightInfo = ();
+// impl pallet_balances::Config for Runtime {
+// 	type AccountStore = System;
+// 	type Balance = Balance;
+// 	type DustRemoval = ();
+// 	type ExistentialDeposit = ExistentialDeposit;
+// 	type MaxLocks = ();
+// 	type MaxReserves = ();
+// 	type ReserveIdentifier = ();
+// 	type RuntimeEvent = ();
+// 	type WeightInfo = ();
+// }
+
+#[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+pub enum CurrencyId {
+	A,
+	B,
+	C,
+	D,
 }
 
-impl transfer_allowlist::Config for Test {
-	type Currency = Balances;
+impl transfer_allowlist::Config for Runtime {
+	type CurrencyId = CurrencyId;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
