@@ -433,7 +433,7 @@ pub fn run() -> Result<()> {
 				);
 
 				let rpc_config = RpcConfig {
-					relay_chain_rpc_url: cli.run.relay_chain_rpc_url,
+					relay_chain_rpc_urls: cli.run.relay_chain_rpc_urls,
 				};
 
 				let id = cli.parachain_id.unwrap_or(10001).into();
