@@ -349,6 +349,7 @@ impl pallet_session::Config for Runtime {
 }
 
 parameter_types! {
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxAuthorities: u32 = 32;
 }
 
