@@ -2235,7 +2235,6 @@ dependencies = [
  "pallet-investments",
  "pallet-keystore",
  "pallet-liquidity-rewards",
- "pallet-loans",
  "pallet-loans-ref",
  "pallet-migration-manager",
  "pallet-multisig",
