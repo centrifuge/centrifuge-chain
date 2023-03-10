@@ -3571,91 +3571,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fudge"
-version = "0.0.10"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.37#d7d2dd0f9e2fe23846e62894d5d05cdf05909cfd"
-dependencies = [
- "fudge-companion",
- "fudge-core",
- "polkadot-parachain",
- "sc-executor",
- "sc-service",
- "sp-io",
-]
-
-[[package]]
-name = "fudge-companion"
-version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.37#d7d2dd0f9e2fe23846e62894d5d05cdf05909cfd"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "fudge-core"
-version = "0.0.10"
-source = "git+https://github.com/centrifuge/fudge?branch=polkadot-v0.9.37#d7d2dd0f9e2fe23846e62894d5d05cdf05909cfd"
-dependencies = [
- "async-trait",
- "cumulus-primitives-parachain-inherent",
- "cumulus-relay-chain-inprocess-interface",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "fudge-companion",
- "futures",
- "lazy_static",
- "node-primitives",
- "pallet-babe",
- "parity-scale-codec 3.4.0",
- "parking_lot 0.12.1",
- "polkadot-cli",
- "polkadot-core-primitives",
- "polkadot-parachain",
- "polkadot-primitives",
- "polkadot-runtime-parachains",
- "polkadot-service",
- "prioritized-metered-channel",
- "sc-basic-authorship",
- "sc-block-builder",
- "sc-client-api",
- "sc-client-db",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-consensus-uncles",
- "sc-executor",
- "sc-offchain",
- "sc-service",
- "sc-transaction-pool",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-authorship",
- "sp-block-builder",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-core",
- "sp-database",
- "sp-externalities",
- "sp-inherents",
- "sp-io",
- "sp-keystore",
- "sp-runtime",
- "sp-state-machine",
- "sp-std",
- "sp-storage",
- "sp-timestamp",
- "sp-transaction-pool",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "funty"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10315,7 +10230,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "fudge",
  "hex",
  "kusama-runtime",
  "lazy_static",
