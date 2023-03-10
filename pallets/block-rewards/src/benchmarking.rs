@@ -1,3 +1,4 @@
+use cfg_primitives::CFG;
 use cfg_types::tokens::CurrencyId;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::{
@@ -10,13 +11,13 @@ use sp_runtime::traits::{One, Zero};
 use super::*;
 use crate::{pallet::Config, Pallet as BlockRewards};
 
-const REWARD: u64 = 100_000_000_000;
+const REWARD: u128 = 1 * CFG;
 const SEED: u32 = 0;
 
 benchmarks! {
 	where_clause {
 		where
-		T::Balance: From<u64>,
+		T::Balance: From<u128>,
 		T::BlockNumber: From<u32> + One,
 		T::Weight: From<u32>,
 		<T as Config>::Currency: frame_support::traits::fungibles::Inspect<T::AccountId> + CurrencyT<T::AccountId>,
@@ -53,9 +54,9 @@ benchmarks! {
 	}
 
 	set_total_reward {
-	}: _(RawOrigin::Root, (20 * REWARD).into())
+	}: _(RawOrigin::Root, u128::MAX.into())
 	verify {
-		assert_eq!(BlockRewards::<T>::next_session_changes().total_reward, Some((20 * REWARD).into()));
+		assert_eq!(BlockRewards::<T>::next_session_changes().total_reward, Some(u128::MAX.into()));
 	}
 }
 

@@ -23,7 +23,7 @@
 //! The BlockRewards pallet provides functions for:
 //!
 //! - Claiming the reward given for a staked currency. The reward will be the native network's token.
-//! - Admin methods to configure sessions, currencies and reward rates as well as any user's stake.
+//! - Admin methods to configure the reward amount for collators and an optional beneficiary.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -266,7 +266,6 @@ pub mod pallet {
 		/// Claims the reward the associated to a currency.
 		/// The reward will be transferred to the target account.
 		#[pallet::weight(T::WeightInfo::claim_reward())]
-		#[transactional]
 		pub fn claim_reward(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
 			ensure_signed(origin)?;
 
