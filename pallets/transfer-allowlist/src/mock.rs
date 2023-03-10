@@ -37,9 +37,8 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
-			System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		  TransferAllowList: transfer_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>},
-			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+			System: frame_system,
+		  TransferAllowList: transfer_allowlist,
 	  }
 );
 
@@ -75,22 +74,6 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
-}
-
-parameter_types! {
-	  pub const ExistentialDeposit: u64 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = Balance;
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = ();
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 #[derive(
