@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_primitives::AccountId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
@@ -21,7 +20,7 @@ pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
 use sp_core::H160;
-use sp_runtime::{traits::IdentifyAccount, AccountId32};
+use sp_runtime::traits::IdentifyAccount;
 use xcm::v1::MultiLocation;
 
 #[cfg(test)]
@@ -45,14 +44,16 @@ pub enum Location<T: Config> {
 	Address(DomainAddress),
 }
 
-// impl<T: Config + frame_system::Config<AccountId = T>> From<T> for Location<T>
-// where
-// 	T::AccountId: IdentifyAccount,
-// {
-// 	fn from(a: AccountIdOf<T>) -> Self {
-// 		Self::Local(a)
-// 	}
-// }
+// using a helper struct for account from impl due to generic impl
+// https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839
+// https://doc.rust-lang.org/error_codes/E0119.html
+pub struct AccountWrapper<T: Config>(AccountIdOf<T>);
+
+impl<T: Config> From<AccountWrapper<T>> for Location<T> {
+	fn from(a: AccountWrapper<T>) -> Self {
+		Self::Local(a.0)
+	}
+}
 
 impl<T: Config> From<MultiLocation> for Location<T> {
 	fn from(ml: MultiLocation) -> Self {
