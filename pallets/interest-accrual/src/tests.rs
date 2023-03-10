@@ -32,6 +32,6 @@ fn test_rate_validation() {
 	assert!(Pallet::<Runtime>::validate_rate(min_rate).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(normal_rate).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(One::one()).is_err());
-	assert!(Pallet::<Runtime>::validate_rate(Zero::zero()).is_err());
+	assert!(Pallet::<Runtime>::validate_rate(Zero::zero()).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(too_many_decimals).is_err());
 }

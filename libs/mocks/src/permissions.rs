@@ -1,6 +1,3 @@
-pub use pallet_mock_permissions::*;
-
-#[allow(dead_code)]
 #[frame_support::pallet]
 pub mod pallet_mock_permissions {
 	use cfg_traits::Permissions;

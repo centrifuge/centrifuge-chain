@@ -48,6 +48,7 @@ members = [
   "pallets/keystore",
   "pallets/liquidity-rewards",
   "pallets/loans",
+  "pallets/loans-ref",
   "pallets/migration",
   "pallets/nft",
   "pallets/nft-sales",
