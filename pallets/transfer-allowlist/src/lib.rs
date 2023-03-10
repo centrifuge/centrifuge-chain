@@ -13,7 +13,10 @@
 
 use cfg_primitives::AccountId;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	RuntimeDebugNoBound,
+};
 pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
@@ -30,7 +33,7 @@ mod tests;
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 /// Location types for destinations that can receive restricted transfers
-#[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+#[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum Location<T: Config> {
 	Local(AccountIdOf<T>),
@@ -107,6 +110,8 @@ where
 
 #[frame_support::pallet]
 pub mod pallet {
+	use core::fmt::Debug;
+
 	use frame_support::{
 		pallet_prelude::{
 			DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, ValueQuery, *,
@@ -130,6 +135,7 @@ pub mod pallet {
 
 		type CurrencyId: AssetId
 			+ Parameter
+			+ Debug
 			+ Member
 			+ Copy
 			+ MaybeSerializeDeserialize
@@ -146,9 +152,7 @@ pub mod pallet {
 	//          Storage
 	// --------------------------
 	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
-	#[derive(
-		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
-	)]
+	#[derive(Clone, Encode, Decode, Eq, PartialEq, Default, MaxEncodedLen, TypeInfo)]
 
 	/// Struct to define when a transfer should be allowed from
 	/// the sender, receiver, and currency combination.

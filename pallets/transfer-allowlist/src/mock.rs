@@ -33,13 +33,13 @@ pub type MockAccountId = u64;
 
 frame_support::construct_runtime!(
 	  pub enum Runtime where
-			Block = Block,
+		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
 			System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		  TransferAllowList: transfer_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>},
-			// Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+			Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 	  }
 );
 
@@ -48,8 +48,10 @@ parameter_types! {
 	  pub const SS58Prefix: u8 = 42;
 }
 
+type Balance = u128;
+
 impl frame_system::Config for Runtime {
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = MockAccountId;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = BlockHashCount;
@@ -79,25 +81,25 @@ parameter_types! {
 	  pub const ExistentialDeposit: u64 = 1;
 }
 
-// impl pallet_balances::Config for Runtime {
-// 	type AccountStore = System;
-// 	type Balance = Balance;
-// 	type DustRemoval = ();
-// 	type ExistentialDeposit = ExistentialDeposit;
-// 	type MaxLocks = ();
-// 	type MaxReserves = ();
-// 	type ReserveIdentifier = ();
-// 	type RuntimeEvent = ();
-// 	type WeightInfo = ();
-// }
+impl pallet_balances::Config for Runtime {
+	type AccountStore = System;
+	type Balance = Balance;
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
 
 #[derive(
 	Clone,
 	Copy,
+	Debug,
 	PartialOrd,
 	Ord,
 	Encode,
-	Debug,
 	Decode,
 	Eq,
 	PartialEq,
