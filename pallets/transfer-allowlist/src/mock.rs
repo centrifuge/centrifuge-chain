@@ -10,11 +10,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU128, ConstU16, ConstU32, ConstU64},
-	PalletId,
+	Deserialize, PalletId, Serialize,
 };
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -89,7 +91,21 @@ parameter_types! {
 // 	type WeightInfo = ();
 // }
 
-#[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+#[derive(
+	Clone,
+	Copy,
+	PartialOrd,
+	Ord,
+	Encode,
+	Debug,
+	Decode,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
+	TypeInfo,
+	Deserialize,
+	Serialize,
+)]
 pub enum CurrencyId {
 	A,
 	B,
@@ -99,6 +115,7 @@ pub enum CurrencyId {
 
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = CurrencyId;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

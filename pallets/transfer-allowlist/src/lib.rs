@@ -29,6 +29,7 @@ mod tests;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+/// Location types for destinations that can receive restricted transfers
 #[derive(Clone, Encode, Debug, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum Location<T: Config> {
@@ -41,14 +42,14 @@ pub enum Location<T: Config> {
 	Address(DomainAddress),
 }
 
-impl<T: Config + frame_system::Config<AccountId = T>> From<T> for Location<T>
-where
-	T::AccountId: IdentifyAccount,
-{
-	fn from(a: AccountIdOf<T>) -> Self {
-		Self::Local(a)
-	}
-}
+// impl<T: Config + frame_system::Config<AccountId = T>> From<T> for Location<T>
+// where
+// 	T::AccountId: IdentifyAccount,
+// {
+// 	fn from(a: AccountIdOf<T>) -> Self {
+// 		Self::Local(a)
+// 	}
+// }
 
 impl<T: Config> From<MultiLocation> for Location<T> {
 	fn from(ml: MultiLocation) -> Self {
@@ -73,7 +74,10 @@ trait TransferAllowance<AccountId, Location> {
 	) -> Result<bool, DispatchError>;
 }
 
-impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
+impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T>
+where
+	T::AccountId: IdentifyAccount,
+{
 	type CurrencyId = T::CurrencyId;
 
 	fn allowance(
@@ -137,17 +141,20 @@ pub mod pallet {
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
-	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
 
-	// Storage items for transfer restrictions
+	// --------------------------
+	//          Storage
+	// --------------------------
+	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
+	#[derive(
+		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
+	)]
+
 	/// Struct to define when a transfer should be allowed from
 	/// the sender, receiver, and currency combination.
 	/// Transfer allowed time set by range of block numbers
 	/// Defaults to starting at 0, and ending at MAX block value
 	/// as per default.
-	#[derive(
-		Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo,
-	)]
 	pub struct AllowanceDetails<BlockNumber> {
 		pub allowed_at: BlockNumber,
 		pub blocked_at: BlockNumber,
@@ -217,7 +224,7 @@ pub mod pallet {
 			currency: CurrencyIdOf<T>,
 			receiver: Location<T>,
 		) -> DispatchResult {
-			Ok()
+			Ok(())
 		}
 	}
 }
