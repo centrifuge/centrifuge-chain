@@ -183,6 +183,7 @@ impl pallet_loans::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
+	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

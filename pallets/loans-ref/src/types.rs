@@ -700,9 +700,9 @@ impl<T: Config> ActiveLoan<T> {
 	}
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "runtime-benchmarks"))]
 mod test_utils {
-	use std::time::Duration;
+	use sp_std::time::Duration;
 
 	use super::*;
 
@@ -712,7 +712,7 @@ mod test_utils {
 		Balance: Default,
 	{
 		pub fn new(collateral: Asset) -> Self {
-			LoanInfo {
+			Self {
 				schedule: RepaymentSchedule {
 					maturity: Maturity::Fixed(0),
 					interest_payments: InterestPayments::None,

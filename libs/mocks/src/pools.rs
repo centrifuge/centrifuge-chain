@@ -107,4 +107,19 @@ pub mod pallet_mock_pools {
 			execute_call!((a, b, c))
 		}
 	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::PoolBenchmarkHelper for Pallet<T> {
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type PoolId = T::PoolId;
+
+		fn benchmark_create_pool(_: Self::PoolId, _: &Self::AccountId) {
+			unimplemented!("You should not call this method in your mocks")
+		}
+
+		fn benchmark_give_ausd(_: &Self::AccountId, _: Self::Balance) {
+			unimplemented!("You should not call this method in your mocks")
+		}
+	}
 }
