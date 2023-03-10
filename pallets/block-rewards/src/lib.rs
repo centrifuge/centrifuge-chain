@@ -468,6 +468,9 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 					collators.inc = BoundedVec::<_, T::MaxCollators>::truncate_from(inc);
 					collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
 
+					/// Should never require saturation as queued_validator length is bounded by u32.
+					/// Moreover, this bound pallet_aura::Config::MaxAuthorities is assumed to be the same
+					/// T::Config::MaxCollators.
 					*collator_count = Some(next.len().saturated_into::<u32>());
 				},
 			);
