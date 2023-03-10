@@ -58,7 +58,7 @@ pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
-		InterestAccrual, Permissions, PoolInspect, PoolReserve,
+		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -803,6 +803,33 @@ pub mod pallet {
 					active_loans.len().ensure_into()?,
 				))
 			})
+		}
+	}
+
+	// TODO: This implementation can be cleaned once #908 be solved
+	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T> {
+		type ClassId = T::ItemId;
+		type RuntimeOrigin = T::RuntimeOrigin;
+
+		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
+			let valuation = LatestPortfolioValuations::<T>::get(pool_id);
+			Some((valuation.value(), valuation.last_updated()))
+		}
+
+		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+			let (value, _) = Self::portfolio_valuation_for_pool(pool_id)?;
+
+			LatestPortfolioValuations::<T>::insert(
+				pool_id,
+				PortfolioValuation::new(value, Self::now()),
+			);
+
+			Ok(value)
+		}
+
+		fn initialise(_: OriginFor<T>, _: PoolIdOf<T>, _: T::ItemId) -> DispatchResult {
+			// This Loans implementation does not need to initialize explicitally.
+			Ok(())
 		}
 	}
 }

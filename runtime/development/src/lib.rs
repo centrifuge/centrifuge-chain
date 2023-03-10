@@ -996,7 +996,7 @@ impl pallet_pool_system::Config for Runtime {
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
-	type NAV = Loans;
+	type NAV = LoansRef;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
