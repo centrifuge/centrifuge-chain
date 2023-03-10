@@ -1041,7 +1041,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 			CurrencyId::Tranche(_, _)
 			| CurrencyId::Native
 			| CurrencyId::KSM
-			| CurrencyId::Rewards { .. } => false,
+			| CurrencyId::BlockRewards { .. } => false,
 			CurrencyId::AUSD => true,
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
 				.map(|m| m.additional.pool_currency)

@@ -42,12 +42,9 @@ pub enum CurrencyId {
 	/// A foreign asset
 	ForeignAsset(ForeignAssetId),
 
-	/// An emulated internal currency
-	/// Is non-transferrable
+	/// An emulated internal, non-transferrable currency
 	/// Its issuance and holding is handled inherently
-	Rewards {
-		id: [u8; 8],
-	},
+	BlockRewards,
 }
 
 pub type ForeignAssetId = u32;

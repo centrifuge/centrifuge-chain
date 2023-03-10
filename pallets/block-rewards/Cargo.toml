@@ -12,6 +12,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+cfg-primitives = { path = "../../libs/primitives", default-features = false}
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
@@ -27,7 +28,6 @@ sp-staking = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 # optional dependencies for benchmarking
-cfg-primitives = { path = "../../libs/primitives", default-features = false, optional = true }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
 
 [dev-dependencies]
@@ -65,7 +65,7 @@ std = [
   "frame-benchmarking/std",
   "num-traits/std",
   "scale-info/std",
-  "cfg-primitives?/std",
+  "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
   "codec/std",

@@ -10,7 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_primitives::COLLATOR_GROUP_ID;
 use cfg_traits::rewards::CurrencyGroupChange;
+use cfg_types::tokens::CurrencyId;
 use frame_support::{
 	dispatch::GetStorageVersion,
 	inherent::Vec,
@@ -84,8 +86,8 @@ where
 			weight.saturating_accrue(T::DbWeight::get().reads(2));
 
 			<T as Config>::Rewards::attach_currency(
-				(<T as Config>::Domain::get(), crate::STAKE_CURRENCY_ID),
-				crate::COLLATOR_GROUP_ID,
+				(<T as Config>::Domain::get(), CurrencyId::BlockRewards),
+				COLLATOR_GROUP_ID,
 			)
 			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
 			.ok();
@@ -139,7 +141,7 @@ where
 
 		for collator in collators.iter() {
 			assert!(!<T as Config>::Rewards::account_stake(
-				(<T as Config>::Domain::get(), crate::STAKE_CURRENCY_ID,),
+				(<T as Config>::Domain::get(), CurrencyId::BlockRewards,),
 				collator,
 			)
 			.is_zero())

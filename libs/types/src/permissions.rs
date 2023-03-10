@@ -694,11 +694,7 @@ mod tests {
 				KSM => vec![2],
 				AUSD => vec![3],
 				ForeignAsset(id) => vec![4, id as u64, 0, 0, 0],
-				Rewards { id } => {
-					let mut r = vec![5];
-					r.append(&mut id.map(|x| x as u64).to_vec());
-					r
-				}
+				BlockRewards => vec![5],
 			}
 		}
 	}

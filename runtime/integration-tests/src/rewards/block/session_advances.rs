@@ -11,9 +11,10 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AccountId;
+use cfg_types::tokens::CurrencyId;
 use codec::Encode;
 use fudge::primitives::Chain;
-use pallet_block_rewards::{AccountRewards, COLLATOR_GROUP_ID, STAKE_CURRENCY_ID};
+use pallet_block_rewards::{AccountRewards, COLLATOR_GROUP_ID};
 use pallet_collator_selection::Call as CollatorSelectionCall;
 use sp_runtime::{traits::Zero, Storage};
 use tokio::runtime::Handle;
@@ -128,7 +129,7 @@ async fn collator_list_synchronized() {
 				!<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						STAKE_CURRENCY_ID,
+						CurrencyId::BlockRewards,
 					),
 					collator.into(),
 				)
@@ -141,7 +142,7 @@ async fn collator_list_synchronized() {
 				<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						STAKE_CURRENCY_ID,
+						CurrencyId::BlockRewards,
 					),
 					collator.into(),
 				)
@@ -159,7 +160,7 @@ async fn collator_list_synchronized() {
 				!<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						STAKE_CURRENCY_ID,
+						CurrencyId::BlockRewards,
 					),
 					collator.into(),
 				)

@@ -34,7 +34,7 @@ benchmarks! {
 			!T::Rewards::compute_reward(
 				(
 					T::Domain::get(),
-					STAKE_CURRENCY_ID,
+					CurrencyId::BlockRewards,
 				),
 				&beneficiary,
 			).unwrap().is_zero()

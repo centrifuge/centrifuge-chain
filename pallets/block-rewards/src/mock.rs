@@ -18,10 +18,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, ConvertInto, IdentityLookup},
 };
 
-use crate::{
-	self as pallet_block_rewards, Config, NegativeImbalanceOf, DEFAULT_COLLATOR_STAKE,
-	STAKE_CURRENCY_ID,
-};
+use crate::{self as pallet_block_rewards, Config, NegativeImbalanceOf, DEFAULT_COLLATOR_STAKE};
 
 pub(crate) const MAX_COLLATORS: u32 = 10;
 pub(crate) const SESSION_DURATION: BlockNumber = 5;
@@ -30,7 +27,7 @@ pub(crate) const TREASURY_ADDRESS: AccountId = u64::MAX;
 pub(crate) type AccountId = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-type Balance = u64;
+type Balance = u128;
 type BlockNumber = u64;
 type SessionIndex = u32;
 
@@ -51,7 +48,7 @@ frame_support::construct_runtime!(
 );
 
 impl frame_system::Config for Test {
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type AccountId = AccountId;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockHashCount = ConstU64<250>;
@@ -249,29 +246,22 @@ impl pallet_block_rewards::Config for Test {
 
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
-		<Test as Config>::Rewards::account_stake(
-			(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
-			who
-		),
-		DEFAULT_COLLATOR_STAKE as u64
+		<Test as Config>::Currency::balance(CurrencyId::BlockRewards, who),
+		DEFAULT_COLLATOR_STAKE as u128
 	);
 	assert_eq!(
-		<Test as Config>::Currency::balance(STAKE_CURRENCY_ID, who),
-		DEFAULT_COLLATOR_STAKE as u64
-	);
-	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(STAKE_CURRENCY_ID, who, 1),
+		<Test as Config>::Currency::can_withdraw(CurrencyId::BlockRewards, who, 1),
 		WithdrawConsequence::NoFunds
 	);
 }
 
 pub(crate) fn assert_not_staked(who: &AccountId) {
 	assert!(<Test as Config>::Rewards::account_stake(
-		(<Test as Config>::Domain::get(), STAKE_CURRENCY_ID),
+		(<Test as Config>::Domain::get(), CurrencyId::BlockRewards),
 		who
 	)
 	.is_zero());
-	assert!(<Test as Config>::Currency::balance(STAKE_CURRENCY_ID, who).is_zero());
+	assert!(<Test as Config>::Currency::balance(CurrencyId::BlockRewards, who).is_zero());
 }
 
 /// Progress to the given block triggering session changes.

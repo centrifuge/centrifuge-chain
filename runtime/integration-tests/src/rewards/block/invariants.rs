@@ -11,8 +11,9 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AccountId;
+use cfg_types::tokens::CurrencyId;
 use fudge::primitives::Chain;
-use pallet_block_rewards::{AccountRewards, STAKE_CURRENCY_ID};
+use pallet_block_rewards::AccountRewards;
 use sp_runtime::{traits::Zero, BoundedVec, SaturatedConversion};
 
 use crate::{
@@ -102,7 +103,7 @@ fn assert_all_staked(v: &[AccountId]) {
 		!<Runtime as pallet_block_rewards::Config>::Rewards::account_stake(
 			(
 				<Runtime as pallet_block_rewards::Config>::Domain::get(),
-				STAKE_CURRENCY_ID,
+				CurrencyId::BlockRewards,
 			),
 			acc,
 		)
@@ -116,7 +117,7 @@ fn assert_all_not_staked(v: &[AccountId]) {
 		<Runtime as pallet_block_rewards::Config>::Rewards::account_stake(
 			(
 				<Runtime as pallet_block_rewards::Config>::Domain::get(),
-				STAKE_CURRENCY_ID,
+				CurrencyId::BlockRewards,
 			),
 			acc,
 		)
