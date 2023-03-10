@@ -18,7 +18,6 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::v2::MultiLocation;
 pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
@@ -79,7 +78,7 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::fees::{DealWithFees, WeightToFee};
-pub use runtime_common::*;
+pub use runtime_common::{asset_registry, xcm_fees};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -99,11 +98,12 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
+use xcm::v2::MultiLocation;
 use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
-pub mod xcm;
-pub use crate::xcm::*;
+pub mod xcm_types;
+pub use crate::xcm_types::*;
 
 mod weights;
 
@@ -1240,12 +1240,12 @@ impl xcm_primitives::XcmTransact for NullTransactor {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
-	type AssetTransactor = xcm::FungiblesTransactor;
+	type AccountIdToMultiLocation = xcm_types::AccountIdToMultiLocation;
+	type AssetTransactor = xcm_types::FungiblesTransactor;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
-	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
+	type CurrencyIdToMultiLocation = xcm_types::CurrencyIdConvert;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
 	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
 	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;

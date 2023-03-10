@@ -67,16 +67,16 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
+use crate::xcm_types::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 mod weights;
-pub mod xcm;
+pub mod xcm_types;
 
-use runtime_common::fees::{DealWithFees, WeightToFee};
 /// common types for the runtime.
-pub use runtime_common::*;
+pub use runtime_common::asset_registry;
+use runtime_common::fees::{DealWithFees, WeightToFee};
 
-pub use crate::xcm::*;
+pub use crate::xcm_types::*;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]

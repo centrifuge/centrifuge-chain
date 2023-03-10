@@ -67,8 +67,8 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
+pub use runtime_common::asset_registry;
 use runtime_common::fees::{DealWithFees, WeightToFee};
-pub use runtime_common::*;
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
@@ -88,13 +88,13 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
+use crate::xcm_types::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 pub mod constants;
 mod weights;
-pub mod xcm;
+pub mod xcm_types;
 
-pub use crate::xcm::*;
+pub use crate::xcm_types::*;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
