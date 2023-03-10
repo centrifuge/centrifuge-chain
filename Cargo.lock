@@ -6492,6 +6492,7 @@ dependencies = [
  "cfg-types",
  "cfg-utils",
  "ethabi",
+ "fp-self-contained",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
