@@ -2622,7 +2622,7 @@ pub mod test {
 					todo!()
 				}
 
-				fn asset_exists(asset: Self::AssetId) -> bool {
+				fn asset_exists(_asset: Self::AssetId) -> bool {
 					todo!()
 				}
 			}
@@ -2729,7 +2729,7 @@ pub mod test {
 						todo!()
 					}
 
-					fn asset_exists(asset: Self::AssetId) -> bool {
+					fn asset_exists(_asset: Self::AssetId) -> bool {
 						todo!()
 					}
 				}
