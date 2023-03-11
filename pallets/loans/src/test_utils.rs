@@ -33,7 +33,6 @@ use frame_system::RawOrigin;
 use pallet_pool_system::tranches::TrancheLoc;
 use pallet_pool_system::{
 	tranches::{TrancheInput, TrancheMetadata, TrancheType},
-	Pallet as PoolPallet, Pool as PoolStorage,
 };
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
