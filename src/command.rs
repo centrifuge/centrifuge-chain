@@ -32,7 +32,7 @@ use sp_runtime::traits::{AccountIdConversion, Block as BlockT};
 
 use crate::{
 	chain_spec,
-	cli::{Cli, RelayChainCli, RpcConfig, Subcommand},
+	cli::{Cli, RelayChainCli, Subcommand},
 	service::{
 		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
 	},

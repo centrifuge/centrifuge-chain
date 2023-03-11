@@ -151,6 +151,3 @@ impl RelayChainCli {
 		}
 	}
 }
-pub struct RpcConfig {
-	pub relay_chain_rpc_urls: Vec<url::Url>,
-}

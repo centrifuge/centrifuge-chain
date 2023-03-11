@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureMul, EnsureSub};
+use cfg_traits::ops::{EnsureFixedPointNumber, EnsureSub};
 use codec::MaxEncodedLen;
 use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;

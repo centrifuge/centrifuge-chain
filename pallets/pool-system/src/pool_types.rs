@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub};
 use cfg_types::epoch::EpochState;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{

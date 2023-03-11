@@ -26,10 +26,9 @@ use cumulus_client_service::{
 	build_relay_chain_interface
 };
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
 use sc_consensus::ImportQueue;
-use sc_executor::{WasmExecutor, NativeElseWasmExecutor};
+use sc_executor::WasmExecutor;
 use sc_network::{NetworkBlock, NetworkService};
 use sc_rpc_api::DenyUnsafe;
 use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
@@ -38,10 +37,8 @@ use sp_api::ConstructRuntimeApi;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use substrate_prometheus_endpoint::Registry;
-use jsonrpsee::RpcModule;
 
 use crate::{
-	cli::RpcConfig,
 	rpc::{
 		self,
 		anchors::{AnchorApiServer, Anchors},
@@ -371,7 +368,7 @@ where
 
 	let relay_chain_slot_duration = Duration::from_secs(6);
 
-	let overseer_handle = relay_chain_interface
+	let _overseer_handle = relay_chain_interface
 		.overseer_handle()
 		.map_err(|e| sc_service::Error::Application(Box::new(e)))?;
 

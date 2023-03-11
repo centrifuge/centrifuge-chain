@@ -14,7 +14,7 @@ use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, EnsureSub},
+	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto},
 	TrancheCurrency as TrancheCurrencyT,
 };
 #[cfg(test)]
