@@ -19,11 +19,13 @@ use std::{sync::Arc, time::Duration};
 use cfg_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
-use cumulus_client_consensus_common::{ParachainConsensus, ParachainBlockImport as TParachainBlockImport};
+use cumulus_client_consensus_common::{
+	ParachainBlockImport as TParachainBlockImport, ParachainConsensus,
+};
 use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
-	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
-	build_relay_chain_interface
+	build_relay_chain_interface, prepare_node_config, start_collator, start_full_node,
+	StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
@@ -38,27 +40,28 @@ use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use substrate_prometheus_endpoint::Registry;
 
-use crate::{
-	rpc::{
-		self,
-		anchors::{AnchorApiServer, Anchors},
-		pools::{Pools, PoolsApiServer},
-		rewards::{Rewards, RewardsApiServer},
-	},
+use crate::rpc::{
+	self,
+	anchors::{AnchorApiServer, Anchors},
+	pools::{Pools, PoolsApiServer},
+	rewards::{Rewards, RewardsApiServer},
 };
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;
 
 #[cfg(feature = "runtime-benchmarks")]
-type HostFunctions =
-(sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
+type HostFunctions = (
+	sp_io::SubstrateHostFunctions,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
 
 type FullClient<RuntimeApi> = TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 
 type FullBackend = TFullBackend<Block>;
 
-type ParachainBlockImport<RuntimeApi> = TParachainBlockImport<Block, Arc<FullClient<RuntimeApi>>, FullBackend>;
+type ParachainBlockImport<RuntimeApi> =
+	TParachainBlockImport<Block, Arc<FullClient<RuntimeApi>>, FullBackend>;
 
 // Native Altair executor instance.
 pub struct AltairRuntimeExecutor;
@@ -133,30 +136,23 @@ pub fn new_partial<RuntimeApi, BIQ>(
 		FullClient<RuntimeApi>,
 		FullBackend,
 		(),
-		sc_consensus::DefaultImportQueue<
-			Block,
-			FullClient<RuntimeApi>,
-		>,
-		sc_transaction_pool::FullPool<
-			Block,
-			FullClient<RuntimeApi>,
-		>,
-		(ParachainBlockImport<RuntimeApi>, Option<Telemetry>, Option<TelemetryWorkerHandle>),
+		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
+		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
+		(
+			ParachainBlockImport<RuntimeApi>,
+			Option<Telemetry>,
+			Option<TelemetryWorkerHandle>,
+		),
 	>,
 	sc_service::Error,
 >
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<
-			Block,
-			StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>,
-		> + sp_offchain::OffchainWorkerApi<Block>
+		+ sp_api::ApiExt<Block, StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>
+		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
 	BIQ: FnOnce(
@@ -166,10 +162,7 @@ where
 		Option<TelemetryHandle>,
 		&TaskManager,
 	) -> Result<
-		sc_consensus::DefaultImportQueue<
-			Block,
-			FullClient<RuntimeApi>,
-		>,
+		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
 		sc_service::Error,
 	>,
 {
@@ -253,22 +246,14 @@ async fn start_node_impl<RuntimeApi, RB, BIQ, BIC>(
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<FullClient<RuntimeApi>>,
-)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<
-			Block,
-			StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>,
-		> + sp_offchain::OffchainWorkerApi<Block>
+		+ sp_api::ApiExt<Block, StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>
+		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
@@ -472,10 +457,7 @@ pub async fn start_altair_node(
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<FullClient<altair_runtime::RuntimeApi>>,
-)> {
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<altair_runtime::RuntimeApi>>)> {
 	start_node_impl::<altair_runtime::RuntimeApi, _, _, _>(
 		parachain_config,
 		polkadot_config,
@@ -615,10 +597,7 @@ pub async fn start_centrifuge_node(
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-) -> sc_service::error::Result<(
-	TaskManager,
-	Arc<FullClient<centrifuge_runtime::RuntimeApi>>,
-)> {
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<centrifuge_runtime::RuntimeApi>>)> {
 	start_node_impl::<centrifuge_runtime::RuntimeApi, _, _, _>(
 		parachain_config,
 		polkadot_config,
