@@ -21,7 +21,7 @@ use codec::Encode;
 use cumulus_client_cli::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
-use log::info;
+use log::{info, warn};
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
 	NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
@@ -230,7 +230,7 @@ macro_rules! construct_async_run {
             match runner.config().chain_spec.identify() {
                 ChainIdentity::Altair => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _>(
+				let $components = new_partial::<altair_runtime::RuntimeApi, _>(
 					&$config,
 					crate::service::build_altair_import_queue,
 				)?;
@@ -240,7 +240,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Centrifuge => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _>(
+				let $components = new_partial::<centrifuge_runtime::RuntimeApi, _>(
 					&$config,
 					crate::service::build_centrifuge_import_queue,
 				)?;
@@ -250,7 +250,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Development => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _>(
+				let $components = new_partial::<development_runtime::RuntimeApi, _>(
 					&$config,
 					crate::service::build_development_import_queue,
 				)?;
@@ -423,6 +423,7 @@ pub fn run() -> Result<()> {
 		}
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
+			let collator_options = cli.run.collator_options();
 
 			runner.run_node_until_exit(|config| async move {
 				let polkadot_cli = RelayChainCli::new(
@@ -432,11 +433,10 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let rpc_config = RpcConfig {
-					relay_chain_rpc_urls: cli.run.relay_chain_rpc_urls,
-				};
+				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
+					.map(|e| e.para_id).unwrap_or(cli.parachain_id.unwrap_or(10001));
 
-				let id = cli.parachain_id.unwrap_or(10001).into();
+				let id = ParaId::from(para_id);
 
 				let parachain_account =
 					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(&id);
@@ -470,9 +470,13 @@ pub fn run() -> Result<()> {
 					}
 				);
 
+				if !collator_options.relay_chain_rpc_urls.is_empty() && cli.relaychain_args.len() > 0 {
+					warn!("Detected relay chain node arguments together with --relay-chain-rpc-urls. This command starts a minimal Polkadot node that only uses a network-related subset of all relay chain CLI options.");
+				}
+
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, id, rpc_config)
+						crate::service::start_altair_node(config, polkadot_config, collator_options, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
@@ -480,8 +484,8 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
 						config,
 						polkadot_config,
+						collator_options,
 						id,
-						rpc_config,
 					)
 					.await
 					.map(|r| r.0)
@@ -489,8 +493,8 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Development => crate::service::start_development_node(
 						config,
 						polkadot_config,
+						collator_options,
 						id,
-						rpc_config,
 					)
 					.await
 					.map(|r| r.0)

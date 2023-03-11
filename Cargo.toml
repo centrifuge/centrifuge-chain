@@ -81,6 +81,7 @@ sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "pol
 sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-network = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sc-network-sync = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-service = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -98,6 +99,7 @@ sp-session = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-timestamp = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 # Cli specific
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
