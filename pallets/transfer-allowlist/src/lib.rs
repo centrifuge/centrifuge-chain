@@ -226,7 +226,16 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		/// Event for successful creation of a transfer allowance
+		TransferAllowanceCreated {
+			sender_account_id: AccountIdOf<T>,
+			currency_id: CurrencyIdOf<T>,
+			receiver: Location<T>,
+			allowed_at: BlockNumberOf<T>,
+			blocked_at: BlockNumberOf<T>,
+		},
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -250,13 +259,20 @@ pub mod pallet {
 			{
 				None => {
 					<AccountCurrencyTransferAllowance<T>>::insert(
-						(&account_id, &currency_id, receiver),
+						(&account_id, &currency_id, &receiver),
 						AllowanceDetails {
 							allowed_at,
 							blocked_at,
 						},
 					);
-					Self::increment_or_create_allowance_count(account_id, currency_id)?;
+					Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
+					Self::deposit_event(Event::TransferAllowanceCreated {
+						sender_account_id: account_id,
+						currency_id: currency_id,
+						receiver: receiver,
+						allowed_at: allowed_at,
+						blocked_at: blocked_at,
+					});
 					Ok(())
 				}
 				Some(_) => Err(DispatchError::from(Error::<T>::ConflictingAllowanceSet)),
@@ -268,18 +284,18 @@ pub mod pallet {
 		/// Increments number of allowances present for a sending account/currency set.
 		/// If no allowances set, an entry with 1 added, if entry already present, it is then incremented.
 		pub fn increment_or_create_allowance_count(
-			account_id: T::AccountId,
-			currency_id: T::CurrencyId,
+			account_id: &T::AccountId,
+			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
 			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
-			match (<AccountCurrencyTransferRestriction<T>>::get(&account_id, &currency_id)) {
+			match (<AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id)) {
 				Some(allowance_count) if allowance_count > 0 => {
 					let new_allowance_count = allowance_count
 						.checked_add(1)
 						.ok_or(Error::<T>::AllowanceCountOverflow)?;
 					<AccountCurrencyTransferRestriction<T>>::insert(
-						&account_id,
-						&currency_id,
+						account_id,
+						currency_id,
 						new_allowance_count,
 					);
 					Ok(())
@@ -288,7 +304,7 @@ pub mod pallet {
 					Error::<T>::AllowanceCountArithmeticError,
 				)),
 				_ => {
-					<AccountCurrencyTransferRestriction<T>>::insert(&account_id, &currency_id, 0);
+					<AccountCurrencyTransferRestriction<T>>::insert(account_id, currency_id, 0);
 					Ok(())
 				}
 			}
@@ -299,13 +315,13 @@ pub mod pallet {
 		/// If greater than 1, then decremented.
 		/// If no entry present, NoAllowancesSet error returned.
 		pub fn decrement_or_remove_allowance_count(
-			account_id: T::AccountId,
-			currency_id: T::CurrencyId,
+			account_id: &T::AccountId,
+			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
 			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
-			match (<AccountCurrencyTransferRestriction<T>>::get(&account_id, &currency_id)) {
+			match (<AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id)) {
 				Some(allowance_count) if allowance_count <= 1 => {
-					<AccountCurrencyTransferRestriction<T>>::remove(&account_id, &currency_id);
+					<AccountCurrencyTransferRestriction<T>>::remove(account_id, currency_id);
 					Ok(())
 				}
 				Some(allowance_count) => {
@@ -314,8 +330,8 @@ pub mod pallet {
 						.checked_sub(1)
 						.ok_or(Error::<T>::AllowanceCountArithmeticError)?;
 					<AccountCurrencyTransferRestriction<T>>::insert(
-						&account_id,
-						&currency_id,
+						account_id,
+						currency_id,
 						new_allowance_count,
 					);
 					Ok(())
