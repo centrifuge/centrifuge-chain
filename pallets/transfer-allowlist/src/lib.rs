@@ -29,24 +29,29 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+/// AccountId type for runtime used in pallet.
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum Location<T: Config> {
+	/// Local chain account sending destination.
 	Local(AccountIdOf<T>),
-	// unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
-	// both are foreign, and therefore can't be implemented here.
-	// may move back to new type off VersionedMultiLocation w/ MaxEncodedLen implemented
-	// if it looks like nothing will be Location enum outside of pallet
+	/// XCM V1 MultiLocation sending destination.
+	/// Unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
+	/// both are foreign, and therefore can't be implemented here.
+	// May move back to new type off VersionedMultiLocation w/ MaxEncodedLen implemented
+	// if it looks like nothing will be Location enum outside of pallet.
 	XCMV1(MultiLocation),
+	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
 }
 
-// using a helper struct for account from impl due to generic impl
-// https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839
-// https://doc.rust-lang.org/error_codes/E0119.html
+/// Helper struct for account id  `from` impl due to generic impl conflict
+/// See:
+/// https://doc.rust-lang.org/error_codes/E0119.html and
+/// https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839
 pub struct AccountWrapper<T: Config>(AccountIdOf<T>);
 
 impl<T: Config> From<AccountWrapper<T>> for Location<T> {
@@ -71,6 +76,8 @@ impl<T: Config> From<DomainAddress> for Location<T> {
 /// and if so is there an allowance for the reciever location.
 trait TransferAllowance<AccountId, Location> {
 	type CurrencyId;
+	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
+	/// Returns result wrapped bool for whether allowance is allowed.
 	fn allowance(
 		send: AccountId,
 		recieve: Location,
@@ -149,9 +156,9 @@ pub mod pallet {
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
-	// --------------------------
-	//          Storage
-	// --------------------------
+	//
+	// Storage
+	//
 	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, Default, MaxEncodedLen, TypeInfo)]
 
@@ -212,6 +219,9 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
+	//
+	// Pallet Errors and Events
+	//
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Number of allowances for a sending Account/Currency set at max allowance count storage type val (currently u64::MAX)
@@ -268,10 +278,10 @@ pub mod pallet {
 					Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
 					Self::deposit_event(Event::TransferAllowanceCreated {
 						sender_account_id: account_id,
-						currency_id: currency_id,
-						receiver: receiver,
-						allowed_at: allowed_at,
-						blocked_at: blocked_at,
+						currency_id,
+						receiver,
+						allowed_at,
+						blocked_at,
 					});
 					Ok(())
 				}
