@@ -83,8 +83,7 @@ pub mod pallet {
 	};
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuation, PortfolioValuationUpdateType, WriteOffState, WriteOffStatus,
-		WrittenOffError,
+		PortfolioValuationUpdateType, WriteOffState, WriteOffStatus, WrittenOffError,
 	};
 
 	use super::*;
@@ -247,8 +246,13 @@ pub mod pallet {
 	/// Stores the portfolio valuation associated to each pool
 	#[pallet::storage]
 	#[pallet::getter(fn portfolio_valuation)]
-	pub(crate) type LatestPortfolioValuation<T: Config> =
-		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, PortfolioValuation<T::Balance>, ValueQuery>;
+	pub(crate) type PortfolioValuation<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		types::PortfolioValuation<T::Balance>,
+		ValueQuery,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -616,9 +620,9 @@ pub mod pallet {
 
 			let (value, count) = Self::portfolio_valuation_for_pool(pool_id)?;
 
-			LatestPortfolioValuation::<T>::insert(
+			PortfolioValuation::<T>::insert(
 				pool_id,
-				PortfolioValuation::new(value, Self::now()),
+				types::PortfolioValuation::new(value, Self::now()),
 			);
 
 			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
@@ -697,7 +701,7 @@ pub mod pallet {
 
 		fn update_portfolio_valuation_with_pv(
 			pool_id: PoolIdOf<T>,
-			portfolio: &mut PortfolioValuation<T::Balance>,
+			portfolio: &mut types::PortfolioValuation<T::Balance>,
 			old_pv: T::Balance,
 			new_pv: T::Balance,
 		) -> DispatchResult {
@@ -736,7 +740,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
-			LatestPortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
+			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				let last_updated = Self::now();
 				let new_pv = loan.present_value_at(last_updated)?;
 
@@ -760,7 +764,7 @@ pub mod pallet {
 		where
 			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
-			LatestPortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
+			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					let (loan, last_updated) = active_loans
 						.iter_mut()
@@ -812,16 +816,16 @@ pub mod pallet {
 		type RuntimeOrigin = T::RuntimeOrigin;
 
 		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
-			let valuation = LatestPortfolioValuation::<T>::get(pool_id);
+			let valuation = PortfolioValuation::<T>::get(pool_id);
 			Some((valuation.value(), valuation.last_updated()))
 		}
 
 		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
 			let (value, _) = Self::portfolio_valuation_for_pool(pool_id)?;
 
-			LatestPortfolioValuation::<T>::insert(
+			PortfolioValuation::<T>::insert(
 				pool_id,
-				PortfolioValuation::new(value, Self::now()),
+				types::PortfolioValuation::new(value, Self::now()),
 			);
 
 			Ok(value)
