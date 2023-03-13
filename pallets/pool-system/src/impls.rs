@@ -419,18 +419,20 @@ mod benchmarks_utils {
 		fn benchmark_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
 			const FUNDS: u32 = u32::max_value();
 
-			T::AssetRegistry::register_asset(
-				Some(CurrencyId::AUSD),
-				orml_asset_registry::AssetMetadata {
-					decimals: 18,
-					name: "MOCK TOKEN".as_bytes().to_vec(),
-					symbol: "MOCK".as_bytes().to_vec(),
-					existential_deposit: Zero::zero(),
-					location: None,
-					additional: CustomMetadata::default(),
-				},
-			)
-			.unwrap();
+			if T::AssetRegistry::metadata(&CurrencyId::AUSD).is_none() {
+				T::AssetRegistry::register_asset(
+					Some(CurrencyId::AUSD),
+					orml_asset_registry::AssetMetadata {
+						decimals: 18,
+						name: "MOCK TOKEN".as_bytes().to_vec(),
+						symbol: "MOCK".as_bytes().to_vec(),
+						existential_deposit: Zero::zero(),
+						location: None,
+						additional: CustomMetadata::default(),
+					},
+				)
+				.unwrap();
+			}
 
 			T::Currency::make_free_balance_be(admin, T::PoolDeposit::get());
 			// Pool creation
