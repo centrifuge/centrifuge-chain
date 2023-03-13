@@ -718,7 +718,7 @@ mod test_utils {
 					interest_payments: InterestPayments::None,
 					pay_down_schedule: PayDownSchedule::None,
 				},
-				collateral: collateral,
+				collateral,
 				collateral_value: Balance::default(),
 				valuation_method: ValuationMethod::OutstandingDebt,
 				restrictions: LoanRestrictions {
