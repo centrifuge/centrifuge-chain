@@ -66,7 +66,6 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
 use pallet_investments::OrderType;
-use pallet_loans_ref as pallet_loans;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
