@@ -20,8 +20,7 @@
 
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
-	TrancheCurrency as _,
+	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, TrancheCurrency as _,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -58,7 +57,6 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_investments::OrderType;
-use pallet_loans_ref as pallet_loans;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -448,7 +446,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
 					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::update_nav{..}) |
 					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
@@ -1101,20 +1099,21 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
-	pub const MaxWriteOffPolicySize: u32 = 100;
+	pub const MaxWriteOffGroups: u32 = 100;
 }
 
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
-	type CollectionId = CollectionId;
+	type BlockNumberProvider = System;
+	type ClassId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
-	type ItemId = ItemId;
-	type LoanId = LoanId;
+	type LoanId = ItemId;
+	type LoansPalletId = LoansPalletId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
-	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
+	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type NonFungible = Uniques;
-	type Permissions = Permissions;
+	type Permission = Permissions;
 	type Pool = PoolSystem;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1630,9 +1629,11 @@ impl_runtime_apis! {
 		}
 
 		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
-			let now = <Timestamp as UnixTime>::now().as_secs();
-			let mut pool = PoolSystem::pool(pool_id)?;
-			let nav = Loans::update_nav(pool_id).ok()?;
+			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
+			let mut pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+				.ok()
+				.map(|(latest, _)| latest.into())?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			let index: usize = pool.tranches.tranche_index(&tranche)?.try_into().ok()?;
 			let prices = pool
@@ -1643,9 +1644,11 @@ impl_runtime_apis! {
 		}
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
-			let now = <Timestamp as UnixTime>::now().as_secs();
-			let mut pool = PoolSystem::pool(pool_id)?;
-			let nav = Loans::update_nav(pool_id).ok()?;
+			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
+			let mut pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
+			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+				.ok()
+				.map(|(latest, _)| latest.into())?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			pool
 				.tranches
@@ -1680,6 +1683,7 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1717,7 +1721,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
-			list_benchmark!(list, extra, pallet_loans, Loans);
+			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 
@@ -1751,6 +1755,11 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
+			impl pallet_loans::benchmarking::Config for Runtime {
+				type IM = Investments;
+			}
+
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;
 
@@ -1781,7 +1790,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
-			add_benchmark!(params, batches, pallet_loans, Loans);
+			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 
