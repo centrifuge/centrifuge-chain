@@ -414,7 +414,6 @@ pub enum ProxyType {
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
 	Borrow,
-	Price,
 	Invest,
 	ProxyManagement,
 	KeystoreManagement,
@@ -522,7 +521,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
 				RuntimeCall::Utility(pallet_utility::Call::batch{..})
 			),
-			ProxyType::Price => false,
 			ProxyType::Invest => matches!(
 				c,
 				RuntimeCall::Investments(pallet_investments::Call::update_invest_order{..}) |
