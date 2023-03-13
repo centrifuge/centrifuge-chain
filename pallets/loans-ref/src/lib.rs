@@ -183,7 +183,7 @@ pub mod pallet {
 
 		/// Max number of write-off groups per pool.
 		#[pallet::constant]
-		type MaxWriteOffGroups: Get<u32>;
+		type MaxWriteOffPolicySize: Get<u32>;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
@@ -240,14 +240,14 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
+		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
 		ValueQuery,
 	>;
 
 	/// Stores the portfolio valuation associated to each pool
 	#[pallet::storage]
 	#[pallet::getter(fn portfolio_valuation)]
-	pub(crate) type LatestPortfolioValuations<T: Config> =
+	pub(crate) type LatestPortfolioValuation<T: Config> =
 		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, PortfolioValuation<T::Balance>, ValueQuery>;
 
 	#[pallet::event]
@@ -291,7 +291,7 @@ pub mod pallet {
 		},
 		WriteOffPolicyUpdated {
 			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
+			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
 		},
 	}
 
@@ -584,7 +584,7 @@ pub mod pallet {
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			mut policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
+			mut policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
@@ -616,7 +616,7 @@ pub mod pallet {
 
 			let (value, count) = Self::portfolio_valuation_for_pool(pool_id)?;
 
-			LatestPortfolioValuations::<T>::insert(
+			LatestPortfolioValuation::<T>::insert(
 				pool_id,
 				PortfolioValuation::new(value, Self::now()),
 			);
@@ -736,7 +736,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
-			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
+			LatestPortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				let last_updated = Self::now();
 				let new_pv = loan.present_value_at(last_updated)?;
 
@@ -760,7 +760,7 @@ pub mod pallet {
 		where
 			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
-			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
+			LatestPortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					let (loan, last_updated) = active_loans
 						.iter_mut()
@@ -812,14 +812,14 @@ pub mod pallet {
 		type RuntimeOrigin = T::RuntimeOrigin;
 
 		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
-			let valuation = LatestPortfolioValuations::<T>::get(pool_id);
+			let valuation = LatestPortfolioValuation::<T>::get(pool_id);
 			Some((valuation.value(), valuation.last_updated()))
 		}
 
 		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
 			let (value, _) = Self::portfolio_valuation_for_pool(pool_id)?;
 
-			LatestPortfolioValuations::<T>::insert(
+			LatestPortfolioValuation::<T>::insert(
 				pool_id,
 				PortfolioValuation::new(value, Self::now()),
 			);

@@ -1258,7 +1258,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 50;
-	pub const MaxWriteOffGroups: u32 = 10;
+	pub const MaxWriteOffPolicySize: u32 = 10;
 }
 
 impl pallet_loans::Config for Runtime {
@@ -1269,7 +1269,7 @@ impl pallet_loans::Config for Runtime {
 	type ItemId = ItemId;
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;

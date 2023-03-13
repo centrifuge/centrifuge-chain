@@ -77,7 +77,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 5;
-	pub const MaxWriteOffGroups: u32 = 3;
+	pub const MaxWriteOffPolicySize: u32 = 3;
 }
 
 impl frame_system::Config for Runtime {
@@ -176,7 +176,7 @@ impl pallet_loans::Config for Runtime {
 	type ItemId = ItemId;
 	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
 	type Permissions = MockPermissions;
 	type Pool = MockPools;

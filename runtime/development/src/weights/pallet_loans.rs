@@ -30,7 +30,7 @@ impl<T: frame_system::Config> pallet_loans::WeightInfo for WeightInfo<T> {
 	// Storage: InterestAccrual Rates (r:1 w:0)
 	// Storage: LoansRef ActiveLoans (r:1 w:0)
 	// Storage: Timestamp Now (r:1 w:0)
-	// Storage: LoansRef LatestPortfolioValuations (r:0 w:1)
+	// Storage: LoansRef LatestPortfolioValuation (r:0 w:1)
 	/// The range of component `n` is `[1, 50]`.
 	/// The range of component `m` is `[1, 50]`.
 	fn update_portfolio_valuation(n: u32, m: u32, ) -> Weight {
