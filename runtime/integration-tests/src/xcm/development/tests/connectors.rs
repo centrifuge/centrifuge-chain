@@ -141,11 +141,6 @@ fn add_tranche() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
-		/*
-		Loans::update_portfolio_valuation(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
-			.expect("Should update nav");
-		*/
-
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when given a valid pool + tranche id pair.
 		assert_ok!(Connectors::add_tranche(
@@ -174,11 +169,6 @@ fn update_member() {
 			.tranches
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
-
-		/*
-		Loans::update_portfolio_valuation(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
-			.expect("Should update nav");
-		*/
 
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when given a valid pool + tranche id pair.
