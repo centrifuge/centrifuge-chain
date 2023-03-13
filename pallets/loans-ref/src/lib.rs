@@ -715,13 +715,12 @@ pub mod pallet {
 		fn portfolio_valuation_for_pool(
 			pool_id: PoolIdOf<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
-			let rates = T::InterestAccrual::rates();
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let count = loans.len().ensure_into()?;
 			let value = loans.into_iter().try_fold(
 				T::Balance::zero(),
 				|sum, (loan, _)| -> Result<T::Balance, DispatchError> {
-					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
+					Ok(sum.ensure_add(loan.current_present_value()?)?)
 				},
 			)?;
 

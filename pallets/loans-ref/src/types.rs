@@ -497,12 +497,27 @@ impl<T: Config> ActiveLoan<T> {
 	/// An optimized version of `ActiveLoan::present_value_at()` when last updated is now.
 	/// Instead of fetch the current deb from the accrual,
 	/// it get it from a cache previously fetched.
-	pub fn current_present_value<C>(&self, rate_cache: &C) -> Result<T::Balance, DispatchError>
-	where
-		C: RateCollection<T::Rate, T::Balance, T::Balance>,
-	{
-		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
-		self.present_value(debt, T::Time::now().as_secs())
+	pub fn current_present_value(&self) -> Result<T::Balance, DispatchError> {
+		//let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
+
+		use cfg_primitives::SECONDS_PER_YEAR;
+		use cfg_traits::ops::EnsureDiv;
+		use sp_arithmetic::traits::checked_pow;
+		use sp_runtime::traits::One;
+
+		let now = T::Time::now().as_secs();
+		let elapsed = now.ensure_sub(self.origination_date)?;
+
+		let rate = self
+			.info
+			.interest_rate
+			.ensure_div(T::Rate::saturating_from_integer(SECONDS_PER_YEAR))?
+			.ensure_add(One::one())?;
+		let interest =
+			checked_pow(rate, elapsed.ensure_into()?).ok_or(ArithmeticError::Overflow)?;
+
+		let debt = interest.ensure_mul_int(self.normalized_debt)?;
+		self.present_value(debt, now)
 	}
 
 	fn present_value(&self, debt: T::Balance, when: Moment) -> Result<T::Balance, DispatchError> {
