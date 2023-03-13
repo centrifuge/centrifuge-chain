@@ -18,6 +18,7 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_core::H256;
+use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -104,8 +105,11 @@ impl transfer_allowlist::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap()
-		.into()
+	let mut e = sp_io::TestExternalities::new(
+		frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap(),
+	);
+	e.execute_with(|| System::set_block_number(1));
+	e
 }

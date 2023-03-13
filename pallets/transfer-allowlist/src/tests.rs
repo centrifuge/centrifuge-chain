@@ -1,4 +1,4 @@
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
 use frame_system::ensure_signed;
 use hex::FromHex;
 use pallet_connectors::DomainAddress;
@@ -61,6 +61,40 @@ fn add_transfer_allowance_works() {
 				allowed_at: 0u64,
 				blocked_at: 200u64
 			}
+		);
+
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceCreated {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				receiver: Location::Local(ACCOUNT_RECEIVER),
+				allowed_at: 0,
+				blocked_at: 200
+			})
 		)
+	})
+}
+
+#[test]
+fn add_transfer_allowance_fails_if_already_exists() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			200u64,
+		));
+		assert_noop!(
+			TransferAllowList::add_transfer_allowance(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A,
+				AccountWrapper(ACCOUNT_RECEIVER).into(),
+				0u64,
+				200u64,
+			),
+			Error::<Runtime>::ConflictingAllowanceSet
+		);
 	})
 }
