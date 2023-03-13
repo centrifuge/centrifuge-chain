@@ -482,8 +482,6 @@ mod benchmarks_utils {
 				pool.parameters.max_nav_age = 999_999_999_999;
 			});
 
-			T::NAV::update_nav(pool_id).unwrap();
-
 			Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id).unwrap();
 		}
 

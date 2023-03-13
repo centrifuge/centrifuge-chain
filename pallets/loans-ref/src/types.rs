@@ -700,7 +700,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 }
 
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(any(feature = "std", feature = "runtime-benchmarks"))]
 mod test_utils {
 	use sp_std::time::Duration;
 

@@ -9639,7 +9639,7 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-connectors",
- "pallet-loans",
+ "pallet-loans-ref",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",

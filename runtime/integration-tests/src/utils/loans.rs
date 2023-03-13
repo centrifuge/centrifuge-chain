@@ -11,31 +11,39 @@
 // GNU General Public License for more details.
 
 //! Utilities around the loans pallet
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
-use cfg_primitives::{AccountId, Address, Balance, CollectionId, ItemId, PoolId};
+use cfg_primitives::{
+	AccountId, Address, Balance, CollectionId, ItemId, LoanId, PoolId, SECONDS_PER_YEAR,
+};
+use cfg_traits::ops::{EnsureAdd, EnsureDiv};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
-	loan_type::{BulletLoan, LoanType},
-	math::interest_rate_per_sec,
-	types::Asset,
+	types::{LoanInfo, MaxBorrowAmount},
+	valuation::{DiscountedCashFlow, ValuationMethod},
 	Call as LoansCall,
 };
 use pallet_uniques::Call as UniquesCall;
+use sp_runtime::{traits::One, FixedPointNumber};
 
 use crate::{chain::centrifuge::RuntimeCall, utils::tokens::rate_from_percent};
+
+type Asset = (CollectionId, ItemId);
+
+// TODO: Remove once #1189 is merged
+fn interest_rate_per_year_to_sec(rate_per_annum: Rate) -> Rate {
+	rate_per_annum
+		.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))
+		.unwrap()
+		.ensure_add(Rate::one())
+		.unwrap()
+}
 
 /// Structure that manages collateral and loan nft ids
 pub struct NftManager {
 	collaterals: HashMap<PoolId, ItemId>,
 	loans: HashMap<PoolId, ItemId>,
 }
-
-/// The id we use for loans
-pub type LoanId = ItemId;
-
-// The id we use for collaterals
-pub type CollateralId = ItemId;
 
 impl NftManager {
 	pub fn new() -> Self {
@@ -86,32 +94,11 @@ impl NftManager {
 	}
 }
 
-/// Creates the necessary extrinsics to initialises a pool in the loans pallet.
-/// The pool must already exist for this extrinsics to succeed.
-///
-/// Extrinsics that are generated:
-/// * Loans::initialise_pool
-/// * Uniques::create -> for Loan nft class
-/// * Uniques::create -> for Collateral nft class
-pub fn init_loans_for_pool(
-	owner: AccountId,
-	pool_id: PoolId,
-	manager: &mut NftManager,
-) -> Vec<RuntimeCall> {
-	let loan_class = manager.loan_class_id(pool_id);
-	let collateral_class = manager.collateral_class_id(pool_id);
-	let mut calls = Vec::new();
-	calls.push(create_nft_call(owner.clone(), collateral_class));
-	calls.push(create_nft_call(owner, loan_class));
-	calls.push(initialise_pool_call(pool_id, loan_class));
-	calls
-}
-
 /// Issues a default loan with the following properties
 /// * 15% APR
 /// * value with amount
 /// * maturity as given
-/// * Type: BulletLoan
+/// * Type: DiscountedCashFlow with UpToTotalBorrowed
 /// 	* advance_rate: 90%,
 ///     * probability_of_default: 5%,
 ///     * loss_given_default: 50%,
@@ -123,17 +110,23 @@ pub fn issue_default_loan(
 	maturity: u64,
 	manager: &mut NftManager,
 ) -> Vec<RuntimeCall> {
-	let loan_type = LoanType::BulletLoan(BulletLoan::new(
-		rate_from_percent(90),
-		rate_from_percent(5),
-		rate_from_percent(50),
-		amount,
-		interest_rate_per_sec(rate_from_percent(4))
-			.expect("Essential: Creating rate per sec must not fail."),
-		maturity,
-	));
+	let loan_info = LoanInfo::new((
+		manager.collateral_class_id(pool_id),
+		manager.next_collateral_id(pool_id),
+	))
+	.maturity(Duration::from_secs(maturity))
+	.interest_rate(rate_from_percent(15))
+	.collateral_value(amount)
+	.max_borrow_amount(MaxBorrowAmount::UpToTotalBorrowed {
+		advance_rate: rate_from_percent(90),
+	})
+	.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
+		probability_of_default: rate_from_percent(5),
+		loss_given_default: rate_from_percent(50),
+		discount_rate: interest_rate_per_year_to_sec(rate_from_percent(4)),
+	}));
 
-	issue_loan(owner, pool_id, rate_from_percent(15), loan_type, manager)
+	issue_loan(owner, pool_id, loan_info, manager)
 }
 
 /// Issues a loan.
@@ -150,8 +143,7 @@ pub fn issue_default_loan(
 pub fn issue_loan(
 	owner: AccountId,
 	pool_id: PoolId,
-	interest_rate_per_year: Rate,
-	loan_type: LoanType<Rate, Balance>,
+	loan_info: LoanInfo<Asset, Balance, Rate>,
 	manager: &mut NftManager,
 ) -> Vec<RuntimeCall> {
 	let mut calls = Vec::new();
@@ -160,48 +152,12 @@ pub fn issue_loan(
 		manager.next_collateral_id(pool_id),
 		owner,
 	));
-	calls.push(create_loan_call(
-		pool_id,
-		Asset(
-			manager.collateral_class_id(pool_id),
-			manager.curr_collateral_id(pool_id),
-		),
-	));
-	calls.push(price_loan_call(
-		pool_id,
-		manager.next_loan_id(pool_id),
-		interest_rate_per_year,
-		loan_type,
-	));
+	calls.push(create_loan_call(pool_id, loan_info));
 	calls
 }
 
-pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: CollectionId) -> RuntimeCall {
-	RuntimeCall::Loans(LoansCall::initialise_pool {
-		pool_id,
-		loan_nft_class_id,
-	})
-}
-
-pub fn create_loan_call(pool_id: PoolId, collateral: Asset<CollectionId, ItemId>) -> RuntimeCall {
-	RuntimeCall::Loans(LoansCall::create {
-		pool_id,
-		collateral,
-	})
-}
-
-pub fn price_loan_call(
-	pool_id: PoolId,
-	loan_id: LoanId,
-	interest_rate_per_year: Rate,
-	loan_type: LoanType<Rate, Balance>,
-) -> RuntimeCall {
-	RuntimeCall::Loans(LoansCall::price {
-		pool_id,
-		loan_id,
-		interest_rate_per_year,
-		loan_type,
-	})
+pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Asset, Balance, Rate>) -> RuntimeCall {
+	RuntimeCall::Loans(LoansCall::create { pool_id, info })
 }
 
 pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> RuntimeCall {
