@@ -165,6 +165,7 @@ pub mod pallet {
 	/// AccountCurrencyAllowances to see if there is an allowance for the reciever
 	/// This allows us to keep storage map vals to known/bounded sizes.
 	#[pallet::storage]
+	#[pallet::getter(fn sender_currency_restriction_set)]
 	pub type AccountCurrencyTransferRestriction<T> = StorageDoubleMap<
 		_,
 		Twox64Concat,
@@ -284,7 +285,7 @@ pub mod pallet {
 					Error::<T>::AllowanceCountArithmeticError,
 				)),
 				_ => {
-					<AccountCurrencyTransferRestriction<T>>::insert(account_id, currency_id, 0);
+					<AccountCurrencyTransferRestriction<T>>::insert(account_id, currency_id, 1);
 					Ok(())
 				}
 			}

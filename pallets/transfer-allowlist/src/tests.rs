@@ -62,6 +62,10 @@ fn add_transfer_allowance_works() {
 				blocked_at: 200u64
 			}
 		);
+		assert_eq!(
+			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
+			1
+		);
 
 		assert_eq!(
 			System::events()[0].event,
@@ -100,7 +104,7 @@ fn add_transfer_allowance_fails_if_already_exists() {
 }
 
 #[test]
-fn transfer_allowance_works() {
+fn transfer_allowance_allows_correctly_with_allowance_set() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
@@ -110,9 +114,25 @@ fn transfer_allowance_works() {
 			200u64,
 		));
 		assert!(
-			// TransferAllowance::<AccountIdOf<Runtime>, AccountIdOf<Runtime>>::allowance(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A)
 				.unwrap()
+		)
+	})
+}
+
+#[test]
+fn transfer_allowance_blocks_when_account_not_allowed() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			200u64,
+		));
+		assert_eq!(
+			TransferAllowList::allowance(SENDER.into(), 55u64, CurrencyId::A),
+			Ok(false)
 		)
 	})
 }
