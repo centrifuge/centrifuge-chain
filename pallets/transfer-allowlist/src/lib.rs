@@ -74,7 +74,7 @@ impl<T: Config> From<DomainAddress> for Location<T> {
 
 /// Trait to determine whether a sending account and currency have a restriction,
 /// and if so is there an allowance for the reciever location.
-trait TransferAllowance<AccountId, Location> {
+pub trait TransferAllowance<AccountId, Location> {
 	type CurrencyId;
 	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
 	/// Returns result wrapped bool for whether allowance is allowed.
@@ -83,37 +83,6 @@ trait TransferAllowance<AccountId, Location> {
 		recieve: Location,
 		currency: Self::CurrencyId,
 	) -> Result<bool, DispatchError>;
-}
-
-impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T>
-where
-	T::AccountId: IdentifyAccount,
-{
-	type CurrencyId = T::CurrencyId;
-
-	fn allowance(
-		send: T::AccountId,
-		recieve: T::AccountId,
-		currency: T::CurrencyId,
-	) -> Result<bool, DispatchError> {
-		match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
-			Some(count) if count > 0 => {
-				let current_block = <frame_system::Pallet<T>>::block_number();
-				match <AccountCurrencyTransferAllowance<T>>::get((
-					&send,
-					&currency,
-					Location::Local(recieve),
-				)) {
-					Some(AllowanceDetails {
-						allowed_at: allowed_at,
-						blocked_at: blocked_at,
-					}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
-					_ => Ok(false),
-				}
-			}
-			_ => Ok(true),
-		}
-	}
 }
 
 #[frame_support::pallet]
@@ -348,6 +317,34 @@ pub mod pallet {
 					Ok(())
 				}
 				_ => Err(DispatchError::from(Error::<T>::NoAllowancesSet)),
+			}
+		}
+	}
+
+	impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
+		type CurrencyId = T::CurrencyId;
+
+		fn allowance(
+			send: T::AccountId,
+			recieve: T::AccountId,
+			currency: T::CurrencyId,
+		) -> Result<bool, DispatchError> {
+			match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
+				Some(count) if count > 0 => {
+					let current_block = <frame_system::Pallet<T>>::block_number();
+					match <AccountCurrencyTransferAllowance<T>>::get((
+						&send,
+						&currency,
+						Location::Local(recieve),
+					)) {
+						Some(AllowanceDetails {
+							allowed_at: allowed_at,
+							blocked_at: blocked_at,
+						}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
+						_ => Ok(false),
+					}
+				}
+				_ => Ok(true),
 			}
 		}
 	}

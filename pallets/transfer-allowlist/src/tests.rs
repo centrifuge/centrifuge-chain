@@ -98,3 +98,21 @@ fn add_transfer_allowance_fails_if_already_exists() {
 		);
 	})
 }
+
+#[test]
+fn transfer_allowance_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			200u64,
+		));
+		assert!(
+			// TransferAllowance::<AccountIdOf<Runtime>, AccountIdOf<Runtime>>::allowance(
+			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A)
+				.unwrap()
+		)
+	})
+}
