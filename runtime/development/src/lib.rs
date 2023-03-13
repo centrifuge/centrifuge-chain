@@ -1268,7 +1268,7 @@ impl pallet_loans::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
 	type ItemId = ItemId;
-	type LoanId = u64;
+	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type NonFungible = Uniques;
