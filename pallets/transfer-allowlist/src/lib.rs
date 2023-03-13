@@ -214,9 +214,14 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Number of allowances for a sending Account/Currency set at max allowance count storage type val (currently u64::MAX)
 		AllowanceCountOverflow,
-		InvalidAllowanceCount,
+		/// An operation expecting one or more allowances for a sending Account/Currency set, where none present
 		NoAllowancesSet,
+		/// Attempted to create allowance for existing Sending Account, Currency, and Receiver combination
+		ConflictingAllowanceSet,
+		/// CatchAll for Allowance Count arithmetic errors -- largely for coverage for errors that should be impossible
+		AllowanceCountArithmeticError,
 	}
 
 	#[pallet::event]
@@ -228,17 +233,41 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(0)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
-		pub fn add_sender_account_transfer_restriction(
+		/// Adds a transfer allowance for a sending Account/Currency.
+		/// Allowance starts at allowed_at, and ends at blocked_at.
+		/// Important! Account/Currency sets with an allowance set are restricted to just the allowances added for the account -
+		/// to have unrestricted transfers allowed for the sending Account and Currency, no allowances should be present.
+		pub fn add_sender_account_transfer_allowance(
 			origin: OriginFor<T>,
-			currency: CurrencyIdOf<T>,
+			currency_id: CurrencyIdOf<T>,
 			receiver: Location<T>,
+			allowed_at: BlockNumberOf<T>,
+			blocked_at: BlockNumberOf<T>,
 		) -> DispatchResult {
-			Ok(())
+			let account_id = ensure_signed(origin)?;
+
+			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
+			{
+				None => {
+					<AccountCurrencyTransferAllowance<T>>::insert(
+						(&account_id, &currency_id, receiver),
+						AllowanceDetails {
+							allowed_at,
+							blocked_at,
+						},
+					);
+					Self::increment_or_create_allowance_count(account_id, currency_id)?;
+					Ok(())
+				}
+				Some(_) => Err(DispatchError::from(Error::<T>::ConflictingAllowanceSet)),
+			}
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn increment_or_create_restriction_count(
+		/// Increments number of allowances present for a sending account/currency set.
+		/// If no allowances set, an entry with 1 added, if entry already present, it is then incremented.
+		pub fn increment_or_create_allowance_count(
 			account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
@@ -255,7 +284,9 @@ pub mod pallet {
 					);
 					Ok(())
 				}
-				Some(_) => Err(DispatchError::from(Error::<T>::InvalidAllowanceCount)),
+				Some(_) => Err(DispatchError::from(
+					Error::<T>::AllowanceCountArithmeticError,
+				)),
 				_ => {
 					<AccountCurrencyTransferRestriction<T>>::insert(&account_id, &currency_id, 0);
 					Ok(())
@@ -263,7 +294,11 @@ pub mod pallet {
 			}
 		}
 
-		pub fn decrement_or_remove_restriction_count(
+		/// Decrements the number of allowances tracked for a sending account/currency set.
+		/// If the allowance count is currently 1, then it removes the entry
+		/// If greater than 1, then decremented.
+		/// If no entry present, NoAllowancesSet error returned.
+		pub fn decrement_or_remove_allowance_count(
 			account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
@@ -277,7 +312,7 @@ pub mod pallet {
 					// check in this case should not ever be needed
 					let new_allowance_count = allowance_count
 						.checked_sub(1)
-						.ok_or(Error::<T>::InvalidAllowanceCount)?;
+						.ok_or(Error::<T>::AllowanceCountArithmeticError)?;
 					<AccountCurrencyTransferRestriction<T>>::insert(
 						&account_id,
 						&currency_id,
