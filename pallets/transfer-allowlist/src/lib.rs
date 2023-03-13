@@ -199,7 +199,7 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
-	/// Storage item for allowances specified for a sending account, currency type and drecieving location
+	/// Storage item for allowances specified for a sending account, currency type and recieving location
 	#[pallet::storage]
 	pub type AccountCurrencyTransferAllowance<T> = StorageNMap<
 		_,
@@ -213,7 +213,11 @@ pub mod pallet {
 	>;
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		AllowanceCountOverflow,
+		InvalidAllowanceCount,
+		NoAllowancesSet,
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -230,6 +234,59 @@ pub mod pallet {
 			receiver: Location<T>,
 		) -> DispatchResult {
 			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn increment_or_create_restriction_count(
+			account_id: T::AccountId,
+			currency_id: T::CurrencyId,
+		) -> DispatchResult {
+			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
+			match (<AccountCurrencyTransferRestriction<T>>::get(&account_id, &currency_id)) {
+				Some(allowance_count) if allowance_count > 0 => {
+					let new_allowance_count = allowance_count
+						.checked_add(1)
+						.ok_or(Error::<T>::AllowanceCountOverflow)?;
+					<AccountCurrencyTransferRestriction<T>>::insert(
+						&account_id,
+						&currency_id,
+						new_allowance_count,
+					);
+					Ok(())
+				}
+				Some(_) => Err(DispatchError::from(Error::<T>::InvalidAllowanceCount)),
+				_ => {
+					<AccountCurrencyTransferRestriction<T>>::insert(&account_id, &currency_id, 0);
+					Ok(())
+				}
+			}
+		}
+
+		pub fn decrement_or_remove_restriction_count(
+			account_id: T::AccountId,
+			currency_id: T::CurrencyId,
+		) -> DispatchResult {
+			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
+			match (<AccountCurrencyTransferRestriction<T>>::get(&account_id, &currency_id)) {
+				Some(allowance_count) if allowance_count <= 1 => {
+					<AccountCurrencyTransferRestriction<T>>::remove(&account_id, &currency_id);
+					Ok(())
+				}
+				Some(allowance_count) => {
+					// check in this case should not ever be needed
+					let new_allowance_count = allowance_count
+						.checked_sub(1)
+						.ok_or(Error::<T>::InvalidAllowanceCount)?;
+					<AccountCurrencyTransferRestriction<T>>::insert(
+						&account_id,
+						&currency_id,
+						new_allowance_count,
+					);
+					Ok(())
+				}
+				_ => Err(DispatchError::from(Error::<T>::NoAllowancesSet)),
+			}
 		}
 	}
 }
