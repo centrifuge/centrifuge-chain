@@ -160,13 +160,13 @@ pub mod pallet {
 	// Storage
 	//
 	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
-	#[derive(Clone, Encode, Decode, Eq, PartialEq, Default, MaxEncodedLen, TypeInfo)]
 
 	/// Struct to define when a transfer should be allowed from
 	/// the sender, receiver, and currency combination.
 	/// Transfer allowed time set by range of block numbers
 	/// Defaults to starting at 0, and ending at MAX block value
 	/// as per default.
+	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, Default, MaxEncodedLen, TypeInfo)]
 	pub struct AllowanceDetails<BlockNumber> {
 		pub allowed_at: BlockNumber,
 		pub blocked_at: BlockNumber,
@@ -208,6 +208,7 @@ pub mod pallet {
 
 	/// Storage item for allowances specified for a sending account, currency type and recieving location
 	#[pallet::storage]
+	#[pallet::getter(fn sender_currency_reciever_allowance)]
 	pub type AccountCurrencyTransferAllowance<T> = StorageNMap<
 		_,
 		(
@@ -256,7 +257,7 @@ pub mod pallet {
 		/// Allowance starts at allowed_at, and ends at blocked_at.
 		/// Important! Account/Currency sets with an allowance set are restricted to just the allowances added for the account -
 		/// to have unrestricted transfers allowed for the sending Account and Currency, no allowances should be present.
-		pub fn add_sender_account_transfer_allowance(
+		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
 			receiver: Location<T>,

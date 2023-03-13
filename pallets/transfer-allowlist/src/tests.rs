@@ -1,3 +1,4 @@
+use frame_support::{assert_noop, assert_ok};
 use frame_system::ensure_signed;
 use hex::FromHex;
 use pallet_connectors::DomainAddress;
@@ -8,6 +9,7 @@ use super::*;
 use crate::mock::*;
 
 const SENDER: u64 = 0x1;
+const ACCOUNT_RECEIVER: u64 = 0x2;
 
 #[test]
 fn from_account_works() {
@@ -36,4 +38,29 @@ fn from_domain_address_works() {
 
 		assert_eq!(l, Location::Address(da))
 	});
+}
+
+#[test]
+fn add_transfer_allowance_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			200u64,
+		));
+		assert_eq!(
+			TransferAllowList::sender_currency_reciever_allowance((
+				SENDER,
+				CurrencyId::A,
+				Location::Local(ACCOUNT_RECEIVER)
+			))
+			.unwrap(),
+			AllowanceDetails {
+				allowed_at: 0u64,
+				blocked_at: 200u64
+			}
+		)
+	})
 }
