@@ -211,6 +211,8 @@ pub mod pallet {
 		ConflictingAllowanceSet,
 		/// CatchAll for Allowance Count arithmetic errors -- largely for coverage for errors that should be impossible
 		AllowanceCountArithmeticError,
+		/// No matching allowance for Location/Currency
+		NoMatchingAllowance,
 	}
 
 	#[pallet::event]
@@ -223,6 +225,12 @@ pub mod pallet {
 			receiver: Location<T>,
 			allowed_at: BlockNumberOf<T>,
 			blocked_at: BlockNumberOf<T>,
+		},
+		/// Event for successful removal of a tra
+		TransferAllowanceRemoved {
+			sender_account_id: AccountIdOf<T>,
+			currency_id: CurrencyIdOf<T>,
+			receiver: Location<T>,
 		},
 	}
 
@@ -265,6 +273,35 @@ pub mod pallet {
 					Ok(())
 				}
 				Some(_) => Err(DispatchError::from(Error::<T>::ConflictingAllowanceSet)),
+			}
+		}
+
+		#[transactional]
+		#[pallet::call_index(1)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
+		pub fn remove_transfer_allowance(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			receiver: Location<T>,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
+			{
+				Some(_) => {
+					<AccountCurrencyTransferAllowance<T>>::remove((
+						&account_id,
+						&currency_id,
+						&receiver,
+					));
+					Self::decrement_or_remove_allowance_count(&account_id, &currency_id)?;
+					Self::deposit_event(Event::TransferAllowanceRemoved {
+						sender_account_id: account_id,
+						currency_id,
+						receiver,
+					});
+					Ok(())
+				}
+				None => Err(DispatchError::from(Error::<T>::NoMatchingAllowance)),
 			}
 		}
 	}

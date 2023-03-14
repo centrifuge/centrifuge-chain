@@ -194,3 +194,46 @@ fn transfer_allowance_blocks_correctly_when_after_blocked_at_block() {
 		)
 	})
 }
+
+#[test]
+fn remove_transfer_allowance_works() {
+	new_test_ext().execute_with(|| {
+		// create allowance to test removal
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			200u64,
+		));
+		// test removal
+		assert_ok!(TransferAllowList::remove_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+		));
+		// verify removed
+		assert_eq!(
+			TransferAllowList::sender_currency_reciever_allowance((
+				SENDER,
+				CurrencyId::A,
+				Location::Local(ACCOUNT_RECEIVER)
+			)),
+			None
+		);
+		// verify sender/currency allowance tracking decremented/removed
+		assert_eq!(
+			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
+			None
+		);
+		// verify event sent for removal
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				receiver: Location::Local(ACCOUNT_RECEIVER),
+			})
+		);
+	})
+}
