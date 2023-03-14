@@ -99,6 +99,8 @@ pub enum CurrencyId {
 	D,
 }
 
+const STARTING_BLOCK: u64 = 50;
+
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type RuntimeEvent = RuntimeEvent;
@@ -110,6 +112,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			.build_storage::<Runtime>()
 			.unwrap(),
 	);
-	e.execute_with(|| System::set_block_number(1));
+	e.execute_with(|| System::set_block_number(STARTING_BLOCK));
 	e
 }

@@ -137,9 +137,9 @@ fn transfer_allowance_allows_correctly_with_allowance_set() {
 			0u64,
 			200u64,
 		));
-		assert!(
-			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A)
-				.unwrap()
+		assert_eq!(
+			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
+			Ok(true)
 		)
 	})
 }
@@ -157,6 +157,40 @@ fn transfer_allowance_blocks_when_account_not_allowed() {
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), 55u64, CurrencyId::A),
 			Ok(false)
+		)
+	})
+}
+
+#[test]
+fn transfer_allowance_blocks_correctly_when_before_start_block() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			49u64,
+		));
+		assert_eq!(
+			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
+			Ok(false)
+		)
+	})
+}
+
+#[test]
+fn transfer_allowance_blocks_correctly_when_after_blocked_at_block() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			50u64,
+			200u64,
+		));
+		assert_eq!(
+			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
+			Ok(true)
 		)
 	})
 }

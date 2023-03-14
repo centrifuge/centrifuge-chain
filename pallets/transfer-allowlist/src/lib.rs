@@ -11,6 +11,14 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+/// This module checks whether an account should be allowed to make a transfer to
+/// a recieving location with a specific currency.
+/// If there are no allowances specified, then the account is assumed to be allowed
+/// to send to any location without restrictions.
+/// However once an allowance for a sender to a specific recieving location and currency is made,
+/// /then/ transfers from the sending account are restricted for that currency to:
+/// - the account(s) for which allowances have been made
+/// - the block range specified in the allowance
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
