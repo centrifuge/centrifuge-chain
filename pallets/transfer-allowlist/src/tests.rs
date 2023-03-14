@@ -237,3 +237,72 @@ fn remove_transfer_allowance_works() {
 		);
 	})
 }
+#[test]
+fn remove_transfer_allowance_non_existant_transfer_allowance() {
+	new_test_ext().execute_with(|| {
+		// test removal
+		assert_noop!(
+			TransferAllowList::remove_transfer_allowance(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A,
+				AccountWrapper(ACCOUNT_RECEIVER).into(),
+			),
+			Error::<Runtime>::NoMatchingAllowance
+		);
+	})
+}
+
+#[test]
+fn remove_transfer_allowance_when_multiple_present_for_sender_currency_properly_decrements() {
+	new_test_ext().execute_with(|| {
+		// add multiple entries for sender/currency to test dec
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			200u64,
+		));
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(100u64).into(),
+			0u64,
+			200u64,
+		));
+		// test removal
+		assert_ok!(TransferAllowList::remove_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+		));
+		// verify correct entry removed
+		assert_eq!(
+			TransferAllowList::sender_currency_reciever_allowance((
+				SENDER,
+				CurrencyId::A,
+				Location::Local(ACCOUNT_RECEIVER)
+			)),
+			None
+		);
+		// verify correct entry still present
+		assert_eq!(
+			TransferAllowList::sender_currency_reciever_allowance((
+				SENDER,
+				CurrencyId::A,
+				Location::Local(100u64)
+			))
+			.unwrap(),
+			AllowanceDetails {
+				allowed_at: 0u64,
+				blocked_at: 200u64
+			}
+		);
+
+		// verify correct decrement
+		assert_eq!(
+			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
+			1
+		);
+	})
+}
