@@ -362,3 +362,48 @@ fn update_allowance_delay_works() {
 		)
 	})
 }
+
+#[test]
+fn remove_allowance_delay_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200
+		));
+
+		assert_ok!(TransferAllowList::remove_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+		));
+		// verify val in storage
+		assert_eq!(
+			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A),
+			None
+		);
+		// verify event deposited
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayRemoval {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A
+			})
+		)
+	})
+}
+
+#[test]
+fn remove_allowance_delay_when_no_delay_set() {
+	new_test_ext().execute_with(|| {
+		// should fail now
+		assert_noop!(
+			TransferAllowList::remove_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A,),
+			Error::<Runtime>::NoMatchingDelay
+		);
+		// verify no val in storage
+		assert_eq!(
+			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A),
+			None
+		);
+	})
+}

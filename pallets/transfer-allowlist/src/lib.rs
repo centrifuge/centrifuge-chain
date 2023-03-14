@@ -225,6 +225,8 @@ pub mod pallet {
 		AllowanceCountArithmeticError,
 		/// No matching allowance for Location/Currency
 		NoMatchingAllowance,
+		/// No matching delay
+		NoMatchingDelay,
 	}
 
 	#[pallet::event]
@@ -354,12 +356,23 @@ pub mod pallet {
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			<AccountCurrencyDelay<T>>::remove(&account_id, &currency_id);
-			Self::deposit_event(Event::TransferAllowanceDelayRemoval {
-				sender_account_id: account_id,
-				currency_id: currency_id,
-			});
-			Ok(())
+			match <AccountCurrencyDelay<T>>::get(&account_id, &currency_id) {
+				Some(_) => {
+					<AccountCurrencyDelay<T>>::remove(&account_id, &currency_id);
+					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
+						sender_account_id: account_id,
+						currency_id: currency_id,
+					});
+					Ok(())
+				}
+				None => {
+					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
+						sender_account_id: account_id,
+						currency_id: currency_id,
+					});
+					Err(DispatchError::from(Error::<T>::NoMatchingDelay))
+				}
+			}
 		}
 	}
 
