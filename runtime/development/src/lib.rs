@@ -2033,6 +2033,10 @@ impl_runtime_apis! {
 
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;
+
+			// Used to avoid breaking the benchmark script.
+			// This can be removed once pallet-loans-ref is called pallet-loans
+			#[allow(unused_imports)]
 			use pallet_loans as pallet_loans_ref;
 
 			add_benchmark!(params, batches, pallet_fees, Fees);
@@ -2065,6 +2069,9 @@ impl_runtime_apis! {
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 
+			// Used to avoid breaking the benchmark script.
+			// This can be removed once pallet-loans-ref is called pallet-loans
+			#[allow(unused_imports)]
 			use pallet_loans as pallet_loans_ref;
 
 			let mut list = Vec::<BenchmarkList>::new();
