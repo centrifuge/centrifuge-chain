@@ -700,7 +700,7 @@ impl<T: Config> ActiveLoan<T> {
 	}
 }
 
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(any(feature = "std", feature = "runtime-benchmarks"))]
 mod test_utils {
 	use sp_std::time::Duration;
 
@@ -718,7 +718,7 @@ mod test_utils {
 					interest_payments: InterestPayments::None,
 					pay_down_schedule: PayDownSchedule::None,
 				},
-				collateral: collateral,
+				collateral,
 				collateral_value: Balance::default(),
 				valuation_method: ValuationMethod::OutstandingDebt,
 				restrictions: LoanRestrictions {

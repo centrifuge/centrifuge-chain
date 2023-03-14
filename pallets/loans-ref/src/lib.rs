@@ -58,7 +58,7 @@ pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
-		InterestAccrual, Permissions, PoolInspect, PoolReserve,
+		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -83,8 +83,7 @@ pub mod pallet {
 	};
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuation, PortfolioValuationUpdateType, WriteOffState, WriteOffStatus,
-		WrittenOffError,
+		PortfolioValuationUpdateType, WriteOffState, WriteOffStatus, WrittenOffError,
 	};
 
 	use super::*;
@@ -183,7 +182,7 @@ pub mod pallet {
 
 		/// Max number of write-off groups per pool.
 		#[pallet::constant]
-		type MaxWriteOffGroups: Get<u32>;
+		type MaxWriteOffPolicySize: Get<u32>;
 
 		/// Information of runtime weights
 		type WeightInfo: WeightInfo;
@@ -240,15 +239,20 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
+		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
 		ValueQuery,
 	>;
 
 	/// Stores the portfolio valuation associated to each pool
 	#[pallet::storage]
 	#[pallet::getter(fn portfolio_valuation)]
-	pub(crate) type LatestPortfolioValuations<T: Config> =
-		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, PortfolioValuation<T::Balance>, ValueQuery>;
+	pub(crate) type PortfolioValuation<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		types::PortfolioValuation<T::Balance>,
+		ValueQuery,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -291,7 +295,7 @@ pub mod pallet {
 		},
 		WriteOffPolicyUpdated {
 			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
+			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
 		},
 	}
 
@@ -584,7 +588,7 @@ pub mod pallet {
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			mut policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffGroups>,
+			mut policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
@@ -616,9 +620,9 @@ pub mod pallet {
 
 			let (value, count) = Self::portfolio_valuation_for_pool(pool_id)?;
 
-			LatestPortfolioValuations::<T>::insert(
+			PortfolioValuation::<T>::insert(
 				pool_id,
-				PortfolioValuation::new(value, Self::now()),
+				types::PortfolioValuation::new(value, Self::now()),
 			);
 
 			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
@@ -697,7 +701,7 @@ pub mod pallet {
 
 		fn update_portfolio_valuation_with_pv(
 			pool_id: PoolIdOf<T>,
-			portfolio: &mut PortfolioValuation<T::Balance>,
+			portfolio: &mut types::PortfolioValuation<T::Balance>,
 			old_pv: T::Balance,
 			new_pv: T::Balance,
 		) -> DispatchResult {
@@ -736,7 +740,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
-			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
+			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				let last_updated = Self::now();
 				let new_pv = loan.present_value_at(last_updated)?;
 
@@ -760,7 +764,7 @@ pub mod pallet {
 		where
 			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
-			LatestPortfolioValuations::<T>::try_mutate(pool_id, |portfolio| {
+			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					let (loan, last_updated) = active_loans
 						.iter_mut()
@@ -803,6 +807,33 @@ pub mod pallet {
 					active_loans.len().ensure_into()?,
 				))
 			})
+		}
+	}
+
+	// TODO: This implementation can be cleaned once #908 be solved
+	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T> {
+		type ClassId = T::ItemId;
+		type RuntimeOrigin = T::RuntimeOrigin;
+
+		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
+			let valuation = PortfolioValuation::<T>::get(pool_id);
+			Some((valuation.value(), valuation.last_updated()))
+		}
+
+		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
+			let (value, _) = Self::portfolio_valuation_for_pool(pool_id)?;
+
+			PortfolioValuation::<T>::insert(
+				pool_id,
+				types::PortfolioValuation::new(value, Self::now()),
+			);
+
+			Ok(value)
+		}
+
+		fn initialise(_: OriginFor<T>, _: PoolIdOf<T>, _: T::ItemId) -> DispatchResult {
+			// This Loans implementation does not need to initialize explicitally.
+			Ok(())
 		}
 	}
 }
