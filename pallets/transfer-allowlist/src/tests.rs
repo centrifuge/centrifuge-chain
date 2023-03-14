@@ -104,6 +104,30 @@ fn add_transfer_allowance_fails_if_already_exists() {
 }
 
 #[test]
+fn add_transfer_allowance_multiple_dests_increments_correctly() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			0u64,
+			200u64,
+		));
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(100u64).into(),
+			0u64,
+			200u64,
+		));
+		assert_eq!(
+			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
+			2
+		);
+	})
+}
+
+#[test]
 fn transfer_allowance_allows_correctly_with_allowance_set() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
