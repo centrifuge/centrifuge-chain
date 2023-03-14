@@ -306,3 +306,59 @@ fn remove_transfer_allowance_when_multiple_present_for_sender_currency_properly_
 		);
 	})
 }
+
+#[test]
+fn add_allowance_delay_works() {
+	new_test_ext().execute_with(|| {
+		// verify extrinsic execution returns ok
+		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200
+		));
+		// verify val in storage
+		assert_eq!(
+			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A).unwrap(),
+			200
+		);
+		// verify event deposited
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelaySet {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				delay: 200
+			})
+		)
+	})
+}
+
+#[test]
+fn update_allowance_delay_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200
+		));
+		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			250
+		));
+		// verify val in storage
+		assert_eq!(
+			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A).unwrap(),
+			250
+		);
+		// verify event deposited
+		assert_eq!(
+			System::events()[1].event,
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelaySet {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				delay: 250
+			})
+		)
+	})
+}

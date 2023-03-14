@@ -197,6 +197,18 @@ pub mod pallet {
 		AllowanceDetails<BlockNumberOf<T>>,
 		OptionQuery,
 	>;
+	/// Storage item for Allowance delays for a sending account/currency
+	#[pallet::storage]
+	#[pallet::getter(fn sender_currency_delay)]
+	pub type AccountCurrencyDelay<T> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		AccountIdOf<T>,
+		Twox64Concat,
+		CurrencyIdOf<T>,
+		BlockNumberOf<T>,
+		OptionQuery,
+	>;
 
 	//
 	// Pallet Errors and Events
@@ -231,6 +243,17 @@ pub mod pallet {
 			sender_account_id: AccountIdOf<T>,
 			currency_id: CurrencyIdOf<T>,
 			receiver: Location<T>,
+		},
+		/// Event for Allowance delay update
+		TransferAllowanceDelaySet {
+			sender_account_id: AccountIdOf<T>,
+			currency_id: CurrencyIdOf<T>,
+			delay: BlockNumberOf<T>,
+		},
+		/// Event for Allowance delay removal
+		TransferAllowanceDelayRemoval {
+			sender_account_id: AccountIdOf<T>,
+			currency_id: CurrencyIdOf<T>,
 		},
 	}
 
@@ -303,6 +326,40 @@ pub mod pallet {
 				}
 				None => Err(DispatchError::from(Error::<T>::NoMatchingAllowance)),
 			}
+		}
+
+		#[transactional]
+		#[pallet::call_index(2)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		pub fn add_or_update_allowance_delay(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			delay: BlockNumberOf<T>,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			<AccountCurrencyDelay<T>>::insert(&account_id, &currency_id, &delay);
+			Self::deposit_event(Event::TransferAllowanceDelaySet {
+				sender_account_id: account_id,
+				currency_id: currency_id,
+				delay: delay,
+			});
+			Ok(())
+		}
+
+		#[transactional]
+		#[pallet::call_index(3)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		pub fn remove_allowance_delay(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			<AccountCurrencyDelay<T>>::remove(&account_id, &currency_id);
+			Self::deposit_event(Event::TransferAllowanceDelayRemoval {
+				sender_account_id: account_id,
+				currency_id: currency_id,
+			});
+			Ok(())
 		}
 	}
 
