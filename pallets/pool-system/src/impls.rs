@@ -174,17 +174,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 		}
 
-		let min_epoch_time = sp_std::cmp::min(
-			sp_std::cmp::max(
-				T::DefaultMinEpochTime::get(),
-				T::MinEpochTimeLowerBound::get(),
-			),
-			T::MinEpochTimeUpperBound::get(),
-		);
-
-		let max_nav_age =
-			sp_std::cmp::min(T::DefaultMaxNAVAge::get(), T::MaxNAVAgeUpperBound::get());
-
 		let pool_details = PoolDetails {
 			currency,
 			tranches,
@@ -195,8 +184,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				last_executed: Zero::zero(),
 			},
 			parameters: PoolParameters {
-				min_epoch_time,
-				max_nav_age,
+				min_epoch_time: T::DefaultMinEpochTime::get(),
+				max_nav_age: T::DefaultMaxNAVAge::get(),
 			},
 			reserve: ReserveDetails {
 				max: max_reserve,
@@ -241,6 +230,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			Error::<T>::InvalidTrancheUpdate
 		);
 
+		// TODO: Remove this implicit behaviour. See https://github.com/centrifuge/centrifuge-chain/issues/1171
 		if changes.min_epoch_time == Change::NoChange
 			&& changes.max_nav_age == Change::NoChange
 			&& changes.tranches == Change::NoChange
@@ -279,7 +269,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		let update = ScheduledUpdateDetails {
 			changes: changes.clone(),
-			scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
+			submitted_at: now,
 		};
 
 		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
@@ -296,6 +286,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	}
 
 	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
+		let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
 		ensure!(
 			EpochExecution::<T>::try_get(pool_id).is_err(),
 			Error::<T>::InSubmissionPeriod
@@ -304,15 +296,14 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		let update =
 			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
 
+		let now = Self::now();
 		ensure!(
-			Self::now() >= update.scheduled_time,
+			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get()),
 			Error::<T>::ScheduledTimeHasNotPassed
 		);
 
-		let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-
 		ensure!(
-			T::UpdateGuard::released(&pool, &update, Self::now()),
+			T::UpdateGuard::released(&pool, &update, now),
 			Error::<T>::UpdatePrerequesitesNotFulfilled
 		);
 

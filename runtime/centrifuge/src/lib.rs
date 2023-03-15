@@ -1153,10 +1153,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		update: &Self::ScheduledUpdateDetails,
 		now: Self::Moment,
 	) -> bool {
-		if now < update.scheduled_time {
-			return false;
-		}
-
 		// The epoch in which the redemptions were fulfilled,
 		// should have closed after the scheduled time already,
 		// to ensure that investors had the `MinUpdateDelay`
