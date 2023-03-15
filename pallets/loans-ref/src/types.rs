@@ -767,4 +767,10 @@ mod test_utils {
 			self
 		}
 	}
+
+	impl<T: Config> ActiveLoan<T> {
+		pub fn set_maturity(&mut self, duration: Duration) {
+			self.info.schedule.maturity = Maturity::Fixed(duration.as_secs());
+		}
+	}
 }

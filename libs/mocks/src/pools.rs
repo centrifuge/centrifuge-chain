@@ -68,6 +68,14 @@ pub mod pallet_mock_pools {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_benchmark_create_pool(f: impl Fn(T::PoolId, &T::AccountId) + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_benchmark_give_ausd(f: impl Fn(&T::AccountId, T::Balance) + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
 	}
 
 	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
@@ -114,12 +122,14 @@ pub mod pallet_mock_pools {
 		type Balance = T::Balance;
 		type PoolId = T::PoolId;
 
-		fn benchmark_create_pool(_: Self::PoolId, _: &Self::AccountId) {
-			unimplemented!("You should not call this method in your mocks")
+		fn benchmark_create_pool(a: Self::PoolId, b: &Self::AccountId) {
+			let b = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(b) };
+			execute_call!((a, b))
 		}
 
-		fn benchmark_give_ausd(_: &Self::AccountId, _: Self::Balance) {
-			unimplemented!("You should not call this method in your mocks")
+		fn benchmark_give_ausd(a: &Self::AccountId, b: Self::Balance) {
+			let a = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(a) };
+			execute_call!((a, b))
 		}
 	}
 }
