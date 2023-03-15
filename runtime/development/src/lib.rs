@@ -464,10 +464,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
-					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
 					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
@@ -506,14 +506,14 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			}
 			ProxyType::Borrow => matches!(
 				c,
-				RuntimeCall::Loans(pallet_loans::Call::create{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::borrow{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::repay{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
-				RuntimeCall::Loans(pallet_loans::Call::close{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::borrow{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::repay{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
 				// Borrowers should be able to close and execute an epoch
 				// in order to get liquidity from repayments in previous epochs.
-				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -528,7 +528,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Investments(pallet_investments::Call::collect_redemptions{..}) |
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
-				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -1261,7 +1261,7 @@ parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 10;
 }
 
-impl pallet_loans::Config for Runtime {
+impl pallet_loans_ref::Config for Runtime {
 	type Balance = Balance;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
@@ -1276,7 +1276,7 @@ impl pallet_loans::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_loans_ref::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1723,7 +1723,7 @@ construct_runtime!(
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 95,
-		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
+		Loans: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
@@ -2034,11 +2034,6 @@ impl_runtime_apis! {
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;
 
-			// Used to avoid breaking the benchmark script.
-			// This can be removed once pallet-loans-ref is called pallet-loans
-			#[allow(unused_imports)]
-			use pallet_loans as pallet_loans_ref;
-
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_anchors, Anchors);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
@@ -2068,11 +2063,6 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
-
-			// Used to avoid breaking the benchmark script.
-			// This can be removed once pallet-loans-ref is called pallet-loans
-			#[allow(unused_imports)]
-			use pallet_loans as pallet_loans_ref;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
