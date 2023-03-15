@@ -1829,7 +1829,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
-			list_benchmark!(list, extra, pallet_uniquess, Uniques);
+			list_benchmark!(list, extra, pallet_uniques, Uniques);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 

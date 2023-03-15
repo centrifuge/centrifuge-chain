@@ -1084,8 +1084,10 @@ impl PoolUpdateGuard for UpdateGuard {
 		//   event.
 		// - We check for greater equal in order to forbid batching
 		//   those two in one block
-		if update.submitted_at >= pool.epoch.last_closed {
-			return false;
+		if !cfg!(feature = "runtime-benchmarks") {
+			if update.submitted_at >= pool.epoch.last_closed {
+				return false;
+			}
 		}
 
 		let pool_id = pool.tranches.of_pool();
