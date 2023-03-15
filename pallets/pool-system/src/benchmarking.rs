@@ -89,7 +89,7 @@ benchmarks! {
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
-		let investor = create_investor::<T>(0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
 		pallet_investments::Pallet::<T>::update_invest_order(origin, TrancheCurrency::generate(POOL, get_tranche_id::<T>(TRANCHE)), investment)?;
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
@@ -106,7 +106,7 @@ benchmarks! {
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE / 2;
-		let investor = create_investor::<T>(0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
 		pallet_investments::Pallet::<T>::update_invest_order(origin, TrancheCurrency::generate(POOL, get_tranche_id::<T>(TRANCHE)), investment)?;
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
@@ -123,7 +123,7 @@ benchmarks! {
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
-		let investor = create_investor::<T>(0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
 		pallet_investments::Pallet::<T>::update_invest_order(origin, TrancheCurrency::generate(POOL, get_tranche_id::<T>(TRANCHE)), investment)?;
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
@@ -150,7 +150,7 @@ benchmarks! {
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
-		let investor = create_investor::<T>(0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE, None)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
 		pallet_investments::Pallet::<T>::update_invest_order(origin, TrancheCurrency::generate(POOL, get_tranche_id::<T>(TRANCHE)), investment)?;
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
@@ -219,6 +219,7 @@ pub fn create_investor<
 >(
 	id: u32,
 	tranche: TrancheIndex,
+	with_tranche_tokens: Option<T::Balance>,
 ) -> Result<T::AccountId, DispatchError>
 where
 	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
@@ -233,6 +234,13 @@ where
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
 	T::Tokens::mint_into(CurrencyId::AUSD, &investor.clone().into(), MINT_AMOUNT)?;
+	if let Some(amount) = with_tranche_tokens {
+		T::Tokens::mint_into(
+			CurrencyId::Tranche(POOL, tranche_id),
+			&investor.clone().into(),
+			amount,
+		)?;
+	}
 	Ok(investor)
 }
 

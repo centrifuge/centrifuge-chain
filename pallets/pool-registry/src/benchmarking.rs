@@ -114,7 +114,7 @@ benchmarks! {
 
 		// Submit redemption order so the update isn't executed
 		let amount = MAX_RESERVE / 2;
-		let investor = create_investor::<T>(0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE, Some(amount))?;
 		let locator = get_tranche_id::<T>(TRANCHE);
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), amount)?;
 
@@ -179,7 +179,7 @@ benchmarks! {
 		};
 
 		// Invest so we can redeem later
-		let investor = create_investor::<T>(0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE, Some(1))?;
 		let locator = get_tranche_id::<T>(TRANCHE);
 		// Submit redemption order so the update isn't immediately executed
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), 1)?;
