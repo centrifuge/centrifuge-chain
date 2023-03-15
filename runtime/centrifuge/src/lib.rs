@@ -1087,12 +1087,16 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = 7 * SECONDS_PER_DAY; // 7 days notice
-	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
-		// Disable challenge time in benchmarks
-		0
+	pub const MinUpdateDelay: u64 = pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
+		0 // Dissable update delay in benchmarks
 	} else {
-		30 * MINUTES
+		7 * SECONDS_PER_DAY // 7 days notice
+	};
+
+	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
+		0 // Disable challenge time in benchmarks
+	} else {
+		30 * MINUTES // half an hour to challenge solutions
 	};
 
 	// Defaults for pool parameters
@@ -1100,9 +1104,17 @@ parameter_types! {
 	pub const DefaultMaxNAVAge: u64 = 0; // forcing update_nav + close epoch in same block
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1 * SECONDS_PER_HOUR; // at least 1 second (i.e. do not allow multiple epochs closed in 1 block)
+	pub const MinEpochTimeLowerBound: u64 = if cfg!(feature = "runtime-benchmarks") {
+		0 // Allow short epoch time in benchmarks and multiple close in one block
+	} else {
+		1 * SECONDS_PER_HOUR // 1 hour
+	};
 	pub const MinEpochTimeUpperBound: u64 = 30 * SECONDS_PER_DAY; // 1 month
-	pub const MaxNAVAgeUpperBound: u64 = 1 * SECONDS_PER_HOUR; // 1 hour
+	pub const MaxNAVAgeUpperBound: u64 = if cfg!(feature = "runtime-benchmarks") {
+		1 * SECONDS_PER_HOUR // Allow an aged NAV in benchmarks
+	} else {
+		0
+	};
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
