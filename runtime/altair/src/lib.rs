@@ -1269,8 +1269,16 @@ impl PoolUpdateGuard for UpdateGuard {
 		update: &Self::ScheduledUpdateDetails,
 		now: Self::Moment,
 	) -> bool {
-		let pool_id = pool.tranches.of_pool();
+		// - We check whether between the submission of the
+		//   update this call there has been an epoch close
+		//   event.
+		// - We check for greater in order to forbid batching
+		//   those two in one block
+		if update.submitted_at > pool.epoch.last_closed {
+			return false;
+		}
 
+		let pool_id = pool.tranches.of_pool();
 		// We do not allow releasing updates during epoch
 		// closing.
 		//
