@@ -951,7 +951,7 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
+	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
 		// Dissable update delay in benchmarks
 		0
 	} else {
@@ -1077,14 +1077,14 @@ impl PoolUpdateGuard for UpdateGuard {
 	fn released(
 		pool: &Self::PoolDetails,
 		update: &Self::ScheduledUpdateDetails,
-		now: Self::Moment,
+		_now: Self::Moment,
 	) -> bool {
 		// - We check whether between the submission of the
 		//   update this call there has been an epoch close
 		//   event.
-		// - We check for greater in order to forbid batching
+		// - We check for greater equal in order to forbid batching
 		//   those two in one block
-		if update.submitted_at > pool.epoch.last_closed {
+		if update.submitted_at >= pool.epoch.last_closed {
 			return false;
 		}
 

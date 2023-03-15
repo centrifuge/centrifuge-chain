@@ -298,7 +298,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		let now = Self::now();
 		ensure!(
-			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get()),
+			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get())?,
 			Error::<T>::ScheduledTimeHasNotPassed
 		);
 

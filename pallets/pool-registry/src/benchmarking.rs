@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 //! Module provides benchmarking for Loan Pallet
-use cfg_primitives::PoolEpochId;
+use cfg_primitives::{Moment, PoolEpochId};
 use cfg_traits::{InvestmentAccountant, InvestmentProperties, TrancheCurrency as _};
 use cfg_types::tokens::{CurrencyId, TrancheCurrency};
 use frame_benchmarking::benchmarks;
@@ -45,7 +45,6 @@ const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
 const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
 
 const TRANCHE: TrancheIndex = 0;
-
 const POOL: u64 = 0;
 
 benchmarks! {
@@ -64,6 +63,7 @@ benchmarks! {
 			  MaxTokenNameLength = <T as Config>::MaxTokenNameLength,
 			  MaxTokenSymbolLength = <T as Config>::MaxTokenSymbolLength,
 			  MaxTranches = <T as Config>::MaxTranches>,
+		T: pallet_timestamp::Config<Moment = Moment>,
 		<T as pallet_investments::Config>::Tokens: Inspect<T::AccountId, AssetId = CurrencyId, Balance = u128>,
 		<<T as pallet_investments::Config>::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
 			InvestmentProperties<T::AccountId, Currency = CurrencyId>,
@@ -102,11 +102,14 @@ benchmarks! {
 	}
 
 	update_no_execution {
+		// Execution of updates is blocked as no epoch has passed
+		// since we submitted the update
 		let admin: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
+
 
 		// Submit redemption order so the update isn't executed
 		let amount = MAX_RESERVE / 2;
@@ -114,14 +117,13 @@ benchmarks! {
 		let locator = get_tranche_id::<T>(TRANCHE);
 		pallet_investments::Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), TrancheCurrency::generate(POOL, locator), amount)?;
 
+
 		let changes = PoolChanges {
 			tranches: Change::NoChange,
 			min_epoch_time: Change::NewValue(SECS_PER_DAY),
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
 			tranche_metadata: Change::NoChange,
 		};
-
-		//update_pool::<T>(changes.clone())?;
 	}: update(RawOrigin::Signed(admin), POOL, changes.clone())
 	verify {
 		// Should be the old values
@@ -146,7 +148,6 @@ benchmarks! {
 			max_nav_age: Change::NewValue(SECS_PER_HOUR),
 			tranche_metadata: Change::NewValue(build_update_tranche_metadata::<T>()),
 		};
-		//update_pool::<T>(changes.clone())?;
 	}: update(RawOrigin::Signed(admin), POOL, changes)
 	verify {
 		// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
@@ -244,6 +245,12 @@ fn build_update_tranches<T: Config>(
 	);
 
 	tranches.try_into().expect("num_tranches <= T::MaxTranches")
+}
+
+fn pass_time<T: pallet_timestamp::Config<Moment = Moment>>(time: Moment) {
+	let now = pallet_timestamp::Now::<T>::get();
+	let new_now = now + time;
+	pallet_timestamp::Now::<T>::set(new_now);
 }
 
 // TODO: Enable once ModifyPool is not fully mocked

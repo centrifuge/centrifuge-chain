@@ -1087,7 +1087,7 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
+	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
 		0 // Dissable update delay in benchmarks
 	} else {
 		7 * SECONDS_PER_DAY // 7 days notice
@@ -1100,8 +1100,17 @@ parameter_types! {
 	};
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 23 * SECONDS_PER_HOUR + 50 * SECONDS_PER_MINUTE; // 23h and 50 minutes
-	pub const DefaultMaxNAVAge: u64 = 0; // forcing update_nav + close epoch in same block
+	pub const DefaultMinEpochTime: u64 = if cfg!(feature = "runtime-benchmarks") {
+		0 // Allow short epoch time in benchmarks and multiple close in one block
+	} else {
+		23 * SECONDS_PER_HOUR + 50 * SECONDS_PER_MINUTE // 23h and 50 minutes
+	};
+
+	pub const DefaultMaxNAVAge: u64 = if cfg!(feature = "runtime-benchmarks") {
+		1 * SECONDS_PER_HOUR // 1 hour
+	} else {
+		0 // forcing update_nav + close epoch in same block
+	};
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = if cfg!(feature = "runtime-benchmarks") {
@@ -1163,15 +1172,17 @@ impl PoolUpdateGuard for UpdateGuard {
 	fn released(
 		pool: &Self::PoolDetails,
 		update: &Self::ScheduledUpdateDetails,
-		now: Self::Moment,
+		_now: Self::Moment,
 	) -> bool {
 		// - We check whether between the submission of the
 		//   update this call there has been an epoch close
 		//   event.
-		// - We check for greater in order to forbid batching
+		// - We check for greater equal in order to forbid batching
 		//   those two in one block
-		if update.submitted_at > pool.epoch.last_closed {
-			return false;
+		if !cfg!(feature = "runtime-benchmarks") {
+			if update.submitted_at >= pool.epoch.last_closed {
+				return false;
+			}
 		}
 
 		let pool_id = pool.tranches.of_pool();
