@@ -34,12 +34,10 @@ type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
 struct Helper<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Helper<T>
 where
-	PoolIdOf<T>: From<u32>,
 	T::Balance: From<u128>,
 	T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 	T::CollectionId: From<u16>,
 	T::ItemId: From<u16>,
-	T::LoanId: From<u16>,
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 {
@@ -179,12 +177,10 @@ where
 benchmarks! {
 	where_clause {
 	where
-		PoolIdOf<T>: From<u32>,
 		T::Balance: From<u128>,
 		T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
-		T::LoanId: From<u16>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 	}
 
