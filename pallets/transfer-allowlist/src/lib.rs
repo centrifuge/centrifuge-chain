@@ -105,7 +105,7 @@ pub mod pallet {
 		transactional, Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
-	use sp_runtime::traits::AtLeast32BitUnsigned;
+	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
 	use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 	use super::*;
@@ -263,7 +263,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[transactional]
 		#[pallet::call_index(0)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		/// Adds a transfer allowance for a sending Account/Currency.
 		/// Allowance starts at allowed_at, and ends at blocked_at.
 		/// Important! Account/Currency sets with an allowance set are restricted to just the allowances added for the account -
@@ -272,28 +272,30 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
 			receiver: Location<T>,
-			allowed_at: BlockNumberOf<T>,
-			blocked_at: BlockNumberOf<T>,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
+			let allowance_details = match Self::sender_currency_delay(&account_id, currency_id) {
+				Some(delay) => AllowanceDetails {
+					blocked_at: <frame_system::Pallet<T>>::block_number().saturating_add(delay),
+					..AllowanceDetails::default()
+				},
+				_ => AllowanceDetails::default(),
+			};
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
 			{
 				None => {
 					<AccountCurrencyTransferAllowance<T>>::insert(
 						(&account_id, &currency_id, &receiver),
-						AllowanceDetails {
-							allowed_at,
-							blocked_at,
-						},
+						&allowance_details,
 					);
 					Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
 					Self::deposit_event(Event::TransferAllowanceCreated {
 						sender_account_id: account_id,
 						currency_id,
 						receiver,
-						allowed_at,
-						blocked_at,
+						allowed_at: allowance_details.allowed_at,
+						blocked_at: allowance_details.blocked_at,
 					});
 					Ok(())
 				}
