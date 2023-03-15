@@ -1,6 +1,9 @@
 use cfg_primitives::CFG;
 use cfg_traits::{InterestAccrual, Permissions, PoolBenchmarkHelper};
-use cfg_types::permissions::{PermissionScope, PoolRole, Role};
+use cfg_types::{
+	adjustments::Adjustment,
+	permissions::{PermissionScope, PoolRole, Role},
+};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
@@ -21,6 +24,12 @@ const OFFSET: Duration = Duration::from_secs(120);
 const COLLECION_ID: u16 = 42;
 const COLLATERAL_VALUE: u128 = 1_000_000;
 const FUNDS: u128 = 1_000_000_000;
+
+type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
+	<T as Config>::Rate,
+	<T as Config>::Balance,
+	Adjustment<<T as Config>::Balance>,
+>>::MaxRateCount;
 
 struct Helper<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Helper<T>
