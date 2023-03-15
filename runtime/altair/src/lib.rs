@@ -1269,14 +1269,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		update: &Self::ScheduledUpdateDetails,
 		now: Self::Moment,
 	) -> bool {
-		// The epoch in which the redemptions were fulfilled,
-		// should have closed after the scheduled time already,
-		// to ensure that investors had the `MinUpdateDelay`
-		// to submit their redemption orders.
-		if now < pool.epoch.last_closed {
-			return false;
-		}
-
 		let pool_id = pool.tranches.of_pool();
 
 		// We do not allow releasing updates during epoch
