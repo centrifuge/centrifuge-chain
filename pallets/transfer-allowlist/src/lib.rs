@@ -240,8 +240,16 @@ pub mod pallet {
 			allowed_at: BlockNumberOf<T>,
 			blocked_at: BlockNumberOf<T>,
 		},
-		/// Event for successful removal of a tra
+		/// Event for successful removal of transfer allowance perms
 		TransferAllowanceRemoved {
+			sender_account_id: AccountIdOf<T>,
+			currency_id: CurrencyIdOf<T>,
+			receiver: Location<T>,
+			allowed_at: BlockNumberOf<T>,
+			blocked_at: BlockNumberOf<T>,
+		},
+		/// Event for successful removal of transfer allowance perms
+		TransferAllowancePurged {
 			sender_account_id: AccountIdOf<T>,
 			currency_id: CurrencyIdOf<T>,
 			receiver: Location<T>,
@@ -270,6 +278,8 @@ pub mod pallet {
 		/// or block 0 if no delay is present.
 		/// Important! Account/Currency sets with an allowance set are restricted to just the allowances added for the account -
 		/// to have unrestricted transfers allowed for the sending Account and Currency, no allowances should be present.
+		///
+		/// Running this for an existing allowance generates a new allowance based on the current delay, or lack thereof
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
@@ -309,6 +319,9 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(1)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		/// Restricts a transfer allowance for a sending account/currency/receiver location to:
+		/// - either the current block + delay if a delay is set
+		/// - or the current block if no delay is set
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
@@ -331,8 +344,7 @@ pub mod pallet {
 						(&account_id, &currency_id, &receiver),
 						&allowance_details,
 					);
-					Self::decrement_or_remove_allowance_count(&account_id, &currency_id)?;
-					Self::deposit_event(Event::TransferAllowanceCreated {
+					Self::deposit_event(Event::TransferAllowanceRemoved {
 						sender_account_id: account_id,
 						currency_id,
 						receiver,
@@ -348,6 +360,8 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(2)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
+		/// Removes a transfer allowance for a sending account/currency and receiving location
+		/// Decrements or removes the sending account/currency count.
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
@@ -363,7 +377,7 @@ pub mod pallet {
 						&receiver,
 					));
 					Self::decrement_or_remove_allowance_count(&account_id, &currency_id)?;
-					Self::deposit_event(Event::TransferAllowanceRemoved {
+					Self::deposit_event(Event::TransferAllowancePurged {
 						sender_account_id: account_id,
 						currency_id,
 						receiver,
@@ -377,6 +391,8 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(3)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		/// Adds an account/currency delay
+		/// Calling on an existing combination will update the existing delay value
 		pub fn add_or_update_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
@@ -395,6 +411,7 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::call_index(4)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		/// Removes an existing sending account/currency delay
 		pub fn remove_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
