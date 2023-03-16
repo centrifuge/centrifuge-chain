@@ -6479,6 +6479,7 @@ dependencies = [
 name = "pallet-liquidity-rewards"
 version = "0.1.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-traits",
  "frame-benchmarking",
  "frame-support",

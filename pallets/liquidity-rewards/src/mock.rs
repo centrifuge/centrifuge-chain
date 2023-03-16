@@ -22,6 +22,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Liquidity: pallet_liquidity_rewards,
+		MockRewards: cfg_mocks::pallet_mock_rewards,
 	}
 );
 
@@ -62,7 +63,11 @@ frame_support::parameter_types! {
 	pub const LiquidityDomain: u8 = DOMAIN;
 }
 
-pub type MockRewards = cfg_traits::rewards::mock::MockRewards<u64, u32, (u8, u32), u64>;
+impl cfg_mocks::pallet_mock_rewards::Config for Test {
+	type Balance = u64;
+	type CurrencyId = (u8, u32);
+	type GroupId = u32;
+}
 
 impl pallet_liquidity_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<u64>;
