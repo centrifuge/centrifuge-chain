@@ -503,7 +503,7 @@ pub mod pallet {
 
 		fn allowance(
 			send: T::AccountId,
-			recieve: T::AccountId,
+			receive: T::AccountId,
 			currency: T::CurrencyId,
 		) -> Result<bool, DispatchError> {
 			match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
@@ -512,7 +512,35 @@ pub mod pallet {
 					match <AccountCurrencyTransferAllowance<T>>::get((
 						&send,
 						&currency,
-						Location::Local(recieve),
+						Location::Local(receive),
+					)) {
+						Some(AllowanceDetails {
+							allowed_at: allowed_at,
+							blocked_at: blocked_at,
+						}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
+						_ => Ok(false),
+					}
+				}
+				_ => Ok(true),
+			}
+		}
+	}
+
+	impl<T: Config> TransferAllowance<T::AccountId, MultiLocation> for Pallet<T> {
+		type CurrencyId = T::CurrencyId;
+
+		fn allowance(
+			send: T::AccountId,
+			receive: MultiLocation,
+			currency: T::CurrencyId,
+		) -> Result<bool, DispatchError> {
+			match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
+				Some(count) if count > 0 => {
+					let current_block = <frame_system::Pallet<T>>::block_number();
+					match <AccountCurrencyTransferAllowance<T>>::get((
+						&send,
+						&currency,
+						receive.into(),
 					)) {
 						Some(AllowanceDetails {
 							allowed_at: allowed_at,
