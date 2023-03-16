@@ -72,6 +72,13 @@ impl From<u32> for CurrencyId {
 	}
 }
 
+// A shortcut anchoring the assumption made about `StakingCurrency`.
+impl From<StakingCurrency> for CurrencyId {
+	fn from(inner: StakingCurrency) -> Self {
+		CurrencyId::Staking(inner)
+	}
+}
+
 /// A Currency that is solely used by tranches.
 ///
 /// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
