@@ -265,7 +265,9 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		/// Adds a transfer allowance for a sending Account/Currency.
-		/// Allowance starts at allowed_at, and ends at blocked_at.
+		/// Allowance either starts at the current block + the delay set for the account,
+		/// if a delay is present.
+		/// or block 0 if no delay is present.
 		/// Important! Account/Currency sets with an allowance set are restricted to just the allowances added for the account -
 		/// to have unrestricted transfers allowed for the sending Account and Currency, no allowances should be present.
 		pub fn add_transfer_allowance(
@@ -277,19 +279,59 @@ pub mod pallet {
 
 			let allowance_details = match Self::sender_currency_delay(&account_id, currency_id) {
 				Some(delay) => AllowanceDetails {
-					blocked_at: <frame_system::Pallet<T>>::block_number().saturating_add(delay),
+					allowed_at: <frame_system::Pallet<T>>::block_number().saturating_add(delay),
 					..AllowanceDetails::default()
 				},
 				_ => AllowanceDetails::default(),
 			};
+			if !<AccountCurrencyTransferAllowance<T>>::contains_key((
+				&account_id,
+				&currency_id,
+				&receiver,
+			)) {
+				Self::increment_or_create_allowance_count(&account_id, &currency_id)?
+			};
+			<AccountCurrencyTransferAllowance<T>>::insert(
+				(&account_id, &currency_id, &receiver),
+				&allowance_details,
+			);
+
+			Self::deposit_event(Event::TransferAllowanceCreated {
+				sender_account_id: account_id,
+				currency_id,
+				receiver,
+				allowed_at: allowance_details.allowed_at,
+				blocked_at: allowance_details.blocked_at,
+			});
+			Ok(())
+		}
+
+		#[transactional]
+		#[pallet::call_index(1)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		pub fn remove_transfer_allowance(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			receiver: Location<T>,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+
+			let blocked_at = match Self::sender_currency_delay(&account_id, currency_id) {
+				Some(delay) => <frame_system::Pallet<T>>::block_number().saturating_add(delay),
+				_ => <frame_system::Pallet<T>>::block_number(),
+			};
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
 			{
-				None => {
+				Some(existing_allowance) => {
+					let allowance_details = AllowanceDetails {
+						blocked_at: blocked_at.clone(),
+						..existing_allowance
+					};
 					<AccountCurrencyTransferAllowance<T>>::insert(
 						(&account_id, &currency_id, &receiver),
 						&allowance_details,
 					);
-					Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
+					Self::decrement_or_remove_allowance_count(&account_id, &currency_id)?;
 					Self::deposit_event(Event::TransferAllowanceCreated {
 						sender_account_id: account_id,
 						currency_id,
@@ -299,14 +341,14 @@ pub mod pallet {
 					});
 					Ok(())
 				}
-				Some(_) => Err(DispatchError::from(Error::<T>::ConflictingAllowanceSet)),
+				None => Err(DispatchError::from(Error::<T>::NoMatchingAllowance)),
 			}
 		}
 
 		#[transactional]
-		#[pallet::call_index(1)]
+		#[pallet::call_index(2)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
-		pub fn remove_transfer_allowance(
+		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
 			receiver: Location<T>,
@@ -333,7 +375,7 @@ pub mod pallet {
 		}
 
 		#[transactional]
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
 		pub fn add_or_update_allowance_delay(
 			origin: OriginFor<T>,
@@ -351,7 +393,7 @@ pub mod pallet {
 		}
 
 		#[transactional]
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
 		pub fn remove_allowance_delay(
 			origin: OriginFor<T>,
