@@ -28,7 +28,7 @@ and another one to verify how it works in a more real environment as a parachain
 The following command will run the unit and integration tests:
 
 ```bash
-cargo +nightly test --workspace --release --features runtime-benchmarks,try-runtime
+cargo test --workspace --features runtime-benchmarks,try-runtime
 ```
 
 ### Environment tests
@@ -84,7 +84,7 @@ You can play with it from the parachain client, make transfers, inspect events, 
 ## Linting
 
 ### Source code
-Lint the source code with `cargo +nightly fmt`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.
+Lint the source code with `cargo fmt`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.
 
 ### Cargo.toml files
 1. Install [taplo](https://github.com/tamasfe/taplo) with `cargo install taplo-cli`.
