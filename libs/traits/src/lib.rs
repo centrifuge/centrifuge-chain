@@ -184,6 +184,20 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
 }
 
+/// Utility to benchmark pools easily
+#[cfg(feature = "runtime-benchmarks")]
+pub trait PoolBenchmarkHelper {
+	type PoolId;
+	type AccountId;
+	type Balance;
+
+	/// Create a benchmark pool giving the id and the admin.
+	fn benchmark_create_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
+
+	/// Give AUSD to the account
+	fn benchmark_give_ausd(account: &Self::AccountId, balance: Self::Balance);
+}
+
 /// A trait that can be used to retrieve the current price for a currency
 pub struct CurrencyPair<CurrencyId> {
 	pub base: CurrencyId,
@@ -622,176 +636,5 @@ pub mod fees {
 			from: &Self::AccountId,
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
-	}
-
-	pub struct NoFees<AccountId, Balance>(sp_std::marker::PhantomData<(AccountId, Balance)>);
-
-	impl<A, B: Balance> Fees for NoFees<A, B> {
-		type AccountId = A;
-		type Balance = B;
-		type FeeKey = ();
-
-		fn fee_value(_: Self::FeeKey) -> Self::Balance {
-			Self::Balance::default()
-		}
-
-		fn fee_to_author(
-			_: &Self::AccountId,
-			_: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult {
-			Ok(())
-		}
-
-		fn fee_to_burn(_: &Self::AccountId, _: Fee<Self::Balance, Self::FeeKey>) -> DispatchResult {
-			Ok(())
-		}
-
-		fn fee_to_treasury(
-			_: &Self::AccountId,
-			_: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult {
-			Ok(())
-		}
-	}
-
-	#[cfg(feature = "std")]
-	pub mod test_util {
-		use std::{cell::RefCell, thread::LocalKey};
-
-		use frame_support::{
-			dispatch::DispatchResult,
-			traits::{tokens::Balance, Get},
-		};
-
-		use super::{Fee, FeeKey, Fees};
-
-		pub struct FeeState<Author, Balance> {
-			pub author: Author,
-			pub balance: Balance,
-		}
-
-		pub struct FeesState<Author, Balance, KeyFee> {
-			pub author_fees: Vec<FeeState<Author, Balance>>,
-			pub burn_fees: Vec<FeeState<Author, Balance>>,
-			pub treasury_fees: Vec<FeeState<Author, Balance>>,
-			pub initializer: Box<dyn Fn(KeyFee) -> Balance + 'static>,
-		}
-
-		impl<A, B, K> FeesState<A, B, K> {
-			pub fn no_fees(&self) -> bool {
-				self.author_fees.is_empty()
-					&& self.burn_fees.is_empty()
-					&& self.treasury_fees.is_empty()
-			}
-		}
-
-		impl<A, B, K> FeesState<A, B, K> {
-			pub fn new(initializer: impl Fn(K) -> B + 'static) -> Self {
-				Self {
-					author_fees: Default::default(),
-					burn_fees: Default::default(),
-					treasury_fees: Default::default(),
-					initializer: Box::new(initializer),
-				}
-			}
-		}
-
-		#[macro_export]
-		macro_rules! impl_mock_fees_state {
-			($name:ident, $account:ty, $balance:ty, $feekey:ty, $initializer:expr) => {
-				use std::{cell::RefCell, thread::LocalKey};
-
-				use cfg_traits::fees::test_util::FeesState;
-
-				thread_local! {
-					pub static STATE: RefCell<
-						FeesState<$account, $balance, $feekey>,
-					> = RefCell::new(FeesState::new($initializer));
-				}
-
-				parameter_types! {
-					pub $name: &'static LocalKey<
-						RefCell<FeesState<$account, $balance, $feekey>>
-					> = &STATE;
-				}
-			};
-		}
-
-		pub struct MockFees<AccountId, Balance, FeeKey, State>(
-			sp_std::marker::PhantomData<(AccountId, Balance, FeeKey, State)>,
-		);
-
-		impl<
-				A: Clone + 'static,
-				B: Balance + 'static,
-				K: FeeKey + 'static,
-				S: Get<&'static LocalKey<RefCell<FeesState<A, B, K>>>>,
-			> Fees for MockFees<A, B, K, S>
-		{
-			type AccountId = A;
-			type Balance = B;
-			type FeeKey = K;
-
-			fn fee_value(key: Self::FeeKey) -> Self::Balance {
-				S::get().with(|state| (state.borrow().initializer)(key))
-			}
-
-			fn fee_to_author(
-				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
-			) -> DispatchResult {
-				let balance = Self::balance(fee);
-				S::get().with(|state| {
-					state.borrow_mut().author_fees.push(FeeState {
-						author: author.clone(),
-						balance,
-					});
-				});
-				Ok(())
-			}
-
-			fn fee_to_burn(
-				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
-			) -> DispatchResult {
-				let balance = Self::balance(fee);
-				S::get().with(|state| {
-					state.borrow_mut().burn_fees.push(FeeState {
-						author: author.clone(),
-						balance,
-					});
-				});
-				Ok(())
-			}
-
-			fn fee_to_treasury(
-				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
-			) -> DispatchResult {
-				let balance = Self::balance(fee);
-				S::get().with(|state| {
-					state.borrow_mut().treasury_fees.push(FeeState {
-						author: author.clone(),
-						balance,
-					});
-				});
-				Ok(())
-			}
-		}
-
-		impl<
-				A: Clone + 'static,
-				B: Balance + 'static,
-				K: FeeKey + 'static,
-				S: Get<&'static LocalKey<RefCell<FeesState<A, B, K>>>>,
-			> MockFees<A, B, K, S>
-		{
-			fn balance(fee: Fee<B, K>) -> B {
-				match fee {
-					Fee::Balance(balance) => balance,
-					Fee::Key(key) => Self::fee_value(key),
-				}
-			}
-		}
 	}
 }

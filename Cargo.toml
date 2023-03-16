@@ -49,6 +49,7 @@ members = [
   "pallets/keystore",
   "pallets/liquidity-rewards",
   "pallets/loans",
+  "pallets/loans-ref",
   "pallets/migration",
   "pallets/nft",
   "pallets/nft-sales",
@@ -211,10 +212,6 @@ runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm/runtime-benchmarks",
-]
-test-benchmarks = [
-  "runtime-benchmarks",
-  "runtime-integration-tests/runtime-benchmarks",
 ]
 cli = [
   "try-runtime-cli",

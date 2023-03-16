@@ -37,6 +37,8 @@ pallet-randomness-collective-flip = { git = "https://github.com/paritytech/subst
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
+cfg-mocks = { path = "../../libs/mocks" }
+
 [features]
 default = ["std"]
 runtime-benchmarks = [

@@ -50,8 +50,9 @@ benchmarks! {
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
-		T::NAV: PoolNAV<T::PoolId, T::Balance, RuntimeOrigin = T::RuntimeOrigin, ClassId = u64>,
+		T::NAV: PoolNAV<T::PoolId, T::Balance, RuntimeOrigin = T::RuntimeOrigin>,
 		T::Permission: Permissions<T::AccountId, Ok = ()>,
+		<T::NAV as PoolNAV<T::PoolId, T::Balance>>::ClassId: From<u16>,
 	}
 
 	set_max_reserve {
@@ -71,7 +72,7 @@ benchmarks! {
 		let n in 1..T::MaxTranches::get();
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
 	verify {
@@ -85,7 +86,7 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;
@@ -102,7 +103,7 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE / 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;
@@ -119,7 +120,7 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;
@@ -146,7 +147,7 @@ benchmarks! {
 		let admin: T::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(n, admin.clone())?;
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0.into())?;
 		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
 		let investor = create_investor::<T>(0, TRANCHE)?;

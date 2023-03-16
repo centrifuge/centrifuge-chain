@@ -28,7 +28,7 @@ and another one to verify how it works in a more real environment as a parachain
 The following command will run the unit and integration tests:
 
 ```bash
-cargo +nightly test --workspace --release --features test-benchmarks,try-runtime
+cargo +nightly test --workspace --release --features runtime-benchmarks,try-runtime
 ```
 
 ### Environment tests
@@ -168,16 +168,16 @@ _Note: When we say "new version of Polkadot", we implicitly mean "Polkadot, Subs
 
 The high level flow to upgrade to a newer version of Polkadot is:
 
-1. Update all the Centrifuge-Chain dependencies to a revision that also points to the last version of Polkadot 
+1. Update all the Centrifuge-Chain dependencies to a revision that also points to the last version of Polkadot
 2. Fix all the breaking changes introduced by the latest versions
 
 
-### 1. Update dependencies 
+### 1. Update dependencies
 
 0. **Update the `cargo patch` rules in `Cargo.toml`**
 
     The cargo patch rules ensure that we use specific revision for Substrate, Polkadot, Cumulus, and others, by
-    pointing to a specific git revision. For each of the projects covered by these rules, look up the latest git 
+    pointing to a specific git revision. For each of the projects covered by these rules, look up the latest git
     revision for the new release and find-replace all in the root `Cargo.toml` file.
 
 
@@ -186,7 +186,7 @@ The high level flow to upgrade to a newer version of Polkadot is:
     This CLI tool will automatically update all the versions used across all Cargo.toml files to the version you specify.
     ```shell
     export POLKADOT_NEW_VERSION="<version>"; # for example, 0.9.32
-    
+
     diener update --polkadot --branch release-v$POLKADOT_NEW_VERSION;
     diener update --substrate --branch polkadot-v$POLKADOT_NEW_VERSION;
     diener update --cumulus --branch polkadot-v$POLKADOT_NEW_VERSION;
@@ -214,26 +214,26 @@ by the new versions will have to be dealt with manually afterwards.
 
 4. **Repeat step 3. for other third-party dependencies that also depend on Polkadot/Substrate/Cumulus**
 
-    If any of the third-party projects we depend on don't yet have a branch or release for the new Polkadot version, 
+    If any of the third-party projects we depend on don't yet have a branch or release for the new Polkadot version,
     either wait or fork said project and run step 1 for it and open a PR and point that revision.
    - [`orml` pallets](https://github.com/open-web3-stack/open-runtime-module-library)
    - [xcm-simulator](https://github.com/shaunxw/xcm-simulator)
    - etc
-   
+
 
 5. **Build and test the project and migrate any new introduced changes**
 
-    Now that all dependencies are aligned with the latest version of Polkadot, run build and test commands and address 
-    any compilation issue. 
+    Now that all dependencies are aligned with the latest version of Polkadot, run build and test commands and address
+    any compilation issue.
 
 ### Troubleshooting
 
 If you face compilation errors like "type X doesn't implement trait Y", and the compiler
 doesn't suggest you import any particular trait, experience is that there are different versions
-of Polkadot|Substrate|Cumulus being pulled; The `cargo patch` rules in `Cargo.toml` should be handling that so if this 
-still happens it's likely because some new crate of Polkadot|Substrate|Cumulus is being pulled directly or indirectly 
-and we need to include that crate in the appropriate `cargo patch` rule. 
-Running `nix --extra-experimental-features "nix-command flakes" build` should fail if multiple versions of a crate is 
+of Polkadot|Substrate|Cumulus being pulled; The `cargo patch` rules in `Cargo.toml` should be handling that so if this
+still happens it's likely because some new crate of Polkadot|Substrate|Cumulus is being pulled directly or indirectly
+and we need to include that crate in the appropriate `cargo patch` rule.
+Running `nix --extra-experimental-features "nix-command flakes" build` should fail if multiple versions of a crate is
 being pulled and, therefore, not yet being handled by any `cargo patch` rules, making it very easy to spot the crate
 causing the trouble.
 

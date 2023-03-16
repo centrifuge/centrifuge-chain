@@ -83,6 +83,3 @@ try-runtime = [
   "orml-asset-registry/try-runtime",
   "pallet-investments/try-runtime",
 ]
-test-benchmarks = [
-  "frame-support/try-runtime",
-]

@@ -18,7 +18,7 @@ pub mod pallet_crowdloan_claim;
 pub mod pallet_crowdloan_reward;
 pub mod pallet_fees;
 pub mod pallet_keystore;
-pub mod pallet_loans;
+pub mod pallet_loans_ref;
 pub mod pallet_migration_manager;
 pub mod pallet_nft_sales;
 pub mod pallet_permissions;

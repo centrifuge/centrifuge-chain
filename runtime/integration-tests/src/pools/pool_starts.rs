@@ -12,7 +12,6 @@
 use cfg_primitives::{AccountId, Address, Balance, ItemId};
 use cfg_types::{fixed_point::Rate, permissions::PoolRole};
 use fudge::primitives::Chain;
-use pallet_loans::types::Asset;
 use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError};
 use tokio::runtime::Handle;
 
@@ -21,7 +20,7 @@ use crate::{
 	utils::{
 		accounts::Keyring,
 		env::{ChainState, EventRange},
-		loans::{borrow_call, init_loans_for_pool, issue_default_loan, NftManager},
+		loans::{borrow_call, issue_default_loan, NftManager},
 		pools::{default_pool_calls, permission_call},
 		time::secs::SECONDS_PER_DAY,
 		tokens::DECIMAL_BASE_12,
@@ -30,7 +29,7 @@ use crate::{
 };
 
 #[tokio::test]
-async fn create_init_and_price() {
+async fn create_loan() {
 	let mut env = {
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
@@ -64,10 +63,8 @@ async fn create_init_and_price() {
 		RuntimeEvent,
 		EventRange::All,
 		RuntimeEvent::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
-		RuntimeEvent::PoolRegistry(pallet_pool_registry::Event::Registered { pool_id, .. }) if [pool_id == 0],
-		RuntimeEvent::Loans(pallet_loans::Event::PoolInitialised{pool_id}) if [pool_id == 0],
-		RuntimeEvent::Loans(pallet_loans::Event::Created{pool_id, loan_id, collateral})
-			if [pool_id == 0 && loan_id == ItemId(1) && collateral == Asset(4294967296, ItemId(1))],
-		RuntimeEvent::Loans(pallet_loans::Event::Priced{pool_id, loan_id, ..}) if [pool_id == 0 && loan_id == ItemId(1)],
+		RuntimeEvent::PoolRegistry(pallet_pool_registry::Event::Registered { pool_id, .. }) if [*pool_id == 0],
+		RuntimeEvent::Loans(pallet_loans::Event::Created{ pool_id, loan_id, loan_info })
+			if [*pool_id == 0 && *loan_id == 1 && *loan_info.collateral() == (4294967296, ItemId(1))],
 	);
 }

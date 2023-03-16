@@ -43,6 +43,8 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 
+cfg-mocks = { path = "../../libs/mocks" }
+
 [features]
 default = ["std"]
 runtime-benchmarks = [

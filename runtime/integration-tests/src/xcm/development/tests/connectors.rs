@@ -141,9 +141,6 @@ fn add_tranche() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
-		Loans::update_nav(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
-			.expect("Should update nav");
-
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when given a valid pool + tranche id pair.
 		assert_ok!(Connectors::add_tranche(
@@ -172,9 +169,6 @@ fn update_member() {
 			.tranches
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
-
-		Loans::update_nav(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
-			.expect("Should update nav");
 
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when given a valid pool + tranche id pair.
@@ -249,21 +243,6 @@ fn update_token_price() {
 			.tranches
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
-
-		// Verify we first need to call `Loands::update_nav`
-		// Verify it fails if the origin is not a MemberListAdmin
-		assert_noop!(
-			Connectors::update_token_price(
-				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
-				tranche_id.clone(),
-				Domain::EVM(1284),
-			),
-			pallet_connectors::Error::<development_runtime::Runtime>::MissingTranchePrice
-		);
-
-		Loans::update_nav(RuntimeOrigin::signed(ALICE.into()), pool_id.clone())
-			.expect("Should update nav");
 
 		// Verify it now works
 		assert_ok!(Connectors::update_token_price(

@@ -12,6 +12,7 @@
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
+use sp_runtime::traits::One;
 
 use super::*;
 
@@ -34,6 +35,14 @@ fn day<T: From<u64>>(n: u64) -> T {
 	T::from(common::MILLISECS_PER_DAY * n + 1)
 }
 
+#[cfg(test)]
+fn config_mocks() {
+	use crate::mock::MockFees;
+
+	MockFees::mock_fee_value(|_| 0);
+	MockFees::mock_fee_to_author(|_, _| Ok(()));
+}
+
 benchmarks! {
 	where_clause {
 		where
@@ -43,6 +52,9 @@ benchmarks! {
 	}
 
 	pre_commit {
+		#[cfg(test)]
+		config_mocks();
+
 		let caller = whitelisted_caller();
 
 		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
@@ -56,6 +68,9 @@ benchmarks! {
 	}
 
 	commit {
+		#[cfg(test)]
+		config_mocks();
+
 		let caller = whitelisted_caller();
 		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
 		T::Currency::make_free_balance_be(&caller, required_deposit);
@@ -71,6 +86,9 @@ benchmarks! {
 
 	}: _(RawOrigin::Signed(caller.clone()), pre_image, DOC_ROOT.into(), PROOF.into(), day(1))
 	verify {
+		#[cfg(test)]
+		config_mocks();
+
 		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
 		T::Currency::make_free_balance_be(&caller, required_deposit);
 
@@ -79,6 +97,9 @@ benchmarks! {
 	}
 
 	evict_pre_commits {
+		#[cfg(test)]
+		config_mocks();
+
 		let caller = whitelisted_caller();
 		let required_deposit = T::Fees::fee_value(T::PreCommitDepositFeeKey::get());
 
@@ -109,6 +130,9 @@ benchmarks! {
 	}
 
 	evict_anchors {
+		#[cfg(test)]
+		config_mocks();
+
 		let caller = whitelisted_caller();
 
 		for i in 0..MAX_LOOP_IN_TX {
@@ -124,7 +148,7 @@ benchmarks! {
 			)?;
 		}
 
-		cfg_utils::set_block_number_timestamp::<T>(Default::default(), day(MAX_LOOP_IN_TX));
+		cfg_utils::set_block_number_timestamp::<T>(One::one(), day(MAX_LOOP_IN_TX));
 
 	}: _(RawOrigin::Signed(caller))
 	verify {

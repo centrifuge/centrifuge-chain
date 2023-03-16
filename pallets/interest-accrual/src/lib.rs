@@ -32,7 +32,7 @@
 //! ```text
 //!                    ar = accumulated rate
 //!                    nd = normalized debt
-//!       
+//!
 //!            │
 //!        2.0 │                             ****
 //!            │                         ****
@@ -45,7 +45,7 @@
 //!        1.0 │ **
 //!            └──────────────────────────────────
 //!            │              │
-//!                            
+//!
 //!            borrow 10      borrow 20
 //!            ar   = 1.0     ar   = 1.5
 //!            nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
@@ -502,7 +502,7 @@ pub mod pallet {
 			let four_decimals = T::InterestRate::saturating_from_integer(10000);
 			ensure!(
 				interest_rate_per_year < One::one()
-					&& interest_rate_per_year > Zero::zero()
+					&& interest_rate_per_year >= Zero::zero()
 					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
 						== Zero::zero(),
 				Error::<T>::InvalidRate

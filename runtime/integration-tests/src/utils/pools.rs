@@ -171,7 +171,9 @@ pub fn pool_setup_calls(
 		pool_id,
 		num_tranches as u32,
 	));
-	calls.extend(super::loans::init_loans_for_pool(admin, pool_id, nfts));
+
+	let collateral_class = nfts.collateral_class_id(pool_id);
+	calls.push(super::loans::create_nft_call(admin, collateral_class));
 	calls
 }
 
@@ -431,11 +433,12 @@ mod with_ext {
 	/// **Needs: Externalities**
 	///
 	/// NOTE:
-	/// * update_nav() is called with Keyring::Admin as calley
+	/// * update_portfolio_valuation() is called with Keyring::Admin as calley
 	pub fn get_tranche_prices(pool: PoolId) -> Vec<Rate> {
 		let now = Timestamp::now();
 		let mut details = PoolSystem::pool(pool).expect("POOLS: Getting pool failed.");
-		Loans::update_nav(Keyring::Admin.into(), pool).expect("LOANS: UpdatingNav failed");
+		Loans::update_portfolio_valuation(Keyring::Admin.into(), pool)
+			.expect("LOANS: UpdatingNav failed");
 		let (epoch_nav, _) =
 			<Loans as PoolNAV<PoolId, Balance>>::nav(pool).expect("LOANS: Getting NAV failed");
 

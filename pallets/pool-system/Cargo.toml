@@ -97,6 +97,3 @@ try-runtime = [
   "pallet-permissions/try-runtime",
   "pallet-timestamp/try-runtime",
 ]
-test-benchmarks = [
-  "frame-support/try-runtime",
-]
