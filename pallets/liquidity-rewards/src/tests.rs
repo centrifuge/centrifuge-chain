@@ -133,8 +133,6 @@ fn epoch_change_from_advanced_state() {
 
 #[test]
 fn currency_changes() {
-	let _m = cfg_traits::rewards::mock::lock();
-
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
 		assert_ok!(Liquidity::set_currency_group(
@@ -149,13 +147,12 @@ fn currency_changes() {
 			Some(&GROUP_A)
 		);
 
-		let ctx = MockRewards::attach_currency_context();
-		ctx.expect()
-			.once()
-			.withf(|(domain, currency_id), group_id| {
-				*domain == DOMAIN && *currency_id == CURRENCY_ID_A && *group_id == GROUP_A
-			})
-			.return_const(Ok(()));
+		MockRewards::mock_attach_currency(|(domain, currency_id), group_id| {
+			assert_eq!(domain, DOMAIN);
+			assert_eq!(currency_id, CURRENCY_ID_A);
+			assert_eq!(group_id, GROUP_A);
+			Ok(())
+		});
 
 		Liquidity::on_initialize(INITIAL_EPOCH_DURATION);
 
@@ -174,8 +171,6 @@ fn weight_changes() {
 	const WEIGHT_1: u64 = 1;
 	const WEIGHT_2: u64 = 2;
 	const REWARD: u64 = 100;
-
-	let _m = cfg_traits::rewards::mock::lock();
 
 	new_test_ext().execute_with(|| {
 		// EPOCH 0
@@ -224,21 +219,18 @@ fn weight_changes() {
 			Some(&WEIGHT_2)
 		);
 
-		let ctx1 = MockRewards::is_ready_context();
-		ctx1.expect().return_const(true);
-
-		let ctx2 = MockRewards::reward_group_context();
-		ctx2.expect()
-			.times(2)
-			.withf(|group_id, rewards| {
-				*rewards
-					== match *group_id {
-						GROUP_A => REWARD * WEIGHT_1 / (WEIGHT_1 + WEIGHT_2),
-						GROUP_B => REWARD * WEIGHT_2 / (WEIGHT_1 + WEIGHT_2),
-						_ => unreachable!(),
-					}
-			})
-			.returning(|_, rewards| Ok(rewards));
+		MockRewards::mock_is_ready(|_| true);
+		MockRewards::mock_reward_group(|group_id, rewards| {
+			assert_eq!(
+				rewards,
+				match group_id {
+					GROUP_A => REWARD * WEIGHT_1 / (WEIGHT_1 + WEIGHT_2),
+					GROUP_B => REWARD * WEIGHT_2 / (WEIGHT_1 + WEIGHT_2),
+					_ => unreachable!(),
+				}
+			);
+			Ok(rewards)
+		});
 
 		Liquidity::on_initialize(INITIAL_EPOCH_DURATION * 3);
 	});

@@ -12,41 +12,17 @@ const GROUP_B: u32 = 101;
 const WEIGHT: u32 = 23;
 const CURRENCY_ID_A: u32 = 42;
 
-fn init_test_mock_with_expectations() -> impl Sized {
-	#![allow(unused_variables)]
-	let mock = ();
-
-	// Pallet mock config uses MockRewards that is expected to be configured with some context expectation.
-	// We configure it we some sensible/default values for benchmarks.
+fn init_test_mock() -> impl Sized {
 	#[cfg(test)]
-	let mock = {
-		let lock = cfg_traits::rewards::mock::lock();
-
-		let ctx0 = MockRewards::is_ready_context();
-		ctx0.expect().return_const(true);
-
-		let ctx1 = MockRewards::group_stake_context();
-		ctx1.expect().return_const(100u64);
-
-		let ctx2 = MockRewards::reward_group_context();
-		ctx2.expect().return_const(Ok(0));
-
-		let ctx3 = MockRewards::deposit_stake_context();
-		ctx3.expect().return_const(Ok(()));
-
-		let ctx4 = MockRewards::withdraw_stake_context();
-		ctx4.expect().return_const(Ok(()));
-
-		let ctx5 = MockRewards::claim_reward_context();
-		ctx5.expect().return_const(Ok(0));
-
-		let ctx6 = MockRewards::attach_currency_context();
-		ctx6.expect().return_const(Ok(()));
-
-		(lock, ctx0, ctx1, ctx2, ctx3, ctx4, ctx5, ctx6)
-	};
-
-	mock
+	{
+		MockRewards::mock_is_ready(|_| true);
+		MockRewards::mock_group_stake(|_| 100);
+		MockRewards::mock_reward_group(|_, _| Ok(0));
+		MockRewards::mock_deposit_stake(|_, _, _| Ok(()));
+		MockRewards::mock_withdraw_stake(|_, _, _| Ok(()));
+		MockRewards::mock_claim_reward(|_, _| Ok(0));
+		MockRewards::mock_attach_currency(|_, _| Ok(()));
+	}
 }
 
 benchmarks! {
@@ -64,7 +40,7 @@ benchmarks! {
 		let y in 0..T::MaxChangesPerEpoch::get(); // currency changes
 		let z in 0..T::MaxChangesPerEpoch::get(); // weight changes
 
-		let mock = init_test_mock_with_expectations();
+		init_test_mock();
 
 		for i in 0..x {
 			// Specify weights to have set groups when perform the last on_initialize.
@@ -90,48 +66,36 @@ benchmarks! {
 	}: {
 		Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
 	}
-	verify {
-		drop(mock);
-	}
 
 	stake {
 		let caller = whitelisted_caller();
 
-		let mock = init_test_mock_with_expectations();
+		init_test_mock();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
 		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into(), T::Balance::zero())
-	verify {
-		drop(mock);
-	}
 
 	unstake {
 		let caller = whitelisted_caller();
 
-		let mock = init_test_mock_with_expectations();
+		init_test_mock();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
 		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into(), T::Balance::zero())
-	verify {
-		drop(mock);
-	}
 
 	claim_reward {
 		let caller = whitelisted_caller();
 
-		let mock = init_test_mock_with_expectations();
+		init_test_mock();
 
 		Pallet::<T>::set_currency_group(RawOrigin::Root.into(), CURRENCY_ID_A.into(), GROUP_A.into()).unwrap();
 		Pallet::<T>::on_initialize(T::InitialEpochDuration::get());
 
 	}: _(RawOrigin::Signed(caller), CURRENCY_ID_A.into())
-	verify {
-		drop(mock);
-	}
 
 	set_distributed_reward {
 	}: _(RawOrigin::Root, REWARD.into())
