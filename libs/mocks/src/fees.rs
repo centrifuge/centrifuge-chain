@@ -1,5 +1,5 @@
 #[frame_support::pallet]
-pub mod pallet_mock_fees {
+pub mod pallet {
 	use cfg_traits::fees::{Fee, FeeKey, Fees};
 	use frame_support::{pallet_prelude::*, traits::tokens::Balance};
 	use mock_builder::{execute_call, register_call};

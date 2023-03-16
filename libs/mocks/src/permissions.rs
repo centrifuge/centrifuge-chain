@@ -1,5 +1,5 @@
 #[frame_support::pallet]
-pub mod pallet_mock_permissions {
+pub mod pallet {
 	use cfg_traits::Permissions;
 	use cfg_types::permissions::Role;
 	use frame_support::pallet_prelude::*;
