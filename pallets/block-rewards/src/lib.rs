@@ -339,7 +339,7 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Weight (6 reads, 6 writes):
 	///  * mint_into (2 reads, 2 writes): Account, TotalIssuance
-	///  * deposit_stake (4 reads, 4 writes): Currencies, Groups, StakeAccounts, Account
+	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount, Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
 		T::Currency::mint_into(
 			CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
