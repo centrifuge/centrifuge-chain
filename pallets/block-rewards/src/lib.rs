@@ -39,31 +39,26 @@ pub mod weights;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-use cfg_traits::ops::{EnsureMul, EnsureSub};
-pub use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign},
-	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
+use cfg_traits::{
+	ops::{EnsureAdd, EnsureMul, EnsureSub},
+	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
 };
 use cfg_types::{
 	ids::{COLLATOR_GROUP_ID, DEFAULT_COLLATOR_STAKE},
-	tokens::{CurrencyId as CfgCurrencyId, StakingCurrency},
+	tokens::CurrencyId as CfgCurrencyId,
 };
 use frame_support::{
 	pallet_prelude::*,
+	storage::transactional,
 	traits::{
 		fungibles::Mutate, tokens::Balance, Currency as CurrencyT, OnUnbalanced, OneSessionHandler,
 	},
 	DefaultNoBound,
 };
-pub use frame_support::{
-	storage::{bounded_btree_map::BoundedBTreeMap, transactional},
-	transactional,
-};
 use frame_system::pallet_prelude::*;
 use num_traits::sign::Unsigned;
 pub use pallet::*;
-pub use sp_runtime::Saturating;
-use sp_runtime::{traits::Zero, FixedPointOperand, SaturatedConversion};
+use sp_runtime::{traits::Zero, FixedPointOperand, SaturatedConversion, Saturating};
 use sp_std::{mem, vec::Vec};
 use weights::WeightInfo;
 
@@ -156,6 +151,10 @@ pub mod pallet {
 		type Currency: Mutate<Self::AccountId, AssetId = CfgCurrencyId, Balance = Self::Balance>
 			+ CurrencyT<Self::AccountId>;
 
+		/// The identifier of the artificial block rewards currency which is minted and burned for collators.
+		#[pallet::constant]
+		type StakeCurrency: Get<CfgCurrencyId>;
+
 		/// Max number of changes of the same type enqueued to apply in the next session.
 		/// Max calls to [`Pallet::set_collator_reward()`] or to [`Pallet::set_total_reward()`] with
 		/// the same id.
@@ -239,10 +238,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			T::Rewards::attach_currency(
-				(
-					T::Domain::get(),
-					CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
-				),
+				(T::Domain::get(), T::StakeCurrency::get()),
 				COLLATOR_GROUP_ID,
 			)
 			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
@@ -273,14 +269,8 @@ pub mod pallet {
 		pub fn claim_reward(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			T::Rewards::claim_reward(
-				(
-					T::Domain::get(),
-					CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
-				),
-				&account_id,
-			)
-			.map(|_| ())
+			T::Rewards::claim_reward((T::Domain::get(), T::StakeCurrency::get()), &account_id)
+				.map(|_| ())
 		}
 
 		/// Admin method to set the reward amount for a collator used for the next sessions.
@@ -341,16 +331,9 @@ impl<T: Config> Pallet<T> {
 	///  * mint_into (2 reads, 2 writes): Account, TotalIssuance
 	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount, Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
-		T::Currency::mint_into(
-			CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
-			who,
-			DEFAULT_COLLATOR_STAKE.into(),
-		)?;
+		T::Currency::mint_into(T::StakeCurrency::get(), who, DEFAULT_COLLATOR_STAKE.into())?;
 		T::Rewards::deposit_stake(
-			(
-				T::Domain::get(),
-				CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
-			),
+			(T::Domain::get(), T::StakeCurrency::get()),
 			who,
 			DEFAULT_COLLATOR_STAKE.into(),
 		)
@@ -359,27 +342,9 @@ impl<T: Config> Pallet<T> {
 	/// Withdraw currently staked amount for target address and immediately burn it.
 	/// Disables receiving rewards onwards.
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
-		let amount = T::Rewards::account_stake(
-			(
-				T::Domain::get(),
-				CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
-			),
-			who,
-		);
-		T::Rewards::withdraw_stake(
-			(
-				T::Domain::get(),
-				CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
-			),
-			who,
-			amount,
-		)?;
-		T::Currency::burn_from(
-			CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
-			who,
-			amount,
-		)
-		.map(|_| ())
+		let amount = T::Rewards::account_stake((T::Domain::get(), T::StakeCurrency::get()), who);
+		T::Rewards::withdraw_stake((T::Domain::get(), T::StakeCurrency::get()), who, amount)?;
+		T::Currency::burn_from(T::StakeCurrency::get(), who, amount).map(|_| ())
 	}
 
 	/// Apply session changes and distribute rewards.

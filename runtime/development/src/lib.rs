@@ -27,7 +27,6 @@ use cfg_traits::{
 	rewards::AccountRewards, CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect,
 	PoolNAV, PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
-pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
@@ -36,7 +35,10 @@ use cfg_types::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
 	time::TimeProvider,
-	tokens::{CustomMetadata, TrancheCurrency},
+	tokens::{
+		CurrencyId, CustomMetadata, StakingCurrency::BlockRewards as BlockRewardsCurrency,
+		TrancheCurrency,
+	},
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -1708,6 +1710,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 
 frame_support::parameter_types! {
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
+	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 }
 
 impl pallet_block_rewards::Config for Runtime {
@@ -1721,6 +1724,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type MaxCollators = MaxAuthorities;
 	type Rewards = BlockRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
+	type StakeCurrency = BlockRewardCurrency;
 	type Weight = u64;
 	type WeightInfo = ();
 }
@@ -2127,7 +2131,6 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
-			use pallet_loans::benchmarking::Pallet as LoansPallet;
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 
 

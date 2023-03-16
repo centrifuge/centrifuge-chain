@@ -11,10 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::rewards::CurrencyGroupChange;
-use cfg_types::{
-	ids::COLLATOR_GROUP_ID,
-	tokens::{CurrencyId, StakingCurrency},
-};
+use cfg_types::ids::COLLATOR_GROUP_ID;
 use frame_support::{
 	dispatch::GetStorageVersion,
 	inherent::Vec,
@@ -90,7 +87,7 @@ where
 			<T as Config>::Rewards::attach_currency(
 				(
 					<T as Config>::Domain::get(),
-					CurrencyId::Staking(StakingCurrency::BlockRewards),
+					<T as Config>::StakeCurrency::get(),
 				),
 				COLLATOR_GROUP_ID,
 			)
@@ -148,7 +145,7 @@ where
 			assert!(!<T as Config>::Rewards::account_stake(
 				(
 					<T as Config>::Domain::get(),
-					CurrencyId::Staking(StakingCurrency::BlockRewards),
+					<T as Config>::StakeCurrency::get()::get(),
 				),
 				collator,
 			)

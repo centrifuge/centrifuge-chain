@@ -1,5 +1,5 @@
 use cfg_traits::rewards::AccountRewards;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency};
 use codec::MaxEncodedLen;
 use frame_support::{
 	parameter_types,
@@ -227,6 +227,7 @@ frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCollators: u32 = MAX_COLLATORS;
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
+	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 }
 
 impl pallet_block_rewards::Config for Test {
@@ -240,24 +241,18 @@ impl pallet_block_rewards::Config for Test {
 	type MaxCollators = MaxCollators;
 	type Rewards = Rewards;
 	type RuntimeEvent = RuntimeEvent;
+	type StakeCurrency = BlockRewardCurrency;
 	type Weight = u64;
 	type WeightInfo = ();
 }
 
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
-		<Test as Config>::Currency::balance(
-			CurrencyId::Staking(StakingCurrency::BlockRewards),
-			who
-		),
+		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrency::get(), who),
 		DEFAULT_COLLATOR_STAKE as u128
 	);
 	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(
-			CurrencyId::Staking(StakingCurrency::BlockRewards),
-			who,
-			1
-		),
+		<Test as Config>::Currency::can_withdraw(<Test as Config>::StakeCurrency::get(), who, 1),
 		WithdrawConsequence::NoFunds
 	);
 }
@@ -266,16 +261,14 @@ pub(crate) fn assert_not_staked(who: &AccountId) {
 	assert!(<Test as Config>::Rewards::account_stake(
 		(
 			<Test as Config>::Domain::get(),
-			CurrencyId::Staking(StakingCurrency::BlockRewards)
+			<Test as Config>::StakeCurrency::get()
 		),
 		who
 	)
 	.is_zero());
-	assert!(<Test as Config>::Currency::balance(
-		CurrencyId::Staking(StakingCurrency::BlockRewards),
-		who
-	)
-	.is_zero());
+	assert!(
+		<Test as Config>::Currency::balance(<Test as Config>::StakeCurrency::get(), who).is_zero()
+	);
 }
 
 /// Progress to the given block triggering session changes.

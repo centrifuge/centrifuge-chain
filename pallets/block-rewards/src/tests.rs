@@ -245,7 +245,7 @@ fn single_claim_reward() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&1
 				),
@@ -256,7 +256,7 @@ fn single_claim_reward() {
 				pallet_rewards::Event::RewardClaimed {
 					group_id: COLLATOR_GROUP_ID,
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: CurrencyId::Staking(StakingCurrency::BlockRewards),
+					currency_id: <Test as Config>::StakeCurrency::get(),
 					account_id: 1,
 					amount: REWARD,
 				},
@@ -283,7 +283,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&1
 				),
@@ -301,7 +301,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&1
 				),
@@ -320,7 +320,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&1
 				),
@@ -331,7 +331,7 @@ fn collator_rewards_greater_than_remainder() {
 					<Test as Config>::Rewards::compute_reward(
 						(
 							<Test as Config>::Domain::get(),
-							CurrencyId::Staking(StakingCurrency::BlockRewards)
+							<Test as Config>::StakeCurrency::get()
 						),
 						collator
 					),
@@ -351,7 +351,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&3
 				),
@@ -361,7 +361,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&4
 				),
@@ -371,7 +371,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&5
 				),
@@ -394,7 +394,7 @@ fn late_claiming_works() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&2
 				),
@@ -405,7 +405,7 @@ fn late_claiming_works() {
 				pallet_rewards::Event::RewardClaimed {
 					group_id: COLLATOR_GROUP_ID,
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: CurrencyId::Staking(StakingCurrency::BlockRewards),
+					currency_id: <Test as Config>::StakeCurrency::get(),
 					account_id: 2,
 					amount: REWARD,
 				},
@@ -425,7 +425,7 @@ fn duplicate_claiming_works_but_ineffective() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&2
 				),
@@ -436,7 +436,7 @@ fn duplicate_claiming_works_but_ineffective() {
 				pallet_rewards::Event::RewardClaimed {
 					group_id: COLLATOR_GROUP_ID,
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: CurrencyId::Staking(StakingCurrency::BlockRewards),
+					currency_id: <Test as Config>::StakeCurrency::get(),
 					account_id: 2,
 					amount: REWARD,
 				},
@@ -446,7 +446,7 @@ fn duplicate_claiming_works_but_ineffective() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						CurrencyId::Staking(StakingCurrency::BlockRewards)
+						<Test as Config>::StakeCurrency::get()
 					),
 					&2
 				),
@@ -457,7 +457,7 @@ fn duplicate_claiming_works_but_ineffective() {
 				pallet_rewards::Event::RewardClaimed {
 					group_id: COLLATOR_GROUP_ID,
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: CurrencyId::Staking(StakingCurrency::BlockRewards),
+					currency_id: <Test as Config>::StakeCurrency::get(),
 					account_id: 2,
 					amount: 0,
 				},

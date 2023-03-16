@@ -103,7 +103,7 @@ fn assert_all_staked(v: &[AccountId]) {
 		!<Runtime as pallet_block_rewards::Config>::Rewards::account_stake(
 			(
 				<Runtime as pallet_block_rewards::Config>::Domain::get(),
-				CurrencyId::Staking(StakingCurrency::BlockRewards),
+				<Runtime as pallet_block_rewards::Config>::StakeCurrency::get(),
 			),
 			acc,
 		)
@@ -117,7 +117,7 @@ fn assert_all_not_staked(v: &[AccountId]) {
 		<Runtime as pallet_block_rewards::Config>::Rewards::account_stake(
 			(
 				<Runtime as pallet_block_rewards::Config>::Domain::get(),
-				CurrencyId::Staking(StakingCurrency::BlockRewards),
+				<Runtime as pallet_block_rewards::Config>::StakeCurrency::get(),
 			),
 			acc,
 		)
