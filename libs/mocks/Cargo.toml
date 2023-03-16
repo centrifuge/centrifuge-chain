@@ -22,6 +22,11 @@ cfg-traits = { path = "../traits", default-features = false }
 cfg-types = { path = "../types", default-features = false }
 mock-builder = { path = "../../libs/mock-builder" }
 
+[dev-dependencies]
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+
 [features]
 default = ["std"]
 std = [

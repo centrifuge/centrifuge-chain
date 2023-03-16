@@ -1087,6 +1087,9 @@ dependencies = [
  "mock-builder",
  "parity-scale-codec 3.2.1",
  "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -1128,16 +1131,17 @@ dependencies = [
 name = "cfg-traits"
 version = "0.1.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-primitives",
- "cfg-types",
  "frame-support",
+ "frame-system",
  "impl-trait-for-tuples",
- "lazy_static",
- "mockall",
- "orml-traits",
+ "mock-builder",
  "parity-scale-codec 3.2.1",
  "scale-info",
  "sp-arithmetic",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
