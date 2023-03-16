@@ -1238,7 +1238,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::Native
 			| CurrencyId::KSM
 			| CurrencyId::ForeignAsset(_)
-			| CurrencyId::BlockRewards { .. } => false,
+			| CurrencyId::Staking(_) => false,
 			CurrencyId::AUSD => true,
 		}
 	}

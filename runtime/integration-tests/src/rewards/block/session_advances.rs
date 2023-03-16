@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AccountId;
-use cfg_types::tokens::CurrencyId;
+use cfg_types::tokens::{CurrencyId, StakingCurrency};
 use codec::Encode;
 use fudge::primitives::Chain;
 use pallet_block_rewards::{AccountRewards, COLLATOR_GROUP_ID};
@@ -129,7 +129,7 @@ async fn collator_list_synchronized() {
 				!<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						CurrencyId::BlockRewards,
+						CurrencyId::Staking(StakingCurrency::BlockRewards),
 					),
 					collator.into(),
 				)
@@ -142,7 +142,7 @@ async fn collator_list_synchronized() {
 				<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						CurrencyId::BlockRewards,
+						CurrencyId::Staking(StakingCurrency::BlockRewards),
 					),
 					collator.into(),
 				)
@@ -160,7 +160,7 @@ async fn collator_list_synchronized() {
 				!<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						CurrencyId::BlockRewards,
+						CurrencyId::Staking(StakingCurrency::BlockRewards),
 					),
 					collator.into(),
 				)

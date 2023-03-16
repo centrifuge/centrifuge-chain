@@ -471,6 +471,7 @@ mod tests {
 
 	///! Tests for some types in the common section for our runtimes
 	use super::*;
+	use crate::tokens::StakingCurrency;
 
 	parameter_types! {
 		pub const MinDelay: u64 = 4;
@@ -694,7 +695,7 @@ mod tests {
 				KSM => vec![2],
 				AUSD => vec![3],
 				ForeignAsset(id) => vec![4, id as u64, 0, 0, 0],
-				BlockRewards => vec![5],
+				Staking(StakingCurrency::BlockRewards) => vec![5, 1, 0, 0, 0],
 			}
 		}
 	}

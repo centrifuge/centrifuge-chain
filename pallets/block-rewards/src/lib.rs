@@ -45,7 +45,7 @@ pub use cfg_traits::{
 	ops::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
 };
-use cfg_types::tokens::CurrencyId as CfgCurrencyId;
+use cfg_types::tokens::{CurrencyId as CfgCurrencyId, StakingCurrency};
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
@@ -237,7 +237,10 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			T::Rewards::attach_currency(
-				(T::Domain::get(), CfgCurrencyId::BlockRewards),
+				(
+					T::Domain::get(),
+					CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
+				),
 				COLLATOR_GROUP_ID,
 			)
 			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
@@ -268,8 +271,14 @@ pub mod pallet {
 		pub fn claim_reward(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			T::Rewards::claim_reward((T::Domain::get(), CfgCurrencyId::BlockRewards), &account_id)
-				.map(|_| ())
+			T::Rewards::claim_reward(
+				(
+					T::Domain::get(),
+					CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
+				),
+				&account_id,
+			)
+			.map(|_| ())
 		}
 
 		/// Admin method to set the reward amount for a collator used for the next sessions.
@@ -331,12 +340,15 @@ impl<T: Config> Pallet<T> {
 	///  * deposit_stake (4 reads, 4 writes): Currencies, Groups, StakeAccounts, Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
 		T::Currency::mint_into(
-			CfgCurrencyId::BlockRewards,
+			CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
 			who,
 			DEFAULT_COLLATOR_STAKE.into(),
 		)?;
 		T::Rewards::deposit_stake(
-			(T::Domain::get(), CfgCurrencyId::BlockRewards),
+			(
+				T::Domain::get(),
+				CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
+			),
 			who,
 			DEFAULT_COLLATOR_STAKE.into(),
 		)
@@ -345,10 +357,27 @@ impl<T: Config> Pallet<T> {
 	/// Withdraw currently staked amount for target address and immediately burn it.
 	/// Disables receiving rewards onwards.
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
-		let amount =
-			T::Rewards::account_stake((T::Domain::get(), CfgCurrencyId::BlockRewards), who);
-		T::Rewards::withdraw_stake((T::Domain::get(), CfgCurrencyId::BlockRewards), who, amount)?;
-		T::Currency::burn_from(CfgCurrencyId::BlockRewards, who, amount).map(|_| ())
+		let amount = T::Rewards::account_stake(
+			(
+				T::Domain::get(),
+				CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
+			),
+			who,
+		);
+		T::Rewards::withdraw_stake(
+			(
+				T::Domain::get(),
+				CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
+			),
+			who,
+			amount,
+		)?;
+		T::Currency::burn_from(
+			CfgCurrencyId::Staking(StakingCurrency::BlockRewards),
+			who,
+			amount,
+		)
+		.map(|_| ())
 	}
 
 	/// Apply session changes and distribute rewards.

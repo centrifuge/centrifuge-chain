@@ -42,6 +42,15 @@ pub enum CurrencyId {
 	/// A foreign asset
 	ForeignAsset(ForeignAssetId),
 
+	/// A staking token
+	Staking(StakingCurrency),
+}
+
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum StakingCurrency {
 	/// An emulated internal, non-transferrable currency
 	/// Its issuance and holding is handled inherently
 	BlockRewards,

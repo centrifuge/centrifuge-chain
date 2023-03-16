@@ -246,22 +246,36 @@ impl pallet_block_rewards::Config for Test {
 
 pub(crate) fn assert_staked(who: &AccountId) {
 	assert_eq!(
-		<Test as Config>::Currency::balance(CurrencyId::BlockRewards, who),
+		<Test as Config>::Currency::balance(
+			CurrencyId::Staking(StakingCurrency::BlockRewards),
+			who
+		),
 		DEFAULT_COLLATOR_STAKE as u128
 	);
 	assert_eq!(
-		<Test as Config>::Currency::can_withdraw(CurrencyId::BlockRewards, who, 1),
+		<Test as Config>::Currency::can_withdraw(
+			CurrencyId::Staking(StakingCurrency::BlockRewards),
+			who,
+			1
+		),
 		WithdrawConsequence::NoFunds
 	);
 }
 
 pub(crate) fn assert_not_staked(who: &AccountId) {
 	assert!(<Test as Config>::Rewards::account_stake(
-		(<Test as Config>::Domain::get(), CurrencyId::BlockRewards),
+		(
+			<Test as Config>::Domain::get(),
+			CurrencyId::Staking(StakingCurrency::BlockRewards)
+		),
 		who
 	)
 	.is_zero());
-	assert!(<Test as Config>::Currency::balance(CurrencyId::BlockRewards, who).is_zero());
+	assert!(<Test as Config>::Currency::balance(
+		CurrencyId::Staking(StakingCurrency::BlockRewards),
+		who
+	)
+	.is_zero());
 }
 
 /// Progress to the given block triggering session changes.
