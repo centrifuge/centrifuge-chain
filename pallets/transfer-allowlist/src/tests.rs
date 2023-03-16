@@ -249,6 +249,55 @@ fn remove_transfer_allowance_works() {
 }
 
 #[test]
+fn remove_transfer_allowance_with_delay_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+		));
+		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200
+		));
+		assert_ok!(TransferAllowList::remove_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			AccountWrapper(ACCOUNT_RECEIVER).into(),
+		));
+		assert_eq!(
+			TransferAllowList::sender_currency_reciever_allowance((
+				SENDER,
+				CurrencyId::A,
+				Location::Local(ACCOUNT_RECEIVER)
+			))
+			.unwrap(),
+			AllowanceDetails {
+				// current block is 50, no delay set
+				allowed_at: 0u64,
+				blocked_at: 250u64,
+			}
+		);
+		assert_eq!(
+			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
+			Some(1)
+		);
+
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				receiver: Location::Local(ACCOUNT_RECEIVER),
+				allowed_at: 0u64,
+				blocked_at: 250u64
+			})
+		)
+	})
+}
+
+#[test]
 fn purge_transfer_allowance_works() {
 	new_test_ext().execute_with(|| {
 		// create allowance to test removal
