@@ -236,7 +236,7 @@ fn remove_transfer_allowance_works() {
 		);
 
 		assert_eq!(
-			System::events()[0].event,
+			System::events()[1].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
