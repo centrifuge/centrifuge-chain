@@ -10,9 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::COLLATOR_GROUP_ID;
 use cfg_traits::rewards::CurrencyGroupChange;
-use cfg_types::tokens::{CurrencyId, StakingCurrency};
+use cfg_types::{
+	ids::COLLATOR_GROUP_ID,
+	tokens::{CurrencyId, StakingCurrency},
+};
 use frame_support::{
 	dispatch::GetStorageVersion,
 	inherent::Vec,

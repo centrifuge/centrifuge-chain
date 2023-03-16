@@ -36,3 +36,10 @@ pub const STAKE_POT_PALLET_ID: PalletId = PalletId(*b"PotStake");
 // Other ids
 pub const CHAIN_BRIDGE_HASH_ID: [u8; 13] = *b"cent_nft_hash";
 pub const CHAIN_BRIDGE_NATIVE_TOKEN_ID: [u8; 4] = *b"xCFG";
+
+// Reward related
+/// The identifier of the group eligible to receive block rewards.
+pub const COLLATOR_GROUP_ID: u32 = 1;
+/// The default amount of stake for CurrencyId::Staking(StakingCurrency::BlockRewards) which is inherently
+/// assigned to any member of the only group in block rewards.
+pub const DEFAULT_COLLATOR_STAKE: u32 = 1000;

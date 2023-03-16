@@ -39,13 +39,15 @@ pub mod weights;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-use cfg_primitives::{COLLATOR_GROUP_ID, DEFAULT_COLLATOR_STAKE};
 use cfg_traits::ops::{EnsureMul, EnsureSub};
 pub use cfg_traits::{
 	ops::{EnsureAdd, EnsureAddAssign},
 	rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards},
 };
-use cfg_types::tokens::{CurrencyId as CfgCurrencyId, StakingCurrency};
+use cfg_types::{
+	ids::{COLLATOR_GROUP_ID, DEFAULT_COLLATOR_STAKE},
+	tokens::{CurrencyId as CfgCurrencyId, StakingCurrency},
+};
 use frame_support::{
 	pallet_prelude::*,
 	traits::{

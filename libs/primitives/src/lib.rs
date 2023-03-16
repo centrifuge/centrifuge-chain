@@ -246,13 +246,6 @@ pub mod constants {
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
-
-	/// The identifier of the group eligible to receive block rewards.
-	pub const COLLATOR_GROUP_ID: u32 = 1;
-
-	/// The default amount of stake for CurrencyId::BlockRewards which is inherently
-	/// assigned to any member of the only group in block rewards.
-	pub const DEFAULT_COLLATOR_STAKE: u32 = 1000;
 }
 
 /// Listing of parachains we integrate with.
