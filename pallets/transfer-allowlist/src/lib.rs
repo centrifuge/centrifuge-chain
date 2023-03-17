@@ -20,15 +20,12 @@
 /// - the account(s) for which allowances have been made
 /// - the block range specified in the allowance
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	RuntimeDebugNoBound,
-};
+use frame_support::{dispatch::DispatchError, RuntimeDebugNoBound};
 pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
 use sp_core::H160;
-use sp_runtime::{traits::IdentifyAccount, AccountId32};
+use sp_runtime::AccountId32;
 use xcm::v1::MultiLocation;
 
 #[cfg(test)]
@@ -56,27 +53,9 @@ pub enum Location {
 	XCMV1(MultiLocation),
 	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
+	/// Etherium address, for cases where we would have a standalone Eth address
+	Eth(H160),
 }
-
-/// Helper struct for account id  `from` impl due to generic impl conflict
-/// See:
-/// https://doc.rust-lang.org/error_codes/E0119.html and
-/// https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839
-// pub struct AccountWrapper<T: Config>(AccountIdOf<T>);
-
-// impl<T: Config> From<AccountWrapper<T>> for Location<T> {
-// 	fn from(a: AccountWrapper<T>) -> Self {
-// 		Self::Local(a.0)
-// 	}
-// }
-
-// This exists for no reason other than to provide the bounds needed to properly constrain
-// the implementation to just the account ids
-// this is a crutch to accomodate the lack of GADTs in rust
-// SEE E0119 and E0207
-//pub trait AccountType {}
-
-//impl<T: Config> AccountType for <T as frame_system::Config>::AccountId {}
 
 impl From<u64> for Location {
 	fn from(a: u64) -> Self {
@@ -102,29 +81,12 @@ impl From<DomainAddress> for Location {
 	}
 }
 
-// pub trait ToLocation {
-// 	type Dest;
-// 	type Location;
-// 	fn to_location(l: Self::Dest) -> Self::Location;
-// }
+impl From<H160> for Location {
+	fn from(eth: H160) -> Self {
+		Self::Eth(eth)
+	}
+}
 
-// impl<T: Config> ToLocation for AccountIdOf<T> {
-// 	type Dest = AccountIdOf<T>;
-// 	type Location = Location;
-
-// 	fn to_location(l: Self::Dest) -> Self::Location {
-// 		Location::Local(l)
-// 	}
-// }
-
-// impl<T: Config> ToLocation for MultiLocation {
-// 	type Dest = MultiLocation;
-// 	type Location = Location;
-
-// 	fn to_location(l: Self::Dest) -> Self::Location {
-// 		Location::Local(l)
-// 	}
-// }
 /// Trait to determine whether a sending account and currency have a restriction,
 /// and if so is there an allowance for the reciever location.
 pub trait TransferAllowance<AccountId> {
@@ -143,15 +105,12 @@ pub mod pallet {
 	use core::fmt::Debug;
 
 	use frame_support::{
-		pallet_prelude::{
-			DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, ValueQuery, *,
-		},
-		traits::{tokens::AssetId, GenesisBuild},
+		pallet_prelude::{DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, *},
+		traits::tokens::AssetId,
 		transactional, Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
-	use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 	use super::*;
 
@@ -496,7 +455,7 @@ pub mod pallet {
 			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
 			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
-			match (<AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id)) {
+			match <AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id) {
 				Some(allowance_count) if allowance_count > 0 => {
 					let new_allowance_count = allowance_count
 						.checked_add(1)
@@ -527,7 +486,7 @@ pub mod pallet {
 			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
 			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
-			match (<AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id)) {
+			match <AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id) {
 				Some(allowance_count) if allowance_count <= 1 => {
 					<AccountCurrencyTransferRestriction<T>>::remove(account_id, currency_id);
 					Ok(())
@@ -565,8 +524,8 @@ pub mod pallet {
 					let current_block = <frame_system::Pallet<T>>::block_number();
 					match <AccountCurrencyTransferAllowance<T>>::get((&send, &currency, receive)) {
 						Some(AllowanceDetails {
-							allowed_at: allowed_at,
-							blocked_at: blocked_at,
+							allowed_at,
+							blocked_at,
 						}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
 						_ => Ok(false),
 					}
