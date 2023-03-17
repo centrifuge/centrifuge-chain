@@ -60,11 +60,26 @@ pub enum Location<T: Config> {
 /// See:
 /// https://doc.rust-lang.org/error_codes/E0119.html and
 /// https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839
-pub struct AccountWrapper<T: Config>(AccountIdOf<T>);
+// pub struct AccountWrapper<T: Config>(AccountIdOf<T>);
 
-impl<T: Config> From<AccountWrapper<T>> for Location<T> {
-	fn from(a: AccountWrapper<T>) -> Self {
-		Self::Local(a.0)
+// impl<T: Config> From<AccountWrapper<T>> for Location<T> {
+// 	fn from(a: AccountWrapper<T>) -> Self {
+// 		Self::Local(a.0)
+// 	}
+// }
+
+// This exists for no reason other than to provide the bounds needed to properly constrain
+// the implementation to just the account ids
+// this is a crutch to accomodate the lack of GADTs in rust
+// SEE E0119 and E0207
+pub trait AccountType {}
+
+impl<T: Config> AccountType for AccountIdOf<T> {}
+
+// to get around both E0119 and E0207
+impl<T: Config> From<AccountIdOf<T>> for Location<T> {
+	fn from(a: AccountType) -> Self {
+		Self::Local(a)
 	}
 }
 
@@ -80,15 +95,39 @@ impl<T: Config> From<DomainAddress> for Location<T> {
 	}
 }
 
+// pub trait ToLocation {
+// 	type Dest;
+// 	type Location;
+// 	fn to_location(l: Self::Dest) -> Self::Location;
+// }
+
+// impl<T: Config> ToLocation for AccountIdOf<T> {
+// 	type Dest = AccountIdOf<T>;
+// 	type Location = Location<T>;
+
+// 	fn to_location(l: Self::Dest) -> Self::Location {
+// 		Location::Local(l)
+// 	}
+// }
+
+// impl<T: Config> ToLocation for MultiLocation {
+// 	type Dest = MultiLocation;
+// 	type Location = Location<T>;
+
+// 	fn to_location(l: Self::Dest) -> Self::Location {
+// 		Location::Local(l)
+// 	}
+// }
 /// Trait to determine whether a sending account and currency have a restriction,
 /// and if so is there an allowance for the reciever location.
-pub trait TransferAllowance<AccountId, Location> {
+pub trait TransferAllowance<AccountId> {
 	type CurrencyId;
+	type Location;
 	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
 	/// Returns result wrapped bool for whether allowance is allowed.
 	fn allowance(
 		send: AccountId,
-		recieve: Location,
+		recieve: Self::Location,
 		currency: Self::CurrencyId,
 	) -> Result<bool, DispatchError>;
 }
@@ -498,8 +537,9 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> TransferAllowance<T::AccountId, T::AccountId> for Pallet<T> {
+	impl<T: Config> TransferAllowance<T::AccountId> for Pallet<T> {
 		type CurrencyId = T::CurrencyId;
+		type Location = Location<T>;
 
 		fn allowance(
 			send: T::AccountId,
@@ -513,34 +553,6 @@ pub mod pallet {
 						&send,
 						&currency,
 						Location::Local(receive),
-					)) {
-						Some(AllowanceDetails {
-							allowed_at: allowed_at,
-							blocked_at: blocked_at,
-						}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
-						_ => Ok(false),
-					}
-				}
-				_ => Ok(true),
-			}
-		}
-	}
-
-	impl<T: Config> TransferAllowance<T::AccountId, MultiLocation> for Pallet<T> {
-		type CurrencyId = T::CurrencyId;
-
-		fn allowance(
-			send: T::AccountId,
-			receive: MultiLocation,
-			currency: T::CurrencyId,
-		) -> Result<bool, DispatchError> {
-			match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
-				Some(count) if count > 0 => {
-					let current_block = <frame_system::Pallet<T>>::block_number();
-					match <AccountCurrencyTransferAllowance<T>>::get((
-						&send,
-						&currency,
-						receive.into(),
 					)) {
 						Some(AllowanceDetails {
 							allowed_at: allowed_at,
