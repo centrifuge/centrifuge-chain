@@ -36,7 +36,7 @@ case $TARGET in
     ;;
 
   integration)
-    RUST_MIN_STACK=8388608 cargo test --features runtime-benchmarks,try-runtime --package runtime-integration-tests
+    RUST_MIN_STACK=8388608 cargo test --features runtime-benchmarks,try-runtime
     ;;
 
   fmt)
