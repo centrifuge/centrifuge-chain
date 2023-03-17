@@ -58,7 +58,6 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 use pallet_investments::OrderType;
-use pallet_loans_ref as pallet_loans;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
@@ -445,10 +444,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
-					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
 					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
@@ -1104,7 +1103,7 @@ parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 100;
 }
 
-impl pallet_loans::Config for Runtime {
+impl pallet_loans_ref::Config for Runtime {
 	type Balance = Balance;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
@@ -1119,7 +1118,7 @@ impl pallet_loans::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_loans_ref::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1444,7 +1443,7 @@ construct_runtime!(
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 97,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 99,
-		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
+		Loans: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 102,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
@@ -1717,7 +1716,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
-			list_benchmark!(list, extra, pallet_loans, Loans);
+			list_benchmark!(list, extra, pallet_loans_ref, Loans);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 
@@ -1781,7 +1780,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
-			add_benchmark!(params, batches, pallet_loans, Loans);
+			add_benchmark!(params, batches, pallet_loans_ref, Loans);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 
