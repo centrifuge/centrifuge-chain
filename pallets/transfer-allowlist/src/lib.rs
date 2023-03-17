@@ -28,7 +28,7 @@ pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
 use sp_core::H160;
-use sp_runtime::traits::IdentifyAccount;
+use sp_runtime::{traits::IdentifyAccount, AccountId32};
 use xcm::v1::MultiLocation;
 
 #[cfg(test)]
@@ -43,9 +43,9 @@ pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub enum Location<T: Config> {
+pub enum Location {
 	/// Local chain account sending destination.
-	Local(AccountIdOf<T>),
+	Local(AccountId32),
 	/// XCM V1 MultiLocation sending destination.
 	/// Unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
 	/// both are foreign, and therefore can't be implemented here.
@@ -72,24 +72,24 @@ pub enum Location<T: Config> {
 // the implementation to just the account ids
 // this is a crutch to accomodate the lack of GADTs in rust
 // SEE E0119 and E0207
-pub trait AccountType {}
+//pub trait AccountType {}
 
-impl<T: Config> AccountType for AccountIdOf<T> {}
+//impl<T: Config> AccountType for <T as frame_system::Config>::AccountId {}
 
 // to get around both E0119 and E0207
-impl<T: Config> From<AccountIdOf<T>> for Location<T> {
-	fn from(a: AccountType) -> Self {
+impl From<AccountId32> for Location {
+	fn from(a: AccountId32) -> Self {
 		Self::Local(a)
 	}
 }
 
-impl<T: Config> From<MultiLocation> for Location<T> {
+impl From<MultiLocation> for Location {
 	fn from(ml: MultiLocation) -> Self {
 		Self::XCMV1(ml)
 	}
 }
 
-impl<T: Config> From<DomainAddress> for Location<T> {
+impl From<DomainAddress> for Location {
 	fn from(da: DomainAddress) -> Self {
 		Self::Address(da)
 	}
@@ -103,7 +103,7 @@ impl<T: Config> From<DomainAddress> for Location<T> {
 
 // impl<T: Config> ToLocation for AccountIdOf<T> {
 // 	type Dest = AccountIdOf<T>;
-// 	type Location = Location<T>;
+// 	type Location = Location;
 
 // 	fn to_location(l: Self::Dest) -> Self::Location {
 // 		Location::Local(l)
@@ -112,7 +112,7 @@ impl<T: Config> From<DomainAddress> for Location<T> {
 
 // impl<T: Config> ToLocation for MultiLocation {
 // 	type Dest = MultiLocation;
-// 	type Location = Location<T>;
+// 	type Location = Location;
 
 // 	fn to_location(l: Self::Dest) -> Self::Location {
 // 		Location::Local(l)
@@ -122,12 +122,11 @@ impl<T: Config> From<DomainAddress> for Location<T> {
 /// and if so is there an allowance for the reciever location.
 pub trait TransferAllowance<AccountId> {
 	type CurrencyId;
-	type Location;
 	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
 	/// Returns result wrapped bool for whether allowance is allowed.
 	fn allowance(
 		send: AccountId,
-		recieve: Self::Location,
+		recieve: Location,
 		currency: Self::CurrencyId,
 	) -> Result<bool, DispatchError>;
 }
@@ -231,7 +230,7 @@ pub mod pallet {
 		(
 			NMapKey<Twox64Concat, AccountIdOf<T>>,
 			NMapKey<Twox64Concat, CurrencyIdOf<T>>,
-			NMapKey<Blake2_128Concat, Location<T>>,
+			NMapKey<Blake2_128Concat, Location>,
 		),
 		AllowanceDetails<BlockNumberOf<T>>,
 		OptionQuery,
@@ -275,7 +274,7 @@ pub mod pallet {
 		TransferAllowanceCreated {
 			sender_account_id: AccountIdOf<T>,
 			currency_id: CurrencyIdOf<T>,
-			receiver: Location<T>,
+			receiver: Location,
 			allowed_at: BlockNumberOf<T>,
 			blocked_at: BlockNumberOf<T>,
 		},
@@ -283,7 +282,7 @@ pub mod pallet {
 		TransferAllowanceRemoved {
 			sender_account_id: AccountIdOf<T>,
 			currency_id: CurrencyIdOf<T>,
-			receiver: Location<T>,
+			receiver: Location,
 			allowed_at: BlockNumberOf<T>,
 			blocked_at: BlockNumberOf<T>,
 		},
@@ -291,7 +290,7 @@ pub mod pallet {
 		TransferAllowancePurged {
 			sender_account_id: AccountIdOf<T>,
 			currency_id: CurrencyIdOf<T>,
-			receiver: Location<T>,
+			receiver: Location,
 		},
 		/// Event for Allowance delay update
 		TransferAllowanceDelaySet {
@@ -307,7 +306,10 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: Into<Location>,
+	{
 		#[transactional]
 		#[pallet::call_index(0)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
@@ -322,7 +324,7 @@ pub mod pallet {
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
-			receiver: Location<T>,
+			receiver: Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
@@ -364,7 +366,7 @@ pub mod pallet {
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
-			receiver: Location<T>,
+			receiver: Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
@@ -404,7 +406,7 @@ pub mod pallet {
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: CurrencyIdOf<T>,
-			receiver: Location<T>,
+			receiver: Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
@@ -476,7 +478,10 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: Into<Location>,
+	{
 		/// Increments number of allowances present for a sending account/currency set.
 		/// If no allowances set, an entry with 1 added, if entry already present, it is then incremented.
 		pub fn increment_or_create_allowance_count(
@@ -537,23 +542,21 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> TransferAllowance<T::AccountId> for Pallet<T> {
+	impl<T: Config> TransferAllowance<T::AccountId> for Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: Into<Location>,
+	{
 		type CurrencyId = T::CurrencyId;
-		type Location = Location<T>;
 
 		fn allowance(
 			send: T::AccountId,
-			receive: T::AccountId,
+			receive: Location,
 			currency: T::CurrencyId,
 		) -> Result<bool, DispatchError> {
 			match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
 				Some(count) if count > 0 => {
 					let current_block = <frame_system::Pallet<T>>::block_number();
-					match <AccountCurrencyTransferAllowance<T>>::get((
-						&send,
-						&currency,
-						Location::Local(receive),
-					)) {
+					match <AccountCurrencyTransferAllowance<T>>::get((&send, &currency, receive)) {
 						Some(AllowanceDetails {
 							allowed_at: allowed_at,
 							blocked_at: blocked_at,
