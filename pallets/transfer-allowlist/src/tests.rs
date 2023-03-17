@@ -12,18 +12,18 @@ const SENDER: u64 = 0x1;
 const ACCOUNT_RECEIVER: u64 = 0x2;
 
 #[test]
-fn from_account_works() {
+fn from_test_account_works() {
 	new_test_ext().execute_with(|| {
 		let a = ensure_signed(RuntimeOrigin::signed(SENDER)).unwrap();
-		let l: Location<Runtime> = Location::<Runtime>::from(AccountWrapper(a));
-		assert_eq!(l, Location::Local(a))
+		let l: Location = Location::from(a);
+		assert_eq!(l, Location::TestLocal(a))
 	});
 }
 #[test]
 fn from_xcm_address_works() {
 	new_test_ext().execute_with(|| {
 		let xa = MultiLocation::default();
-		let l = Location::<Runtime>::from(xa.clone());
+		let l = Location::from(xa.clone());
 		assert_eq!(l, Location::XCMV1(MultiLocation::default()))
 	});
 }
@@ -34,7 +34,7 @@ fn from_domain_address_works() {
 			1284,
 			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect(""),
 		);
-		let l = Location::<Runtime>::from(da.clone());
+		let l = Location::from(da.clone());
 
 		assert_eq!(l, Location::Address(da))
 	});
@@ -46,13 +46,13 @@ fn add_transfer_allowance_works() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
 				CurrencyId::A,
-				Location::Local(ACCOUNT_RECEIVER)
+				Location::TestLocal(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -70,7 +70,7 @@ fn add_transfer_allowance_works() {
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceCreated {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
-				receiver: Location::Local(ACCOUNT_RECEIVER),
+				receiver: Location::TestLocal(ACCOUNT_RECEIVER),
 				allowed_at: 0,
 				blocked_at: u64::MAX
 			})
@@ -84,7 +84,7 @@ fn add_transfer_allowance_updates_with_delay_set() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
@@ -94,14 +94,14 @@ fn add_transfer_allowance_updates_with_delay_set() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		),);
 
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
 				CurrencyId::A,
-				Location::Local(ACCOUNT_RECEIVER)
+				Location::TestLocal(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -124,12 +124,12 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(100u64).into(),
+			100u64.into(),
 		));
 		assert_eq!(
 			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
@@ -144,7 +144,7 @@ fn transfer_allowance_allows_correctly_with_allowance_set() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
@@ -159,10 +159,10 @@ fn transfer_allowance_blocks_when_account_not_allowed() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
-			TransferAllowList::allowance(SENDER.into(), 55u64, CurrencyId::A),
+			TransferAllowList::allowance(SENDER.into(), 55u64.into(), CurrencyId::A),
 			Ok(false)
 		)
 	})
@@ -174,13 +174,13 @@ fn transfer_allowance_blocks_correctly_when_before_start_block() {
 		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			10
+			10u64.into()
 		));
 
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
@@ -195,7 +195,7 @@ fn transfer_allowance_blocks_correctly_when_after_blocked_at_block() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
@@ -210,18 +210,18 @@ fn remove_transfer_allowance_works() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_ok!(TransferAllowList::remove_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
 				CurrencyId::A,
-				Location::Local(ACCOUNT_RECEIVER)
+				Location::TestLocal(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -240,7 +240,7 @@ fn remove_transfer_allowance_works() {
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
-				receiver: Location::Local(ACCOUNT_RECEIVER),
+				receiver: Location::TestLocal(ACCOUNT_RECEIVER),
 				allowed_at: 0u64,
 				blocked_at: 50u64
 			})
@@ -254,23 +254,23 @@ fn remove_transfer_allowance_with_delay_works() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			200
+			200u64.into()
 		));
 		assert_ok!(TransferAllowList::remove_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
 				CurrencyId::A,
-				Location::Local(ACCOUNT_RECEIVER)
+				Location::TestLocal(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -289,7 +289,7 @@ fn remove_transfer_allowance_with_delay_works() {
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
-				receiver: Location::Local(ACCOUNT_RECEIVER),
+				receiver: Location::TestLocal(ACCOUNT_RECEIVER),
 				allowed_at: 0u64,
 				blocked_at: 250u64
 			})
@@ -304,20 +304,20 @@ fn purge_transfer_allowance_works() {
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		// verify removed
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
 				CurrencyId::A,
-				Location::Local(ACCOUNT_RECEIVER)
+				Location::TestLocal(ACCOUNT_RECEIVER)
 			)),
 			None
 		);
@@ -332,7 +332,7 @@ fn purge_transfer_allowance_works() {
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowancePurged {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
-				receiver: Location::Local(ACCOUNT_RECEIVER),
+				receiver: Location::TestLocal(ACCOUNT_RECEIVER),
 			})
 		);
 	})
@@ -345,7 +345,7 @@ fn purge_transfer_allowance_non_existant_transfer_allowance() {
 			TransferAllowList::purge_transfer_allowance(
 				RuntimeOrigin::signed(SENDER),
 				CurrencyId::A,
-				AccountWrapper(ACCOUNT_RECEIVER).into(),
+				ACCOUNT_RECEIVER.into(),
 			),
 			Error::<Runtime>::NoMatchingAllowance
 		);
@@ -359,25 +359,25 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(100u64).into(),
+			100u64.into(),
 		));
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			AccountWrapper(ACCOUNT_RECEIVER).into(),
+			ACCOUNT_RECEIVER.into(),
 		));
 		// verify correct entry removed
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
 				CurrencyId::A,
-				Location::Local(ACCOUNT_RECEIVER)
+				Location::TestLocal(ACCOUNT_RECEIVER)
 			)),
 			None
 		);
@@ -386,7 +386,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
 				CurrencyId::A,
-				Location::Local(100u64)
+				Location::TestLocal(100u64)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -410,7 +410,7 @@ fn add_allowance_delay_works() {
 		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			200
+			200u64
 		));
 		// verify val in storage
 		assert_eq!(
@@ -435,12 +435,12 @@ fn update_allowance_delay_works() {
 		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			200
+			200u64
 		));
 		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			250
+			250u64
 		));
 		// verify val in storage
 		assert_eq!(
@@ -465,7 +465,7 @@ fn remove_allowance_delay_works() {
 		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
-			200
+			200u64
 		));
 
 		assert_ok!(TransferAllowList::remove_allowance_delay(

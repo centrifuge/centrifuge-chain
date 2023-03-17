@@ -46,6 +46,8 @@ pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 pub enum Location {
 	/// Local chain account sending destination.
 	Local(AccountId32),
+	/// Test
+	TestLocal(u64),
 	/// XCM V1 MultiLocation sending destination.
 	/// Unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
 	/// both are foreign, and therefore can't be implemented here.
@@ -76,7 +78,12 @@ pub enum Location {
 
 //impl<T: Config> AccountType for <T as frame_system::Config>::AccountId {}
 
-// to get around both E0119 and E0207
+impl From<u64> for Location {
+	fn from(a: u64) -> Self {
+		Self::TestLocal(a)
+	}
+}
+
 impl From<AccountId32> for Location {
 	fn from(a: AccountId32) -> Self {
 		Self::Local(a)
