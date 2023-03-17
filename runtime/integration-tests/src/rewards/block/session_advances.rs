@@ -11,10 +11,10 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AccountId;
+use cfg_traits::rewards::AccountRewards;
 use cfg_types::tokens::{CurrencyId, StakingCurrency};
 use codec::Encode;
 use fudge::primitives::Chain;
-use pallet_block_rewards::{AccountRewards, COLLATOR_GROUP_ID};
 use pallet_collator_selection::Call as CollatorSelectionCall;
 use sp_runtime::{traits::Zero, Storage};
 use tokio::runtime::Handle;

@@ -145,7 +145,7 @@ where
 			assert!(!<T as Config>::Rewards::account_stake(
 				(
 					<T as Config>::Domain::get(),
-					<T as Config>::StakeCurrency::get()::get(),
+					<T as Config>::StakeCurrency::get(),
 				),
 				collator,
 			)

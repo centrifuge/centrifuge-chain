@@ -11,9 +11,9 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::AccountId;
+use cfg_traits::rewards::AccountRewards;
 use cfg_types::tokens::{CurrencyId, StakingCurrency};
 use fudge::primitives::Chain;
-use pallet_block_rewards::AccountRewards;
 use sp_runtime::{traits::Zero, BoundedVec, SaturatedConversion};
 
 use crate::{
