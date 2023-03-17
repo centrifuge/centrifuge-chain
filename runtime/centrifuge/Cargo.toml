@@ -104,10 +104,10 @@ pallet-keystore = { path = "../../pallets/keystore", default-features = false }
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
-pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
+pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
-pallet-permissions = { path = "../../pallets/permissions", default-features = false }
+pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 # bridge pallets
