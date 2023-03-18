@@ -68,7 +68,7 @@ pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
 use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
 use pallet_evm::{
-	Account as EVMAccount, EnsureAddressTruncated, FeeCalculator, HashedAddressMapping, Runner,
+	Account as EVMAccount, AddressMapping, EnsureAddressTruncated, FeeCalculator, Runner,
 };
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -1711,8 +1711,22 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	}
 }
 
+#[derive(Encode, Decode, Default)]
+struct EthereumAccount(H160);
+
+impl sp_runtime::TypeId for EthereumAccount {
+	const TYPE_ID: [u8; 4] = *b"ETH\0";
+}
+
+pub struct ExtendedAddressMapping;
+impl AddressMapping<AccountId> for ExtendedAddressMapping {
+	fn into_account_id(address: H160) -> AccountId {
+		EthereumAccount(address).into_account_truncating()
+	}
+}
+
 impl pallet_evm::Config for Runtime {
-	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
+	type AddressMapping = ExtendedAddressMapping;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressTruncated;
