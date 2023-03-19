@@ -1863,10 +1863,10 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 
 		// EVM pallets
-		EVM: pallet_evm::{Pallet, Call, Storage, Event<T>} = 160,
+		EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 160,
 		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
 		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
-		Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin} = 163,
+		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
 	}
 );
 

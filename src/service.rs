@@ -1039,7 +1039,7 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 			frontier_backend,
 			3,
 			0,
-			SyncStrategy::Normal,
+			SyncStrategy::Parachain,
 		)
 		.for_each(|()| future::ready(())),
 	);

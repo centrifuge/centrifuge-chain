@@ -1090,6 +1090,8 @@ fn development_genesis(
 		interest_accrual: Default::default(),
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
+		ethereum: Default::default(),
+		evm: Default::default(),
 	}
 }
 
