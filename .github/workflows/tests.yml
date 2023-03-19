@@ -18,18 +18,10 @@ jobs:
         if: ${{ matrix.os }} == 'ubuntu-latest'
         run: |
           echo "Pre cleanup"
-          echo "Listing 100 largest packages"
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
           df -h
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y azure-cli google-cloud-sdk microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          rm -rf /usr/share/dotnet/
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Post cleanup"
           df -h
           sudo apt-get install protobuf-compiler
       - name: Check out code
