@@ -13,9 +13,9 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
+hex = { version = "0.4.3", default_features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
-hex = { version = "0.4.3", default_features = false }
 
 cfg-traits = { path = "../../libs/traits", default-features = false }
 pallet-connectors = { path = "../connectors" }
@@ -23,17 +23,15 @@ pallet-connectors = { path = "../connectors" }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.32" }
-
 
 # Benchmarking dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false, optional = false }
 cfg-types = { path = "../../libs/types", default-features = false, optional = true }
-
 
 [dev-dependencies]
 cfg-types = { path = "../../libs/types", default-features = true }
