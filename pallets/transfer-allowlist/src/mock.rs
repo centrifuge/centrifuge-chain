@@ -13,16 +13,14 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU16, ConstU32, ConstU64},
-	Deserialize, PalletId, Serialize,
+	traits::{ConstU32, ConstU64},
+	Deserialize, Serialize,
 };
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	AccountId32,
 };
 
 use crate as transfer_allowlist;

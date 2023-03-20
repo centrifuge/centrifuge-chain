@@ -1,9 +1,8 @@
-use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
+use frame_support::{assert_noop, assert_ok};
 use frame_system::ensure_signed;
 use hex::FromHex;
 use pallet_connectors::DomainAddress;
-use sp_core::H160;
-use xcm::{v1::MultiLocation, VersionedMultiLocation};
+use xcm::v1::MultiLocation;
 
 use super::*;
 use crate::mock::*;
