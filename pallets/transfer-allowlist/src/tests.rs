@@ -8,9 +8,6 @@ use xcm::{v1::MultiLocation, VersionedMultiLocation};
 use super::*;
 use crate::mock::*;
 
-const SENDER: u64 = 0x1;
-const ACCOUNT_RECEIVER: u64 = 0x2;
-
 #[test]
 fn from_test_account_works() {
 	new_test_ext().execute_with(|| {
@@ -67,6 +64,10 @@ fn add_transfer_allowance_works() {
 
 		assert_eq!(
 			System::events()[0].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
+		);
+		assert_eq!(
+			System::events()[1].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceCreated {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -134,6 +135,15 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 		assert_eq!(
 			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
 			2
+		);
+
+		assert_eq!(
+			System::events()[0].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
+		);
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 	})
 }
@@ -235,8 +245,9 @@ fn remove_transfer_allowance_works() {
 			Some(1)
 		);
 
+		// event 0 - reserve for allowance creation, 1, allowance creation itelf
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -284,8 +295,11 @@ fn remove_transfer_allowance_with_delay_works() {
 			Some(1)
 		);
 
+		// event 0 - reserve for allowance creation,
+		// 1, allowance creation itelf
+		// 2, delay creation
 		assert_eq!(
-			System::events()[2].event,
+			System::events()[3].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -328,7 +342,11 @@ fn purge_transfer_allowance_works() {
 		);
 		// verify event sent for removal
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[2].event,
+			RuntimeEvent::Balances(pallet_balances::Event::Unreserved { who: 1, amount: 10 })
+		);
+		assert_eq!(
+			System::events()[3].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowancePurged {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,

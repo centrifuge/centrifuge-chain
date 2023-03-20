@@ -132,8 +132,11 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen;
+
 		/// Deposit Balance to reserve/release
+		#[pallet::constant]
 		type Deposit: Get<DepositBalanceOf<Self>>;
+
 		/// Currency to be used for the actual currency reserve for the allowlist adding/removing
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	}
@@ -315,7 +318,8 @@ pub mod pallet {
 				&currency_id,
 				&receiver,
 			)) {
-				Self::increment_or_create_allowance_count(&account_id, &currency_id)?
+				Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
+				T::ReserveCurrency::reserve(&account_id, T::Deposit::get())?;
 			};
 			<AccountCurrencyTransferAllowance<T>>::insert(
 				(&account_id, &currency_id, &receiver),
@@ -387,6 +391,7 @@ pub mod pallet {
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
 			{
 				Some(_) => {
+					T::ReserveCurrency::unreserve(&account_id, T::Deposit::get());
 					<AccountCurrencyTransferAllowance<T>>::remove((
 						&account_id,
 						&currency_id,

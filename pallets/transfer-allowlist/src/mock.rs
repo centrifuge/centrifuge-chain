@@ -112,7 +112,10 @@ pub enum CurrencyId {
 	D,
 }
 
-const STARTING_BLOCK: u64 = 50;
+pub(crate) const STARTING_BLOCK: u64 = 50;
+pub(crate) const SENDER: u64 = 0x1;
+pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
+pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
 
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = CurrencyId;
@@ -122,11 +125,18 @@ impl transfer_allowlist::Config for Runtime {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut e = sp_io::TestExternalities::new(
-		frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap(),
-	);
+	let mut t = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
+		.unwrap();
+
+	pallet_balances::GenesisConfig::<Runtime> {
+		balances: vec![(SENDER, 30), (FEE_DEFICIENT_SENDER, 3)],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	let mut e = sp_io::TestExternalities::new(t);
+
 	e.execute_with(|| System::set_block_number(STARTING_BLOCK));
 	e
 }
