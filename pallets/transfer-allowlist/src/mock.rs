@@ -38,6 +38,7 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
+			Balances: pallet_balances,
 			System: frame_system,
 		  TransferAllowList: transfer_allowlist,
 	  }
@@ -48,7 +49,19 @@ parameter_types! {
 	  pub const SS58Prefix: u8 = 42;
 }
 
-type Balance = u128;
+type Balance = u64;
+
+impl pallet_balances::Config for Runtime {
+	type AccountStore = System;
+	type Balance = u64;
+	type DustRemoval = ();
+	type ExistentialDeposit = ConstU64<1>;
+	type MaxLocks = ();
+	type MaxReserves = ConstU32<50>;
+	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
 
 impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
@@ -103,6 +116,8 @@ const STARTING_BLOCK: u64 = 50;
 
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = CurrencyId;
+	type Deposit = ConstU64<10>;
+	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 }
 

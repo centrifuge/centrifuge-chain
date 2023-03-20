@@ -106,7 +106,7 @@ pub mod pallet {
 
 	use frame_support::{
 		pallet_prelude::{DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, *},
-		traits::tokens::AssetId,
+		traits::{tokens::AssetId, Currency, ReservableCurrency},
 		transactional, Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
@@ -122,6 +122,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+		/// ID of currency for the restricted transfers
 		type CurrencyId: AssetId
 			+ Parameter
 			+ Debug
@@ -131,11 +132,19 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen;
+		/// Deposit Balance to reserve/release
+		type Deposit: Get<DepositBalanceOf<Self>>;
+		/// Currency to be used for the actual currency reserve for the allowlist adding/removing
+		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	}
 
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
+
+	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
 
 	//
 	// Storage
