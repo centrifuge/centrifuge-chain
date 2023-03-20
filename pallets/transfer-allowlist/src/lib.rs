@@ -12,7 +12,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 /// This module checks whether an account should be allowed to make a transfer to
-/// a recieving location with a specific currency.
+/// a receiving location with a specific currency.
 /// If there are no allowances specified, then the account is assumed to be allowed
 /// to send to any location without restrictions.
 /// However once an allowance for a sender to a specific recieving location and currency is made,
@@ -122,7 +122,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// ID of currency for the restricted transfers
+		/// Id type of Currency transfer restrictions will be checked for
 		type CurrencyId: AssetId
 			+ Parameter
 			+ Debug
@@ -137,12 +137,12 @@ pub mod pallet {
 		#[pallet::constant]
 		type Deposit: Get<DepositBalanceOf<Self>>;
 
-		/// Currency to be used for the actual currency reserve for the allowlist adding/removing
+		/// Currency for Reserve/Unreserve with allowlist adding/removal,
+		/// given that the allowlist will be in storage
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	}
 
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-	pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
 	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<

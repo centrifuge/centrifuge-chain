@@ -313,7 +313,7 @@ fn remove_transfer_allowance_with_delay_works() {
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 
 		// event 0 - reserve for allowance creation,
-		// 1, allowance creation itelf
+		// 1, allowance creation itself
 		// 2, delay creation
 		assert_eq!(
 			System::events()[3].event,
