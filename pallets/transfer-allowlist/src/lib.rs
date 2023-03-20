@@ -357,7 +357,7 @@ pub mod pallet {
 			{
 				Some(existing_allowance) => {
 					let allowance_details = AllowanceDetails {
-						blocked_at: blocked_at.clone(),
+						blocked_at,
 						..existing_allowance
 					};
 					<AccountCurrencyTransferAllowance<T>>::insert(
@@ -423,8 +423,8 @@ pub mod pallet {
 			<AccountCurrencyDelay<T>>::insert(&account_id, &currency_id, &delay);
 			Self::deposit_event(Event::TransferAllowanceDelaySet {
 				sender_account_id: account_id,
-				currency_id: currency_id,
-				delay: delay,
+				currency_id,
+				delay,
 			});
 			Ok(())
 		}
@@ -443,14 +443,14 @@ pub mod pallet {
 					<AccountCurrencyDelay<T>>::remove(&account_id, &currency_id);
 					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
 						sender_account_id: account_id,
-						currency_id: currency_id,
+						currency_id,
 					});
 					Ok(())
 				}
 				None => {
 					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
 						sender_account_id: account_id,
-						currency_id: currency_id,
+						currency_id,
 					});
 					Err(DispatchError::from(Error::<T>::NoMatchingDelay))
 				}
