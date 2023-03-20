@@ -24,8 +24,11 @@ use frame_support::{dispatch::DispatchError, RuntimeDebugNoBound};
 pub use pallet::*;
 use pallet_connectors::DomainAddress;
 use scale_info::TypeInfo;
-use sp_core::H160;
-use sp_runtime::AccountId32;
+use sp_core::{H160, H256};
+use sp_runtime::{
+	traits::{BlakeTwo256, Hash},
+	AccountId32,
+};
 use xcm::v1::MultiLocation;
 
 #[cfg(test)]
@@ -48,9 +51,10 @@ pub enum Location {
 	/// XCM V1 MultiLocation sending destination.
 	/// Unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
 	/// both are foreign, and therefore can't be implemented here.
+	/// Using hash value here as Multilocation is 512 bytes, but next largest is only 40 bytes
 	// May move back to new type off VersionedMultiLocation w/ MaxEncodedLen implemented
 	// if it looks like nothing will be Location enum outside of pallet.
-	XCMV1(MultiLocation),
+	XCMV1(H256),
 	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
 	/// Etherium address, for cases where we would have a standalone Eth address
@@ -71,7 +75,9 @@ impl From<AccountId32> for Location {
 
 impl From<MultiLocation> for Location {
 	fn from(ml: MultiLocation) -> Self {
-		Self::XCMV1(ml)
+		// using hash here as mulitlocation is significantly larger than any other enum type here
+		// -- 592 bytes, vs 40 bytes for domain address (next largest)
+		Self::XCMV1(BlakeTwo256::hash(&ml.encode()))
 	}
 }
 

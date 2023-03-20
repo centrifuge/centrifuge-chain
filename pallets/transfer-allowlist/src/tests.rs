@@ -20,7 +20,15 @@ fn from_xcm_address_works() {
 	new_test_ext().execute_with(|| {
 		let xa = MultiLocation::default();
 		let l = Location::from(xa.clone());
-		assert_eq!(l, Location::XCMV1(MultiLocation::default()))
+		assert_eq!(
+			l,
+			Location::XCMV1(sp_core::H256(
+				<[u8; 32]>::from_hex(
+					"9ee6dfb61a2fb903df487c401663825643bb825d41695e63df8af6162ab145a6"
+				)
+				.unwrap()
+			))
+		);
 	});
 }
 #[test]
@@ -28,7 +36,7 @@ fn from_domain_address_works() {
 	new_test_ext().execute_with(|| {
 		let da = DomainAddress::EVM(
 			1284,
-			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect(""),
+			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").unwrap(),
 		);
 		let l = Location::from(da.clone());
 
