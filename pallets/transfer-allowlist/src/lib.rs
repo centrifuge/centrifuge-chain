@@ -29,7 +29,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	AccountId32,
 };
-use xcm::v1::MultiLocation;
+use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 #[cfg(test)]
 mod mock;
@@ -48,13 +48,10 @@ pub enum Location {
 	Local(AccountId32),
 	/// Test
 	TestLocal(u64),
-	/// XCM V1 MultiLocation sending destination.
-	/// Unfortunately VersionedMultiLocation does not implmenent MaxEncodedLen, and
-	/// both are foreign, and therefore can't be implemented here.
-	/// Using hash value here as Multilocation is 512 bytes, but next largest is only 40 bytes
-	// May move back to new type off VersionedMultiLocation w/ MaxEncodedLen implemented
-	// if it looks like nothing will be Location enum outside of pallet.
-	XCMV1(H256),
+	/// XCM MultiLocation sending destinations.
+	/// Using hash value here as Multilocation is large -- v1 is 512 bytes, but next largest is only 40 bytes
+	/// other values aren't hashed as we have blake2 hashing on storage map keys, and we don't want the extra overhead
+	XCM(H256),
 	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
 	/// Etherium address, for cases where we would have a standalone Eth address
@@ -77,7 +74,15 @@ impl From<MultiLocation> for Location {
 	fn from(ml: MultiLocation) -> Self {
 		// using hash here as mulitlocation is significantly larger than any other enum type here
 		// -- 592 bytes, vs 40 bytes for domain address (next largest)
-		Self::XCMV1(BlakeTwo256::hash(&ml.encode()))
+		Self::XCM(BlakeTwo256::hash(&ml.encode()))
+	}
+}
+
+impl From<VersionedMultiLocation> for Location {
+	fn from(vml: VersionedMultiLocation) -> Self {
+		// using hash here as mulitlocation is significantly larger than any other enum type here
+		// -- 592 bytes, vs 40 bytes for domain address (next largest)
+		Self::XCM(BlakeTwo256::hash(&vml.encode()))
 	}
 }
 

@@ -16,13 +16,13 @@ fn from_test_account_works() {
 	});
 }
 #[test]
-fn from_xcm_address_works() {
+fn from_xcm_v1_address_works() {
 	new_test_ext().execute_with(|| {
 		let xa = MultiLocation::default();
 		let l = Location::from(xa.clone());
 		assert_eq!(
 			l,
-			Location::XCMV1(sp_core::H256(
+			Location::XCM(sp_core::H256(
 				<[u8; 32]>::from_hex(
 					"9ee6dfb61a2fb903df487c401663825643bb825d41695e63df8af6162ab145a6"
 				)
@@ -30,6 +30,21 @@ fn from_xcm_address_works() {
 			))
 		);
 	});
+}
+
+#[test]
+fn from_xcm_versioned_address_works() {
+	let xa = VersionedMultiLocation::V1(MultiLocation::default());
+	let l = Location::from(xa.clone());
+	assert_eq!(
+		l,
+		Location::XCM(sp_core::H256(
+			<[u8; 32]>::from_hex(
+				"5a121beb1148b31fc56f3d26f80800fd9eb4a90435a72d3cc74c42bc72bca9b8"
+			)
+			.unwrap()
+		))
+	);
 }
 #[test]
 fn from_domain_address_works() {
