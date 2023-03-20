@@ -65,6 +65,7 @@ fn add_transfer_allowance_works() {
 			System::events()[0].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 		assert_eq!(
 			System::events()[1].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceCreated {
@@ -97,6 +98,8 @@ fn add_transfer_allowance_updates_with_delay_set() {
 			ACCOUNT_RECEIVER.into(),
 		),);
 
+		// only one allowance has been created, should still only have 1 reserve
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
@@ -126,11 +129,14 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
 			100u64.into(),
 		));
+		// verify reserve incremented for second allowance
+		assert_eq!(Balances::reserved_balance(&SENDER), 20);
 		assert_eq!(
 			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
 			2
@@ -226,6 +232,7 @@ fn remove_transfer_allowance_works() {
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
+		// ensure blocked at set to restrict transfers
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
 				SENDER,
@@ -239,6 +246,12 @@ fn remove_transfer_allowance_works() {
 				blocked_at: 50u64,
 			}
 		);
+
+		// ensure reserve still in place as we have the in storage
+		// merely ensuring transfers blocked
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
+
+		// ensure allowlist entry still in place, just with restricted params
 		assert_eq!(
 			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
 			Some(1)
@@ -289,10 +302,15 @@ fn remove_transfer_allowance_with_delay_works() {
 				blocked_at: 250u64,
 			}
 		);
+
+		// ensure only 1 transfer allowlist for sender/currency still in place
 		assert_eq!(
 			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
 			Some(1)
 		);
+
+		// ensure only 1 reserve as we've still just got 1 allowance in storage
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 
 		// event 0 - reserve for allowance creation,
 		// 1, allowance creation itelf
@@ -319,6 +337,8 @@ fn purge_transfer_allowance_works() {
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
+
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
@@ -334,6 +354,9 @@ fn purge_transfer_allowance_works() {
 			)),
 			None
 		);
+		// verify funds released appropriately
+		assert_eq!(Balances::reserved_balance(&SENDER), 0);
+
 		// verify sender/currency allowance tracking decremented/removed
 		assert_eq!(
 			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
@@ -378,17 +401,25 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
+
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
 			100u64.into(),
 		));
+		assert_eq!(Balances::reserved_balance(&SENDER), 20);
+
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
+
+		// verify correct reserve decrement
+		assert_eq!(Balances::reserved_balance(&SENDER), 10);
+
 		// verify correct entry removed
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
@@ -398,6 +429,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			)),
 			None
 		);
+
 		// verify correct entry still present
 		assert_eq!(
 			TransferAllowList::sender_currency_reciever_allowance((
