@@ -131,7 +131,8 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ FixedPointOperand
 			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>
-			+ MaybeSerializeDeserialize;
+			+ MaybeSerializeDeserialize
+			+ From<cfg_primitives::Balance>;
 
 		/// Domain identification used by this pallet
 		type Domain: TypedGet;

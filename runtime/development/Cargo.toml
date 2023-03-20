@@ -150,6 +150,7 @@ std = [
   "frame-system/std",
   "frame-system-benchmarking?/std",
   "frame-try-runtime/std",
+  "hex/std",
   "orml-asset-registry/std",
   "orml-tokens/std",
   "orml-xtokens/std",
