@@ -45,12 +45,12 @@ pub trait TransferAllowance<AccountId> {
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use cfg_traits::ops::{EnsureAdd, EnsureSub};
+	use cfg_traits::ops::EnsureSub;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, *},
 		traits::{tokens::AssetId, Currency, ReservableCurrency},
-		transactional, Twox64Concat,
+		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
@@ -92,16 +92,27 @@ pub mod pallet {
 	//
 	// Storage
 	//
-	pub type AllowanceDetailsOf<T: Config> = AllowanceDetails<T::BlockNumber>;
+	pub type AllowanceDetailsOf<T> = AllowanceDetails<<T as frame_system::Config>::BlockNumber>;
 
 	/// Struct to define when a transfer should be allowed from
 	/// the sender, receiver, and currency combination.
 	/// Transfer allowed time set by range of block numbers
-	/// Defaults to starting at 0, and ending at MAX block value
-	/// as per default.
+	/// Defaults to `allowed_at` starting at 0, and `blocked_at` ending at MAX block value
+	/// as per `Default` impl.
+	/// Current block must be between allowed at and blocked at
+	/// for transfer to be approved if allowance for sender/currency/receiver present.
 	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, Default, MaxEncodedLen, TypeInfo)]
 	pub struct AllowanceDetails<BlockNumber> {
+		/// Specifies a block number after which transfers will be allowed
+		/// for the sender & currency and destination location.
+		/// This is by default set to 0 with the add allowance extrinsic,
+		/// unless a delay is set, in which case it is set to the current block + delay.
 		pub allowed_at: BlockNumber,
+		/// Specifies a block number after-which transfers will be blocked
+		/// for the sender & currency and destination location.
+		/// This is by default set to `BlockNumber::Max()`, except when an allowance has been removed but not purged.
+		/// In that case it is set to the current block + delay.
+		/// if the allowance is later updated with the add allowance extrinsic, it is set back to max.
 		pub blocked_at: BlockNumber,
 	}
 
@@ -228,7 +239,6 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::AccountId: Into<Location>,
 	{
-		#[transactional]
 		#[pallet::call_index(0)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		/// Adds a transfer allowance for a sending Account/Currency.
@@ -276,7 +286,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[transactional]
 		#[pallet::call_index(1)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		/// Restricts a transfer allowance for a sending account/currency/receiver location to:
@@ -317,7 +326,6 @@ pub mod pallet {
 			}
 		}
 
-		#[transactional]
 		#[pallet::call_index(2)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
 		/// Removes a transfer allowance for a sending account/currency and receiving location
@@ -349,7 +357,6 @@ pub mod pallet {
 			}
 		}
 
-		#[transactional]
 		#[pallet::call_index(3)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
 		/// Adds an account/currency delay
@@ -369,7 +376,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[transactional]
 		#[pallet::call_index(4)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
 		/// Removes an existing sending account/currency delay
@@ -458,12 +464,16 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> TransferAllowance<T::AccountId> for Pallet<T>
-	where
-		<T as frame_system::Config>::AccountId: Into<Location>,
-	{
+	impl<T: Config> TransferAllowance<T::AccountId> for Pallet<T> {
 		type CurrencyId = T::CurrencyId;
 
+		/// This checks to see if a transfer from an account and currency should be allowed to a given location.
+		/// If there are no allowances defined for the sending account and currency, then the transfer is allowed.
+		/// If there is an allowance for the sending account and currency,
+		/// but the destination does not have an allowance added then the transfer is not allowed.
+		/// If there is an allowance for the sending account and currency,
+		/// and there's an allowance present:
+		/// then we check whether the current block is between the `allowed_at` and `blocked_at` blocks in the allowance.
 		fn allowance(
 			send: T::AccountId,
 			receive: Location,
@@ -480,6 +490,8 @@ pub mod pallet {
 						_ => Ok(false),
 					}
 				}
+				// In this case no allowances are set for the sending account & currency,
+				// therefore no restrictions should be in place.
 				_ => Ok(true),
 			}
 		}
