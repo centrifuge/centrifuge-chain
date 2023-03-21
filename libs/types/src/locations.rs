@@ -24,7 +24,6 @@ use crate::domain_address::DomainAddress;
 
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-#[scale_info(skip_type_params(T))]
 pub enum Location {
 	/// Local chain account sending destination.
 	Local(AccountId32),

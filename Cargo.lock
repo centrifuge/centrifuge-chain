@@ -7793,7 +7793,6 @@ dependencies = [
 name = "pallet-transfer-allowlist"
 version = "0.1.0"
 dependencies = [
- "cfg-primitives",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
@@ -7801,7 +7800,6 @@ dependencies = [
  "frame-system",
  "hex",
  "pallet-balances",
- "pallet-connectors",
  "parity-scale-codec 3.2.1",
  "scale-info",
  "serde",

@@ -19,27 +19,14 @@
 //! /then/ transfers from the sending account are restricted for that currency to:
 //! - the account(s) for which allowances have been made
 //! - the block range specified in the allowance
+use cfg_traits::TransferAllowance;
 use cfg_types::locations::Location;
-use frame_support::dispatch::DispatchError;
 pub use pallet::*;
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
-
-/// Trait to determine whether a sending account and currency have a restriction,
-/// and if so is there an allowance for the reciever location.
-pub trait TransferAllowance<AccountId> {
-	type CurrencyId;
-	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
-	/// Returns result wrapped bool for whether allowance is allowed.
-	fn allowance(
-		send: AccountId,
-		recieve: Location,
-		currency: Self::CurrencyId,
-	) -> Result<bool, DispatchError>;
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -466,6 +453,7 @@ pub mod pallet {
 
 	impl<T: Config> TransferAllowance<T::AccountId> for Pallet<T> {
 		type CurrencyId = T::CurrencyId;
+		type Location = Location;
 
 		/// This checks to see if a transfer from an account and currency should be allowed to a given location.
 		/// If there are no allowances defined for the sending account and currency, then the transfer is allowed.
@@ -476,7 +464,7 @@ pub mod pallet {
 		/// then we check whether the current block is between the `allowed_at` and `blocked_at` blocks in the allowance.
 		fn allowance(
 			send: T::AccountId,
-			receive: Location,
+			receive: Self::Location,
 			currency: T::CurrencyId,
 		) -> Result<bool, DispatchError> {
 			match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {

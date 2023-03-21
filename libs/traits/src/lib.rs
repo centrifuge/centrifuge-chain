@@ -616,3 +616,17 @@ pub mod fees {
 		) -> DispatchResult;
 	}
 }
+
+/// Trait to determine whether a sending account and currency have a restriction,
+/// and if so is there an allowance for the reciever location.
+pub trait TransferAllowance<AccountId> {
+	type CurrencyId;
+	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
+	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
+	/// Returns result wrapped bool for whether allowance is allowed.
+	fn allowance(
+		send: AccountId,
+		recieve: Self::Location,
+		currency: Self::CurrencyId,
+	) -> Result<bool, DispatchError>;
+}
