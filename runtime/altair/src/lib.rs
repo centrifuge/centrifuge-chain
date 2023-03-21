@@ -1323,7 +1323,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type Weights = ();
+	type Weights = weights::pallet_interest_accrual::WeightInfo<Self>;
 }
 
 parameter_types! {
