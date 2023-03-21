@@ -251,13 +251,14 @@ benchmarks! {
 		let pool_admin = account("pool_admin", 0, 0);
 		let pool_id = Helper::<T>::prepare_benchmark();
 
-		let policy = vec![WriteOffState {
+		let state = WriteOffState {
 			overdue_days: 0,
 			percentage: T::Rate::zero(),
 			penalty: T::Rate::zero(),
-		}]
-		.try_into()
-		.unwrap();
+		};
+		let policy = vec![state; T::MaxWriteOffPolicySize::get() as usize]
+			.try_into()
+			.unwrap();
 
 	}: _(RawOrigin::Signed(pool_admin), pool_id, policy)
 
