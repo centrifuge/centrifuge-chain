@@ -30,6 +30,7 @@ use ::xcm::{
 use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
 use cfg_traits::{Permissions as _, PoolMutate};
 use cfg_types::{
+	domain_address::{Domain, DomainAddress, DomainLocator},
 	fixed_point::Rate,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
 	tokens::{CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId},
@@ -44,8 +45,8 @@ use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_connectors::{
-	encoded_contract_call, Codec, Domain, DomainAddress, DomainLocator,
-	Error::UnauthorizedTransfer, Message, ParachainId, Router, XcmDomain,
+	encoded_contract_call, Codec, Error::UnauthorizedTransfer, Message, ParachainId, Router,
+	XcmDomain,
 };
 use pallet_pool_system::{
 	pool_types::PoolDetails,
