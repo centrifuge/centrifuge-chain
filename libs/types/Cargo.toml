@@ -21,6 +21,7 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 
 orml-asset-registry = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
@@ -28,6 +29,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 # local dependencies
 cfg-primitives = { path = "../primitives", default-features = false }
 cfg-traits = { path = "../traits", default-features = false }
+cfg-utils = { path = "../utils", default-features = false }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.37" }

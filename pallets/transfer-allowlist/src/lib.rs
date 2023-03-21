@@ -11,26 +11,17 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// This module checks whether an account should be allowed to make a transfer to
-/// a receiving location with a specific currency.
-/// If there are no allowances specified, then the account is assumed to be allowed
-/// to send to any location without restrictions.
-/// However once an allowance for a sender to a specific recieving location and currency is made,
-/// /then/ transfers from the sending account are restricted for that currency to:
-/// - the account(s) for which allowances have been made
-/// - the block range specified in the allowance
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{dispatch::DispatchError, RuntimeDebugNoBound};
+//! This module checks whether an account should be allowed to make a transfer to
+//! a receiving location with a specific currency.
+//! If there are no allowances specified, then the account is assumed to be allowed
+//! to send to any location without restrictions.
+//! However once an allowance for a sender to a specific recieving location and currency is made,
+//! /then/ transfers from the sending account are restricted for that currency to:
+//! - the account(s) for which allowances have been made
+//! - the block range specified in the allowance
+use cfg_types::locations::Location;
+use frame_support::dispatch::DispatchError;
 pub use pallet::*;
-use pallet_connectors::DomainAddress;
-use scale_info::TypeInfo;
-use sp_core::{H160, H256};
-use sp_runtime::{
-	traits::{BlakeTwo256, Hash},
-	AccountId32,
-};
-use xcm::{v1::MultiLocation, VersionedMultiLocation};
-
 #[cfg(test)]
 mod mock;
 
@@ -39,64 +30,6 @@ mod tests;
 
 /// AccountId type for runtime used in pallet.
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-
-/// Location types for destinations that can receive restricted transfers
-#[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-#[scale_info(skip_type_params(T))]
-pub enum Location {
-	/// Local chain account sending destination.
-	Local(AccountId32),
-	/// Test
-	TestLocal(u64),
-	/// XCM MultiLocation sending destinations.
-	/// Using hash value here as Multilocation is large -- v1 is 512 bytes, but next largest is only 40 bytes
-	/// other values aren't hashed as we have blake2 hashing on storage map keys, and we don't want the extra overhead
-	XCM(H256),
-	/// DomainAddress sending location from connectors
-	Address(DomainAddress),
-	/// Etherium address, for cases where we would have a standalone Eth address
-	Eth(H160),
-}
-
-impl From<u64> for Location {
-	fn from(a: u64) -> Self {
-		Self::TestLocal(a)
-	}
-}
-
-impl From<AccountId32> for Location {
-	fn from(a: AccountId32) -> Self {
-		Self::Local(a)
-	}
-}
-
-impl From<MultiLocation> for Location {
-	fn from(ml: MultiLocation) -> Self {
-		// using hash here as mulitlocation is significantly larger than any other enum type here
-		// -- 592 bytes, vs 40 bytes for domain address (next largest)
-		Self::XCM(BlakeTwo256::hash(&ml.encode()))
-	}
-}
-
-impl From<VersionedMultiLocation> for Location {
-	fn from(vml: VersionedMultiLocation) -> Self {
-		// using hash here as mulitlocation is significantly larger than any other enum type here
-		// -- 592 bytes, vs 40 bytes for domain address (next largest)
-		Self::XCM(BlakeTwo256::hash(&vml.encode()))
-	}
-}
-
-impl From<DomainAddress> for Location {
-	fn from(da: DomainAddress) -> Self {
-		Self::Address(da)
-	}
-}
-
-impl From<H160> for Location {
-	fn from(eth: H160) -> Self {
-		Self::Eth(eth)
-	}
-}
 
 /// Trait to determine whether a sending account and currency have a restriction,
 /// and if so is there an allowance for the reciever location.
@@ -115,6 +48,7 @@ pub trait TransferAllowance<AccountId> {
 pub mod pallet {
 	use core::fmt::Debug;
 
+	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, *},
 		traits::{tokens::AssetId, Currency, ReservableCurrency},
@@ -560,6 +494,3 @@ pub mod pallet {
 		}
 	}
 }
-
-#[cfg(test)]
-mod test {}

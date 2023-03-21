@@ -1,8 +1,8 @@
+use cfg_types::{domain_address::DomainAddress, locations::Location};
 use frame_support::{assert_noop, assert_ok};
 use frame_system::ensure_signed;
 use hex::FromHex;
-use pallet_connectors::DomainAddress;
-use xcm::v1::MultiLocation;
+use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 use super::*;
 use crate::mock::*;
