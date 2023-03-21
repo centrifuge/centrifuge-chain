@@ -222,10 +222,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T>
-	where
-		<T as frame_system::Config>::AccountId: Into<Location>,
-	{
+	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		/// Adds a transfer allowance for a sending Account/Currency.
@@ -391,10 +388,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T>
-	where
-		<T as frame_system::Config>::AccountId: Into<Location>,
-	{
+	impl<T: Config> Pallet<T> {
 		/// Increments number of allowances present for a sending account/currency set.
 		/// If no allowances set, an entry with 1 added, if entry already present, it is then incremented.
 		pub fn increment_or_create_allowance_count(
