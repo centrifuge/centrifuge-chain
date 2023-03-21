@@ -28,9 +28,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-/// AccountId type for runtime used in pallet.
-pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-
 /// Trait to determine whether a sending account and currency have a restriction,
 /// and if so is there an allowance for the reciever location.
 pub trait TransferAllowance<AccountId> {
@@ -48,6 +45,7 @@ pub trait TransferAllowance<AccountId> {
 pub mod pallet {
 	use core::fmt::Debug;
 
+	use cfg_traits::ops::{EnsureAdd, EnsureSub};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, *},
@@ -87,9 +85,6 @@ pub mod pallet {
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	}
 
-	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-	pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
-
 	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
@@ -97,7 +92,7 @@ pub mod pallet {
 	//
 	// Storage
 	//
-	pub type AllowanceDetailsOf<T> = AllowanceDetails<BlockNumberOf<T>>;
+	pub type AllowanceDetailsOf<T: Config> = AllowanceDetails<T::BlockNumber>;
 
 	/// Struct to define when a transfer should be allowed from
 	/// the sender, receiver, and currency combination.
@@ -135,12 +130,12 @@ pub mod pallet {
 	/// This allows us to keep storage map vals to known/bounded sizes.
 	#[pallet::storage]
 	#[pallet::getter(fn sender_currency_restriction_set)]
-	pub type AccountCurrencyTransferRestriction<T> = StorageDoubleMap<
+	pub type AccountCurrencyTransferRestriction<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
-		AccountIdOf<T>,
+		T::AccountId,
 		Twox64Concat,
-		CurrencyIdOf<T>,
+		T::CurrencyId,
 		u64,
 		OptionQuery,
 	>;
@@ -148,26 +143,26 @@ pub mod pallet {
 	/// Storage item for allowances specified for a sending account, currency type and recieving location
 	#[pallet::storage]
 	#[pallet::getter(fn sender_currency_reciever_allowance)]
-	pub type AccountCurrencyTransferAllowance<T> = StorageNMap<
+	pub type AccountCurrencyTransferAllowance<T: Config> = StorageNMap<
 		_,
 		(
-			NMapKey<Twox64Concat, AccountIdOf<T>>,
-			NMapKey<Twox64Concat, CurrencyIdOf<T>>,
+			NMapKey<Twox64Concat, T::AccountId>,
+			NMapKey<Twox64Concat, T::CurrencyId>,
 			NMapKey<Blake2_128Concat, Location>,
 		),
-		AllowanceDetails<BlockNumberOf<T>>,
+		AllowanceDetails<T::BlockNumber>,
 		OptionQuery,
 	>;
 	/// Storage item for Allowance delays for a sending account/currency
 	#[pallet::storage]
 	#[pallet::getter(fn sender_currency_delay)]
-	pub type AccountCurrencyDelay<T> = StorageDoubleMap<
+	pub type AccountCurrencyDelay<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
-		AccountIdOf<T>,
+		T::AccountId,
 		Twox64Concat,
-		CurrencyIdOf<T>,
-		BlockNumberOf<T>,
+		T::CurrencyId,
+		T::BlockNumber,
 		OptionQuery,
 	>;
 
@@ -195,36 +190,36 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event for successful creation of a transfer allowance
 		TransferAllowanceCreated {
-			sender_account_id: AccountIdOf<T>,
-			currency_id: CurrencyIdOf<T>,
+			sender_account_id: T::AccountId,
+			currency_id: T::CurrencyId,
 			receiver: Location,
-			allowed_at: BlockNumberOf<T>,
-			blocked_at: BlockNumberOf<T>,
+			allowed_at: T::BlockNumber,
+			blocked_at: T::BlockNumber,
 		},
 		/// Event for successful removal of transfer allowance perms
 		TransferAllowanceRemoved {
-			sender_account_id: AccountIdOf<T>,
-			currency_id: CurrencyIdOf<T>,
+			sender_account_id: T::AccountId,
+			currency_id: T::CurrencyId,
 			receiver: Location,
-			allowed_at: BlockNumberOf<T>,
-			blocked_at: BlockNumberOf<T>,
+			allowed_at: T::BlockNumber,
+			blocked_at: T::BlockNumber,
 		},
 		/// Event for successful removal of transfer allowance perms
 		TransferAllowancePurged {
-			sender_account_id: AccountIdOf<T>,
-			currency_id: CurrencyIdOf<T>,
+			sender_account_id: T::AccountId,
+			currency_id: T::CurrencyId,
 			receiver: Location,
 		},
 		/// Event for Allowance delay update
 		TransferAllowanceDelaySet {
-			sender_account_id: AccountIdOf<T>,
-			currency_id: CurrencyIdOf<T>,
-			delay: BlockNumberOf<T>,
+			sender_account_id: T::AccountId,
+			currency_id: T::CurrencyId,
+			delay: T::BlockNumber,
 		},
 		/// Event for Allowance delay removal
 		TransferAllowanceDelayRemoval {
-			sender_account_id: AccountIdOf<T>,
-			currency_id: CurrencyIdOf<T>,
+			sender_account_id: T::AccountId,
+			currency_id: T::CurrencyId,
 		},
 	}
 
@@ -246,7 +241,7 @@ pub mod pallet {
 		/// Running this for an existing allowance generates a new allowance based on the current delay, or lack thereof
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 			receiver: Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
@@ -289,7 +284,7 @@ pub mod pallet {
 		/// - or the current block if no delay is set
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 			receiver: Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
@@ -329,7 +324,7 @@ pub mod pallet {
 		/// Decrements or removes the sending account/currency count.
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 			receiver: Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
@@ -361,8 +356,8 @@ pub mod pallet {
 		/// Calling on an existing combination will update the existing delay value
 		pub fn add_or_update_allowance_delay(
 			origin: OriginFor<T>,
-			currency_id: CurrencyIdOf<T>,
-			delay: BlockNumberOf<T>,
+			currency_id: T::CurrencyId,
+			delay: T::BlockNumber,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			<AccountCurrencyDelay<T>>::insert(&account_id, &currency_id, &delay);
@@ -380,7 +375,7 @@ pub mod pallet {
 		/// Removes an existing sending account/currency delay
 		pub fn remove_allowance_delay(
 			origin: OriginFor<T>,
-			currency_id: CurrencyIdOf<T>,
+			currency_id: T::CurrencyId,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			match <AccountCurrencyDelay<T>>::get(&account_id, &currency_id) {
@@ -426,9 +421,7 @@ pub mod pallet {
 					);
 					Ok(())
 				}
-				Some(_) => Err(DispatchError::from(
-					Error::<T>::AllowanceCountArithmeticError,
-				)),
+				Some(_) => Err(DispatchError::Other("Impossible allowance count")),
 				_ => {
 					<AccountCurrencyTransferRestriction<T>>::insert(account_id, currency_id, 1);
 					Ok(())
@@ -452,9 +445,7 @@ pub mod pallet {
 				}
 				Some(allowance_count) => {
 					// check in this case should not ever be needed
-					let new_allowance_count = allowance_count
-						.checked_sub(1)
-						.ok_or(Error::<T>::AllowanceCountArithmeticError)?;
+					let new_allowance_count = allowance_count.ensure_sub(1)?;
 					<AccountCurrencyTransferRestriction<T>>::insert(
 						account_id,
 						currency_id,
