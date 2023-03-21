@@ -477,7 +477,7 @@ benchmarks! {
 		let now = TimestampPallet::<T>::get().into();
 		let after_one_year = now + math::seconds_per_year() * 1000;
 		let amount = (40 * CURRENCY).into();
-		set_block_number_timestamp::<T>(One::one(), after_one_year.into());
+		set_block_number_timestamp::<T>(Default::default(), after_one_year.into());
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
@@ -504,7 +504,7 @@ benchmarks! {
 		// set timestamp to around 2+ years
 		let now = TimestampPallet::<T>::get().into();
 		let after_maturity = now + (2 * math::seconds_per_year() + math::seconds_per_day()) * 1000;
-		set_block_number_timestamp::<T>(One::one(), after_maturity.into());
+		set_block_number_timestamp::<T>(Default::default(), after_maturity.into());
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		let amount = (100 * CURRENCY).into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
@@ -552,7 +552,7 @@ benchmarks! {
 		let now = TimestampPallet::<T>::get().into();
 		let after_maturity = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		// add write off groups
-		set_block_number_timestamp::<T>(One::one(), after_maturity.into());
+		set_block_number_timestamp::<T>(Default::default(), after_maturity.into());
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id)
 	verify {
@@ -582,7 +582,7 @@ benchmarks! {
 		let now = TimestampPallet::<T>::get().into();
 		let after_maturity = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		// add write off groups
-		set_block_number_timestamp::<T>(One::one(), after_maturity.into());
+		set_block_number_timestamp::<T>(Default::default(), after_maturity.into());
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		let percentage = Rate::saturating_from_rational(100, 100).into();
 		let penalty_interest_rate_per_year = Rate::saturating_from_rational(1, 100).into();
@@ -606,7 +606,7 @@ benchmarks! {
 		// set timestamp to around 2 year
 		let now = TimestampPallet::<T>::get().into();
 		let after_two_years = now + 2 * math::seconds_per_year() * 1000;
-		set_block_number_timestamp::<T>(One::one(), after_two_years.into());
+		set_block_number_timestamp::<T>(Default::default(), after_two_years.into());
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		// repay all. sent more than current debt
 		let owner_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
@@ -648,7 +648,7 @@ benchmarks! {
 		// set timestamp to around 2 year
 		let now = TimestampPallet::<T>::get().into();
 		let after_two_years = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
-		set_block_number_timestamp::<T>(One::one(), after_two_years.into());
+		set_block_number_timestamp::<T>(Default::default(), after_two_years.into());
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
@@ -703,7 +703,7 @@ benchmarks! {
 		// set timestamp to around 1 year
 		let now = TimestampPallet::<T>::get().into();
 		let after_one_month = now + math::seconds_per_day() * 30 * 1000;
-		set_block_number_timestamp::<T>(One::one(), after_one_month.into());
+		set_block_number_timestamp::<T>(Default::default(), after_one_month.into());
 		InterestAccrualPallet::<T>::on_initialize(0u32.into());
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
