@@ -23,6 +23,7 @@ pub mod pallet_migration_manager;
 pub mod pallet_multisig;
 pub mod pallet_preimage;
 pub mod pallet_proxy;
+pub mod pallet_restricted_tokens;
 pub mod pallet_scheduler;
 pub mod pallet_timestamp;
 pub mod pallet_treasury;

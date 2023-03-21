@@ -22,19 +22,19 @@ pub trait WeightInfo {
 }
 
 impl WeightInfo for () {
-	fn register(n: u32) -> Weight {
+	fn register(_: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn update_no_execution(n: u32) -> Weight {
+	fn update_no_execution(_: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn update_and_execute(n: u32) -> Weight {
+	fn update_and_execute(_: u32) -> Weight {
 		Weight::zero()
 	}
 
-	fn execute_update(n: u32) -> Weight {
+	fn execute_update(_: u32) -> Weight {
 		Weight::zero()
 	}
 

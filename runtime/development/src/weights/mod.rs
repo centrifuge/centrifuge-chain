@@ -22,3 +22,4 @@ pub mod pallet_nft_sales;
 pub mod pallet_permissions;
 pub mod pallet_pool_registry;
 pub mod pallet_pool_system;
+pub mod pallet_restricted_tokens;
