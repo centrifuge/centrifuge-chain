@@ -26,7 +26,9 @@ use cfg_types::{
 	consts::pools::{MaxTrancheNameLengthBytes, MaxTrancheSymbolLengthBytes},
 	fee_keys::FeeKey,
 	fixed_point::Rate,
-	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
+	permissions::{
+		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
+	},
 	time::TimeProvider,
 	tokens::{CustomMetadata, TrancheCurrency},
 };
@@ -61,7 +63,9 @@ use pallet_pool_system::{
 	tranches::{TrancheIndex, TrancheLoc, TrancheSolution},
 	EpochSolution,
 };
-use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
+use pallet_restricted_tokens::{
+	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
+};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -293,7 +297,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
 	type PreCurrency = cfg_traits::Always;
-	type PreExtrTransfer = cfg_traits::Always;
+	type PreExtrTransfer = RestrictedTokens<Permissions>;
 	type PreFungibleInspect = FungibleInspectPassthrough;
 	type PreFungibleInspectHold = cfg_traits::Always;
 	type PreFungibleMutate = cfg_traits::Always;
@@ -307,6 +311,38 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_restricted_tokens::weights::SubstrateWeight<Self>;
+}
+
+pub struct RestrictedTokens<P>(PhantomData<P>);
+impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
+where
+	P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
+{
+	type Result = bool;
+
+	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
+		let TransferDetails {
+			send,
+			recv,
+			id,
+			amount: _amount,
+		} = details;
+
+		match id {
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				P::has(
+					PermissionScope::Pool(pool_id),
+					send,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				) && P::has(
+					PermissionScope::Pool(pool_id),
+					recv,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				)
+			}
+			_ => true,
+		}
+	}
 }
 
 parameter_types! {
@@ -1832,6 +1868,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_uniques, Uniques);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1897,6 +1935,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_uniques, Uniques);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
