@@ -89,4 +89,9 @@ onboard-parachain)
   cd scripts/js/onboard
   yarn && yarn execute "ws://0.0.0.0:9944" "//Alice" ${para_id} "${genesis}" $wasm_location
   ;;
+
+benchmark)
+  pallet=$2
+  cargo run --features runtime-benchmarks benchmark pallet --chain $parachain --pallet="$pallet" --extrinsic=*
+  ;;
 esac
