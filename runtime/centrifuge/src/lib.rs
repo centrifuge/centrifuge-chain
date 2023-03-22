@@ -1169,8 +1169,7 @@ parameter_types! {
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
-	// TODO: Define deposit?
-	pub const PoolDeposit: Balance = 100 * CFG;
+	pub const PoolDeposit: Balance = 1000 * CFG;
 }
 
 pub struct PoolCurrency;
@@ -1467,7 +1466,7 @@ impl pallet_interest_accrual::Config for Runtime {
 
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
-	pub const MaxActiveLoansPerPool: u32 = 50;
+	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxWriteOffGroups: u32 = 100;
 }
 
@@ -1506,16 +1505,16 @@ impl pallet_keystore::pallet::Config for Runtime {
 }
 
 parameter_types! {
-	// per byte deposit is 0.01 AIR
-	pub const DepositPerByte: Balance = CENTI_CFG;
-	// Base deposit to add attribute is 0.1 AIR
-	pub const AttributeDepositBase: Balance = 10 * CENTI_CFG;
-	// Base deposit to add metadata is 0.1 AIR
-	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
-	// Deposit to create a class is 1 AIR
-	pub const CollectionDeposit: Balance = CFG;
-	// Deposit to create a class is 0.1 AIR
-	pub const ItemDeposit: Balance = 10 * CENTI_CFG;
+	// per byte deposit is 0.1 CFG
+	pub const DepositPerByte: Balance = 10 * CENTI_CFG;
+	// Base deposit to add attribute is 1 CFG
+	pub const AttributeDepositBase: Balance = 1 * CFG;
+	// Base deposit to add metadata is 1 CFG
+	pub const MetadataDepositBase: Balance = 1 * CFG;
+	// Deposit to create a class is 10 CFG
+	pub const CollectionDeposit: Balance = 10 * CFG;
+	// Deposit to create a class is 1 CFG
+	pub const ItemDeposit: Balance = 1 * CFG;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
