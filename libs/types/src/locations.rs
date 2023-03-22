@@ -35,7 +35,7 @@ pub enum Location {
 	XCM(H256),
 	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
-	/// Etherium address, for cases where we would have a standalone Eth address
+	/// Ethereum address, for cases where we would have a standalone Eth address
 	Eth(H160),
 }
 
@@ -53,7 +53,7 @@ impl From<AccountId32> for Location {
 
 impl From<MultiLocation> for Location {
 	fn from(ml: MultiLocation) -> Self {
-		// using hash here as mulitlocation is significantly larger than any other enum type here
+		// using hash here as multilocation is significantly larger than any other enum type here
 		// -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&ml.encode()))
 	}
@@ -61,7 +61,7 @@ impl From<MultiLocation> for Location {
 
 impl From<VersionedMultiLocation> for Location {
 	fn from(vml: VersionedMultiLocation) -> Self {
-		// using hash here as mulitlocation is significantly larger than any other enum type here
+		// using hash here as multilocation is significantly larger than any other enum type here
 		// -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&vml.encode()))
 	}

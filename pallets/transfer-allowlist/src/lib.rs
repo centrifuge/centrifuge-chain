@@ -88,7 +88,7 @@ pub mod pallet {
 	/// as per `Default` impl.
 	/// Current block must be between allowed at and blocked at
 	/// for transfer to be approved if allowance for sender/currency/receiver present.
-	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, Default, MaxEncodedLen, TypeInfo)]
+	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 	pub struct AllowanceDetails<BlockNumber> {
 		/// Specifies a block number after which transfers will be allowed
 		/// for the sender & currency and destination location.
@@ -103,7 +103,7 @@ pub mod pallet {
 		pub blocked_at: BlockNumber,
 	}
 
-	impl<BlockNumber> AllowanceDetails<BlockNumber>
+	impl<BlockNumber> Default for AllowanceDetails<BlockNumber>
 	where
 		BlockNumber: AtLeast32BitUnsigned,
 	{
@@ -127,7 +127,7 @@ pub mod pallet {
 	/// AccountCurrencyAllowances to see if there is an allowance for the reciever
 	/// This allows us to keep storage map vals to known/bounded sizes.
 	#[pallet::storage]
-	#[pallet::getter(fn sender_currency_restriction_set)]
+	#[pallet::getter(fn get_account_currency_restriction_count)]
 	pub type AccountCurrencyTransferRestriction<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
@@ -138,9 +138,9 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
-	/// Storage item for allowances specified for a sending account, currency type and recieving location
+	/// Storage item for allowances specified for a sending account, currency type and receiving location
 	#[pallet::storage]
-	#[pallet::getter(fn sender_currency_reciever_allowance)]
+	#[pallet::getter(fn get_account_currency_transfer_allowance)]
 	pub type AccountCurrencyTransferAllowance<T: Config> = StorageNMap<
 		_,
 		(
@@ -153,7 +153,7 @@ pub mod pallet {
 	>;
 	/// Storage item for Allowance delays for a sending account/currency
 	#[pallet::storage]
-	#[pallet::getter(fn sender_currency_delay)]
+	#[pallet::getter(fn get_account_currency_delay)]
 	pub type AccountCurrencyDelay<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
@@ -240,7 +240,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			let allowance_details = match Self::sender_currency_delay(&account_id, currency_id) {
+			let allowance_details = match Self::get_account_currency_delay(&account_id, currency_id)
+			{
 				Some(delay) => AllowanceDetails {
 					allowed_at: <frame_system::Pallet<T>>::block_number().saturating_add(delay),
 					..AllowanceDetails::default()
@@ -282,7 +283,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			let blocked_at = match Self::sender_currency_delay(&account_id, currency_id) {
+			let blocked_at = match Self::get_account_currency_delay(&account_id, currency_id) {
 				Some(delay) => <frame_system::Pallet<T>>::block_number().saturating_add(delay),
 				_ => <frame_system::Pallet<T>>::block_number(),
 			};
@@ -408,6 +409,7 @@ pub mod pallet {
 					);
 					Ok(())
 				}
+				// should never occur
 				Some(_) => Err(DispatchError::Other("Impossible allowance count")),
 				_ => {
 					<AccountCurrencyTransferRestriction<T>>::insert(account_id, currency_id, 1);

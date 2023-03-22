@@ -68,7 +68,7 @@ fn add_transfer_allowance_works() {
 			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
-			TransferAllowList::sender_currency_reciever_allowance((
+			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				CurrencyId::A,
 				Location::TestLocal(ACCOUNT_RECEIVER)
@@ -80,7 +80,8 @@ fn add_transfer_allowance_works() {
 			}
 		);
 		assert_eq!(
-			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
+			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+				.unwrap(),
 			1
 		);
 
@@ -124,7 +125,7 @@ fn add_transfer_allowance_updates_with_delay_set() {
 		// only one allowance has been created, should still only have 1 reserve
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 		assert_eq!(
-			TransferAllowList::sender_currency_reciever_allowance((
+			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				CurrencyId::A,
 				Location::TestLocal(ACCOUNT_RECEIVER)
@@ -138,7 +139,8 @@ fn add_transfer_allowance_updates_with_delay_set() {
 		);
 		// verify correctly incremented -- should still just have one val
 		assert_eq!(
-			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
+			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+				.unwrap(),
 			1
 		);
 	})
@@ -161,7 +163,8 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 		// verify reserve incremented for second allowance
 		assert_eq!(Balances::reserved_balance(&SENDER), 20);
 		assert_eq!(
-			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
+			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+				.unwrap(),
 			2
 		);
 
@@ -257,7 +260,7 @@ fn remove_transfer_allowance_works() {
 		));
 		// ensure blocked at set to restrict transfers
 		assert_eq!(
-			TransferAllowList::sender_currency_reciever_allowance((
+			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				CurrencyId::A,
 				Location::TestLocal(ACCOUNT_RECEIVER)
@@ -276,7 +279,7 @@ fn remove_transfer_allowance_works() {
 
 		// ensure allowlist entry still in place, just with restricted params
 		assert_eq!(
-			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A),
 			Some(1)
 		);
 
@@ -313,7 +316,7 @@ fn remove_transfer_allowance_with_delay_works() {
 			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(
-			TransferAllowList::sender_currency_reciever_allowance((
+			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				CurrencyId::A,
 				Location::TestLocal(ACCOUNT_RECEIVER)
@@ -328,7 +331,7 @@ fn remove_transfer_allowance_with_delay_works() {
 
 		// ensure only 1 transfer allowlist for sender/currency still in place
 		assert_eq!(
-			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A),
 			Some(1)
 		);
 
@@ -370,7 +373,7 @@ fn purge_transfer_allowance_works() {
 		));
 		// verify removed
 		assert_eq!(
-			TransferAllowList::sender_currency_reciever_allowance((
+			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				CurrencyId::A,
 				Location::TestLocal(ACCOUNT_RECEIVER)
@@ -382,7 +385,7 @@ fn purge_transfer_allowance_works() {
 
 		// verify sender/currency allowance tracking decremented/removed
 		assert_eq!(
-			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A),
 			None
 		);
 		// verify event sent for removal
@@ -445,7 +448,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 
 		// verify correct entry removed
 		assert_eq!(
-			TransferAllowList::sender_currency_reciever_allowance((
+			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				CurrencyId::A,
 				Location::TestLocal(ACCOUNT_RECEIVER)
@@ -455,7 +458,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 
 		// verify correct entry still present
 		assert_eq!(
-			TransferAllowList::sender_currency_reciever_allowance((
+			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				CurrencyId::A,
 				Location::TestLocal(100u64)
@@ -469,7 +472,8 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 
 		// verify correct decrement
 		assert_eq!(
-			TransferAllowList::sender_currency_restriction_set(SENDER, CurrencyId::A).unwrap(),
+			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+				.unwrap(),
 			1
 		);
 	})
@@ -486,7 +490,7 @@ fn add_allowance_delay_works() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A).unwrap(),
+			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A).unwrap(),
 			200
 		);
 		// verify event deposited
@@ -516,7 +520,7 @@ fn update_allowance_delay_works() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A).unwrap(),
+			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A).unwrap(),
 			250
 		);
 		// verify event deposited
@@ -546,7 +550,7 @@ fn remove_allowance_delay_works() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A),
 			None
 		);
 		// verify event deposited
@@ -570,7 +574,7 @@ fn remove_allowance_delay_when_no_delay_set() {
 		);
 		// verify no val in storage
 		assert_eq!(
-			TransferAllowList::sender_currency_delay(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A),
 			None
 		);
 	})
