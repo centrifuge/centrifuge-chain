@@ -358,7 +358,7 @@ pub mod pallet {
 			<AccountCurrencyTransferCountDelay<T>>::insert(
 				&account_id,
 				&currency_id,
-				(count, Some(delay.clone())),
+				(count, Some(delay)),
 			);
 			Self::deposit_event(Event::TransferAllowanceDelaySet {
 				sender_account_id: account_id,
