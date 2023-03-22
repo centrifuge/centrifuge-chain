@@ -28,6 +28,8 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
+cfg-mocks = { path = "../../libs/mocks" }
+
 [features]
 default = ["std"]
 try-runtime = [

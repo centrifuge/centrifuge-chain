@@ -20,12 +20,15 @@ sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-featu
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 
-# Testing libraries that must be exported
-lazy_static = { version = "1.4", optional = true }
-mockall = { version = "0.11", optional = true }
-
 [dev-dependencies]
 cfg-types = { path = "../types", default-features = true }
+cfg-mocks = { path = "../mocks" }
+mock-builder = { path = "../../libs/mock-builder" }
+
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.37" }
 
 [features]
@@ -42,8 +45,6 @@ std = [
   "sp-arithmetic/std",
   "sp-std/std",
   "cfg-primitives/std",
-  "mockall",
-  "lazy_static",
   "scale-info/std",
 ]
 try-runtime = [

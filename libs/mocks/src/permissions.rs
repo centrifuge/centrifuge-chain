@@ -1,8 +1,5 @@
-pub use pallet_mock_permissions::*;
-
-#[allow(dead_code)]
 #[frame_support::pallet]
-pub mod pallet_mock_permissions {
+pub mod pallet {
 	use cfg_traits::Permissions;
 	use cfg_types::permissions::Role;
 	use frame_support::pallet_prelude::*;
@@ -30,11 +27,11 @@ pub mod pallet_mock_permissions {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_add(f: impl Fn(T::Scope, T::AccountId, Role) -> bool + 'static) {
+		pub fn mock_add(f: impl Fn(T::Scope, T::AccountId, Role) -> DispatchResult + 'static) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 
-		pub fn mock_remove(f: impl Fn(T::Scope, T::AccountId, Role) -> bool + 'static) {
+		pub fn mock_remove(f: impl Fn(T::Scope, T::AccountId, Role) -> DispatchResult + 'static) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
 	}

@@ -394,3 +394,115 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		T::Tokens::burn_from(id.into(), seller, amount).map(|_| ())
 	}
 }
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarks_utils {
+	use cfg_traits::{Investment, PoolBenchmarkHelper};
+	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use frame_benchmarking::account;
+	use frame_support::traits::Currency;
+	use frame_system::RawOrigin;
+	use sp_std::vec;
+
+	use super::*;
+	use crate::tranches::TrancheMetadata;
+
+	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T>
+	where
+		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
+		<T::Investments as Investment<T::AccountId>>::Amount: From<u32>,
+	{
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type PoolId = T::PoolId;
+
+		fn benchmark_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
+			const FUNDS: u32 = u32::max_value();
+
+			if T::AssetRegistry::metadata(&CurrencyId::AUSD).is_none() {
+				T::AssetRegistry::register_asset(
+					Some(CurrencyId::AUSD),
+					orml_asset_registry::AssetMetadata {
+						decimals: 18,
+						name: "MOCK TOKEN".as_bytes().to_vec(),
+						symbol: "MOCK".as_bytes().to_vec(),
+						existential_deposit: Zero::zero(),
+						location: None,
+						additional: CustomMetadata::default(),
+					},
+				)
+				.unwrap();
+			}
+
+			T::Currency::make_free_balance_be(admin, T::PoolDeposit::get());
+			// Pool creation
+			Pallet::<T>::create(
+				admin.clone(),
+				admin.clone(),
+				pool_id,
+				vec![
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
+							interest_rate_per_sec: One::one(),
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+				],
+				CurrencyId::AUSD,
+				FUNDS.into(),
+				None,
+			)
+			.unwrap();
+
+			// Investment in pool
+			let investor = account::<T::AccountId>("investor_benchmark_pool", 0, 0);
+			let tranche = Pallet::<T>::pool(pool_id)
+				.unwrap()
+				.tranches
+				.tranche_id(TrancheLoc::Index(0))
+				.unwrap();
+
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				investor.clone(),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche, u64::MAX)),
+			)
+			.unwrap();
+
+			T::Tokens::mint_into(CurrencyId::AUSD, &investor, FUNDS.into()).unwrap();
+			T::Investments::update_investment(
+				&investor,
+				T::TrancheCurrency::generate(pool_id.into(), tranche),
+				FUNDS.into(),
+			)
+			.unwrap();
+
+			// Close epoch
+			Pool::<T>::mutate(pool_id, |pool| {
+				let pool = pool.as_mut().unwrap();
+				pool.parameters.min_epoch_time = 0;
+				pool.parameters.max_nav_age = 999_999_999_999;
+			});
+
+			Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id).unwrap();
+		}
+
+		fn benchmark_give_ausd(account: &T::AccountId, balance: T::Balance) {
+			T::Tokens::mint_into(CurrencyId::AUSD, account, balance).unwrap();
+			T::Currency::make_free_balance_be(account, balance);
+		}
+	}
+}

@@ -1,8 +1,5 @@
-pub use pallet_mock_pools::*;
-
-#[allow(dead_code)]
 #[frame_support::pallet]
-mod pallet_mock_pools {
+pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{PoolInspect, PoolReserve, PriceValue};
 	use codec::{Decode, Encode, MaxEncodedLen};
@@ -71,6 +68,14 @@ mod pallet_mock_pools {
 		) {
 			register_call!(move |(a, b, c)| f(a, b, c));
 		}
+
+		pub fn mock_benchmark_create_pool(f: impl Fn(T::PoolId, &T::AccountId) + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_benchmark_give_ausd(f: impl Fn(&T::AccountId, T::Balance) + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
 	}
 
 	impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
@@ -108,6 +113,23 @@ mod pallet_mock_pools {
 
 		fn deposit(a: T::PoolId, b: T::AccountId, c: T::Balance) -> DispatchResult {
 			execute_call!((a, b, c))
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> cfg_traits::PoolBenchmarkHelper for Pallet<T> {
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type PoolId = T::PoolId;
+
+		fn benchmark_create_pool(a: Self::PoolId, b: &Self::AccountId) {
+			let b = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(b) };
+			execute_call!((a, b))
+		}
+
+		fn benchmark_give_ausd(a: &Self::AccountId, b: Self::Balance) {
+			let a = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(a) };
+			execute_call!((a, b))
 		}
 	}
 }

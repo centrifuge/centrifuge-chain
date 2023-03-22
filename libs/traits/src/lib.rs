@@ -183,6 +183,20 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
 }
 
+/// Utility to benchmark pools easily
+#[cfg(feature = "runtime-benchmarks")]
+pub trait PoolBenchmarkHelper {
+	type PoolId;
+	type AccountId;
+	type Balance;
+
+	/// Create a benchmark pool giving the id and the admin.
+	fn benchmark_create_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
+
+	/// Give AUSD to the account
+	fn benchmark_give_ausd(account: &Self::AccountId, balance: Self::Balance);
+}
+
 /// A trait that can be used to retrieve the current price for a currency
 pub struct CurrencyPair<CurrencyId> {
 	pub base: CurrencyId,

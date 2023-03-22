@@ -101,7 +101,7 @@ pub mod macros {
 
 			$(
 				let matches = |event: &RuntimeEvent| {
-					match *event {
+					match event {
 						$pattern $(if extra_guards!($extra) )? => true,
 						_ => false
 					}

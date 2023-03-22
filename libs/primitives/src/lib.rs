@@ -169,6 +169,9 @@ pub mod types {
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct ItemId(pub u128);
+
+	/// A representation of a loan identifier
+	pub type LoanId = u64;
 }
 
 /// Common constants for all runtimes
