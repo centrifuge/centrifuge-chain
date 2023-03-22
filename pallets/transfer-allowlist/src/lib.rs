@@ -27,7 +27,6 @@ mod mock;
 mod tests;
 
 use cfg_traits::TransferAllowance;
-use cfg_types::locations::Location;
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -35,13 +34,14 @@ pub mod pallet {
 	use core::fmt::Debug;
 
 	use cfg_traits::ops::EnsureSub;
-	use codec::{Decode, Encode, MaxEncodedLen};
+	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
-		pallet_prelude::{DispatchResult, OptionQuery, StorageDoubleMap, StorageNMap, *},
+		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
 		traits::{tokens::AssetId, Currency, ReservableCurrency},
 		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
+	use scale_info::TypeInfo;
 	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
 
 	use super::*;
@@ -78,6 +78,15 @@ pub mod pallet {
 		/// Currency for Reserve/Unreserve with allowlist adding/removal,
 		/// given that the allowlist will be in storage
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+		type Location: Member
+			+ Debug
+			+ Eq
+			+ PartialEq
+			+ TypeInfo
+			+ Encode
+			+ EncodeLike
+			+ Decode
+			+ MaxEncodedLen;
 	}
 
 	//
@@ -150,7 +159,7 @@ pub mod pallet {
 		(
 			NMapKey<Twox64Concat, T::AccountId>,
 			NMapKey<Twox64Concat, T::CurrencyId>,
-			NMapKey<Blake2_128Concat, Location>,
+			NMapKey<Blake2_128Concat, T::Location>,
 		),
 		AllowanceDetails<T::BlockNumber>,
 		OptionQuery,
@@ -183,7 +192,7 @@ pub mod pallet {
 		TransferAllowanceCreated {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			receiver: Location,
+			receiver: T::Location,
 			allowed_at: T::BlockNumber,
 			blocked_at: T::BlockNumber,
 		},
@@ -191,7 +200,7 @@ pub mod pallet {
 		TransferAllowanceRemoved {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			receiver: Location,
+			receiver: T::Location,
 			allowed_at: T::BlockNumber,
 			blocked_at: T::BlockNumber,
 		},
@@ -199,7 +208,7 @@ pub mod pallet {
 		TransferAllowancePurged {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
-			receiver: Location,
+			receiver: T::Location,
 		},
 		/// Event for Allowance delay update
 		TransferAllowanceDelaySet {
@@ -229,7 +238,7 @@ pub mod pallet {
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
-			receiver: Location,
+			receiver: T::Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
@@ -274,7 +283,7 @@ pub mod pallet {
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
-			receiver: Location,
+			receiver: T::Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
@@ -318,7 +327,7 @@ pub mod pallet {
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
-			receiver: Location,
+			receiver: T::Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
@@ -479,7 +488,7 @@ pub mod pallet {
 
 	impl<T: Config> TransferAllowance<T::AccountId> for Pallet<T> {
 		type CurrencyId = T::CurrencyId;
-		type Location = Location;
+		type Location = T::Location;
 
 		/// This checks to see if a transfer from an account and currency should be allowed to a given location.
 		/// If there are no allowances defined for the sending account and currency, then the transfer is allowed.

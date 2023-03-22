@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_types::locations::Location;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
@@ -118,6 +119,7 @@ pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
 impl transfer_allowlist::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type Deposit = ConstU64<10>;
+	type Location = Location;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 }
