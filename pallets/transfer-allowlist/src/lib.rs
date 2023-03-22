@@ -19,14 +19,16 @@
 //! /then/ transfers from the sending account are restricted for that currency to:
 //! - the account(s) for which allowances have been made
 //! - the block range specified in the allowance
-use cfg_traits::TransferAllowance;
-use cfg_types::locations::Location;
-pub use pallet::*;
+
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+use cfg_traits::TransferAllowance;
+use cfg_types::locations::Location;
+pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -43,6 +45,12 @@ pub mod pallet {
 	use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
 
 	use super::*;
+
+	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
+
+	pub type AllowanceDetailsOf<T> = AllowanceDetails<<T as frame_system::Config>::BlockNumber>;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -72,15 +80,9 @@ pub mod pallet {
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 	}
 
-	pub type DepositBalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
-
 	//
 	// Storage
 	//
-	pub type AllowanceDetailsOf<T> = AllowanceDetails<<T as frame_system::Config>::BlockNumber>;
-
 	/// Struct to define when a transfer should be allowed from
 	/// the sender, receiver, and currency combination.
 	/// Transfer allowed time set by range of block numbers
@@ -115,9 +117,11 @@ pub mod pallet {
 		}
 	}
 
-	/// Storage item for whether a sending account and currency have restrictions set
-	/// a double map is used here as we need to know whether there is a restriction set
-	/// for the account and currency.
+	/// Storage item containing number of allowances set, and delay for a sending account and currency.
+	/// Storage contains a tuple of the allowance count as `u64`, and the delay as `BlockNumber`--number of blocks that allow/block fields are delayed from current block.
+	/// If a delay is set, but no allowances have been created, count will be set to 0.
+	/// A double map is used here as we need to know whether there is a restriction set
+	/// for the account and currency in the case where there is no allowance for destination location.
 	/// Using an StorageNMap would not allow us to look up whether there was a restriction for the sending account and currency, given that:
 	/// - we're checking whether there's an allowance specified for the receiver location
 	///   - we would only find whether a restriction was set for the account in this caseif:
@@ -127,14 +131,14 @@ pub mod pallet {
 	/// AccountCurrencyAllowances to see if there is an allowance for the reciever
 	/// This allows us to keep storage map vals to known/bounded sizes.
 	#[pallet::storage]
-	#[pallet::getter(fn get_account_currency_restriction_count)]
-	pub type AccountCurrencyTransferRestriction<T: Config> = StorageDoubleMap<
+	#[pallet::getter(fn get_account_currency_restriction_count_delay)]
+	pub type AccountCurrencyTransferCountDelay<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
 		T::AccountId,
 		Twox64Concat,
 		T::CurrencyId,
-		u64,
+		(u64, Option<T::BlockNumber>),
 		OptionQuery,
 	>;
 
@@ -149,18 +153,6 @@ pub mod pallet {
 			NMapKey<Blake2_128Concat, Location>,
 		),
 		AllowanceDetails<T::BlockNumber>,
-		OptionQuery,
-	>;
-	/// Storage item for Allowance delays for a sending account/currency
-	#[pallet::storage]
-	#[pallet::getter(fn get_account_currency_delay)]
-	pub type AccountCurrencyDelay<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::AccountId,
-		Twox64Concat,
-		T::CurrencyId,
-		T::BlockNumber,
 		OptionQuery,
 	>;
 
@@ -240,9 +232,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			let allowance_details = match Self::get_account_currency_delay(&account_id, currency_id)
-			{
-				Some(delay) => AllowanceDetails {
+			let allowance_details = match Self::get_account_currency_restriction_count_delay(
+				&account_id,
+				currency_id,
+			) {
+				Some((_, Some(delay))) => AllowanceDetails {
 					allowed_at: <frame_system::Pallet<T>>::block_number().saturating_add(delay),
 					..AllowanceDetails::default()
 				},
@@ -283,8 +277,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			let blocked_at = match Self::get_account_currency_delay(&account_id, currency_id) {
-				Some(delay) => <frame_system::Pallet<T>>::block_number().saturating_add(delay),
+			let blocked_at = match Self::get_account_currency_restriction_count_delay(
+				&account_id,
+				currency_id,
+			) {
+				Some((_, Some(delay))) => {
+					<frame_system::Pallet<T>>::block_number().saturating_add(delay)
+				}
 				_ => <frame_system::Pallet<T>>::block_number(),
 			};
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
@@ -352,7 +351,14 @@ pub mod pallet {
 			delay: T::BlockNumber,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			<AccountCurrencyDelay<T>>::insert(&account_id, &currency_id, &delay);
+			let (count, _) =
+				Self::get_account_currency_restriction_count_delay(&account_id, &currency_id)
+					.unwrap_or((0, Some(0u32.into())));
+			<AccountCurrencyTransferCountDelay<T>>::insert(
+				&account_id,
+				&currency_id,
+				(count, Some(delay.clone())),
+			);
 			Self::deposit_event(Event::TransferAllowanceDelaySet {
 				sender_account_id: account_id,
 				currency_id,
@@ -369,9 +375,22 @@ pub mod pallet {
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			match <AccountCurrencyDelay<T>>::get(&account_id, &currency_id) {
-				Some(_) => {
-					<AccountCurrencyDelay<T>>::remove(&account_id, &currency_id);
+			match Self::get_account_currency_restriction_count_delay(&account_id, &currency_id) {
+				Some((count, _)) if count == 0 => {
+					<AccountCurrencyTransferCountDelay<T>>::remove(&account_id, &currency_id);
+					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
+						sender_account_id: account_id,
+						currency_id,
+					});
+					Ok(())
+				}
+
+				Some((count, _)) => {
+					<AccountCurrencyTransferCountDelay<T>>::insert(
+						&account_id,
+						&currency_id,
+						&(count, None),
+					);
 					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
 						sender_account_id: account_id,
 						currency_id,
@@ -397,22 +416,24 @@ pub mod pallet {
 			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
 			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
-			match <AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id) {
-				Some(allowance_count) if allowance_count > 0 => {
+			match Self::get_account_currency_restriction_count_delay(account_id, currency_id) {
+				Some((allowance_count, delay)) => {
 					let new_allowance_count = allowance_count
 						.checked_add(1)
 						.ok_or(Error::<T>::AllowanceCountOverflow)?;
-					<AccountCurrencyTransferRestriction<T>>::insert(
+					<AccountCurrencyTransferCountDelay<T>>::insert(
 						account_id,
 						currency_id,
-						new_allowance_count,
+						(new_allowance_count, delay),
 					);
 					Ok(())
 				}
-				// should never occur
-				Some(_) => Err(DispatchError::Other("Impossible allowance count")),
 				_ => {
-					<AccountCurrencyTransferRestriction<T>>::insert(account_id, currency_id, 1);
+					<AccountCurrencyTransferCountDelay<T>>::insert(
+						account_id,
+						currency_id,
+						(1, None::<T::BlockNumber>),
+					);
 					Ok(())
 				}
 			}
@@ -427,18 +448,26 @@ pub mod pallet {
 			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
 			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
-			match <AccountCurrencyTransferRestriction<T>>::get(account_id, currency_id) {
-				Some(allowance_count) if allowance_count <= 1 => {
-					<AccountCurrencyTransferRestriction<T>>::remove(account_id, currency_id);
+			match Self::get_account_currency_restriction_count_delay(account_id, currency_id) {
+				Some((allowance_count, None)) if allowance_count <= 1 => {
+					<AccountCurrencyTransferCountDelay<T>>::remove(account_id, currency_id);
 					Ok(())
 				}
-				Some(allowance_count) => {
-					// check in this case should not ever be needed
-					let new_allowance_count = allowance_count.ensure_sub(1)?;
-					<AccountCurrencyTransferRestriction<T>>::insert(
+				Some((allowance_count, delay)) if allowance_count <= 1 => {
+					<AccountCurrencyTransferCountDelay<T>>::insert(
 						account_id,
 						currency_id,
-						new_allowance_count,
+						(0, delay),
+					);
+					Ok(())
+				}
+				Some((allowance_count, delay)) => {
+					// check in this case should not ever be needed
+					let new_allowance_count = allowance_count.ensure_sub(1)?;
+					<AccountCurrencyTransferCountDelay<T>>::insert(
+						account_id,
+						currency_id,
+						(new_allowance_count, delay),
 					);
 					Ok(())
 				}
@@ -463,8 +492,8 @@ pub mod pallet {
 			receive: Self::Location,
 			currency: T::CurrencyId,
 		) -> Result<bool, DispatchError> {
-			match <AccountCurrencyTransferRestriction<T>>::get(&send, &currency) {
-				Some(count) if count > 0 => {
+			match Self::get_account_currency_restriction_count_delay(&send, &currency) {
+				Some((count, _)) if count > 0 => {
 					let current_block = <frame_system::Pallet<T>>::block_number();
 					match <AccountCurrencyTransferAllowance<T>>::get((&send, &currency, receive)) {
 						Some(AllowanceDetails {

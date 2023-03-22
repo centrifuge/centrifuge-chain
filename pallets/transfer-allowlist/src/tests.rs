@@ -80,9 +80,9 @@ fn add_transfer_allowance_works() {
 			}
 		);
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
 				.unwrap(),
-			1
+			(1, None)
 		);
 
 		assert_eq!(
@@ -139,9 +139,9 @@ fn add_transfer_allowance_updates_with_delay_set() {
 		);
 		// verify correctly incremented -- should still just have one val
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
 				.unwrap(),
-			1
+			(1, Some(200u64.into()))
 		);
 	})
 }
@@ -163,9 +163,9 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 		// verify reserve incremented for second allowance
 		assert_eq!(Balances::reserved_balance(&SENDER), 20);
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
 				.unwrap(),
-			2
+			(2, None)
 		);
 
 		assert_eq!(
@@ -279,8 +279,8 @@ fn remove_transfer_allowance_works() {
 
 		// ensure allowlist entry still in place, just with restricted params
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A),
-			Some(1)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some((1, None))
 		);
 
 		// event 0 - reserve for allowance creation, 1, allowance creation itelf
@@ -331,8 +331,8 @@ fn remove_transfer_allowance_with_delay_works() {
 
 		// ensure only 1 transfer allowlist for sender/currency still in place
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A),
-			Some(1)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some((1, Some(200u64.into())))
 		);
 
 		// ensure only 1 reserve as we've still just got 1 allowance in storage
@@ -385,7 +385,7 @@ fn purge_transfer_allowance_works() {
 
 		// verify sender/currency allowance tracking decremented/removed
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
 			None
 		);
 		// verify event sent for removal
@@ -472,9 +472,9 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 
 		// verify correct decrement
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count(SENDER, CurrencyId::A)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
 				.unwrap(),
-			1
+			(1, None)
 		);
 	})
 }
@@ -490,8 +490,9 @@ fn add_allowance_delay_works() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A).unwrap(),
-			200
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
+				.unwrap(),
+			(0, Some(200u64.into()))
 		);
 		// verify event deposited
 		assert_eq!(
@@ -520,8 +521,9 @@ fn update_allowance_delay_works() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A).unwrap(),
-			250
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
+				.unwrap(),
+			(0, Some(250u64.into()))
 		);
 		// verify event deposited
 		assert_eq!(
@@ -550,7 +552,7 @@ fn remove_allowance_delay_works() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
 			None
 		);
 		// verify event deposited
@@ -574,7 +576,7 @@ fn remove_allowance_delay_when_no_delay_set() {
 		);
 		// verify no val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_delay(SENDER, CurrencyId::A),
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
 			None
 		);
 	})
