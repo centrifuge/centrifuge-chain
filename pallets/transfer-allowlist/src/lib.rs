@@ -166,12 +166,13 @@ pub mod pallet {
 		/// An operation expecting one or more allowances for a sending Account/Currency set, where none present
 		NoAllowancesSet,
 		/// Attempted to create allowance for existing Sending Account, Currency, and Receiver combination
-		ConflictingAllowanceSet,
+		DuplicateAllowance,
 		/// CatchAll for Allowance Count arithmetic errors -- largely for coverage for errors that should be impossible
 		AllowanceCountArithmeticError,
 		/// No matching allowance for Location/Currency
 		NoMatchingAllowance,
-		/// No matching delay
+		/// No matching delay for the sending account and currency combination.
+		/// Cannot delete a non-existant entry
 		NoMatchingDelay,
 	}
 
@@ -215,8 +216,6 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::call_index(0)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		/// Adds a transfer allowance for a sending Account/Currency.
 		/// Allowance either starts at the current block + the delay set for the account,
 		/// if a delay is present.
@@ -225,6 +224,8 @@ pub mod pallet {
 		/// to have unrestricted transfers allowed for the sending Account and Currency, no allowances should be present.
 		///
 		/// Running this for an existing allowance generates a new allowance based on the current delay, or lack thereof
+		#[pallet::call_index(0)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -265,11 +266,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(1)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		/// Restricts a transfer allowance for a sending account/currency/receiver location to:
 		/// - either the current block + delay if a delay is set
 		/// - or the current block if no delay is set
+		#[pallet::call_index(1)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -310,10 +311,10 @@ pub mod pallet {
 			}
 		}
 
-		#[pallet::call_index(2)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
 		/// Removes a transfer allowance for a sending account/currency and receiving location
 		/// Decrements or removes the sending account/currency count.
+		#[pallet::call_index(2)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
