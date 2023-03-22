@@ -310,7 +310,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_restricted_tokens::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
 }
 
 pub struct RestrictedTokens<P>(PhantomData<P>);
@@ -381,6 +381,7 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type RuntimeEvent = RuntimeEvent;
+	// NOTE: Call NOT exposed, default weights are fine
 	type WeightInfo = ();
 }
 
@@ -482,6 +483,7 @@ impl pallet_session::Config for Runtime {
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
+	// TODO: Wait for block rewards that fix this
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Self>;
 }
 
@@ -774,7 +776,7 @@ parameter_types! {
 
 // Make sure that there are no more than `MAX_MEMBERS` members elected via elections-phragmen.
 const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
-
+// TODO: Can we remove phragmen?
 impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
@@ -991,7 +993,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1040,6 +1042,7 @@ impl chainbridge::Config for Runtime {
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type RuntimeEvent = RuntimeEvent;
+	// TODO: Fix benchmarks
 	type WeightInfo = ();
 }
 
@@ -1276,7 +1279,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type TrancheId = TrancheId;
-	type WeightInfo = pallet_pool_registry::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pool_registry::WeightInfo<Runtime>;
 }
 
 impl pallet_pool_system::Config for Runtime {
@@ -1315,7 +1318,7 @@ impl pallet_pool_system::Config for Runtime {
 	type TrancheId = TrancheId;
 	type TrancheWeight = TrancheWeight;
 	type UpdateGuard = UpdateGuard;
-	type WeightInfo = pallet_pool_system::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1383,7 +1386,7 @@ impl pallet_permissions::Config for Runtime {
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Storage =
 		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
-	type WeightInfo = pallet_permissions::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_permissions::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1459,7 +1462,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type Weights = ();
+	type Weights = weights::pallet_interest_accrual::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1484,7 +1487,7 @@ impl pallet_loans::Config for Runtime {
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_loans::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1499,7 +1502,7 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type DefaultKeyDeposit = DefaultKeyDeposit;
 	type MaxKeys = MaxKeys;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_keystore::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_keystore::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1536,7 +1539,7 @@ impl pallet_uniques::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = Limit;
 	type ValueLimit = Limit;
-	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_uniques::WeightInfo<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
