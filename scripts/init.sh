@@ -91,6 +91,7 @@ onboard-parachain)
   ;;
 
 benchmark)
-  ./scripts/run_benchmark.sh "${parachain}" "$2" "$3"
+  pallet=$2
+  cargo run --features runtime-benchmarks benchmark pallet --chain $parachain --pallet="$pallet" --extrinsic=*
   ;;
 esac
