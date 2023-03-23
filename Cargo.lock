@@ -1007,7 +1007,7 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
- "pallet-loans",
+ "pallet-loans-ref",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
