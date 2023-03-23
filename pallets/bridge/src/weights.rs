@@ -11,14 +11,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Bridge pallet's extrinsics weight information
-//!
-//! Note that the following weights are used only for development.
-//! In fact, weights shoudl be calculated using runtime benchmarking.
-
 use frame_support::weights::Weight;
 
-use crate::traits::WeightInfo;
+pub trait WeightInfo {
+	fn receive_nonfungible() -> Weight;
+	fn remark() -> Weight;
+	fn transfer() -> Weight;
+	fn transfer_asset() -> Weight;
+	fn transfer_native() -> Weight;
+	fn set_token_transfer_fee() -> Weight;
+	fn set_nft_transfer_fee() -> Weight;
+}
 
 impl WeightInfo for () {
 	fn receive_nonfungible() -> Weight {

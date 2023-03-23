@@ -1408,7 +1408,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_restricted_tokens::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
 }
 
 parameter_type_with_key! {
