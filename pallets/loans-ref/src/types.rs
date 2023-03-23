@@ -394,8 +394,8 @@ impl<T: Config> CreatedLoan<T> {
 		&self.borrower
 	}
 
-	pub fn activate(self, loan_id: T::LoanId) -> Result<ActiveLoan<T>, DispatchError> {
-		ActiveLoan::new(loan_id, self.info, self.borrower, T::Time::now().as_secs())
+	pub fn activate(self) -> Result<ActiveLoan<T>, DispatchError> {
+		ActiveLoan::new(self.info, self.borrower, T::Time::now().as_secs())
 	}
 
 	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
@@ -437,9 +437,6 @@ impl<T: Config> ClosedLoan<T> {
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ActiveLoan<T: Config> {
-	/// Id of this loan
-	loan_id: T::LoanId,
-
 	/// Loan information
 	info: LoanInfoOf<T>,
 
@@ -464,13 +461,11 @@ pub struct ActiveLoan<T: Config> {
 
 impl<T: Config> ActiveLoan<T> {
 	pub fn new(
-		loan_id: T::LoanId,
 		info: LoanInfoOf<T>,
 		borrower: T::AccountId,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
 		Ok(ActiveLoan {
-			loan_id,
 			info: LoanInfo {
 				interest_rate: T::InterestAccrual::reference_yearly_rate(info.interest_rate)?,
 				..info
@@ -482,10 +477,6 @@ impl<T: Config> ActiveLoan<T> {
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
 		})
-	}
-
-	pub fn loan_id(&self) -> T::LoanId {
-		self.loan_id
 	}
 
 	pub fn borrower(&self) -> &T::AccountId {

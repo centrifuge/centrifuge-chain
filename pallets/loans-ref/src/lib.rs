@@ -401,10 +401,10 @@ pub mod pallet {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
-					let mut active_loan = created_loan.activate(loan_id)?;
+					let mut active_loan = created_loan.activate()?;
 					active_loan.borrow(amount)?;
 
-					Self::insert_active_loan(pool_id, active_loan)?
+					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
@@ -728,6 +728,7 @@ pub mod pallet {
 
 		fn insert_active_loan(
 			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
@@ -738,7 +739,7 @@ pub mod pallet {
 
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					active_loans
-						.try_insert(loan.loan_id(), (loan, last_updated))
+						.try_insert(loan_id, (loan, last_updated))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					Ok(active_loans.len().ensure_into()?)
