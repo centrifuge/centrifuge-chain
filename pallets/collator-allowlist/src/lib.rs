@@ -172,6 +172,15 @@ impl<T: Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
 	///   - the validator id is present in the allowlist and
 	///   - the validator id is registered in the underlying validator registration center
 	fn is_registered(id: &T::ValidatorId) -> bool {
-		<Allowlist<T>>::contains_key(id) && T::ValidatorRegistration::is_registered(id)
+		let contains_key = if cfg!(feature = "runtime-benchmarks") {
+			// NOTE: We want to return true but count the storage hit
+			//       during benchmarks here.
+			let _ = <Allowlist<T>>::contains_key(id);
+			true
+		} else {
+			<Allowlist<T>>::contains_key(id)
+		};
+
+		contains_key && T::ValidatorRegistration::is_registered(id)
 	}
 }

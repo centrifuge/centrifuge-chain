@@ -1867,6 +1867,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_loans_ref, Loans);
+			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1928,6 +1929,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_loans_ref, Loans);
+			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
