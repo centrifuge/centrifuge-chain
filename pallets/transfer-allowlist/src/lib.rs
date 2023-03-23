@@ -78,6 +78,8 @@ pub mod pallet {
 		/// Currency for Reserve/Unreserve with allowlist adding/removal,
 		/// given that the allowlist will be in storage
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+
+		/// Type containing the locations a transfer can be sent to.
 		type Location: Member
 			+ Debug
 			+ Eq
