@@ -311,7 +311,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
+	type WeightInfo = ();
 }
 
 pub struct RestrictedTokens<P>(PhantomData<P>);
