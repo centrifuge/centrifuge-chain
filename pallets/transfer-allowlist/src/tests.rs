@@ -85,13 +85,14 @@ fn add_transfer_allowance_works() {
 			(1, None)
 		);
 
+		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[0].event,
+			System::events()[1].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceCreated {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -168,12 +169,13 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 			(2, None)
 		);
 
+		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[0].event,
+			System::events()[1].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 		assert_eq!(
-			System::events()[2].event,
+			System::events()[3].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 	})
@@ -285,7 +287,7 @@ fn remove_transfer_allowance_works() {
 
 		// event 0 - reserve for allowance creation, 1, allowance creation itelf
 		assert_eq!(
-			System::events()[2].event,
+			System::events()[3].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -342,7 +344,7 @@ fn remove_transfer_allowance_with_delay_works() {
 		// 1, allowance creation itself
 		// 2, delay creation
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[4].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -389,12 +391,13 @@ fn purge_transfer_allowance_works() {
 			None
 		);
 		// verify event sent for removal
+		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[2].event,
+			System::events()[3].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Unreserved { who: 1, amount: 10 })
 		);
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[4].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowancePurged {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -495,8 +498,9 @@ fn add_allowance_delay_works() {
 			(0, Some(200u64.into()))
 		);
 		// verify event deposited
+		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[0].event,
+			System::events()[1].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelaySet {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -525,9 +529,10 @@ fn update_allowance_delay_works() {
 				.unwrap(),
 			(0, Some(250u64.into()))
 		);
+		// note: event 0 is in new_ext_test setup -- fee key setup
 		// verify event deposited
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelaySet {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -556,8 +561,9 @@ fn remove_allowance_delay_works() {
 			None
 		);
 		// verify event deposited
+		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayRemoval {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A

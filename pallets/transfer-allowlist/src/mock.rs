@@ -14,10 +14,10 @@ use cfg_types::{fee_keys::FeeKey, locations::Location};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, ConstU64, SortedMembers},
+	traits::{ConstU32, ConstU64, EitherOfDiverse, SortedMembers},
 	Deserialize, PalletId, Serialize,
 };
-use frame_system::{EnsureNever, EnsureSignedBy};
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use scale_info::TypeInfo;
 use sp_core::{Get, H256};
 use sp_runtime::{
@@ -31,6 +31,7 @@ pub(crate) const STARTING_BLOCK: u64 = 50;
 pub(crate) const SENDER: u64 = 0x1;
 pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
 pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
+pub(crate) const FEE_AMMOUNT: u64 = 10u64;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -150,7 +151,7 @@ impl pallet_authorship::Config for Runtime {
 impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	type DefaultFeeValue = DefaultFeeValue;
-	type FeeChangeOrigin = EnsureNever<Runtime>;
+	type FeeChangeOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
 	type FeeKey = FeeKey;
 	type RuntimeEvent = RuntimeEvent;
 	type Treasury = Treasury;
@@ -209,6 +210,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut e = sp_io::TestExternalities::new(t);
 
-	e.execute_with(|| System::set_block_number(STARTING_BLOCK));
+	e.execute_with(|| {
+		System::set_block_number(STARTING_BLOCK);
+		Fees::set_fee(
+			RuntimeOrigin::signed(Admin::get()),
+			cfg_types::fee_keys::FeeKey::AllowanceCreation,
+			FEE_AMMOUNT,
+		)
+		.unwrap();
+	});
 	e
 }

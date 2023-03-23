@@ -33,10 +33,7 @@ pub use pallet::*;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use cfg_traits::{
-		fees::{Fee, FeeKey, Fees},
-		ops::EnsureSub,
-	};
+	use cfg_traits::{fees::Fees, ops::EnsureSub};
 	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
@@ -270,7 +267,10 @@ pub mod pallet {
 				&receiver,
 			)) {
 				Self::increment_or_create_allowance_count(&account_id, &currency_id)?;
-				T::ReserveCurrency::reserve(&account_id, T::Deposit::get())?;
+				T::ReserveCurrency::reserve(
+					&account_id,
+					T::Fees::fee_value(T::AllowanceFeeKey::get()),
+				)?;
 			};
 			<AccountCurrencyTransferAllowance<T>>::insert(
 				(&account_id, &currency_id, &receiver),
