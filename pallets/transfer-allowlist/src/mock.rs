@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::locations::Location;
+use cfg_types::{fee_keys::FeeKey, locations::Location};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
@@ -19,13 +19,18 @@ use frame_support::{
 };
 use frame_system::{EnsureNever, EnsureSignedBy};
 use scale_info::TypeInfo;
-use sp_core::H256;
+use sp_core::{Get, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
 use crate as transfer_allowlist;
+
+pub(crate) const STARTING_BLOCK: u64 = 50;
+pub(crate) const SENDER: u64 = 0x1;
+pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
+pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -146,7 +151,7 @@ impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	type DefaultFeeValue = DefaultFeeValue;
 	type FeeChangeOrigin = EnsureNever<Runtime>;
-	type FeeKey = u8;
+	type FeeKey = FeeKey;
 	type RuntimeEvent = RuntimeEvent;
 	type Treasury = Treasury;
 	type WeightInfo = ();
@@ -174,14 +179,18 @@ pub enum CurrencyId {
 	D,
 }
 
-pub(crate) const STARTING_BLOCK: u64 = 50;
-pub(crate) const SENDER: u64 = 0x1;
-pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
-pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
+pub struct TransferAllowlistFeeKey<Runtime>(sp_std::marker::PhantomData<Runtime>);
+impl<Runtime> Get<FeeKey> for TransferAllowlistFeeKey<Runtime> {
+	fn get() -> FeeKey {
+		FeeKey::AllowanceCreation
+	}
+}
 
 impl transfer_allowlist::Config for Runtime {
+	type AllowanceFeeKey = TransferAllowlistFeeKey<Runtime>;
 	type CurrencyId = CurrencyId;
 	type Deposit = ConstU64<10>;
+	type Fees = Fees;
 	type Location = Location;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;

@@ -26,14 +26,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use cfg_traits::TransferAllowance;
+pub use cfg_traits::TransferAllowance;
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use cfg_traits::ops::EnsureSub;
+	use cfg_traits::{
+		fees::{Fee, FeeKey, Fees},
+		ops::EnsureSub,
+	};
 	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
@@ -78,6 +81,13 @@ pub mod pallet {
 		/// Currency for Reserve/Unreserve with allowlist adding/removal,
 		/// given that the allowlist will be in storage
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+
+		type Fees: Fees<
+			AccountId = <Self as frame_system::Config>::AccountId,
+			Balance = DepositBalanceOf<Self>,
+		>;
+
+		type AllowanceFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Type containing the locations a transfer can be sent to.
 		type Location: Member

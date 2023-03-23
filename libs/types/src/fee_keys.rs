@@ -37,6 +37,10 @@ pub enum FeeKey {
 	/// Key to identify the balance reserved for burning.
 	/// See more at `pallet-nft`
 	NftProofValidation,
+
+	/// Key to identify the balance reserved for Allowances.
+	/// See more at `pallet-transfer-allowlist`
+	AllowanceCreation,
 }
 
 /// Only needed for initializing the runtime benchmark with some value.
