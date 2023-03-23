@@ -190,7 +190,6 @@ impl<Runtime> Get<FeeKey> for TransferAllowlistFeeKey<Runtime> {
 impl transfer_allowlist::Config for Runtime {
 	type AllowanceFeeKey = TransferAllowlistFeeKey<Runtime>;
 	type CurrencyId = CurrencyId;
-	type Deposit = ConstU64<10>;
 	type Fees = Fees;
 	type Location = Location;
 	type ReserveCurrency = Balances;
