@@ -14,9 +14,10 @@ use cfg_types::locations::Location;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, ConstU64},
-	Deserialize, Serialize,
+	traits::{ConstU32, ConstU64, SortedMembers},
+	Deserialize, PalletId, Serialize,
 };
+use frame_system::{EnsureNever, EnsureSignedBy};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
@@ -29,37 +30,24 @@ use crate as transfer_allowlist;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub type MockAccountId = u64;
-
 frame_support::construct_runtime!(
 	  pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	  {
+		  Authorship: pallet_authorship,
 			Balances: pallet_balances,
+		  Fees: pallet_fees,
 			System: frame_system,
 		  TransferAllowList: transfer_allowlist,
+		  Treasury: pallet_treasury,
 	  }
 );
 
 parameter_types! {
 	  pub const BlockHashCount: u64 = 250;
 	  pub const SS58Prefix: u8 = 42;
-}
-
-type Balance = u64;
-
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = u64;
-	type DustRemoval = ();
-	type ExistentialDeposit = ConstU64<1>;
-	type MaxLocks = ();
-	type MaxReserves = ConstU32<50>;
-	type ReserveIdentifier = [u8; 8];
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 impl frame_system::Config for Runtime {
@@ -87,6 +75,81 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type SystemWeightInfo = ();
 	type Version = ();
+}
+
+type Balance = u64;
+
+// Used to handle reserve/unreserve for allowance creation.
+// Loosely coupled with transfer_allowlist
+impl pallet_balances::Config for Runtime {
+	type AccountStore = System;
+	type Balance = u64;
+	type DustRemoval = ();
+	type ExistentialDeposit = ConstU64<1>;
+	type MaxLocks = ();
+	type MaxReserves = ConstU32<50>;
+	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+pub type MockAccountId = u64;
+
+parameter_types! {
+	  pub const TreasuryPalletId: PalletId = PalletId(*b"treasury");
+	  pub const Admin: u64 = 1;
+}
+
+impl SortedMembers<u64> for Admin {
+	fn sorted_members() -> Vec<u64> {
+		vec![1]
+	}
+}
+
+// pallet fees takes a treasury impl as assoc type
+impl pallet_treasury::Config for Runtime {
+	type ApproveOrigin = EnsureSignedBy<Admin, u64>;
+	type Burn = ();
+	type BurnDestination = ();
+	type Currency = Balances;
+	type MaxApprovals = ();
+	type OnSlash = Treasury;
+	type PalletId = TreasuryPalletId;
+	type ProposalBond = ();
+	type ProposalBondMaximum = ();
+	type ProposalBondMinimum = ();
+	type RejectOrigin = EnsureSignedBy<Admin, u64>;
+	type RuntimeEvent = RuntimeEvent;
+	type SpendFunds = ();
+	type SpendOrigin = EnsureSignedBy<Admin, u64>;
+	type SpendPeriod = ();
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	  pub const DefaultFeeValue: Balance = 1;
+}
+
+// pallet fees depends on authorship being configured for runtime.
+// Tight coupling--no assoc type for fees
+impl pallet_authorship::Config for Runtime {
+	type EventHandler = ();
+	type FilterUncle = ();
+	type FindAuthor = ();
+	type UncleGenerations = ();
+}
+
+// used to set/retrieve reserve fee amount
+// so we can surface this to the frontend
+// actual reserve/unreserve handled by reserve currency type
+impl pallet_fees::Config for Runtime {
+	type Currency = Balances;
+	type DefaultFeeValue = DefaultFeeValue;
+	type FeeChangeOrigin = EnsureNever<Runtime>;
+	type FeeKey = u8;
+	type RuntimeEvent = RuntimeEvent;
+	type Treasury = Treasury;
+	type WeightInfo = ();
 }
 
 #[derive(
