@@ -247,12 +247,6 @@ fn build_update_tranches<T: Config>(
 	tranches.try_into().expect("num_tranches <= T::MaxTranches")
 }
 
-fn pass_time<T: pallet_timestamp::Config<Moment = Moment>>(time: Moment) {
-	let now = pallet_timestamp::Now::<T>::get();
-	let new_now = now + time;
-	pallet_timestamp::Now::<T>::set(new_now);
-}
-
 // TODO: Enable once ModifyPool is not fully mocked
 // impl_benchmark_test_suite!(
 // 	Pallet,

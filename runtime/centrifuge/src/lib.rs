@@ -394,6 +394,9 @@ impl orml_asset_registry::Config for Runtime {
 	type Balance = Balance;
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
+	// NOTE: Need no weights as spamming is not possible as the
+	//       calls are only callable by `AuthorityOrigin`. In out
+	//       case, pallet-pools and democracy
 	type WeightInfo = ();
 }
 
