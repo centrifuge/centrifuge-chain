@@ -79,7 +79,7 @@ pub mod pallet {
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
 		traits::{BadOrigin, One, Zero},
-		ArithmeticError, FixedPointOperand,
+		ArithmeticError, BoundedBTreeMap, FixedPointOperand,
 	};
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
@@ -131,6 +131,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ Copy
 			+ EnsureAdd
+			+ Ord
 			+ One;
 
 		/// Defines the rate type used for math computations
@@ -209,7 +210,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<(ActiveLoan<T>, Moment), T::MaxActiveLoansPerPool>,
+		BoundedBTreeMap<T::LoanId, (ActiveLoan<T>, Moment), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -717,7 +718,7 @@ pub mod pallet {
 			let count = loans.len().ensure_into()?;
 			let value = loans.into_iter().try_fold(
 				T::Balance::zero(),
-				|sum, (loan, _)| -> Result<T::Balance, DispatchError> {
+				|sum, (_, (loan, _))| -> Result<T::Balance, DispatchError> {
 					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
 				},
 			)?;
@@ -737,7 +738,7 @@ pub mod pallet {
 
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					active_loans
-						.try_push((loan, last_updated))
+						.try_insert(loan.loan_id(), (loan, last_updated))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					Ok(active_loans.len().ensure_into()?)
@@ -755,16 +756,13 @@ pub mod pallet {
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let (loan, last_updated) = active_loans
-						.iter_mut()
-						.find(|(loan, _)| loan.loan_id() == loan_id)
-						.ok_or_else(|| {
-							if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
-								Error::<T>::LoanNotActive
-							} else {
-								Error::<T>::LoanNotFound
-							}
-						})?;
+					let (loan, last_updated) = active_loans.get_mut(&loan_id).ok_or_else(|| {
+						if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
+							Error::<T>::LoanNotActive
+						} else {
+							Error::<T>::LoanNotFound
+						}
+					})?;
 
 					*last_updated = (*last_updated).max(portfolio.last_updated());
 					let old_pv = loan.present_value_at(*last_updated)?;
@@ -786,15 +784,12 @@ pub mod pallet {
 			loan_id: T::LoanId,
 		) -> Result<(ActiveLoan<T>, u32), DispatchError> {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-				let index = active_loans
-					.iter()
-					.position(|(loan, _)| loan.loan_id() == loan_id)
-					.ok_or(Error::<T>::LoanNotFound)?;
+				let loan = active_loans
+					.remove(&loan_id)
+					.ok_or(Error::<T>::LoanNotFound)?
+					.0;
 
-				Ok((
-					active_loans.swap_remove(index).0,
-					active_loans.len().ensure_into()?,
-				))
+				Ok((loan, active_loans.len().ensure_into()?))
 			})
 		}
 

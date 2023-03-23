@@ -36,9 +36,9 @@ mod util {
 
 	pub fn get_loan(loan_id: LoanId) -> ActiveLoan<Runtime> {
 		ActiveLoans::<Runtime>::get(POOL_A)
-			.into_iter()
-			.find(|(loan, _)| loan.loan_id() == loan_id)
+			.get(&loan_id)
 			.unwrap()
+			.clone()
 			.0
 	}
 
