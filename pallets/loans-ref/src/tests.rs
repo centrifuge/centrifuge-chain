@@ -6,7 +6,7 @@ use sp_runtime::traits::BadOrigin;
 
 use super::{
 	mock::*,
-	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
+	pallet::{ActiveLoans, Error, LastLoanId, MutatedActiveLoans, PortfolioValuation},
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
 		WriteOffState, WriteOffStatus, WrittenOffError,
@@ -35,11 +35,16 @@ mod util {
 	}
 
 	pub fn get_loan(loan_id: LoanId) -> ActiveLoan<Runtime> {
-		ActiveLoans::<Runtime>::get(POOL_A)
-			.get(&loan_id)
-			.unwrap()
-			.clone()
-			.0
+		match MutatedActiveLoans::<Runtime>::get(POOL_A)
+			.into_iter()
+			.find(|(id, _, _)| *id == loan_id)
+		{
+			Some((_, loan, _)) => loan,
+			None => ActiveLoans::<Runtime>::get(POOL_A)
+				.get(&loan_id)
+				.unwrap()
+				.clone(),
+		}
 	}
 
 	pub fn portfolio_valuation() -> Balance {

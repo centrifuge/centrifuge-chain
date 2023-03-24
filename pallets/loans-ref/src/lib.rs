@@ -57,7 +57,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
+		ops::{EnsureAdd, EnsureAddAssign, EnsureInto, EnsureSub},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
@@ -210,7 +210,25 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedBTreeMap<T::LoanId, (ActiveLoan<T>, Moment), T::MaxActiveLoansPerPool>,
+		BoundedBTreeMap<T::LoanId, ActiveLoan<T>, T::MaxActiveLoansPerPool>,
+		ValueQuery,
+	>;
+
+	/// Storage for mutated active loans.
+	/// A mutated active loan is an active loan that has changed from the last
+	/// `update_portfolio_valuation()` call.
+	/// This storage is used to avoid PoV Weights in the probably large `ActiveLoans` storage.
+	/// Each `ActiveLoan` change is done over a copy of that loan in this storage which implies
+	/// to statistically write less bytes (there are less mutated active loans than total active
+	/// loans).
+	/// Once `update_portfolio_valuation()` is called, the `ActiveLoans` storage is updated with
+	/// the `MutatedActiveLoans` content and this last storage is cleaned.
+	#[pallet::storage]
+	pub(crate) type MutatedActiveLoans<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		BoundedVec<(T::LoanId, ActiveLoan<T>, Moment), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -714,16 +732,27 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
-			let loans = ActiveLoans::<T>::get(pool_id);
-			let count = loans.len().ensure_into()?;
-			let value = loans.into_iter().try_fold(
-				T::Balance::zero(),
-				|sum, (_, (loan, _))| -> Result<T::Balance, DispatchError> {
-					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
-				},
-			)?;
 
-			Ok((value, count))
+			ActiveLoans::<T>::try_mutate(pool_id, |loans| {
+				for (loan_id, loan, _) in MutatedActiveLoans::<T>::take(pool_id) {
+					loans
+						.try_insert(loan_id, loan)
+						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
+				}
+
+				let value = loans.values().try_fold(
+					T::Balance::zero(),
+					|sum, loan| -> Result<T::Balance, DispatchError> {
+						Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
+					},
+				)?;
+
+				// TODO: How to get the correct count to benchmark this accurated?
+				// Should it be MutatedActiveLoans.len() + ActiveLoans.len()?
+				let count = loans.len().ensure_into()?;
+
+				Ok((value, count))
+			})
 		}
 
 		fn insert_active_loan(
@@ -737,12 +766,11 @@ pub mod pallet {
 
 				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, Zero::zero(), new_pv)?;
 
-				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					active_loans
-						.try_insert(loan_id, (loan, last_updated))
+				MutatedActiveLoans::<T>::try_mutate(pool_id, |mutated_loans| {
+					mutated_loans
+						.try_push((loan_id, loan, last_updated))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
-
-					Ok(active_loans.len().ensure_into()?)
+					Ok(mutated_loans.len().ensure_into()?)
 				})
 			})
 		}
@@ -756,16 +784,33 @@ pub mod pallet {
 			F: FnOnce(&mut ActiveLoan<T>) -> Result<R, DispatchError>,
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let (loan, last_updated) = active_loans.get_mut(&loan_id).ok_or_else(|| {
-						if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
-							Error::<T>::LoanNotActive
-						} else {
-							Error::<T>::LoanNotFound
-						}
-					})?;
+				MutatedActiveLoans::<T>::try_mutate(pool_id, |mutated_loans| {
+					let (loan, last_updated) =
+						match mutated_loans.iter_mut().find(|(id, _, _)| *id == loan_id) {
+							Some((_, loan, last_updated)) => (loan, last_updated),
+							None => {
+								let loan = ActiveLoans::<T>::get(pool_id)
+									.get(&loan_id)
+									.ok_or_else(|| {
+										if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
+											Error::<T>::LoanNotActive
+										} else {
+											Error::<T>::LoanNotFound
+										}
+									})?
+									.clone();
 
-					*last_updated = (*last_updated).max(portfolio.last_updated());
+								mutated_loans
+									.try_push((loan_id, loan, portfolio.last_updated()))
+									.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
+
+								mutated_loans
+									.get_mut(mutated_loans.len().ensure_sub(1)?)
+									.map(|(_, loan, last_updated)| (loan, last_updated))
+									.ok_or(DispatchError::Other("unreachable"))?
+							}
+						};
+
 					let old_pv = loan.present_value_at(*last_updated)?;
 
 					let result = f(loan)?;
@@ -775,7 +820,7 @@ pub mod pallet {
 
 					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
 
-					Ok((result, active_loans.len().ensure_into()?))
+					Ok((result, mutated_loans.len().ensure_into()?))
 				})
 			})
 		}
@@ -784,13 +829,24 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 		) -> Result<(ActiveLoan<T>, u32), DispatchError> {
-			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-				let loan = active_loans
-					.remove(&loan_id)
-					.ok_or(Error::<T>::LoanNotFound)?
-					.0;
+			// A loan can be:
+			// - Only in MutatedActiveLoans, if it was just inserted
+			// - Only in ActiveLoans, if it was not modified since the portfolio valuation
+			// - In both, if it was modified after porfolio valuation
+			MutatedActiveLoans::<T>::try_mutate(pool_id, |mutated_loans| {
+				ActiveLoans::<T>::try_mutate(pool_id, |loans| {
+					let count = loans.len().ensure_add(mutated_loans.len())?.ensure_into()?;
 
-				Ok((loan, active_loans.len().ensure_into()?))
+					let loan = loans.remove(&loan_id);
+					let index = mutated_loans.iter().position(|(id, _, _)| *id == loan_id);
+
+					let loan = match index {
+						Some(index) => mutated_loans.swap_remove(index).1,
+						None => loan.ok_or(Error::<T>::LoanNotFound)?,
+					};
+
+					Ok((loan, count))
+				})
 			})
 		}
 
