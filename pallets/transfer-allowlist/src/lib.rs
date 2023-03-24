@@ -33,7 +33,10 @@ pub use pallet::*;
 pub mod pallet {
 	use core::fmt::Debug;
 
-	use cfg_traits::{fees::Fees, ops::EnsureSub};
+	use cfg_traits::{
+		fees::Fees,
+		ops::{EnsureAdd, EnsureSub},
+	};
 	use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
@@ -75,11 +78,15 @@ pub mod pallet {
 		/// given that the allowlist will be in storage
 		type ReserveCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
+		/// Fee handler for the reserve/unreserve
+		/// Currently just stores the amounts, will be extended to handle
+		/// reserve/unreserve as well in future
 		type Fees: Fees<
 			AccountId = <Self as frame_system::Config>::AccountId,
 			Balance = DepositBalanceOf<Self>,
 		>;
 
+		/// Fee Key used to find amount for allowance reserve/unreserve
 		type AllowanceFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
 		/// Type containing the locations a transfer can be sent to.
@@ -175,14 +182,10 @@ pub mod pallet {
 	//
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Number of allowances for a sending Account/Currency set at max allowance count storage type val (currently u64::MAX)
-		AllowanceCountOverflow,
 		/// An operation expecting one or more allowances for a sending Account/Currency set, where none present
 		NoAllowancesSet,
 		/// Attempted to create allowance for existing Sending Account, Currency, and Receiver combination
 		DuplicateAllowance,
-		/// CatchAll for Allowance Count arithmetic errors -- largely for coverage for errors that should be impossible
-		AllowanceCountArithmeticError,
 		/// No matching allowance for Location/Currency
 		NoMatchingAllowance,
 		/// No matching delay for the sending account and currency combination.
@@ -439,9 +442,7 @@ pub mod pallet {
 			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
 			match Self::get_account_currency_restriction_count_delay(account_id, currency_id) {
 				Some((allowance_count, delay)) => {
-					let new_allowance_count = allowance_count
-						.checked_add(1)
-						.ok_or(Error::<T>::AllowanceCountOverflow)?;
+					let new_allowance_count = allowance_count.ensure_add(1)?;
 					<AccountCurrencyTransferCountDelay<T>>::insert(
 						account_id,
 						currency_id,
