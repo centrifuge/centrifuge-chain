@@ -57,7 +57,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		ops::{EnsureAdd, EnsureAddAssign, EnsureInto, EnsureSub},
+		ops::{storage::BoundedVecExt, EnsureAdd, EnsureAddAssign, EnsureInto, EnsureSub},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
@@ -801,13 +801,9 @@ pub mod pallet {
 									.clone();
 
 								mutated_loans
-									.try_push((loan_id, loan, portfolio.last_updated()))
-									.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
-
-								mutated_loans
-									.get_mut(mutated_loans.len().ensure_sub(1)?)
+									.try_push_fetch((loan_id, loan, portfolio.last_updated()))
 									.map(|(_, loan, last_updated)| (loan, last_updated))
-									.ok_or(DispatchError::Other("unreachable"))?
+									.map_err(|_| Error::<T>::MaxActiveLoansReached)?
 							}
 						};
 

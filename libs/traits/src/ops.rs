@@ -4,6 +4,24 @@ pub use ensure::{
 	EnsureSubAssign,
 };
 
+pub mod storage {
+	use sp_runtime::{traits::Get, BoundedVec};
+
+	pub trait BoundedVecExt<T> {
+		/// Same as [`BoundedVec::try_push()`] but returns a reference to the pushed element in the
+		/// vector
+		fn try_push_fetch(&mut self, element: T) -> Result<&mut T, T>;
+	}
+
+	impl<T, S: Get<u32>> BoundedVecExt<T> for BoundedVec<T, S> {
+		fn try_push_fetch(&mut self, element: T) -> Result<&mut T, T> {
+			let len = self.len();
+			self.try_push(element)?;
+			Ok(self.get_mut(len).expect("This can not fail. qed"))
+		}
+	}
+}
+
 mod ensure {
 	use sp_runtime::{
 		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Zero},
