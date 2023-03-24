@@ -1219,6 +1219,7 @@ impl PoolUpdateGuard for UpdateGuard {
 		//   event.
 		// - We check for greater equal in order to forbid batching
 		//   those two in one block
+		#[allow(clippy::all)]
 		if !cfg!(feature = "runtime-benchmarks") {
 			if update.submitted_at >= pool.epoch.last_closed {
 				return false;
