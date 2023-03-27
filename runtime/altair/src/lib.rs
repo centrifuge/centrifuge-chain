@@ -1496,7 +1496,10 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	pallet_loans::migrations::Migration<Runtime>,
+	(
+		pallet_interest_accrual::migrations::v2::Migration<Runtime>,
+		pallet_loans::migrations::Migration<Runtime>,
+	),
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]
