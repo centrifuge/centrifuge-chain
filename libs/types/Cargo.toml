@@ -33,6 +33,7 @@ cfg-utils = { path = "../utils", default-features = false }
 
 [dev-dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.37" }
+hex = { version = "0.4.3", default_features = false }
 
 [features]
 default = ["std"]

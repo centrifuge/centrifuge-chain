@@ -1,54 +1,8 @@
-use cfg_types::{domain_address::DomainAddress, locations::Location};
+use cfg_types::locations::Location;
 use frame_support::{assert_noop, assert_ok};
-use hex::FromHex;
-use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 use super::*;
 use crate::mock::*;
-
-#[test]
-fn from_xcm_v1_address_works() {
-	new_test_ext().execute_with(|| {
-		let xa = MultiLocation::default();
-		let l = Location::from(xa.clone());
-		assert_eq!(
-			l,
-			Location::XCM(sp_core::H256(
-				<[u8; 32]>::from_hex(
-					"9ee6dfb61a2fb903df487c401663825643bb825d41695e63df8af6162ab145a6"
-				)
-				.unwrap()
-			))
-		);
-	});
-}
-
-#[test]
-fn from_xcm_versioned_address_works() {
-	let xa = VersionedMultiLocation::V1(MultiLocation::default());
-	let l = Location::from(xa.clone());
-	assert_eq!(
-		l,
-		Location::XCM(sp_core::H256(
-			<[u8; 32]>::from_hex(
-				"5a121beb1148b31fc56f3d26f80800fd9eb4a90435a72d3cc74c42bc72bca9b8"
-			)
-			.unwrap()
-		))
-	);
-}
-#[test]
-fn from_domain_address_works() {
-	new_test_ext().execute_with(|| {
-		let da = DomainAddress::EVM(
-			1284,
-			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").unwrap(),
-		);
-		let l = Location::from(da.clone());
-
-		assert_eq!(l, Location::Address(da))
-	});
-}
 
 #[test]
 fn add_transfer_allowance_works() {

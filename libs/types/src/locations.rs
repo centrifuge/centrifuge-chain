@@ -21,7 +21,6 @@ use sp_runtime::{
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 use crate::domain_address::DomainAddress;
-
 /// Location types for destinations that can receive restricted transfers
 #[derive(Clone, RuntimeDebugNoBound, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 pub enum Location {
@@ -73,5 +72,63 @@ impl From<DomainAddress> for Location {
 impl From<u64> for Location {
 	fn from(a: u64) -> Self {
 		Self::TestLocal(a)
+	}
+}
+
+#[cfg(test)]
+mod test {
+
+	use hex::FromHex;
+
+	use super::*;
+
+	#[test]
+	fn from_xcm_v1_address_works() {
+		let xa = MultiLocation::default();
+		let l = Location::from(xa.clone());
+		assert_eq!(
+			l,
+			Location::XCM(sp_core::H256(
+				<[u8; 32]>::from_hex(
+					"9ee6dfb61a2fb903df487c401663825643bb825d41695e63df8af6162ab145a6"
+				)
+				.unwrap()
+			))
+		);
+	}
+
+	#[test]
+	fn from_xcm_versioned_address_works() {
+		let xa = VersionedMultiLocation::V1(MultiLocation::default());
+		let l = Location::from(xa.clone());
+		assert_eq!(
+			l,
+			Location::XCM(sp_core::H256(
+				<[u8; 32]>::from_hex(
+					"5a121beb1148b31fc56f3d26f80800fd9eb4a90435a72d3cc74c42bc72bca9b8"
+				)
+				.unwrap()
+			))
+		);
+	}
+
+	#[test]
+	fn from_xcm_versioned_address_doesnt_change_if_content_stays_same() {
+		let xa = xcm::v1::MultiLocation::default();
+		let xb = xcm::v2::MultiLocation::default();
+		let l0 = Location::from(xa.clone());
+		let l1 = Location::from(xb.clone());
+		assert_eq!(l0, l1);
+	}
+
+	#[test]
+	fn from_domain_address_works() {
+		let da = DomainAddress::EVM(
+			1284,
+			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").unwrap(),
+		);
+		let l = Location::from(da.clone());
+
+		assert_eq!(l, Location::Address(da))
 	}
 }
