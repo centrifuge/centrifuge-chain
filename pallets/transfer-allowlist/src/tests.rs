@@ -1,20 +1,11 @@
 use cfg_types::{domain_address::DomainAddress, locations::Location};
 use frame_support::{assert_noop, assert_ok};
-use frame_system::ensure_signed;
 use hex::FromHex;
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 use super::*;
 use crate::mock::*;
 
-#[test]
-fn from_test_account_works() {
-	new_test_ext().execute_with(|| {
-		let a = ensure_signed(RuntimeOrigin::signed(SENDER)).unwrap();
-		let l: Location = Location::from(a);
-		assert_eq!(l, Location::TestLocal(a))
-	});
-}
 #[test]
 fn from_xcm_v1_address_works() {
 	new_test_ext().execute_with(|| {

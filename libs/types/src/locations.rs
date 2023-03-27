@@ -13,7 +13,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::RuntimeDebugNoBound;
 use scale_info::TypeInfo;
-use sp_core::{H160, H256};
+use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	AccountId32,
@@ -27,22 +27,17 @@ use crate::domain_address::DomainAddress;
 pub enum Location {
 	/// Local chain account sending destination.
 	Local(AccountId32),
-	/// Test
-	TestLocal(u64),
 	/// XCM MultiLocation sending destinations.
 	/// Using hash value here as Multilocation is large -- v1 is 512 bytes, but next largest is only 40 bytes
 	/// other values aren't hashed as we have blake2 hashing on storage map keys, and we don't want the extra overhead
 	XCM(H256),
 	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
-	/// Ethereum address, for cases where we would have a standalone Eth address
-	Eth(H160),
-}
-
-impl From<u64> for Location {
-	fn from(a: u64) -> Self {
-		Self::TestLocal(a)
-	}
+	/// Test
+	/// only build on std for tests, not runtime Wasm
+	#[cfg(feature = "std")]
+	#[codec(index = 255)]
+	TestLocal(u64),
 }
 
 impl From<AccountId32> for Location {
@@ -73,8 +68,10 @@ impl From<DomainAddress> for Location {
 	}
 }
 
-impl From<H160> for Location {
-	fn from(eth: H160) -> Self {
-		Self::Eth(eth)
+// only for tests
+#[cfg(feature = "std")]
+impl From<u64> for Location {
+	fn from(a: u64) -> Self {
+		Self::TestLocal(a)
 	}
 }
