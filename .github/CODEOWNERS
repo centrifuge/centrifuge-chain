@@ -28,7 +28,7 @@ pallets/nft-sales/* @NunoAlexandre
 pallets/keystore/* @cdamian @mikiquantum
 
 ## Pallet Registry
-pallets/pool-registry/* @gruberb @mustermeiszer
+pallets/pool-registry/* @mustermeiszer
 
 ## Pallet Pool-System
 pallets/pool-system/* @mustermeiszer @branan @offerijns
