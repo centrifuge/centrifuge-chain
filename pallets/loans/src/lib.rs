@@ -82,6 +82,7 @@ pub(crate) mod test_utils;
 pub mod functions;
 pub mod loan_type;
 pub mod math;
+pub mod migrations;
 pub mod types;
 pub mod weights;
 
