@@ -304,13 +304,25 @@ fn remove_transfer_allowance_with_delay_works() {
 #[test]
 fn purge_transfer_allowance_works() {
 	new_test_ext().execute_with(|| {
+		// Add delay to ensure blocked_at is not set to MAX
+		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			5u64
+		));
 		// create allowance to test removal
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
+		assert_ok!(TransferAllowList::remove_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			ACCOUNT_RECEIVER.into(),
+		));
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
+		advance_n_blocks(6u64);
 
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
@@ -331,18 +343,25 @@ fn purge_transfer_allowance_works() {
 		assert_eq!(Balances::reserved_balance(&SENDER), 0);
 
 		// verify sender/currency allowance tracking decremented/removed
+		// 5 for delay
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
-			None
+			Some((0, Some(5)))
 		);
 		// verify event sent for removal
 		// note: event 0 is in new_ext_test setup -- fee key setup
+		// event 1 is delay, addition to ensure blocked at set
+		// event 2 is reserve
+		// event 3 is allowance creation
+		// Event 4 is allowance removal to set blocked at
+		// event 5 is unreserve from purge
+		// event 6 is purge
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[5].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Unreserved { who: 1, amount: 10 })
 		);
 		assert_eq!(
-			System::events()[4].event,
+			System::events()[6].event,
 			RuntimeEvent::TransferAllowList(pallet::Event::TransferAllowancePurged {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
@@ -369,6 +388,12 @@ fn purge_transfer_allowance_non_existant_transfer_allowance() {
 #[test]
 fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_decrements() {
 	new_test_ext().execute_with(|| {
+		// Add delay to ensure blocked_at is not set to MAX
+		assert_ok!(TransferAllowList::add_or_update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			5u64
+		));
 		// add multiple entries for sender/currency to test dec
 		assert_ok!(TransferAllowList::add_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
@@ -383,6 +408,14 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			100u64.into(),
 		));
 		assert_eq!(Balances::reserved_balance(&SENDER), 20);
+		advance_n_blocks(1u64);
+		assert_ok!(TransferAllowList::remove_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			ACCOUNT_RECEIVER.into(),
+		));
+
+		advance_n_blocks(6u64);
 
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
@@ -413,7 +446,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			))
 			.unwrap(),
 			AllowanceDetails {
-				allowed_at: 0u64,
+				allowed_at: 55u64,
 				blocked_at: u64::MAX
 			}
 		);
@@ -422,7 +455,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
 				.unwrap(),
-			(1, None)
+			(1, Some(5u64))
 		);
 	})
 }
@@ -531,4 +564,15 @@ fn remove_allowance_delay_when_no_delay_set() {
 			None
 		);
 	})
+}
+
+fn advance_n_blocks(n: u64) {
+	match n {
+		n if n > 0 => {
+			System::finalize();
+			System::set_block_number(System::block_number() + 1);
+			advance_n_blocks(n - 1);
+		}
+		_ => (),
+	}
 }

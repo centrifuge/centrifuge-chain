@@ -191,6 +191,8 @@ pub mod pallet {
 		/// No matching delay for the sending account and currency combination.
 		/// Cannot delete a non-existant entry
 		NoMatchingDelay,
+		/// Attempted to clear active allowance
+		AllowanceHasNotExpired,
 	}
 
 	#[pallet::event]
@@ -341,9 +343,10 @@ pub mod pallet {
 			receiver: T::Location,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+			let current_block = <frame_system::Pallet<T>>::block_number();
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
 			{
-				Some(_) => {
+				Some(AllowanceDetails { blocked_at, .. }) if blocked_at < current_block => {
 					T::ReserveCurrency::unreserve(
 						&account_id,
 						T::Fees::fee_value(T::AllowanceFeeKey::get()),
@@ -361,6 +364,7 @@ pub mod pallet {
 					});
 					Ok(())
 				}
+				Some(_) => Err(DispatchError::from(Error::<T>::AllowanceHasNotExpired)),
 				None => Err(DispatchError::from(Error::<T>::NoMatchingAllowance)),
 			}
 		}
