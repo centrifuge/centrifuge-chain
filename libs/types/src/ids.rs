@@ -12,7 +12,6 @@
 
 //! A module that contains all ids where we should be REALLY careful
 //! when changing them.
-use cfg_primitives::{Balance, CFG};
 use frame_support::PalletId;
 use sp_runtime::TypeId;
 
@@ -41,6 +40,3 @@ pub const CHAIN_BRIDGE_NATIVE_TOKEN_ID: [u8; 4] = *b"xCFG";
 // Reward related
 /// The identifier of the group eligible to receive block rewards.
 pub const COLLATOR_GROUP_ID: u32 = 1;
-/// The default amount of stake for CurrencyId::Staking(StakingCurrency::BlockRewards) which is inherently
-/// assigned to any member of the only group in block rewards.
-pub const DEFAULT_COLLATOR_STAKE: Balance = CFG;

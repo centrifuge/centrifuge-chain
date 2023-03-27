@@ -28,13 +28,13 @@ benchmarks! {
 		let beneficiary: T::AccountId =  account("collator", 0, SEED);
 
 		assert_ok!(BlockRewards::<T>::do_init_collator(&beneficiary));
-		assert_ok!(T::Rewards::reward_group(COLLATOR_GROUP_ID, REWARD.into()));
-		assert!(T::Rewards::is_ready(COLLATOR_GROUP_ID));
+		assert_ok!(T::Rewards::reward_group(T::StakeGroupId::get(), REWARD.into()));
+		assert!(T::Rewards::is_ready(T::StakeGroupId::get()));
 		assert!(
 			!T::Rewards::compute_reward(
 				(
 					T::Domain::get(),
-					T::StakeCurrency::get(),
+					T::StakeCurrencyId::get(),
 				),
 				&beneficiary,
 			).unwrap().is_zero()
@@ -48,6 +48,7 @@ benchmarks! {
 	}
 
 	set_collator_reward {
+		assert_ok!(BlockRewards::<T>::set_total_reward(RawOrigin::Root.into(), REWARD.into()));
 	}: _(RawOrigin::Root, REWARD.into())
 	verify {
 		assert_eq!(BlockRewards::<T>::next_session_changes().collator_reward, Some(REWARD.into()));

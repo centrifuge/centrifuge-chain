@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use cfg_traits::rewards::CurrencyGroupChange;
-use cfg_types::ids::COLLATOR_GROUP_ID;
 use frame_support::{
 	dispatch::GetStorageVersion,
 	inherent::Vec,
@@ -87,9 +86,9 @@ where
 			<T as Config>::Rewards::attach_currency(
 				(
 					<T as Config>::Domain::get(),
-					<T as Config>::StakeCurrency::get(),
+					<T as Config>::StakeCurrencyId::get(),
 				),
-				COLLATOR_GROUP_ID,
+				<T as Config>::StakeGroupId::get(),
 			)
 			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
 			.ok();
@@ -145,7 +144,7 @@ where
 			assert!(!<T as Config>::Rewards::account_stake(
 				(
 					<T as Config>::Domain::get(),
-					<T as Config>::StakeCurrency::get(),
+					<T as Config>::StakeCurrencyId::get(),
 				),
 				collator,
 			)

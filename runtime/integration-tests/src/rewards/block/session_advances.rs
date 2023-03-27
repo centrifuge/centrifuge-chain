@@ -129,7 +129,7 @@ async fn collator_list_synchronized() {
 				!<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						<Runtime as pallet_block_rewards::Config>::StakeCurrency::get(),
+						<Runtime as pallet_block_rewards::Config>::StakeCurrencyId::get(),
 					),
 					collator.into(),
 				)
@@ -142,7 +142,7 @@ async fn collator_list_synchronized() {
 				<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						<Runtime as pallet_block_rewards::Config>::StakeCurrency::get(),
+						<Runtime as pallet_block_rewards::Config>::StakeCurrencyId::get(),
 					),
 					collator.into(),
 				)
@@ -160,7 +160,7 @@ async fn collator_list_synchronized() {
 				!<Runtime as pallet_block_rewards::Config>::Rewards::compute_reward(
 					(
 						<Runtime as pallet_block_rewards::Config>::Domain::get(),
-						<Runtime as pallet_block_rewards::Config>::StakeCurrency::get(),
+						<Runtime as pallet_block_rewards::Config>::StakeCurrencyId::get(),
 					),
 					collator.into(),
 				)

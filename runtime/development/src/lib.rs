@@ -1711,6 +1711,8 @@ impl pallet_liquidity_rewards::Config for Runtime {
 frame_support::parameter_types! {
 	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
+	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
+	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
 }
 
 impl pallet_block_rewards::Config for Runtime {
@@ -1724,7 +1726,9 @@ impl pallet_block_rewards::Config for Runtime {
 	type MaxCollators = MaxAuthorities;
 	type Rewards = BlockRewardsBase;
 	type RuntimeEvent = RuntimeEvent;
-	type StakeCurrency = BlockRewardCurrency;
+	type StakeAmount = StakeAmount;
+	type StakeCurrencyId = BlockRewardCurrency;
+	type StakeGroupId = CollatorGroupId;
 	type Weight = u64;
 	type WeightInfo = ();
 }

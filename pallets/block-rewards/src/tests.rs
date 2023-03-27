@@ -165,7 +165,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			DEFAULT_COLLATOR_STAKE as u128
+			<Test as Config>::StakeAmount::get() as u128
 		);
 
 		advance_session();
@@ -186,7 +186,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			DEFAULT_COLLATOR_STAKE as u128
+			<Test as Config>::StakeAmount::get() as u128
 		);
 
 		advance_session();
@@ -209,7 +209,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			2 * DEFAULT_COLLATOR_STAKE as u128
+			2 * <Test as Config>::StakeAmount::get() as u128
 		);
 
 		advance_session();
@@ -233,7 +233,7 @@ fn joining_leaving_collators() {
 			<Tokens as fungibles::Inspect::<AccountId>>::total_issuance(CurrencyId::Staking(
 				StakingCurrency::BlockRewards
 			)),
-			3 * DEFAULT_COLLATOR_STAKE as u128
+			3 * <Test as Config>::StakeAmount::get() as u128
 		);
 	});
 }
@@ -245,10 +245,12 @@ fn single_claim_reward() {
 		.set_total_reward(10 * REWARD)
 		.build()
 		.execute_with(|| {
-			assert!(<Test as Config>::Rewards::is_ready(COLLATOR_GROUP_ID));
+			assert!(<Test as Config>::Rewards::is_ready(
+				<Test as Config>::StakeGroupId::get()
+			));
 			assert_eq!(
-				<Test as Config>::Rewards::group_stake(COLLATOR_GROUP_ID),
-				DEFAULT_COLLATOR_STAKE as u128
+				<Test as Config>::Rewards::group_stake(<Test as Config>::StakeGroupId::get()),
+				<Test as Config>::StakeAmount::get() as u128
 			);
 			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
 			assert_eq!(ActiveSessionData::<Test>::get().total_reward, 10 * REWARD);
@@ -259,14 +261,14 @@ fn single_claim_reward() {
 
 			// EPOCH 1 has one collator
 			assert_eq!(
-				<Test as Config>::Rewards::group_stake(COLLATOR_GROUP_ID),
-				1 * DEFAULT_COLLATOR_STAKE as u128
+				<Test as Config>::Rewards::group_stake(<Test as Config>::StakeGroupId::get()),
+				1 * <Test as Config>::StakeAmount::get() as u128
 			);
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&1
 				),
@@ -275,9 +277,9 @@ fn single_claim_reward() {
 			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(2), 1));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
-					group_id: COLLATOR_GROUP_ID,
+					group_id: <Test as Config>::StakeGroupId::get(),
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: <Test as Config>::StakeCurrency::get(),
+					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 1,
 					amount: REWARD,
 				},
@@ -304,7 +306,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&1
 				),
@@ -322,7 +324,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&1
 				),
@@ -341,7 +343,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&1
 				),
@@ -352,7 +354,7 @@ fn collator_rewards_greater_than_remainder() {
 					<Test as Config>::Rewards::compute_reward(
 						(
 							<Test as Config>::Domain::get(),
-							<Test as Config>::StakeCurrency::get()
+							<Test as Config>::StakeCurrencyId::get()
 						),
 						collator
 					),
@@ -372,7 +374,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&3
 				),
@@ -382,7 +384,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&4
 				),
@@ -392,7 +394,7 @@ fn collator_rewards_greater_than_remainder() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&5
 				),
@@ -415,7 +417,7 @@ fn late_claiming_works() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&2
 				),
@@ -424,9 +426,9 @@ fn late_claiming_works() {
 			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(1), 2));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
-					group_id: COLLATOR_GROUP_ID,
+					group_id: <Test as Config>::StakeGroupId::get(),
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: <Test as Config>::StakeCurrency::get(),
+					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 2,
 					amount: REWARD,
 				},
@@ -446,7 +448,7 @@ fn duplicate_claiming_works_but_ineffective() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&2
 				),
@@ -455,9 +457,9 @@ fn duplicate_claiming_works_but_ineffective() {
 			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(3), 2));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
-					group_id: COLLATOR_GROUP_ID,
+					group_id: <Test as Config>::StakeGroupId::get(),
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: <Test as Config>::StakeCurrency::get(),
+					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 2,
 					amount: REWARD,
 				},
@@ -467,7 +469,7 @@ fn duplicate_claiming_works_but_ineffective() {
 				<Test as Config>::Rewards::compute_reward(
 					(
 						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrency::get()
+						<Test as Config>::StakeCurrencyId::get()
 					),
 					&2
 				),
@@ -476,9 +478,9 @@ fn duplicate_claiming_works_but_ineffective() {
 			assert_ok!(BlockRewards::claim_reward(RuntimeOrigin::signed(1), 2));
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
-					group_id: COLLATOR_GROUP_ID,
+					group_id: <Test as Config>::StakeGroupId::get(),
 					domain_id: <Test as Config>::Domain::get(),
-					currency_id: <Test as Config>::StakeCurrency::get(),
+					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 2,
 					amount: 0,
 				},

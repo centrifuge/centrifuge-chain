@@ -43,10 +43,7 @@ use cfg_traits::{
 	ops::{EnsureAdd, EnsureMul, EnsureSub},
 	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
 };
-use cfg_types::{
-	ids::{COLLATOR_GROUP_ID, DEFAULT_COLLATOR_STAKE},
-	tokens::CurrencyId as CfgCurrencyId,
-};
+use cfg_types::tokens::CurrencyId as CfgCurrencyId;
 use frame_support::{
 	pallet_prelude::*,
 	storage::transactional,
@@ -131,8 +128,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ FixedPointOperand
 			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>
-			+ MaybeSerializeDeserialize
-			+ From<cfg_primitives::Balance>;
+			+ MaybeSerializeDeserialize;
 
 		/// Domain identification used by this pallet
 		type Domain: TypedGet;
@@ -154,7 +150,15 @@ pub mod pallet {
 
 		/// The identifier of the artificial block rewards currency which is minted and burned for collators.
 		#[pallet::constant]
-		type StakeCurrency: Get<CfgCurrencyId>;
+		type StakeCurrencyId: Get<CfgCurrencyId>;
+
+		/// The amount of the artificial block rewards currency which is minted and burned for collators.
+		#[pallet::constant]
+		type StakeAmount: Get<<Self as Config>::Balance>;
+
+		/// The identifier of the collator group.
+		#[pallet::constant]
+		type StakeGroupId: Get<u32>;
 
 		/// Max number of changes of the same type enqueued to apply in the next session.
 		/// Max calls to [`Pallet::set_collator_reward()`] or to [`Pallet::set_total_reward()`] with
@@ -239,8 +243,8 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			T::Rewards::attach_currency(
-				(T::Domain::get(), T::StakeCurrency::get()),
-				COLLATOR_GROUP_ID,
+				(T::Domain::get(), T::StakeCurrencyId::get()),
+				T::StakeGroupId::get(),
 			)
 			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
 			.ok();
@@ -270,7 +274,7 @@ pub mod pallet {
 		pub fn claim_reward(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			T::Rewards::claim_reward((T::Domain::get(), T::StakeCurrency::get()), &account_id)
+			T::Rewards::claim_reward((T::Domain::get(), T::StakeCurrencyId::get()), &account_id)
 				.map(|_| ())
 		}
 
@@ -344,20 +348,20 @@ impl<T: Config> Pallet<T> {
 	///  * mint_into (2 reads, 2 writes): Account, TotalIssuance
 	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount, Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
-		T::Currency::mint_into(T::StakeCurrency::get(), who, DEFAULT_COLLATOR_STAKE.into())?;
+		T::Currency::mint_into(T::StakeCurrencyId::get(), who, T::StakeAmount::get())?;
 		T::Rewards::deposit_stake(
-			(T::Domain::get(), T::StakeCurrency::get()),
+			(T::Domain::get(), T::StakeCurrencyId::get()),
 			who,
-			DEFAULT_COLLATOR_STAKE.into(),
+			T::StakeAmount::get(),
 		)
 	}
 
 	/// Withdraw currently staked amount for target address and immediately burn it.
 	/// Disables receiving rewards onwards.
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
-		let amount = T::Rewards::account_stake((T::Domain::get(), T::StakeCurrency::get()), who);
-		T::Rewards::withdraw_stake((T::Domain::get(), T::StakeCurrency::get()), who, amount)?;
-		T::Currency::burn_from(T::StakeCurrency::get(), who, amount).map(|_| ())
+		let amount = T::Rewards::account_stake((T::Domain::get(), T::StakeCurrencyId::get()), who);
+		T::Rewards::withdraw_stake((T::Domain::get(), T::StakeCurrencyId::get()), who, amount)?;
+		T::Currency::burn_from(T::StakeCurrencyId::get(), who, amount).map(|_| ())
 	}
 
 	/// Apply session changes and distribute rewards.
@@ -375,7 +379,7 @@ impl<T: Config> Pallet<T> {
 						.collator_reward
 						.ensure_mul(session_data.collator_count.into())?
 						.min(session_data.total_reward);
-					T::Rewards::reward_group(COLLATOR_GROUP_ID, total_collator_reward)?;
+					T::Rewards::reward_group(T::StakeGroupId::get(), total_collator_reward)?;
 
 					// Handle remaining reward
 					let remaining = session_data
