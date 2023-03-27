@@ -283,11 +283,23 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
-			NextSessionChanges::<T>::mutate(|changes| {
-				changes.collator_reward = Some(collator_reward_per_session);
-			});
+			NextSessionChanges::<T>::try_mutate(|changes| {
+				let current = ActiveSessionData::<T>::get();
+				let total_collator_rewards = collator_reward_per_session.saturating_mul(
+					changes
+						.collator_count
+						.unwrap_or(current.collator_count)
+						.into(),
+				);
+				let total_rewards = changes.total_reward.unwrap_or(current.total_reward);
+				ensure!(
+					total_rewards >= total_collator_rewards,
+					Error::<T>::InsufficientTotalReward
+				);
 
-			Ok(())
+				changes.collator_reward = Some(collator_reward_per_session);
+				Ok(())
+			})
 		}
 
 		/// Admin method to set the total reward distribution for the next sessions.

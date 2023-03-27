@@ -23,29 +23,47 @@ fn check_special_privileges() {
 
 #[test]
 fn collator_reward_change() {
-	ExtBuilder::default().build().execute_with(|| {
-		// EPOCH 0
-		assert_ok!(BlockRewards::set_collator_reward(
-			RuntimeOrigin::root(),
-			REWARD
-		));
-		assert_eq!(
-			NextSessionChanges::<Test>::get().collator_reward,
-			Some(REWARD)
-		);
-		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, 0);
+	ExtBuilder::default()
+		.set_total_reward(REWARD)
+		.build()
+		.execute_with(|| {
+			// EPOCH 0
+			assert_ok!(BlockRewards::set_collator_reward(
+				RuntimeOrigin::root(),
+				REWARD
+			));
+			assert_eq!(
+				NextSessionChanges::<Test>::get().collator_reward,
+				Some(REWARD)
+			);
+			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, 0);
 
-		advance_session();
+			advance_session();
 
-		// EPOCH 1
-		assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
-		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
+			// EPOCH 1
+			assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
+			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
 
-		advance_session();
+			advance_session();
 
-		// EPOCH 2
-		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
-	});
+			// EPOCH 2
+			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
+		});
+}
+
+#[test]
+fn collator_reward_change_throws() {
+	ExtBuilder::default()
+		.set_total_reward(1)
+		.set_collator_reward(0)
+		.build()
+		.execute_with(|| {
+			assert_ok!(BlockRewards::set_collator_reward(RuntimeOrigin::root(), 1));
+			assert_noop!(
+				BlockRewards::set_collator_reward(RuntimeOrigin::root(), 2),
+				Error::<Test>::InsufficientTotalReward
+			);
+		});
 }
 
 #[test]
@@ -74,64 +92,67 @@ fn total_reward_change_isolated() {
 
 #[test]
 fn total_reward_change_over_sessions() {
-	ExtBuilder::default().build().execute_with(|| {
-		// EPOCH 0
-		assert_ok!(BlockRewards::set_collator_reward(
-			RuntimeOrigin::root(),
-			REWARD
-		));
-		assert_ok!(BlockRewards::set_total_reward(
-			RuntimeOrigin::root(),
-			REWARD
-		));
-		assert_eq!(
-			NextSessionChanges::<Test>::get().collator_reward,
-			Some(REWARD)
-		);
-		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, 0);
-		assert_eq!(NextSessionChanges::<Test>::get().total_reward, Some(REWARD));
-		assert_eq!(ActiveSessionData::<Test>::get().total_reward, 0);
+	ExtBuilder::default()
+		.set_total_reward(REWARD)
+		.build()
+		.execute_with(|| {
+			// EPOCH 0
+			assert_ok!(BlockRewards::set_collator_reward(
+				RuntimeOrigin::root(),
+				REWARD
+			));
+			assert_ok!(BlockRewards::set_total_reward(
+				RuntimeOrigin::root(),
+				REWARD
+			));
+			assert_eq!(
+				NextSessionChanges::<Test>::get().collator_reward,
+				Some(REWARD)
+			);
+			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, 0);
+			assert_eq!(NextSessionChanges::<Test>::get().total_reward, Some(REWARD));
+			assert_eq!(ActiveSessionData::<Test>::get().total_reward, REWARD);
 
-		advance_session();
+			advance_session();
 
-		// EPOCH 1
-		assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
-		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
-		assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
-		assert_eq!(ActiveSessionData::<Test>::get().total_reward, REWARD);
+			// EPOCH 1
+			assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
+			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
+			assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
+			assert_eq!(ActiveSessionData::<Test>::get().total_reward, REWARD);
 
-		// Total reward update must be at least 2 * collator_reward since collator size increases by one
-		assert_eq!(ActiveSessionData::<Test>::get().collator_count, 1);
-		assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(2));
-		assert_noop!(
-			BlockRewards::set_total_reward(RuntimeOrigin::root(), 2 * REWARD - 1),
-			Error::<Test>::InsufficientTotalReward
-		);
-		assert_ok!(BlockRewards::set_total_reward(
-			RuntimeOrigin::root(),
-			2 * REWARD
-		));
-		assert_eq!(
-			NextSessionChanges::<Test>::get().total_reward,
-			Some(2 * REWARD)
-		);
+			// Total reward update must be at least 2 * collator_reward since collator size increases by one
+			assert_eq!(ActiveSessionData::<Test>::get().collator_count, 1);
+			assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(2));
+			assert_noop!(
+				BlockRewards::set_total_reward(RuntimeOrigin::root(), 2 * REWARD - 1),
+				Error::<Test>::InsufficientTotalReward
+			);
+			assert_ok!(BlockRewards::set_total_reward(
+				RuntimeOrigin::root(),
+				2 * REWARD
+			));
+			assert_eq!(
+				NextSessionChanges::<Test>::get().total_reward,
+				Some(2 * REWARD)
+			);
 
-		advance_session();
+			advance_session();
 
-		// EPOCH 2
-		assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
-		assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
-		assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
-		assert_eq!(ActiveSessionData::<Test>::get().total_reward, 2 * REWARD);
+			// EPOCH 2
+			assert_eq!(NextSessionChanges::<Test>::get().collator_reward, None);
+			assert_eq!(ActiveSessionData::<Test>::get().collator_reward, REWARD);
+			assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
+			assert_eq!(ActiveSessionData::<Test>::get().total_reward, 2 * REWARD);
 
-		// Total reward update must be at least 3 * collator_reward since collator size increases by one
-		assert_eq!(ActiveSessionData::<Test>::get().collator_count, 2);
-		assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(3));
-		assert_noop!(
-			BlockRewards::set_total_reward(RuntimeOrigin::root(), 3 * REWARD - 1),
-			Error::<Test>::InsufficientTotalReward
-		);
-	});
+			// Total reward update must be at least 3 * collator_reward since collator size increases by one
+			assert_eq!(ActiveSessionData::<Test>::get().collator_count, 2);
+			assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(3));
+			assert_noop!(
+				BlockRewards::set_total_reward(RuntimeOrigin::root(), 3 * REWARD - 1),
+				Error::<Test>::InsufficientTotalReward
+			);
+		});
 }
 
 #[test]
