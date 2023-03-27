@@ -1719,7 +1719,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type AuthorityId = AuraId;
 	type Balance = Balance;
-	type Beneficiary = ();
+	type Beneficiary = Treasury;
 	type Currency = Tokens;
 	type Domain = BlockRewardsDomain;
 	type MaxChangesPerSession = MaxChangesPerEpoch;
@@ -1730,7 +1730,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type StakeCurrencyId = BlockRewardCurrency;
 	type StakeGroupId = CollatorGroupId;
 	type Weight = u64;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
