@@ -292,7 +292,7 @@ pub mod pallet {
 		pub fn set_domain_router(
 			origin: OriginFor<T>,
 			domain: Domain,
-			router:  Box<Router<CurrencyIdOf<T>>>,
+			router: Box<Router<CurrencyIdOf<T>>>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
