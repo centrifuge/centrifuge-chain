@@ -346,12 +346,12 @@ pub mod pallet {
 		}
 	}
 
-	/// Creates a new loan against the collateral provided
-	///
-	/// The origin must be the owner of the collateral.
-	/// This collateral will be transferred to the existing pool.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Creates a new loan against the collateral provided
+		///
+		/// The origin must be the owner of the collateral.
+		/// This collateral will be transferred to the existing pool.
 		#[pallet::weight(T::WeightInfo::create())]
 		#[pallet::call_index(0)]
 		pub fn create(
