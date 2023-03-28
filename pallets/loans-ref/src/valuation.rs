@@ -12,7 +12,9 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::ops::{EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub};
+use cfg_traits::ops::{
+	EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	traits::tokens::{self},
@@ -32,7 +34,7 @@ pub struct DiscountedCashFlow<Rate> {
 	/// The share of an asset that is lost if a borrower defaults.
 	pub loss_given_default: Rate,
 
-	/// Rate of return used to discount future cash flows back to their present value.
+	/// Rate per year of return used to discount future cash flows back to their present value.
 	pub discount_rate: Rate,
 }
 
@@ -41,12 +43,15 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		probability_of_default: Rate,
 		loss_given_default: Rate,
 		discount_rate: Rate,
-	) -> Self {
-		Self {
+	) -> Result<Self, ArithmeticError> {
+		Ok(Self {
 			probability_of_default,
 			loss_given_default,
-			discount_rate,
-		}
+			// TODO: use InterestAccrual for this conversion once #1189 is merged
+			discount_rate: discount_rate
+				.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
+				.ensure_add(One::one())?,
+		})
 	}
 
 	pub fn compute_present_value<Balance: tokens::Balance + FixedPointOperand>(
@@ -76,11 +81,16 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 
 		// Calculate the risk-adjusted expected cash flows
 		let exp = maturity_date.ensure_sub(when)?.ensure_into()?;
+
+		// TODO: This probably can be done by InterestAccrual given more performance
+		// once #1189 is merged
 		let acc_rate = checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
 		let ecf = acc_rate.ensure_mul_int(debt)?;
 		let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
 
 		// Discount the risk-adjusted expected cash flows
+		// TODO: use InterestAccrual for this once #1189 is merged
+		// This would immply that discount_rate should be register/unregister.
 		let rate = checked_pow(self.discount_rate, exp).ok_or(ArithmeticError::Overflow)?;
 		let d = Rate::one().ensure_div(rate)?;
 
@@ -103,7 +113,7 @@ where
 {
 	pub fn is_valid(&self) -> bool {
 		match self {
-			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate >= One::one(),
+			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate <= One::one(),
 			ValuationMethod::OutstandingDebt => true,
 		}
 	}

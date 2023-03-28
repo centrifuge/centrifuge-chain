@@ -246,7 +246,7 @@ mod create_loan {
 				.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.0),
 					loss_given_default: Rate::from_float(0.0),
-					discount_rate: Rate::from_float(0.9),
+					discount_rate: Rate::from_float(1.1),
 				}));
 
 			assert_noop!(
