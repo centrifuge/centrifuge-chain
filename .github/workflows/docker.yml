@@ -9,7 +9,7 @@ on:
         required: true
         default: ''
 env:
-  RUST_TOOLCHAIN: "nightly-2022-08-05"
+  RUST_TOOLCHAIN: "nightly-2022-11-14"
 jobs:
   docker:
     strategy:

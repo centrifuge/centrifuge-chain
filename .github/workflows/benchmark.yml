@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest-4-cores
     if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
     env:
-      RUST_TOOLCHAIN: "nightly-2022-08-05"
+      RUST_TOOLCHAIN: "nightly-2022-11-14"
     steps:
       - uses: actions/github-script@v6
         name: Parse Runtime From Comment
