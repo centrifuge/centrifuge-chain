@@ -569,11 +569,11 @@ where
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveInvestOrders::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
 				InvestOrders::<T>::try_mutate(
 					&who,
-					&investment_id,
+					investment_id,
 					|maybe_order| -> Result<OrderId, DispatchError> {
 						let order =
 							Pallet::<T>::invest_order_or_default(investment_id, maybe_order);
@@ -631,11 +631,11 @@ where
 
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		let cur_order_id = ActiveRedeemOrders::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|total_order| -> Result<OrderId, DispatchError> {
 				RedeemOrders::<T>::try_mutate(
 					&who,
-					&investment_id,
+					investment_id,
 					|maybe_order| -> Result<OrderId, DispatchError> {
 						let order =
 							Pallet::<T>::redeem_order_or_default(investment_id, maybe_order);
@@ -699,7 +699,7 @@ where
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		InvestOrders::<T>::try_mutate(
 			&who,
-			&investment_id,
+			investment_id,
 			|maybe_order| -> DispatchResultWithPostInfo {
 				let order = if let Some(order) = maybe_order.as_mut() {
 					order
@@ -714,7 +714,7 @@ where
 				};
 				let mut collection = InvestCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
-				let cur_order_id = InvestOrderId::<T>::get(&investment_id);
+				let cur_order_id = InvestOrderId::<T>::get(investment_id);
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
@@ -792,7 +792,7 @@ where
 		let info = T::Accountant::info(investment_id).map_err(|_| Error::<T>::UnknownInvestment)?;
 		RedeemOrders::<T>::try_mutate(
 			&who,
-			&investment_id,
+			investment_id,
 			|maybe_order| -> DispatchResultWithPostInfo {
 				let order = if let Some(order) = maybe_order.as_mut() {
 					order
@@ -808,7 +808,7 @@ where
 				};
 				let mut collection = RedeemCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
-				let cur_order_id = InvestOrderId::<T>::get(&investment_id);
+				let cur_order_id = InvestOrderId::<T>::get(investment_id);
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
@@ -1098,7 +1098,7 @@ where
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
-		if let Some(order) = InvestOrders::<T>::get(&who, investment_id) {
+		if let Some(order) = InvestOrders::<T>::get(who, investment_id) {
 			Ok(order.amount())
 		} else {
 			Ok(Zero::zero())
@@ -1117,7 +1117,7 @@ where
 		who: &T::AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error> {
-		if let Some(order) = RedeemOrders::<T>::get(&who, investment_id) {
+		if let Some(order) = RedeemOrders::<T>::get(who, investment_id) {
 			Ok(order.amount())
 		} else {
 			Ok(Zero::zero())
@@ -1136,21 +1136,21 @@ where
 	type Orders = TotalOrder<T::Amount>;
 
 	fn invest_orders(investment_id: Self::InvestmentId) -> Self::Orders {
-		ActiveInvestOrders::<T>::get(&investment_id)
+		ActiveInvestOrders::<T>::get(investment_id)
 	}
 
 	fn redeem_orders(investment_id: Self::InvestmentId) -> Self::Orders {
-		ActiveRedeemOrders::<T>::get(&investment_id)
+		ActiveRedeemOrders::<T>::get(investment_id)
 	}
 
 	fn process_invest_orders(
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Orders, Self::Error> {
 		let total_orders = ActiveInvestOrders::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
 				InProcessingInvestOrders::<T>::try_mutate(
-					&investment_id,
+					investment_id,
 					|in_processing_orders| -> DispatchResult {
 						ensure!(
 							in_processing_orders.is_none(),
@@ -1171,7 +1171,7 @@ where
 		)?;
 
 		let order_id = InvestOrderId::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|order_id| -> Result<OrderId, DispatchError> {
 				let cur_order_id = *order_id;
 
@@ -1196,10 +1196,10 @@ where
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Orders, Self::Error> {
 		let total_orders = ActiveRedeemOrders::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|orders| -> Result<TotalOrder<T::Amount>, DispatchError> {
 				InProcessingRedeemOrders::<T>::try_mutate(
-					&investment_id,
+					investment_id,
 					|in_processing_orders| -> DispatchResult {
 						ensure!(
 							in_processing_orders.is_none(),
@@ -1220,7 +1220,7 @@ where
 		)?;
 
 		let order_id = RedeemOrderId::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|order_id| -> Result<OrderId, DispatchError> {
 				let cur_order_id = *order_id;
 
@@ -1246,7 +1246,7 @@ where
 		fulfillment: Self::Fulfillment,
 	) -> Result<(), DispatchError> {
 		let order_id = InProcessingInvestOrders::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|maybe_orders| -> Result<OrderId, DispatchError> {
 				let orders = maybe_orders
 					.as_ref()
@@ -1326,7 +1326,7 @@ where
 		fulfillment: Self::Fulfillment,
 	) -> Result<(), DispatchError> {
 		let order_id = InProcessingRedeemOrders::<T>::try_mutate(
-			&investment_id,
+			investment_id,
 			|maybe_orders| -> Result<OrderId, DispatchError> {
 				let orders = maybe_orders
 					.as_ref()

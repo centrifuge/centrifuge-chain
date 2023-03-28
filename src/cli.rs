@@ -21,6 +21,7 @@ use clap::Parser;
 use crate::chain_spec;
 
 #[derive(Debug, Parser)]
+#[allow(clippy::large_enum_variant)]
 pub enum Subcommand {
 	/// Export the genesis state of the parachain.
 	#[clap(name = "export-genesis-state")]

@@ -442,7 +442,7 @@ pub fn run() -> Result<()> {
 				);
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
-					.map(|e| e.para_id).unwrap_or(cli.parachain_id.unwrap_or(10001));
+					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.unwrap_or(10001));
 
 				let id = ParaId::from(para_id);
 
@@ -478,7 +478,7 @@ pub fn run() -> Result<()> {
 					}
 				);
 
-				if !collator_options.relay_chain_rpc_urls.is_empty() && cli.relaychain_args.len() > 0 {
+				if !collator_options.relay_chain_rpc_urls.is_empty() && !cli.relaychain_args.is_empty() {
 					warn!("Detected relay chain node arguments together with --relay-chain-rpc-urls. This command starts a minimal Polkadot node that only uses a network-related subset of all relay chain CLI options.");
 				}
 
