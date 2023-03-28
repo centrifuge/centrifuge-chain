@@ -235,7 +235,7 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen
-			+ Into<u128>
+			+ TryInto<u128, Error = DispatchError>
 			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>;
 	}
 
@@ -343,7 +343,7 @@ pub mod pallet {
 				Message::AddPool {
 					pool_id,
 					decimals,
-					currency: currency.into(),
+					currency: currency.try_into()?,
 				},
 				domain,
 			)?;
@@ -552,7 +552,7 @@ pub mod pallet {
 				who.clone(),
 				Message::Transfer {
 					amount,
-					token: asset_id.into(),
+					token: asset_id.try_into()?,
 					source_address: account_to_bytes(&who)?,
 					destination_address: domain_address.address(),
 				},
