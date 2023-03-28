@@ -311,7 +311,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Runtime>;
 }
 
 pub struct RestrictedTokens<P>(PhantomData<P>);
@@ -778,7 +778,6 @@ parameter_types! {
 
 // Make sure that there are no more than `MAX_MEMBERS` members elected via elections-phragmen.
 const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
-// TODO: Can we remove phragmen?
 impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
@@ -1008,6 +1007,9 @@ impl pallet_nft::Config for Runtime {
 	type NftProofValidationFeeKey = NftProofValidationFeeKey;
 	type ResourceHashId = ResourceHashId;
 	type RuntimeEvent = RuntimeEvent;
+	// NOTE: No benchmarks available.
+	//       BUT will be deprecated once Tinlake
+	//       is wind down.
 	type WeightInfo = ();
 }
 
@@ -1024,6 +1026,10 @@ impl pallet_bridge::Config for Runtime {
 	type NativeTokenId = NativeTokenId;
 	type NativeTokenTransferFeeKey = NativeTokenTransferFeeKey;
 	type RuntimeEvent = RuntimeEvent;
+	// NOTE: No benchmarks available.
+	//       Might need to do that if we
+	//       extend the bridge usage
+	//       For not fine.
 	type WeightInfo = ();
 }
 
@@ -1044,7 +1050,10 @@ impl chainbridge::Config for Runtime {
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type RuntimeEvent = RuntimeEvent;
-	// TODO: Fix benchmarks
+	// NOTE: No benchmarks available.
+	//       External pallet, we use a fork of.
+	//       If we extend using this bridge
+	//       we need to write appropriate benches.
 	type WeightInfo = ();
 }
 
@@ -1061,6 +1070,9 @@ impl pallet_claims::Config for Runtime {
 	type MinimalPayoutAmount = MinimalPayoutAmount;
 	type PalletId = ClaimsPalletId;
 	type RuntimeEvent = RuntimeEvent;
+	// NOTE: No benchmarks available.
+	//       BUT will be deprecated once Tinlake
+	//       is wind down.
 	type WeightInfo = ();
 }
 
@@ -1451,6 +1463,10 @@ impl pallet_investments::Config for Runtime {
 	type PreConditions = IsTrancheInvestor<Permissions, Timestamp>;
 	type RuntimeEvent = RuntimeEvent;
 	type Tokens = Tokens;
+	// TODO: Fix benchmarks
+	//
+	// NOTE: Fixed weights are really high and
+	//       cover worst case, but are inefficient.
 	type WeightInfo = ();
 }
 
@@ -1607,10 +1623,9 @@ construct_runtime!(
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
 
 		// Synced pallets across all runtimes - Range: 180-240
-		// WHY: * integrations liek fireblocks will need to know the index in the enum
+		// WHY: * integrations like fireblocks will need to know the index in the enum
 		//      * makes it easier, without parsing complete metadata
 		//      * makes it in-sync for XCM integrations -- same enum variant again
-		// TODO: Research how to change this in Altair...
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 180,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 181,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 182,
