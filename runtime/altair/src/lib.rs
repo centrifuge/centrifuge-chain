@@ -829,7 +829,7 @@ impl pallet_anchors::Config for Runtime {
 	type Currency = Balances;
 	type Fees = Fees;
 	type PreCommitDepositFeeKey = PreCommitDepositFeeKey;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_anchors::WeightInfo<Self>;
 }
 
 impl pallet_collator_allowlist::Config for Runtime {
@@ -1323,7 +1323,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type Weights = ();
+	type Weights = weights::pallet_interest_accrual::WeightInfo<Self>;
 }
 
 parameter_types! {

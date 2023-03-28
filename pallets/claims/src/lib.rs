@@ -81,7 +81,6 @@ mod weights;
 use frame_support::{
 	dispatch::DispatchResult,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, Get},
-	weights::Weight,
 	PalletId,
 };
 use frame_system::ensure_root;
@@ -92,27 +91,7 @@ use sp_runtime::{
 	sp_std::vec::Vec,
 	traits::{AccountIdConversion, CheckedSub, Hash},
 };
-
-// Re-export weight information in crate namespace
-pub use crate::traits::WeightInfo as PalletWeightInfo;
-
-// ----------------------------------------------------------------------------
-// Traits and types declaration
-// ----------------------------------------------------------------------------
-
-pub mod traits {
-
-	use super::*;
-
-	/// Weight information for pallet extrinsics
-	///
-	/// Weights are calculated using runtime benchmarking features.
-	pub trait WeightInfo {
-		fn claim(hashes_length: usize) -> Weight;
-		fn set_upload_account() -> Weight;
-		fn store_root_hash() -> Weight;
-	}
-} // end of 'traits' module
+pub use weights::WeightInfo;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -176,7 +155,7 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		/// Weight information for extrinsics in this pallet
-		type WeightInfo: PalletWeightInfo;
+		type WeightInfo: WeightInfo;
 	}
 
 	// ------------------------------------------------------------------------

@@ -288,7 +288,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungiblesTransfer = cfg_traits::Always;
 	type PreReservableCurrency = cfg_traits::Always;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_restricted_tokens::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_restricted_tokens::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -875,7 +875,7 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::WeightInfo<Self>;
 }
 
 parameter_types! {

@@ -29,7 +29,6 @@ use chainbridge::{
 use frame_support::{
 	parameter_types,
 	traits::{Everything, FindAuthor, SortedMembers},
-	weights::Weight,
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -41,7 +40,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash, IdentityLookup},
 };
 
-use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
+use crate::{self as pallet_nft, Config as PalletNftConfig};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -49,18 +48,6 @@ use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-
-// Implement testing extrinsic weights for the pallet
-pub struct MockWeightInfo;
-impl WeightInfo for MockWeightInfo {
-	fn transfer() -> Weight {
-		Weight::from_ref_time(0)
-	}
-
-	fn validate_mint() -> Weight {
-		Weight::from_ref_time(0)
-	}
-}
 
 // Testing user identifiers
 pub(crate) const USER_A: u64 = 0x1;
@@ -228,7 +215,7 @@ impl PalletNftConfig for Runtime {
 	type NftProofValidationFeeKey = ();
 	type ResourceHashId = MockResourceHashId;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = MockWeightInfo;
+	type WeightInfo = ();
 }
 
 // ----------------------------------------------------------------------------
