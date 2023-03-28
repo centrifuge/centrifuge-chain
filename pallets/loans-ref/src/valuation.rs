@@ -113,7 +113,7 @@ where
 {
 	pub fn is_valid(&self) -> bool {
 		match self {
-			ValuationMethod::DiscountedCashFlow(_dcf) => true,
+			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate <= One::one(),
 			ValuationMethod::OutstandingDebt => true,
 		}
 	}
