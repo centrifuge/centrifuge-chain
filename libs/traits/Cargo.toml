@@ -21,8 +21,8 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 
 [dev-dependencies]
-cfg-types = { path = "../types", default-features = true }
 cfg-mocks = { path = "../mocks" }
+cfg-types = { path = "../types", default-features = true }
 mock-builder = { path = "../../libs/mock-builder" }
 
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
