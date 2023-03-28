@@ -803,7 +803,9 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type VotingBondBase = VotingBondBase;
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
-	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Self>;
+	// NOTE: Benchmarks are failing with
+	//       "Error: Input("failed to submit candidacy")"
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1268,13 +1270,6 @@ impl PoolUpdateGuard for UpdateGuard {
 	}
 }
 
-// The pool benchmarks can't handle a required root origin (yet).
-// TODO: Fix those benchmarks and remove this
-#[cfg(not(feature = "runtime-benchmarks"))]
-type PoolCreateOrigin = EnsureRoot<AccountId>;
-#[cfg(feature = "runtime-benchmarks")]
-type PoolCreateOrigin = EnsureSigned<AccountId>;
-
 impl pallet_pool_registry::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -1285,7 +1280,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1312,7 +1307,6 @@ impl pallet_pool_system::Config for Runtime {
 	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MinUpdateDelay = MinUpdateDelay;
 	type NAV = Loans;
-	// TODO: Add actual pallet-loans, after https://github.com/centrifuge/centrifuge-chain/pull/1180 is merged
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
@@ -1481,7 +1475,6 @@ impl pallet_interest_accrual::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxWriteOffPolicySize: u32 = 100;
 }

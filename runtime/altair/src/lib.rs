@@ -1166,13 +1166,6 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 0;
 }
 
-// The pool benchmarks can't handle a required root origin (yet).
-// TODO: Fix those benchmarks and remove this
-#[cfg(not(feature = "runtime-benchmarks"))]
-type PoolCreateOrigin = EnsureRoot<AccountId>;
-#[cfg(feature = "runtime-benchmarks")]
-type PoolCreateOrigin = EnsureSigned<AccountId>;
-
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
@@ -1196,7 +1189,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
-	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
@@ -1221,7 +1214,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;

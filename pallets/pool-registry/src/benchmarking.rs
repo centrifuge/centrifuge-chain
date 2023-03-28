@@ -88,7 +88,11 @@ benchmarks! {
 		let n in 1..<T as pallet_pool_system::Config>::MaxTranches::get();
 		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_input_tranches::<T>(n);
-		let origin = RawOrigin::Signed(caller.clone());
+		let origin = if let Ok(_) = <T as Config>::PoolCreateOrigin::try_origin(RawOrigin::Signed(caller.clone()).into()) {
+			RawOrigin::Signed(caller.clone())
+		} else {
+			RawOrigin::Root
+		};
 		prepare_asset_registry::<T>();
 	}: register(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
