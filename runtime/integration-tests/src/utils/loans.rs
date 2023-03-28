@@ -30,15 +30,6 @@ use crate::{chain::centrifuge::RuntimeCall, utils::tokens::rate_from_percent};
 
 type Asset = (CollectionId, ItemId);
 
-// TODO: Remove once #1189 is merged
-fn interest_rate_per_year_to_sec(rate_per_annum: Rate) -> Rate {
-	rate_per_annum
-		.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))
-		.unwrap()
-		.ensure_add(Rate::one())
-		.unwrap()
-}
-
 /// Structure that manages collateral and loan nft ids
 pub struct NftManager {
 	collaterals: HashMap<PoolId, ItemId>,
@@ -123,7 +114,7 @@ pub fn issue_default_loan(
 	.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 		probability_of_default: rate_from_percent(5),
 		loss_given_default: rate_from_percent(50),
-		discount_rate: interest_rate_per_year_to_sec(rate_from_percent(4)),
+		discount_rate: rate_from_percent(4),
 	}));
 
 	issue_loan(owner, pool_id, loan_info, manager)
