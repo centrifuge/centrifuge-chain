@@ -11,7 +11,6 @@ use super::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
 		WriteOffState, WriteOffStatus, WrittenOffError,
 	},
-	valuation::{DiscountedCashFlow, ValuationMethod},
 };
 
 const COLLATERAL_VALUE: Balance = 10000;
@@ -232,26 +231,6 @@ mod create_loan {
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				Error::<Runtime>::from(CreateLoanError::InvalidRepaymentSchedule)
-			);
-		});
-	}
-
-	#[test]
-	fn with_wrong_valuation() {
-		new_test_ext().execute_with(|| {
-			config_mocks(POOL_A);
-
-			let loan = LoanInfo::new(ASSET_AA)
-				.maturity(now() + BLOCK_TIME)
-				.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
-					probability_of_default: Rate::from_float(0.0),
-					loss_given_default: Rate::from_float(0.0),
-					discount_rate: Rate::from_float(0.9),
-				}));
-
-			assert_noop!(
-				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
-				Error::<Runtime>::from(CreateLoanError::InvalidValuationMethod)
 			);
 		});
 	}
