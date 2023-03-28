@@ -37,17 +37,21 @@ where
 	Invalid,
 	AddPool {
 		pool_id: PoolId,
+		currency: u128,
+		decimals: u8,
 	},
 	AddTranche {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
+		decimals: u8,
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
 		price: Rate,
 	},
-	UpdateTokenPrice {
+	UpdateTrancheTokenPrice {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
+		decimals: u8,
 		price: Rate,
 	},
 	UpdateMember {
@@ -56,12 +60,71 @@ where
 		address: Address,
 		valid_until: Moment,
 	},
+	// Bidirectional: Domain must not accept every incoming token.
+	// Sender must ensure beforehand that the receiver will not reject
 	Transfer {
+		token: u128,
+		source_address: Address,
+		destination_address: Address,
+		amount: Balance,
+	},
+	TransferTrancheTokens {
+		domain: Domain,
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		domain: Domain,
-		address: Address,
+		source_address: Address,
+		destination_address: Address,
 		amount: Balance,
+	},
+	IncreaseInvestOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		address: Address,
+		token: u128,
+		amount: Balance,
+	},
+	DecreaseInvestOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		address: Address,
+		token: u128,
+		amount: Balance,
+	},
+	IncreaseRedeemOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		address: Address,
+		token: u128,
+		amount: Balance,
+	},
+	DecreaseRedeemOrder {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		address: Address,
+		token: u128,
+		amount: Balance,
+	},
+	CollectRedem {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		address: Address,
+	},
+	CollectForRedeem {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		call_address: Address,
+		collect_address: Address,
+	},
+	CollectInvest {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		address: Address,
+	},
+	CollectForInvest {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		call_address: Address,
+		collect_address: Address,
 	},
 }
 
@@ -81,12 +144,21 @@ impl<
 	/// in other domains and MUST follow the defined standard.
 	fn call_type(&self) -> u8 {
 		match self {
-			Self::Invalid => 0,
+			Self::Invalid { .. } => 0,
 			Self::AddPool { .. } => 1,
 			Self::AddTranche { .. } => 2,
-			Self::UpdateTokenPrice { .. } => 3,
+			Self::UpdateTrancheTokenPrice { .. } => 3,
 			Self::UpdateMember { .. } => 4,
 			Self::Transfer { .. } => 5,
+			Self::TransferTrancheTokens { .. } => 6,
+			Self::IncreaseInvestOrder { .. } => 7,
+			Self::DecreaseInvestOrder { .. } => 8,
+			Self::IncreaseRedeemOrder { .. } => 9,
+			Self::DecreaseRedeemOrder { .. } => 10,
+			Self::CollectRedem { .. } => 11,
+			Self::CollectForRedeem { .. } => 12,
+			Self::CollectInvest { .. } => 13,
+			Self::CollectForInvest { .. } => 14,
 		}
 	}
 }
@@ -102,12 +174,18 @@ impl<
 	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![self.call_type()],
-			Message::AddPool { pool_id } => {
-				encoded_message(self.call_type(), vec![encode_be(pool_id)])
-			}
+			Message::AddPool {
+				pool_id,
+				currency,
+				decimals,
+			} => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), encode_be(currency), decimals.encode()],
+			),
 			Message::AddTranche {
 				pool_id,
 				tranche_id,
+				decimals,
 				token_name,
 				token_symbol,
 				price,
@@ -116,18 +194,25 @@ impl<
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
+					decimals.encode(),
 					token_name.encode(),
 					token_symbol.encode(),
 					encode_be(price),
 				],
 			),
-			Message::UpdateTokenPrice {
+			Message::UpdateTrancheTokenPrice {
 				pool_id,
 				tranche_id,
 				price,
+				decimals,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), tranche_id.encode(), encode_be(price)],
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					encode_be(price),
+					decimals.encode(),
+				],
 			),
 			Message::UpdateMember {
 				pool_id,
@@ -139,24 +224,148 @@ impl<
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					address.encode(),
+					address.to_vec(),
 					valid_until.to_be_bytes().to_vec(),
 				],
 			),
 			Message::Transfer {
+				token,
+				source_address,
+				destination_address,
+				amount,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(token),
+					source_address.to_vec(),
+					destination_address.to_vec(),
+					encode_be(amount),
+				],
+			),
+			Message::TransferTrancheTokens {
+				domain,
 				pool_id,
 				tranche_id,
-				domain,
+				source_address,
+				destination_address,
+				amount,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					domain.serialize(),
+					encode_be(pool_id),
+					tranche_id.encode(),
+					source_address.to_vec(),
+					destination_address.to_vec(),
+					encode_be(amount),
+				],
+			),
+			Message::IncreaseInvestOrder {
+				pool_id,
+				tranche_id,
 				address,
+				token,
 				amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					domain.serialize(),
-					address.encode(),
+					address.to_vec(),
+					encode_be(token),
 					encode_be(amount),
+				],
+			),
+			Message::DecreaseInvestOrder {
+				pool_id,
+				tranche_id,
+				address,
+				token,
+				amount,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					address.to_vec(),
+					encode_be(token),
+					encode_be(amount),
+				],
+			),
+			Message::IncreaseRedeemOrder {
+				pool_id,
+				tranche_id,
+				address,
+				token,
+				amount,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					address.to_vec(),
+					encode_be(token),
+					encode_be(amount),
+				],
+			),
+			Message::DecreaseRedeemOrder {
+				pool_id,
+				tranche_id,
+				address,
+				token,
+				amount,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					address.to_vec(),
+					encode_be(token),
+					encode_be(amount),
+				],
+			),
+			Message::CollectRedem {
+				pool_id,
+				tranche_id,
+				address,
+			} => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
+			),
+			Message::CollectForRedeem {
+				pool_id,
+				tranche_id,
+				call_address,
+				collect_address,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					call_address.to_vec(),
+					collect_address.to_vec(),
+				],
+			),
+			Message::CollectInvest {
+				pool_id,
+				tranche_id,
+				address,
+			} => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
+			),
+			Message::CollectForInvest {
+				pool_id,
+				tranche_id,
+				call_address,
+				collect_address,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					call_address.to_vec(),
+					collect_address.to_vec(),
 				],
 			),
 		}
@@ -169,17 +378,21 @@ impl<
 			0 => Ok(Self::Invalid),
 			1 => Ok(Self::AddPool {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
+				decimals: decode::<1, _, _>(input)?,
 			}),
 			2 => Ok(Self::AddTranche {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
+				decimals: decode::<1, _, _>(input)?,
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			3 => Ok(Self::UpdateTokenPrice {
+			3 => Ok(Self::UpdateTrancheTokenPrice {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
+				decimals: decode::<1, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			4 => Ok(Self::UpdateMember {
@@ -189,11 +402,68 @@ impl<
 				valid_until: decode_be_bytes::<8, _, _>(input)?,
 			}),
 			5 => Ok(Self::Transfer {
+				token: decode_be_bytes::<16, _, _>(input)?,
+				source_address: decode::<32, _, _>(input)?,
+				destination_address: decode::<32, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			6 => Ok(Self::TransferTrancheTokens {
+				domain: deserialize::<9, _, _>(input)?,
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				domain: deserialize::<9, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				source_address: decode::<32, _, _>(input)?,
+				destination_address: decode::<32, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			7 => Ok(Self::IncreaseInvestOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				token: decode_be_bytes::<16, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			8 => Ok(Self::DecreaseInvestOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				token: decode_be_bytes::<16, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			9 => Ok(Self::IncreaseRedeemOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				token: decode_be_bytes::<16, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			10 => Ok(Self::DecreaseRedeemOrder {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				token: decode_be_bytes::<16, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			11 => Ok(Self::CollectRedem {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+			}),
+			12 => Ok(Self::CollectForRedeem {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				call_address: decode::<32, _, _>(input)?,
+				collect_address: decode::<32, _, _>(input)?,
+			}),
+			13 => Ok(Self::CollectInvest {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+			}),
+			14 => Ok(Self::CollectForInvest {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				call_address: decode::<32, _, _>(input)?,
+				collect_address: decode::<32, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -218,6 +488,20 @@ fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
 	}
 
 	message
+}
+
+// Converts a 32 byte AccountId to its byte-array equivalent form.
+pub(crate) fn account_to_bytes<AccountId>(
+	account: &AccountId,
+) -> Result<[u8; 32], sp_runtime::DispatchError>
+where
+	AccountId: Encode,
+{
+	let account_vec = account.encode();
+	frame_support::ensure!(account_vec.len() == 32, "AccountId must be 32 bytes.");
+	let mut bytes = [0u8; 32];
+	bytes.copy_from_slice(&account_vec);
+	Ok(bytes)
 }
 
 #[cfg(test)]
@@ -297,7 +581,7 @@ mod tests {
 	#[test]
 	fn update_token_price() {
 		test_encode_decode_identity(
-			ConnectorMessage::UpdateTokenPrice {
+			ConnectorMessage::UpdateTrancheTokenPrice {
 				pool_id: 1,
 				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 				price: Rate::one(),

@@ -158,7 +158,7 @@ pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 pub type MessageOf<T> =
 	Message<Domain, PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
 
-pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
+pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -226,6 +226,17 @@ pub mod pallet {
 			Balance = <Self as Config>::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
+
+		/// The currency type of transferrable token.
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen
+			+ Into<u128>
+			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>;
 	}
 
 	#[pallet::event]
@@ -316,6 +327,8 @@ pub mod pallet {
 		pub fn add_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
+			currency: CurrencyIdOf<T>,
+			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -325,7 +338,15 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			Self::do_send_message(who, Message::AddPool { pool_id }, domain)?;
+			Self::do_send_message(
+				who,
+				Message::AddPool {
+					pool_id,
+					decimals,
+					currency: currency.into(),
+				},
+				domain,
+			)?;
 
 			Ok(())
 		}
@@ -336,6 +357,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
+			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -361,6 +383,7 @@ pub mod pallet {
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
+					decimals,
 					token_name,
 					token_symbol,
 					price,
@@ -377,6 +400,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
+			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -387,10 +411,11 @@ pub mod pallet {
 
 			Self::do_send_message(
 				who,
-				Message::UpdateTokenPrice {
+				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
 					price,
+					decimals,
 				},
 				domain,
 			)?;
@@ -450,7 +475,7 @@ pub mod pallet {
 
 		/// Transfer tranche tokens to a given address
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
-		pub fn transfer(
+		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
@@ -484,13 +509,52 @@ pub mod pallet {
 			)?;
 
 			Self::do_send_message(
-				who,
-				Message::Transfer {
+				who.clone(),
+				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
 					amount,
 					domain: domain_address.domain(),
-					address: domain_address.address(),
+					destination_address: domain_address.address(),
+					source_address: account_to_bytes(&who)?,
+				},
+				domain_address.domain(),
+			)?;
+
+			Ok(())
+		}
+
+		/// Transfer non-tranche tokens to a given address
+		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		pub fn transfer(
+			origin: OriginFor<T>,
+			asset_id: CurrencyIdOf<T>,
+			domain_address: DomainAddress,
+			amount: <T as pallet::Config>::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
+
+			// Transfer to the domain account for bookkeeping
+			T::Tokens::transfer(
+				asset_id.clone(),
+				&who,
+				&DomainLocator::<Domain> {
+					domain: domain_address.domain(),
+				}
+				.into_account_truncating(),
+				amount,
+				false,
+			)?;
+
+			Self::do_send_message(
+				who.clone(),
+				Message::Transfer {
+					amount,
+					token: asset_id.into(),
+					source_address: account_to_bytes(&who)?,
+					destination_address: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;
@@ -548,7 +612,7 @@ pub mod pallet {
 				fee_payer,
 				// The currency in which we want to pay fees
 				CurrencyPayment {
-					currency: Currency::AsCurrencyId(xcm_domain.fee_currency),
+					currency: Currency::AsCurrencyId(xcm_domain.fee_currency.into()),
 					fee_amount: None,
 				},
 				// The call to be executed in the destination chain
