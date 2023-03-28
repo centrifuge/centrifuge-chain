@@ -353,6 +353,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::create())]
+		#[pallet::call_index(0)]
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -388,6 +389,7 @@ pub mod pallet {
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		/// Rate accumulation will start after the first borrow.
 		#[pallet::weight(T::WeightInfo::borrow(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(1)]
 		pub fn borrow(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -433,6 +435,7 @@ pub mod pallet {
 		/// The `amount` will be transferred from borrower to pool reserve.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(T::WeightInfo::repay(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(2)]
 		pub fn repay(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -472,6 +475,7 @@ pub mod pallet {
 		/// No special permisions are required to this call.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(T::WeightInfo::write_off(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(3)]
 		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -507,6 +511,7 @@ pub mod pallet {
 		/// Write down more than the policy is always allowed.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
 		#[pallet::weight(T::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(4)]
 		pub fn admin_write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -543,6 +548,7 @@ pub mod pallet {
 		/// A loan only can be closed if it's fully repaid by the loan borrower.
 		/// Closing a loan gives back the collateral used for the loan to the borrower .
 		#[pallet::weight(T::WeightInfo::close(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::call_index(5)]
 		pub fn close(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -579,6 +585,7 @@ pub mod pallet {
 		/// The write off policy is used to automatically set a write off minimum value to the
 		/// loan.
 		#[pallet::weight(T::WeightInfo::update_write_off_policy())]
+		#[pallet::call_index(6)]
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -604,6 +611,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::update_portfolio_valuation(
 			T::MaxActiveLoansPerPool::get()
 		))]
+		#[pallet::call_index(7)]
 		pub fn update_portfolio_valuation(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
