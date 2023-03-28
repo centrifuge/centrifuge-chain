@@ -1567,7 +1567,7 @@ impl pallet_investments::Config for Runtime {
 }
 
 /// Checks whether the given `who` has the role
-/// of a `TrancehInvestor` for the given pool.
+/// of a `TrancheInvestor` for the given pool.
 pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,

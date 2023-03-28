@@ -114,7 +114,7 @@ impl_opaque_keys! {
 /// Runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("centrifuge_1018_v1"),
+	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
 	spec_version: 1018,
@@ -1399,7 +1399,7 @@ parameter_types! {
 }
 
 /// Checks whether the given `who` has the role
-/// of a `TrancehInvestor` for the given pool.
+/// of a `TrancheInvestor` for the given pool.
 pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
@@ -1516,13 +1516,13 @@ parameter_types! {
 	// per byte deposit is 0.01 CFG
 	pub const DepositPerByte: Balance = 1 * CENTI_CFG;
 	// Base deposit to add attribute is 0.1 CFG
-	pub const AttributeDepositBase: Balance = 1 * CENTI_CFG;
+	pub const AttributeDepositBase: Balance = 10 * CENTI_CFG;
 	// Base deposit to add metadata is 0.1 CFG
-	pub const MetadataDepositBase: Balance = 1 * CENTI_CFG;
+	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
 	// Deposit to create a class is 100 CFG
 	pub const CollectionDeposit: Balance = 100 * CFG;
 	// Deposit to create a class is 0.1 CFG
-	pub const ItemDeposit: Balance = 1 * CENTI_CFG;
+	pub const ItemDeposit: Balance = 10 * CENTI_CFG;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
@@ -1665,6 +1665,7 @@ pub type Executive = frame_executive::Executive<
 		pallet_preimage::migration::v1::Migration<Runtime>,
 		pallet_democracy::migrations::v1::Migration<Runtime>,
 		pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
+		pallet_interest_accrual::migrations::centrifuge::SetStorageVersionToV2<Runtime>,
 	),
 >;
 

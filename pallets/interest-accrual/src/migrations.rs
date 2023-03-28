@@ -110,6 +110,23 @@ pub mod v2 {
 	}
 }
 
+pub mod centrifuge {
+	use super::*;
+
+	pub struct SetStorageVersionToV2<T>(sp_std::marker::PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for SetStorageVersionToV2<T> {
+		fn on_runtime_upgrade() -> Weight {
+			if StorageVersion::<T>::get() != Release::V2 {
+				StorageVersion::<T>::set(Release::V2);
+				T::DbWeight::get().reads_writes(1, 1)
+			} else {
+				T::DbWeight::get().reads(1)
+			}
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
