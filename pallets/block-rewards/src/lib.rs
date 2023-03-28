@@ -43,7 +43,6 @@ use cfg_traits::{
 	ops::{EnsureAdd, EnsureMul, EnsureSub},
 	rewards::{AccountRewards, CurrencyGroupChange, GroupRewards},
 };
-use cfg_types::tokens::CurrencyId as CfgCurrencyId;
 use frame_support::{
 	pallet_prelude::*,
 	storage::transactional,
@@ -141,16 +140,28 @@ pub mod pallet {
 			+ AccountRewards<
 				Self::AccountId,
 				Balance = Self::Balance,
-				CurrencyId = (DomainIdOf<Self>, CfgCurrencyId),
-			> + CurrencyGroupChange<GroupId = u32, CurrencyId = (DomainIdOf<Self>, CfgCurrencyId)>;
+				CurrencyId = (DomainIdOf<Self>, <Self as Config>::CurrencyId),
+			> + CurrencyGroupChange<
+				GroupId = u32,
+				CurrencyId = (DomainIdOf<Self>, <Self as Config>::CurrencyId),
+			>;
 
-		/// Type used to handle currency minting and burning for collators.
-		type Currency: Mutate<Self::AccountId, AssetId = CfgCurrencyId, Balance = Self::Balance>
+		/// The type used to handle currency minting and burning for collators.
+		type Currency: Mutate<Self::AccountId, AssetId = <Self as Config>::CurrencyId, Balance = Self::Balance>
 			+ CurrencyT<Self::AccountId>;
+
+		/// The currency type of the artificial block rewards currency.
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen;
 
 		/// The identifier of the artificial block rewards currency which is minted and burned for collators.
 		#[pallet::constant]
-		type StakeCurrencyId: Get<CfgCurrencyId>;
+		type StakeCurrencyId: Get<<Self as Config>::CurrencyId>;
 
 		/// The amount of the artificial block rewards currency which is minted and burned for collators.
 		#[pallet::constant]

@@ -1721,6 +1721,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type Balance = Balance;
 	type Beneficiary = Treasury;
 	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
 	type Domain = BlockRewardsDomain;
 	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxAuthorities;

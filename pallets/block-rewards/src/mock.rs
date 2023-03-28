@@ -238,6 +238,7 @@ impl pallet_block_rewards::Config for Test {
 	type Balance = Balance;
 	type Beneficiary = RewardRemainderMock;
 	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
 	type Domain = BlockRewardsDomain;
 	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
