@@ -23,9 +23,9 @@ cfg-types = { path = "../types", default-features = false }
 mock-builder = { path = "../../libs/mock-builder" }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 [features]
 default = ["std"]
