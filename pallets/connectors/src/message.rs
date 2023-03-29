@@ -517,6 +517,13 @@ mod tests {
 
 	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
+	const AMOUNT: Balance = 100000000000000000000000000;
+	const POOL_ID: PoolId = 12378532;
+	const TOKEN_ID: u128 = 246803579;
+	const TRANCHE_HEX: &str = "811acd5b3f17c06841c7e41e9e04cb1b";
+	const ADDRESS_20_HEX: &str = "1231231231231231231231231231231231231231";
+	const ADDRESS_32_HEX: &str = "4564564564564564564564564564564564564564564564564564564564564564";
+
 	#[test]
 	fn invalid() {
 		let msg = ConnectorMessage::Invalid;
@@ -564,8 +571,8 @@ mod tests {
 	fn add_pool_long() {
 		test_encode_decode_identity(
 			ConnectorMessage::AddPool {
-				pool_id: 12378532,
-				currency: 246803579,
+				pool_id: POOL_ID,
+				currency: TOKEN_ID,
 				decimals: 15,
 			},
 			"010000000000bce1a40000000000000000000000000eb5ec7b0f",
@@ -576,8 +583,8 @@ mod tests {
 	fn add_tranche() {
 		test_encode_decode_identity(
 				ConnectorMessage::AddTranche {
-					pool_id: 12378532,
-					tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+					pool_id: POOL_ID,
+					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 					token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
 					token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 					price: Rate::one(),
@@ -592,7 +599,7 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::UpdateTrancheTokenPrice {
 				pool_id: 1,
-				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 				price: Rate::one(),
 				decimals: 15,
 			},
@@ -605,55 +612,45 @@ mod tests {
 		test_encode_decode_identity(
 				ConnectorMessage::UpdateMember {
 					pool_id: 2,
-					tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
-					address: <[u8; 32]>::from_hex(
-						"1231231231231231231231231231231231231231231231231231231231231231",
-					)
-						.expect(""),
+					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+					address: address32_from_hex(ADDRESS_32_HEX),
 					valid_until: 1706260138,
 				},
-				"040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065b376aa"
+				"040000000000000002811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000065b376aa"
 			)
 	}
 
 	#[test]
-	fn transfer_to_moonbeam() {
-		let domain_address = DomainAddress::EVM(
-			1284,
-			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect(""),
-		);
+	fn transfer_tranche_tokens_to_moonbeam() {
+		let domain_address = DomainAddress::EVM(1284, address20_from_hex(ADDRESS_20_HEX));
 
 		test_encode_decode_identity(
 				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
-					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 					domain: domain_address.clone().into(),
+					source_address: address32_from_hex(ADDRESS_32_HEX),
 					destination_address: domain_address.address(),
-					source_address: vec_to_fixed_array(<[u8; 32]>::from_hex("4564564564564564564564564564564564564564456456456456456456456456").expect("").to_vec()),
-					amount: 1000000000000000000000000000,
+					amount: AMOUNT,
 				},
-				"060100000000000005040000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564456456456456456456456456123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000"
+				"060100000000000005040000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
 			);
 	}
 
 	#[test]
-	fn transfer_to_centrifuge() {
+	fn transfer_tranch_tokens_to_centrifuge() {
 		test_encode_decode_identity(
 				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
-					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 					domain: Domain::Centrifuge,
-					source_address: vec_to_fixed_array(<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("").to_vec()),
-					destination_address: vec_to_fixed_array(<[u8; 32]>::from_hex("4564564564564564564564564564564564564564456456456456456456456456").expect("").to_vec()),
-					amount: 1000000000000000000000000000,
+					source_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
+					destination_address: address32_from_hex(ADDRESS_32_HEX),
+					amount: AMOUNT,
 				},
-				"060000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b1231231231231231231231231231231231231231000000000000000000000000456456456456456456456456456456456456456445645645645645645645645600000000033b2e3c9fd0803ce8000000"
+				"060000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 			)
 	}
-
-	// 	token: 246803579,
-	// source_address: vec_to_fixed_array(<[u8; 32]>::from_hex("4564564564564564564564564564564564564564456456456456456456456456").expect("").to_vec()),
-	// destination_address: domain_address.address(),
 
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
@@ -671,5 +668,13 @@ mod tests {
 
 	fn tranche_id_from_hex(hex: &str) -> TrancheId {
 		<[u8; 16]>::from_hex(hex).expect("Should be valid tranche id")
+	}
+
+	fn address20_from_hex(hex: &str) -> [u8; 20] {
+		<[u8; 20]>::from_hex(hex).expect("Should be valid 20 bytes")
+	}
+
+	fn address32_from_hex(hex: &str) -> [u8; 32] {
+		<[u8; 32]>::from_hex(hex).expect("Should be valid 32 bytes")
 	}
 }
