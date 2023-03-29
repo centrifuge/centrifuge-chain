@@ -392,8 +392,8 @@ impl<
 			3 => Ok(Self::UpdateTrancheTokenPrice {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				decimals: decode::<1, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
+				decimals: decode::<1, _, _>(input)?,
 			}),
 			4 => Ok(Self::UpdateMember {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -551,16 +551,24 @@ mod tests {
 	#[test]
 	fn add_pool_zero() {
 		test_encode_decode_identity(
-			ConnectorMessage::AddPool { pool_id: 0 },
-			"010000000000000000",
+			ConnectorMessage::AddPool {
+				pool_id: 0,
+				currency: 0,
+				decimals: 0,
+			},
+			"0100000000000000000000000000000000000000000000000000",
 		)
 	}
 
 	#[test]
 	fn add_pool_long() {
 		test_encode_decode_identity(
-			ConnectorMessage::AddPool { pool_id: 12378532 },
-			"010000000000bce1a4",
+			ConnectorMessage::AddPool {
+				pool_id: 12378532,
+				currency: 246803579,
+				decimals: 15,
+			},
+			"010000000000bce1a40000000000000000000000000eb5ec7b0f",
 		)
 	}
 
@@ -573,8 +581,9 @@ mod tests {
 					token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
 					token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
 					price: Rate::one(),
+        			decimals: 0,
 				},
-				"020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000"
+				"020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b00536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000"
 			)
 	}
 
@@ -585,8 +594,9 @@ mod tests {
 				pool_id: 1,
 				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 				price: Rate::one(),
+				decimals: 15,
 			},
-			"030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000",
+			"030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce80000000f",
 		)
 	}
 
@@ -614,30 +624,36 @@ mod tests {
 		);
 
 		test_encode_decode_identity(
-				ConnectorMessage::Transfer {
+				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
 					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 					domain: domain_address.clone().into(),
-					address: domain_address.address(),
+					destination_address: domain_address.address(),
+					source_address: vec_to_fixed_array(<[u8; 32]>::from_hex("4564564564564564564564564564564564564564456456456456456456456456").expect("").to_vec()),
 					amount: 1000000000000000000000000000,
 				},
-				"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b010000000000000504123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000"
+				"060100000000000005040000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564456456456456456456456456123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000"
 			);
 	}
 
 	#[test]
 	fn transfer_to_centrifuge() {
 		test_encode_decode_identity(
-				ConnectorMessage::Transfer {
+				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
 					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
 					domain: Domain::Centrifuge,
-					address: vec_to_fixed_array(<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("").to_vec()),
+					source_address: vec_to_fixed_array(<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("").to_vec()),
+					destination_address: vec_to_fixed_array(<[u8; 32]>::from_hex("4564564564564564564564564564564564564564456456456456456456456456").expect("").to_vec()),
 					amount: 1000000000000000000000000000,
 				},
-				"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000000000000123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000"
+				"060000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b1231231231231231231231231231231231231231000000000000000000000000456456456456456456456456456456456456456445645645645645645645645600000000033b2e3c9fd0803ce8000000"
 			)
 	}
+
+	// 	token: 246803579,
+	// source_address: vec_to_fixed_array(<[u8; 32]>::from_hex("4564564564564564564564564564564564564564456456456456456456456456").expect("").to_vec()),
+	// destination_address: domain_address.address(),
 
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
