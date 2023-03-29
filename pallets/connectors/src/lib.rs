@@ -25,7 +25,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
 use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
-use sp_std::{boxed::Box, convert::TryInto, vec, vec::Vec};
+use sp_std::{convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
 mod message;
@@ -240,7 +240,7 @@ pub mod pallet {
 		/// The Router for a given domain was set
 		SetDomainRouter {
 			domain: Domain,
-			router: Box<Router<CurrencyIdOf<T>>>,
+			router: Router<CurrencyIdOf<T>>,
 		},
 
 		IncomingMessage {
@@ -292,7 +292,7 @@ pub mod pallet {
 		pub fn set_domain_router(
 			origin: OriginFor<T>,
 			domain: Domain,
-			router: Box<Router<CurrencyIdOf<T>>>,
+			router: Router<CurrencyIdOf<T>>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
@@ -551,7 +551,7 @@ pub mod pallet {
 			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
 				T::RuntimeOrigin::root(),
 				// The destination to which the message should be sent
-				Box::new(xcm_domain.location),
+				xcm_domain.location,
 				fee_payer,
 				// The currency in which we want to pay fees
 				CurrencyPayment {
