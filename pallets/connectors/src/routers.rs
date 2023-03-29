@@ -2,8 +2,8 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{traits::ConstU32, BoundedVec};
-use xcm::VersionedMultiLocation;
 use sp_std::boxed::Box;
+use xcm::VersionedMultiLocation;
 
 #[allow(clippy::derive_partial_eq_without_eq)] // XcmDomain does not impl Eq
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
