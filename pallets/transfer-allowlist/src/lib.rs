@@ -515,7 +515,47 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
-			Ok(())
+			let account_id = ensure_signed(origin)?;
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			match Self::get_account_currency_restriction_count_delay(&account_id, &currency_id) {
+				None => Err(DispatchError::from(Error::<T>::NoMatchingDelay)),
+				Some((_, None)) => Err(DispatchError::from(Error::<T>::NoMatchingDelay)),
+				Some((
+					_,
+					Some(Delay {
+						current_delay: _,
+						modifiable_at: Some(modifiable_at),
+					}),
+				)) if modifiable_at > current_block => Err(DispatchError::from(Error::<T>::DelayUnmodifiable)),
+				Some((
+					count,
+					Some(Delay {
+						current_delay,
+						modifiable_at: _,
+					}),
+				)) => {
+					let modifiable_at = current_block.ensure_add(current_delay)?;
+					<AccountCurrencyTransferCountDelay<T>>::insert(
+						&account_id,
+						&currency_id,
+						(
+							count,
+							Some(Delay {
+								current_delay,
+								// we want to ensure that after the delay is modified, it cannot be modified on a whim
+								// without another modifiable_at set.
+								modifiable_at: Some(modifiable_at),
+							}),
+						),
+					);
+					Self::deposit_event(Event::TransferAllowanceDelayFutureModifiable {
+						sender_account_id: account_id,
+						currency_id: currency_id,
+						modifiable_at,
+					});
+					Ok(())
+				}
+			}
 		}
 
 		#[pallet::call_index(6)]
