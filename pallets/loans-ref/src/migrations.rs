@@ -1,12 +1,26 @@
 use frame_support::{
-	ensure, storage,
+	ensure,
+	pallet_prelude::ValueQuery,
+	storage, storage_alias,
 	traits::{Get, OnRuntimeUpgrade},
 	weights::Weight,
+	Blake2_128Concat,
 };
 #[cfg(feature = "try-runtime")]
 use sp_std::vec::Vec;
 
 use crate::*;
+
+mod v0 {
+	use super::*;
+
+	/// This storage comes from the previous pallet loans.
+	/// It is used as an indicator that the previous pallet loans still exists.
+	/// If this storage is not found, the nuking process is aborted.
+	#[storage_alias]
+	pub(crate) type NextLoanId<T: Config> =
+		StorageMap<Pallet<T>, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery>;
+}
 
 /// This migration nukes all storages from the pallet individually.
 pub struct NukeMigration<T>(sp_std::marker::PhantomData<T>);
@@ -14,44 +28,60 @@ pub struct NukeMigration<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-		let prefix: [u8; 16] = sp_io::hashing::twox_128(b"Loans");
+		ensure!(
+			contains_prefixed_key(&loan_prefix()),
+			"Pallet loans prefix doesn't exists"
+		);
 
 		ensure!(
-			util::contains_prefixed_key(&prefix),
-			"Pallet loans prefix doesn't exists"
+			v0::NextLoanId::<T>::iter_values().count() == 1,
+			"Pallet loans contains doesn't contain old data"
 		);
 
 		Ok(Vec::new())
 	}
 
 	fn on_runtime_upgrade() -> Weight {
-		let prefix: [u8; 16] = sp_io::hashing::twox_128(b"Loans");
-		let result = storage::unhashed::clear_prefix(&prefix, None, None);
+		if v0::NextLoanId::<T>::iter_values().count() == 1 {
+			let result = storage::unhashed::clear_prefix(&loan_prefix(), None, None);
 
-		log::debug!("Loans storage clearing migration successful");
+			match result.maybe_cursor {
+				None => log::info!("Loans: storage cleared successful"),
+				Some(_) => log::error!("Loans: storage not totally cleared"),
+			}
 
-		T::DbWeight::get().writes(result.unique.into())
-			+ T::DbWeight::get().reads(result.loops.into())
+			return T::DbWeight::get().writes(result.unique.into())
+				+ T::DbWeight::get().reads(result.loops.into());
+		} else {
+			log::warn!("Loans: storage was already clear. This migration can be removed.");
+			Weight::zero()
+		}
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
-		let prefix: [u8; 16] = sp_io::hashing::twox_128(b"Loans");
 		ensure!(
-			!util::contains_prefixed_key(&prefix),
+			!contains_prefixed_key(&loan_prefix()),
 			"Pallet loans prefix still exists!"
+		);
+
+		ensure!(
+			v0::NextLoanId::<T>::iter_values().count() == 0,
+			"Pallet loans still contains old data"
 		);
 
 		Ok(())
 	}
 }
 
-mod util {
-	pub fn contains_prefixed_key(prefix: &[u8]) -> bool {
-		// Implementation extracted from a newer version of `frame_support`.
-		match sp_io::storage::next_key(prefix) {
-			Some(key) => key.starts_with(prefix),
-			None => false,
-		}
+fn loan_prefix() -> [u8; 16] {
+	sp_io::hashing::twox_128(b"Loans")
+}
+
+fn contains_prefixed_key(prefix: &[u8]) -> bool {
+	// Implementation extracted from a newer version of `frame_support`.
+	match sp_io::storage::next_key(prefix) {
+		Some(key) => key.starts_with(prefix),
+		None => false,
 	}
 }
