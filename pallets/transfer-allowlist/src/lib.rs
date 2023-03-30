@@ -142,8 +142,8 @@ pub mod pallet {
 	/// We want to keep track of when the last delay was set, to ensure that an account cannot overwrite the current delay and bypass the allowance restrictions
 	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 	pub struct Delay<BlockNumber> {
-		current_delay: BlockNumber,
-		modifiable_at: Option<BlockNumber>,
+		pub(crate) current_delay: BlockNumber,
+		pub(crate) modifiable_at: Option<BlockNumber>,
 	}
 	/// Storage item containing number of allowances set, and delay for a sending account and currency.
 	/// Storage contains a tuple of the allowance count as `u64`, and the delay as `BlockNumber`--number of blocks that allow/block fields are delayed from current block.

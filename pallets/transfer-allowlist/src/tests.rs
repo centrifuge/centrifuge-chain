@@ -90,7 +90,7 @@ fn add_transfer_allowance_updates_with_delay_set() {
 			(
 				1,
 				Some(Delay {
-					current_delay: 200u64.into(),
+					current_delay: 200u64,
 					modifiable_at: None
 				})
 			)
@@ -526,11 +526,14 @@ fn cannot_create_conflicint_allowance_delays() {
 			CurrencyId::A,
 			200u64
 		));
-		assert_ok!(TransferAllowList::add_allowance_delay(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A,
-			250u64
-		));
+		assert_noop!(
+			TransferAllowList::add_allowance_delay(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A,
+				250u64
+			),
+			Error::<Runtime>::DuplicateDelay
+		);
 		// verify val in storage
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
@@ -538,7 +541,7 @@ fn cannot_create_conflicint_allowance_delays() {
 			(
 				0,
 				Some(Delay {
-					current_delay: 250u64.into(),
+					current_delay: 200u64.into(),
 					modifiable_at: None
 				})
 			)
@@ -546,11 +549,11 @@ fn cannot_create_conflicint_allowance_delays() {
 		// note: event 0 is in new_ext_test setup -- fee key setup
 		// verify event deposited
 		assert_eq!(
-			System::events()[2].event,
+			System::events()[1].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayAdd {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
-				delay: 250
+				delay: 200
 			})
 		)
 	})
