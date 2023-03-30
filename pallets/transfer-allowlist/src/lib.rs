@@ -138,6 +138,22 @@ pub mod pallet {
 		}
 	}
 
+	/// Delay values
+	/// We want to keep track of when the last delay was set, to ensure that an account cannot overwrite the current delay and bypass the allowance restrictions
+	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
+	pub struct Delay<BlockNumber> {
+		current_delay: BlockNumber,
+		modifiable_at: Option<BlockNumber>,
+	}
+	impl<BlockNumber> Delay<BlockNumber> {
+		fn new(c: BlockNumber) -> Self {
+			Self {
+				current_delay: c,
+				modifiable_at: None,
+			}
+		}
+	}
+
 	/// Storage item containing number of allowances set, and delay for a sending account and currency.
 	/// Storage contains a tuple of the allowance count as `u64`, and the delay as `BlockNumber`--number of blocks that allow/block fields are delayed from current block.
 	/// If a delay is set, but no allowances have been created, count will be set to 0.
@@ -145,11 +161,11 @@ pub mod pallet {
 	/// for the account and currency in the case where there is no allowance for destination location.
 	/// Using an StorageNMap would not allow us to look up whether there was a restriction for the sending account and currency, given that:
 	/// - we're checking whether there's an allowance specified for the receiver location
-	///   - we would only find whether a restriction was set for the account in this caseif:
+	///   - we would only find whether a restriction was set for the account in this case if:
 	///     - an allowance was specified for the receiving location, which would render blocked restrictions useless
 	/// - we would otherwise need to store a vec of locations, which is problematic given that there isn't a set limit on receivers
 	/// If a transfer restriction is in place, then a second lookup is done on
-	/// AccountCurrencyAllowances to see if there is an allowance for the reciever
+	/// AccountCurrencyAllowances to see if there is an allowance for the receiver
 	/// This allows us to keep storage map vals to known/bounded sizes.
 	#[pallet::storage]
 	#[pallet::getter(fn get_account_currency_restriction_count_delay)]
@@ -159,7 +175,7 @@ pub mod pallet {
 		T::AccountId,
 		Twox64Concat,
 		T::CurrencyId,
-		(u64, Option<T::BlockNumber>),
+		(u64, Option<Delay<T::BlockNumber>>),
 		OptionQuery,
 	>;
 
@@ -191,6 +207,10 @@ pub mod pallet {
 		/// No matching delay for the sending account and currency combination.
 		/// Cannot delete a non-existant entry
 		NoMatchingDelay,
+		/// Delay already exists
+		DuplicateDelay,
+		/// Delay has not been set to modified, or delay at which modification has been set has not been reached.
+		DelayUnmodifiable,
 		/// Attempted to clear active allowance
 		AllowanceHasNotExpired,
 	}
@@ -220,14 +240,26 @@ pub mod pallet {
 			currency_id: T::CurrencyId,
 			receiver: T::Location,
 		},
-		/// Event for Allowance delay update
-		TransferAllowanceDelaySet {
+		/// Event for Allowance delay creation
+		TransferAllowanceDelayAdd {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 			delay: T::BlockNumber,
 		},
+		/// Event for Allowance delay update
+		TransferAllowanceDelayUpdate {
+			sender_account_id: T::AccountId,
+			currency_id: T::CurrencyId,
+			delay: T::BlockNumber,
+		},
+		/// Event for Allowance delay future modification allowed
+		TransferAllowanceDelayFutureModifiable {
+			sender_account_id: T::AccountId,
+			currency_id: T::CurrencyId,
+			modifiable_at: T::BlockNumber,
+		},
 		/// Event for Allowance delay removal
-		TransferAllowanceDelayRemoval {
+		TransferAllowanceDelayPurge {
 			sender_account_id: T::AccountId,
 			currency_id: T::CurrencyId,
 		},
@@ -256,7 +288,13 @@ pub mod pallet {
 				&account_id,
 				currency_id,
 			) {
-				Some((_, Some(delay))) => AllowanceDetails {
+				Some((
+					_,
+					Some(Delay {
+						current_delay: delay,
+						..
+					}),
+				)) => AllowanceDetails {
 					allowed_at: <frame_system::Pallet<T>>::block_number().saturating_add(delay),
 					..AllowanceDetails::default()
 				},
@@ -304,9 +342,13 @@ pub mod pallet {
 				&account_id,
 				currency_id,
 			) {
-				Some((_, Some(delay))) => {
-					<frame_system::Pallet<T>>::block_number().saturating_add(delay)
-				}
+				Some((
+					_,
+					Some(Delay {
+						current_delay: delay,
+						..
+					}),
+				)) => <frame_system::Pallet<T>>::block_number().saturating_add(delay),
 				_ => <frame_system::Pallet<T>>::block_number(),
 			};
 			match <AccountCurrencyTransferAllowance<T>>::get((&account_id, &currency_id, &receiver))
@@ -373,21 +415,34 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
 		/// Adds an account/currency delay
 		/// Calling on an existing combination will update the existing delay value
-		pub fn add_or_update_allowance_delay(
+		pub fn add_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
 			delay: T::BlockNumber,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
-			let (count, _) =
-				Self::get_account_currency_restriction_count_delay(&account_id, &currency_id)
-					.unwrap_or((0, Some(0u32.into())));
-			<AccountCurrencyTransferCountDelay<T>>::insert(
-				&account_id,
-				&currency_id,
-				(count, Some(delay)),
-			);
-			Self::deposit_event(Event::TransferAllowanceDelaySet {
+			let count_delay =
+				match Self::get_account_currency_restriction_count_delay(&account_id, &currency_id)
+				{
+					None => Ok((
+						0,
+						Some(Delay {
+							current_delay: delay,
+							modifiable_at: None,
+						}),
+					)),
+					Some((count, None)) => Ok((
+						count,
+						Some(Delay {
+							current_delay: delay,
+							modifiable_at: None,
+						}),
+					)),
+					Some((_, Some(_))) => Err(DispatchError::from(Error::<T>::DuplicateDelay)),
+				}?;
+
+			<AccountCurrencyTransferCountDelay<T>>::insert(&account_id, &currency_id, count_delay);
+			Self::deposit_event(Event::TransferAllowanceDelayAdd {
 				sender_account_id: account_id,
 				currency_id,
 				delay,
@@ -397,8 +452,76 @@ pub mod pallet {
 
 		#[pallet::call_index(4)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		/// Updates an allowance delay, only callable is the delay has been set to allow future modifications and
+		/// the delay modifiable_at block has been passed.
+		pub fn update_allowance_delay(
+			origin: OriginFor<T>,
+			currency_id: T::CurrencyId,
+			delay: T::BlockNumber,
+		) -> DispatchResult {
+			let account_id = ensure_signed(origin)?;
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			match Self::get_account_currency_restriction_count_delay(&account_id, &currency_id) {
+				None => Err(DispatchError::from(Error::<T>::NoMatchingDelay)),
+				Some((_, None)) => Err(DispatchError::from(Error::<T>::NoMatchingDelay)),
+				Some((
+					_,
+					Some(Delay {
+						current_delay: _,
+						modifiable_at: None,
+					}),
+				)) => Err(DispatchError::from(Error::<T>::DelayUnmodifiable)),
+				Some((
+					_,
+					Some(Delay {
+						current_delay: _,
+						modifiable_at: Some(modifiable_at),
+					}),
+				)) if modifiable_at > current_block => Err(DispatchError::from(Error::<T>::DelayUnmodifiable)),
+				Some((
+					count,
+					Some(Delay {
+						current_delay,
+						modifiable_at: Some(_),
+					}),
+				)) => {
+					<AccountCurrencyTransferCountDelay<T>>::insert(
+						&account_id,
+						&currency_id,
+						(
+							count,
+							Some(Delay {
+								current_delay,
+								// we want to ensure that after the delay is modified, it cannot be modified on a whim
+								// without another modifiable_at set.
+								modifiable_at: None,
+							}),
+						),
+					);
+					Self::deposit_event(Event::TransferAllowanceDelayUpdate {
+						sender_account_id: account_id,
+						currency_id: currency_id,
+						delay: delay,
+					});
+					Ok(())
+				}
+			}
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		/// This allows the delay value to be modified after the current delay has passed since the current block
+		pub fn set_future_modifyable_allowance_delay(
+			origin: OriginFor<T>,
+			currency_id: T::CurrencyId,
+		) -> DispatchResult {
+			Ok(())
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
 		/// Removes an existing sending account/currency delay
-		pub fn remove_allowance_delay(
+		pub fn purge_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
@@ -406,7 +529,7 @@ pub mod pallet {
 			match Self::get_account_currency_restriction_count_delay(&account_id, &currency_id) {
 				Some((count, _)) if count == 0 => {
 					<AccountCurrencyTransferCountDelay<T>>::remove(&account_id, &currency_id);
-					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
+					Self::deposit_event(Event::TransferAllowanceDelayPurge {
 						sender_account_id: account_id,
 						currency_id,
 					});
@@ -419,14 +542,14 @@ pub mod pallet {
 						&currency_id,
 						&(count, None),
 					);
-					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
+					Self::deposit_event(Event::TransferAllowanceDelayPurge {
 						sender_account_id: account_id,
 						currency_id,
 					});
 					Ok(())
 				}
 				None => {
-					Self::deposit_event(Event::TransferAllowanceDelayRemoval {
+					Self::deposit_event(Event::TransferAllowanceDelayPurge {
 						sender_account_id: account_id,
 						currency_id,
 					});
@@ -458,7 +581,7 @@ pub mod pallet {
 					<AccountCurrencyTransferCountDelay<T>>::insert(
 						account_id,
 						currency_id,
-						(1, None::<T::BlockNumber>),
+						(1, None::<Delay<T::BlockNumber>>),
 					);
 					Ok(())
 				}

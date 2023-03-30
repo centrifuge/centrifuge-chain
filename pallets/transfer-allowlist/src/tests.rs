@@ -479,7 +479,7 @@ fn add_allowance_delay_works() {
 		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
 			System::events()[1].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelaySet {
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayAdd {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
 				delay: 200
@@ -511,7 +511,7 @@ fn update_allowance_delay_works() {
 		// verify event deposited
 		assert_eq!(
 			System::events()[2].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelaySet {
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayAdd {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
 				delay: 250
@@ -542,7 +542,7 @@ fn remove_allowance_delay_works() {
 		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
 			System::events()[2].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayRemoval {
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayPurge {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A
 			})
