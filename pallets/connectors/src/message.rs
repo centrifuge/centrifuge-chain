@@ -652,6 +652,128 @@ mod tests {
 			)
 	}
 
+	#[test]
+	fn transfer_to_moonbeam() {
+		let domain_address = DomainAddress::EVM(1284, address20_from_hex(ADDRESS_20_HEX));
+
+		test_encode_decode_identity(
+				ConnectorMessage::Transfer {
+					destination_address: domain_address.address(),
+					source_address: address32_from_hex(ADDRESS_32_HEX),
+					amount: AMOUNT,
+        			token: TOKEN_ID,
+				},
+				"050000000000000000000000000eb5ec7b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+			);
+	}
+
+	#[test]
+	fn transfer_to_centrifuge() {
+		test_encode_decode_identity(
+				ConnectorMessage::Transfer {
+					source_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
+					destination_address: address32_from_hex(ADDRESS_32_HEX),
+					amount: AMOUNT,
+        			token: TOKEN_ID,
+				},
+				"050000000000000000000000000eb5ec7b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
+			);
+	}
+
+	#[test]
+	fn increase_invest_order() {
+		test_encode_decode_identity(
+			ConnectorMessage::IncreaseInvestOrder {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				address: address32_from_hex(ADDRESS_32_HEX),
+				token: TOKEN_ID,
+				amount: AMOUNT,
+			},
+			"070000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+		)
+	}
+
+	#[test]
+	fn decrease_invest_order() {
+		test_encode_decode_identity(
+			ConnectorMessage::DecreaseInvestOrder {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				address: address32_from_hex(ADDRESS_32_HEX),
+				token: TOKEN_ID,
+				amount: AMOUNT,
+			},
+			"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+		)
+	}
+
+	#[test]
+	fn increase_redeem_order() {
+		test_encode_decode_identity(
+			ConnectorMessage::IncreaseRedeemOrder {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				address: address32_from_hex(ADDRESS_32_HEX),
+				token: TOKEN_ID,
+				amount: AMOUNT,
+			},
+			"090000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+		)
+	}
+
+	#[test]
+	fn decrease_redeem_order() {
+		test_encode_decode_identity(
+			ConnectorMessage::DecreaseRedeemOrder {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				address: address32_from_hex(ADDRESS_32_HEX),
+				token: TOKEN_ID,
+				amount: AMOUNT,
+			},
+			"0a0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+		)
+	}
+
+	#[test]
+	fn collect_for_redeem() {
+		test_encode_decode_identity(
+			ConnectorMessage::CollectForRedeem {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				call_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
+				collect_address: address32_from_hex(ADDRESS_32_HEX),
+			},
+			"0c0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
+		)
+	}
+
+	#[test]
+	fn collect_invest() {
+		test_encode_decode_identity(
+			ConnectorMessage::CollectInvest {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				address: address32_from_hex(ADDRESS_32_HEX),
+			},
+			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+		)
+	}
+
+	#[test]
+	fn collect_for_invest() {
+		test_encode_decode_identity(
+			ConnectorMessage::CollectForInvest {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				call_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
+				collect_address: address32_from_hex(ADDRESS_32_HEX),
+			},
+			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
+		)
+	}
+
 	/// Verify the identity property of decode . encode on a Message value and
 	/// that it in fact encodes to and can be decoded from a given hex string.
 	fn test_encode_decode_identity(
