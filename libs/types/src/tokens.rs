@@ -86,9 +86,7 @@ impl TryInto<u128> for CurrencyId {
 				let mut r = [0u8; 16];
 				r[11] = 1;
 				let c_bytes: [u8; 4] = c.to_be_bytes();
-				for i in 0..4 {
-					r[12 + i] = c_bytes[i];
-				}
+				r[12..(4 + 12)].copy_from_slice(&c_bytes[..4]);
 				Ok(u128::from_be_bytes(r))
 			}
 		}

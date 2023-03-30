@@ -538,7 +538,7 @@ pub mod pallet {
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
-				asset_id.clone(),
+				asset_id,
 				&who,
 				&DomainLocator::<Domain> {
 					domain: domain_address.domain(),
