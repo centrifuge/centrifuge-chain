@@ -49,6 +49,18 @@ use crate::xcm::kusama::{
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 };
 
+
+/*
+
+NOTE: We hardcode the expected balances after an XCM operation given that the weights involved in
+XCM execution often change slightly with each Polkadot update. We could simply test that the final
+balance after some XCM operation is `initialBalance - amount - fee`, which would mean we would
+never have to touch the tests again. However, by hard-coding these values we are forced to catch
+an unexpectedly big change that would have a big impact on the weights and fees and thus balances,
+which would go unnoticed and untreated otherwise.
+
+ */
+
 #[test]
 fn transfer_air_to_sibling() {
 	TestNet::reset();
