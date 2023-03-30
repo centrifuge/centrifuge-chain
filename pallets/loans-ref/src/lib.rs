@@ -36,6 +36,7 @@
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active loans.
 
+pub mod migrations;
 pub mod types;
 pub mod valuation;
 

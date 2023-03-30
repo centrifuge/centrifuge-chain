@@ -27,6 +27,10 @@ cfg-types = { path = "../../libs/types", default-features = false }
 # Optionals for benchamarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
 
+# Used for migrations (no longer needed once migratios is done)
+log = "0.4"
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.32" }
@@ -52,6 +56,7 @@ std = [
   "cfg-traits/std",
   "cfg-types/std",
   "frame-benchmarking/std",
+  "sp-io/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking",
