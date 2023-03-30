@@ -1,5 +1,6 @@
+#[cfg(feature = "try-runtime")]
+use frame_support::ensure;
 use frame_support::{
-	ensure,
 	pallet_prelude::ValueQuery,
 	storage, storage_alias,
 	traits::{Get, OnRuntimeUpgrade},
@@ -50,10 +51,11 @@ impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 				Some(_) => log::error!("Loans: storage not totally cleared"),
 			}
 
-			return T::DbWeight::get().writes(result.unique.into())
-				+ T::DbWeight::get().reads(result.loops.into());
+			T::DbWeight::get().writes(result.unique.into())
+				+ T::DbWeight::get().reads(result.loops.into())
 		} else {
 			log::warn!("Loans: storage was already clear. This migration can be removed.");
+
 			Weight::zero()
 		}
 	}
@@ -78,6 +80,7 @@ fn loan_prefix() -> [u8; 16] {
 	sp_io::hashing::twox_128(b"Loans")
 }
 
+#[cfg(feature = "try-runtime")]
 fn contains_prefixed_key(prefix: &[u8]) -> bool {
 	// Implementation extracted from a newer version of `frame_support`.
 	match sp_io::storage::next_key(prefix) {
