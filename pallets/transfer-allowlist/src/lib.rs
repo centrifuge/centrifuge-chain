@@ -145,15 +145,6 @@ pub mod pallet {
 		current_delay: BlockNumber,
 		modifiable_at: Option<BlockNumber>,
 	}
-	impl<BlockNumber> Delay<BlockNumber> {
-		fn new(c: BlockNumber) -> Self {
-			Self {
-				current_delay: c,
-				modifiable_at: None,
-			}
-		}
-	}
-
 	/// Storage item containing number of allowances set, and delay for a sending account and currency.
 	/// Storage contains a tuple of the allowance count as `u64`, and the delay as `BlockNumber`--number of blocks that allow/block fields are delayed from current block.
 	/// If a delay is set, but no allowances have been created, count will be set to 0.
