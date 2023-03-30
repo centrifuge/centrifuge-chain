@@ -368,7 +368,7 @@ impl PoolUpdateGuard for UpdateGuard {
 
 	fn released(
 		pool: &Self::PoolDetails,
-		update: &Self::ScheduledUpdateDetails,
+		_update: &Self::ScheduledUpdateDetails,
 		now: Self::Moment,
 	) -> bool {
 		// The epoch in which the redemptions were fulfilled,
