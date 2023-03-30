@@ -112,8 +112,8 @@ where
 	CollectForRedeem {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		call_address: Address,
-		collect_address: Address,
+		caller: Address,
+		user: Address,
 	},
 	CollectInvest {
 		pool_id: PoolId,
@@ -123,8 +123,8 @@ where
 	CollectForInvest {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		call_address: Address,
-		collect_address: Address,
+		caller: Address,
+		user: Address,
 	},
 }
 
@@ -144,7 +144,7 @@ impl<
 	/// in other domains and MUST follow the defined standard.
 	fn call_type(&self) -> u8 {
 		match self {
-			Self::Invalid { .. } => 0,
+			Self::Invalid => 0,
 			Self::AddPool { .. } => 1,
 			Self::AddTranche { .. } => 2,
 			Self::UpdateTrancheTokenPrice { .. } => 3,
@@ -335,8 +335,8 @@ impl<
 			Message::CollectForRedeem {
 				pool_id,
 				tranche_id,
-				call_address,
-				collect_address,
+				caller: call_address,
+				user: collect_address,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -357,8 +357,8 @@ impl<
 			Message::CollectForInvest {
 				pool_id,
 				tranche_id,
-				call_address,
-				collect_address,
+				caller: call_address,
+				user: collect_address,
 			} => encoded_message(
 				self.call_type(),
 				vec![
@@ -451,8 +451,8 @@ impl<
 			12 => Ok(Self::CollectForRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				call_address: decode::<32, _, _>(input)?,
-				collect_address: decode::<32, _, _>(input)?,
+				caller: decode::<32, _, _>(input)?,
+				user: decode::<32, _, _>(input)?,
 			}),
 			13 => Ok(Self::CollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -462,8 +462,8 @@ impl<
 			14 => Ok(Self::CollectForInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				call_address: decode::<32, _, _>(input)?,
-				collect_address: decode::<32, _, _>(input)?,
+				caller: decode::<32, _, _>(input)?,
+				user: decode::<32, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -742,8 +742,8 @@ mod tests {
 			ConnectorMessage::CollectForRedeem {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				call_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
-				collect_address: address32_from_hex(ADDRESS_32_HEX),
+				caller: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
+				user: address32_from_hex(ADDRESS_32_HEX),
 			},
 			"0c0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
 		)
@@ -767,8 +767,8 @@ mod tests {
 			ConnectorMessage::CollectForInvest {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				call_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
-				collect_address: address32_from_hex(ADDRESS_32_HEX),
+				caller: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
+				user: address32_from_hex(ADDRESS_32_HEX),
 			},
 			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
 		)
