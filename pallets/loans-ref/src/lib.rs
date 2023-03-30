@@ -94,7 +94,7 @@ pub mod pallet {
 		<T as Config>::CurrencyId,
 	>>::PoolId;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]

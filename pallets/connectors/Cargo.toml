@@ -47,12 +47,6 @@ xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-featur
 hex = "0.4.3"
 serde = { version = "1.0.102" }
 
-# Our pallets
-pallet-interest-accrual = { path = "../interest-accrual", default-features = true }
-pallet-loans = { path = "../loans", default-features = true }
-pallet-permissions = { path = "../permissions", default-features = true }
-pallet-pool-system = { path = "../pool-system", default-features = true }
-
 # Substrate crates & pallets
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.32" }
@@ -103,10 +97,6 @@ std = [
   "pallet-ethereum/std",
   "xcm-primitives/std",
   "ethabi/std",
-  "pallet-interest-accrual/std",
-  "pallet-permissions/std",
-  "pallet-loans/std",
-  "pallet-pool-system/std",
   "pallet-uniques/std",
   "cfg-primitives/std",
   "frame-benchmarking/std",

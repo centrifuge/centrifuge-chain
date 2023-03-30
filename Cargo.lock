@@ -6073,10 +6073,6 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-ethereum",
- "pallet-interest-accrual",
- "pallet-loans",
- "pallet-permissions",
- "pallet-pool-system",
  "pallet-timestamp",
  "pallet-uniques",
  "pallet-xcm-transactor",
@@ -6491,40 +6487,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-loans"
-version = "1.0.0"
-dependencies = [
- "cfg-primitives",
- "cfg-test-utils",
- "cfg-traits",
- "cfg-types",
- "cfg-utils",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "orml-asset-registry",
- "orml-tokens",
- "orml-traits",
- "pallet-aura",
- "pallet-balances",
- "pallet-interest-accrual",
- "pallet-permissions",
- "pallet-pool-system",
- "pallet-timestamp",
- "pallet-uniques",
- "parity-scale-codec 3.2.1",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-consensus-aura",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "xcm",
 ]
 
 [[package]]
