@@ -121,7 +121,6 @@ pub type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::EpochId,
 	<T as Config>::Balance,
 	<T as Config>::Rate,
-	<T as Config>::MaxSizeMetadata,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
@@ -319,10 +318,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinUpdateDelay: Get<u64>;
 
-		/// Max size of Metadata
-		#[pallet::constant]
-		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
-
 		/// Max length for a tranche token name
 		#[pallet::constant]
 		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
@@ -455,8 +450,6 @@ pub mod pallet {
 		/// Pre-requirements for a TrancheUpdate are not met
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
-		/// Invalid metadata passed
-		BadMetadata,
 		/// No metada for the given currency found
 		MetadataForCurrencyNotFound,
 		/// The given tranche token name exceeds the length limit

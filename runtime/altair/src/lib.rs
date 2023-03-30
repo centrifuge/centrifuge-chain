@@ -1177,7 +1177,6 @@ impl pallet_pool_system::Config for Runtime {
 	type EpochId = PoolEpochId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
@@ -1244,7 +1243,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		u32,
 		Balance,
 		Rate,
-		MaxSizeMetadata,
 		TrancheWeight,
 		TrancheId,
 		PoolId,

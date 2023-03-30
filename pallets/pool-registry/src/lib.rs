@@ -277,7 +277,6 @@ pub mod pallet {
 				tranche_inputs,
 				currency,
 				max_reserve,
-				metadata,
 			)
 			.map(|_| Self::deposit_event(Event::Registered { pool_id }))
 		}

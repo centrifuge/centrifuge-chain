@@ -189,10 +189,6 @@ parameter_types! {
 	pub const MinEpochTimeUpperBound: u64 = u64::MAX; // disable bound
 	pub const MaxNAVAgeUpperBound: u64 = u64::MAX; // disable bound
 
-	// Pool metadata limit
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxSizeMetadata: u32 = 100;
-
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxTokenNameLength: u32 = 128;
 
@@ -222,7 +218,6 @@ impl pallet_pool_system::Config for Runtime {
 	type EpochId = PoolEpochId;
 	type Investments = OrderManager;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
@@ -258,7 +253,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		u32,
 		Balance,
 		Rate,
-		MaxSizeMetadata,
 		TrancheWeight,
 		TrancheId,
 		PoolId,

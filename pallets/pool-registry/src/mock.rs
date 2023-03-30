@@ -143,7 +143,6 @@ impl pallet_pool_system::Config for Test {
 	type EpochId = PoolEpochId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
@@ -221,7 +220,6 @@ impl<
 		tranche_inputs: Vec<Self::TrancheInput>,
 		_currency: <T as pallet_pool_registry::Config>::CurrencyId,
 		_max_reserve: <T as pallet_pool_registry::Config>::Balance,
-		_metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
 		create_pool::<T>(tranche_inputs.len() as u32, admin)?;
 		Ok(())
@@ -347,7 +345,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		u32,
 		Balance,
 		Rate,
-		MaxSizeMetadata,
 		TrancheWeight,
 		TrancheId,
 		u64,
