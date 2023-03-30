@@ -6800,6 +6800,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "lazy_static",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",

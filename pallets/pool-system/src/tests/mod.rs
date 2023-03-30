@@ -22,7 +22,7 @@ use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
 use sp_core::{storage::StateVersion, Encode};
 use sp_runtime::{
-	traits::{One, Zero},
+	traits::{ConstU32, One, Zero},
 	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
 };
 use xcm::{
@@ -40,8 +40,8 @@ use crate::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
 		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
 	},
-	BoundedVec, Change, Config, ConstU32, EpochExecution, EpochExecutionInfo, Error, Pool,
-	PoolInspect, PoolState, UnhealthyState,
+	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolInspect,
+	PoolState, UnhealthyState,
 };
 
 #[test]
