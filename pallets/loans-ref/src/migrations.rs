@@ -1,6 +1,7 @@
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
 use frame_support::{
+	dispatch::GetStorageVersion,
 	pallet_prelude::ValueQuery,
 	storage, storage_alias,
 	traits::{Get, OnRuntimeUpgrade},
@@ -51,6 +52,10 @@ impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 				None => log::info!("Loans: storage cleared successful"),
 				Some(_) => log::error!("Loans: storage not totally cleared"),
 			}
+
+			// We need to rewrite the version number since the `clear_prefix` has removed
+			// everything.
+			Pallet::<T>::current_storage_version().put::<Pallet<T>>();
 
 			T::DbWeight::get().writes(result.unique.into())
 				+ T::DbWeight::get().reads(result.loops.into())
