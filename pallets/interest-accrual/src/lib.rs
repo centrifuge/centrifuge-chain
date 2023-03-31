@@ -123,7 +123,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureInto},
+	ops::{EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureInto, EnsureMul, EnsureSub},
 	InterestAccrual, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
@@ -413,17 +413,12 @@ pub mod pallet {
 			accumulated_rate: Rate,
 			last_updated: Moment,
 			now: Moment,
-		) -> Result<Rate, DispatchError> {
+		) -> Result<Rate, ArithmeticError> {
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
-			let time_difference_secs = now
-				.checked_sub(last_updated)
-				.ok_or(ArithmeticError::Underflow)?;
-
-			Ok(
-				checked_pow(interest_rate_per_sec, time_difference_secs as usize)
-					.and_then(|new_rate| new_rate.checked_mul(&accumulated_rate))
-					.ok_or(ArithmeticError::Overflow)?,
-			)
+			let time_difference_secs = now.ensure_sub(last_updated)?;
+			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
+				.ok_or(ArithmeticError::Overflow)? // TODO: This line can be remove once #1241 be merged
+				.ensure_mul(accumulated_rate)
 		}
 
 		pub fn now() -> Moment {
