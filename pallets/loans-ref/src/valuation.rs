@@ -35,7 +35,7 @@ pub struct DiscountedCashFlow<Rate> {
 	pub loss_given_default: Rate,
 
 	/// Rate per year of return used to discount future cash flows back to their present value.
-	pub discount_rate: Rate,
+	pub discount_rate: Rate, //TODO: migration: per sec -> per year
 }
 
 impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
@@ -47,10 +47,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		Ok(Self {
 			probability_of_default,
 			loss_given_default,
-			// TODO: use InterestAccrual for this conversion once #1189 is merged
-			discount_rate: discount_rate
-				.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
-				.ensure_add(One::one())?,
+			discount_rate,
 		})
 	}
 
@@ -58,7 +55,7 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		&self,
 		debt: Balance,
 		when: Moment,
-		interest_rate_per_sec: Rate,
+		interest_rate: Rate,
 		maturity_date: Moment,
 		origination_date: Moment,
 	) -> Result<Balance, ArithmeticError> {
@@ -82,16 +79,26 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		// Calculate the risk-adjusted expected cash flows
 		let exp = maturity_date.ensure_sub(when)?.ensure_into()?;
 
-		// TODO: This probably can be done by InterestAccrual given more performance
-		// once #1189 is merged
+		// TODO: Simplify this once #1231 is merged allowing to extract only the acc_rate from
+		// InterestAccrual
+		let interest_rate_per_sec = interest_rate
+			.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
+			.ensure_add(One::one())?;
+
 		let acc_rate = checked_pow(interest_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
 		let ecf = acc_rate.ensure_mul_int(debt)?;
 		let ra_ecf = tel_inv.ensure_mul_int(ecf)?;
 
 		// Discount the risk-adjusted expected cash flows
-		// TODO: use InterestAccrual for this once #1189 is merged
+
+		// TODO: use InterestAccrual for this once #1231 is merged
 		// This would immply that discount_rate should be register/unregister.
-		let rate = checked_pow(self.discount_rate, exp).ok_or(ArithmeticError::Overflow)?;
+		let discount_rate_per_sec = self
+			.discount_rate
+			.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
+			.ensure_add(One::one())?;
+
+		let rate = checked_pow(discount_rate_per_sec, exp).ok_or(ArithmeticError::Overflow)?;
 		let d = Rate::one().ensure_div(rate)?;
 
 		d.ensure_mul_int(ra_ecf)
