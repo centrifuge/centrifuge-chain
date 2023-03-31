@@ -357,17 +357,7 @@ where
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
-		// TODO: correct rate validation.
-		// Ideally we would like only to check here if the yearly rate is valid,
-		// without reference_yearly_rate() and popule the accrual storage.
-		// Once the loan becomes active, it will be referenced.
-		// Thus, a validate method should be immutable, without alter any storage.
-		// This can be easier modeled once:
-		// https://github.com/centrifuge/centrifuge-chain/issues/1189 be merged.
-		// By now, the following line does the trick.
-		T::InterestAccrual::convert_additive_rate_to_per_sec(self.interest_rate)?;
-
-		Ok(())
+		T::InterestAccrual::validate_rate(self.interest_rate)
 	}
 }
 
@@ -469,12 +459,11 @@ impl<T: Config> ActiveLoan<T> {
 		borrower: T::AccountId,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
+		T::InterestAccrual::reference_rate(info.interest_rate)?;
+
 		Ok(ActiveLoan {
 			loan_id,
-			info: LoanInfo {
-				interest_rate: T::InterestAccrual::reference_yearly_rate(info.interest_rate)?,
-				..info
-			},
+			info,
 			borrower,
 			write_off_status: WriteOffStatus::default(),
 			origination_date: now,
