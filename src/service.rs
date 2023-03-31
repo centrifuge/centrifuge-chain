@@ -281,6 +281,7 @@ where
 /// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
 ///
 /// This is the actual implementation that is abstract over the executor and the runtime api.
+#[allow(clippy::too_many_arguments)]
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl<RuntimeApi, Executor, RB, EXT, EB, BIQ, BIC>(
 	parachain_config: Configuration,
@@ -549,7 +550,7 @@ pub async fn start_altair_node(
 		polkadot_config,
 		collator_options,
 		id,
-		|_, _, _| -> () {},
+		|_, _, _| {},
 		|client, pool, deny_unsafe, _, _, _, _, _, _| {
 			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
@@ -690,7 +691,7 @@ pub async fn start_centrifuge_node(
 		polkadot_config,
 		collator_options,
 		id,
-		|_, _, _| -> () {},
+		|_, _, _| {},
 		|client, pool, deny_unsafe, _, _, _, _, _, _| {
 			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
@@ -836,7 +837,7 @@ pub async fn start_development_node(
 		collator_options,
 		id,
 		|client, prometheus_registry, task_manager| {
-			let overrides = rpc::eth::overrides_handle(client.clone());
+			let overrides = rpc::eth::overrides_handle(client);
 			let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
 				task_manager.spawn_handle(),
 				overrides.clone(),
@@ -866,19 +867,19 @@ pub async fn start_development_node(
 				.merge(Rewards::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			let eth_deps = rpc::eth::Deps {
-				client: client.clone(),
+				client,
 				pool: pool.clone(),
 				graph: pool.pool().clone(),
 				converter: Some(development_runtime::TransactionConverter),
 				is_authority,
 				enable_dev_signer: false, // eth_config.enable_dev_signer,
-				network: network.clone(),
-				frontier_backend: frontier_backend.clone(),
+				network,
+				frontier_backend,
 				overrides,
-				block_data_cache: block_data_cache,
-				filter_pool: filter_pool.clone(),
+				block_data_cache,
+				filter_pool,
 				max_past_logs: 10000, // eth_config.max_past_logs,
-				fee_history_cache: fee_history_cache.clone(),
+				fee_history_cache,
 				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
 			};
