@@ -566,7 +566,7 @@ pub mod pallet {
 						current_delay: _,
 						modifiable_at: Some(modifiable_at),
 					}),
-				)) if count == 0 && modifiable_at >= current_block => {
+				)) if count == 0 && modifiable_at <= current_block => {
 					<AccountCurrencyTransferCountDelay<T>>::remove(&account_id, &currency_id);
 					Self::deposit_event(Event::TransferAllowanceDelayPurge {
 						sender_account_id: account_id,
@@ -581,7 +581,7 @@ pub mod pallet {
 						current_delay: _,
 						modifiable_at: Some(modifiable_at),
 					}),
-				)) if modifiable_at >= current_block => {
+				)) if modifiable_at <= current_block => {
 					<AccountCurrencyTransferCountDelay<T>>::insert(
 						&account_id,
 						&currency_id,
@@ -593,13 +593,7 @@ pub mod pallet {
 					});
 					Ok(())
 				}
-				None => {
-					Self::deposit_event(Event::TransferAllowanceDelayPurge {
-						sender_account_id: account_id,
-						currency_id,
-					});
-					Err(DispatchError::from(Error::<T>::NoMatchingDelay))
-				}
+				None => Err(DispatchError::from(Error::<T>::NoMatchingDelay)),
 				_ => Err(DispatchError::from(Error::<T>::DelayUnmodifiable)),
 			}
 		}

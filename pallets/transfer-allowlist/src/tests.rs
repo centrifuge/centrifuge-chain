@@ -427,7 +427,6 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			100u64.into(),
 		));
 		assert_eq!(Balances::reserved_balance(&SENDER), 20);
-		advance_n_blocks(1u64);
 		assert_ok!(TransferAllowList::remove_transfer_allowance(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A,
@@ -717,6 +716,36 @@ fn purge_allowance_delay_fails_if_not_set_modifiable() {
 			CurrencyId::A,
 			200u64
 		));
+		assert_noop!(
+			TransferAllowList::purge_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A),
+			Error::<Runtime>::DelayUnmodifiable
+		);
+	})
+}
+
+#[test]
+fn purge_allowance_delay_fails_if_modifiable_at_not_reached() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200u64
+		));
+		// verify can't be removed before setting future modifiable
+		assert_noop!(
+			TransferAllowList::purge_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A),
+			Error::<Runtime>::DelayUnmodifiable
+		);
+		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A
+		));
+		// verify can't remove before modifiable_at reached
+		assert_noop!(
+			TransferAllowList::purge_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A),
+			Error::<Runtime>::DelayUnmodifiable
+		);
+		advance_n_blocks(20u64);
 		assert_noop!(
 			TransferAllowList::purge_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A),
 			Error::<Runtime>::DelayUnmodifiable
