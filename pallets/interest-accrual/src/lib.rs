@@ -155,6 +155,12 @@ mod test_utils;
 
 pub use pallet::*;
 
+// TODO: This "magic" number can be removed: tracking issue #1297
+// For now it comes from `pallet-loans` demands:
+// possible interest rates < 1 plus a penalty from [0, 1].
+// Which in the worst cases could be near to 2.
+const MAX_INTEREST_RATE: u32 = 2; // Which corresponds to 200%.
+
 // Type aliases
 type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate>;
 
@@ -486,8 +492,9 @@ pub mod pallet {
 			interest_rate_per_year: T::InterestRate,
 		) -> DispatchResult {
 			let four_decimals = T::InterestRate::saturating_from_integer(10000);
+			let maximum = T::InterestRate::saturating_from_integer(MAX_INTEREST_RATE);
 			ensure!(
-				interest_rate_per_year <= T::InterestRate::saturating_from_integer(2)
+				interest_rate_per_year <= maximum
 					&& interest_rate_per_year >= Zero::zero()
 					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
 						== Zero::zero(),
