@@ -89,6 +89,12 @@ orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-libra
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 
+# frontier pallets
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37"}
+
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
@@ -154,6 +160,7 @@ std = [
   "pallet-aura/std",
   "pallet-authorship/std",
   "pallet-balances/std",
+  "pallet-base-fee/std",
   "pallet-bridge/std",
   "pallet-claims/std",
   "pallet-collator-allowlist/std",
@@ -164,6 +171,9 @@ std = [
   "pallet-crowdloan-reward/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
+  "pallet-ethereum/std",
+  "pallet-evm/std",
+  "pallet-evm-chain-id/std",
   "pallet-fees/std",
   "pallet-identity/std",
   "pallet-interest-accrual/std",
@@ -283,6 +293,7 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -352,6 +363,10 @@ try-runtime = [
   "pallet-xcm/try-runtime",
   "parachain-info/try-runtime",
   "runtime-common/try-runtime",
+  "pallet-evm/try-runtime",
+  "pallet-evm-chain-id/try-runtime",
+  "pallet-base-fee/try-runtime",
+  "pallet-ethereum/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

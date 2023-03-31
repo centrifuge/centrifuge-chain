@@ -47,7 +47,7 @@ use frame_support::{
 	parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		AsEnsureOriginWithArg, ConstU32, Contains, EitherOfDiverse, EqualPrivilegeOnly, FindAuthor,
 		InstanceFilter, LockIdentifier, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
@@ -55,7 +55,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, Weight,
 	},
-	PalletId, RuntimeDebug,
+	ConsensusEngineId, PalletId, RuntimeDebug,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -65,6 +65,9 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
+use pallet_evm::{
+	Account as EVMAccount, EnsureAddressTruncated, FeeCalculator, HashedAddressMapping, Runner,
+};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
@@ -84,7 +87,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_api::impl_runtime_apis;
-use sp_core::OpaqueMetadata;
+use sp_core::{crypto::ByteArray, OpaqueMetadata, H160, U256};
 use sp_inherents::{CheckInherentsResult, InherentData};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -1682,6 +1685,81 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type WeightInfo = ();
 }
 
+const WEIGHT_PER_GAS: u64 = 20_000;
+parameter_types! {
+	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
+	pub PrecompilesValue: () = ();
+	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
+}
+
+pub struct FindAuthorTruncated<F>(PhantomData<F>);
+impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
+	fn find_author<'a, I>(digests: I) -> Option<H160>
+	where
+		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
+	{
+		if let Some(author_index) = F::find_author(digests) {
+			let authority_id = Aura::authorities()[author_index as usize].clone();
+			return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]));
+		}
+		None
+	}
+}
+
+impl pallet_evm::Config for Runtime {
+	type AddressMapping = HashedAddressMapping<BlakeTwo256>;
+	type BlockGasLimit = BlockGasLimit;
+	type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Self>;
+	type CallOrigin = EnsureAddressTruncated;
+	type ChainId = EVMChainId;
+	type Currency = Balances;
+	type FeeCalculator = BaseFee;
+	type FindAuthor = FindAuthorTruncated<Aura>;
+	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+	type OnChargeTransaction = ();
+	type PrecompilesType = ();
+	// type PrecompilesType = CentrifugePrecompiles<Self>;
+	type PrecompilesValue = PrecompilesValue;
+	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
+}
+
+impl pallet_evm_chain_id::Config for Runtime {}
+
+parameter_types! {
+	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
+	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
+}
+
+pub struct BaseFeeThreshold;
+impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
+	fn lower() -> Permill {
+		Permill::zero()
+	}
+
+	fn ideal() -> Permill {
+		Permill::from_parts(500_000)
+	}
+
+	fn upper() -> Permill {
+		Permill::from_parts(1_000_000)
+	}
+}
+
+impl pallet_base_fee::Config for Runtime {
+	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
+	type DefaultElasticity = DefaultElasticity;
+	type RuntimeEvent = RuntimeEvent;
+	type Threshold = BaseFeeThreshold;
+}
+
+impl pallet_ethereum::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1764,6 +1842,12 @@ construct_runtime!(
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
+
+		// EVM pallets
+		EVM: pallet_evm::{Pallet, Call, Storage, Event<T>} = 160,
+		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
+		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
+		Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin} = 163,
 	}
 );
 
