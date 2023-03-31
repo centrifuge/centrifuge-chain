@@ -35,7 +35,7 @@ pub struct DiscountedCashFlow<Rate> {
 	pub loss_given_default: Rate,
 
 	/// Rate per year of return used to discount future cash flows back to their present value.
-	pub discount_rate: Rate, //TODO: migration: per sec -> per year
+	pub discount_rate: Rate,
 }
 
 impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {

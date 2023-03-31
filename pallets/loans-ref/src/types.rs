@@ -142,7 +142,7 @@ pub struct WriteOffState<Rate> {
 	pub percentage: Rate,
 
 	/// Additional interest that accrues on the written off loan as penalty
-	pub penalty: Rate, //TODO: migration: per sec -> per year
+	pub penalty: Rate,
 }
 
 impl<Rate> WriteOffState<Rate>
@@ -191,7 +191,7 @@ pub struct WriteOffStatus<Rate> {
 	pub percentage: Rate,
 
 	/// Additional interest that accrues on the written down loan as penalty per sec
-	pub penalty: Rate, //TODO: migration: per sec -> per year
+	pub penalty: Rate,
 }
 
 impl<Rate> WriteOffStatus<Rate>
@@ -408,7 +408,7 @@ pub struct ClosedLoan<T: Config> {
 	closed_at: T::BlockNumber,
 
 	/// Loan information
-	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>, //TODO: migration: interest rate: "per sec" -> "per year"
+	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
 
 	/// Total borrowed amount of this loan
 	total_borrowed: T::Balance,
@@ -431,7 +431,7 @@ pub struct ActiveLoan<T: Config> {
 	loan_id: T::LoanId,
 
 	/// Loan information
-	info: LoanInfoOf<T>, //TODO: migration: interest rate: "per sec" -> "per year"
+	info: LoanInfoOf<T>,
 
 	/// Borrower account that created this loan
 	borrower: T::AccountId,
