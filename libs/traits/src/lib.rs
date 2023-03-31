@@ -269,6 +269,9 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	/// Indicate that a rate is no longer in use
 	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
+	/// Ask if the rate is valid to use by the implementation
+	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
+
 	/// Returns a collection of pre-computed rates to perform multiple operations with
 	fn rates() -> Self::Rates;
 }

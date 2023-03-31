@@ -435,7 +435,7 @@ pub mod pallet {
 				match rate {
 					Some(rate) => Ok(rate.reference_count.ensure_add_assign(1)?),
 					None => {
-						Self::validate_rate(interest_rate_per_year)?;
+						Self::validate_interest_rate(interest_rate_per_year)?;
 
 						let new_rate = RateDetailsOf::<T> {
 							interest_rate_per_sec,
@@ -482,10 +482,12 @@ pub mod pallet {
 				.ok_or_else(|| Error::<T>::NoSuchRate.into())
 		}
 
-		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
+		pub(crate) fn validate_interest_rate(
+			interest_rate_per_year: T::InterestRate,
+		) -> DispatchResult {
 			let four_decimals = T::InterestRate::saturating_from_integer(10000);
 			ensure!(
-				interest_rate_per_year <= One::one()
+				interest_rate_per_year <= T::InterestRate::saturating_from_integer(2)
 					&& interest_rate_per_year >= Zero::zero()
 					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
 						== Zero::zero(),
@@ -538,6 +540,10 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 
 	fn unreference_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
 		Pallet::<T>::unreference_interest_rate(interest_rate_per_year)
+	}
+
+	fn validate_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
+		Pallet::<T>::validate_interest_rate(interest_rate_per_year)
 	}
 
 	fn rates() -> Self::Rates {

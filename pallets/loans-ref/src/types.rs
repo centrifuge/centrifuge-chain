@@ -142,7 +142,7 @@ pub struct WriteOffState<Rate> {
 	pub percentage: Rate,
 
 	/// Additional interest that accrues on the written off loan as penalty
-	pub penalty: Rate,
+	pub penalty: Rate, //TODO: migration: per sec -> per year
 }
 
 impl<Rate> WriteOffState<Rate>
@@ -191,7 +191,7 @@ pub struct WriteOffStatus<Rate> {
 	pub percentage: Rate,
 
 	/// Additional interest that accrues on the written down loan as penalty per sec
-	pub penalty: Rate,
+	pub penalty: Rate, //TODO: migration: per sec -> per year
 }
 
 impl<Rate> WriteOffStatus<Rate>
@@ -357,17 +357,7 @@ where
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
-		// TODO: correct rate validation.
-		// Ideally we would like only to check here if the yearly rate is valid,
-		// without reference_yearly_rate() and popule the accrual storage.
-		// Once the loan becomes active, it will be referenced.
-		// Thus, a validate method should be immutable, without alter any storage.
-		// This can be easier modeled once:
-		// https://github.com/centrifuge/centrifuge-chain/issues/1189 be merged.
-		// By now, the following line does the trick.
-		T::InterestAccrual::convert_additive_rate_to_per_sec(self.interest_rate)?;
-
-		Ok(())
+		T::InterestAccrual::validate_rate(self.interest_rate)
 	}
 }
 
@@ -418,7 +408,7 @@ pub struct ClosedLoan<T: Config> {
 	closed_at: T::BlockNumber,
 
 	/// Loan information
-	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>, //TODO: migration: interest rate: "per sec" -> "per year"
 
 	/// Total borrowed amount of this loan
 	total_borrowed: T::Balance,
@@ -441,7 +431,7 @@ pub struct ActiveLoan<T: Config> {
 	loan_id: T::LoanId,
 
 	/// Loan information
-	info: LoanInfoOf<T>,
+	info: LoanInfoOf<T>, //TODO: migration: interest rate: "per sec" -> "per year"
 
 	/// Borrower account that created this loan
 	borrower: T::AccountId,
@@ -469,12 +459,11 @@ impl<T: Config> ActiveLoan<T> {
 		borrower: T::AccountId,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
+		T::InterestAccrual::reference_rate(info.interest_rate)?;
+
 		Ok(ActiveLoan {
 			loan_id,
-			info: LoanInfo {
-				interest_rate: T::InterestAccrual::reference_yearly_rate(info.interest_rate)?,
-				..info
-			},
+			info,
 			borrower,
 			write_off_status: WriteOffStatus::default(),
 			origination_date: now,

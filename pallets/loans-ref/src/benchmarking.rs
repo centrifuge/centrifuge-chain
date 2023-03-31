@@ -171,7 +171,7 @@ where
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
 			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
-			T::InterestAccrual::reference_yearly_rate(rate).unwrap();
+			T::InterestAccrual::reference_rate(rate).unwrap();
 		}
 
 		let pool_id = Self::prepare_benchmark();
