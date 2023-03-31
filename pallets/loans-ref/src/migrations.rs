@@ -43,7 +43,8 @@ impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 	}
 
 	fn on_runtime_upgrade() -> Weight {
-		if v0::NextLoanId::<T>::iter_values().count() == 1 {
+		let old_values = v0::NextLoanId::<T>::iter_values().count();
+		if old_values > 0 {
 			let result = storage::unhashed::clear_prefix(&loan_prefix(), None, None);
 
 			match result.maybe_cursor {
@@ -56,7 +57,7 @@ impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 		} else {
 			log::warn!("Loans: storage was already clear. This migration can be removed.");
 
-			Weight::zero()
+			T::DbWeight::get().reads(old_values as u64)
 		}
 	}
 
