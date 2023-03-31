@@ -36,6 +36,7 @@
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active loans.
 
+pub mod migrations;
 pub mod types;
 pub mod valuation;
 
@@ -93,8 +94,11 @@ pub mod pallet {
 		<T as Config>::CurrencyId,
 	>>::PoolId;
 
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	#[pallet::pallet]
-	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
