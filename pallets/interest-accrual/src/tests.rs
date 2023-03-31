@@ -28,7 +28,7 @@ fn test_rate_validation() {
 	let normal_rate = Rate::saturating_from_rational(5, 100);
 	let too_many_decimals = Rate::saturating_from_rational(55, 100000);
 
-	assert!(Pallet::<Runtime>::validate_rate(high_rate).is_ok());
+	assert!(Pallet::<Runtime>::validate_rate(high_rate).is_err());
 	assert!(Pallet::<Runtime>::validate_rate(min_rate).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(normal_rate).is_ok());
 	assert!(Pallet::<Runtime>::validate_rate(One::one()).is_ok());
