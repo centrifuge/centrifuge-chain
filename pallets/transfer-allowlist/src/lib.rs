@@ -502,7 +502,7 @@ pub mod pallet {
 		#[pallet::call_index(5)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
 		/// This allows the delay value to be modified after the current delay has passed since the current block
-		pub fn set_future_modifyable_allowance_delay(
+		pub fn set_allowance_delay_future_modifiable(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
@@ -557,8 +557,16 @@ pub mod pallet {
 			currency_id: T::CurrencyId,
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
+
+			let current_block = <frame_system::Pallet<T>>::block_number();
 			match Self::get_account_currency_restriction_count_delay(&account_id, &currency_id) {
-				Some((count, _)) if count == 0 => {
+				Some((
+					count,
+					Some(Delay {
+						current_delay: _,
+						modifiable_at: Some(modifiable_at),
+					}),
+				)) if count == 0 && modifiable_at >= current_block => {
 					<AccountCurrencyTransferCountDelay<T>>::remove(&account_id, &currency_id);
 					Self::deposit_event(Event::TransferAllowanceDelayPurge {
 						sender_account_id: account_id,
@@ -567,7 +575,13 @@ pub mod pallet {
 					Ok(())
 				}
 
-				Some((count, _)) => {
+				Some((
+					count,
+					Some(Delay {
+						current_delay: _,
+						modifiable_at: Some(modifiable_at),
+					}),
+				)) if modifiable_at >= current_block => {
 					<AccountCurrencyTransferCountDelay<T>>::insert(
 						&account_id,
 						&currency_id,
@@ -586,6 +600,7 @@ pub mod pallet {
 					});
 					Err(DispatchError::from(Error::<T>::NoMatchingDelay))
 				}
+				_ => Err(DispatchError::from(Error::<T>::DelayUnmodifiable)),
 			}
 		}
 	}

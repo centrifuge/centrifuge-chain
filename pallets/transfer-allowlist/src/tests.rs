@@ -1,5 +1,6 @@
 use cfg_types::locations::Location;
 use frame_support::{assert_noop, assert_ok};
+use sp_runtime::traits::Header;
 
 use super::*;
 use crate::mock::*;
@@ -559,56 +560,176 @@ fn cannot_create_conflicint_allowance_delays() {
 	})
 }
 
-// #[test]
-// fn remove_allowance_delay_works() {
-// 	new_test_ext().execute_with(|| {
-// 		assert_ok!(TransferAllowList::add_allowance_delay(
-// 			RuntimeOrigin::signed(SENDER),
-// 			CurrencyId::A,
-// 			200u64
-// 		));
-// 		assert_ok!(TransferAllowList::remove_allowance_delay(
-// 			RuntimeOrigin::signed(SENDER),
-// 			CurrencyId::A,
-// 		));
-// 		// verify val in storage
-// 		assert_eq!(
-// 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
-// 			None
-// 		);
-// 		// verify event deposited
-// 		// note: event 0 is in new_ext_test setup -- fee key setup
-// 		assert_eq!(
-// 			System::events()[2].event,
-// 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayPurge {
-// 				sender_account_id: SENDER,
-// 				currency_id: CurrencyId::A
-// 			})
-// 		)
-// 	})
-// }
+#[test]
+fn set_allowance_delay_future_modifiable_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200u64
+		));
+		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A
+		));
 
-// #[test]
-// fn remove_allowance_delay_when_no_delay_set() {
-// 	new_test_ext().execute_with(|| {
-// 		// should fail now
-// 		assert_noop!(
-// 			TransferAllowList::remove_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A,),
-// 			Error::<Runtime>::NoMatchingDelay
-// 		);
-// 		// verify no val in storage
-// 		assert_eq!(
-// 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
-// 			None
-// 		);
-// 	})
-// }
+		// verify val in storage
+		assert_eq!(
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
+				.unwrap(),
+			(
+				0,
+				Some(Delay {
+					current_delay: 200u64,
+					modifiable_at: Some(250)
+				})
+			)
+		);
+
+		// note:
+		// event 0 is in new_ext_test setup -- fee key setup
+		// event 1 is delay creation
+		// verify event deposited
+		assert_eq!(
+			System::events()[2].event,
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayFutureModifiable {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				modifiable_at: 250
+			})
+		)
+	})
+}
+
+#[test]
+fn set_allowance_delay_future_modifiable_fails_if_modifiable_set_and_not_reached() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200u64
+		));
+		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A
+		));
+		advance_n_blocks(20);
+
+		assert_noop!(
+			TransferAllowList::set_allowance_delay_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			),
+			Error::<Runtime>::DelayUnmodifiable
+		);
+	})
+}
+
+#[test]
+fn set_allowance_delay_future_modifiable_works_if_modifiable_set_and_reached() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200u64
+		));
+		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A
+		));
+		advance_n_blocks(200);
+
+		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A
+		));
+		// verify val in storage
+		assert_eq!(
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
+				.unwrap(),
+			(
+				0,
+				Some(Delay {
+					current_delay: 200u64,
+					modifiable_at: Some(450)
+				})
+			)
+		);
+
+		// note:
+		// event 0 is in new_ext_test setup -- fee key setup
+		// event 1 is delay creation
+		// event 2 is initial set modifiable
+		// verify event deposited
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayFutureModifiable {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				modifiable_at: 450
+			})
+		)
+	})
+}
+
+#[test]
+fn purge_allowance_delay_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200u64
+		));
+		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A
+		));
+		advance_n_blocks(200);
+		assert_ok!(TransferAllowList::purge_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A
+		));
+
+		// note:
+		// event 0 is in new_ext_test setup -- fee key setup
+		// event 1 is delay creation
+		// event 2 is initial set modifiable
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayPurge {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+			})
+		);
+
+		assert_eq!(
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			None
+		)
+	})
+}
+
+#[test]
+fn purge_allowance_delay_fails_if_not_set_modifiable() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			200u64
+		));
+		assert_noop!(
+			TransferAllowList::purge_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A),
+			Error::<Runtime>::DelayUnmodifiable
+		);
+	})
+}
 
 fn advance_n_blocks(n: u64) {
 	match n {
 		n if n > 0 => {
-			System::finalize();
-			System::set_block_number(System::block_number() + 1);
+			let h = System::finalize();
+			let b = h.number.checked_add(1).unwrap();
+			System::initialize(&b.into(), h.parent_hash(), h.digest());
 			advance_n_blocks(n - 1);
 		}
 		_ => (),
