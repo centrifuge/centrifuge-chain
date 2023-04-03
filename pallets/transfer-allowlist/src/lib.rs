@@ -494,8 +494,8 @@ pub mod pallet {
 					);
 					Self::deposit_event(Event::TransferAllowanceDelayUpdate {
 						sender_account_id: account_id,
-						currency_id: currency_id,
-						delay: delay,
+						currency_id,
+						delay,
 					});
 					Ok(())
 				}
@@ -538,7 +538,7 @@ pub mod pallet {
 					);
 					Self::deposit_event(Event::TransferAllowanceDelayFutureModifiable {
 						sender_account_id: account_id,
-						currency_id: currency_id,
+						currency_id,
 						modifiable_at,
 					});
 					Ok(())
