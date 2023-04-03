@@ -26,9 +26,12 @@ fn add_transfer_allowance_works() {
 			}
 		);
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
-				.unwrap(),
-			(1, None)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 1,
+				current_delay: None,
+				modifiable_at: None
+			})
 		);
 
 		// note: event 0 is in new_ext_test setup -- fee key setup
@@ -88,13 +91,11 @@ fn add_transfer_allowance_updates_with_delay_set() {
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
 				.unwrap(),
-			(
-				1,
-				Some(Delay {
-					current_delay: 200u64,
-					modifiable_at: None
-				})
-			)
+			AllowanceMetadata {
+				allowance_count: 1,
+				current_delay: Some(200u64),
+				modifiable_at: None
+			}
 		);
 	})
 }
@@ -116,9 +117,12 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 		// verify reserve incremented for second allowance
 		assert_eq!(Balances::reserved_balance(&SENDER), 20);
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
-				.unwrap(),
-			(2, None)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 2,
+				current_delay: None,
+				modifiable_at: None
+			})
 		);
 
 		// note: event 0 is in new_ext_test setup -- fee key setup
@@ -234,7 +238,11 @@ fn remove_transfer_allowance_works() {
 		// ensure allowlist entry still in place, just with restricted params
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
-			Some((1, None))
+			Some(AllowanceMetadata {
+				allowance_count: 1,
+				current_delay: None,
+				modifiable_at: None
+			})
 		);
 
 		// event 0 - reserve for allowance creation, 1, allowance creation itelf
@@ -286,13 +294,11 @@ fn remove_transfer_allowance_with_delay_works() {
 		// ensure only 1 transfer allowlist for sender/currency still in place
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
-			Some((
-				1,
-				Some(Delay {
-					current_delay: 200u64.into(),
-					modifiable_at: None
-				})
-			))
+			Some(AllowanceMetadata {
+				allowance_count: 1,
+				current_delay: Some(200u64),
+				modifiable_at: None
+			})
 		);
 
 		// ensure only 1 reserve as we've still just got 1 allowance in storage
@@ -359,13 +365,11 @@ fn purge_transfer_allowance_works() {
 		// 5 for delay
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
-			Some((
-				0,
-				Some(Delay {
-					current_delay: 5,
-					modifiable_at: None
-				})
-			))
+			Some(AllowanceMetadata {
+				allowance_count: 0,
+				current_delay: Some(5u64),
+				modifiable_at: None
+			})
 		);
 		// verify event sent for removal
 		// note: event 0 is in new_ext_test setup -- fee key setup
@@ -471,15 +475,12 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 
 		// verify correct decrement
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
-				.unwrap(),
-			(
-				1,
-				Some(Delay {
-					current_delay: 5u64,
-					modifiable_at: None
-				})
-			)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 1,
+				current_delay: Some(5u64),
+				modifiable_at: None
+			})
 		);
 	})
 }
@@ -495,15 +496,12 @@ fn add_allowance_delay_works() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
-				.unwrap(),
-			(
-				0,
-				Some(Delay {
-					current_delay: 200u64.into(),
-					modifiable_at: None
-				})
-			)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 0,
+				current_delay: Some(200u64),
+				modifiable_at: None
+			})
 		);
 		// verify event deposited
 		// note: event 0 is in new_ext_test setup -- fee key setup
@@ -536,15 +534,12 @@ fn cannot_create_conflicint_allowance_delays() {
 		);
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
-				.unwrap(),
-			(
-				0,
-				Some(Delay {
-					current_delay: 200u64.into(),
-					modifiable_at: None
-				})
-			)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 0,
+				current_delay: Some(200u64),
+				modifiable_at: None
+			})
 		);
 		// note: event 0 is in new_ext_test setup -- fee key setup
 		// verify event deposited
@@ -574,15 +569,12 @@ fn set_allowance_delay_future_modifiable_works() {
 
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
-				.unwrap(),
-			(
-				0,
-				Some(Delay {
-					current_delay: 200u64,
-					modifiable_at: Some(250)
-				})
-			)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 0,
+				current_delay: Some(200u64),
+				modifiable_at: Some(250u64)
+			})
 		);
 
 		// note:
@@ -644,15 +636,12 @@ fn set_allowance_delay_future_modifiable_works_if_modifiable_set_and_reached() {
 		));
 		// verify val in storage
 		assert_eq!(
-			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A)
-				.unwrap(),
-			(
-				0,
-				Some(Delay {
-					current_delay: 200u64,
-					modifiable_at: Some(450)
-				})
-			)
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 0,
+				current_delay: Some(200u64),
+				modifiable_at: Some(450u64)
+			})
 		);
 
 		// note:
