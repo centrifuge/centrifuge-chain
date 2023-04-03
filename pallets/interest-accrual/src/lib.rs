@@ -135,7 +135,7 @@ use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
-use sp_std::vec::Vec;
+use sp_std::{cmp::Ordering, vec::Vec};
 
 pub mod migrations;
 pub mod weights;
@@ -351,15 +351,16 @@ pub mod pallet {
 			let rate = Self::get_rate(interest_rate_per_year)?;
 			let now = LastUpdated::<T>::get();
 
-			let acc_rate = if when == now {
-				rate.accumulated_rate
-			} else if when < now {
-				let delta = now - when;
-				let rate_adjustment = checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
-					.ok_or(ArithmeticError::Overflow)?;
-				rate.accumulated_rate.ensure_div(rate_adjustment)?
-			} else {
-				return Err(Error::<T>::NotInPast.into());
+			let acc_rate = match when.cmp(&now) {
+				Ordering::Equal => rate.accumulated_rate,
+				Ordering::Less => {
+					let delta = now.ensure_sub(when)?;
+					let rate_adjustment =
+						checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
+							.ok_or(ArithmeticError::Overflow)?;
+					rate.accumulated_rate.ensure_div(rate_adjustment)?
+				}
+				Ordering::Greater => return Err(Error::<T>::NotInPast.into()),
 			};
 
 			Self::calculate_debt(normalized_debt, acc_rate)
