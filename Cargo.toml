@@ -64,8 +64,10 @@ members = [
 
 [dependencies]
 # third-party dependencies
+async-trait = "0.1"
 clap = { version = "4.0.9", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
+futures = "0.3.25"
 hex-literal = "0.2.1"
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 log = "0.4.8"
@@ -92,6 +94,7 @@ sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", bra
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -147,9 +150,13 @@ runtime-integration-tests = { path = "runtime/integration-tests", optional = tru
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
 
 # frontier
+fc-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 fc-db = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fc-mapping-sync = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 fc-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 fc-rpc-core = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fp-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fp-dynamic-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 fp-storage = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 
@@ -178,6 +185,7 @@ std = [
   "cumulus-primitives-core/std",
   "cumulus-primitives-parachain-inherent/std",
   "development-runtime/std",
+  "fp-dynamic-fee/std",
   "frame-benchmarking/std",
   "log/std",
   "pallet-anchors/std",

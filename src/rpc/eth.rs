@@ -48,7 +48,7 @@ pub struct Deps<C, P, A: ChainApi, CT, B: BlockT> {
 	/// Cache for Ethereum block data.
 	pub block_data_cache: Arc<EthBlockDataCacheTask<B>>,
 	/// EthFilterApi pool.
-	pub filter_pool: Option<FilterPool>,
+	pub filter_pool: FilterPool,
 	/// Maximum number of logs in a query.
 	pub max_past_logs: u32,
 	/// Fee history cache.
@@ -181,19 +181,17 @@ where
 		.into_rpc(),
 	)?;
 
-	if let Some(filter_pool) = filter_pool {
-		io.merge(
-			EthFilter::new(
-				client.clone(),
-				frontier_backend,
-				filter_pool,
-				500_usize, // max stored filters
-				max_past_logs,
-				block_data_cache,
-			)
-			.into_rpc(),
-		)?;
-	}
+	io.merge(
+		EthFilter::new(
+			client.clone(),
+			frontier_backend,
+			filter_pool,
+			500_usize, // max stored filters
+			max_past_logs,
+			block_data_cache,
+		)
+		.into_rpc(),
+	)?;
 
 	io.merge(
 		EthPubSub::new(
