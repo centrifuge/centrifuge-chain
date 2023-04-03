@@ -231,19 +231,8 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
 	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
 
-	/// Calculate the current debt using normalized debt * cumulative rate
-	fn current_debt(
-		interest_rate_per_year: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Balance, DispatchError>;
-
-	/// Calculate a previous debt using normalized debt * previous cumulative rate
-	///
-	/// If `when` is further in the past than the last time the
-	/// normalized debt was adjusted, this will return nonsense
-	/// (effectively "rewinding the clock" to before the value was
-	/// valid)
-	fn previous_debt(
+	/// Calculate the debt at an specific moment
+	fn calculate_debt(
 		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
