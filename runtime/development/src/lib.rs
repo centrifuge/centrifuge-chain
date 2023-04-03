@@ -113,6 +113,9 @@ use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 pub mod xcm;
 pub use crate::xcm::*;
 
+pub mod precompiles;
+pub use crate::precompiles::CentrifugePrecompiles;
+
 mod weights;
 
 // Make the WASM binary available.
@@ -1693,7 +1696,7 @@ impl pallet_liquidity_rewards::Config for Runtime {
 const WEIGHT_PER_GAS: u64 = 20_000;
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: () = ();
+	pub PrecompilesValue: CentrifugePrecompiles<Runtime> = CentrifugePrecompiles::<_>::new();
 	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
 }
 
@@ -1736,8 +1739,7 @@ impl pallet_evm::Config for Runtime {
 	type FindAuthor = FindAuthorTruncated<Aura>;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
-	type PrecompilesType = ();
-	// type PrecompilesType = CentrifugePrecompiles<Self>;
+	type PrecompilesType = CentrifugePrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = RuntimeEvent;

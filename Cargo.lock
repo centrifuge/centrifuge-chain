@@ -2576,6 +2576,7 @@ dependencies = [
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",
+ "pallet-evm-precompile-dispatch",
  "pallet-fees",
  "pallet-identity",
  "pallet-interest-accrual",
@@ -7043,6 +7044,16 @@ dependencies = [
  "frame-system",
  "parity-scale-codec 3.4.0",
  "scale-info",
+]
+
+[[package]]
+name = "pallet-evm-precompile-dispatch"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.37#4e080c6ace4de90226f4923b196bf3089cb6712f"
+dependencies = [
+ "fp-evm",
+ "frame-support",
+ "pallet-evm",
 ]
 
 [[package]]
