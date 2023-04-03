@@ -580,6 +580,7 @@ sp-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "f
 sp-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "f38bd6671d460293c93062cc1e4fe9e9e490cb29" }
 sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", rev = "f38bd6671d460293c93062cc1e4fe9e9e490cb29" }
 sp-core = { git = "https://github.com/paritytech//substrate", rev = "f38bd6671d460293c93062cc1e4fe9e9e490cb29" }
+sp-database = { git = "https://github.com/paritytech//substrate", rev = "f38bd6671d460293c93062cc1e4fe9e9e490cb29" }
 sp-debug-derive = { git = "https://github.com/paritytech//substrate", rev = "f38bd6671d460293c93062cc1e4fe9e9e490cb29" }
 sp-externalities = { git = "https://github.com/paritytech//substrate", rev = "f38bd6671d460293c93062cc1e4fe9e9e490cb29" }
 sp-weights = { git = "https://github.com/paritytech//substrate", rev = "f38bd6671d460293c93062cc1e4fe9e9e490cb29" }

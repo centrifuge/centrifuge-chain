@@ -3214,7 +3214,7 @@ dependencies = [
  "smallvec",
  "sp-blockchain",
  "sp-core",
- "sp-database 4.0.0-dev (git+https://github.com/PureStake/substrate?branch=moonbeam-polkadot-v0.9.37)",
+ "sp-database",
  "sp-runtime",
 ]
 
@@ -3575,7 +3575,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
+ "sp-database",
  "sp-externalities",
  "sp-inherents",
  "sp-keystore",
@@ -3867,7 +3867,7 @@ dependencies = [
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-core",
- "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
+ "sp-database",
  "sp-externalities",
  "sp-inherents",
  "sp-io",
@@ -10862,7 +10862,7 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-core",
- "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
+ "sp-database",
  "sp-externalities",
  "sp-keystore",
  "sp-runtime",
@@ -10890,7 +10890,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-blockchain",
  "sp-core",
- "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
+ "sp-database",
  "sp-runtime",
  "sp-state-machine",
  "sp-trie",
@@ -12371,7 +12371,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "sp-api",
  "sp-consensus",
- "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
+ "sp-database",
  "sp-runtime",
  "sp-state-machine",
  "thiserror",
@@ -12526,15 +12526,6 @@ dependencies = [
  "quote",
  "sp-core-hashing",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "sp-database"
-version = "4.0.0-dev"
-source = "git+https://github.com/PureStake/substrate?branch=moonbeam-polkadot-v0.9.37#5892a2a264a335b8ce893320ad59fd9638b63bed"
-dependencies = [
- "kvdb",
- "parking_lot 0.12.1",
 ]
 
 [[package]]
