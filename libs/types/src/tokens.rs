@@ -17,7 +17,6 @@ pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::{DispatchError, TokenError};
 
 use crate::xcm::XcmMetadata;
 
@@ -57,39 +56,6 @@ impl Default for CurrencyId {
 impl From<u32> for CurrencyId {
 	fn from(value: u32) -> Self {
 		CurrencyId::ForeignAsset(value)
-	}
-}
-
-impl TryInto<u128> for CurrencyId {
-	type Error = DispatchError;
-
-	// TODO: Fix dummy values
-	fn try_into(self) -> Result<u128, Self::Error> {
-		match self {
-			// [0, ..., 0, 0]
-			CurrencyId::Native => Ok(u128::from_be_bytes([0u8; 16])),
-			CurrencyId::Tranche(_, _) => Err(DispatchError::Token(TokenError::Unsupported)),
-			// [0, ..., 0, 1]
-			CurrencyId::KSM => {
-				let mut r = [0u8; 16];
-				r[15] = 1;
-				Ok(u128::from_be_bytes(r))
-			}
-			// [0, ..., 0, 2]
-			CurrencyId::AUSD => {
-				let mut r = [0u8; 16];
-				r[15] = 2;
-				Ok(u128::from_be_bytes(r))
-			}
-			// [0, ..., 0, 1, c0, c1, c2, c3]
-			CurrencyId::ForeignAsset(c) => {
-				let mut r = [0u8; 16];
-				r[11] = 1;
-				let c_bytes: [u8; 4] = c.to_be_bytes();
-				r[12..(4 + 12)].copy_from_slice(&c_bytes[..4]);
-				Ok(u128::from_be_bytes(r))
-			}
-		}
 	}
 }
 

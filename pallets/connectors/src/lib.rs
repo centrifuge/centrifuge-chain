@@ -13,7 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::PoolInspect;
+use cfg_traits::{ops::EnsureAdd, PoolInspect};
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
 use frame_support::traits::{
@@ -235,8 +235,11 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen
-			+ TryInto<u128, Error = DispatchError>
 			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>;
+
+		/// The prefix for currencies added via Connectors.
+		#[pallet::constant]
+		type LocalCurrencyPrefix: Get<[u8; 14]>;
 	}
 
 	#[pallet::event]
@@ -269,6 +272,18 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type KnownConnectors<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 
+	/// The set of tokens which can be used by connectors in its local `u16` representation.
+	/// Each token can be represented by `u128` via `T::LocalCurrencyPrefix ++ LocalCurrencyId`.
+	///
+	/// NOTE: New entries are assumed to derive their corresponding identifier from [NextFreeLocalCurrencyId].
+	#[pallet::storage]
+	pub(crate) type LocalCurrencyId<T: Config> =
+		StorageMap<_, Blake2_128Concat, <T as pallet::Config>::CurrencyId, u16>;
+
+	/// The pointer to the next free local token identifier.
+	#[pallet::storage]
+	pub(crate) type NextFreeLocalCurrencyId<T: Config> = StorageValue<_, u16, OptionQuery>;
+
 	#[pallet::error]
 	pub enum Error<T> {
 		/// A pool could not be found
@@ -293,6 +308,8 @@ pub mod pallet {
 		InvalidIncomingMessageOrigin,
 		/// Failed to decode an incoming message
 		InvalidIncomingMessage,
+		/// Failed to map the asset to its u128 representation
+		UnregisteredAsset,
 	}
 
 	#[pallet::call]
@@ -343,7 +360,7 @@ pub mod pallet {
 				Message::AddPool {
 					pool_id,
 					decimals,
-					currency: currency.try_into()?,
+					currency: Self::try_get_u128(currency)?,
 				},
 				domain,
 			)?;
@@ -552,7 +569,7 @@ pub mod pallet {
 				who.clone(),
 				Message::Transfer {
 					amount,
-					token: asset_id.try_into()?,
+					token: Self::try_get_u128(asset_id)?,
 					source_address: account_to_bytes(&who)?,
 					destination_address: domain_address.address(),
 				},
@@ -670,6 +687,20 @@ pub mod pallet {
 			);
 
 			encoded
+		}
+
+		/// Returns the `u128` representation of a currency if there exists a local token identifier for it.
+		/// Prepends the local token identifier with the [LocalCurrencyPrefix].
+		pub(crate) fn try_get_u128(
+			asset: <T as pallet::Config>::CurrencyId,
+		) -> Result<u128, DispatchError> {
+			let local_token_id: u16 =
+				LocalCurrencyId::<T>::get(asset).ok_or(Error::<T>::UnregisteredAsset)?;
+			let mut prefix_bytes = [0u8; 16];
+			prefix_bytes[..14].copy_from_slice(&<T as pallet::Config>::LocalCurrencyPrefix::get());
+			let prefix = u128::from_be_bytes(prefix_bytes);
+			let global_id: u128 = prefix.ensure_add(local_token_id.into())?;
+			Ok(global_id)
 		}
 	}
 }

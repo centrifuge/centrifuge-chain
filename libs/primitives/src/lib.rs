@@ -249,6 +249,9 @@ pub mod constants {
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
+
+	/// The prefix for tokens managed by Connectors.
+	pub const CONNECTORS_LOCAL_CURRENCY_PREFIX: [u8; 14] = *b"CfgCnctTokenId";
 }
 
 /// Listing of parachains we integrate with.
