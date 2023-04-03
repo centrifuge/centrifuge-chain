@@ -53,5 +53,9 @@ case $TARGET in
 
   benchmark)
     ./scripts/runtime_benchmarks.sh $RUNTIME
+    ;;
+
+  benchmark-check)
+    ./scripts/check_benchmarks.sh $RUNTIME
 
 esac
