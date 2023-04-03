@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        target: [benchmark-test]
+        target: [benchmark-check]
         runtime: [development, altair, centrifuge]
     runs-on: ${{ matrix.os }}
     env:
