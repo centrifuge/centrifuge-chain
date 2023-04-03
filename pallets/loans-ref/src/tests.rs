@@ -47,7 +47,7 @@ mod util {
 	}
 
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
-		get_loan(loan_id).debt(None).unwrap()
+		get_loan(loan_id).calculate_debt(now().as_secs()).unwrap()
 	}
 
 	pub fn current_loan_pv(loan_id: LoanId) -> Balance {

@@ -489,23 +489,12 @@ impl<T: Config> ActiveLoan<T> {
 		&self.write_off_status
 	}
 
-	/// Returns the debt for the current loan.
-	/// If None, it returns the corresponding debt at now().
-	pub fn debt(&self, when: Option<Moment>) -> Result<T::Balance, DispatchError> {
-		// TODO: simplify this once issue
-		// https://github.com/centrifuge/centrifuge-chain/issues/1203 is merged.
-		match when {
-			Some(when) if when != T::Time::now().as_secs() => T::InterestAccrual::previous_debt(
-				self.info.interest_rate,
-				self.normalized_debt,
-				when,
-			),
-			_ => T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt),
-		}
+	pub fn calculate_debt(&self, when: Moment) -> Result<T::Balance, DispatchError> {
+		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, when)
 	}
 
 	pub fn present_value_at(&self, when: Moment) -> Result<T::Balance, DispatchError> {
-		self.present_value(self.debt(Some(when))?, when)
+		self.present_value(self.calculate_debt(when)?, when)
 	}
 
 	/// An optimized version of `ActiveLoan::present_value_at()` when last updated is now.
@@ -563,14 +552,14 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::unreference_rate(old_interest_rate)
 	}
 
-	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
+	fn max_borrow_amount(&self, when: Moment) -> Result<T::Balance, DispatchError> {
 		Ok(match self.info.restrictions.max_borrow_amount {
 			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
 				.saturating_sub(self.total_borrowed),
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.debt(None)?),
+				.saturating_sub(self.calculate_debt(when)?),
 		})
 	}
 
@@ -592,7 +581,7 @@ impl<T: Config> ActiveLoan<T> {
 		);
 
 		ensure!(
-			amount <= self.max_borrow_amount()?,
+			amount <= self.max_borrow_amount(now)?,
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 
@@ -614,8 +603,10 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
+		let now = T::Time::now().as_secs();
+
 		// Only repay until the current debt
-		let amount = amount.min(self.debt(None)?);
+		let amount = amount.min(self.calculate_debt(now)?);
 
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),
