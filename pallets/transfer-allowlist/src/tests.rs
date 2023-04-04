@@ -30,7 +30,7 @@ fn add_transfer_allowance_works() {
 			Some(AllowanceMetadata {
 				allowance_count: 1,
 				current_delay: None,
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 
@@ -94,7 +94,7 @@ fn add_transfer_allowance_updates_with_delay_set() {
 			AllowanceMetadata {
 				allowance_count: 1,
 				current_delay: Some(200u64),
-				modifiable_at: None
+				once_modifiable_after: None
 			}
 		);
 	})
@@ -121,7 +121,7 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 			Some(AllowanceMetadata {
 				allowance_count: 2,
 				current_delay: None,
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 
@@ -241,7 +241,7 @@ fn remove_transfer_allowance_works() {
 			Some(AllowanceMetadata {
 				allowance_count: 1,
 				current_delay: None,
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 
@@ -297,7 +297,7 @@ fn remove_transfer_allowance_with_delay_works() {
 			Some(AllowanceMetadata {
 				allowance_count: 1,
 				current_delay: Some(200u64),
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 
@@ -368,7 +368,7 @@ fn purge_transfer_allowance_works() {
 			Some(AllowanceMetadata {
 				allowance_count: 0,
 				current_delay: Some(5u64),
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 		// verify event sent for removal
@@ -479,7 +479,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			Some(AllowanceMetadata {
 				allowance_count: 1,
 				current_delay: Some(5u64),
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 	})
@@ -500,7 +500,7 @@ fn add_allowance_delay_works() {
 			Some(AllowanceMetadata {
 				allowance_count: 0,
 				current_delay: Some(200u64),
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 		// verify event deposited
@@ -538,7 +538,7 @@ fn cannot_create_conflicint_allowance_delays() {
 			Some(AllowanceMetadata {
 				allowance_count: 0,
 				current_delay: Some(200u64),
-				modifiable_at: None
+				once_modifiable_after: None
 			})
 		);
 		// note: event 0 is in new_ext_test setup -- fee key setup
@@ -562,10 +562,12 @@ fn set_allowance_delay_future_modifiable_works() {
 			CurrencyId::A,
 			200u64
 		));
-		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A
-		));
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
 
 		// verify val in storage
 		assert_eq!(
@@ -573,7 +575,7 @@ fn set_allowance_delay_future_modifiable_works() {
 			Some(AllowanceMetadata {
 				allowance_count: 0,
 				current_delay: Some(200u64),
-				modifiable_at: Some(250u64)
+				once_modifiable_after: Some(250u64)
 			})
 		);
 
@@ -583,10 +585,10 @@ fn set_allowance_delay_future_modifiable_works() {
 		// verify event deposited
 		assert_eq!(
 			System::events()[2].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayFutureModifiable {
+			RuntimeEvent::TransferAllowList(Event::ToggleTransferAllowanceDelayFutureModifiable {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
-				modifiable_at: 250
+				modifiable_once_after: Some(250)
 			})
 		)
 	})
@@ -600,14 +602,16 @@ fn set_allowance_delay_future_modifiable_fails_if_modifiable_set_and_not_reached
 			CurrencyId::A,
 			200u64
 		));
-		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A
-		));
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
 		advance_n_blocks(20);
 
 		assert_noop!(
-			TransferAllowList::set_allowance_delay_future_modifiable(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
 				RuntimeOrigin::signed(SENDER),
 				CurrencyId::A
 			),
@@ -624,23 +628,27 @@ fn set_allowance_delay_future_modifiable_works_if_modifiable_set_and_reached() {
 			CurrencyId::A,
 			200u64
 		));
-		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A
-		));
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
 		advance_n_blocks(200);
 
-		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A
-		));
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
 		// verify val in storage
 		assert_eq!(
 			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
 			Some(AllowanceMetadata {
 				allowance_count: 0,
 				current_delay: Some(200u64),
-				modifiable_at: Some(450u64)
+				once_modifiable_after: None
 			})
 		);
 
@@ -651,10 +659,10 @@ fn set_allowance_delay_future_modifiable_works_if_modifiable_set_and_reached() {
 		// verify event deposited
 		assert_eq!(
 			System::events()[3].event,
-			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayFutureModifiable {
+			RuntimeEvent::TransferAllowList(Event::ToggleTransferAllowanceDelayFutureModifiable {
 				sender_account_id: SENDER,
 				currency_id: CurrencyId::A,
-				modifiable_at: 450
+				modifiable_once_after: None
 			})
 		)
 	})
@@ -668,11 +676,13 @@ fn purge_allowance_delay_works() {
 			CurrencyId::A,
 			200u64
 		));
-		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A
-		));
-		advance_n_blocks(200);
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
+		advance_n_blocks(201);
 		assert_ok!(TransferAllowList::purge_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::A
@@ -725,10 +735,12 @@ fn purge_allowance_delay_fails_if_modifiable_at_not_reached() {
 			TransferAllowList::purge_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A),
 			Error::<Runtime>::DelayUnmodifiable
 		);
-		assert_ok!(TransferAllowList::set_allowance_delay_future_modifiable(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A
-		));
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
 		// verify can't remove before modifiable_at reached
 		assert_noop!(
 			TransferAllowList::purge_allowance_delay(RuntimeOrigin::signed(SENDER), CurrencyId::A),
