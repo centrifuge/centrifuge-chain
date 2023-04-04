@@ -14,12 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{
-	collections::BTreeMap,
-	path::PathBuf,
-	sync::{Arc, Mutex},
-	time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
 use cfg_primitives::{Block, Hash};
 use cumulus_client_cli::CollatorOptions;
@@ -35,20 +30,11 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
 use fc_db::Backend as FrontierBackend;
-use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
-use fc_rpc::{EthTask, OverrideHandle};
-use fc_rpc_core::types::{FeeHistoryCache, FilterPool};
-use futures::{future, StreamExt};
-use sc_cli::SubstrateCli;
-use sc_client_api::BlockchainEvents;
 use sc_consensus::ImportQueue;
 use sc_executor::WasmExecutor;
 use sc_network::{NetworkBlock, NetworkService};
-use sc_rpc::SubscriptionTaskExecutor;
 use sc_rpc_api::DenyUnsafe;
-use sc_service::{
-	BasePath, Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager,
-};
+use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
 use sp_core::U256;
@@ -56,17 +42,14 @@ use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use substrate_prometheus_endpoint::Registry;
 
-use crate::{
-	cli::Cli,
-	rpc::{
-		self,
-		anchors::{AnchorApiServer, Anchors},
-		pools::{Pools, PoolsApiServer},
-		rewards::{Rewards, RewardsApiServer},
-	},
+use crate::rpc::{
+	self,
+	anchors::{AnchorApiServer, Anchors},
+	pools::{Pools, PoolsApiServer},
+	rewards::{Rewards, RewardsApiServer},
 };
 
-mod evm;
+pub(crate) mod evm;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;
@@ -144,17 +127,6 @@ impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
 	}
 }
 
-fn db_config_dir(config: &Configuration) -> PathBuf {
-	config
-		.base_path
-		.as_ref()
-		.map(|base_path| base_path.config_dir(config.chain_spec.id()))
-		.unwrap_or_else(|| {
-			BasePath::from_project("", "", &Cli::executable_name())
-				.config_dir(config.chain_spec.id())
-		})
-}
-
 /// Starts a `ServiceBuilder` for a full service.
 ///
 /// Use this macro if you don't actually need the full service, but just the builder in order to
@@ -174,9 +146,6 @@ pub fn new_partial<RuntimeApi, BIQ>(
 			ParachainBlockImport<RuntimeApi>,
 			Option<Telemetry>,
 			Option<TelemetryWorkerHandle>,
-			Arc<FrontierBackend<Block>>,
-			FilterPool,
-			FeeHistoryCache,
 		),
 	>,
 	sc_service::Error,
@@ -196,7 +165,6 @@ where
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
-		Arc<FrontierBackend<Block>>,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
 		sc_service::Error,
@@ -248,24 +216,13 @@ where
 
 	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
 
-	// TODO: is it bad if we create these when we're not in a runtime that uses EVM?
-	let frontier_backend = Arc::new(FrontierBackend::open(
-		Arc::clone(&client),
-		&config.database,
-		&db_config_dir(config),
-	)?);
-
 	let import_queue = build_import_queue(
 		client.clone(),
 		block_import.clone(),
 		config,
 		telemetry.as_ref().map(|telemetry| telemetry.handle()),
 		&task_manager,
-		frontier_backend.clone(),
 	)?;
-
-	let filter_pool: FilterPool = Arc::new(Mutex::new(BTreeMap::new()));
-	let fee_history_cache: FeeHistoryCache = Arc::new(Mutex::new(BTreeMap::new()));
 
 	let params = PartialComponents {
 		backend,
@@ -275,14 +232,7 @@ where
 		task_manager,
 		transaction_pool,
 		select_chain: (),
-		other: (
-			block_import,
-			telemetry,
-			telemetry_worker_handle,
-			frontier_backend,
-			filter_pool,
-			fee_history_cache,
-		),
+		other: (block_import, telemetry, telemetry_worker_handle),
 	};
 
 	Ok(params)
@@ -291,18 +241,15 @@ where
 /// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
 ///
 /// This is the actual implementation that is abstract over the executor and the runtime api.
-#[allow(clippy::too_many_arguments)]
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
-async fn start_node_impl<RuntimeApi, Executor, RB, EXT, EB, BIQ, BIC, TS>(
+async fn start_node_impl<RuntimeApi, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-	ext_builder: EB,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
-	task_ext_spawner: TS,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
@@ -314,23 +261,10 @@ where
 		+ sp_block_builder::BlockBuilder<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>,
 	sc_client_api::StateBackendFor<FullBackend, Block>: sp_api::StateBackend<BlakeTwo256>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
-	EXT: Clone + 'static,
-	EB: FnOnce(
-		Arc<FullClient<RuntimeApi>>,
-		Option<substrate_prometheus_endpoint::Registry>,
-		&mut TaskManager,
-	) -> EXT,
 	RB: Fn(
 			Arc<FullClient<RuntimeApi>>,
 			Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
 			DenyUnsafe,
-			SubscriptionTaskExecutor,
-			Arc<NetworkService<Block, Hash>>,
-			Arc<FrontierBackend<Block>>,
-			FilterPool,
-			FeeHistoryCache,
-			EXT,
 		) -> Result<rpc::RpcExtension, sc_service::Error>
 		+ 'static,
 	BIQ: FnOnce(
@@ -339,7 +273,6 @@ where
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
-		Arc<FrontierBackend<Block>>,
 	) -> Result<
 		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi>>,
 		sc_service::Error,
@@ -356,27 +289,11 @@ where
 		SyncCryptoStorePtr,
 		bool,
 	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
-	TS: FnOnce(
-		&TaskManager,
-		Arc<FullClient<RuntimeApi>>,
-		Arc<TFullBackend<Block>>,
-		Arc<FrontierBackend<Block>>,
-		FeeHistoryCache,
-		FilterPool,
-		EXT,
-	),
 {
 	let parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial::<RuntimeApi, BIQ>(&parachain_config, build_import_queue)?;
-	let (
-		block_import,
-		mut telemetry,
-		telemetry_worker_handle,
-		frontier_backend,
-		filter_pool,
-		fee_history_cache,
-	) = params.other;
+	let (block_import, mut telemetry, telemetry_worker_handle) = params.other;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -417,32 +334,7 @@ where
 
 	let rpc_client = client.clone();
 	let pool = transaction_pool.clone();
-
-	let ext = ext_builder(
-		rpc_client.clone(),
-		prometheus_registry.clone(),
-		&mut task_manager,
-	);
-	let rpc_builder = {
-		let network = network.clone();
-		let ext = ext.clone();
-		let frontier_backend = frontier_backend.clone();
-		let fee_history_cache = fee_history_cache.clone();
-		let filter_pool = filter_pool.clone();
-		move |deny, subscription_task_executor| {
-			rpc_ext_builder(
-				rpc_client.clone(),
-				pool.clone(),
-				deny,
-				subscription_task_executor,
-				network.clone(),
-				frontier_backend.clone(),
-				filter_pool.clone(),
-				fee_history_cache.clone(),
-				ext.clone(),
-			)
-		}
-	};
+	let rpc_builder = { move |deny, _| rpc_ext_builder(rpc_client.clone(), pool.clone(), deny) };
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		rpc_builder: Box::new(rpc_builder),
@@ -457,16 +349,6 @@ where
 		tx_handler_controller,
 		telemetry: telemetry.as_mut(),
 	})?;
-
-	task_ext_spawner(
-		&task_manager,
-		client.clone(),
-		backend.clone(),
-		frontier_backend.clone(),
-		fee_history_cache.clone(),
-		filter_pool.clone(),
-		ext,
-	);
 
 	let announce_block = {
 		let network = network.clone();
@@ -539,7 +421,6 @@ pub fn build_altair_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
-	_: Arc<FrontierBackend<Block>>,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<altair_runtime::RuntimeApi>>,
 	sc_service::Error,
@@ -581,13 +462,12 @@ pub async fn start_altair_node(
 	collator_options: CollatorOptions,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<altair_runtime::RuntimeApi>>)> {
-	start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _, _, _, _>(
+	start_node_impl::<altair_runtime::RuntimeApi, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
 		id,
-		|_, _, _| {},
-		|client, pool, deny_unsafe, _, _, _, _, _, _| {
+		|client, pool, deny_unsafe| {
 			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -669,7 +549,6 @@ pub async fn start_altair_node(
 				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 			}))
 		},
-		|_, _, _, _, _, _, _| {},
 	)
 	.await
 }
@@ -682,7 +561,6 @@ pub fn build_centrifuge_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
-	_: Arc<FrontierBackend<Block>>,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<centrifuge_runtime::RuntimeApi>>,
 	sc_service::Error,
@@ -724,13 +602,12 @@ pub async fn start_centrifuge_node(
 	collator_options: CollatorOptions,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<centrifuge_runtime::RuntimeApi>>)> {
-	start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _, _, _, _>(
+	start_node_impl::<centrifuge_runtime::RuntimeApi, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
 		id,
-		|_, _, _| {},
-		|client, pool, deny_unsafe, _, _, _, _, _, _| {
+		|client, pool, deny_unsafe| {
 			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -812,7 +689,6 @@ pub async fn start_centrifuge_node(
 				telemetry,
 			}))
 		},
-		|_, _, _, _, _, _, _| {},
 	)
 	.await
 }
@@ -874,22 +750,11 @@ pub async fn start_development_node(
 	Arc<FullClient<development_runtime::RuntimeApi>>,
 )> {
 	let is_authority = parachain_config.role.is_authority();
-	start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _, _, _, _>(
+	evm::start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
 		id,
-		|client, prometheus_registry, task_manager| {
-			let overrides = rpc::eth::overrides_handle(client);
-			let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
-				task_manager.spawn_handle(),
-				overrides.clone(),
-				50, // eth_config.eth_log_block_cache,
-				50, // eth_config.eth_statuses_cache,
-				prometheus_registry,
-			));
-			(overrides, block_data_cache)
-		},
 		move |client,
 		      pool,
 		      deny_unsafe,
@@ -898,7 +763,8 @@ pub async fn start_development_node(
 		      frontier_backend,
 		      filter_pool,
 		      fee_history_cache,
-		      (overrides, block_data_cache)| {
+		      overrides,
+		      block_data_cache| {
 			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
@@ -1001,67 +867,6 @@ pub async fn start_development_node(
 				telemetry,
 			}))
 		},
-		|task_manager, client, backend, frontier_backend, fee_history_cache, filter_pool, (overrides, _)| spawn_frontier_tasks::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor>(task_manager, client, backend, frontier_backend, filter_pool, overrides, fee_history_cache),
 	)
 	.await
-}
-
-fn spawn_frontier_tasks<RuntimeApi, Executor>(
-	task_manager: &TaskManager,
-	client: Arc<FullClient<RuntimeApi>>,
-	backend: Arc<TFullBackend<Block>>,
-	frontier_backend: Arc<FrontierBackend<Block>>,
-	filter_pool: FilterPool,
-	overrides: Arc<OverrideHandle<Block>>,
-	fee_history_cache: FeeHistoryCache,
-) where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
-	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<
-			Block,
-			StateBackend = sc_client_api::StateBackendFor<TFullBackend<Block>, Block>,
-		> + sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ fp_rpc::EthereumRuntimeRPCApi<Block>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
-{
-	task_manager.spawn_essential_handle().spawn(
-		"frontier-mapping-sync-worker",
-		None,
-		MappingSyncWorker::new(
-			client.import_notification_stream(),
-			Duration::new(6, 0),
-			client.clone(),
-			backend,
-			frontier_backend,
-			3,
-			0,
-			SyncStrategy::Parachain,
-		)
-		.for_each(|()| future::ready(())),
-	);
-
-	// Spawn Frontier EthFilterApi maintenance task.
-	// Each filter is allowed to stay in the pool for 100 blocks.
-	const FILTER_RETAIN_THRESHOLD: u64 = 100;
-	task_manager.spawn_essential_handle().spawn(
-		"frontier-filter-pool",
-		None,
-		EthTask::filter_pool_task(client.clone(), filter_pool, FILTER_RETAIN_THRESHOLD),
-	);
-
-	// Spawn Frontier FeeHistory cache maintenance task.
-	task_manager.spawn_essential_handle().spawn(
-		"frontier-fee-history",
-		None,
-		EthTask::fee_history_task(
-			client,
-			overrides,
-			fee_history_cache,
-			2048, // TODO: fee_history_cache_limit
-		),
-	);
 }
