@@ -395,7 +395,7 @@ impl orml_asset_registry::Config for Runtime {
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
 	// NOTE: Need no weights as spamming is not possible as the
-	//       calls are only callable by `AuthorityOrigin`. In out
+	//       calls are only callable by `AuthorityOrigin`. In our
 	//       case, pallet-pools and democracy
 	type WeightInfo = ();
 }
@@ -805,7 +805,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type VotingBondFactor = VotingBond;
 	// NOTE: Benchmarks are failing with
 	//       "Error: Input("failed to submit candidacy")"
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_elections_phragmen::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1031,7 +1031,7 @@ impl pallet_bridge::Config for Runtime {
 	// NOTE: No benchmarks available.
 	//       Might need to do that if we
 	//       extend the bridge usage
-	//       For not fine.
+	//       For now fine.
 	type WeightInfo = ();
 }
 

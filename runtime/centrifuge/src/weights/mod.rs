@@ -19,6 +19,7 @@ pub mod pallet_collective;
 pub mod pallet_crowdloan_claim;
 pub mod pallet_crowdloan_reward;
 pub mod pallet_democracy;
+pub mod pallet_elections_phragmen;
 pub mod pallet_fees;
 pub mod pallet_identity;
 pub mod pallet_interest_accrual;
