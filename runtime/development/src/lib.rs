@@ -48,7 +48,7 @@ use frame_support::{
 	parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{
-		AsEnsureOriginWithArg, ConstU32, Contains, EitherOfDiverse, EqualPrivilegeOnly, FindAuthor,
+		AsEnsureOriginWithArg, ConstU32, Contains, EitherOfDiverse, EqualPrivilegeOnly,
 		InstanceFilter, LockIdentifier, PalletInfoAccess, U128CurrencyToVote, UnixTime,
 		WithdrawReasons,
 	},
@@ -56,7 +56,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 		ConstantMultiplier, Weight,
 	},
-	ConsensusEngineId, PalletId, RuntimeDebug,
+	PalletId, RuntimeDebug,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -67,9 +67,7 @@ use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::EnsureMember;
 use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
-use pallet_evm::{
-	Account as EVMAccount, AddressMapping, EnsureAddressTruncated, FeeCalculator, Runner,
-};
+use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
@@ -89,7 +87,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::ByteArray, OpaqueMetadata, H160, H256, U256};
+use sp_core::{OpaqueMetadata, H160, H256, U256};
 use sp_inherents::{CheckInherentsResult, InherentData};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -113,8 +111,8 @@ use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 pub mod xcm;
 pub use crate::xcm::*;
 
-pub mod precompiles;
-pub use crate::precompiles::CentrifugePrecompiles;
+pub mod evm;
+pub use crate::evm::precompile::CentrifugePrecompiles;
 
 mod weights;
 
@@ -1691,94 +1689,6 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
 	type WeightInfo = ();
-}
-
-const WEIGHT_PER_GAS: u64 = 20_000;
-parameter_types! {
-	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: CentrifugePrecompiles<Runtime> = CentrifugePrecompiles::<_>::new();
-	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
-}
-
-pub struct FindAuthorTruncated<F>(PhantomData<F>);
-impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
-	fn find_author<'a, I>(digests: I) -> Option<H160>
-	where
-		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
-	{
-		if let Some(author_index) = F::find_author(digests) {
-			let authority_id = Aura::authorities()[author_index as usize].clone();
-			return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]));
-		}
-		None
-	}
-}
-
-#[derive(Encode, Decode, Default)]
-struct EthereumAccount(H160);
-
-impl sp_runtime::TypeId for EthereumAccount {
-	const TYPE_ID: [u8; 4] = *b"ETH\0";
-}
-
-pub struct ExtendedAddressMapping;
-impl AddressMapping<AccountId> for ExtendedAddressMapping {
-	fn into_account_id(address: H160) -> AccountId {
-		EthereumAccount(address).into_account_truncating()
-	}
-}
-
-impl pallet_evm::Config for Runtime {
-	type AddressMapping = ExtendedAddressMapping;
-	type BlockGasLimit = BlockGasLimit;
-	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
-	type CallOrigin = EnsureAddressTruncated;
-	type ChainId = EVMChainId;
-	type Currency = Balances;
-	type FeeCalculator = BaseFee;
-	type FindAuthor = FindAuthorTruncated<Aura>;
-	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
-	type OnChargeTransaction = ();
-	type PrecompilesType = CentrifugePrecompiles<Self>;
-	type PrecompilesValue = PrecompilesValue;
-	type Runner = pallet_evm::runner::stack::Runner<Self>;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightPerGas = WeightPerGas;
-	type WithdrawOrigin = EnsureAddressTruncated;
-}
-
-impl pallet_evm_chain_id::Config for Runtime {}
-
-parameter_types! {
-	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
-	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
-}
-
-pub struct BaseFeeThreshold;
-impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
-	fn lower() -> Permill {
-		Permill::zero()
-	}
-
-	fn ideal() -> Permill {
-		Permill::from_parts(500_000)
-	}
-
-	fn upper() -> Permill {
-		Permill::from_parts(1_000_000)
-	}
-}
-
-impl pallet_base_fee::Config for Runtime {
-	type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
-	type DefaultElasticity = DefaultElasticity;
-	type RuntimeEvent = RuntimeEvent;
-	type Threshold = BaseFeeThreshold;
-}
-
-impl pallet_ethereum::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
