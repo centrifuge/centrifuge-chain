@@ -95,7 +95,7 @@ where
 	MaxTranches: Get<u32>,
 {
 	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	pub scheduled_time: Moment,
+	pub submitted_at: Moment,
 }
 
 /// A representation of a pool identifier that can be converted to an account address

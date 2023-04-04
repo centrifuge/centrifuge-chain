@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-runtime"
-version = "0.10.17"
+version = "0.10.18"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -13,6 +13,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 hex-literal = { version = "0.3.4", optional = true }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0.119", optional = true }
 static_assertions = "1.1.0"
 
 # parachain
@@ -74,6 +75,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-fe
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
@@ -96,8 +98,15 @@ pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
+pallet-investments = { path = "../../pallets/investments", default-features = false }
+pallet-keystore = { path = "../../pallets/keystore", default-features = false }
+pallet-loans-ref = { path = "../../pallets/loans-ref", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
+pallet-permissions = { path = "../../pallets/permissions", default-features = false }
+pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
+pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -120,9 +129,13 @@ std = [
   "cumulus-pallet-parachain-system/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
+  "cumulus-primitives-core/std",
   "cumulus-primitives-timestamp/std",
+  "cumulus-primitives-utility/std",
+  "frame-benchmarking/std",
   "frame-executive/std",
   "frame-support/std",
+  "frame-system-benchmarking/std",
   "frame-system-rpc-runtime-api/std",
   "frame-system/std",
   "frame-try-runtime/std",
@@ -146,11 +159,17 @@ std = [
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
   "pallet-fees/std",
-  "pallet-fees/std",
   "pallet-identity/std",
+  "pallet-interest-accrual/std",
+  "pallet-investments/std",
+  "pallet-loans-ref/std",
+  "pallet-keystore/std",
   "pallet-migration-manager/std",
   "pallet-multisig/std",
   "pallet-nft/std",
+  "pallet-permissions/std",
+  "pallet-pool-registry/std",
+  "pallet-pool-system/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
   "pallet-randomness-collective-flip/std",
@@ -161,6 +180,7 @@ std = [
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
   "pallet-treasury/std",
+  "pallet-uniques/std",
   "pallet-utility/std",
   "pallet-vesting/std",
   "pallet-xcm/std",
@@ -168,6 +188,8 @@ std = [
   "polkadot-parachain/std",
   "polkadot-runtime-common/std",
   "runtime-common/std",
+  "scale-info/std",
+  "serde",
   "sp-api/std",
   "sp-block-builder/std",
   "sp-consensus-aura/std",
@@ -183,24 +205,26 @@ std = [
   "xcm-builder/std",
   "xcm-executor/std",
   "xcm/std",
-  "cumulus-primitives-core/std",
-  "cumulus-primitives-utility/std",
-  "frame-benchmarking/std",
-  "frame-system-benchmarking/std",
-  "scale-info/std",
 ]
 
 runtime-benchmarks = [
-  "hex-literal",
-  "frame-benchmarking",
-  "frame-system-benchmarking/runtime-benchmarks",
+  "cfg-primitives/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
+  "cumulus-pallet-parachain-system/runtime-benchmarks",
+  "cumulus-pallet-xcmp-queue/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
+  "frame-system-benchmarking/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
+  "hex-literal",
+  "orml-asset-registry/runtime-benchmarks",
+  "orml-tokens/runtime-benchmarks",
+  "orml-xtokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
+  "pallet-bridge/runtime-benchmarks",
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
@@ -210,31 +234,31 @@ runtime-benchmarks = [
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
+  "pallet-interest-accrual/runtime-benchmarks",
+  "pallet-investments/runtime-benchmarks",
+  "pallet-loans-ref/runtime-benchmarks",
+  "pallet-keystore/runtime-benchmarks",
   "pallet-migration-manager/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
+  "pallet-nft/runtime-benchmarks",
+  "pallet-permissions/runtime-benchmarks",
+  "pallet-pool-registry/runtime-benchmarks",
+  "pallet-pool-system/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
   "pallet-restricted-tokens/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
+  "pallet-uniques/runtime-benchmarks",
   "pallet-utility/runtime-benchmarks",
   "pallet-vesting/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
-  "runtime-common/runtime-benchmarks",
-  "xcm-builder/runtime-benchmarks",
-  "cfg-primitives/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-  "cumulus-pallet-parachain-system/runtime-benchmarks",
-  "cumulus-pallet-xcmp-queue/runtime-benchmarks",
-  "orml-asset-registry/runtime-benchmarks",
-  "orml-tokens/runtime-benchmarks",
-  "orml-xtokens/runtime-benchmarks",
-  "pallet-bridge/runtime-benchmarks",
-  "pallet-nft/runtime-benchmarks",
   "polkadot-parachain/runtime-benchmarks",
   "polkadot-runtime-common/runtime-benchmarks",
+  "runtime-common/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "xcm-builder/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
 ]
 
@@ -242,7 +266,7 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
-  "polkadot-runtime-common/try-runtime",
+  "chainbridge/try-runtime",
   "cumulus-pallet-aura-ext/try-runtime",
   "cumulus-pallet-dmp-queue/try-runtime",
   "cumulus-pallet-parachain-system/try-runtime",
@@ -252,7 +276,6 @@ try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "frame-try-runtime",
-  "chainbridge/try-runtime",
   "orml-asset-registry/try-runtime",
   "orml-tokens/try-runtime",
   "orml-xcm/try-runtime",
@@ -272,9 +295,16 @@ try-runtime = [
   "pallet-elections-phragmen/try-runtime",
   "pallet-fees/try-runtime",
   "pallet-identity/try-runtime",
+  "pallet-interest-accrual/try-runtime",
+  "pallet-investments/try-runtime",
+  "pallet-loans-ref/try-runtime",
+  "pallet-keystore/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
   "pallet-nft/try-runtime",
+  "pallet-permissions/try-runtime",
+  "pallet-pool-registry/try-runtime",
+  "pallet-pool-system/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",
   "pallet-randomness-collective-flip/try-runtime",
@@ -284,10 +314,12 @@ try-runtime = [
   "pallet-timestamp/try-runtime",
   "pallet-transaction-payment/try-runtime",
   "pallet-treasury/try-runtime",
+  "pallet-uniques/try-runtime",
   "pallet-utility/try-runtime",
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "parachain-info/try-runtime",
+  "polkadot-runtime-common/try-runtime",
   "runtime-common/try-runtime",
 ]
 

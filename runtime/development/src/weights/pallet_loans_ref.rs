@@ -4,7 +4,7 @@
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2023-03-09, STEPS: `2`, REPEAT: 1, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! HOSTNAME: `MBP-de-Luis.home`, CPU: `<UNKNOWN>`
-//! EXECUTION: None, WASM-EXECUTION: Compiled, CHAIN: Some("development"), DB CACHE: 1024
+//! EXECUTION: None, WASM-EXECUTION: Compiled, CHAIN: Some("centrifuge"), DB CACHE: 1024
 
 // Executed Command:
 // target/release/centrifuge-chain
@@ -12,9 +12,9 @@
 // pallet
 // --pallet=pallet-loans
 // --chain
-// development
+// centrifuge
 // --extrinsic=*
-// --output=runtime/development/src/weights/pallet_loans_ref.rs
+// --output=runtime/centrifuge/src/weights/pallet_loans_ref.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]

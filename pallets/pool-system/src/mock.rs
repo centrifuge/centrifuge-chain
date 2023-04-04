@@ -80,7 +80,6 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 	type MaxRolesPerScope = MaxRoles;
-	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
@@ -378,10 +377,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		update: &Self::ScheduledUpdateDetails,
 		now: Self::Moment,
 	) -> bool {
-		if now < update.scheduled_time {
-			return false;
-		}
-
 		// The epoch in which the redemptions were fulfilled,
 		// should have closed after the scheduled time already,
 		// to ensure that investors had the `MinUpdateDelay`

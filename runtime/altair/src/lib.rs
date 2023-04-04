@@ -930,7 +930,6 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
-	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
@@ -1167,13 +1166,6 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 0;
 }
 
-// The pool benchmarks can't handle a required root origin (yet).
-// TODO: Fix those benchmarks and remove this
-#[cfg(not(feature = "runtime-benchmarks"))]
-type PoolCreateOrigin = EnsureRoot<AccountId>;
-#[cfg(feature = "runtime-benchmarks")]
-type PoolCreateOrigin = EnsureSigned<AccountId>;
-
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
@@ -1197,7 +1189,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
-	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
@@ -1222,7 +1214,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1268,22 +1260,18 @@ impl PoolUpdateGuard for UpdateGuard {
 	fn released(
 		pool: &Self::PoolDetails,
 		update: &Self::ScheduledUpdateDetails,
-		now: Self::Moment,
+		_now: Self::Moment,
 	) -> bool {
-		if now < update.scheduled_time {
-			return false;
-		}
-
-		// The epoch in which the redemptions were fulfilled,
-		// should have closed after the scheduled time already,
-		// to ensure that investors had the `MinUpdateDelay`
-		// to submit their redemption orders.
-		if now < pool.epoch.last_closed {
+		// - We check whether between the submission of the
+		//   update this call there has been an epoch close
+		//   event.
+		// - We check for greater equal in order to forbid batching
+		//   those two in one block
+		if !cfg!(feature = "runtime-benchmarks") && update.submitted_at >= pool.epoch.last_closed {
 			return false;
 		}
 
 		let pool_id = pool.tranches.of_pool();
-
 		// We do not allow releasing updates during epoch
 		// closing.
 		//
@@ -1342,7 +1330,7 @@ impl pallet_investments::Config for Runtime {
 }
 
 /// Checks whether the given `who` has the role
-/// of a `TrancehInvestor` for the given pool.
+/// of a `TrancheInvestor` for the given pool.
 pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,

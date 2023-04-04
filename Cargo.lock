@@ -961,7 +961,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.17"
+version = "0.10.18"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -1004,9 +1004,16 @@ dependencies = [
  "pallet-elections-phragmen",
  "pallet-fees",
  "pallet-identity",
+ "pallet-interest-accrual",
+ "pallet-investments",
+ "pallet-keystore",
+ "pallet-loans-ref",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
+ "pallet-permissions",
+ "pallet-pool-registry",
+ "pallet-pool-system",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
@@ -1017,6 +1024,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
+ "pallet-uniques",
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
@@ -1026,6 +1034,7 @@ dependencies = [
  "polkadot-runtime-common",
  "runtime-common",
  "scale-info",
+ "serde",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
