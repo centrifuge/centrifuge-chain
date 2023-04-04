@@ -523,7 +523,6 @@ mod utils {
 			],
 			CurrencyId::AUSD,
 			10_000 * dollar(currency_decimals::AUSD),
-			None
 		));
 	}
 }

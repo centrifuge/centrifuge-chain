@@ -165,7 +165,6 @@ pub trait PoolMutate<AccountId, PoolId> {
 		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
-		metadata: Option<Vec<u8>>,
 	) -> DispatchResult;
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;

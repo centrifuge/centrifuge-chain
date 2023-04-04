@@ -278,7 +278,6 @@ pub fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = Currency
 		tranches,
 		CurrencyId::AUSD,
 		MAX_RESERVE,
-		None,
 	)
 }
 

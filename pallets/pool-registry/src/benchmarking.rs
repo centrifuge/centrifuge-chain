@@ -102,7 +102,6 @@ benchmarks! {
 		assert_eq!(pool.reserve.total, Zero::zero());
 		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
 		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
-		assert_eq!(pool.metadata, None);
 	}
 
 	update_no_execution {
@@ -198,14 +197,14 @@ benchmarks! {
 	}
 
 	set_metadata {
-		let n in 0..<T as pallet_pool_system::Config>::MaxSizeMetadata::get();
+		let n in 0..<T as Config>::MaxSizeMetadata::get();
 		let caller: <T as frame_system::Config>::AccountId = create_admin::<T>(0);
 		prepare_asset_registry::<T>();
 		create_pool::<T>(2, caller.clone())?;
 		let metadata = vec![0u8; n as usize];
 	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
 	verify {
-		let metadata: BoundedVec<u8, <T as pallet_pool_system::Config>::MaxSizeMetadata> = metadata.try_into().unwrap();
+		let metadata: BoundedVec<u8, <T as Config>::MaxSizeMetadata> = metadata.try_into().unwrap();
 		assert_eq!(get_pool_metadata::<T>().metadata, metadata);
 	}
 }

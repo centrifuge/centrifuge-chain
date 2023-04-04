@@ -98,7 +98,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
-		metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -136,17 +135,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			tranche_inputs.clone(),
 			now,
 		)?;
-
-		let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
-			Some(metadata_value) => {
-				let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
-					.try_into()
-					.map_err(|_| Error::<T>::BadMetadata)?;
-
-				Some(checked)
-			}
-			None => None,
-		};
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
 			let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
@@ -192,7 +180,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				available: Zero::zero(),
 				total: Zero::zero(),
 			},
-			metadata: checked_metadata,
 		};
 
 		Pool::<T>::insert(pool_id, pool_details.clone());
@@ -454,7 +441,6 @@ mod benchmarks_utils {
 				],
 				CurrencyId::AUSD,
 				FUNDS.into(),
-				None,
 			)
 			.unwrap();
 

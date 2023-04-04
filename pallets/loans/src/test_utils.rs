@@ -162,7 +162,6 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 		],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
-		None
 	));
 
 	let account: <T as frame_system::Config>::AccountId =
