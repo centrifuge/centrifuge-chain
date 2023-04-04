@@ -488,7 +488,7 @@ pub mod pallet {
 				Some(AllowanceMetadata {
 					once_modifiable_after: Some(modifiable_at),
 					..
-				}) if modifiable_at < current_block => Err(DispatchError::from(Error::<T>::DelayUnmodifiable)),
+				}) if current_block < modifiable_at => Err(DispatchError::from(Error::<T>::DelayUnmodifiable)),
 				Some(metadata) => {
 					<AccountCurrencyTransferCountDelay<T>>::insert(
 						&account_id,

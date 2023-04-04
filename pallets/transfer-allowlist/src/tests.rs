@@ -754,6 +754,114 @@ fn purge_allowance_delay_fails_if_modifiable_at_not_reached() {
 	})
 }
 
+#[test]
+fn update_allowance_delay_fails_if_no_delay() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			TransferAllowList::update_allowance_delay(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A,
+				200u64
+			),
+			Error::<Runtime>::NoMatchingDelay
+		);
+	})
+}
+
+#[test]
+fn update_allowance_delay_fails_if_modifiable_after_not_set() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			10u64
+		));
+		advance_n_blocks(15);
+		assert_noop!(
+			TransferAllowList::update_allowance_delay(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A,
+				20
+			),
+			Error::<Runtime>::DelayUnmodifiable
+		);
+	})
+}
+
+#[test]
+fn update_allowance_delay_fails_if_modifiable_after_not_reached() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			20u64
+		));
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
+		advance_n_blocks(15);
+		assert_noop!(
+			TransferAllowList::update_allowance_delay(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A,
+				20
+			),
+			Error::<Runtime>::DelayUnmodifiable
+		);
+	})
+}
+
+#[test]
+fn update_allowance_delay_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(TransferAllowList::add_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			10u64
+		));
+
+		assert_ok!(
+			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
+				RuntimeOrigin::signed(SENDER),
+				CurrencyId::A
+			)
+		);
+		advance_n_blocks(12);
+		assert_ok!(TransferAllowList::update_allowance_delay(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			20
+		));
+
+		// verify val in storage
+		assert_eq!(
+			TransferAllowList::get_account_currency_restriction_count_delay(SENDER, CurrencyId::A),
+			Some(AllowanceMetadata {
+				allowance_count: 0,
+				current_delay: Some(20u64),
+				once_modifiable_after: None
+			})
+		);
+
+		// note:
+		// event 0 is in new_ext_test setup -- fee key setup
+		// event 1 is delay creation
+		// event 2 is initial set modifiable
+		// verify event deposited
+		assert_eq!(
+			System::events()[3].event,
+			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayUpdate {
+				sender_account_id: SENDER,
+				currency_id: CurrencyId::A,
+				delay: 20
+			})
+		)
+	})
+}
+
 fn advance_n_blocks(n: u64) {
 	match n {
 		n if n > 0 => {
