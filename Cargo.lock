@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.25"
+version = "0.10.26"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
