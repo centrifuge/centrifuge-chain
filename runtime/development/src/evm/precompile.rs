@@ -14,6 +14,9 @@ impl<R> CentrifugePrecompiles<R> {
 	}
 }
 
+// 1025 is chosen for compatibility with Moonbeam
+const DISPATCH_ADDR: H160 = addr(1025);
+
 impl<R> PrecompileSet for CentrifugePrecompiles<R>
 where
 	R: pallet_evm::Config,
@@ -21,8 +24,7 @@ where
 	<R::RuntimeCall as Dispatchable>::RuntimeOrigin: From<Option<R::AccountId>>,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
-		// 1025 is chosen for compatibility with Moonbeam
-		if handle.code_address() == addr(1025) {
+		if handle.code_address() == DISPATCH_ADDR {
 			Some(pallet_evm_precompile_dispatch::Dispatch::<R>::execute(
 				handle,
 			))
@@ -32,10 +34,13 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		address == addr(1025)
+		address == DISPATCH_ADDR
 	}
 }
 
-fn addr(a: u64) -> H160 {
-	H160::from_low_u64_be(a)
+const fn addr(a: u64) -> H160 {
+	let b = a.to_be_bytes();
+	H160([
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+	])
 }
