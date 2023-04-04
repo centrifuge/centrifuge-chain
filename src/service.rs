@@ -775,7 +775,7 @@ pub async fn start_development_node(
 			module
 				.merge(Rewards::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			let eth_deps = rpc::eth::Deps {
+			let eth_deps = rpc::evm::Deps {
 				client,
 				pool: pool.clone(),
 				graph: pool.pool().clone(),
@@ -792,7 +792,7 @@ pub async fn start_development_node(
 				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
 				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
 			};
-			let module = rpc::eth::create(module, eth_deps, subscription_task_executor)?;
+			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
 		},
 		build_development_import_queue,

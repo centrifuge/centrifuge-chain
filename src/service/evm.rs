@@ -351,7 +351,7 @@ where
 	let rpc_client = client.clone();
 	let pool = transaction_pool.clone();
 
-	let overrides = rpc::eth::overrides_handle(client.clone());
+	let overrides = rpc::evm::overrides_handle(client.clone());
 	let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
 		task_manager.spawn_handle(),
 		overrides.clone(),
