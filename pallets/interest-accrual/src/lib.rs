@@ -182,7 +182,7 @@ pub enum Release {
 
 impl Default for Release {
 	fn default() -> Self {
-		Self::V0
+		Self::V2
 	}
 }
 
