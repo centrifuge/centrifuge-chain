@@ -94,7 +94,12 @@ pub mod v2 {
 			.map_err(|_| "Error decoding pre-upgrade state")?;
 
 			for (rate_per_sec, old_rate) in old_rates.into_iter().flatten() {
-				let new_rate = Pallet::<T>::get_rate(rate_per_sec)
+				let rate_per_year = rate_per_sec
+					.checked_sub(&One::one())
+					.unwrap()
+					.saturating_mul(T::InterestRate::saturating_from_integer(SECONDS_PER_YEAR));
+
+				let new_rate = Pallet::<T>::get_rate(rate_per_year)
 					.map_err(|_| "Expected rate not found in new state")?;
 				if new_rate.accumulated_rate != old_rate.accumulated_rate {
 					return Err("Accumulated rate was not correctly migrated");

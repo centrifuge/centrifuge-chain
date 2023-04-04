@@ -36,6 +36,7 @@
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active loans.
 
+pub mod migrations;
 pub mod types;
 pub mod valuation;
 
@@ -93,8 +94,11 @@ pub mod pallet {
 		<T as Config>::CurrencyId,
 	>>::PoolId;
 
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	#[pallet::pallet]
-	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -346,12 +350,12 @@ pub mod pallet {
 		}
 	}
 
-	/// Creates a new loan against the collateral provided
-	///
-	/// The origin must be the owner of the collateral.
-	/// This collateral will be transferred to the existing pool.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Creates a new loan against the collateral provided
+		///
+		/// The origin must be the owner of the collateral.
+		/// This collateral will be transferred to the existing pool.
 		#[pallet::weight(T::WeightInfo::create())]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -519,7 +523,7 @@ pub mod pallet {
 
 			let status = WriteOffStatus {
 				percentage,
-				penalty: Self::to_rate_per_sec(penalty)?,
+				penalty,
 			};
 
 			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
@@ -582,16 +586,11 @@ pub mod pallet {
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			mut policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
+			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
 			Self::ensure_pool_exists(pool_id)?;
-
-			policy.iter_mut().try_for_each(|state| -> DispatchResult {
-				state.penalty = Self::to_rate_per_sec(state.penalty)?;
-				Ok(())
-			})?;
 
 			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
 
@@ -670,10 +669,6 @@ pub mod pallet {
 				last_loan_id.ensure_add_assign(One::one())?;
 				Ok(*last_loan_id)
 			})
-		}
-
-		fn to_rate_per_sec(rate_per_year: T::Rate) -> Result<T::Rate, DispatchError> {
-			T::InterestAccrual::convert_additive_rate_to_per_sec(rate_per_year)
 		}
 
 		fn find_write_off_state(

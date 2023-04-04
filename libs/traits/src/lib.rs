@@ -231,27 +231,16 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
 	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
 
-	/// Calculate the current debt using normalized debt * cumulative rate
-	fn current_debt(
-		interest_rate_per_sec: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Balance, DispatchError>;
-
-	/// Calculate a previous debt using normalized debt * previous cumulative rate
-	///
-	/// If `when` is further in the past than the last time the
-	/// normalized debt was adjusted, this will return nonsense
-	/// (effectively "rewinding the clock" to before the value was
-	/// valid)
-	fn previous_debt(
-		interest_rate_per_sec: InterestRate,
+	/// Calculate the debt at an specific moment
+	fn calculate_debt(
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt
 	fn adjust_normalized_debt(
-		interest_rate_per_sec: InterestRate,
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
@@ -263,23 +252,14 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
-	/// Indicate that a yearly rate is in use
-	///
-	/// Validates that the rate is allowed, and converts it to a per-second rate for future operations
-	fn reference_yearly_rate(
-		interest_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
-
-	/// Indicate that a rate is in use
-	fn reference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
+	/// Validate and indicate that a yearly rate is in use
+	fn reference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
 	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
+	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
-	/// Verifies a yearly additive rate and converts it to a per-second additive rate
-	fn convert_additive_rate_to_per_sec(
-		interset_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
+	/// Ask if the rate is valid to use by the implementation
+	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
 	/// Returns a collection of pre-computed rates to perform multiple operations with
 	fn rates() -> Self::Rates;
