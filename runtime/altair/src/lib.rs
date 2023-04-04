@@ -1485,6 +1485,7 @@ pub type Executive = frame_executive::Executive<
 	(
 		pallet_interest_accrual::migrations::v2::Migration<Runtime>,
 		pallet_loans_ref::migrations::NukeMigration<Runtime>,
+		pallet_pool_system::migrations::v1::Migration<Runtime, MaxSizeMetadata>,
 	),
 >;
 
