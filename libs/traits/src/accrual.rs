@@ -66,10 +66,12 @@ where
 	<Self as RateCollection>::Moment: EnsureSub + Ord + Zero + Into<usize>,
 	Debt: FixedPointOperand + EnsureAdd + EnsureSub,
 {
+	/// Get the current debt for that locator
 	fn current_debt(locator: Self::Locator, norm_debt: Debt) -> Result<Debt, DispatchError> {
 		Self::calculate_debt(locator, norm_debt, Self::last_updated())
 	}
 
+	/// Calculate the debt for that locator at an instant
 	fn calculate_debt(
 		locator: Self::Locator,
 		norm_debt: Debt,
@@ -87,21 +89,19 @@ where
 				rate.acc.ensure_div(rate_adjustment)?
 			}
 			Ordering::Greater => {
-				return Err(DispatchError::Other("Invalid precondition: when <= now"))
+				return Err(DispatchError::Other("Precondition broken: when <= now"))
 			}
 		};
 
 		Ok(acc.ensure_mul_int(norm_debt)?)
 	}
 
-	fn adjust_debt<Amount>(
+	/// Increase or decrease the amount, returing the new normalized debt
+	fn adjust_debt<Amount: Into<Debt>>(
 		locator: Self::Locator,
 		norm_debt: Debt,
 		adjustment: Adjustment<Amount>,
-	) -> Result<Debt, DispatchError>
-	where
-		Amount: Into<Debt>,
-	{
+	) -> Result<Debt, DispatchError> {
 		let rate = Self::rate(locator)?;
 
 		let old_debt = rate.acc.ensure_mul_int(norm_debt)?;
@@ -115,6 +115,7 @@ where
 			.ensure_mul_int(new_debt)?)
 	}
 
+	/// Re-normalize a debt for a new interest rate, returing the new normalize_debt
 	fn normalize_debt(
 		old_locator: Self::Locator,
 		new_locator: Self::Locator,
