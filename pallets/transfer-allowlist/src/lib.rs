@@ -227,6 +227,8 @@ pub mod pallet {
 		DelayUnmodifiable,
 		/// Attempted to clear active allowance
 		AllowanceHasNotExpired,
+		/// Transfer from sending account and currency not allowed to destination
+		NoAllowanceForDestination,
 	}
 
 	#[pallet::event]
@@ -717,7 +719,7 @@ pub mod pallet {
 			send: T::AccountId,
 			receive: Self::Location,
 			currency: T::CurrencyId,
-		) -> Result<bool, DispatchError> {
+		) -> DispatchResult {
 			match Self::get_account_currency_restriction_count_delay(&send, &currency) {
 				Some(AllowanceMetadata {
 					allowance_count: count,
@@ -728,13 +730,13 @@ pub mod pallet {
 						Some(AllowanceDetails {
 							allowed_at,
 							blocked_at,
-						}) if current_block >= allowed_at && current_block < blocked_at => Ok(true),
-						_ => Ok(false),
+						}) if current_block >= allowed_at && current_block < blocked_at => Ok(()),
+						_ => Err(DispatchError::from(Error::<T>::NoAllowanceForDestination)),
 					}
 				}
 				// In this case no allowances are set for the sending account & currency,
 				// therefore no restrictions should be in place.
-				_ => Ok(true),
+				_ => Ok(()),
 			}
 		}
 	}

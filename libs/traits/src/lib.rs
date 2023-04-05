@@ -628,5 +628,5 @@ pub trait TransferAllowance<AccountId> {
 		send: AccountId,
 		recieve: Self::Location,
 		currency: Self::CurrencyId,
-	) -> Result<bool, DispatchError>;
+	) -> DispatchResult;
 }

@@ -1,5 +1,5 @@
 use cfg_types::locations::Location;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_runtime::traits::Header;
 
 use super::*;
@@ -147,7 +147,7 @@ fn transfer_allowance_allows_correctly_with_allowance_set() {
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
-			Ok(true)
+			Ok(())
 		)
 	})
 }
@@ -160,9 +160,9 @@ fn transfer_allowance_blocks_when_account_not_allowed() {
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
-		assert_eq!(
+		assert_err!(
 			TransferAllowList::allowance(SENDER.into(), 55u64.into(), CurrencyId::A),
-			Ok(false)
+			Error::<Runtime>::NoAllowanceForDestination,
 		)
 	})
 }
@@ -181,9 +181,9 @@ fn transfer_allowance_blocks_correctly_when_before_start_block() {
 			CurrencyId::A,
 			ACCOUNT_RECEIVER.into(),
 		));
-		assert_eq!(
+		assert_err!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
-			Ok(false)
+			Error::<Runtime>::NoAllowanceForDestination,
 		)
 	})
 }
@@ -198,7 +198,7 @@ fn transfer_allowance_blocks_correctly_when_after_blocked_at_block() {
 		));
 		assert_eq!(
 			TransferAllowList::allowance(SENDER.into(), ACCOUNT_RECEIVER.into(), CurrencyId::A),
-			Ok(true)
+			Ok(())
 		)
 	})
 }
