@@ -23,15 +23,15 @@ use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
 };
-use codec::HasCompact;
+use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
-	pallet_prelude::*,
+	ensure,
 	traits::{
 		fungibles::{Inspect, Mutate, Transfer},
 		ReservableCurrency, UnixTime,
 	},
-	transactional, BoundedVec,
+	transactional, BoundedVec, RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
 pub use impls::*;
@@ -51,9 +51,10 @@ pub use solution::*;
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Saturating, Zero,
+		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Get, One, Saturating,
+		Zero,
 	},
-	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
+	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
 use tranches::{
@@ -66,6 +67,7 @@ pub use weights::*;
 pub mod benchmarking;
 mod impls;
 
+pub mod migrations;
 #[cfg(test)]
 mod mock;
 pub mod pool_types;
@@ -121,7 +123,6 @@ pub type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::EpochId,
 	<T as Config>::Balance,
 	<T as Config>::Rate,
-	<T as Config>::MaxSizeMetadata,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
@@ -166,6 +167,19 @@ pub type PoolEssenceOf<T> = PoolEssence<
 	<T as Config>::MaxTokenSymbolLength,
 >;
 
+#[derive(Encode, Decode, TypeInfo, PartialEq, Eq, MaxEncodedLen, RuntimeDebug)]
+#[repr(u32)]
+pub enum Release {
+	V0,
+	V1,
+}
+
+impl Default for Release {
+	fn default() -> Self {
+		Self::V0
+	}
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::{OrderManager, PoolUpdateGuard, TrancheCurrency as TrancheCurrencyT};
@@ -173,7 +187,9 @@ pub mod pallet {
 		orders::{FulfillmentWithPrice, TotalOrder},
 		tokens::CustomMetadata,
 	};
-	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
+	use frame_support::{
+		pallet_prelude::*, sp_runtime::traits::Convert, traits::Contains, PalletId,
+	};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 	use super::*;
@@ -319,10 +335,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinUpdateDelay: Get<u64>;
 
-		/// Max size of Metadata
-		#[pallet::constant]
-		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
-
 		/// Max length for a tranche token name
 		#[pallet::constant]
 		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
@@ -372,6 +384,10 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn pool_deposits)]
 	pub type PoolDeposit<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDepositOf<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn storage_version)]
+	pub type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -455,8 +471,6 @@ pub mod pallet {
 		/// Pre-requirements for a TrancheUpdate are not met
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
-		/// Invalid metadata passed
-		BadMetadata,
 		/// No metada for the given currency found
 		MetadataForCurrencyNotFound,
 		/// The given tranche token name exceeds the length limit

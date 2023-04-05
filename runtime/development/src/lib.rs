@@ -951,7 +951,14 @@ parameter_types! {
 	/// The index with which this pallet is instantiated in this runtime.
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
-	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
+		// Dissable update delay in benchmarks
+		0
+	} else {
+		// Same as Lower bound for epochs.
+		1
+	};
+
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
 		// Disable challenge time in benchmarks
 		0
@@ -987,7 +994,6 @@ impl pallet_pool_system::Config for Runtime {
 	type EpochId = PoolEpochId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
@@ -1054,7 +1060,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		u32,
 		Balance,
 		Rate,
-		MaxSizeMetadata,
 		TrancheWeight,
 		TrancheId,
 		PoolId,
@@ -1070,22 +1075,18 @@ impl PoolUpdateGuard for UpdateGuard {
 	fn released(
 		pool: &Self::PoolDetails,
 		update: &Self::ScheduledUpdateDetails,
-		now: Self::Moment,
+		_now: Self::Moment,
 	) -> bool {
-		if now < update.scheduled_time {
-			return false;
-		}
-
-		// The epoch in which the redemptions were fulfilled,
-		// should have closed after the scheduled time already,
-		// to ensure that investors had the `MinUpdateDelay`
-		// to submit their redemption orders.
-		if now < pool.epoch.last_closed {
+		// - We check whether between the submission of the
+		//   update this call there has been an epoch close
+		//   event.
+		// - We check for greater equal in order to forbid batching
+		//   those two in one block
+		if !cfg!(feature = "runtime-benchmarks") && update.submitted_at >= pool.epoch.last_closed {
 			return false;
 		}
 
 		let pool_id = pool.tranches.of_pool();
-
 		// We do not allow releasing updates during epoch
 		// closing.
 		//
@@ -1304,7 +1305,6 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
-	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
@@ -1573,7 +1573,7 @@ impl pallet_investments::Config for Runtime {
 }
 
 /// Checks whether the given `who` has the role
-/// of a `TrancehInvestor` for the given pool.
+/// of a `TrancheInvestor` for the given pool.
 pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,

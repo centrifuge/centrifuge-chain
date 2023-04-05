@@ -28,6 +28,7 @@ pallet-pool-system = { path = "../pool-system", default-features = false }
 # Benchmarking dependencies - optional
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.37" }
 pallet-investments = { path = "../investments", default-features = false, optional = true }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.37" }
 
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -58,6 +59,7 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "pallet-timestamp/runtime-benchmarks",
 ]
 std = [
   "codec/std",

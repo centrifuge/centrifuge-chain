@@ -20,7 +20,8 @@
 
 pub use cfg_primitives::{constants::*, types::*};
 use cfg_traits::{
-	OrderManager, Permissions as PermissionsT, PoolUpdateGuard, PreConditions, TrancheCurrency as _,
+	OrderManager, Permissions as PermissionsT, PoolNAV, PoolUpdateGuard, PreConditions,
+	TrancheCurrency as _,
 };
 pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
@@ -443,10 +444,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
-					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
-					RuntimeCall::Loans(pallet_loans::Call::update_nav{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
 					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
@@ -929,7 +930,6 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRolesPerPool;
-	type MaxTranches = MaxTranches;
 	type Role = Role<TrancheId, Moment>;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
@@ -1099,26 +1099,25 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
-	pub const MaxWriteOffGroups: u32 = 100;
+	pub const MaxWriteOffPolicySize: u32 = 100;
 }
 
-impl pallet_loans::Config for Runtime {
+impl pallet_loans_ref::Config for Runtime {
 	type Balance = Balance;
-	type BlockNumberProvider = System;
-	type ClassId = CollectionId;
+	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;
-	type LoanId = ItemId;
-	type LoansPalletId = LoansPalletId;
+	type ItemId = ItemId;
+	type LoanId = LoanId;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
-	type Permission = Permissions;
+	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_loans_ref::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1167,13 +1166,6 @@ parameter_types! {
 	pub const PoolDeposit: Balance = 0;
 }
 
-// The pool benchmarks can't handle a required root origin (yet).
-// TODO: Fix those benchmarks and remove this
-#[cfg(not(feature = "runtime-benchmarks"))]
-type PoolCreateOrigin = EnsureRoot<AccountId>;
-#[cfg(feature = "runtime-benchmarks")]
-type PoolCreateOrigin = EnsureSigned<AccountId>;
-
 impl pallet_pool_system::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
@@ -1185,7 +1177,6 @@ impl pallet_pool_system::Config for Runtime {
 	type EpochId = PoolEpochId;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTrancheNameLengthBytes;
 	type MaxTokenSymbolLength = MaxTrancheSymbolLengthBytes;
 	type MaxTranches = MaxTranches;
@@ -1197,7 +1188,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PalletIndex = PoolPalletIndex;
 	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
-	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
@@ -1222,7 +1213,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = PoolCreateOrigin;
+	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1252,7 +1243,6 @@ impl PoolUpdateGuard for UpdateGuard {
 		u32,
 		Balance,
 		Rate,
-		MaxSizeMetadata,
 		TrancheWeight,
 		TrancheId,
 		PoolId,
@@ -1268,22 +1258,18 @@ impl PoolUpdateGuard for UpdateGuard {
 	fn released(
 		pool: &Self::PoolDetails,
 		update: &Self::ScheduledUpdateDetails,
-		now: Self::Moment,
+		_now: Self::Moment,
 	) -> bool {
-		if now < update.scheduled_time {
-			return false;
-		}
-
-		// The epoch in which the redemptions were fulfilled,
-		// should have closed after the scheduled time already,
-		// to ensure that investors had the `MinUpdateDelay`
-		// to submit their redemption orders.
-		if now < pool.epoch.last_closed {
+		// - We check whether between the submission of the
+		//   update this call there has been an epoch close
+		//   event.
+		// - We check for greater equal in order to forbid batching
+		//   those two in one block
+		if !cfg!(feature = "runtime-benchmarks") && update.submitted_at >= pool.epoch.last_closed {
 			return false;
 		}
 
 		let pool_id = pool.tranches.of_pool();
-
 		// We do not allow releasing updates during epoch
 		// closing.
 		//
@@ -1342,7 +1328,7 @@ impl pallet_investments::Config for Runtime {
 }
 
 /// Checks whether the given `who` has the role
-/// of a `TrancehInvestor` for the given pool.
+/// of a `TrancheInvestor` for the given pool.
 pub struct IsTrancheInvestor<P, T>(PhantomData<(P, T)>);
 impl<
 		P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
@@ -1443,7 +1429,7 @@ construct_runtime!(
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 97,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 99,
-		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
+		Loans: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 102,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
@@ -1497,11 +1483,9 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	AllPalletsWithSystem,
 	(
-		pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-		pallet_preimage::migration::v1::Migration<Runtime>,
-		pallet_democracy::migrations::v1::Migration<Runtime>,
-		pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
 		pallet_interest_accrual::migrations::v2::Migration<Runtime>,
+		pallet_loans_ref::migrations::NukeMigration<Runtime>,
+		pallet_pool_system::migrations::v1::Migration<Runtime, MaxSizeMetadata>,
 	),
 >;
 
@@ -1629,11 +1613,9 @@ impl_runtime_apis! {
 		}
 
 		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
-			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
-			let mut pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
-			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
-				.ok()
-				.map(|(latest, _)| latest.into())?;
+			let now = <Timestamp as UnixTime>::now().as_secs();
+			let mut pool = PoolSystem::pool(pool_id)?;
+			let nav = Loans::update_nav(pool_id).ok()?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			let index: usize = pool.tranches.tranche_index(&tranche)?.try_into().ok()?;
 			let prices = pool
@@ -1644,11 +1626,9 @@ impl_runtime_apis! {
 		}
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
-			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
-			let mut pool = pallet_pool_system::Pool::<Runtime>::get(pool_id)?;
-			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
-				.ok()
-				.map(|(latest, _)| latest.into())?;
+			let now = <Timestamp as UnixTime>::now().as_secs();
+			let mut pool = PoolSystem::pool(pool_id)?;
+			let nav = Loans::update_nav(pool_id).ok()?;
 			let total_assets = pool.reserve.total.saturating_add(nav);
 			pool
 				.tranches
@@ -1683,7 +1663,6 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
-			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1721,7 +1700,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
-			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_loans_ref, Loans);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 
@@ -1755,11 +1734,6 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			use pallet_loans::benchmarking::Pallet as LoansPallet;
-			impl pallet_loans::benchmarking::Config for Runtime {
-				type IM = Investments;
-			}
-
 			// It should be called Anchors to make the runtime_benchmarks.sh script works
 			type Anchors = Anchor;
 
@@ -1790,7 +1764,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
-			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_loans_ref, Loans);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 

@@ -296,7 +296,6 @@ impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = AdminOrigin;
 	type Editors = Editors;
 	type MaxRolesPerScope = MaxRoles;
-	type MaxTranches = MaxTranches;
 	type Role = Role;
 	type RuntimeEvent = RuntimeEvent;
 	type Scope = Scope;

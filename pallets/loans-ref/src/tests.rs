@@ -999,10 +999,7 @@ mod write_off_loan {
 			assert_eq!(
 				WriteOffStatus {
 					percentage: Rate::from_float(POLICY_PERCENTAGE),
-					penalty: Rate::from_float(
-						// TODO: Simplify when issue #1189 is merged
-						POLICY_PENALTY / cfg_primitives::SECONDS_PER_YEAR as f64
-					),
+					penalty: Rate::from_float(POLICY_PENALTY),
 				},
 				*util::get_loan(loan_id).write_off_status()
 			);
@@ -1037,10 +1034,7 @@ mod write_off_loan {
 			assert_eq!(
 				WriteOffStatus {
 					percentage: Rate::from_float(POLICY_PERCENTAGE + 0.1),
-					penalty: Rate::from_float(
-						// TODO: Simplify when issue #1189 is merged
-						(POLICY_PENALTY + 0.1) / cfg_primitives::SECONDS_PER_YEAR as f64
-					),
+					penalty: Rate::from_float(POLICY_PENALTY + 0.1),
 				},
 				*util::get_loan(loan_id).write_off_status()
 			);

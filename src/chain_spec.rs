@@ -867,6 +867,7 @@ fn centrifuge_genesis(
 			threshold: 1,
 		},
 		treasury: Default::default(),
+		interest_accrual: Default::default(),
 	}
 }
 
