@@ -31,7 +31,7 @@ impl PoolState {
 	///
 	/// NOTE:
 	/// * This will switch a PoolState::Healthy -> PoolState::Unhealthy(_) and vice versa
-	/// * If an already unhealthy state is updated, the new Vec<UnhealthyState> inside the
+	/// * If an already unhealthy state is updated, the new `Vec<UnhealthyState>` inside the
 	///   enum will be **overwritten** with the newly passed unhealthy states.
 	///   -> Use `add_unhealthy` or `rm_unhealthy` if the other states should be kept.
 	pub fn update(&mut self, update: PoolState) -> &mut Self {
