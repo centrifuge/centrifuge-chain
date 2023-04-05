@@ -454,10 +454,12 @@ mod utils {
 			RuntimeOrigin::root(),
 			Domain::EVM(1284),
 			Router::Xcm(XcmDomain {
-				location: Box::new(moonbeam_location
-					.clone()
-					.try_into()
-					.expect("Bad xcm version")),
+				location: Box::new(
+					moonbeam_location
+						.clone()
+						.try_into()
+						.expect("Bad xcm version")
+				),
 				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 				contract_address: H160::from(
 					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
