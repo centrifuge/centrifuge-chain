@@ -238,11 +238,36 @@ impl Maturity {
 	}
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum CalendarEvent {
+	/// At the end of the period, e.g. the last day of the month for a monthly period
+	End,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum InterestReferenceDate {
+	/// Interest payments are expected every period based on an event, e.g. the end of the period
+	/// E.g. if the period is monthly and the origination date is Mar 3, the first interest
+	/// payment is expected on Mar 31.
+	CalendarDate { event: CalendarEvent },
+
+	/// Interest payments are expected every period relative to the origination date.
+	/// E.g. if the period is monthly and the origination date is Mar 3, the first interest
+	/// payment is expected on Apr 3.
+	OriginationDate,
+}
+
 /// Interest payment periods
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum InterestPayments {
 	/// All interest is expected to be paid at the maturity date
 	None,
+	
+	// Interest payments are expected monthly
+	Monthly { reference: InterestReferenceDate },
+	
+	// Interest payments are expected twice per year
+	SemiAnnually { reference: InterestReferenceDate },
 }
 
 /// Specify the paydown schedules of the loan
@@ -354,6 +379,11 @@ where
 
 		ensure!(
 			self.schedule.is_valid(now),
+			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
+		);
+
+		ensure!(
+			self.valuation_method != ValuationMethod::DiscountedCashFlow || self.schedule.interest_payments == InterestPayments::None,
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
