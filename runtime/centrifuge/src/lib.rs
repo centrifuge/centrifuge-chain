@@ -1143,7 +1143,7 @@ parameter_types! {
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
-		0 // Dissable update delay in benchmarks
+		0 // Disable update delay in benchmarks
 	} else {
 		7 * SECONDS_PER_DAY // 7 days notice
 	};

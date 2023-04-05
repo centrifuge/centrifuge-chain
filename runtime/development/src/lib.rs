@@ -952,7 +952,7 @@ parameter_types! {
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
-		// Dissable update delay in benchmarks
+		// Disable update delay in benchmarks
 		0
 	} else {
 		// Same as Lower bound for epochs.
