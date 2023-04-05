@@ -135,7 +135,7 @@ use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
-use sp_std::vec::Vec;
+use sp_std::{cmp::Ordering, vec::Vec};
 
 pub mod migrations;
 pub mod weights;
@@ -290,8 +290,8 @@ pub mod pallet {
 		fn on_initialize(_: T::BlockNumber) -> Weight {
 			let then = LastUpdated::<T>::get();
 			let now = Self::now();
-			LastUpdated::<T>::set(Self::now());
-			let delta = Self::now() - then;
+			LastUpdated::<T>::set(now);
+			let delta = now - then;
 			let bits = Moment::BITS - delta.leading_zeros();
 
 			// reads: timestamp, last updated, rates vec
@@ -335,30 +335,35 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn get_current_debt(
-			interest_rate_per_year: T::InterestRate,
-			normalized_debt: T::Balance,
-		) -> Result<T::Balance, DispatchError> {
-			let rate = Self::get_rate(interest_rate_per_year)?;
-			Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-				.ok_or_else(|| Error::<T>::DebtCalculationFailed.into())
-		}
-
-		pub fn get_previous_debt(
+		/// Calculate fastly the current debt using normalized debt * cumulative rate if
+		/// `when` is exactly `now` (same block). If when is in the past it recomputes
+		/// the previous cumulative rate.
+		///
+		/// If `when` is further in the past than the last time the
+		/// normalized debt was adjusted, this will return nonsense
+		/// (effectively "rewinding the clock" to before the value was
+		/// valid)
+		pub fn get_debt(
 			interest_rate_per_year: T::InterestRate,
 			normalized_debt: T::Balance,
 			when: Moment,
 		) -> Result<T::Balance, DispatchError> {
 			let rate = Self::get_rate(interest_rate_per_year)?;
 			let now = LastUpdated::<T>::get();
-			if when > now {
-				return Err(Error::<T>::NotInPast.into());
-			}
-			let delta = now - when;
-			let rate_adjustment = checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
-				.ok_or(ArithmeticError::Overflow)?;
-			let past_rate = rate.accumulated_rate.ensure_div(rate_adjustment)?;
-			Self::calculate_debt(normalized_debt, past_rate)
+
+			let acc_rate = match when.cmp(&now) {
+				Ordering::Equal => rate.accumulated_rate,
+				Ordering::Less => {
+					let delta = now.ensure_sub(when)?;
+					let rate_adjustment =
+						checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
+							.ok_or(ArithmeticError::Overflow)?;
+					rate.accumulated_rate.ensure_div(rate_adjustment)?
+				}
+				Ordering::Greater => return Err(Error::<T>::NotInPast.into()),
+			};
+
+			Self::calculate_debt(normalized_debt, acc_rate)
 				.ok_or_else(|| Error::<T>::DebtCalculationFailed.into())
 		}
 
@@ -510,19 +515,12 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 	type NormalizedDebt = T::Balance;
 	type Rates = RateVec<T>;
 
-	fn current_debt(
-		interest_rate_per_year: T::InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<T::Balance, DispatchError> {
-		Pallet::<T>::get_current_debt(interest_rate_per_year, normalized_debt)
-	}
-
-	fn previous_debt(
+	fn calculate_debt(
 		interest_rate_per_year: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<T::Balance, DispatchError> {
-		Pallet::<T>::get_previous_debt(interest_rate_per_year, normalized_debt, when)
+		Pallet::<T>::get_debt(interest_rate_per_year, normalized_debt, when)
 	}
 
 	fn adjust_normalized_debt(
