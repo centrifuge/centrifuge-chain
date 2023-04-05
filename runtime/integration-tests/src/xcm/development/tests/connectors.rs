@@ -371,7 +371,7 @@ fn encoded_ethereum_xcm_add_pool() {
 		<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882").expect("Decoding failed"),
 	);
 	let domain_info = XcmDomain {
-		location: VersionedMultiLocation::V1(moonbase_location.clone()),
+		location: Box::new(VersionedMultiLocation::V1(moonbase_location.clone())),
 		ethereum_xcm_transact_call_index,
 		contract_address,
 		fee_currency: ForeignAsset(1),
@@ -454,10 +454,10 @@ mod utils {
 			RuntimeOrigin::root(),
 			Domain::EVM(1284),
 			Router::Xcm(XcmDomain {
-				location: moonbeam_location
+				location: Box::new(moonbeam_location
 					.clone()
 					.try_into()
-					.expect("Bad xcm version"),
+					.expect("Bad xcm version")),
 				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 				contract_address: H160::from(
 					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
