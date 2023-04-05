@@ -260,8 +260,6 @@ pub mod pallet {
 		DebtAdjustmentFailed,
 		/// Emits when the interest rate was not used
 		NoSuchRate,
-		/// Emits when a historic rate was asked for from the future
-		NotInPast,
 		/// Emits when a rate is not within the valid range
 		InvalidRate,
 		/// Emits when adding a new rate would exceed the storage limits
@@ -360,7 +358,10 @@ pub mod pallet {
 							.ok_or(ArithmeticError::Overflow)?;
 					rate.accumulated_rate.ensure_div(rate_adjustment)?
 				}
-				Ordering::Greater => return Err(Error::<T>::NotInPast.into()),
+				Ordering::Greater => {
+					// TODO: This is a fast fix, the correct solution should be #1304
+					rate.accumulated_rate
+				}
 			};
 
 			Self::calculate_debt(normalized_debt, acc_rate)
