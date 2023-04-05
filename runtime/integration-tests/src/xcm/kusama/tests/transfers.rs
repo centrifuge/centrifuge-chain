@@ -49,7 +49,6 @@ use crate::xcm::kusama::{
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 };
 
-
 /*
 
 NOTE: We hardcode the expected balances after an XCM operation given that the weights involved in
