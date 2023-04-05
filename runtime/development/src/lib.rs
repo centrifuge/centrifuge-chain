@@ -123,7 +123,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1018,
+	spec_version: 1019,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1817,14 +1817,16 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	SchedulerMigrationV3,
+	UpgradeDev1019,
 >;
 
+type UpgradeDev1019 = SchedulerMigrationV4;
+
 // Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct SchedulerMigrationV3;
-impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
+pub struct SchedulerMigrationV4;
+impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV4 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v4()
+		Scheduler::migrate_v3_to_v4()
 	}
 }
 
