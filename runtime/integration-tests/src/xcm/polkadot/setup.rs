@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use altair_runtime::constants;
-pub use centrifuge_runtime::{Origin, Runtime, System};
+pub use centrifuge_runtime::{Runtime, RuntimeOrigin, System};
 use cfg_primitives::{constants::currency_decimals, parachains, AccountId, Balance};
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;

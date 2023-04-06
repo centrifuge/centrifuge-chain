@@ -32,7 +32,7 @@
 //! ```text
 //!                    ar = accumulated rate
 //!                    nd = normalized debt
-//!       
+//!
 //!            │
 //!        2.0 │                             ****
 //!            │                         ****
@@ -45,27 +45,101 @@
 //!        1.0 │ **
 //!            └──────────────────────────────────
 //!            │              │
-//!                            
+//!
 //!            borrow 10      borrow 20
 //!            ar   = 1.0     ar   = 1.5
 //!            nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
 //!            debt = 10      debt = 35
 //! ```
+//!
+//! ## Basics of shared rate accrual and "normalized debts"
+//!
+//! When we want to compute the interest accrued on some value, the
+//! high-level equation is:
+//!
+//! ```ignore
+//! rate_per_second.pow(debt_age) * debt_base_value
+//! ```
+//!
+//! Computing that pow for everything is expensive, so we want to only
+//! do it once for any given `rate_per_second` and share that result
+//! across multiple debts. Because these debts might not have been
+//! created at the same time as each other (or the rate), we must
+//! include a correction factor to the shared interest rate accrual:
+//!
+//! ```ignore
+//! correction_factor = ???;
+//! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
+//! ```
+//!
+//! This correction factor is just the accumulated interest at the
+//! time the debt was created:
+//!
+//! ```ignore
+//! correction_factor = rate_per_second.pow(rate_age_at_time_of_debt_creation);
+//! rate_per_second.pow(rate_age) * debt_base_value / correction_factor
+//! // Equivalent to:
+//! rate_per_second.pow(rate_age - rate_ag_at_time_of_debt_creation) * debt_base_value
+//! ```
+//!
+//! And in the classic trade-off of space vs time complexity, we
+//! precompute the correction factor applied to the base debt as the
+//! normalized debt
+//!
+//! ```ignore
+//! normalized_debt = debt_base_value / rate_per_second.pow(rate_age_at_time_of_debt_creation);
+//! ```
+//!
+//! In the actual code, `rate_per_second.pow(...)` will be precomputed
+//! for us at block initialize and is just queried as the "accrued
+//! rate".
+//!
+//! The case of `rate_age_at_time_of_debt_creation == 0` creates a
+//! correction factor of 1, since no debt has yet accumulated on that
+//! rate. This leads to the behavior of `normalize` apparently doing
+//! nothing. The debt in that case is "synced" to the interest rate,
+//! and doesn't need any correction.
+//!
+//! ## Renormalization
+//!
+//! Renormalization is the operation of saying "from now one, I want
+//! to accrue this debt at a new rate". Implicit in that is that all
+//! previous debt has been accounted for. We are essentially "starting
+//! over" with a new base debt - our accrued debt from the old rate -
+//! and a new interest rate.
+//!
+//! ```ignore
+//! current_debt = normalized_debt * accrued_rate(old_interest_rate);
+//! normalized_debt = current_debt / accrued_rate(new_interest_rate);
+//! ```
+//!
+//! Two things to note here:
+//! * If `old_interest_rate` and `new_interest_rate` are identical,
+//!   this is a no-op.
+//! * If `new_interest_rate` is newly created (and thus its age is `0`),
+//!   the correction factor is `1` just as for any other rate.  See the
+//!   note above regarding zero-age rates.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
-use cfg_traits::InterestAccrual;
+use cfg_traits::{
+	ops::{EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureInto, EnsureMul, EnsureSub},
+	InterestAccrual, RateCollection,
+};
 use cfg_types::adjustments::Adjustment;
-use codec::{Decode, Encode};
-use frame_support::traits::UnixTime;
+use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub, Saturating},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
+use sp_std::{cmp::Ordering, vec::Vec};
 
+pub mod migrations;
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
@@ -76,27 +150,35 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(feature = "runtime-benchmarks", test))]
+mod test_utils;
+
 pub use pallet::*;
+
+// TODO: This "magic" number can be removed: tracking issue #1297
+// For now it comes from `pallet-loans` demands:
+// possible interest rates < 1 plus a penalty from [0, 1].
+// Which in the worst cases could be near to 2.
+const MAX_INTEREST_RATE: u32 = 2; // Which corresponds to 200%.
 
 // Type aliases
 type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate>;
 
 // Storage types
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct RateDetailsV0<InterestRate, Moment> {
-	pub accumulated_rate: InterestRate,
-	pub last_updated: Moment,
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct RateDetails<InterestRate> {
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct RateDetailsV1<InterestRate> {
 	pub accumulated_rate: InterestRate,
 	pub reference_count: u32,
 }
 
-#[derive(Encode, Decode, TypeInfo, PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct RateDetails<InterestRate> {
+	pub interest_rate_per_sec: InterestRate,
+	pub accumulated_rate: InterestRate,
+	pub reference_count: u32,
+}
+
+#[derive(Encode, Decode, TypeInfo, PartialEq, Eq, MaxEncodedLen, RuntimeDebug)]
 #[repr(u32)]
 pub enum Release {
 	V0,
@@ -106,7 +188,7 @@ pub enum Release {
 
 impl Default for Release {
 	fn default() -> Self {
-		Self::V0
+		Self::V2
 	}
 }
 
@@ -119,12 +201,11 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Balance: Member
 			+ Parameter
@@ -138,14 +219,15 @@ pub mod pallet {
 			+ TypeInfo
 			+ TryInto<u64>;
 
-		/// A fixed-point number which represents
-		/// an interest rate.
+		/// A fixed-point number which represents an interest rate.
 		type InterestRate: Member
 			+ Parameter
 			+ Default
+			+ core::fmt::Debug
 			+ Copy
 			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
+			+ FixedPointNumber<Inner = Self::Balance>
+			+ MaxEncodedLen;
 
 		type Time: UnixTime;
 
@@ -155,13 +237,9 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_rate)]
-	pub(super) type Rate<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::InterestRate, RateDetailsOf<T>, OptionQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn rate_count)]
-	pub(super) type RateCount<T: Config> = StorageValue<_, u32, ValueQuery>;
+	#[pallet::getter(fn rates)]
+	pub(super) type Rates<T: Config> =
+		StorageValue<_, BoundedVec<RateDetailsOf<T>, T::MaxRateCount>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn last_updated)]
@@ -182,8 +260,6 @@ pub mod pallet {
 		DebtAdjustmentFailed,
 		/// Emits when the interest rate was not used
 		NoSuchRate,
-		/// Emits when a historic rate was asked for from the future
-		NotInPast,
 		/// Emits when a rate is not within the valid range
 		InvalidRate,
 		/// Emits when adding a new rate would exceed the storage limits
@@ -203,96 +279,101 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			StorageVersion::<T>::put(Release::V1);
+			StorageVersion::<T>::put(Release::V2);
 		}
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_: T::BlockNumber) -> Weight {
-			let mut count = 0;
 			let then = LastUpdated::<T>::get();
 			let now = Self::now();
-			LastUpdated::<T>::set(Self::now());
-			let delta = Self::now() - then;
+			LastUpdated::<T>::set(now);
+			let delta = now - then;
 			let bits = Moment::BITS - delta.leading_zeros();
-			Rate::<T>::translate(|per_sec, mut rate: RateDetailsOf<T>| {
-				count += 1;
-				Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then, now)
+
+			// reads: timestamp, last updated, rates vec
+			// writes: last updated, rates vec
+			let mut weight = T::DbWeight::get().reads_writes(3, 2);
+
+			let rates = Rates::<T>::get();
+			let rates: Vec<_> = rates
+				.into_iter()
+				.filter_map(|rate| {
+					weight.saturating_accrue(T::Weights::calculate_accumulated_rate(bits));
+
+					let RateDetailsOf::<T> {
+						interest_rate_per_sec,
+						accumulated_rate,
+						reference_count,
+					} = rate;
+
+					Self::calculate_accumulated_rate(
+						interest_rate_per_sec,
+						accumulated_rate,
+						then,
+						now,
+					)
 					.ok()
-					.map(|new_rate| {
-						rate.accumulated_rate = new_rate;
-						rate
+					.map(|accumulated_rate| RateDetailsOf::<T> {
+						interest_rate_per_sec,
+						accumulated_rate,
+						reference_count,
 					})
-			});
+				})
+				.collect();
 
-			let db_weight = T::DbWeight::get().reads_writes(2, 1);
-
-			let db_weight_accumulated = T::DbWeight::get().reads_writes(1, 1)
-				+ T::Weights::calculate_accumulated_rate(bits);
-
-			db_weight + db_weight_accumulated.saturating_mul(count)
-		}
-
-		fn on_runtime_upgrade() -> Weight {
-			let weight = T::DbWeight::get().reads_writes(1, 1);
-			let count_rates_weight = if StorageVersion::<T>::get() == Release::V1 {
-				let count = Rate::<T>::iter_keys().count();
-				RateCount::<T>::set(count as u32);
-				T::DbWeight::get().reads_writes(count as u64, 1)
-			} else {
-				Weight::from_ref_time(0)
-			};
-			weight.saturating_add(count_rates_weight)
+			Rates::<T>::set(
+				rates
+					.try_into()
+					.expect("We got this vec from a bounded vec to begin with"),
+			);
+			weight
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn get_current_debt(
-			interest_rate_per_sec: T::InterestRate,
-			normalized_debt: T::Balance,
-		) -> Result<T::Balance, DispatchError> {
-			Rate::<T>::get(interest_rate_per_sec)
-				.ok_or(Error::<T>::NoSuchRate)
-				.and_then(|rate| {
-					Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-						.ok_or(Error::<T>::DebtCalculationFailed)
-				})
-				.map_err(Into::into)
-		}
-
-		pub fn get_previous_debt(
-			interest_rate_per_sec: T::InterestRate,
+		/// Calculate fastly the current debt using normalized debt * cumulative rate if
+		/// `when` is exactly `now` (same block). If when is in the past it recomputes
+		/// the previous cumulative rate.
+		///
+		/// If `when` is further in the past than the last time the
+		/// normalized debt was adjusted, this will return nonsense
+		/// (effectively "rewinding the clock" to before the value was
+		/// valid)
+		pub fn get_debt(
+			interest_rate_per_year: T::InterestRate,
 			normalized_debt: T::Balance,
 			when: Moment,
 		) -> Result<T::Balance, DispatchError> {
-			if let Some(rate) = Rate::<T>::get(interest_rate_per_sec) {
-				let now = LastUpdated::<T>::get();
-				if when > now {
-					return Err(Error::<T>::NotInPast.into());
+			let rate = Self::get_rate(interest_rate_per_year)?;
+			let now = LastUpdated::<T>::get();
+
+			let acc_rate = match when.cmp(&now) {
+				Ordering::Equal => rate.accumulated_rate,
+				Ordering::Less => {
+					let delta = now.ensure_sub(when)?;
+					let rate_adjustment =
+						checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
+							.ok_or(ArithmeticError::Overflow)?;
+					rate.accumulated_rate.ensure_div(rate_adjustment)?
 				}
-				let delta = now - when;
-				let rate_adjustment = checked_pow(interest_rate_per_sec, delta as usize)
-					.ok_or(ArithmeticError::Overflow)?;
-				let past_rate = rate
-					.accumulated_rate
-					.checked_div(&rate_adjustment)
-					.ok_or(ArithmeticError::Underflow)?;
-				let debt = Self::calculate_debt(normalized_debt, past_rate)
-					.ok_or(Error::<T>::DebtCalculationFailed)?;
-				Ok(debt)
-			} else {
-				Err(Error::<T>::NoSuchRate.into())
-			}
+				Ordering::Greater => {
+					// TODO: This is a fast fix, the correct solution should be #1304
+					rate.accumulated_rate
+				}
+			};
+
+			Self::calculate_debt(normalized_debt, acc_rate)
+				.ok_or_else(|| Error::<T>::DebtCalculationFailed.into())
 		}
 
 		pub fn do_adjust_normalized_debt(
-			interest_rate_per_sec: T::InterestRate,
+			interest_rate_per_year: T::InterestRate,
 			normalized_debt: T::Balance,
 			adjustment: Adjustment<T::Balance>,
 		) -> Result<T::Balance, DispatchError> {
-			let rate =
-				Rate::<T>::try_get(interest_rate_per_sec).map_err(|_| Error::<T>::NoSuchRate)?;
+			let rate = Self::get_rate(interest_rate_per_year)?;
 
 			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
@@ -317,10 +398,8 @@ pub mod pallet {
 			new_interest_rate: T::InterestRate,
 			normalized_debt: T::Balance,
 		) -> Result<T::Balance, DispatchError> {
-			let old_rate =
-				Rate::<T>::try_get(old_interest_rate).map_err(|_| Error::<T>::NoSuchRate)?;
-			let new_rate =
-				Rate::<T>::try_get(new_interest_rate).map_err(|_| Error::<T>::NoSuchRate)?;
+			let old_rate = Self::get_rate(old_interest_rate)?;
+			let new_rate = Self::get_rate(new_interest_rate)?;
 
 			let debt = Self::calculate_debt(normalized_debt, old_rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
@@ -334,7 +413,7 @@ pub mod pallet {
 		}
 
 		/// Calculates the debt using debt = normalized_debt * accumulated_rate
-		fn calculate_debt(
+		pub(crate) fn calculate_debt(
 			normalized_debt: T::Balance,
 			accumulated_rate: T::InterestRate,
 		) -> Option<T::Balance> {
@@ -346,80 +425,83 @@ pub mod pallet {
 			accumulated_rate: Rate,
 			last_updated: Moment,
 			now: Moment,
-		) -> Result<Rate, DispatchError> {
+		) -> Result<Rate, ArithmeticError> {
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
-			let time_difference_secs = now
-				.checked_sub(last_updated)
-				.ok_or(ArithmeticError::Underflow)?;
-
-			Ok(
-				checked_pow(interest_rate_per_sec, time_difference_secs as usize)
-					.and_then(|new_rate| new_rate.checked_mul(&accumulated_rate))
-					.ok_or(ArithmeticError::Overflow)?,
-			)
+			let time_difference_secs = now.ensure_sub(last_updated)?;
+			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
+				.ok_or(ArithmeticError::Overflow)? // TODO: This line can be remove once #1241 be merged
+				.ensure_mul(accumulated_rate)
 		}
 
 		pub fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
 
-		pub fn reference_yearly_interest_rate(
-			interest_rate_per_year: T::InterestRate,
-		) -> Result<T::InterestRate, DispatchError> {
-			let interest_rate_per_sec = interest_rate_per_year
-				.checked_div(&T::InterestRate::saturating_from_integer(SECONDS_PER_YEAR))
-				.ok_or(ArithmeticError::Underflow)?
-				.checked_add(&One::one())
-				.ok_or(ArithmeticError::Overflow)?;
+		pub fn reference_interest_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
+			let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
+			Rates::<T>::try_mutate(|rates| {
+				let rate = rates
+					.iter_mut()
+					.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec);
 
-			if !Rate::<T>::contains_key(interest_rate_per_sec) {
-				Self::validate_rate(interest_rate_per_year)?;
-			}
+				match rate {
+					Some(rate) => Ok(rate.reference_count.ensure_add_assign(1)?),
+					None => {
+						Self::validate_interest_rate(interest_rate_per_year)?;
 
-			Self::reference_interest_rate(interest_rate_per_sec)?;
-			Ok(interest_rate_per_sec)
+						let new_rate = RateDetailsOf::<T> {
+							interest_rate_per_sec,
+							accumulated_rate: One::one(),
+							reference_count: 1,
+						};
+
+						rates
+							.try_push(new_rate)
+							.map_err(|_| Error::<T>::TooManyRates)?;
+
+						Ok(())
+					}
+				}
+			})
 		}
 
-		pub fn reference_interest_rate(interest_rate_per_sec: T::InterestRate) -> DispatchResult {
-			Rate::<T>::mutate(interest_rate_per_sec, |rate| {
-				if let Some(rate) = rate {
-					rate.reference_count += 1;
-				} else {
-					let rate_count = RateCount::<T>::get();
-					ensure!(
-						rate_count < T::MaxRateCount::get(),
-						Error::<T>::TooManyRates
-					);
-
-					*rate = Some(RateDetailsOf::<T> {
-						accumulated_rate: One::one(),
-						reference_count: 1,
-					});
-					RateCount::<T>::set(rate_count.checked_add(1).ok_or(Error::<T>::TooManyRates)?);
+		pub fn unreference_interest_rate(
+			interest_rate_per_year: T::InterestRate,
+		) -> DispatchResult {
+			let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
+			Rates::<T>::try_mutate(|rates| {
+				let idx = rates
+					.iter()
+					.enumerate()
+					.find(|(_, rate)| rate.interest_rate_per_sec == interest_rate_per_sec)
+					.ok_or(Error::<T>::NoSuchRate)?
+					.0;
+				rates[idx].reference_count = rates[idx].reference_count.saturating_sub(1);
+				if rates[idx].reference_count == 0 {
+					rates.swap_remove(idx);
 				}
 				Ok(())
 			})
 		}
 
-		pub fn unreference_interest_rate(interest_rate_per_sec: T::InterestRate) -> DispatchResult {
-			Rate::<T>::try_mutate(interest_rate_per_sec, |maybe_rate| {
-				if let Some(rate) = maybe_rate {
-					rate.reference_count = rate.reference_count.saturating_sub(1);
-					if rate.reference_count == 0 {
-						*maybe_rate = None;
-					}
-					Ok(())
-				} else {
-					Err(Error::<T>::NoSuchRate.into())
-				}
-			})
+		pub fn get_rate(
+			interest_rate_per_year: T::InterestRate,
+		) -> Result<RateDetailsOf<T>, DispatchError> {
+			let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
+			Rates::<T>::get()
+				.into_iter()
+				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
+				.ok_or_else(|| Error::<T>::NoSuchRate.into())
 		}
 
-		pub(crate) fn validate_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
+		pub(crate) fn validate_interest_rate(
+			interest_rate_per_year: T::InterestRate,
+		) -> DispatchResult {
 			let four_decimals = T::InterestRate::saturating_from_integer(10000);
+			let maximum = T::InterestRate::saturating_from_integer(MAX_INTEREST_RATE);
 			ensure!(
-				interest_rate_per_year < One::one()
-					&& interest_rate_per_year > Zero::zero()
+				interest_rate_per_year <= maximum
+					&& interest_rate_per_year >= Zero::zero()
 					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
 						== Zero::zero(),
 				Error::<T>::InvalidRate
@@ -430,29 +512,24 @@ pub mod pallet {
 }
 
 impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balance>> for Pallet<T> {
+	type MaxRateCount = T::MaxRateCount;
 	type NormalizedDebt = T::Balance;
+	type Rates = RateVec<T>;
 
-	fn current_debt(
-		interest_rate_per_sec: T::InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<T::Balance, DispatchError> {
-		Pallet::<T>::get_current_debt(interest_rate_per_sec, normalized_debt)
-	}
-
-	fn previous_debt(
-		interest_rate_per_sec: T::InterestRate,
+	fn calculate_debt(
+		interest_rate_per_year: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<T::Balance, DispatchError> {
-		Pallet::<T>::get_previous_debt(interest_rate_per_sec, normalized_debt, when)
+		Pallet::<T>::get_debt(interest_rate_per_year, normalized_debt, when)
 	}
 
 	fn adjust_normalized_debt(
-		interest_rate_per_sec: T::InterestRate,
+		interest_rate_per_year: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment<T::Balance>,
 	) -> Result<Self::NormalizedDebt, DispatchError> {
-		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_sec, normalized_debt, adjustment)
+		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_year, normalized_debt, adjustment)
 	}
 
 	fn renormalize_debt(
@@ -463,27 +540,48 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 		Pallet::<T>::do_renormalize_debt(old_interest_rate, new_interest_rate, normalized_debt)
 	}
 
-	fn reference_yearly_rate(
+	fn reference_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
+		Pallet::<T>::reference_interest_rate(interest_rate_per_year)
+	}
+
+	fn unreference_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
+		Pallet::<T>::unreference_interest_rate(interest_rate_per_year)
+	}
+
+	fn validate_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
+		Pallet::<T>::validate_interest_rate(interest_rate_per_year)
+	}
+
+	fn rates() -> Self::Rates {
+		RateVec(Rates::<T>::get())
+	}
+}
+
+pub struct RateVec<T: Config>(BoundedVec<RateDetailsOf<T>, T::MaxRateCount>);
+
+impl<T: Config> RateCollection<T::InterestRate, T::Balance, T::Balance> for RateVec<T> {
+	fn current_debt(
+		&self,
 		interest_rate_per_year: T::InterestRate,
-	) -> Result<T::InterestRate, DispatchError> {
-		Pallet::<T>::reference_yearly_interest_rate(interest_rate_per_year)
+		normalized_debt: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
+		self.0
+			.iter()
+			.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
+			.ok_or(Error::<T>::NoSuchRate)
+			.and_then(|rate| {
+				Pallet::<T>::calculate_debt(normalized_debt, rate.accumulated_rate)
+					.ok_or(Error::<T>::DebtCalculationFailed)
+			})
+			.map_err(Into::into)
 	}
+}
 
-	fn reference_rate(interest_rate_per_sec: T::InterestRate) -> Result<(), DispatchError> {
-		Pallet::<T>::reference_interest_rate(interest_rate_per_sec)
-	}
-
-	fn unreference_rate(interest_rate_per_sec: T::InterestRate) -> Result<(), DispatchError> {
-		Pallet::<T>::unreference_interest_rate(interest_rate_per_sec)
-	}
-
-	fn convert_additive_rate_to_per_sec(
-		interest_rate_per_year: T::InterestRate,
-	) -> Result<T::InterestRate, DispatchError> {
-		Pallet::<T>::validate_rate(interest_rate_per_year)?;
-		let interest_rate_per_sec = interest_rate_per_year
-			.checked_div(&T::InterestRate::saturating_from_integer(SECONDS_PER_YEAR))
-			.ok_or(ArithmeticError::Underflow)?;
-		Ok(interest_rate_per_sec)
-	}
+fn unchecked_conversion<R: FixedPointNumber + EnsureAdd>(
+	interest_rate_per_year: R,
+) -> Result<R, ArithmeticError> {
+	interest_rate_per_year
+		.ensure_div(R::saturating_from_integer(SECONDS_PER_YEAR))?
+		.ensure_add(One::one())
 }

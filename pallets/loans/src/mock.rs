@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::{asset_registry::AssetMetadata, parameter_type_with_key};
-use pallet_pool_system::pool_types::{PoolDetails, PoolLocator, ScheduledUpdateDetails};
+use pallet_pool_system::pool_types::{PoolDetails, ScheduledUpdateDetails};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -42,7 +42,7 @@ use sp_runtime::{
 };
 
 use crate as pallet_loans;
-use crate::test_utils::{FundsAccount, JuniorTrancheId, SeniorTrancheId};
+use crate::test_utils::FundsAccount;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -63,7 +63,8 @@ frame_support::construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>},
-		OrderManager: cfg_test_utils::mocks::order_manager::{Pallet, Storage}
+		OrderManager: cfg_test_utils::mocks::order_manager::{Pallet, Storage},
+		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 	}
 );
 
@@ -91,9 +92,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -103,21 +102,32 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
 }
 
-// Parameterize FRAME balances pallet
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	pub const MaxAuthorities: u32 = 32;
+}
+
+impl pallet_aura::Config for Runtime {
+	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
+	type DisabledValidators = ();
+	type MaxAuthorities = MaxAuthorities;
+}
+
+parameter_types! {
+	pub const MinimumPeriod: u64 = 6000;
 }
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime
 impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ();
+	type MinimumPeriod = MinimumPeriod;
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type WeightInfo = ();
@@ -139,16 +149,14 @@ parameter_types! {
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = Event;
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -181,10 +189,6 @@ parameter_types! {
 	pub const MinEpochTimeUpperBound: u64 = u64::MAX; // disable bound
 	pub const MaxNAVAgeUpperBound: u64 = u64::MAX; // disable bound
 
-	// Pool metadata limit
-	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxSizeMetadata: u32 = 100;
-
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxTokenNameLength: u32 = 128;
 
@@ -212,10 +216,8 @@ impl pallet_pool_system::Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
-	type Event = Event;
 	type Investments = OrderManager;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTokenNameLength = MaxTokenNameLength;
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
@@ -232,6 +234,7 @@ impl pallet_pool_system::Config for Runtime {
 	type PoolDeposit = ZeroDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;
 	type TrancheCurrency = TrancheCurrency;
@@ -250,10 +253,10 @@ impl PoolUpdateGuard for UpdateGuard {
 		u32,
 		Balance,
 		Rate,
-		MaxSizeMetadata,
 		TrancheWeight,
 		TrancheId,
 		PoolId,
+		MaxTranches,
 	>;
 	type ScheduledUpdateDetails =
 		ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>;
@@ -267,16 +270,21 @@ impl PoolUpdateGuard for UpdateGuard {
 	}
 }
 
+// Parameterize FRAME balances pallet
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
+
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -302,7 +310,6 @@ impl pallet_uniques::Config for Runtime {
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Currency = Balances;
 	type DepositPerByte = DepositPerByte;
-	type Event = Event;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
@@ -311,6 +318,7 @@ impl pallet_uniques::Config for Runtime {
 	type KeyLimit = Limit;
 	type Locker = ();
 	type MetadataDepositBase = MetadataDepositBase;
+	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
@@ -318,16 +326,16 @@ impl pallet_uniques::Config for Runtime {
 
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
-	type Event = Event;
 	type InterestRate = Rate;
 	type MaxRateCount = MaxActiveLoansPerPool;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = ();
 }
 
 parameter_types! {
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxTranches: u8 = 5;
+	#[derive(Debug, Eq, PartialEq, PartialOrd, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: u32 = 5;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
@@ -337,11 +345,12 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Everything;
-	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
 	type Role = Role;
+	type RuntimeEvent = RuntimeEvent;
 	type Scope = PermissionScope<u64, CurrencyId>;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, MaxTranches, Moment>;
 	type WeightInfo = ();
 }
 
@@ -356,7 +365,6 @@ impl pallet_loans::Config for Runtime {
 	type BlockNumberProvider = System;
 	type ClassId = CollectionId;
 	type CurrencyId = CurrencyId;
-	type Event = Event;
 	type InterestAccrual = InterestAccrual;
 	type LoanId = ItemId;
 	type LoansPalletId = LoansPalletId;
@@ -366,6 +374,7 @@ impl pallet_loans::Config for Runtime {
 	type Permission = Permissions;
 	type Pool = PoolSystem;
 	type Rate = Rate;
+	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = ();
 }
@@ -426,16 +435,6 @@ impl TestExternalitiesBuilder {
 		// add pool account with 1000 balance with currencyId 1
 		orml_tokens::GenesisConfig::<Runtime> {
 			balances: vec![
-				(
-					PoolLocator { pool_id: 0 }.into_account_truncating(),
-					CurrencyId::Tranche(0, JuniorTrancheId::get()),
-					100_000 * CURRENCY,
-				),
-				(
-					PoolLocator { pool_id: 0 }.into_account_truncating(),
-					CurrencyId::Tranche(0, SeniorTrancheId::get()),
-					100_000 * CURRENCY,
-				),
 				(7, USD, 100 * CURRENCY),
 				(
 					FundsAccount::get().into_account_truncating(),

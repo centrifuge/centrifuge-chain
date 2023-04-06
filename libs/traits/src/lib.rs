@@ -21,10 +21,7 @@
 use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	dispatch::{
-		Codec, DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo,
-		PostDispatchInfo,
-	},
+	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
 	Parameter, RuntimeDebug,
 };
@@ -104,18 +101,29 @@ pub trait Reward {
 /// A trait that can be used to fetch the nav and update nav for a given pool
 pub trait PoolNAV<PoolId, Amount> {
 	type ClassId;
-	type Origin;
+	type RuntimeOrigin;
 	// nav returns the nav and the last time it was calculated
 	fn nav(pool_id: PoolId) -> Option<(Amount, u64)>;
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
-	fn initialise(origin: Self::Origin, pool_id: PoolId, class_id: Self::ClassId)
-		-> DispatchResult;
+	fn initialise(
+		origin: Self::RuntimeOrigin,
+		pool_id: PoolId,
+		class_id: Self::ClassId,
+	) -> DispatchResult;
 }
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
-	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo + Encode + Decode;
-	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo;
+	type PoolId: Parameter
+		+ Member
+		+ Debug
+		+ Copy
+		+ Default
+		+ TypeInfo
+		+ Encode
+		+ Decode
+		+ MaxEncodedLen;
+	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo + MaxEncodedLen;
 	type Rate;
 	type Moment;
 
@@ -126,14 +134,17 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 		pool_id: Self::PoolId,
 		tranche_id: Self::TrancheId,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+
+	/// Get the account used for the given `pool_id`.
+	fn account_for(pool_id: Self::PoolId) -> AccountId;
 }
 
 /// Variants for valid Pool updates to send out as events
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UpdateState {
 	NoExecution,
-	Executed,
-	Stored,
+	Executed(u32),
+	Stored(u32),
 }
 
 /// A trait that supports modifications of pools
@@ -145,7 +156,7 @@ pub trait PoolMutate<AccountId, PoolId> {
 	type MaxTokenSymbolLength: Get<u32>;
 	type MaxTranches: Get<u32>;
 	type TrancheInput: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
-	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type PoolChanges: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
 
 	fn create(
 		admin: AccountId,
@@ -154,15 +165,11 @@ pub trait PoolMutate<AccountId, PoolId> {
 		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
-		metadata: Option<Vec<u8>>,
 	) -> DispatchResult;
 
-	fn update(
-		pool_id: PoolId,
-		changes: Self::PoolChanges,
-	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo>;
+	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
 
-	fn execute_update(pool_id: PoolId) -> DispatchResultWithPostInfo;
+	fn execute_update(pool_id: PoolId) -> Result<u32, DispatchError>;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
@@ -174,6 +181,20 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 
 	/// Deposit `amount` from the `from` account into the reserve.
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
+}
+
+/// Utility to benchmark pools easily
+#[cfg(feature = "runtime-benchmarks")]
+pub trait PoolBenchmarkHelper {
+	type PoolId;
+	type AccountId;
+	type Balance;
+
+	/// Create a benchmark pool giving the id and the admin.
+	fn benchmark_create_pool(pool_id: Self::PoolId, admin: &Self::AccountId);
+
+	/// Give AUSD to the account
+	fn benchmark_give_ausd(account: &Self::AccountId, balance: Self::Balance);
 }
 
 /// A trait that can be used to retrieve the current price for a currency
@@ -202,29 +223,23 @@ pub trait CurrencyPrice<CurrencyId> {
 
 /// A trait that can be used to calculate interest accrual for debt
 pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
+	/// The maximum number of rates this `InterestAccrual` can
+	/// contain. It is necessary for rate calculations in consumers of
+	/// this pallet, but is otherwise unused in this interface.
+	type MaxRateCount: Get<u32>;
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
+	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
 
-	/// Calculate the current debt using normalized debt * cumulative rate
-	fn current_debt(
-		interest_rate_per_sec: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Balance, DispatchError>;
-
-	/// Calculate a previous debt using normalized debt * previous cumulative rate
-	///
-	/// If `when` is further in the past than the last time the
-	/// normalized debt was adjusted, this will return nonsense
-	/// (effectively "rewinding the clock" to before the value was
-	/// valid)
-	fn previous_debt(
-		interest_rate_per_sec: InterestRate,
+	/// Calculate the debt at an specific moment
+	fn calculate_debt(
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt
 	fn adjust_normalized_debt(
-		interest_rate_per_sec: InterestRate,
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
@@ -236,23 +251,27 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
-	/// Indicate that a yearly rate is in use
-	///
-	/// Validates that the rate is allowed, and converts it to a per-second rate for future operations
-	fn reference_yearly_rate(
-		interest_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
-
-	/// Indicate that a rate is in use
-	fn reference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
+	/// Validate and indicate that a yearly rate is in use
+	fn reference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
 	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
+	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
-	/// Verifies a yearly additive rate and converts it to a per-second additive rate
-	fn convert_additive_rate_to_per_sec(
-		interset_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
+	/// Ask if the rate is valid to use by the implementation
+	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
+
+	/// Returns a collection of pre-computed rates to perform multiple operations with
+	fn rates() -> Self::Rates;
+}
+
+/// A collection of pre-computed interest rates for performing interest accrual
+pub trait RateCollection<InterestRate, Balance, NormalizedDebt> {
+	/// Calculate the current debt using normalized debt * cumulative rate
+	fn current_debt(
+		&self,
+		interest_rate_per_sec: InterestRate,
+		normalized_debt: NormalizedDebt,
+	) -> Result<Balance, DispatchError>;
 }
 
 pub trait Permissions<AccountId> {
@@ -596,176 +615,5 @@ pub mod fees {
 			from: &Self::AccountId,
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
-	}
-
-	pub struct NoFees<AccountId, Balance>(sp_std::marker::PhantomData<(AccountId, Balance)>);
-
-	impl<A, B: Balance> Fees for NoFees<A, B> {
-		type AccountId = A;
-		type Balance = B;
-		type FeeKey = ();
-
-		fn fee_value(_: Self::FeeKey) -> Self::Balance {
-			Self::Balance::default()
-		}
-
-		fn fee_to_author(
-			_: &Self::AccountId,
-			_: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult {
-			Ok(())
-		}
-
-		fn fee_to_burn(_: &Self::AccountId, _: Fee<Self::Balance, Self::FeeKey>) -> DispatchResult {
-			Ok(())
-		}
-
-		fn fee_to_treasury(
-			_: &Self::AccountId,
-			_: Fee<Self::Balance, Self::FeeKey>,
-		) -> DispatchResult {
-			Ok(())
-		}
-	}
-
-	#[cfg(feature = "std")]
-	pub mod test_util {
-		use std::{cell::RefCell, thread::LocalKey};
-
-		use frame_support::{
-			dispatch::DispatchResult,
-			traits::{tokens::Balance, Get},
-		};
-
-		use super::{Fee, FeeKey, Fees};
-
-		pub struct FeeState<Author, Balance> {
-			pub author: Author,
-			pub balance: Balance,
-		}
-
-		pub struct FeesState<Author, Balance, KeyFee> {
-			pub author_fees: Vec<FeeState<Author, Balance>>,
-			pub burn_fees: Vec<FeeState<Author, Balance>>,
-			pub treasury_fees: Vec<FeeState<Author, Balance>>,
-			pub initializer: Box<dyn Fn(KeyFee) -> Balance + 'static>,
-		}
-
-		impl<A, B, K> FeesState<A, B, K> {
-			pub fn no_fees(&self) -> bool {
-				self.author_fees.is_empty()
-					&& self.burn_fees.is_empty()
-					&& self.treasury_fees.is_empty()
-			}
-		}
-
-		impl<A, B, K> FeesState<A, B, K> {
-			pub fn new(initializer: impl Fn(K) -> B + 'static) -> Self {
-				Self {
-					author_fees: Default::default(),
-					burn_fees: Default::default(),
-					treasury_fees: Default::default(),
-					initializer: Box::new(initializer),
-				}
-			}
-		}
-
-		#[macro_export]
-		macro_rules! impl_mock_fees_state {
-			($name:ident, $account:ty, $balance:ty, $feekey:ty, $initializer:expr) => {
-				use std::{cell::RefCell, thread::LocalKey};
-
-				use cfg_traits::fees::test_util::FeesState;
-
-				thread_local! {
-					pub static STATE: RefCell<
-						FeesState<$account, $balance, $feekey>,
-					> = RefCell::new(FeesState::new($initializer));
-				}
-
-				parameter_types! {
-					pub $name: &'static LocalKey<
-						RefCell<FeesState<$account, $balance, $feekey>>
-					> = &STATE;
-				}
-			};
-		}
-
-		pub struct MockFees<AccountId, Balance, FeeKey, State>(
-			sp_std::marker::PhantomData<(AccountId, Balance, FeeKey, State)>,
-		);
-
-		impl<
-				A: Clone + 'static,
-				B: Balance + 'static,
-				K: FeeKey + 'static,
-				S: Get<&'static LocalKey<RefCell<FeesState<A, B, K>>>>,
-			> Fees for MockFees<A, B, K, S>
-		{
-			type AccountId = A;
-			type Balance = B;
-			type FeeKey = K;
-
-			fn fee_value(key: Self::FeeKey) -> Self::Balance {
-				S::get().with(|state| (state.borrow().initializer)(key))
-			}
-
-			fn fee_to_author(
-				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
-			) -> DispatchResult {
-				let balance = Self::balance(fee);
-				S::get().with(|state| {
-					state.borrow_mut().author_fees.push(FeeState {
-						author: author.clone(),
-						balance,
-					});
-				});
-				Ok(())
-			}
-
-			fn fee_to_burn(
-				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
-			) -> DispatchResult {
-				let balance = Self::balance(fee);
-				S::get().with(|state| {
-					state.borrow_mut().burn_fees.push(FeeState {
-						author: author.clone(),
-						balance,
-					});
-				});
-				Ok(())
-			}
-
-			fn fee_to_treasury(
-				author: &Self::AccountId,
-				fee: Fee<Self::Balance, Self::FeeKey>,
-			) -> DispatchResult {
-				let balance = Self::balance(fee);
-				S::get().with(|state| {
-					state.borrow_mut().treasury_fees.push(FeeState {
-						author: author.clone(),
-						balance,
-					});
-				});
-				Ok(())
-			}
-		}
-
-		impl<
-				A: Clone + 'static,
-				B: Balance + 'static,
-				K: FeeKey + 'static,
-				S: Get<&'static LocalKey<RefCell<FeesState<A, B, K>>>>,
-			> MockFees<A, B, K, S>
-		{
-			fn balance(fee: Fee<B, K>) -> B {
-				match fee {
-					Fee::Balance(balance) => balance,
-					Fee::Key(key) => Self::fee_value(key),
-				}
-			}
-		}
 	}
 }

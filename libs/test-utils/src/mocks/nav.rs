@@ -46,7 +46,7 @@ pub mod pallet {
 		pub fn value(pool_id: T::PoolId) -> T::Balance {
 			Nav::<T>::get(pool_id)
 				.map(|(nav, _)| nav)
-				.unwrap_or(T::Balance::zero())
+				.unwrap_or_else(T::Balance::zero)
 		}
 
 		pub fn update(pool_id: T::PoolId, balance: T::Balance, now: Moment) {
@@ -60,7 +60,7 @@ pub mod pallet {
 
 	impl<T: Config> PoolNAV<T::PoolId, T::Balance> for Pallet<T> {
 		type ClassId = T::ClassId;
-		type Origin = T::Origin;
+		type RuntimeOrigin = T::RuntimeOrigin;
 
 		fn nav(pool_id: T::PoolId) -> Option<(T::Balance, Moment)> {
 			Some(Self::latest(pool_id))
@@ -70,7 +70,7 @@ pub mod pallet {
 			Ok(Self::value(pool_id))
 		}
 
-		fn initialise(_: Self::Origin, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
+		fn initialise(_: Self::RuntimeOrigin, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
 			Ok(())
 		}
 	}

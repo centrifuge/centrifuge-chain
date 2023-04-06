@@ -27,7 +27,6 @@ use cfg_primitives::Balance;
 use frame_support::{
 	parameter_types,
 	traits::{Everything, SortedMembers},
-	weights::Weight,
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -40,7 +39,7 @@ use sp_runtime::{
 	transaction_validity::TransactionPriority,
 };
 
-use crate::{self as pallet_claims, traits::WeightInfo, Config};
+use crate::{self as pallet_claims, Config};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -48,22 +47,6 @@ use crate::{self as pallet_claims, traits::WeightInfo, Config};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-
-// Implement testint extrinsic weights for the pallet
-pub struct MockWeightInfo;
-impl WeightInfo for MockWeightInfo {
-	fn claim(_hashes_length: usize) -> Weight {
-		Weight::from_ref_time(0)
-	}
-
-	fn set_upload_account() -> Weight {
-		Weight::from_ref_time(0)
-	}
-
-	fn store_root_hash() -> Weight {
-		Weight::from_ref_time(0)
-	}
-}
 
 // Radial token definition
 //
@@ -114,9 +97,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -126,8 +107,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -143,11 +126,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -170,9 +153,9 @@ impl SortedMembers<u64> for One {
 impl Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Currency = Balances;
-	type Event = Event;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
 	type PalletId = ClaimsPalletId;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 

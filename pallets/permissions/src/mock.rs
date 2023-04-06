@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 pub use dummy::pallet as pallet_dummy;
 use frame_support::{
 	parameter_types,
@@ -50,7 +50,7 @@ pub enum Role {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo)]
+		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
 		pub struct OrgStorage: u32 {
 			const SENIOR_EXEC = 0b00000001;
 			const HEAD_OF_SAUBERMACHING  = 0b00000010;
@@ -60,14 +60,16 @@ bitflags::bitflags! {
 
 bitflags::bitflags! {
 		/// The current admin roles we support
-		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo)]
+		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, MaxEncodedLen)]
 		pub struct XcmStorage: u32 {
 			const SENDER = 0b00000001;
 			const RECEIVER  = 0b00000010;
 		}
 }
 
-#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+)]
 pub struct Storage {
 	org: OrgStorage,
 	xcm: XcmStorage,
@@ -82,7 +84,9 @@ impl Default for Storage {
 	}
 }
 
-#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(
+	codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen,
+)]
 pub enum Scope {
 	PalletA,
 	PalletB,
@@ -247,7 +251,7 @@ frame_support::construct_runtime!(
 // Parameterize frame system pallet
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024));
+			pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(Weight::from_ref_time(1024).set_proof_size(u64::MAX).into());
 }
 
 // Implement frame system configuration for the mock runtime
@@ -259,9 +263,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = BlockWeights;
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -271,8 +273,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -281,6 +285,7 @@ impl frame_system::Config for Runtime {
 parameter_types! {
 	pub const One: u64 = 1;
 	pub const MaxRoles: u32 = 10;
+	pub const MaxTranches: u32 = 5;
 }
 
 type AdminOrigin = EitherOfDiverse<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
@@ -288,9 +293,9 @@ type AdminOrigin = EitherOfDiverse<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
 impl pallet_permissions::Config for Runtime {
 	type AdminOrigin = AdminOrigin;
 	type Editors = Editors;
-	type Event = Event;
 	type MaxRolesPerScope = MaxRoles;
 	type Role = Role;
+	type RuntimeEvent = RuntimeEvent;
 	type Scope = Scope;
 	type Storage = Storage;
 	type WeightInfo = ();

@@ -7,7 +7,9 @@
 #![allow(clippy::type_complexity)]
 
 use codec::{Decode, Encode};
-use frame_support::{dispatch::DispatchResult, ensure, traits::Currency};
+use frame_support::{
+	dispatch::DispatchResult, ensure, pallet_prelude::MaxEncodedLen, traits::Currency,
+};
 pub use pallet::*;
 use scale_info::TypeInfo;
 pub use weights::*;
@@ -27,7 +29,7 @@ type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
-#[derive(Encode, Decode, PartialEq, Clone, TypeInfo)]
+#[derive(Encode, Decode, PartialEq, Eq, Clone, TypeInfo, MaxEncodedLen)]
 pub enum MigrationStatus {
 	Inactive,
 	Ongoing,
@@ -57,7 +59,6 @@ pub mod pallet {
 	// method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -80,7 +81,7 @@ pub mod pallet {
 		type MigrationMaxProxies: Get<u32>;
 
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// WeightInfo
 		type WeightInfo: WeightInfo;

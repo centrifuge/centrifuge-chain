@@ -1,49 +1,48 @@
 [package]
-name = 'pallet-claims'
-description = 'Pallet for processing token claims for Tinlake investments.'
-authors = ['The Centrifugians Tribe']
-edition = '2021'
-homepage = 'https://centrifuge.io'
+name = "pallet-claims"
+description = "Pallet for processing token claims for Tinlake investments."
+authors = ["The Centrifugians Tribe"]
+edition = "2021"
+homepage = "https://centrifuge.io"
 license = "LGPL-3.0"
-repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '2.0.0'
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "2.0.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-cfg-primitives = { path = '../../libs/primitives', default_features = false }
-cfg-types = { path = '../../libs/types', default_features = false }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
-scale-info = { version = "2.0", default-features = false, features = ["derive"] }
-
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-node-primitives = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-
-# optional dependencies for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 [dev-dependencies]
-node-primitives = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
+cfg-primitives = { path = "../../libs/primitives", default_features = true }
+cfg-types = { path = "../../libs/types", default_features = true }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 std = [
-  'codec/std',
-  'scale-info/std',
-  'frame-support/std',
-  'frame-system/std',
-  'pallet-balances/std',
-  'sp-std/std',
-  'sp-core/std',
-  'sp-std/std',
+  "codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-balances/std",
+  "sp-std/std",
+  "sp-core/std",
+  "sp-runtime/std",
 ]
 
-try-runtime = ["frame-support/try-runtime"]
+try-runtime = [
+  "cfg-primitives/try-runtime",
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-balances/try-runtime",
+]

@@ -28,7 +28,7 @@ and another one to verify how it works in a more real environment as a parachain
 The following command will run the unit and integration tests:
 
 ```bash
-cargo +nightly test --workspace --release --features test-benchmarks,try-runtime
+cargo +nightly test --workspace --release --features runtime-benchmarks,try-runtime
 ```
 
 ### Environment tests
@@ -123,21 +123,6 @@ Adapt parameters accordingly.
 
 ## Benchmarking
 
-### Benchmarking pallets
-Pallets are to be benchmarked to find the correct weight for extrinsics. Follow substrate's benchmarking boiler-plate code
-and add pallet benchmark to the runtime. Then run the following script to generate a benchmarked `weights.rs` file for the pallet
-```shell
-./scripts/init.sh benchmark <your_pallet> <output generated weight file>(optional)
-```
-
-Example command to generate `pallet_fees` with default `output`
-```shell
-./scripts/init.sh benchmark pallet_fees
-```
-
-default output will be `./pallets/fees/src/weight.rs`
-You can override this by passing output path as last argument
-
 ### Benchmarking runtimes
 
 When benchmarking pallets, we are just running the benchmarking scenarios they specify
@@ -155,53 +140,87 @@ the collator node the parachain will be running on.
 ./scripts/runtime_benchmarks.sh <runtime>
 ```
 
-# Upgrading to a newer Polkadot / Substrate / Cumulus version
+# Updating to a newer version of Polkadot
 
-When a new version of Polkadot is released, a mirroring release happens for the other
-parity projects such as Substrate and Cumulus, but also for other third-party projects
+When a new version of Polkadot is released, companion releases happen for the other
+parity projects such as Substrate and Cumulus, as well as for other third-party projects
 such as the `orml` pallets, `xcm-simulator`, etc.
 
-You can follow these steps tailored to update only one of those specific projects
-updating the three simultaneously is the most common flow.
+Therefore, updating this repository to a new version of Polkadot means updating all of these dependencies
+(internal and external to Centrifuge ) and have them all aligned on the same version of Polkadot.
 
-The flow to upgrade to a newer version of polkadot is usually as follows:
+_Note: When we say "new version of Polkadot", we implicitly mean "Polkadot, Substrate, Cumulus"._
 
-1. Use [`diener`](https://github.com/bkchr/diener) to update Polkadot, Substrate, and Cumulus to said release
+The high level flow to upgrade to a newer version of Polkadot is:
 
-```shell
-export POLKADOT_NEW_VERSION="<version>"; # for example, 0.9.24
+1. Update all the Centrifuge-Chain dependencies to a revision that also points to the last version of Polkadot
+2. Fix all the breaking changes introduced by the latest versions
 
-diener update --polkadot --branch release-v$POLKADOT_NEW_VERSION;
-diener update --substrate --branch polkadot-v$POLKADOT_NEW_VERSION;
-diener update --cumulus --branch polkadot-v$POLKADOT_NEW_VERSION;
-```
 
-2. Repeat step 1 for our other repos that we depend on:
+### 1. Update dependencies
 
-- [centrifuge/chainbridge-substrate](https://github.com/centrifuge/chainbridge-substrate)
-- [centrifuge/unique-assets](https://github.com/centrifuge/unique-assets)
-- [centrifuge/fudge](https://github.com/centrifuge/fudge)
+0. **Update the `cargo patch` rules in `Cargo.toml`**
 
-3. Make sure that we point to the latest revision of the projects altered in step 2
+    The cargo patch rules ensure that we use specific revision for Substrate, Polkadot, Cumulus, and others, by
+    pointing to a specific git revision. For each of the projects covered by these rules, look up the latest git
+    revision for the new release and find-replace all in the root `Cargo.toml` file.
 
-Note: If pointing to `branch = "master"`, run `Cargo update`
 
-4. Repeat step 3 for other third-party dependencies that also depend on Polkadot/Substrate/Cumulus
+1. **Use [diener](https://github.com/bkchr/diener) to update Polkadot, Substrate, and Cumulus to the new version**
 
-- [`orml` pallets](https://github.com/open-web3-stack/open-runtime-module-library) - All of them
-- [xcm-simulator](https://github.com/shaunxw/xcm-simulator)
-- potentially more
+    This CLI tool will automatically update all the versions used across all Cargo.toml files to the version you specify.
+    ```shell
+    export POLKADOT_NEW_VERSION="<version>"; # for example, 0.9.32
 
-Note: if any of the project do not yet have a cut for the target polkadot release, either wait or
-fork said project and run step 1 for it and open a PR and point that revision.
+    diener update --polkadot --branch release-v$POLKADOT_NEW_VERSION;
+    diener update --substrate --branch polkadot-v$POLKADOT_NEW_VERSION;
+    diener update --cumulus --branch polkadot-v$POLKADOT_NEW_VERSION;
+    ```
 
-5. Build and test the project and migrate any introduced change
+    **Note**: This step only updates the versions of those dependencies across the repository. Any breaking changes introduced
+by the new versions will have to be dealt with manually afterwards.
 
-Tip: if you face compilation errors like "type X doesn't implement trait Y", and the compiler
+
+2. **Repeat step 1. for the other Centrifuge repositories that the Centrifuge Chain depends on**
+
+    For each of those repositories, create a new branch out of the latest `polkadot-vX.Y.Z` and repeat step 1 for each of them.
+
+   - [centrifuge/chainbridge-substrate](https://github.com/centrifuge/chainbridge-substrate)
+   - [centrifuge/unique-assets](https://github.com/centrifuge/unique-assets)
+   - [centrifuge/fudge](https://github.com/centrifuge/fudge)
+
+
+3. **Back to Centrifuge-chain, update the crates in the projects updated in step 2.**
+
+    For example, if before we have a dependency on `fudge` at branch `polkadot-v0.9.31`, update it to `polkadot-v0.9.32`.
+
+    Note: assuming `0.9.32` is the version we are updating to.
+
+
+4. **Repeat step 3. for other third-party dependencies that also depend on Polkadot/Substrate/Cumulus**
+
+    If any of the third-party projects we depend on don't yet have a branch or release for the new Polkadot version,
+    either wait or fork said project and run step 1 for it and open a PR and point that revision.
+   - [`orml` pallets](https://github.com/open-web3-stack/open-runtime-module-library)
+   - [xcm-simulator](https://github.com/shaunxw/xcm-simulator)
+   - etc
+
+
+5. **Build and test the project and migrate any new introduced changes**
+
+    Now that all dependencies are aligned with the latest version of Polkadot, run build and test commands and address
+    any compilation issue.
+
+### Troubleshooting
+
+If you face compilation errors like "type X doesn't implement trait Y", and the compiler
 doesn't suggest you import any particular trait, experience is that there are different versions
-of Polkadot|Substrate|Cumulus being pulled; Look at `Cargo.lock` and find which project is still
-depending on an older version of any of those projects.
-
+of Polkadot|Substrate|Cumulus being pulled; The `cargo patch` rules in `Cargo.toml` should be handling that so if this
+still happens it's likely because some new crate of Polkadot|Substrate|Cumulus is being pulled directly or indirectly
+and we need to include that crate in the appropriate `cargo patch` rule.
+Running `nix --extra-experimental-features "nix-command flakes" build` should fail if multiple versions of a crate is
+being pulled and, therefore, not yet being handled by any `cargo patch` rules, making it very easy to spot the crate
+causing the trouble.
 
 ## NIX
 

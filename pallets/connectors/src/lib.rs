@@ -14,8 +14,8 @@
 use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
-use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode};
+use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
+use codec::{Decode, Encode, Input, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
@@ -25,7 +25,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
 use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
-use sp_std::{boxed::Box, convert::TryInto, vec::Vec};
+use sp_std::{boxed::Box, convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
 mod message;
@@ -38,29 +38,65 @@ mod contract;
 pub use contract::*;
 
 /// The Parachains that Centrifuge Connectors support.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum ParachainId {
 	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or Moonbase on a testnet.
 	Moonbeam,
 }
 
-/// The EVM chain ID
-/// The type should accomodate all chain ids listed on https://chainlist.org/.
-type EVMChainId = u64;
-
 /// A Domain is a chain or network we can send a Connectors message to.
 /// The domain indices need to match those used in the EVM contracts and these
 /// need to pass the Centrifuge domain to send tranche tokens from the other
 /// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
+	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
+	/// NOTE: Connectors messages CAN NOT be sent directly from the Centrifuge chain to the
+	/// Centrifuge chain itself.
+	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
 	EVM(EVMChainId),
-	/// A Polkadot Parachain domain
-	Parachain(ParachainId),
 }
+
+/// An encoding & decoding trait for the purpose of meeting the
+/// Connectors General Message Passing Format
+pub trait Codec: Sized {
+	fn serialize(&self) -> Vec<u8>;
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
+}
+
+impl Codec for Domain {
+	fn serialize(&self) -> Vec<u8> {
+		match self {
+			Self::Centrifuge => vec![0; 9],
+			Self::EVM(chain_id) => {
+				let mut output: Vec<u8> = 1u8.encode();
+				output.append(&mut chain_id.to_be_bytes().to_vec());
+
+				output
+			}
+		}
+	}
+
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let variant = input.read_byte()?;
+
+		match variant {
+			0 => Ok(Self::Centrifuge),
+			1 => {
+				let chain_id = decode_be_bytes::<8, _, _>(input)?;
+				Ok(Self::EVM(chain_id))
+			}
+			_ => Err(codec::Error::from("Unknown Domain variant")),
+		}
+	}
+}
+
+/// The EVM Chain ID
+/// The type should accomodate all chain ids listed on https://chainlist.org/.
+type EVMChainId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
 pub struct DomainLocator<Domain> {
@@ -71,14 +107,40 @@ impl<Domain> TypeId for DomainLocator<Domain> {
 	const TYPE_ID: [u8; 4] = *b"domn";
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct DomainAddress<Domain> {
-	pub domain: Domain,
-	pub address: [u8; 32],
+pub enum DomainAddress {
+	/// A Centrifuge-Chain based account address, 32-bytes long
+	Centrifuge([u8; 32]),
+	/// An EVM chain address, 20-bytes long
+	EVM(EVMChainId, [u8; 20]),
 }
 
-impl<Domain> TypeId for DomainAddress<Domain> {
+impl From<DomainAddress> for Domain {
+	fn from(x: DomainAddress) -> Self {
+		match x {
+			DomainAddress::Centrifuge(_) => Domain::Centrifuge,
+			DomainAddress::EVM(chain_id, _) => Domain::EVM(chain_id),
+		}
+	}
+}
+
+impl DomainAddress {
+	/// Get the address in a 32-byte long representation.
+	/// For EVM addresses, append 12 zeros.
+	fn address(&self) -> [u8; 32] {
+		match self.clone() {
+			Self::Centrifuge(x) => x,
+			Self::EVM(_, x) => vec_to_fixed_array(x.to_vec()),
+		}
+	}
+
+	fn domain(&self) -> Domain {
+		self.clone().into()
+	}
+}
+
+impl TypeId for DomainAddress {
 	const TYPE_ID: [u8; 4] = *b"dadr";
 }
 
@@ -117,12 +179,11 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm_transactor::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type WeightInfo: WeightInfo;
 
@@ -137,7 +198,7 @@ pub mod pallet {
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
 		/// The origin allowed to make admin-like changes, such calling `set_domain_router`.
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
+		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
 
@@ -181,11 +242,21 @@ pub mod pallet {
 			domain: Domain,
 			router: Router<CurrencyIdOf<T>>,
 		},
+
+		IncomingMessage {
+			sender: T::AccountId,
+			message: Vec<u8>,
+		},
 	}
 
 	#[pallet::storage]
 	pub(crate) type DomainRouter<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
+
+	/// The set of known connectors. This set is used as an allow-list when authorizing
+	/// the origin of incoming messages through the `handle` extrinsic.
+	#[pallet::storage]
+	pub(crate) type KnownConnectors<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -207,6 +278,10 @@ pub mod pallet {
 		UnauthorizedTransfer,
 		/// Failed to build Ethereum_Xcm call
 		FailedToBuildEthereumXcmCall,
+		/// The origin of an incoming message is not in the allow-list
+		InvalidIncomingMessageOrigin,
+		/// Failed to decode an incoming message
+		InvalidIncomingMessage,
 	}
 
 	#[pallet::call]
@@ -222,6 +297,16 @@ pub mod pallet {
 
 			<DomainRouter<T>>::insert(domain.clone(), router.clone());
 			Self::deposit_event(Event::SetDomainRouter { domain, router });
+
+			Ok(())
+		}
+
+		/// Add an AccountId to the set of known connectors, allowing that origin
+		/// to send incoming messages.
+		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
+			T::AdminOrigin::ensure_origin(origin)?;
+			<KnownConnectors<T>>::insert(connector, ());
 
 			Ok(())
 		}
@@ -261,12 +346,14 @@ pub mod pallet {
 			);
 
 			// Look up the metadata of the tranche token
-			let currency_id =
-				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into();
+			let currency_id = T::TrancheCurrency::generate(pool_id, tranche_id).into();
 			let metadata = T::AssetRegistry::metadata(&currency_id)
 				.ok_or(Error::<T>::TrancheMetadataNotFound)?;
 			let token_name = vec_to_fixed_array(metadata.name);
 			let token_symbol = vec_to_fixed_array(metadata.symbol);
+			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingTranchePrice)?
+				.price;
 
 			// Send the message to the domain
 			Self::do_send_message(
@@ -276,6 +363,7 @@ pub mod pallet {
 					tranche_id,
 					token_name,
 					token_symbol,
+					price,
 				},
 				domain,
 			)?;
@@ -293,15 +381,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
-			let latest_price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
-				.ok_or(Error::<T>::MissingTranchePrice)?;
+			let price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingTranchePrice)?
+				.price;
 
 			Self::do_send_message(
 				who,
 				Message::UpdateTokenPrice {
 					pool_id,
 					tranche_id,
-					price: latest_price.price,
+					price,
 				},
 				domain,
 			)?;
@@ -313,7 +402,7 @@ pub mod pallet {
 		#[pallet::weight(< T as Config >::WeightInfo::update_member())]
 		pub fn update_member(
 			origin: OriginFor<T>,
-			address: DomainAddress<Domain>,
+			domain_address: DomainAddress,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
 			valid_until: Moment,
@@ -330,12 +419,20 @@ pub mod pallet {
 				BadOrigin
 			);
 
-			// Now add the destination address as a TrancheInvestor of the given tranche
-			T::Permission::add(
+			// Now add the destination address as a TrancheInvestor of the given tranche if
+			// not already one. This check is necessary shall a user have called `update_member`
+			// already but the call has failed on the EVM side and needs to be retried.
+			if !T::Permission::has(
 				PermissionScope::Pool(pool_id),
-				address.into_account_truncating(),
+				domain_address.into_account_truncating(),
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
-			)?;
+			) {
+				T::Permission::add(
+					PermissionScope::Pool(pool_id),
+					domain_address.into_account_truncating(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
+				)?;
+			}
 
 			Self::do_send_message(
 				who,
@@ -343,9 +440,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					address: address.address,
+					address: domain_address.address(),
 				},
-				address.domain,
+				domain_address.domain(),
 			)?;
 
 			Ok(())
@@ -357,7 +454,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
-			address: DomainAddress<Domain>,
+			domain_address: DomainAddress,
 			amount: <T as pallet::Config>::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -366,7 +463,7 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					address.into_account_truncating(),
+					domain_address.into_account_truncating(),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 				),
 				Error::<T>::UnauthorizedTransfer
@@ -376,10 +473,10 @@ pub mod pallet {
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
-				T::TrancheCurrency::generate(pool_id.clone(), tranche_id.clone()).into(),
+				T::TrancheCurrency::generate(pool_id, tranche_id).into(),
 				&who,
-				&DomainLocator {
-					domain: address.domain.clone(),
+				&DomainLocator::<Domain> {
+					domain: domain_address.domain(),
 				}
 				.into_account_truncating(),
 				amount,
@@ -392,11 +489,35 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					amount,
-					domain: address.clone().domain,
-					destination: address.clone().address,
+					domain: domain_address.domain(),
+					address: domain_address.address(),
 				},
-				address.domain,
+				domain_address.domain(),
 			)?;
+
+			Ok(())
+		}
+
+		/// Handle an incoming message
+		/// TODO(nuno): we probably need a custom origin type for these messages to ensure they have
+		/// come in through XCM. Probably even handle it in a separate pallet? For now, let's have a
+		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
+		#[pallet::call_index(99)]
+		#[pallet::weight(< T as Config >::WeightInfo::handle())]
+		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
+			let sender = ensure_signed(origin.clone())?;
+			ensure!(
+				<KnownConnectors<T>>::contains_key(&sender),
+				Error::<T>::InvalidIncomingMessageOrigin
+			);
+
+			Self::deposit_event(Event::IncomingMessage {
+				sender,
+				message: bytes.clone(),
+			});
+			// todo: do someting with the decoded message later on
+			let _: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
+				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
 
 			Ok(())
 		}
@@ -416,12 +537,12 @@ pub mod pallet {
 			let Router::Xcm(xcm_domain) =
 				<DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
-			let contract_call = contract::encoded_contract_call(message.encode());
+			let contract_call = contract::encoded_contract_call(message.serialize());
 			let ethereum_xcm_call =
 				Self::encoded_ethereum_xcm_call(xcm_domain.clone(), contract_call);
 
 			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
-				T::Origin::root(),
+				T::RuntimeOrigin::root(),
 				// The destination to which the message should be sent
 				Box::new(xcm_domain.location),
 				fee_payer,
@@ -434,8 +555,9 @@ pub mod pallet {
 				ethereum_xcm_call,
 				OriginKind::SovereignAccount,
 				TransactWeights {
-					// Specify a conservative max weight
-					transact_required_weight_at_most: 8_000_000_000,
+					// Convert the max gas_limit into a max transact weight following Moonbeam's formula.
+					transact_required_weight_at_most: xcm_domain.max_gas_limit * 25_000
+						+ 100_000_000,
 					overall_weight: None,
 				},
 			)?;
@@ -457,11 +579,16 @@ pub mod pallet {
 		) -> Vec<u8> {
 			let mut encoded: Vec<u8> = Vec::new();
 
-			encoded.append(&mut xcm_domain.ethereum_xcm_transact_call_index.clone());
+			encoded.append(
+				&mut xcm_domain
+					.ethereum_xcm_transact_call_index
+					.clone()
+					.into_inner(),
+			);
 			encoded.append(
 				&mut xcm_primitives::EthereumXcmTransaction::V1(
 					xcm_primitives::EthereumXcmTransactionV1 {
-						gas_limit: U256::from(80_000),
+						gas_limit: U256::from(xcm_domain.max_gas_limit),
 						fee_payment: xcm_primitives::EthereumXcmFee::Auto,
 						action: pallet_ethereum::TransactionAction::Call(
 							xcm_domain.contract_address,
@@ -480,5 +607,52 @@ pub mod pallet {
 
 			encoded
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use cfg_primitives::AccountId;
+	use codec::{Decode, Encode};
+	use sp_runtime::traits::AccountIdConversion;
+
+	use super::DomainAddress;
+	use crate::Domain;
+
+	#[test]
+	fn test_domain_encode_decode() {
+		test_domain_identity(Domain::Centrifuge);
+		test_domain_identity(Domain::EVM(1284));
+		test_domain_identity(Domain::EVM(1));
+	}
+
+	/// Test that decode . encode results in the original value
+	fn test_domain_identity(domain: Domain) {
+		let encoded = domain.encode();
+		let decoded: Domain = Domain::decode(&mut encoded.as_slice()).expect("");
+
+		assert_eq!(domain, decoded);
+	}
+
+	#[test]
+	fn domain_address_account_derivation() {
+		assert_eq!(
+			account_from(DomainAddress::EVM(1284, [9; 20])),
+			account_from(DomainAddress::EVM(1284, [9; 20])),
+		);
+
+		assert_ne!(
+			account_from(DomainAddress::EVM(1284, [42; 20])),
+			account_from(DomainAddress::EVM(1284, [24; 20])),
+		);
+
+		assert_ne!(
+			account_from(DomainAddress::EVM(1284, [9; 20])),
+			account_from(DomainAddress::EVM(1285, [9; 20])),
+		);
+	}
+
+	fn account_from(domain_address: DomainAddress) -> AccountId {
+		domain_address.into_account_truncating()
 	}
 }

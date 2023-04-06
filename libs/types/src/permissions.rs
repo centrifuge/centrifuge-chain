@@ -11,10 +11,11 @@
 // GNU General Public License for more details.
 
 use cfg_traits::Properties;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	sp_runtime::traits::Saturating,
 	traits::{Get, UnixTime},
+	BoundedVec,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -22,7 +23,6 @@ use serde::{Deserialize, Serialize};
 use sp_std::{
 	cmp::{Ord, PartialEq, PartialOrd},
 	marker::PhantomData,
-	vec::Vec,
 };
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
@@ -39,6 +39,7 @@ pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	MemberListAdmin,
 	LoanAdmin,
 	TrancheInvestor(TrancheId, Moment),
+	PODReadAccess,
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
@@ -64,7 +65,7 @@ pub enum Role<TrancheId = [u8; 16], Moment = u64> {
 	PermissionedCurrencyRole(PermissionedCurrencyRole<Moment>),
 }
 
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PermissionScope<PoolId, CurrencyId> {
 	Pool(PoolId),
@@ -73,7 +74,7 @@ pub enum PermissionScope<PoolId, CurrencyId> {
 
 /// This is only used by the permission pallet benchmarks.
 // TODO: use conditional compilation to only add this on benchmarks and tests.
-// #[cfg(any(test, feature = "runtime-benchmarks", feature = "test-benchmarks"))]
+// #[cfg(any(test, feature = "runtime-benchmarks"))]
 impl<PoolId, CurrencyId> Default for PermissionScope<PoolId, CurrencyId>
 where
 	PoolId: Default,
@@ -85,7 +86,7 @@ where
 
 bitflags::bitflags! {
 	/// The current admin roles we support
-	#[derive(codec::Encode, codec::Decode,  TypeInfo)]
+	#[derive(codec::Encode, codec::Decode, TypeInfo, MaxEncodedLen)]
 	pub struct PoolAdminRoles: u32 {
 		const POOL_ADMIN = 0b00000001;
 		const BORROWER  = 0b00000010;
@@ -93,47 +94,48 @@ bitflags::bitflags! {
 		const LIQUIDITY_ADMIN = 0b00001000;
 		const MEMBER_LIST_ADMIN = 0b00010000;
 		const RISK_ADMIN = 0b00100000;
+		const POD_READ_ACCESS = 0b01000000;
 	}
 
 	/// The current admin roles we support
-	#[derive(codec::Encode, codec::Decode,  TypeInfo)]
+	#[derive(codec::Encode, codec::Decode, TypeInfo, MaxEncodedLen)]
 	pub struct CurrencyAdminRoles: u32 {
 		const PERMISSIONED_ASSET_MANAGER = 0b00000001;
 		const PERMISSIONED_ASSET_ISSUER  = 0b00000010;
 	}
 }
 
-#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
 pub struct PermissionedCurrencyHolderInfo<Moment> {
 	permissioned_till: Moment,
 }
 
-#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
 pub struct TrancheInvestorInfo<TrancheId, Moment> {
 	tranche_id: TrancheId,
 	permissioned_till: Moment,
 }
 
-#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
 pub struct PermissionedCurrencyHolders<Now, MinDelay, Moment> {
 	info: Option<PermissionedCurrencyHolderInfo<Moment>>,
 	_phantom: PhantomData<(Now, MinDelay)>,
 }
 
-#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
-pub struct TrancheInvestors<Now, MinDelay, TrancheId, Moment> {
-	info: Vec<TrancheInvestorInfo<TrancheId, Moment>>,
+#[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq, MaxEncodedLen)]
+pub struct TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches: Get<u32>> {
+	info: BoundedVec<TrancheInvestorInfo<TrancheId, Moment>, MaxTranches>,
 	_phantom: PhantomData<(Now, MinDelay)>,
 }
 
 /// The structure that we store in the pallet-permissions storage
 /// This here implements trait Properties.
-#[derive(Encode, Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
-pub struct PermissionRoles<Now, MinDelay, TrancheId, Moment = u64> {
+#[derive(Encode, Decode, TypeInfo, Clone, Eq, PartialEq, Debug, MaxEncodedLen)]
+pub struct PermissionRoles<Now, MinDelay, TrancheId, MaxTranches: Get<u32>, Moment = u64> {
 	pool_admin: PoolAdminRoles,
 	currency_admin: CurrencyAdminRoles,
 	permissioned_asset_holder: PermissionedCurrencyHolders<Now, MinDelay, Moment>,
-	tranche_investor: TrancheInvestors<Now, MinDelay, TrancheId, Moment>,
+	tranche_investor: TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches>,
 }
 
 impl<Now, MinDelay, Moment> Default for PermissionedCurrencyHolders<Now, MinDelay, Moment>
@@ -150,28 +152,31 @@ where
 	}
 }
 
-impl<Now, MinDelay, TrancheId, Moment> Default
-	for TrancheInvestors<Now, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, Moment, MaxTranches> Default
+	for TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches>
 where
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
 	TrancheId: PartialEq + PartialOrd,
+	MaxTranches: Get<u32>,
 {
 	fn default() -> Self {
 		Self {
-			info: Vec::default(),
+			info: BoundedVec::default(),
 			_phantom: Default::default(),
 		}
 	}
 }
 
-impl<Now, MinDelay, TrancheId, Moment> Default for PermissionRoles<Now, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, MaxTranches, Moment> Default
+	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches, Moment>
 where
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
 	TrancheId: PartialEq + PartialOrd,
+	MaxTranches: Get<u32>,
 {
 	fn default() -> Self {
 		Self {
@@ -179,7 +184,8 @@ where
 			currency_admin: CurrencyAdminRoles::empty(),
 			permissioned_asset_holder:
 				PermissionedCurrencyHolders::<Now, MinDelay, Moment>::default(),
-			tranche_investor: TrancheInvestors::<Now, MinDelay, TrancheId, Moment>::default(),
+			tranche_investor:
+				TrancheInvestors::<Now, MinDelay, TrancheId, Moment, MaxTranches>::default(),
 		}
 	}
 }
@@ -189,13 +195,14 @@ where
 /// This UNION shall reflect that and explain to the reader why it is passed here.
 pub const UNION: u64 = 0;
 
-impl<Now, MinDelay, TrancheId, Moment> Properties
-	for PermissionRoles<Now, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, MaxTranches, Moment> Properties
+	for PermissionRoles<Now, MinDelay, TrancheId, MaxTranches, Moment>
 where
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 	TrancheId: PartialEq + PartialOrd,
+	MaxTranches: Get<u32>,
 {
 	type Error = ();
 	type Ok = ();
@@ -215,6 +222,9 @@ where
 				}
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
+				PoolRole::PODReadAccess => {
+					self.pool_admin.contains(PoolAdminRoles::POD_READ_ACCESS)
+				}
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -253,6 +263,9 @@ where
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
+				PoolRole::PODReadAccess => {
+					Ok(self.pool_admin.remove(PoolAdminRoles::POD_READ_ACCESS))
+				}
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -284,6 +297,9 @@ where
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
+				PoolRole::PODReadAccess => {
+					Ok(self.pool_admin.insert(PoolAdminRoles::POD_READ_ACCESS))
+				}
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -373,12 +389,14 @@ where
 	}
 }
 
-impl<Now, MinDelay, TrancheId, Moment> TrancheInvestors<Now, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, Moment, MaxTranches>
+	TrancheInvestors<Now, MinDelay, TrancheId, Moment, MaxTranches>
 where
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 	TrancheId: PartialEq + PartialOrd,
+	MaxTranches: Get<u32>,
 {
 	pub fn empty() -> Self {
 		Self::default()
@@ -435,10 +453,12 @@ where
 				Ok(self.info[index].permissioned_till = validity)
 			}
 		} else {
-			Ok(self.info.push(TrancheInvestorInfo {
-				tranche_id: tranche,
-				permissioned_till: validity,
-			}))
+			self.info
+				.try_push(TrancheInvestorInfo {
+					tranche_id: tranche,
+					permissioned_till: validity,
+				})
+				.map_err(|_| ())
 		}
 	}
 }
@@ -454,6 +474,7 @@ mod tests {
 
 	parameter_types! {
 		pub const MinDelay: u64 = 4;
+		pub const MaxTranches: u32 = 5;
 	}
 
 	struct Now(core::time::Duration);
@@ -490,9 +511,9 @@ mod tests {
 
 	#[test]
 	fn permission_roles_work() {
-		assert!(PermissionRoles::<Now, MinDelay, TrancheId>::default().empty());
+		assert!(PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default().empty());
 
-		let mut roles = PermissionRoles::<Now, MinDelay, TrancheId>::default();
+		let mut roles = PermissionRoles::<Now, MinDelay, TrancheId, MaxTranches>::default();
 
 		// Updating works only when increasing permissions
 		assert!(roles
@@ -593,8 +614,10 @@ mod tests {
 		// Adding roles works normally
 		assert!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
 		assert!(roles.add(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 		assert!(roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
 
 		// Role exists for as long as permission is given
 		assert!(roles
@@ -634,8 +657,10 @@ mod tests {
 		// Removing roles work normally for Non-TrancheInvestor roles
 		assert!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
 		assert!(roles.rm(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.rm(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
 	}
 
 	/// Sanity check for every CurrencyId variant's encoding value.

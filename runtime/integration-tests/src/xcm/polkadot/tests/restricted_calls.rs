@@ -21,7 +21,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use centrifuge_runtime::{Balances, Call, Multisig, Origin, PolkadotXcm, XTokens};
+use centrifuge_runtime::{Balances, Multisig, PolkadotXcm, RuntimeCall, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
@@ -37,7 +37,7 @@ use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 use xcm::{
 	latest::{
 		AssetId, Fungibility, Junction, Junction::*, Junctions::*, MultiAsset, MultiLocation,
-		NetworkId,
+		NetworkId, WeightLimit,
 	},
 	v2::{Instruction::WithdrawAsset, Xcm},
 	VersionedMultiLocation,
@@ -68,7 +68,7 @@ pub mod blocked {
 		Centrifuge::execute_with(|| {
 			assert_noop!(
 				XTokens::transfer(
-					Origin::signed(ALICE.into()),
+					RuntimeOrigin::signed(ALICE.into()),
 					CurrencyId::Tranche(401, [0; 16]),
 					42,
 					Box::new(
@@ -84,7 +84,7 @@ pub mod blocked {
 						)
 						.into()
 					),
-					8_000_000_000_000,
+					WeightLimit::Limited(8_000_000_000_000),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::NotCrossChainTransferableCurrency
 			);
@@ -112,7 +112,7 @@ pub mod blocked {
 		Centrifuge::execute_with(|| {
 			assert_noop!(
 				XTokens::transfer_multiasset(
-					Origin::signed(ALICE.into()),
+					RuntimeOrigin::signed(ALICE.into()),
 					Box::new(tranche_multi_asset),
 					Box::new(
 						MultiLocation::new(
@@ -127,7 +127,7 @@ pub mod blocked {
 						)
 						.into()
 					),
-					8_000_000_000_000,
+					WeightLimit::Limited(8_000_000_000_000),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
 			);
@@ -153,7 +153,7 @@ pub mod blocked {
 		Centrifuge::execute_with(|| {
 			assert_noop!(
 				XTokens::transfer_multiassets(
-					Origin::signed(ALICE.into()),
+					RuntimeOrigin::signed(ALICE.into()),
 					Box::new(VersionedMultiAssets::from(MultiAssets::from(vec![
 						tranche_multi_asset
 					]))),
@@ -171,52 +171,9 @@ pub mod blocked {
 						)
 						.into()
 					),
-					8_000_000_000_000,
+					WeightLimit::Limited(8_000_000_000_000),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
-			);
-		});
-	}
-
-	// TODO (miguel): Remove this test case once we have migrated to substrate v0.9.31
-	#[test]
-	fn verify_multisig_filter_for_max_size_call() {
-		use centrifuge_runtime::{AccountId, Runtime};
-		use cfg_primitives::constants::MAX_MULTISIG_CALL_SIZE;
-
-		Centrifuge::execute_with(|| {
-			let under_limit_payload: Vec<u8> = vec![1; MAX_MULTISIG_CALL_SIZE - 1];
-			// Allowed under limit payload, goes through
-			assert_noop!(
-				Call::Multisig(pallet_multisig::Call::<Runtime>::as_multi {
-					threshold: 2,
-					other_signatories: vec![ALICE.into(), BOB.into()],
-					maybe_timepoint: None,
-					call: WrapperKeepOpaque::from_encoded(under_limit_payload.clone()),
-					store_call: false,
-					max_weight: Weight::zero()
-				})
-				.dispatch(<Runtime as frame_system::Config>::Origin::signed(
-					AccountId::from(ALICE)
-				)),
-				pallet_multisig::Error::<Runtime>::SenderInSignatories
-			);
-
-			let over_limit_payload: Vec<u8> = vec![1; MAX_MULTISIG_CALL_SIZE];
-			// Not allowed over limit payload, Call is Filtered
-			assert_noop!(
-				Call::Multisig(pallet_multisig::Call::<Runtime>::as_multi {
-					threshold: 2,
-					other_signatories: vec![ALICE.into(), BOB.into()],
-					maybe_timepoint: None,
-					call: WrapperKeepOpaque::from_encoded(over_limit_payload.clone()),
-					store_call: false,
-					max_weight: Weight::zero()
-				})
-				.dispatch(<Runtime as frame_system::Config>::Origin::signed(
-					AccountId::from(ALICE)
-				)),
-				frame_system::Error::<Runtime>::CallFiltered
 			);
 		});
 	}

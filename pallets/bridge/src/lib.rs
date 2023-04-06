@@ -28,11 +28,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// Pallet traits declaration
-pub mod traits;
-
 // Pallet extrinsics weight information
-mod weights;
+pub mod weights;
 use cfg_traits::fees::{Fee, Fees};
 use chainbridge::types::{ChainId, ResourceId};
 // Runtime, system and frame primitives
@@ -45,8 +42,7 @@ pub use pallet::*;
 use sp_core::U256;
 use sp_runtime::traits::{AccountIdConversion, SaturatedConversion};
 use sp_std::vec::Vec;
-
-use crate::traits::WeightInfo;
+use weights::WeightInfo;
 
 // ----------------------------------------------------------------------------
 // Type aliases
@@ -101,7 +97,7 @@ pub mod pallet {
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.
 		type BridgeOrigin: EnsureOrigin<
-			<Self as frame_system::Config>::Origin,
+			<Self as frame_system::Config>::RuntimeOrigin,
 			Success = <Self as frame_system::Config>::AccountId,
 		>;
 
@@ -115,7 +111,7 @@ pub mod pallet {
 		type Currency: Currency<<Self as frame_system::Config>::AccountId>;
 
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		// Type for native token ID.
 		#[pallet::constant]

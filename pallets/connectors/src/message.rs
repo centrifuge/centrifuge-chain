@@ -1,7 +1,10 @@
 use cfg_primitives::Moment;
+use cfg_utils::{decode, decode_be_bytes, encode_be};
+use codec::{Decode, Encode, Input};
+use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
 
-use crate::*;
+use crate::Codec;
 
 /// Address type
 /// Note: It can be used to represent any address type with a length <= 32 bytes;
@@ -14,11 +17,18 @@ pub const TOKEN_NAME_SIZE: usize = 128;
 // The fixed size for the array representing a tranche token symbol
 pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
-#[derive(Decode, Clone, PartialEq, TypeInfo)]
+/// A Connector Message
+///
+/// A connector message requires a custom decoding & encoding, meeting the Connector Generic
+/// Message Passing Format (CGMPF): Every message is encoded with a u8 at head flagging the
+/// message type, followed by its field. Integers are big-endian encoded and enum values
+/// (such as `[crate::Domain]`) also have a custom CGMPF implementation, aiming for a
+/// fixed-size encoded representation for each message variant.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
 where
-	Domain: Encode + Decode,
+	Domain: Codec,
 	PoolId: Encode + Decode,
 	TrancheId: Encode + Decode,
 	Balance: Encode + Decode,
@@ -33,6 +43,7 @@ where
 		tranche_id: TrancheId,
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+		price: Rate,
 	},
 	UpdateTokenPrice {
 		pool_id: PoolId,
@@ -49,13 +60,13 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		domain: Domain,
-		destination: Address,
+		address: Address,
 		amount: Balance,
 	},
 }
 
 impl<
-		Domain: Encode + Decode,
+		Domain: Codec,
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
@@ -81,219 +92,284 @@ impl<
 }
 
 impl<
-		Domain: Encode + Decode,
+		Domain: Codec,
 		PoolId: Encode + Decode,
 		TrancheId: Encode + Decode,
 		Balance: Encode + Decode,
 		Rate: Encode + Decode,
-	> Encode for Message<Domain, PoolId, TrancheId, Balance, Rate>
+	> Codec for Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
-	fn encode(&self) -> Vec<u8> {
+	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![self.call_type()],
 			Message::AddPool { pool_id } => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
-				message
+				encoded_message(self.call_type(), vec![encode_be(pool_id)])
 			}
 			Message::AddTranche {
 				pool_id,
 				tranche_id,
 				token_name,
 				token_symbol,
-			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
-				message.append(&mut tranche_id.encode());
-				message.append(&mut token_name.encode());
-				message.append(&mut token_symbol.encode());
-
-				message
-			}
+				price,
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					token_name.encode(),
+					token_symbol.encode(),
+					encode_be(price),
+				],
+			),
 			Message::UpdateTokenPrice {
 				pool_id,
 				tranche_id,
 				price,
-			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
-				message.append(&mut tranche_id.encode());
-				message.append(&mut price.encode());
-
-				message
-			}
+			} => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), tranche_id.encode(), encode_be(price)],
+			),
 			Message::UpdateMember {
 				pool_id,
 				tranche_id,
 				address,
 				valid_until,
-			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
-
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
-
-				message.append(&mut tranche_id.encode());
-				message.append(&mut address.encode());
-				message.append(&mut valid_until.encode());
-
-				message
-			}
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					address.encode(),
+					valid_until.to_be_bytes().to_vec(),
+				],
+			),
 			Message::Transfer {
 				pool_id,
 				tranche_id,
 				domain,
-				destination,
+				address,
 				amount,
-			} => {
-				let mut message: Vec<u8> = vec![];
-				message.push(self.call_type());
+			} => encoded_message(
+				self.call_type(),
+				vec![
+					encode_be(pool_id),
+					tranche_id.encode(),
+					domain.serialize(),
+					address.encode(),
+					encode_be(amount),
+				],
+			),
+		}
+	}
 
-				let mut encoded_pool_id = pool_id.encode();
-				encoded_pool_id.reverse();
-				message.append(&mut encoded_pool_id);
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let call_type = input.read_byte()?;
 
-				message.append(&mut tranche_id.encode());
-				message.append(&mut domain.encode());
-				message.append(&mut destination.encode());
-				message.append(&mut amount.encode());
-
-				message
-			}
+		match call_type {
+			0 => Ok(Self::Invalid),
+			1 => Ok(Self::AddPool {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+			}),
+			2 => Ok(Self::AddTranche {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
+				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
+				price: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			3 => Ok(Self::UpdateTokenPrice {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				price: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			4 => Ok(Self::UpdateMember {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				valid_until: decode_be_bytes::<8, _, _>(input)?,
+			}),
+			5 => Ok(Self::Transfer {
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				tranche_id: decode::<16, _, _>(input)?,
+				domain: deserialize::<9, _, _>(input)?,
+				address: decode::<32, _, _>(input)?,
+				amount: decode_be_bytes::<16, _, _>(input)?,
+			}),
+			_ => Err(codec::Error::from(
+				"Unsupported decoding for this Message variant",
+			)),
 		}
 	}
 }
 
+/// Decode a type that implements our custom [Codec] trait
+pub fn deserialize<const S: usize, O: Codec, I: Input>(input: &mut I) -> Result<O, codec::Error> {
+	let mut bytes = [0; S];
+	input.read(&mut bytes[..])?;
+
+	O::deserialize(&mut bytes.as_slice())
+}
+
+fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
+	let mut message: Vec<u8> = vec![];
+	message.push(call_type);
+	for x in fields {
+		message.append(&mut x.clone());
+	}
+
+	message
+}
+
 #[cfg(test)]
 mod tests {
+	use cfg_primitives::{Balance, PoolId, TrancheId};
 	use cfg_types::fixed_point::Rate;
-	use codec::Encode;
+	use cfg_utils::vec_to_fixed_array;
 	use hex::FromHex;
 	use sp_runtime::traits::One;
 
-	use crate::Message;
+	use super::*;
+	use crate::{Codec, Domain, DomainAddress};
 
-	type PoolId = u64;
-	type TrancheId = [u8; 16];
-	type Balance = cfg_primitives::Balance;
+	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
-	const CURRENCY: Balance = 1_000_000_000_000_000_000;
+	#[test]
+	fn invalid() {
+		let msg = ConnectorMessage::Invalid;
+		assert_eq!(msg.serialize(), vec![msg.call_type()]);
+		assert_eq!(msg.serialize(), vec![0]);
+	}
 
-	pub mod encode {
-		use super::*;
-		use crate::{Domain, ParachainId};
+	#[test]
+	fn encoding_domain() {
+		// The Centrifuge substrate chain
+		assert_eq!(
+			hex::encode(Domain::Centrifuge.serialize()),
+			"000000000000000000"
+		);
+		// Ethereum MainNet
+		assert_eq!(
+			hex::encode(Domain::EVM(1).serialize()),
+			"010000000000000001"
+		);
+		// Moonbeam EVM chain
+		assert_eq!(
+			hex::encode(Domain::EVM(1284).serialize()),
+			"010000000000000504"
+		);
+		// Avalanche Chain
+		assert_eq!(
+			hex::encode(Domain::EVM(43114).serialize()),
+			"01000000000000a86a"
+		);
+	}
 
-		#[test]
-		fn invalid() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Invalid;
-			assert_eq!(msg.encode(), vec![msg.call_type()]);
-			assert_eq!(msg.encode(), vec![0]);
-		}
+	#[test]
+	fn add_pool_zero() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddPool { pool_id: 0 },
+			"010000000000000000",
+		)
+	}
 
-		#[test]
-		fn add_pool_zero() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 0 };
-			let encoded = msg.encode();
+	#[test]
+	fn add_pool_long() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddPool { pool_id: 12378532 },
+			"010000000000bce1a4",
+		)
+	}
 
-			let expected_hex = "010000000000000000";
-			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
-		}
+	#[test]
+	fn add_tranche() {
+		test_encode_decode_identity(
+				ConnectorMessage::AddTranche {
+					pool_id: 12378532,
+					tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+					token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
+					token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+					price: Rate::one(),
+				},
+				"020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000"
+			)
+	}
 
-		#[test]
-		fn add_pool_long() {
-			let msg =
-				Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 12378532 };
-			let encoded = msg.encode();
-
-			let expected_hex = "010000000000bce1a4";
-			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
-			assert_eq!(encoded, expected);
-		}
-
-		#[test]
-		fn add_tranche() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddTranche {
-				pool_id: 12378532,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				token_name: [5; 128],
-				token_symbol: [6; 32],
-			};
-			let encoded_bytes = msg.encode();
-
-			// We encode the encoded bytes as hex to verify it's what we expect
-			let encoded_hex = hex::encode(encoded_bytes.clone());
-			let expected_hex = "020000000000bce1a40000000000000000000000000000000105050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050505050606060606060606060606060606060606060606060606060606060606060606";
-			assert_eq!(expected_hex, encoded_hex);
-
-			// Now decode the bytes encoded as hex back to bytes and verify it's the same as
-			// the original `encoded_bytes`
-			let hex_as_bytes = hex::decode(encoded_hex).expect("Should go vec -> hex -> vec");
-			assert_eq!(hex_as_bytes, encoded_bytes);
-		}
-
-		#[test]
-		fn update_token_price() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateTokenPrice {
+	#[test]
+	fn update_token_price() {
+		test_encode_decode_identity(
+			ConnectorMessage::UpdateTokenPrice {
 				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+				tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
 				price: Rate::one(),
-			};
-			let encoded = msg.encode();
+			},
+			"030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000",
+		)
+	}
 
-			let input = "03000000000000000100000000000000000000000000000001000000e83c80d09f3c2e3b0300000000";
-			let expected = <[u8; 41]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
-		}
+	#[test]
+	fn update_member() {
+		test_encode_decode_identity(
+				ConnectorMessage::UpdateMember {
+					pool_id: 2,
+					tranche_id: <[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b").expect(""),
+					address: <[u8; 32]>::from_hex(
+						"1231231231231231231231231231231231231231231231231231231231231231",
+					)
+						.expect(""),
+					valid_until: 1706260138,
+				},
+				"040000000000000002811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312312312312312312312312312310000000065b376aa"
+			)
+	}
 
-		#[test]
-		fn update_member() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::UpdateMember {
-				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				address: [1; 32],
-				valid_until: 100,
-			};
-			let encoded = msg.encode();
+	#[test]
+	fn transfer_to_moonbeam() {
+		let domain_address = DomainAddress::EVM(
+			1284,
+			<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect(""),
+		);
 
-			let input = "0400000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101016400000000000000";
-			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
-		}
+		test_encode_decode_identity(
+				ConnectorMessage::Transfer {
+					pool_id: 1,
+					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+					domain: domain_address.clone().into(),
+					address: domain_address.address(),
+					amount: 1000000000000000000000000000,
+				},
+				"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b010000000000000504123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000"
+			);
+	}
 
-		#[test]
-		#[ignore = "wip"]
-		fn transfer() {
-			let msg = Message::<Domain, PoolId, TrancheId, Balance, Rate>::Transfer {
-				pool_id: 1,
-				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-				domain: Domain::Parachain(ParachainId::Moonbeam),
-				destination: [1; 32],
-				amount: 100 * CURRENCY,
-			};
-			let encoded = msg.encode();
-			println!("{}", hex::encode(encoded.clone()));
+	#[test]
+	fn transfer_to_centrifuge() {
+		test_encode_decode_identity(
+				ConnectorMessage::Transfer {
+					pool_id: 1,
+					tranche_id: tranche_id_from_hex("811acd5b3f17c06841c7e41e9e04cb1b"),
+					domain: Domain::Centrifuge,
+					address: vec_to_fixed_array(<[u8; 20]>::from_hex("1231231231231231231231231231231231231231").expect("").to_vec()),
+					amount: 1000000000000000000000000000,
+				},
+				"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b000000000000000000123123123123123123123123123123123123123100000000000000000000000000000000033b2e3c9fd0803ce8000000"
+			)
+	}
 
-			let input = "0500000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101016400000000000000";
-			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
-			assert_eq!(encoded, expected);
-		}
+	/// Verify the identity property of decode . encode on a Message value and
+	/// that it in fact encodes to and can be decoded from a given hex string.
+	fn test_encode_decode_identity(
+		msg: Message<Domain, PoolId, TrancheId, Balance, Rate>,
+		expected_hex: &str,
+	) {
+		let encoded = msg.serialize();
+		assert_eq!(hex::encode(encoded.clone()), expected_hex);
+
+		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
+			Message::deserialize(&mut hex::decode(expected_hex).expect("").as_slice()).expect("");
+		assert_eq!(msg, decoded);
+	}
+
+	fn tranche_id_from_hex(hex: &str) -> TrancheId {
+		<[u8; 16]>::from_hex(hex).expect("Should be valid tranche id")
 	}
 }

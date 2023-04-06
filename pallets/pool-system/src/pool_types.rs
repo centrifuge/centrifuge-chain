@@ -11,8 +11,9 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
+use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub};
 use cfg_types::epoch::EpochState;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::Get,
@@ -23,7 +24,7 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, One, Zero},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, TypeId,
+	FixedPointNumber, FixedPointOperand, TypeId,
 };
 use sp_std::{cmp::PartialEq, vec::Vec};
 
@@ -37,7 +38,7 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 	const TYPE_ID: [u8; 4] = *b"pool";
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ReserveDetails<Balance> {
 	/// Investments will be allowed up to this amount.
 	pub max: Balance,
@@ -51,40 +52,42 @@ impl<Balance> ReserveDetails<Balance>
 where
 	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
 {
-	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency>(
+	/// Update the total balance of the reserve based on the provided solution for in- and outflows of this epoc.
+	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
 		&mut self,
-		epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight, TrancheCurrency>,
+		epoch_tranches: &EpochExecutionTranches<
+			Balance,
+			BalanceRatio,
+			Weight,
+			TrancheCurrency,
+			MaxExecutionTranches,
+		>,
 		solution: &[TrancheSolution],
 	) -> DispatchResult
 	where
 		Weight: Copy + From<u128>,
 		BalanceRatio: Copy,
+		MaxExecutionTranches: Get<u32>,
 	{
 		let executed_amounts = epoch_tranches.fulfillment_cash_flows(solution)?;
 
 		// Update the total/available reserve for the new total value of the pool
 		let mut acc_investments = Balance::zero();
 		let mut acc_redemptions = Balance::zero();
-		for (invest, redeem) in executed_amounts.iter() {
-			acc_investments = acc_investments
-				.checked_add(invest)
-				.ok_or(ArithmeticError::Overflow)?;
-			acc_redemptions = acc_redemptions
-				.checked_add(redeem)
-				.ok_or(ArithmeticError::Overflow)?;
+		for &(invest, redeem) in executed_amounts.iter() {
+			acc_investments.ensure_add_assign(invest)?;
+			acc_redemptions.ensure_add_assign(redeem)?;
 		}
 		self.total = self
 			.total
-			.checked_add(&acc_investments)
-			.ok_or(ArithmeticError::Overflow)?
-			.checked_sub(&acc_redemptions)
-			.ok_or(ArithmeticError::Underflow)?;
+			.ensure_add(acc_investments)?
+			.ensure_sub(acc_redemptions)?;
 
 		Ok(())
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ScheduledUpdateDetails<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -92,7 +95,7 @@ where
 	MaxTranches: Get<u32>,
 {
 	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	pub scheduled_time: Moment,
+	pub submitted_at: Moment,
 }
 
 /// A representation of a pool identifier that can be converted to an account address
@@ -101,30 +104,28 @@ pub struct PoolLocator<PoolId> {
 	pub pool_id: PoolId,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolDetails<
 	CurrencyId,
 	TrancheCurrency,
 	EpochId,
 	Balance,
 	Rate,
-	MetaSize,
 	Weight,
 	TrancheId,
 	PoolId,
+	MaxTranches,
 > where
-	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
+	MaxTranches: Get<u32>,
 {
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
 	/// List of tranches, ordered junior to senior.
-	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId>,
+	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>,
 	/// Details about the parameters of the pool.
 	pub parameters: PoolParameters,
-	/// Metadata that specifies the pool.
-	pub metadata: Option<BoundedVec<u8, MetaSize>>,
 	/// The status the pool is currently in.
 	pub status: PoolStatus,
 	/// Details about the epochs of the pool.
@@ -133,12 +134,12 @@ pub struct PoolDetails<
 	pub reserve: ReserveDetails<Balance>,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum PoolStatus {
 	Open,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct PoolParameters {
 	/// Minimum duration for an epoch.
 	pub min_epoch_time: Moment,
@@ -160,8 +161,37 @@ where
 	pub max_nav_age: Change<Moment>,
 }
 
+// NOTE: Can be removed once orml_traits::Change impls MaxEncodedLen
+// https://github.com/open-web3-stack/open-runtime-module-library/pull/867
+impl<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches> MaxEncodedLen
+	for PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>
+where
+	MaxTokenNameLength: Get<u32>,
+	MaxTokenSymbolLength: Get<u32>,
+	MaxTranches: Get<u32>,
+	PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>: Encode,
+	BoundedVec<TrancheUpdate<Rate>, MaxTranches>: MaxEncodedLen,
+	BoundedVec<TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>, MaxTranches>:
+		MaxEncodedLen,
+	Moment: MaxEncodedLen,
+{
+	fn max_encoded_len() -> usize {
+		// The tranches (default bound)
+		BoundedVec::<TrancheUpdate<Rate>, MaxTranches>::max_encoded_len()
+			// The tranche metadata (default bound)
+			.saturating_add(BoundedVec::<
+				TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>,
+				MaxTranches,
+			>::max_encoded_len())
+			// The min epoc time and max nav age (default bounds)
+			.saturating_add(Moment::max_encoded_len().saturating_mul(2))
+			// From the `Change` enum which wraps all four fields of Self
+			.saturating_add(4)
+	}
+}
+
 /// Information about the deposit that has been taken to create a pool
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 pub struct PoolDepositInfo<AccountId, Balance> {
 	pub depositor: AccountId,
 	pub deposit: Balance,
@@ -194,30 +224,40 @@ pub struct PoolEssence<
 		Vec<TrancheEssence<TrancheCurrency, Rate, MaxTokenNameLength, MaxTokenSymbolLength>>,
 }
 
-impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
+impl<
+		CurrencyId,
+		TrancheCurrency,
+		EpochId,
+		Balance,
+		Rate,
+		Weight,
+		TrancheId,
+		PoolId,
+		MaxTranches,
+	>
 	PoolDetails<
 		CurrencyId,
 		TrancheCurrency,
 		EpochId,
 		Balance,
 		Rate,
-		MetaSize,
 		Weight,
 		TrancheId,
 		PoolId,
+		MaxTranches,
 	> where
 	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
 	CurrencyId: Copy,
-	EpochId: BaseArithmetic,
-	MetaSize: Get<u32> + Copy,
+	EpochId: BaseArithmetic + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
 	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,
 	TrancheId: Clone + From<[u8; 16]> + PartialEq,
 	Weight: Copy + From<u128>,
+	MaxTranches: Get<u32>,
 {
 	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
-		self.epoch.current += One::one();
+		self.epoch.current.ensure_add_assign(One::one())?;
 		self.epoch.last_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
 		// Set available reserve to 0 to disable originations while the epoch is closed but not executed
@@ -228,8 +268,10 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 
 	pub fn execute_previous_epoch(&mut self) -> DispatchResult {
 		self.reserve.available = self.reserve.total;
-		self.epoch.last_executed += One::one();
-		Ok(())
+		self.epoch
+			.last_executed
+			.ensure_add_assign(One::one())
+			.map_err(Into::into)
 	}
 
 	pub fn essence<AssetRegistry, AssetId, MaxTokenNameLength, MaxTokenSymbolLength>(
@@ -268,8 +310,8 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 				.unwrap();
 
 			tranches.push(TrancheEssence {
-				currency: tranche.currency.into(),
-				ty: tranche.tranche_type.into(),
+				currency: tranche.currency,
+				ty: tranche.tranche_type,
 				metadata: TrancheMetadata {
 					token_name: BoundedVec::try_from(metadata.name)
 						.unwrap_or(BoundedVec::default()),
@@ -281,7 +323,7 @@ impl<CurrencyId, TrancheCurrency, EpochId, Balance, Rate, MetaSize, Weight, Tran
 
 		Ok(PoolEssence {
 			currency: self.currency,
-			max_reserve: self.reserve.max.into(),
+			max_reserve: self.reserve.max,
 			max_nav_age: self.parameters.max_nav_age,
 			min_epoch_time: self.parameters.min_epoch_time,
 			tranches,

@@ -3,15 +3,15 @@
 //! This pallet provides a place for digital art creators and owners to offer their
 //! NFTs for sale and for potential buyers to browse and buy them.
 //!
-//! To sell NFTs, users will call `add`. Doing so will have the NFT being transferred
+//! To sell NFTs, users will call [`Pallet::add()`]. Doing so will have the NFT being transferred
 //! from the seller to this pallet's account, to grant us the own
 //!
-//! To remove an NFT from sale and thus reclaim its ownership, sellers will call `remove`.
+//! To remove an NFT from sale and thus reclaim its ownership, sellers will call [`Pallet::remove()`].
 //!
 //! To buy an NFT, users will call `buy`.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{self, Transfer as FungiblesTransfer},
 	tokens::nonfungibles::{self, Inspect as _, Transfer as _},
@@ -19,6 +19,7 @@ use frame_support::traits::{
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -48,14 +49,14 @@ type CollectionIdOf<T> =
 type ItemIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ItemId;
 
 // Storage types
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Sale<AccountId, CurrencyId, Balance> {
 	pub seller: AccountId,
 	pub price: Price<CurrencyId, Balance>,
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Price<CurrencyId, Balance> {
 	pub currency: CurrencyId,
@@ -72,12 +73,11 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type WeightInfo: WeightInfo;
 
@@ -95,7 +95,8 @@ pub mod pallet {
 			+ Copy
 			+ Default
 			+ TypeInfo
-			+ IsType<CollectionIdOf<Self>>;
+			+ IsType<CollectionIdOf<Self>>
+			+ MaxEncodedLen;
 
 		/// The NFT ItemId type
 		type ItemId: Parameter
@@ -104,7 +105,8 @@ pub mod pallet {
 			+ Copy
 			+ TypeInfo
 			+ From<u128>
-			+ IsType<ItemIdOf<Self>>;
+			+ IsType<ItemIdOf<Self>>
+			+ MaxEncodedLen;
 
 		/// The Id of this pallet
 		#[pallet::constant]
@@ -175,7 +177,7 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// A user tried to add an NFT that could not be found in T::NonFungibles
+		/// A user tried to add an NFT that could not be found in [`Config::NonFungibles`]
 		NotFound,
 
 		/// The origin is not the owner of an NFT
@@ -197,7 +199,7 @@ pub mod pallet {
 		/// Add an NFT
 		///
 		/// Fails if
-		///   - the NFT is not found in [T::NonFungibles]
+		///   - the NFT is not found in [`Config::NonFungibles`]
 		///   - `origin` is not the owner of the nft
 		///   - the nft is already for sale
 		///   - transferring ownership of the NFT to this pallet's account fails
@@ -337,8 +339,8 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Check if the given `account` is the owner of the NFT.
 		/// Returns:
-		///		- Ok(bool) when the NFT is found in T::NonFungibles
-		///     - Err(NotFound) when the NFT could not be found in T::NonFungibles
+		///		- Ok(bool) when the NFT is found in [`Config::NonFungibles`]
+		///     - Err(NotFound) when the NFT could not be found in [`Config::NonFungibles`]
 		fn is_owner(
 			account: T::AccountId,
 			class_id: T::CollectionId,
@@ -349,7 +351,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::NotFound)
 		}
 
-		pub fn origin() -> T::Origin {
+		pub fn origin() -> T::RuntimeOrigin {
 			RawOrigin::from(Some(Self::account())).into()
 		}
 

@@ -9,7 +9,7 @@ const FEE_VALUE: u64 = 42;
 
 fn set_default_fee() {
 	assert_ok!(Fees::set_fee(
-		Origin::signed(Admin::get()),
+		RuntimeOrigin::signed(Admin::get()),
 		FEE_KEY,
 		FEE_VALUE
 	));
@@ -19,7 +19,7 @@ fn set_default_fee() {
 fn ensure_origin() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			Fees::set_fee(Origin::signed(2), FEE_KEY, FEE_VALUE),
+			Fees::set_fee(RuntimeOrigin::signed(2), FEE_KEY, FEE_VALUE),
 			BadOrigin
 		);
 	});

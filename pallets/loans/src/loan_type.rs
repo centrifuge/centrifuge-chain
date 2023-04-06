@@ -12,12 +12,13 @@
 // GNU General Public License for more details.
 
 //! Module provides functionality for different loan types
+use codec::MaxEncodedLen;
 use scale_info::TypeInfo;
 
 use super::*;
 
 /// different types of loans
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanType<Rate, Balance> {
@@ -49,7 +50,7 @@ where
 }
 
 /// The data structure for Bullet loan type
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BulletLoan<Rate, Balance> {
@@ -84,9 +85,8 @@ where
 		}
 	}
 
-	/// calculates the present value of the bullet loan.
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
-	/// The debt = current outstanding debt * (1 - written off percentage)
+	/// Calculates the [present value](https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value)
+	/// of the bullet loan: `debt = current outstanding debt * (1 - written off percentage)`.
 	pub fn present_value(
 		&self,
 		debt: Balance,
@@ -118,16 +118,16 @@ where
 		.all(|is_positive| is_positive)
 	}
 
-	/// calculates max_borrow_amount for bullet loan,
-	/// max_borrow_amount = advance_rate * collateral_value - borrowed
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling
+	/// Calculates max_borrow_amount for bullet loan:
+	/// `max_borrow_amount = advance_rate * collateral_value - borrowed`.
+	/// More [info](https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling).
 	pub fn max_borrow_amount(&self, total_borrowed: Balance) -> Option<Balance> {
 		math::max_borrow_amount(self.advance_rate, self.value, total_borrowed)
 	}
 }
 
 /// The data structure for Credit line loan type
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CreditLine<Rate, Balance> {
@@ -144,9 +144,8 @@ impl<Rate, Balance> CreditLine<Rate, Balance> {
 		}
 	}
 
-	/// calculates the present value of the credit line loan
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value1
-	/// The debt = current outstanding debt * (1 - written off percentage)
+	/// Calculates the [present value](https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value1)
+	/// of the credit line loan: `debt = current outstanding debt * (1 - written off percentage)`.
 	pub fn present_value(&self, debt: Balance) -> Option<Balance> {
 		Some(debt)
 	}
@@ -156,9 +155,9 @@ impl<Rate, Balance> CreditLine<Rate, Balance> {
 		true
 	}
 
-	/// calculates max_borrow_amount for credit line loan,
-	/// max_borrow_amount = advance_rate * collateral_value - debt
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
+	/// Calculates max_borrow_amount for credit line loan:
+	/// `max_borrow_amount = advance_rate * collateral_value - debt`.
+	/// More [info](https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1)
 	pub fn max_borrow_amount(&self, debt: Balance) -> Option<Balance>
 	where
 		Rate: FixedPointNumber,
@@ -169,7 +168,7 @@ impl<Rate, Balance> CreditLine<Rate, Balance> {
 }
 
 /// The data structure for Credit line with maturity loan type
-#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CreditLineWithMaturity<Rate, Balance> {
@@ -201,9 +200,9 @@ impl<Rate: PartialOrd + One, Balance> CreditLineWithMaturity<Rate, Balance> {
 		}
 	}
 
-	/// calculates the present value of the credit line with maturity loan type
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value2
-	/// The debt = current outstanding debt * (1 - written off percentage)
+	/// Calculates the [present value](https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value2)
+	/// of the credit line with maturity loan type:
+	/// `debt = current outstanding debt * (1 - written off percentage)`
 	pub fn present_value(
 		&self,
 		debt: Balance,
@@ -239,9 +238,9 @@ impl<Rate: PartialOrd + One, Balance> CreditLineWithMaturity<Rate, Balance> {
 		.all(|is_positive| is_positive)
 	}
 
-	/// calculates max_borrow_amount for credit line loan,
-	/// max_borrow_amount = advance_rate * collateral_value - debt
-	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
+	/// Calculates max_borrow_amount for credit line loan:
+	/// `max_borrow_amount = advance_rate * collateral_value - debt`.
+	/// More [info](https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1).
 	pub fn max_borrow_amount(&self, debt: Balance) -> Option<Balance>
 	where
 		Rate: FixedPointNumber,

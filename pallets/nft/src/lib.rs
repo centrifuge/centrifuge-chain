@@ -24,7 +24,6 @@
 // ----------------------------------------------------------------------------
 
 // Pallet types and traits definition
-pub mod traits;
 pub mod types;
 
 // Pallet mock runtime
@@ -35,7 +34,7 @@ mod mock;
 mod tests;
 
 // Extrinsic weight information
-mod weights;
+pub mod weights;
 
 // Export crate types and traits
 use cfg_primitives::types::FixedArray;
@@ -46,11 +45,9 @@ pub use pallet::*;
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 use sp_core::H256;
 use sp_std::{fmt::Debug, vec::Vec};
+use weights::WeightInfo;
 
-use crate::{
-	traits::WeightInfo,
-	types::{BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
-};
+use crate::types::{BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf};
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -75,7 +72,6 @@ pub mod pallet {
 	// for the pallet.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	// ------------------------------------------------------------------------
@@ -96,7 +92,7 @@ pub mod pallet {
 		+ chainbridge::Config
 	{
 		/// Associated type for Event enum
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Chain identifier type
 		type ChainId: Parameter + Member + Debug + Default + FullCodec + Into<u8> + From<u8>;
@@ -154,7 +150,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Validates the proofs provided against the document root associated with the anchor_id.
-		/// Once the proofs are verified, we create a bundled hash (deposit_address + [proof[i].hash])
+		/// Once the proofs are verified, we create a bundled hash `(deposit_address + [proof[i].hash])`
 		/// Bundled Hash is deposited to an DepositAsset event for bridging purposes.
 		///
 		/// Adds additional fee to compensate the current cost of target chains

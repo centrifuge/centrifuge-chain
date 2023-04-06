@@ -43,9 +43,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -55,8 +53,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = ();
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -89,7 +89,6 @@ impl pallet_treasury::Config for Runtime {
 	type Burn = ();
 	type BurnDestination = ();
 	type Currency = Balances;
-	type Event = ();
 	type MaxApprovals = ();
 	type OnSlash = Treasury;
 	type PalletId = TreasuryPalletId;
@@ -97,6 +96,7 @@ impl pallet_treasury::Config for Runtime {
 	type ProposalBondMaximum = ();
 	type ProposalBondMinimum = ();
 	type RejectOrigin = EnsureSignedBy<Admin, u64>;
+	type RuntimeEvent = ();
 	type SpendFunds = ();
 	type SpendOrigin = EnsureSignedBy<Admin, u64>;
 	type SpendPeriod = ();
@@ -111,11 +111,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = ();
 	type WeightInfo = ();
 }
 
@@ -133,9 +133,9 @@ impl SortedMembers<u64> for Admin {
 impl Config for Runtime {
 	type Currency = Balances;
 	type DefaultFeeValue = DefaultFeeValue;
-	type Event = ();
 	type FeeChangeOrigin = EitherOfDiverse<EnsureRoot<Self::AccountId>, EnsureSignedBy<Admin, u64>>;
 	type FeeKey = u8;
+	type RuntimeEvent = ();
 	type Treasury = Treasury;
 	type WeightInfo = ();
 }

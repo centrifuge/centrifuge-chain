@@ -32,7 +32,7 @@ case $TARGET in
     ;;
 
   tests)
-    RUST_MIN_STACK=8388608 cargo test --workspace --release --features test-benchmarks,try-runtime
+    RUST_MIN_STACK=8388608 cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
 
   integration)
@@ -48,7 +48,7 @@ case $TARGET in
     ;;
 
   clippy)
-    cargo clippy
+    cargo clippy --workspace -- -D warnings -A clippy::unnecessary-cast
     ;;
 
   benchmark)

@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use altair_runtime::{Origin, Runtime, System};
+pub use altair_runtime::{Runtime, RuntimeOrigin, System};
 use cfg_primitives::{constants::currency_decimals, parachains, AccountId, Balance};
 use cfg_types::tokens::{CurrencyId, CustomMetadata};
 use frame_support::traits::GenesisBuild;

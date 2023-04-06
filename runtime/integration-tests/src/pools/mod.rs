@@ -12,4 +12,3 @@
 
 mod env;
 mod pool_starts;
-mod utils;

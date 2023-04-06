@@ -37,19 +37,18 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 
 		/// The Validator Id type
-		type ValidatorId: Member + Parameter + MaybeSerializeDeserialize;
+		type ValidatorId: Member + Parameter + MaybeSerializeDeserialize + MaxEncodedLen;
 
 		/// Type representing the underlying validator registration center.
 		/// It offers us the API we need to check whether a collator
@@ -172,6 +171,24 @@ impl<T: Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
 	/// True iff
 	///   - the validator id is present in the allowlist and
 	///   - the validator id is registered in the underlying validator registration center
+	#[cfg(not(test))]
+	fn is_registered(id: &T::ValidatorId) -> bool {
+		let contains_key = if cfg!(feature = "runtime-benchmarks") {
+			// NOTE: We want to return true but count the storage hit
+			//       during benchmarks here.
+			let _ = <Allowlist<T>>::contains_key(id);
+			true
+		} else {
+			<Allowlist<T>>::contains_key(id)
+		};
+
+		contains_key && T::ValidatorRegistration::is_registered(id)
+	}
+
+	// NOTE: Running test with `feature = "runtime-benchmarks"` breaks the test
+	//       with the above solution for fixing `pallet-collator-selection` benchmarks
+	//       hence, we have a "non-benchmarking implementation" here
+	#[cfg(test)]
 	fn is_registered(id: &T::ValidatorId) -> bool {
 		<Allowlist<T>>::contains_key(id) && T::ValidatorRegistration::is_registered(id)
 	}

@@ -1,0 +1,75 @@
+# Centrifudge Code Owners
+
+# Changes to .github
+.github/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+
+# Changes to ci
+ci/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+
+# Changes to the service of our chain.
+src/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+
+# Changes to chain-specs
+res/* @mikiquantum @mustermeiszer @branan @NunoAlexandre
+
+# Changes to specific pallets
+## Connectors related logic
+pallets/connectors/* @NunoAlexandre @offerijns
+
+## Rewards related logic
+pallets/rewards/* @lemunozm @mikiquantum
+pallets/liquidity-rewards/* @lemunozm @mikiquantum
+
+## Nft-sales related logic
+pallets/nft-sales/* @NunoAlexandre
+
+## Pallet Keystore
+pallets/keystore/* @cdamian @mikiquantum
+
+## Pallet Registry
+pallets/pool-registry/* @gruberb @mustermeiszer
+
+## Pallet Pool-System
+pallets/pool-system/* @mustermeiszer @branan @offerijns
+
+## Pallet Pool-System
+pallets/loans/* @mustermeiszer @branan @offerijns
+
+## Pallet Interest-Accrual
+pallets/interest-accrual/* @branan
+
+## Pallet Investments
+pallets/investments/* @mustermeiszer
+
+## Pallet Permissions
+pallets/permissions/* @mustermeiszer
+
+## Pallet Restricted-Tokens
+pallets/restricted-tokens/* @mustermeiszer
+
+# Changes to libs
+## Changes to specific libraries
+
+### mock-builder crate
+libs/mock-builder/* @lemunozm
+
+### cfg-traits crate
+#### rewards module
+libs/traits/src/rewards.rs @lemunozm
+
+#### ensure module
+libs/traits/src/ops.rs @lemunozm
+
+# Changes to runtime
+## Changes to centrifuge-runtime
+runtime/altair/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns
+
+## Changes to altair-runtime
+runtime/centrifuge/* @branan @mikiquantum @mustermeiszer @NunoAlexandre @offerijns
+
+## Changes to folders inside runtime
+### Changes to runtime/integration-tests
+runtime/integration-tests/* @mustermeiszer @NunoAlexandre
+
+### Changes to runtime/integration-tests/xcm/
+runtime/integration-tests/xcm/* @NunoAlexandre

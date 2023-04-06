@@ -25,7 +25,7 @@ fn update_pool() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let pool_owner = 9u64;
+			let pool_owner = 0u64;
 			let pool_id = 0;
 			let changes = PoolChanges {
 				tranches: Change::NoChange,
@@ -35,7 +35,7 @@ fn update_pool() {
 			};
 
 			assert_ok!(PoolRegistry::update(
-				Origin::signed(pool_owner),
+				RuntimeOrigin::signed(pool_owner),
 				pool_id,
 				changes,
 			));
@@ -47,7 +47,7 @@ fn register_pool_and_set_metadata() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let pool_owner = 9u64;
+			let pool_owner = 0u64;
 			let pool_id = 0;
 
 			let tranches_inputs = vec![TrancheInput {
@@ -60,7 +60,7 @@ fn register_pool_and_set_metadata() {
 			}];
 
 			let currency = CurrencyId::AUSD;
-			let max_reserve = 10;
+			let max_reserve: u128 = 10_000 * 1_000_000_000_000_000;
 
 			let hash = "QmUTwA6RTUb1FbJCeM1D4G4JaWHAbPehK8WwCfykJixjm3" // random IPFS hash, for test purposes
 				.as_bytes()
@@ -68,7 +68,7 @@ fn register_pool_and_set_metadata() {
 			let metadata = Some(hash);
 
 			assert_ok!(PoolRegistry::register(
-				Origin::signed(pool_owner),
+				RuntimeOrigin::signed(pool_owner),
 				pool_owner,
 				pool_id,
 				tranches_inputs,
@@ -88,11 +88,11 @@ fn set_metadata() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let pool_owner = 9u64;
+			let pool_owner = 0u64;
 			let pool_id = 0;
 
 			assert_ok!(PoolRegistry::set_metadata(
-				Origin::signed(pool_owner),
+				RuntimeOrigin::signed(pool_owner),
 				pool_id,
 				"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
 					.as_bytes()

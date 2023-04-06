@@ -91,6 +91,7 @@ fn load_spec(
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging(para_id))),
 		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local(para_id))),
+		"demo" => Ok(Box::new(chain_spec::demo(para_id))),
 		"development" => Ok(Box::new(chain_spec::development(para_id))),
 		"development-local" => Ok(Box::new(chain_spec::development_local(para_id))),
 		"" => Err(String::from("No Chain-id provided")),
@@ -536,9 +537,12 @@ impl CliConfiguration<Self> for RelayChainCli {
 	}
 
 	fn base_path(&self) -> Result<Option<BasePath>> {
-		self.shared_params()
+		Ok(self
+			.shared_params()
 			.base_path()
-			.or_else(|_| Ok(self.base_path.clone().map(Into::into)))
+			.ok()
+			.flatten()
+			.or_else(|| self.base_path.clone().map(Into::into)))
 	}
 
 	fn role(&self, is_dev: bool) -> Result<sc_service::Role> {

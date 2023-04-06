@@ -4,34 +4,21 @@ on:
     types: [created]
 jobs:
   benchmark:
+    permissions:
+      pull-requests: write
     name: benchmark
     runs-on: ubuntu-latest-4-cores
     if: ${{ startsWith(github.event.comment.body, '/benchmark ') && github.event.issue.pull_request && contains(github.event.comment.author_association, 'CONTRIBUTOR') }}
     env:
       RUST_TOOLCHAIN: "nightly-2022-08-05"
     steps:
-      - name: Free space on Ubuntu
-        run: |
-          echo "Pre cleanup"
-          df -h
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          echo "Post cleanup"
-          df -h
-      - name: Check out code
-        uses: actions/checkout@v3
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          default: true
       - uses: actions/github-script@v6
         name: Parse Runtime From Comment
         id: parse-runtime
         with:
           result-encoding: string
           script: |
-            console.log("Comment body:", context.payload.comment.body)
+            console.log("Comment body", context.payload.comment.body)
             const [, , runtime] = context.payload.comment.body.split(/\W+/)
             if (!['centrifuge', 'altair'].includes(runtime)) throw new Error('Unsupported Runtime: ${runtime}')
             return `${runtime}`
@@ -44,10 +31,41 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Running Benchmarks for \`${steps.parse-runtime.outputs.result}\``
+              body: `:clock1: Running Benchmarks for \`${{steps.parse-runtime.outputs.result}}\` :clock1:`
             })
             return comment.data.id
-      - name: Run Benchmark centrifuge
+      - name: Prep build on Ubuntu
+        run: |
+          echo "Pre cleanup"
+          df -h
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Post cleanup"
+          df -h
+          sudo apt-get install protobuf-compiler
+      - name: Get PR Hash
+        id: get_pr_hash
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const number = context.payload.issue.number;
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: number
+            });
+            return pr.data.head.sha
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.get_pr_hash.outputs.result }}
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          default: true
+      - name: Run Benchmark ${{steps.parse-runtime.outputs.result}}
         run: ./ci/script.sh
         env:
           TARGET: benchmark
@@ -61,12 +79,13 @@ jobs:
         name: Notify Benchmark finished
         with:
           script: |
+            const id = `${{steps.ack-run-comment.outputs.result}}`
             await github.rest.issues.updateComment({
-              comment_id: steps.ack-run-comment.outputs.result,
+              comment_id: id,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `
-              Uploaded benchmarks for: \`${steps.parse-runtime.outputs.result}\`
-              Find the artifact here: https://github.com/centrifuge/centrifuge-chain/actions/runs/${context.runId}
+              :white_check_mark: Uploaded benchmarks for: \`${{steps.parse-runtime.outputs.result}}\` :white_check_mark:
+              Find the artifact here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
               `
             })

@@ -176,8 +176,7 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			let mut orders =
-				InvestOrders::<T>::get(&investment_id).unwrap_or(TotalOrder::default());
+			let mut orders = InvestOrders::<T>::get(&investment_id).unwrap_or_default();
 			orders.amount += amount;
 			InvestOrders::<T>::insert(&investment_id, orders);
 
@@ -202,8 +201,7 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			let mut orders =
-				RedeemOrders::<T>::get(&investment_id).unwrap_or(TotalOrder::default());
+			let mut orders = RedeemOrders::<T>::get(&investment_id).unwrap_or_default();
 			orders.amount += amount;
 			RedeemOrders::<T>::insert(&investment_id, orders);
 
@@ -239,7 +237,7 @@ pub mod pallet {
 			investment_id: Self::InvestmentId,
 		) -> Result<Self::Amount, Self::Error> {
 			Ok(InvestOrders::<T>::get(investment_id)
-				.unwrap_or(TotalOrder::default())
+				.unwrap_or_default()
 				.amount)
 		}
 
@@ -256,7 +254,7 @@ pub mod pallet {
 			investment_id: Self::InvestmentId,
 		) -> Result<Self::Amount, Self::Error> {
 			Ok(RedeemOrders::<T>::get(investment_id)
-				.unwrap_or(TotalOrder::default())
+				.unwrap_or_default()
 				.amount)
 		}
 	}
@@ -279,7 +277,7 @@ pub mod pallet {
 		fn process_invest_orders(
 			asset_id: Self::InvestmentId,
 		) -> Result<Self::Orders, Self::Error> {
-			Ok(InvestOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default()))
+			Ok(InvestOrders::<T>::get(asset_id).unwrap_or_default())
 		}
 
 		/// When called the manager return the current
@@ -287,15 +285,15 @@ pub mod pallet {
 		fn process_redeem_orders(
 			asset_id: Self::InvestmentId,
 		) -> Result<Self::Orders, Self::Error> {
-			Ok(RedeemOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default()))
+			Ok(RedeemOrders::<T>::get(asset_id).unwrap_or_default())
 		}
 
 		fn invest_orders(asset_id: Self::InvestmentId) -> Self::Orders {
-			InvestOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default())
+			InvestOrders::<T>::get(asset_id).unwrap_or_default()
 		}
 
 		fn redeem_orders(asset_id: Self::InvestmentId) -> Self::Orders {
-			RedeemOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default())
+			RedeemOrders::<T>::get(asset_id).unwrap_or_default()
 		}
 
 		/// Signals the manager that the previously
@@ -305,7 +303,7 @@ pub mod pallet {
 			asset_id: Self::InvestmentId,
 			fulfillment: Self::Fulfillment,
 		) -> Result<(), Self::Error> {
-			let orders = InvestOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default());
+			let orders = InvestOrders::<T>::get(asset_id).unwrap_or_default();
 			InvestOrders::<T>::insert(asset_id, TotalOrder::default());
 
 			// Move tokens to pools
@@ -352,7 +350,7 @@ pub mod pallet {
 			asset_id: Self::InvestmentId,
 			fulfillment: Self::Fulfillment,
 		) -> Result<(), Self::Error> {
-			let orders = RedeemOrders::<T>::get(asset_id).unwrap_or(TotalOrder::default());
+			let orders = RedeemOrders::<T>::get(asset_id).unwrap_or_default();
 			RedeemOrders::<T>::insert(asset_id, TotalOrder::default());
 
 			let tranche_tokens_to_burn_from_test_pallet =

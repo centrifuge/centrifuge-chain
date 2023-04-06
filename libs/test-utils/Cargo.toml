@@ -2,46 +2,49 @@
 name = "cfg-test-utils"
 version = "0.1.0"
 edition = "2021"
-authors = ['Centrifuge']
-homepage = 'https://centrifuge.io'
+authors = ["Centrifuge"]
+homepage = "https://centrifuge.io"
 license = "LGPL-3.0"
-repository = 'https://github.com/centrifuge/centrifuge-chain'
+repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-cfg-primitives = { path = '../primitives', default-features = false }
-cfg-traits = { path = '../traits', default-features = false }
-cfg-types = { path = '../types', default-features = false }
+cfg-primitives = { path = "../primitives", default-features = false }
+cfg-traits = { path = "../traits", default-features = false }
+cfg-types = { path = "../types", default-features = false }
 
-codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'], default-features = false }
-scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.29" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.32" }
 
 # Optional dependencies
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.29" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.32" }
 
 [features]
-default = ['std']
+default = ["std"]
 std = [
-  'cfg-traits/std',
-  'cfg-types/std',
-  'cfg-primitives/std',
-  'serde/std',
-  'codec/std',
-  'scale-info/std',
-  'frame-support/std',
-  'frame-system/std',
-  'sp-runtime/std',
-  'sp-std/std',
+  "cfg-traits/std",
+  "cfg-types/std",
+  "cfg-primitives/std",
+  "serde/std",
+  "codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "frame-benchmarking/std",
 ]
 runtime-benchmarks = [
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
@@ -50,4 +53,4 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
 ]
-try-runtime = ["frame-support/try-runtime", "frame-system/try-runtime"]
+try-runtime = ["frame-support/try-runtime", "frame-system/try-runtime", "cfg-types/try-runtime"]

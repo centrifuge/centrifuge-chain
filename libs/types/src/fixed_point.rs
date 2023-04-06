@@ -18,7 +18,7 @@
 //! Decimal Fixed Point implementations for Substrate runtime.
 //! Copied over from sp_arithmetic
 
-use codec::{CompactAs, Decode, Encode};
+use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "std")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use sp_arithmetic::{
@@ -430,6 +430,7 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 	PartialOrd,
 	Ord,
 	scale_info::TypeInfo,
+	MaxEncodedLen,
 )]
 pub struct Rate(u128);
 
@@ -558,16 +559,6 @@ impl Rate {
 	/// const version of `FixedPointNumber::from_inner`.
 	pub const fn from_inner(inner: u128) -> Self {
 		Self(inner)
-	}
-
-	#[cfg(any(feature = "std", test))]
-	pub fn from_float(x: f64) -> Self {
-		Self((x * (<Self as FixedPointNumber>::DIV as f64)) as u128)
-	}
-
-	#[cfg(any(feature = "std", test))]
-	pub fn to_float(self) -> f64 {
-		self.0 as f64 / <Self as FixedPointNumber>::DIV as f64
 	}
 }
 

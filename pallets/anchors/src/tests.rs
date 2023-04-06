@@ -47,20 +47,19 @@ fn basic_pre_commit() {
 
 		// reject unsigned
 		assert_noop!(
-			Anchors::pre_commit(Origin::none(), anchor_id, signing_root),
+			Anchors::pre_commit(RuntimeOrigin::none(), anchor_id, signing_root),
 			BadOrigin
 		);
 
-		let origin = Origin::signed(1);
+		let origin = RuntimeOrigin::signed(1);
 
-		// happy
 		assert_ok!(Anchors::pre_commit(origin.clone(), anchor_id, signing_root));
 
 		assert_eq!(
 			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(
 				ensure_signed(origin).unwrap()
 			),
-			42,
+			PRE_COMMIT_FEE_VALUE,
 		);
 
 		// asserting that the stored pre-commit has the intended values set
@@ -88,7 +87,7 @@ fn pre_commit_fail_anchor_exists() {
 		);
 		// anchor
 		assert_ok!(Anchors::commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			pre_image,
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -112,7 +111,7 @@ fn pre_commit_fail_anchor_exists() {
 
 		// fails because of existing anchor
 		assert_noop!(
-			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
+			Anchors::pre_commit(RuntimeOrigin::signed(1), anchor_id, signing_root),
 			Error::<Runtime>::AnchorAlreadyExists
 		);
 	});
@@ -126,20 +125,16 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 		let signing_root = <Runtime as frame_system::Config>::Hashing::hash_of(&0);
 		// anchor
 		assert_ok!(Anchors::commit(
-			Origin::signed(2),
+			RuntimeOrigin::signed(2),
 			pre_image,
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 			common::MILLISECS_PER_DAY + 1
 		));
 
-		MockFeesState::get().with(|fees| {
-			assert_eq!(fees.borrow().author_fees.len(), 1);
-		});
-
 		// fails because of existing anchor
 		assert_noop!(
-			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
+			Anchors::pre_commit(RuntimeOrigin::signed(1), anchor_id, signing_root),
 			Error::<Runtime>::AnchorAlreadyExists
 		);
 	});
@@ -153,7 +148,7 @@ fn pre_commit_fail_pre_commit_exists() {
 
 		// first pre-commit
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			anchor_id,
 			signing_root
 		));
@@ -167,14 +162,14 @@ fn pre_commit_fail_pre_commit_exists() {
 
 		// fail, pre-commit exists
 		assert_noop!(
-			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
+			Anchors::pre_commit(RuntimeOrigin::signed(1), anchor_id, signing_root),
 			Error::<Runtime>::PreCommitAlreadyExists
 		);
 
 		// expire the pre-commit
 		System::set_block_number(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64 + 2);
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			anchor_id,
 			signing_root
 		));
@@ -189,7 +184,7 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
 
 		// first pre-commit
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			anchor_id,
 			signing_root
 		));
@@ -203,14 +198,14 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
 
 		// fail, pre-commit exists
 		assert_noop!(
-			Anchors::pre_commit(Origin::signed(2), anchor_id, signing_root),
+			Anchors::pre_commit(RuntimeOrigin::signed(2), anchor_id, signing_root),
 			Error::<Runtime>::PreCommitAlreadyExists
 		);
 
 		// expire the pre-commit
 		System::set_block_number(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64 + 2);
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(2),
+			RuntimeOrigin::signed(2),
 			anchor_id,
 			signing_root
 		));
@@ -229,7 +224,7 @@ fn basic_commit() {
 		// reject unsigned
 		assert_noop!(
 			Anchors::commit(
-				Origin::none(),
+				RuntimeOrigin::none(),
 				pre_image,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -240,7 +235,7 @@ fn basic_commit() {
 
 		// happy
 		assert_ok!(Anchors::commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			pre_image,
 			doc_root,
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -259,7 +254,7 @@ fn basic_commit() {
 
 		// commit second anchor to test index updates
 		assert_ok!(Anchors::commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			pre_image2,
 			doc_root,
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -278,7 +273,7 @@ fn basic_commit() {
 		// commit anchor with a less than required number of minimum storage days
 		assert_noop!(
 			Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image2,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -290,7 +285,7 @@ fn basic_commit() {
 		// commit anchor triggering days overflow
 		assert_noop!(
 			Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image2,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -310,7 +305,7 @@ fn commit_fail_anchor_exists() {
 
 		// happy
 		assert_ok!(Anchors::commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			pre_image,
 			doc_root,
 			<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -323,7 +318,7 @@ fn commit_fail_anchor_exists() {
 
 		assert_noop!(
 			Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -335,7 +330,7 @@ fn commit_fail_anchor_exists() {
 		// different acc
 		assert_noop!(
 			Anchors::commit(
-				Origin::signed(2),
+				RuntimeOrigin::signed(2),
 				pre_image,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -356,7 +351,7 @@ fn basic_pre_commit_commit() {
 
 		// happy
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			anchor_id,
 			signing_root
 		));
@@ -364,7 +359,7 @@ fn basic_pre_commit_commit() {
 		// wrong doc root
 		assert_noop!(
 			Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image,
 				random_doc_root,
 				proof,
@@ -375,7 +370,7 @@ fn basic_pre_commit_commit() {
 
 		// happy
 		assert_ok!(Anchors::commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			pre_image,
 			doc_root,
 			proof,
@@ -400,7 +395,7 @@ fn pre_commit_expired_when_anchoring() {
 
 		// happy
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			anchor_id,
 			signing_root
 		));
@@ -409,7 +404,7 @@ fn pre_commit_expired_when_anchoring() {
 
 		// happy from a different account
 		assert_ok!(Anchors::commit(
-			Origin::signed(2),
+			RuntimeOrigin::signed(2),
 			pre_image,
 			doc_root,
 			proof,
@@ -434,7 +429,7 @@ fn pre_commit_commit_fail_from_another_acc() {
 
 		// happy
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			RuntimeOrigin::signed(1),
 			anchor_id,
 			signing_root
 		));
@@ -442,7 +437,7 @@ fn pre_commit_commit_fail_from_another_acc() {
 		// fail from a different account
 		assert_noop!(
 			Anchors::commit(
-				Origin::signed(2),
+				RuntimeOrigin::signed(2),
 				pre_image,
 				doc_root,
 				proof,
@@ -470,7 +465,7 @@ fn pre_commit_and_then_evict() {
 		let block_height_1 = 1;
 		let block_height_2 = 2;
 
-		let origin = Origin::signed(1);
+		let origin = RuntimeOrigin::signed(1);
 		let account_id = ensure_signed(origin.clone()).unwrap();
 
 		// ------ Register the pre-commits ------
@@ -495,7 +490,7 @@ fn pre_commit_and_then_evict() {
 
 		assert_eq!(
 			<Runtime as pallet_anchors::Config>::Currency::reserved_balance(account_id),
-			42 * 3,
+			PRE_COMMIT_FEE_VALUE * 3,
 		);
 
 		// ------ Evict the pre-commits ------
@@ -595,7 +590,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 
 			assert_ok!(Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image,
 				doc_root,
 				proof,
@@ -620,7 +615,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		// eviction on day 3
 		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(2));
 		assert!(Anchors::get_anchor_by_id(anchors[0]).is_some());
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		verify_anchor_eviction(2, &anchors);
 		assert!(Anchors::get_evicted_anchor_root_by_day(2).is_some());
 
@@ -633,7 +628,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 			assert!(Anchors::get_anchor_by_id(anchors[i - 2]).is_some());
 
 			// evict
-			assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+			assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 			verify_anchor_eviction(i, &anchors);
 			verify_next_anchor_after_eviction(i, &anchors);
 		}
@@ -650,7 +645,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 			Anchors::get_anchor_by_id(anchors[(FIRST_ONES + MAX_LOOP_IN_TX) as usize]).is_some()
 		);
 		// evict
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		// verify anchor data has been removed until 520th anchor
 		for i in (2 + FIRST_ONES) as usize..(2 + FIRST_ONES + MAX_LOOP_IN_TX) as usize {
 			assert!(Anchors::get_anchor_by_id(anchors[i as usize - 2]).is_none());
@@ -697,7 +692,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		);
 
 		// call evict on same day to remove the remaining indexes
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		// verify that 521st anchors indexes are removed since we called a second time
 		assert_eq!(
 			Anchors::get_latest_evicted_anchor_index().unwrap(),
@@ -716,7 +711,7 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		// remove remaining anchors
 		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(MAX_LOOP_IN_TX as u64 * 2 + 1));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_some());
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_none());
 		assert_eq!(
 			Anchors::get_latest_evicted_anchor_index().unwrap(),
@@ -749,7 +744,7 @@ fn test_remove_anchor_indexes() {
 			let _anchor_id =
 				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			assert_ok!(Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image,
 				doc_root,
 				proof,
@@ -820,7 +815,7 @@ fn test_same_day_many_anchors() {
 			let anchor_id =
 				(pre_image).using_encoded(<Runtime as frame_system::Config>::Hashing::hash);
 			assert_ok!(Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image,
 				doc_root,
 				proof,
@@ -837,7 +832,7 @@ fn test_same_day_many_anchors() {
 		// first MAX_LOOP_IN_TX
 		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(2));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_some());
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		assert!(Anchors::get_anchor_by_id(anchors[MAX_LOOP_IN_TX as usize * 2 - 1]).is_none());
 		assert_eq!(
 			Anchors::get_latest_evicted_anchor_index().unwrap(),
@@ -855,7 +850,7 @@ fn test_same_day_many_anchors() {
 		assert!(Anchors::get_evicted_anchor_root_by_day(2).is_some());
 
 		// second MAX_LOOP_IN_TX
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		assert_eq!(
 			Anchors::get_latest_evicted_anchor_index().unwrap(),
 			MAX_LOOP_IN_TX * 2
@@ -871,7 +866,7 @@ fn test_same_day_many_anchors() {
 		);
 
 		// remaining
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		assert_eq!(
 			Anchors::get_latest_evicted_anchor_index().unwrap(),
 			MAX_LOOP_IN_TX * 2 + 1
@@ -887,7 +882,7 @@ fn test_same_day_many_anchors() {
 		);
 
 		// all done
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 		assert_eq!(
 			Anchors::get_latest_evicted_anchor_index().unwrap(),
 			MAX_LOOP_IN_TX * 2 + 1
@@ -917,7 +912,7 @@ fn basic_commit_perf() {
 
 			// happy
 			assert_ok!(Anchors::pre_commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				anchor_id,
 				signing_root
 			));
@@ -925,7 +920,7 @@ fn basic_commit_perf() {
 			let now = Instant::now();
 
 			assert_ok!(Anchors::commit(
-				Origin::signed(1),
+				RuntimeOrigin::signed(1),
 				pre_image,
 				doc_root,
 				proof,
@@ -945,11 +940,11 @@ fn evict_anchors() {
 
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			Anchors::evict_anchors(Origin::signed(1)),
+			Anchors::evict_anchors(RuntimeOrigin::signed(1)),
 			ArithmeticError::Underflow
 		);
 
 		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(1));
-		assert_ok!(Anchors::evict_anchors(Origin::signed(1)));
+		assert_ok!(Anchors::evict_anchors(RuntimeOrigin::signed(1)));
 	});
 }

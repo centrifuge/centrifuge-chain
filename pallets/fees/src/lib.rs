@@ -46,13 +46,12 @@ pub mod pallet {
 	// method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
 		/// Key type used for storing and identifying fees.
-		type FeeKey: FeeKey + EncodeLike;
+		type FeeKey: FeeKey + EncodeLike + MaxEncodedLen;
 
 		/// The currency mechanism.
 		type Currency: Currency<Self::AccountId>;
@@ -61,10 +60,10 @@ pub mod pallet {
 		type Treasury: OnUnbalanced<ImbalanceOf<Self>>;
 
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Required origin for changing fees.
-		type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
+		type FeeChangeOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Default value for fee keys.
 		type DefaultFeeValue: Get<BalanceOf<Self>>;

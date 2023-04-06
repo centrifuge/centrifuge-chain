@@ -35,7 +35,7 @@ decl_test_relay_chain! {
 decl_test_parachain! {
 	pub struct Centrifuge {
 		Runtime = centrifuge_runtime::Runtime,
-		Origin = centrifuge_runtime::Origin,
+		RuntimeOrigin = centrifuge_runtime::RuntimeOrigin,
 		XcmpMessageHandler = centrifuge_runtime::XcmpQueue,
 		DmpMessageHandler = centrifuge_runtime::DmpQueue,
 		new_ext = para_ext(parachains::polkadot::centrifuge::ID),
@@ -45,7 +45,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = centrifuge_runtime::Runtime,
-		Origin = centrifuge_runtime::Origin,
+		RuntimeOrigin = centrifuge_runtime::RuntimeOrigin,
 		XcmpMessageHandler = centrifuge_runtime::XcmpQueue,
 		DmpMessageHandler = centrifuge_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_SIBLING),
@@ -55,7 +55,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Acala {
 		Runtime = centrifuge_runtime::Runtime,
-		Origin = centrifuge_runtime::Origin,
+		RuntimeOrigin = centrifuge_runtime::RuntimeOrigin,
 		XcmpMessageHandler = centrifuge_runtime::XcmpQueue,
 		DmpMessageHandler = centrifuge_runtime::DmpQueue,
 		new_ext = para_ext(parachains::polkadot::acala::ID),

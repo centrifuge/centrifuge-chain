@@ -9,6 +9,7 @@ use sp_runtime::{
 use crate as pallet_liquidity_rewards;
 
 pub const DOMAIN: u8 = 23;
+pub const INITIAL_EPOCH_DURATION: u64 = 23;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -21,6 +22,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Liquidity: pallet_liquidity_rewards,
+		MockRewards: cfg_mocks::pallet_mock_rewards,
 	}
 );
 
@@ -32,9 +34,7 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -44,8 +44,10 @@ impl frame_system::Config for Test {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ConstU16<42>;
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -61,19 +63,23 @@ frame_support::parameter_types! {
 	pub const LiquidityDomain: u8 = DOMAIN;
 }
 
-pub type MockRewards = cfg_traits::rewards::mock::MockRewards<u64, u32, (u8, u32), u64>;
+impl cfg_mocks::pallet_mock_rewards::Config for Test {
+	type Balance = u64;
+	type CurrencyId = (u8, u32);
+	type GroupId = u32;
+}
 
 impl pallet_liquidity_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<u64>;
 	type Balance = u64;
 	type CurrencyId = u32;
 	type Domain = LiquidityDomain;
-	type Event = Event;
 	type GroupId = u32;
-	type InitialEpochDuration = ConstU64<0>;
+	type InitialEpochDuration = ConstU64<INITIAL_EPOCH_DURATION>;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
 	type MaxGroups = MaxGroups;
 	type Rewards = MockRewards;
+	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
 	type WeightInfo = ();
 }

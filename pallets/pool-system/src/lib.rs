@@ -15,20 +15,23 @@
 #![feature(thread_local)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve};
+use cfg_traits::{
+	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureSub, EnsureSubAssign},
+	Permissions, PoolInspect, PoolMutate, PoolNAV, PoolReserve,
+};
 use cfg_types::{
 	orders::SummarizedOrders,
 	permissions::{PermissionScope, PoolRole, Role},
 };
-use codec::HasCompact;
+use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use frame_support::{
-	dispatch::{DispatchErrorWithPostInfo, DispatchResult, PostDispatchInfo},
-	pallet_prelude::*,
+	dispatch::DispatchResult,
+	ensure,
 	traits::{
 		fungibles::{Inspect, Mutate, Transfer},
 		ReservableCurrency, UnixTime,
 	},
-	transactional, BoundedVec,
+	transactional, BoundedVec, RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
 pub use impls::*;
@@ -48,9 +51,10 @@ pub use solution::*;
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Saturating, Zero,
+		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Get, One, Saturating,
+		Zero,
 	},
-	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
+	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
 use sp_std::{cmp::Ordering, vec::Vec};
 use tranches::{
@@ -60,9 +64,10 @@ use tranches::{
 pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+pub mod benchmarking;
 mod impls;
 
+pub mod migrations;
 #[cfg(test)]
 mod mock;
 pub mod pool_types;
@@ -88,6 +93,7 @@ pub type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
 	<T as Config>::Rate,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheCurrency,
+	<T as Config>::MaxTranches,
 >;
 
 /// Types alias for Tranches
@@ -98,6 +104,7 @@ pub type TranchesOf<T> = Tranches<
 	<T as Config>::TrancheCurrency,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
+	<T as Config>::MaxTranches,
 >;
 
 #[allow(dead_code)]
@@ -110,16 +117,16 @@ pub type TrancheOf<T> = Tranche<
 >;
 
 /// Type alias to ease function signatures
-type PoolDetailsOf<T> = PoolDetails<
+pub type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
 	<T as Config>::TrancheCurrency,
 	<T as Config>::EpochId,
 	<T as Config>::Balance,
 	<T as Config>::Rate,
-	<T as Config>::MaxSizeMetadata,
 	<T as Config>::TrancheWeight,
 	<T as Config>::TrancheId,
 	<T as Config>::PoolId,
+	<T as Config>::MaxTranches,
 >;
 
 /// Type alias for `struct EpochExecutionInfo`
@@ -130,6 +137,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
 	<T as Config>::TrancheCurrency,
+	<T as Config>::MaxTranches,
 >;
 
 /// Type alias for `struct PoolDepositInfo`
@@ -143,12 +151,34 @@ type ScheduledUpdateDetailsOf<T> = ScheduledUpdateDetails<
 	<T as Config>::MaxTranches,
 >;
 
-type PoolChangesOf<T> = PoolChanges<
+pub type PoolChangesOf<T> = PoolChanges<
 	<T as Config>::Rate,
 	<T as Config>::MaxTokenNameLength,
 	<T as Config>::MaxTokenSymbolLength,
 	<T as Config>::MaxTranches,
 >;
+
+pub type PoolEssenceOf<T> = PoolEssence<
+	<T as Config>::CurrencyId,
+	<T as Config>::Balance,
+	<T as Config>::TrancheCurrency,
+	<T as Config>::Rate,
+	<T as Config>::MaxTokenNameLength,
+	<T as Config>::MaxTokenSymbolLength,
+>;
+
+#[derive(Encode, Decode, TypeInfo, PartialEq, Eq, MaxEncodedLen, RuntimeDebug)]
+#[repr(u32)]
+pub enum Release {
+	V0,
+	V1,
+}
+
+impl Default for Release {
+	fn default() -> Self {
+		Self::V0
+	}
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -157,14 +187,16 @@ pub mod pallet {
 		orders::{FulfillmentWithPrice, TotalOrder},
 		tokens::CustomMetadata,
 	};
-	use frame_support::{sp_runtime::traits::Convert, traits::Contains, PalletId};
+	use frame_support::{
+		pallet_prelude::*, sp_runtime::traits::Convert, traits::Contains, PalletId,
+	};
 	use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 	use super::*;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Balance: Member
 			+ Parameter
@@ -190,7 +222,8 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>;
+			+ FixedPointNumber<Inner = Self::Balance>
+			+ MaxEncodedLen;
 
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -226,7 +259,7 @@ pub mod pallet {
 			+ TypeInfo
 			+ Into<u32>;
 
-		type CurrencyId: Parameter + Copy;
+		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
 		type PoolCurrency: Contains<Self::CurrencyId>;
 
@@ -302,10 +335,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinUpdateDelay: Get<u64>;
 
-		/// Max size of Metadata
-		#[pallet::constant]
-		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
-
 		/// Max length for a tranche token name
 		#[pallet::constant]
 		type MaxTokenNameLength: Get<u32> + Copy + Member + scale_info::TypeInfo;
@@ -316,14 +345,14 @@ pub mod pallet {
 
 		/// Max number of Tranches
 		#[pallet::constant]
-		type MaxTranches: Get<u32> + Member + scale_info::TypeInfo;
+		type MaxTranches: Get<u32> + Member + PartialOrd + scale_info::TypeInfo;
 
 		/// The amount that must be reserved to create a pool
 		#[pallet::constant]
 		type PoolDeposit: Get<Self::Balance>;
 
 		/// The origin permitted to create pools
-		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
+		type PoolCreateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight Information
 		type WeightInfo: WeightInfo;
@@ -331,7 +360,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
@@ -357,6 +385,10 @@ pub mod pallet {
 	#[pallet::getter(fn pool_deposits)]
 	pub type PoolDeposit<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDepositOf<T>>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn storage_version)]
+	pub type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -373,46 +405,25 @@ pub mod pallet {
 		SolutionSubmitted {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
-			solution: EpochSolution<T::Balance>,
+			solution: EpochSolution<T::Balance, T::MaxTranches>,
 		},
 		/// An epoch was executed.
 		EpochExecuted {
 			pool_id: T::PoolId,
 			epoch_id: T::EpochId,
 		},
-		/// An Pool was created.
-		PoolCreated {
+		/// A pool was created.
+		Created {
 			admin: T::AccountId,
 			depositor: T::AccountId,
 			pool_id: T::PoolId,
-			essence: PoolEssence<
-				T::CurrencyId,
-				T::Balance,
-				T::TrancheCurrency,
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>,
+			essence: PoolEssenceOf<T>,
 		},
-		/// An Pool was updated.
-		PoolUpdated {
+		/// A pool was updated.
+		Updated {
 			id: T::PoolId,
-			old: PoolEssence<
-				T::CurrencyId,
-				T::Balance,
-				T::TrancheCurrency,
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>,
-			new: PoolEssence<
-				T::CurrencyId,
-				T::Balance,
-				T::TrancheCurrency,
-				T::Rate,
-				T::MaxTokenNameLength,
-				T::MaxTokenSymbolLength,
-			>,
+			old: PoolEssenceOf<T>,
+			new: PoolEssenceOf<T>,
 		},
 	}
 
@@ -460,8 +471,6 @@ pub mod pallet {
 		/// Pre-requirements for a TrancheUpdate are not met
 		/// for example: Tranche changed but not its metadata or vice versa
 		InvalidTrancheUpdate,
-		/// Invalid metadata passed
-		BadMetadata,
 		/// No metada for the given currency found
 		MetadataForCurrencyNotFound,
 		/// The given tranche token name exceeds the length limit
@@ -571,9 +580,7 @@ pub mod pallet {
 				);
 
 				let submission_period_epoch = pool.epoch.current;
-				let total_assets = nav
-					.checked_add(&pool.reserve.total)
-					.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
+				let total_assets = nav.ensure_add(pool.reserve.total)?;
 
 				pool.start_next_epoch(now)?;
 
@@ -627,32 +634,26 @@ pub mod pallet {
 					.into());
 				}
 
-				let epoch_tranches: Vec<
-					EpochExecutionTranche<
-						T::Balance,
-						T::Rate,
-						T::TrancheWeight,
-						T::TrancheCurrency,
-					>,
-				> = pool.tranches.combine_with_residual_top(
-					epoch_tranche_prices
-						.iter()
-						.zip(orders.invest_redeem_residual_top()),
-					|tranche, (price, (invest, redeem))| {
-						let epoch_tranche = EpochExecutionTranche {
-							currency: tranche.currency,
-							supply: tranche.balance()?,
-							price: *price,
-							invest: invest,
-							redeem: redeem,
-							seniority: tranche.seniority,
-							min_risk_buffer: tranche.min_risk_buffer(),
-							_phantom: Default::default(),
-						};
+				let epoch_tranches: Vec<EpochExecutionTrancheOf<T>> =
+					pool.tranches.combine_with_residual_top(
+						epoch_tranche_prices
+							.iter()
+							.zip(orders.invest_redeem_residual_top()),
+						|tranche, (price, (invest, redeem))| {
+							let epoch_tranche = EpochExecutionTranche {
+								currency: tranche.currency,
+								supply: tranche.balance()?,
+								price: *price,
+								invest,
+								redeem,
+								seniority: tranche.seniority,
+								min_risk_buffer: tranche.min_risk_buffer(),
+								_phantom: Default::default(),
+							};
 
-						Ok(epoch_tranche)
-					},
-				)?;
+							Ok(epoch_tranche)
+						},
+					)?;
 
 				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,
@@ -862,20 +863,14 @@ pub mod pallet {
 
 			tranches.combine_with_residual_top(prices, |tranche, price| {
 				let invest_order = T::Investments::process_invest_orders(tranche.currency)?;
-				acc_invest_orders = acc_invest_orders
-					.checked_add(&invest_order.amount)
-					.ok_or(ArithmeticError::Overflow)?;
+				acc_invest_orders.ensure_add_assign(invest_order.amount)?;
 				invest_orders.push(invest_order.amount);
 
 				// Redeem order is denominated in the `TrancheCurrency`. Hence, we need to convert them into `PoolCurrency`
 				// denomination
 				let redeem_order = T::Investments::process_redeem_orders(tranche.currency)?;
-				let redeem_amount_in_pool_currency = price
-					.checked_mul_int(redeem_order.amount)
-					.ok_or(ArithmeticError::Overflow)?;
-				acc_redeem_orders = acc_redeem_orders
-					.checked_add(&redeem_amount_in_pool_currency)
-					.ok_or(ArithmeticError::Overflow)?;
+				let redeem_amount_in_pool_currency = price.ensure_mul_int(redeem_order.amount)?;
+				acc_redeem_orders.ensure_add_assign(redeem_amount_in_pool_currency)?;
 				redeem_orders.push(redeem_amount_in_pool_currency);
 
 				Ok(())
@@ -897,7 +892,7 @@ pub mod pallet {
 			pool_id: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
-		) -> Result<EpochSolution<T::Balance>, DispatchError> {
+		) -> Result<EpochSolution<T::Balance, T::MaxTranches>, DispatchError> {
 			match Self::inspect_solution(pool_id, epoch, solution)? {
 				PoolState::Healthy => {
 					EpochSolution::score_solution_healthy(solution, &epoch.tranches)
@@ -923,35 +918,32 @@ pub mod pallet {
 				Error::<T>::InvalidSolution
 			);
 
-			let (acc_invest, acc_redeem, risk_buffers) =
-				calculate_solution_parameters::<_, _, T::Rate, _, T::TrancheCurrency>(
-					&epoch.tranches,
-					solution,
-				)
-				.map_err(|e| {
-					// In case we have an underflow in the calculation, there
-					// is not enough balance in the tranches to realize the redeemptions.
-					// We convert this at the pool level into an InsufficientCurrency error.
-					if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
-						Error::<T>::InsufficientCurrency
-					} else {
-						Error::<T>::InvalidSolution
-					}
-				})?;
+			let (acc_invest, acc_redeem, risk_buffers) = calculate_solution_parameters::<
+				_,
+				_,
+				T::Rate,
+				_,
+				T::TrancheCurrency,
+				T::MaxTranches,
+			>(&epoch.tranches, solution)
+			.map_err(|e| {
+				// In case we have an underflow in the calculation, there
+				// is not enough balance in the tranches to realize the redeemptions.
+				// We convert this at the pool level into an InsufficientCurrency error.
+				if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
+					Error::<T>::InsufficientCurrency
+				} else {
+					Error::<T>::InvalidSolution
+				}
+			})?;
 
 			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)
 				.ok_or(Error::<T>::InvalidSolution)?;
 
-			// Mostly a sanity check. This is catched above.
-			ensure!(
-				currency_available.checked_sub(&acc_redeem).is_some(),
-				Error::<T>::InsufficientCurrency
-			);
-
 			let new_reserve = currency_available
 				.checked_sub(&acc_redeem)
-				.expect("Ensures ensures there is enough liquidity in the reserve. qed.");
+				.ok_or(Error::<T>::InsufficientCurrency)?;
 
 			Self::validate_pool_constraints(
 				PoolState::Healthy,
@@ -1051,7 +1043,7 @@ pub mod pallet {
 					}
 				}
 
-				Self::deposit_event(Event::PoolUpdated {
+				Self::deposit_event(Event::Updated {
 					id: *pool_id,
 					old: old_pool,
 					new: pool
@@ -1142,23 +1134,14 @@ pub mod pallet {
 			pool.execute_previous_epoch()?;
 
 			let executed_amounts = epoch.tranches.fulfillment_cash_flows(solution)?;
-			let total_assets = pool
-				.reserve
-				.total
-				.checked_add(&epoch.nav)
-				.ok_or(ArithmeticError::Overflow)?;
+			let total_assets = pool.reserve.total.ensure_add(epoch.nav)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				&executed_amounts,
-				|tranche, (invest, redeem)| {
-					tranche
-						.supply
-						.checked_add(invest)
-						.ok_or(ArithmeticError::Overflow)?
-						.checked_sub(redeem)
-						.ok_or(ArithmeticError::Underflow.into())
-						.map(|tranche_asset| {
-							Perquintill::from_rational(tranche_asset, total_assets)
-						})
+				|tranche, &(invest, redeem)| {
+					Ok(Perquintill::from_rational(
+						tranche.supply.ensure_add(invest)?.ensure_sub(redeem)?,
+						total_assets,
+					))
 				},
 			)?;
 
@@ -1185,11 +1168,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = Self::now();
 
-				pool.reserve.total = pool
-					.reserve
-					.total
-					.checked_add(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
+				pool.reserve.total.ensure_add_assign(amount)?;
 
 				let mut remaining_amount = amount;
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
@@ -1206,16 +1185,11 @@ pub mod pallet {
 					//       the "debt" of a residual tranche. More correctly they do NOT have a debt
 					//       but are rather entitled to the "left-overs".
 					tranche.debt = tranche.debt.saturating_sub(tranche_amount);
-					tranche.reserve = tranche
-						.reserve
-						.checked_add(&tranche_amount)
-						.ok_or(ArithmeticError::Overflow)?;
+					tranche.reserve.ensure_add_assign(tranche_amount)?;
 
 					// NOTE: In case there is an error in the ratios this might be critical. Hence,
 					//       we check here and error out
-					remaining_amount = remaining_amount
-						.checked_sub(&tranche_amount)
-						.ok_or(ArithmeticError::Underflow)?;
+					remaining_amount.ensure_sub_assign(tranche_amount)?;
 				}
 
 				// TODO: Add a debug log here and/or a debut_assert maybe even an error if remaining_amount != 0 at this point!
@@ -1264,10 +1238,7 @@ pub mod pallet {
 					};
 
 					tranche.reserve -= tranche_amount;
-					tranche.debt = tranche
-						.debt
-						.checked_add(&tranche_amount)
-						.ok_or(ArithmeticError::Overflow)?;
+					tranche.debt.ensure_add_assign(tranche_amount)?;
 
 					remaining_amount -= tranche_amount;
 				}

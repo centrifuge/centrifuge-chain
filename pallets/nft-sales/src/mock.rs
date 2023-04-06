@@ -54,16 +54,14 @@ parameter_types! {
 impl orml_tokens::Config for Runtime {
 	type Amount = i64;
 	type Balance = Balance;
+	type CurrencyHooks = ();
 	type CurrencyId = CurrencyId;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
-	type Event = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
-	type OnDust = ();
-	type OnKilledTokenAccount = ();
-	type OnNewTokenAccount = ();
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeEvent = ();
 	type WeightInfo = ();
 }
 
@@ -86,7 +84,6 @@ impl pallet_uniques::Config for Runtime {
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
 	type DepositPerByte = DepositPerByte;
-	type Event = ();
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
@@ -95,6 +92,7 @@ impl pallet_uniques::Config for Runtime {
 	type KeyLimit = Limit;
 	type Locker = ();
 	type MetadataDepositBase = MetadataDepositBase;
+	type RuntimeEvent = ();
 	type StringLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
@@ -125,9 +123,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -137,8 +133,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = ();
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -152,11 +150,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = ();
 	type WeightInfo = ();
 }
 
@@ -172,11 +170,11 @@ impl frame_support::traits::SortedMembers<u64> for One {
 
 impl nft_sales::Config for Runtime {
 	type CollectionId = CollectionId;
-	type Event = ();
 	type Fungibles = OrmlTokens;
 	type ItemId = ItemId;
 	type NonFungibles = Uniques;
 	type PalletId = NftSalesPalletId;
+	type RuntimeEvent = ();
 	type WeightInfo = ();
 }
 

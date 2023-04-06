@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use centrifuge_runtime::{Origin, OrmlAssetRegistry};
+use centrifuge_runtime::{OrmlAssetRegistry, RuntimeOrigin};
 use cfg_primitives::Balance;
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
@@ -47,7 +47,7 @@ fn register_dot() {
 		},
 	};
 	assert_ok!(OrmlAssetRegistry::register_asset(
-		Origin::root(),
+		RuntimeOrigin::root(),
 		meta,
 		Some(DOT_ASSET_ID)
 	));

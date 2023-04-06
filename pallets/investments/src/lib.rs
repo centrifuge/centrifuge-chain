@@ -184,10 +184,10 @@ pub mod pallet {
 			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
 	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The underlying investments one can invest into
-		type InvestmentId: Member + Parameter + Copy;
+		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen;
 
 		/// Something that knows how to handle accounting for the given investments
 		/// and provides metadata about them
@@ -218,7 +218,8 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ FixedPointNumber<Inner = Self::Amount>
-			+ FixedPointNumberExtension;
+			+ FixedPointNumberExtension
+			+ MaxEncodedLen;
 
 		/// The bound on how many fulfilled orders we cache until
 		/// the user needs to collect them.
@@ -243,7 +244,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -459,7 +459,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(80_000_000)]
+		#[pallet::weight(5_000_000_000)]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -478,7 +478,7 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// will be transferred from the pool to the calling
 		/// account.
-		#[pallet::weight(80_000_000)]
+		#[pallet::weight(5_000_000_000)]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -492,7 +492,7 @@ pub mod pallet {
 		/// Collect the results of a users invest orders for the given investment.
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
-		#[pallet::weight(80_000_000)]
+		#[pallet::weight(5_000_000_000)]
 		pub fn collect_investments(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -505,7 +505,7 @@ pub mod pallet {
 		/// Collect the results of a users redeem orders for the given investment.
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
-		#[pallet::weight(80_000_000)]
+		#[pallet::weight(5_000_000_000)]
 		pub fn collect_redemptions(
 			origin: OriginFor<T>,
 			investment_id: T::InvestmentId,
@@ -518,7 +518,7 @@ pub mod pallet {
 		/// Collect the results of another users invest orders for the given investment.
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
-		#[pallet::weight(80_000_000)]
+		#[pallet::weight(5_000_000_000)]
 		pub fn collect_investments_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,
@@ -532,7 +532,7 @@ pub mod pallet {
 		/// Collect the results of another users redeem orders for the given investment.
 		/// If any amounts are not fulfilled they are directly appended to the next active
 		/// order for this investment.
-		#[pallet::weight(80_000_000)]
+		#[pallet::weight(5_000_000_000)]
 		pub fn collect_redemptions_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,
@@ -1284,7 +1284,7 @@ where
 					.checked_sub(1)
 					.ok_or(ArithmeticError::Underflow)?;
 
-				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
+				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment);
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
 				ActiveInvestOrders::<T>::try_mutate(
@@ -1365,7 +1365,7 @@ where
 					.checked_sub(1)
 					.ok_or(ArithmeticError::Underflow)?;
 
-				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment.clone());
+				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment);
 
 				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
 				ActiveRedeemOrders::<T>::try_mutate(

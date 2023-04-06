@@ -20,8 +20,8 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+use cfg_mocks::pallet_mock_fees;
 use cfg_primitives::{Balance, CFG};
-use cfg_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
@@ -29,7 +29,6 @@ use chainbridge::{
 use frame_support::{
 	parameter_types,
 	traits::{Everything, FindAuthor, SortedMembers},
-	weights::Weight,
 	ConsensusEngineId, PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -41,7 +40,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash, IdentityLookup},
 };
 
-use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
+use crate::{self as pallet_nft, Config as PalletNftConfig};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -49,18 +48,6 @@ use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-
-// Implement testing extrinsic weights for the pallet
-pub struct MockWeightInfo;
-impl WeightInfo for MockWeightInfo {
-	fn transfer() -> Weight {
-		Weight::from_ref_time(0)
-	}
-
-	fn validate_mint() -> Weight {
-		Weight::from_ref_time(0)
-	}
-}
 
 // Testing user identifiers
 pub(crate) const USER_A: u64 = 0x1;
@@ -84,13 +71,14 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
-		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Storage} = 7,
+		System: frame_system,
+		Balances: pallet_balances,
+		Timestamp: pallet_timestamp,
+		Authorship: pallet_authorship,
+		ChainBridge: chainbridge,
+		Anchors: pallet_anchors,
+		MockFees: pallet_mock_fees,
+		Nft: pallet_nft,
 	}
 );
 
@@ -119,9 +107,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type BlockNumber = u64;
 	type BlockWeights = ();
-	type Call = Call;
 	type DbWeight = ();
-	type Event = Event;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Header = Header;
@@ -131,8 +117,10 @@ impl frame_system::Config for Runtime {
 	type OnKilledAccount = ();
 	type OnNewAccount = ();
 	type OnSetCode = ();
-	type Origin = Origin;
 	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
 	type SS58Prefix = ();
 	type SystemWeightInfo = ();
 	type Version = ();
@@ -148,11 +136,11 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -195,26 +183,23 @@ parameter_types! {
 impl chainbridge::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type ChainId = MockChainId;
-	type Event = Event;
 	type PalletId = ChainBridgePalletId;
-	type Proposal = Call;
+	type Proposal = RuntimeCall;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
-impl_mock_fees_state!(
-	MockFeesState,
-	<Runtime as frame_system::Config>::AccountId,
-	Balance,
-	(),
-	|_key| NFT_PROOF_VALIDATION_FEE
-);
+impl pallet_mock_fees::Config for Runtime {
+	type Balance = Balance;
+	type FeeKey = u8;
+}
 
 impl pallet_anchors::Config for Runtime {
 	type CommitAnchorFeeKey = ();
 	type Currency = Balances;
-	type Fees = MockFees<Self::AccountId, Balance, (), MockFeesState>;
+	type Fees = MockFees;
 	type PreCommitDepositFeeKey = ();
 	type WeightInfo = ();
 }
@@ -227,10 +212,10 @@ parameter_types! {
 // Implement NFT pallet's configuration trait for the mock runtime
 impl PalletNftConfig for Runtime {
 	type ChainId = ChainId;
-	type Event = Event;
 	type NftProofValidationFeeKey = ();
 	type ResourceHashId = MockResourceHashId;
-	type WeightInfo = MockWeightInfo;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 // ----------------------------------------------------------------------------
@@ -263,7 +248,13 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		TestExternalities::new(storage)
+		let mut ext = sp_io::TestExternalities::new(storage);
+		ext.execute_with(|| {
+			// Make it pallet anchors works
+			MockFees::mock_fee_value(|_| 0);
+			MockFees::mock_fee_to_author(|_, _| Ok(()));
+		});
+		ext
 	}
 }
 

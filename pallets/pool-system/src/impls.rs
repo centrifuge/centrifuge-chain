@@ -47,7 +47,7 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 
 		// Get cached nav as calculating current nav would be too computationally expensive
 		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
-		let total_assets = pool.reserve.total.saturating_add(nav);
+		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
 
 		let tranche_index: usize = pool
 			.tranches
@@ -75,6 +75,10 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 			last_updated: nav_last_updated,
 		})
 	}
+
+	fn account_for(pool_id: Self::PoolId) -> T::AccountId {
+		PoolLocator { pool_id }.into_account_truncating()
+	}
 }
 
 impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
@@ -94,7 +98,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
-		metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -126,22 +129,12 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			T::TrancheCurrency,
 			T::TrancheId,
 			T::PoolId,
+			T::MaxTranches,
 		>::from_input::<T::MaxTokenNameLength, T::MaxTokenSymbolLength>(
 			pool_id,
 			tranche_inputs.clone(),
 			now,
 		)?;
-
-		let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
-			Some(metadata_value) => {
-				let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
-					.try_into()
-					.map_err(|_| Error::<T>::BadMetadata)?;
-
-				Some(checked)
-			}
-			None => None,
-		};
 
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
 			let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
@@ -169,17 +162,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 		}
 
-		let min_epoch_time = sp_std::cmp::min(
-			sp_std::cmp::max(
-				T::DefaultMinEpochTime::get(),
-				T::MinEpochTimeLowerBound::get(),
-			),
-			T::MinEpochTimeUpperBound::get(),
-		);
-
-		let max_nav_age =
-			sp_std::cmp::min(T::DefaultMaxNAVAge::get(), T::MaxNAVAgeUpperBound::get());
-
 		let pool_details = PoolDetails {
 			currency,
 			tranches,
@@ -190,20 +172,19 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				last_executed: Zero::zero(),
 			},
 			parameters: PoolParameters {
-				min_epoch_time,
-				max_nav_age,
+				min_epoch_time: T::DefaultMinEpochTime::get(),
+				max_nav_age: T::DefaultMaxNAVAge::get(),
 			},
 			reserve: ReserveDetails {
 				max: max_reserve,
 				available: Zero::zero(),
 				total: Zero::zero(),
 			},
-			metadata: checked_metadata,
 		};
 
 		Pool::<T>::insert(pool_id, pool_details.clone());
 
-		Self::deposit_event(Event::PoolCreated {
+		Self::deposit_event(Event::Created {
 			admin: admin.clone(),
 			depositor,
 			pool_id,
@@ -221,10 +202,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		Ok(())
 	}
 
-	fn update(
-		pool_id: T::PoolId,
-		changes: PoolChangesOf<T>,
-	) -> Result<(UpdateState, PostDispatchInfo), DispatchErrorWithPostInfo> {
+	fn update(pool_id: T::PoolId, changes: PoolChangesOf<T>) -> Result<UpdateState, DispatchError> {
 		ensure!(
 			EpochExecution::<T>::try_get(pool_id).is_err(),
 			Error::<T>::InSubmissionPeriod
@@ -239,6 +217,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			Error::<T>::InvalidTrancheUpdate
 		);
 
+		// TODO: Remove this implicit behaviour. See https://github.com/centrifuge/centrifuge-chain/issues/1171
 		if changes.min_epoch_time == Change::NoChange
 			&& changes.max_nav_age == Change::NoChange
 			&& changes.tranches == Change::NoChange
@@ -249,10 +228,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				ScheduledUpdate::<T>::remove(pool_id);
 			}
 
-			return Ok((
-				UpdateState::NoExecution,
-				Some(T::WeightInfo::update_no_execution(0)).into(),
-			));
+			return Ok(UpdateState::NoExecution);
 		}
 
 		if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
@@ -280,48 +256,48 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		let update = ScheduledUpdateDetails {
 			changes: changes.clone(),
-			scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
+			submitted_at: now,
 		};
 
 		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
 		if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
 			Self::do_update_pool(&pool_id, &changes)?;
 
-			Ok((
-				UpdateState::Executed,
-				Some(T::WeightInfo::update_and_execute(num_tranches)).into(),
-			))
+			Ok(UpdateState::Executed(num_tranches))
 		} else {
 			// If an update was already stored, this will override it
 			ScheduledUpdate::<T>::insert(pool_id, update);
 
-			Ok((
-				UpdateState::Stored,
-				Some(T::WeightInfo::update_no_execution(num_tranches)).into(),
-			))
+			Ok(UpdateState::Stored(num_tranches))
 		}
 	}
 
-	fn execute_update(pool_id: T::PoolId) -> DispatchResultWithPostInfo {
-		let update =
-			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
-
-		ensure!(
-			Self::now() >= update.scheduled_time,
-			Error::<T>::ScheduledTimeHasNotPassed
-		);
-
+	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
 		let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 		ensure!(
-			T::UpdateGuard::released(&pool, &update, Self::now()),
+			EpochExecution::<T>::try_get(pool_id).is_err(),
+			Error::<T>::InSubmissionPeriod
+		);
+
+		let update =
+			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
+
+		let now = Self::now();
+		ensure!(
+			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get())?,
+			Error::<T>::ScheduledTimeHasNotPassed
+		);
+
+		ensure!(
+			T::UpdateGuard::released(&pool, &update, now),
 			Error::<T>::UpdatePrerequesitesNotFulfilled
 		);
 
 		Self::do_update_pool(&pool_id, &update.changes)?;
 
 		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
-		Ok(Some(T::WeightInfo::execute_update(num_tranches)).into())
+		Ok(num_tranches)
 	}
 }
 
@@ -394,5 +370,116 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
 
 		T::Tokens::burn_from(id.into(), seller, amount).map(|_| ())
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarks_utils {
+	use cfg_traits::{Investment, PoolBenchmarkHelper};
+	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use frame_benchmarking::account;
+	use frame_support::traits::Currency;
+	use frame_system::RawOrigin;
+	use sp_std::vec;
+
+	use super::*;
+	use crate::tranches::TrancheMetadata;
+
+	impl<T: Config<CurrencyId = CurrencyId>> PoolBenchmarkHelper for Pallet<T>
+	where
+		T::Investments: Investment<T::AccountId, InvestmentId = T::TrancheCurrency>,
+		<T::Investments as Investment<T::AccountId>>::Amount: From<u32>,
+	{
+		type AccountId = T::AccountId;
+		type Balance = T::Balance;
+		type PoolId = T::PoolId;
+
+		fn benchmark_create_pool(pool_id: T::PoolId, admin: &T::AccountId) {
+			const FUNDS: u32 = u32::max_value();
+
+			if T::AssetRegistry::metadata(&CurrencyId::AUSD).is_none() {
+				T::AssetRegistry::register_asset(
+					Some(CurrencyId::AUSD),
+					orml_asset_registry::AssetMetadata {
+						decimals: 18,
+						name: "MOCK TOKEN".as_bytes().to_vec(),
+						symbol: "MOCK".as_bytes().to_vec(),
+						existential_deposit: Zero::zero(),
+						location: None,
+						additional: CustomMetadata::default(),
+					},
+				)
+				.unwrap();
+			}
+
+			T::Currency::make_free_balance_be(admin, T::PoolDeposit::get());
+			// Pool creation
+			Pallet::<T>::create(
+				admin.clone(),
+				admin.clone(),
+				pool_id,
+				vec![
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
+							interest_rate_per_sec: One::one(),
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+				],
+				CurrencyId::AUSD,
+				FUNDS.into(),
+			)
+			.unwrap();
+
+			// Investment in pool
+			let investor = account::<T::AccountId>("investor_benchmark_pool", 0, 0);
+			let tranche = Pallet::<T>::pool(pool_id)
+				.unwrap()
+				.tranches
+				.tranche_id(TrancheLoc::Index(0))
+				.unwrap();
+
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				investor.clone(),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche, u64::MAX)),
+			)
+			.unwrap();
+
+			T::Tokens::mint_into(CurrencyId::AUSD, &investor, FUNDS.into()).unwrap();
+			T::Investments::update_investment(
+				&investor,
+				T::TrancheCurrency::generate(pool_id.into(), tranche),
+				FUNDS.into(),
+			)
+			.unwrap();
+
+			// Close epoch
+			Pool::<T>::mutate(pool_id, |pool| {
+				let pool = pool.as_mut().unwrap();
+				pool.parameters.min_epoch_time = 0;
+				pool.parameters.max_nav_age = 999_999_999_999;
+			});
+
+			Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), pool_id).unwrap();
+		}
+
+		fn benchmark_give_ausd(account: &T::AccountId, balance: T::Balance) {
+			T::Tokens::mint_into(CurrencyId::AUSD, account, balance).unwrap();
+			T::Currency::make_free_balance_be(account, balance);
+		}
 	}
 }

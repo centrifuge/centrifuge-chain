@@ -35,7 +35,7 @@ decl_test_relay_chain! {
 decl_test_parachain! {
 	pub struct Altair {
 		Runtime = altair_runtime::Runtime,
-		Origin = altair_runtime::Origin,
+		RuntimeOrigin = altair_runtime::RuntimeOrigin,
 		XcmpMessageHandler = altair_runtime::XcmpQueue,
 		DmpMessageHandler = altair_runtime::DmpQueue,
 		new_ext = para_ext(parachains::kusama::altair::ID),
@@ -45,7 +45,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = altair_runtime::Runtime,
-		Origin = altair_runtime::Origin,
+		RuntimeOrigin = altair_runtime::RuntimeOrigin,
 		XcmpMessageHandler = altair_runtime::XcmpQueue,
 		DmpMessageHandler = altair_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_SIBLING),
@@ -55,7 +55,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Karura {
 		Runtime = altair_runtime::Runtime,
-		Origin = altair_runtime::Origin,
+		RuntimeOrigin = altair_runtime::RuntimeOrigin,
 		XcmpMessageHandler = altair_runtime::XcmpQueue,
 		DmpMessageHandler = altair_runtime::DmpQueue,
 		new_ext = para_ext(parachains::kusama::karura::ID),

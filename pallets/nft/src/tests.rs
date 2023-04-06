@@ -19,7 +19,7 @@
 
 use cfg_primitives::MILLISECS_PER_DAY;
 use codec::Encode;
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::{BadOrigin, Hash};
 
 use crate::{
@@ -37,9 +37,9 @@ fn bad_origin() {
 		.build()
 		.execute_with(|| {
 			let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
-			assert_err!(
+			assert_noop!(
 				Nft::validate_mint(
-					Origin::none(),
+					RuntimeOrigin::none(),
 					anchor_id,
 					deposit_address,
 					pfs,
@@ -48,10 +48,6 @@ fn bad_origin() {
 				),
 				BadOrigin
 			);
-
-			MockFeesState::get().with(|fees| {
-				assert!(fees.borrow().burn_fees.is_empty());
-			});
 		})
 }
 
@@ -61,9 +57,9 @@ fn missing_anchor() {
 		.build()
 		.execute_with(|| {
 			let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
-			assert_err!(
+			assert_noop!(
 				Nft::validate_mint(
-					Origin::signed(USER_A),
+					RuntimeOrigin::signed(USER_A),
 					anchor_id,
 					deposit_address,
 					pfs,
@@ -72,10 +68,6 @@ fn missing_anchor() {
 				),
 				Error::<Runtime>::DocumentNotAnchored
 			);
-
-			MockFeesState::get().with(|fees| {
-				assert!(fees.borrow().burn_fees.is_empty());
-			});
 		})
 }
 
@@ -92,7 +84,7 @@ fn valid_proof() {
 			let (proof, doc_root, static_proofs) = get_valid_proof();
 
 			assert_ok!(Anchors::commit(
-				Origin::signed(USER_B),
+				RuntimeOrigin::signed(USER_B),
 				pre_image,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
@@ -100,24 +92,24 @@ fn valid_proof() {
 			));
 
 			assert_ok!(ChainBridge::whitelist_chain(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				dest_id.clone()
 			));
 
+			MockFees::mock_fee_to_burn(|author, fee| {
+				assert_eq!(author, &USER_A);
+				matches!(fee, Fee::Balance(NFT_PROOF_VALIDATION_FEE));
+				Ok(())
+			});
+
 			assert_ok!(Nft::validate_mint(
-				Origin::signed(USER_A),
+				RuntimeOrigin::signed(USER_A),
 				anchor_id,
 				deposit_address,
 				vec![proof],
 				static_proofs,
 				0
 			));
-
-			MockFeesState::get().with(|fees| {
-				assert_eq!(fees.borrow().burn_fees.len(), 1);
-				assert_eq!(fees.borrow().burn_fees[0].author, USER_A);
-				assert_eq!(fees.borrow().burn_fees[0].balance, NFT_PROOF_VALIDATION_FEE);
-			});
 		})
 }
 
@@ -133,16 +125,16 @@ fn invalid_proof() {
 			let (proof, doc_root, static_proofs) = get_invalid_proof();
 
 			assert_ok!(Anchors::commit(
-				Origin::signed(USER_B),
+				RuntimeOrigin::signed(USER_B),
 				pre_image,
 				doc_root,
 				<Runtime as frame_system::Config>::Hashing::hash_of(&0),
 				MILLISECS_PER_DAY + 1
 			));
 
-			assert_err!(
+			assert_noop!(
 				Nft::validate_mint(
-					Origin::signed(USER_A),
+					RuntimeOrigin::signed(USER_A),
 					anchor_id,
 					deposit_address,
 					vec![proof],
@@ -151,9 +143,5 @@ fn invalid_proof() {
 				),
 				Error::<Runtime>::InvalidProofs
 			);
-
-			MockFeesState::get().with(|fees| {
-				assert_eq!(fees.borrow().burn_fees.len(), 0);
-			});
 		})
 }

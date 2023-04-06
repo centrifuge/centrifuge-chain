@@ -23,7 +23,7 @@
 // GNU General Public License for more details.
 
 use centrifuge_runtime::{
-	Balances, CurrencyIdConvert, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
+	Balances, CurrencyIdConvert, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens,
 };
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
