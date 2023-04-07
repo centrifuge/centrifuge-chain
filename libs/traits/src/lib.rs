@@ -28,7 +28,7 @@ use frame_support::{
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
 		MaybeSerializeDeserialize, Member, Zero,
 	},
 	DispatchError,
@@ -82,7 +82,6 @@ pub trait Reward {
 		+ FromStr
 		+ Hash
 		+ MaybeDisplay
-		+ MaybeMallocSizeOf
 		+ MaybeSerializeDeserialize
 		+ Member
 		+ Parameter

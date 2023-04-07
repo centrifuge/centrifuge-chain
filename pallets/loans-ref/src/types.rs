@@ -13,10 +13,7 @@
 
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
-	ops::{
-		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
-		EnsureSubAssign,
-	},
+	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
 	InterestAccrual, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;

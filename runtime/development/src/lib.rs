@@ -18,7 +18,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::v2::MultiLocation;
+use ::xcm::v2::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
@@ -952,7 +952,7 @@ parameter_types! {
 	pub PoolPalletIndex: u8 = <PoolSystem as PalletInfoAccess>::index() as u8;
 
 	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
-		// Dissable update delay in benchmarks
+		// Disable update delay in benchmarks
 		0
 	} else {
 		// Same as Lower bound for epochs.
@@ -1238,6 +1238,11 @@ impl xcm_primitives::XcmTransact for NullTransactor {
 	}
 }
 
+parameter_types! {
+	// 1 ROC should be enough to cover for fees opening/accepting hrmp channels
+	pub MaxHrmpRelayFee: MultiAsset = (MultiLocation::parent(), 1_000_000_000_000u128).into();
+}
+
 impl pallet_xcm_transactor::Config for Runtime {
 	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
 	type AssetTransactor = xcm::FungiblesTransactor;
@@ -1246,7 +1251,10 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
+	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
+	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
 	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
+	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
 	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;

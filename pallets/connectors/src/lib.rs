@@ -25,7 +25,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::{TypeId, U256};
 use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
-use sp_std::{boxed::Box, convert::TryInto, vec, vec::Vec};
+use sp_std::{convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
 mod message;
@@ -288,6 +288,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Set a Domain's router
 		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
+		#[pallet::call_index(0)]
 		pub fn set_domain_router(
 			origin: OriginFor<T>,
 			domain: Domain,
@@ -304,6 +305,7 @@ pub mod pallet {
 		/// Add an AccountId to the set of known connectors, allowing that origin
 		/// to send incoming messages.
 		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			<KnownConnectors<T>>::insert(connector, ());
@@ -313,6 +315,7 @@ pub mod pallet {
 
 		/// Add a pool to a given domain
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
+		#[pallet::call_index(2)]
 		pub fn add_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -332,6 +335,7 @@ pub mod pallet {
 
 		/// Add a tranche to a given domain
 		#[pallet::weight(< T as Config >::WeightInfo::add_tranche())]
+		#[pallet::call_index(3)]
 		pub fn add_tranche(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -373,6 +377,7 @@ pub mod pallet {
 
 		/// Update a token price
 		#[pallet::weight(< T as Config >::WeightInfo::update_token_price())]
+		#[pallet::call_index(4)]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -400,6 +405,7 @@ pub mod pallet {
 
 		/// Update a member
 		#[pallet::weight(< T as Config >::WeightInfo::update_member())]
+		#[pallet::call_index(5)]
 		pub fn update_member(
 			origin: OriginFor<T>,
 			domain_address: DomainAddress,
@@ -450,6 +456,7 @@ pub mod pallet {
 
 		/// Transfer tranche tokens to a given address
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		#[pallet::call_index(6)]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -500,8 +507,8 @@ pub mod pallet {
 
 		/// Handle an incoming message
 		/// TODO(nuno): we probably need a custom origin type for these messages to ensure they have
-		/// come in through XCM. Probably even handle it in a separate pallet? For now, let's have a
-		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
+		/// come in through XCM. For now, let's have a POC here to test the pipeline
+		/// Ethereum ---> Moonbeam ---> Centrifuge::connectors
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::handle())]
 		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
@@ -544,7 +551,7 @@ pub mod pallet {
 			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
 				T::RuntimeOrigin::root(),
 				// The destination to which the message should be sent
-				Box::new(xcm_domain.location),
+				xcm_domain.location,
 				fee_payer,
 				// The currency in which we want to pay fees
 				CurrencyPayment {

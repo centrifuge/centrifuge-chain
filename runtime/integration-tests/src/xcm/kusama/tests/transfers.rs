@@ -49,6 +49,17 @@ use crate::xcm::kusama::{
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 };
 
+/*
+
+NOTE: We hardcode the expected balances after an XCM operation given that the weights involved in
+XCM execution often change slightly with each Polkadot update. We could simply test that the final
+balance after some XCM operation is `initialBalance - amount - fee`, which would mean we would
+never have to touch the tests again. However, by hard-coding these values we are forced to catch
+an unexpectedly big change that would have a big impact on the weights and fees and thus balances,
+which would go unnoticed and untreated otherwise.
+
+ */
+
 #[test]
 fn transfer_air_to_sibling() {
 	TestNet::reset();
@@ -130,7 +141,7 @@ fn transfer_air_to_sibling() {
 		assert_eq!(current_balance, transfer_amount - fee(18));
 
 		// Sanity check for the actual amount BOB ends up with
-		assert_eq!(current_balance, 4990730400000000000);
+		assert_eq!(current_balance, 4991917600000000000);
 	});
 }
 
@@ -280,7 +291,7 @@ fn transfer_ausd_to_altair() {
 		// Sanity check the actual balance
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
-			16990730400000
+			16991917600000
 		);
 	});
 }
@@ -338,7 +349,7 @@ fn transfer_ksm_to_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&BOB.into()),
-			999989594258
+			999895428355
 		);
 	});
 }
@@ -504,15 +515,15 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
 
 		// Sanity check to ensure the calculated is what is expected
-		assert_eq!(bob_balance, 11990731);
+		assert_eq!(bob_balance, 11991918);
 	});
 }
 
 #[test]
 fn test_total_fee() {
-	assert_eq!(air_fee(), 9269600000000000);
-	assert_eq!(fee(currency_decimals::AUSD), 9269600000);
-	assert_eq!(fee(currency_decimals::KSM), 9269600000);
+	assert_eq!(air_fee(), 8082400000000000);
+	assert_eq!(fee(currency_decimals::AUSD), 8082400000);
+	assert_eq!(fee(currency_decimals::KSM), 8082400000);
 }
 
 fn air_fee() -> Balance {

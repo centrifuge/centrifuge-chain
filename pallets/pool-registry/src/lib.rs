@@ -232,6 +232,7 @@ pub mod pallet {
 		/// use, or if the tranche configuration cannot be used.
 		#[pallet::weight(T::WeightInfo::register(tranche_inputs.len().try_into().unwrap_or(u32::MAX)))]
 		#[transactional]
+		#[pallet::call_index(0)]
 		pub fn register(
 			origin: OriginFor<T>,
 			admin: T::AccountId,
@@ -294,6 +295,7 @@ pub mod pallet {
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
 		#[pallet::weight(T::WeightInfo::update_no_execution(T::MaxTranches::get()).max(T::WeightInfo::update_and_execute(T::MaxTranches::get())))]
+		#[pallet::call_index(1)]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -343,6 +345,7 @@ pub mod pallet {
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
 		#[pallet::weight(T::WeightInfo::execute_update(T::MaxTranches::get()))]
+		#[pallet::call_index(2)]
 		pub fn execute_update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -358,6 +361,7 @@ pub mod pallet {
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
 		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len().try_into().unwrap_or(u32::MAX)))]
+		#[pallet::call_index(3)]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
