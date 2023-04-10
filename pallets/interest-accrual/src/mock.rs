@@ -59,12 +59,12 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-	type Balance = Balance;
-	type InterestRate = Rate;
 	type MaxRateCount = MaxRateCount;
 	type RuntimeEvent = RuntimeEvent;
+	type SecRate = Rate;
 	type Time = Timestamp;
 	type Weights = ();
+	type YearRate = Rate;
 }
 
 // Configure a mock runtime to test the pallet.

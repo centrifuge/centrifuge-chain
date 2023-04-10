@@ -1,15 +1,15 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::accrual::{AccrualRate, InterestAccrual, RateCollection};
+	use cfg_traits::accrual::{RateAccrual, RateCache};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type OuterRate;
-		type InnerRate;
+		type AccRate;
 		type Moment;
-		type Cache: RateCollection;
+		type Cache: RateCache<Self::OuterRate, Self::AccRate>;
 	}
 
 	#[pallet::pallet]
@@ -25,10 +25,16 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_accrual_rate(
-			f: impl Fn(T::OuterRate) -> Result<AccrualRate<T::InnerRate>, DispatchError> + 'static,
+		pub fn mock_accrual(
+			f: impl Fn(T::OuterRate) -> Result<T::AccRate, DispatchError> + 'static,
 		) {
 			register_call!(f);
+		}
+
+		pub fn mock_accrual_at(
+			f: impl Fn(T::OuterRate, T::Moment) -> Result<T::AccRate, DispatchError> + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
 		}
 
 		pub fn mock_last_updated(f: impl Fn() -> T::Moment + 'static) {
@@ -52,22 +58,23 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> RateCollection for Pallet<T> {
-		type InnerRate = T::InnerRate;
+	impl<T: Config> RateAccrual for Pallet<T> {
+		type AccRate = T::AccRate;
+		type Cache = T::Cache;
 		type Moment = T::Moment;
 		type OuterRate = T::OuterRate;
 
-		fn accrual_rate(a: T::OuterRate) -> Result<AccrualRate<T::InnerRate>, DispatchError> {
+		fn accrual(a: T::OuterRate) -> Result<T::AccRate, DispatchError> {
 			execute_call!(a)
+		}
+
+		fn accrual_at(a: T::OuterRate, b: T::Moment) -> Result<T::AccRate, DispatchError> {
+			execute_call!((a, b))
 		}
 
 		fn last_updated() -> T::Moment {
 			execute_call!(())
 		}
-	}
-
-	impl<T: Config> InterestAccrual for Pallet<T> {
-		type Cache = T::Cache;
 
 		fn validate(a: T::OuterRate) -> DispatchResult {
 			execute_call!(a)

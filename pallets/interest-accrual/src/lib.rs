@@ -123,21 +123,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
 use cfg_traits::{
+	accrual::{RateAccrual, RateCache},
 	ops::{EnsureAdd, EnsureAddAssign, EnsureDiv, EnsureInto, EnsureMul, EnsureSub},
-	InterestAccrual, RateCollection,
 };
-use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::UnixTime, BoundedVec, RuntimeDebug};
+use frame_support::{traits::UnixTime, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One, Zero};
-use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating},
-	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
-};
-use sp_std::{cmp::Ordering, vec::Vec};
+use sp_runtime::{traits::Saturating, ArithmeticError, FixedPointNumber};
+use sp_std::vec::Vec;
 
-pub mod migrations;
 pub mod weights;
 pub use weights::WeightInfo;
 
@@ -150,9 +145,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(feature = "runtime-benchmarks", test))]
-mod test_utils;
-
 pub use pallet::*;
 
 // TODO: This "magic" number can be removed: tracking issue #1297
@@ -162,14 +154,7 @@ pub use pallet::*;
 const MAX_INTEREST_RATE: u32 = 2; // Which corresponds to 200%.
 
 // Type aliases
-type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate>;
-
-// Storage types
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct RateDetailsV1<InterestRate> {
-	pub accumulated_rate: InterestRate,
-	pub reference_count: u32,
-}
+type RateDetailsOf<T> = RateDetails<<T as Config>::SecRate>;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct RateDetails<InterestRate> {
@@ -207,26 +192,25 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type Balance: Member
-			+ Parameter
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ FixedPointOperand
-			+ From<u64>
-			+ From<u128>
-			+ TypeInfo
-			+ TryInto<u64>;
-
-		/// A fixed-point number which represents an interest rate.
-		type InterestRate: Member
+		/// A fixed-point number which represents an interest rate per year.
+		type YearRate: Member
 			+ Parameter
 			+ Default
 			+ core::fmt::Debug
 			+ Copy
 			+ TypeInfo
-			+ FixedPointNumber<Inner = Self::Balance>
+			+ FixedPointNumber
+			+ MaxEncodedLen
+			+ TryInto<Self::SecRate>;
+
+		/// A fixed-point number which represents an interest rate per sec.
+		type SecRate: Member
+			+ Parameter
+			+ Default
+			+ core::fmt::Debug
+			+ Copy
+			+ TypeInfo
+			+ FixedPointNumber
 			+ MaxEncodedLen;
 
 		type Time: UnixTime;
@@ -254,14 +238,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Emits when the debt calculation failed
-		DebtCalculationFailed,
-		/// Emits when the debt adjustment failed
-		DebtAdjustmentFailed,
 		/// Emits when the interest rate was not used
 		NoSuchRate,
-		/// Emits when a historic rate was asked for from the future
-		NotInPast,
 		/// Emits when a rate is not within the valid range
 		InvalidRate,
 		/// Emits when adding a new rate would exceed the storage limits
@@ -289,7 +267,7 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_: T::BlockNumber) -> Weight {
 			let then = LastUpdated::<T>::get();
-			let now = Self::now();
+			let now = T::Time::now().as_secs();
 			LastUpdated::<T>::set(now);
 			let delta = now - then;
 			let bits = Moment::BITS - delta.leading_zeros();
@@ -310,18 +288,13 @@ pub mod pallet {
 						reference_count,
 					} = rate;
 
-					Self::calculate_accumulated_rate(
-						interest_rate_per_sec,
-						accumulated_rate,
-						then,
-						now,
-					)
-					.ok()
-					.map(|accumulated_rate| RateDetailsOf::<T> {
-						interest_rate_per_sec,
-						accumulated_rate,
-						reference_count,
-					})
+					Self::calculate_accumulated_rate(interest_rate_per_sec, accumulated_rate, delta)
+						.ok()
+						.map(|accumulated_rate| RateDetailsOf::<T> {
+							interest_rate_per_sec,
+							accumulated_rate,
+							reference_count,
+						})
 				})
 				.collect();
 
@@ -335,109 +308,78 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Calculate fastly the current debt using normalized debt * cumulative rate if
-		/// `when` is exactly `now` (same block). If when is in the past it recomputes
-		/// the previous cumulative rate.
-		///
-		/// If `when` is further in the past than the last time the
-		/// normalized debt was adjusted, this will return nonsense
-		/// (effectively "rewinding the clock" to before the value was
-		/// valid)
-		pub fn get_debt(
-			interest_rate_per_year: T::InterestRate,
-			normalized_debt: T::Balance,
-			when: Moment,
-		) -> Result<T::Balance, DispatchError> {
-			let rate = Self::get_rate(interest_rate_per_year)?;
-			let now = LastUpdated::<T>::get();
-
-			let acc_rate = match when.cmp(&now) {
-				Ordering::Equal => rate.accumulated_rate,
-				Ordering::Less => {
-					let delta = now.ensure_sub(when)?;
-					let rate_adjustment =
-						checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
-							.ok_or(ArithmeticError::Overflow)?;
-					rate.accumulated_rate.ensure_div(rate_adjustment)?
-				}
-				Ordering::Greater => return Err(Error::<T>::NotInPast.into()),
-			};
-
-			Self::calculate_debt(normalized_debt, acc_rate)
-				.ok_or_else(|| Error::<T>::DebtCalculationFailed.into())
-		}
-
-		pub fn do_adjust_normalized_debt(
-			interest_rate_per_year: T::InterestRate,
-			normalized_debt: T::Balance,
-			adjustment: Adjustment<T::Balance>,
-		) -> Result<T::Balance, DispatchError> {
-			let rate = Self::get_rate(interest_rate_per_year)?;
-
-			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-				.ok_or(Error::<T>::DebtCalculationFailed)?;
-
-			let new_debt = match adjustment {
-				Adjustment::Increase(amount) => debt.checked_add(&amount),
-				Adjustment::Decrease(amount) => debt.checked_sub(&amount),
-			}
-			.ok_or(Error::<T>::DebtAdjustmentFailed)?;
-
-			let new_normalized_debt = rate
-				.accumulated_rate
-				.reciprocal()
-				.and_then(|inv_rate| inv_rate.checked_mul_int(new_debt))
-				.ok_or(Error::<T>::DebtAdjustmentFailed)?;
-
-			Ok(new_normalized_debt)
-		}
-
-		pub fn do_renormalize_debt(
-			old_interest_rate: T::InterestRate,
-			new_interest_rate: T::InterestRate,
-			normalized_debt: T::Balance,
-		) -> Result<T::Balance, DispatchError> {
-			let old_rate = Self::get_rate(old_interest_rate)?;
-			let new_rate = Self::get_rate(new_interest_rate)?;
-
-			let debt = Self::calculate_debt(normalized_debt, old_rate.accumulated_rate)
-				.ok_or(Error::<T>::DebtCalculationFailed)?;
-			let new_normalized_debt = new_rate
-				.accumulated_rate
-				.reciprocal()
-				.and_then(|inv_rate| inv_rate.checked_mul_int(debt))
-				.ok_or(Error::<T>::DebtAdjustmentFailed)?;
-
-			Ok(new_normalized_debt)
-		}
-
-		/// Calculates the debt using debt = normalized_debt * accumulated_rate
-		pub(crate) fn calculate_debt(
-			normalized_debt: T::Balance,
-			accumulated_rate: T::InterestRate,
-		) -> Option<T::Balance> {
-			accumulated_rate.checked_mul_int(normalized_debt)
-		}
-
-		pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
-			interest_rate_per_sec: Rate,
-			accumulated_rate: Rate,
-			last_updated: Moment,
-			now: Moment,
-		) -> Result<Rate, ArithmeticError> {
+		pub(crate) fn calculate_accumulated_rate(
+			interest_rate_per_sec: T::SecRate,
+			accumulated_rate: T::SecRate,
+			delta: Moment,
+		) -> Result<T::SecRate, ArithmeticError> {
 			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
-			let time_difference_secs = now.ensure_sub(last_updated)?;
-			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
+			checked_pow(interest_rate_per_sec, delta as usize)
 				.ok_or(ArithmeticError::Overflow)? // TODO: This line can be remove once #1241 be merged
 				.ensure_mul(accumulated_rate)
 		}
 
-		pub fn now() -> Moment {
-			T::Time::now().as_secs()
+		fn get_rate(
+			interest_rate_per_year: T::YearRate,
+		) -> Result<RateDetailsOf<T>, DispatchError> {
+			let interest_rate_per_sec = Self::rate_conversion(interest_rate_per_year)?;
+			Rates::<T>::get()
+				.into_iter()
+				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
+				.ok_or_else(|| Error::<T>::NoSuchRate.into())
 		}
 
-		pub fn reference_interest_rate(interest_rate_per_year: T::InterestRate) -> DispatchResult {
-			let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
+		pub(crate) fn rate_conversion(
+			interest_rate_per_year: T::YearRate,
+		) -> Result<T::SecRate, ArithmeticError> {
+			interest_rate_per_year
+				.ensure_into()?
+				.ensure_div(T::SecRate::saturating_from_integer(SECONDS_PER_YEAR))?
+				.ensure_add(One::one())
+		}
+	}
+
+	impl<T: Config> RateAccrual for Pallet<T> {
+		type AccRate = T::SecRate;
+		type Cache = RateVec<T>;
+		type Moment = Moment;
+		type OuterRate = T::YearRate;
+
+		fn accrual(interest_rate_per_year: T::YearRate) -> Result<T::SecRate, DispatchError> {
+			Ok(Self::get_rate(interest_rate_per_year)?.accumulated_rate)
+		}
+
+		fn accrual_at(
+			interest_rate_per_year: T::YearRate,
+			when: Self::Moment,
+		) -> Result<T::SecRate, DispatchError> {
+			let rate = Self::get_rate(interest_rate_per_year)?;
+			let delta = Self::last_updated().ensure_sub(when)?;
+
+			let rate_adjustment = checked_pow(rate.interest_rate_per_sec, delta.ensure_into()?)
+				.ok_or(ArithmeticError::Overflow)?;
+			Ok(rate.accumulated_rate.ensure_div(rate_adjustment)?)
+		}
+
+		fn last_updated() -> Self::Moment {
+			LastUpdated::<T>::get()
+		}
+
+		fn validate(interest_rate_per_year: T::YearRate) -> DispatchResult {
+			let four_decimals = T::YearRate::saturating_from_integer(10000);
+			let maximum = T::YearRate::saturating_from_integer(MAX_INTEREST_RATE);
+			ensure!(
+				interest_rate_per_year <= maximum
+					&& interest_rate_per_year >= Zero::zero()
+					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
+						== Zero::zero(),
+				Error::<T>::InvalidRate
+			);
+			Ok(())
+		}
+
+		fn reference(interest_rate_per_year: T::YearRate) -> DispatchResult {
+			let interest_rate_per_sec = Self::rate_conversion(interest_rate_per_year)?;
 			Rates::<T>::try_mutate(|rates| {
 				let rate = rates
 					.iter_mut()
@@ -446,7 +388,7 @@ pub mod pallet {
 				match rate {
 					Some(rate) => Ok(rate.reference_count.ensure_add_assign(1)?),
 					None => {
-						Self::validate_interest_rate(interest_rate_per_year)?;
+						Self::validate(interest_rate_per_year)?;
 
 						let new_rate = RateDetailsOf::<T> {
 							interest_rate_per_sec,
@@ -464,10 +406,8 @@ pub mod pallet {
 			})
 		}
 
-		pub fn unreference_interest_rate(
-			interest_rate_per_year: T::InterestRate,
-		) -> DispatchResult {
-			let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
+		fn unreference(interest_rate_per_year: T::YearRate) -> DispatchResult {
+			let interest_rate_per_sec = Self::rate_conversion(interest_rate_per_year)?;
 			Rates::<T>::try_mutate(|rates| {
 				let idx = rates
 					.iter()
@@ -475,6 +415,7 @@ pub mod pallet {
 					.find(|(_, rate)| rate.interest_rate_per_sec == interest_rate_per_sec)
 					.ok_or(Error::<T>::NoSuchRate)?
 					.0;
+
 				rates[idx].reference_count = rates[idx].reference_count.saturating_sub(1);
 				if rates[idx].reference_count == 0 {
 					rates.swap_remove(idx);
@@ -483,104 +424,24 @@ pub mod pallet {
 			})
 		}
 
-		pub fn get_rate(
-			interest_rate_per_year: T::InterestRate,
-		) -> Result<RateDetailsOf<T>, DispatchError> {
-			let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
-			Rates::<T>::get()
-				.into_iter()
+		fn cache() -> Self::Cache {
+			RateVec(Rates::<T>::get())
+		}
+	}
+
+	pub struct RateVec<T: Config>(BoundedVec<RateDetailsOf<T>, T::MaxRateCount>);
+
+	impl<T: Config> RateCache<T::YearRate, T::SecRate> for RateVec<T> {
+		fn accrual(
+			&self,
+			interest_rate_per_year: T::YearRate,
+		) -> Result<T::SecRate, DispatchError> {
+			let interest_rate_per_sec = Pallet::<T>::rate_conversion(interest_rate_per_year)?;
+			self.0
+				.iter()
 				.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
-				.ok_or_else(|| Error::<T>::NoSuchRate.into())
-		}
-
-		pub(crate) fn validate_interest_rate(
-			interest_rate_per_year: T::InterestRate,
-		) -> DispatchResult {
-			let four_decimals = T::InterestRate::saturating_from_integer(10000);
-			let maximum = T::InterestRate::saturating_from_integer(MAX_INTEREST_RATE);
-			ensure!(
-				interest_rate_per_year <= maximum
-					&& interest_rate_per_year >= Zero::zero()
-					&& (interest_rate_per_year.saturating_mul(four_decimals)).frac()
-						== Zero::zero(),
-				Error::<T>::InvalidRate
-			);
-			Ok(())
+				.map(|rate| rate.accumulated_rate)
+				.ok_or(Error::<T>::NoSuchRate.into())
 		}
 	}
-}
-
-impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balance>> for Pallet<T> {
-	type MaxRateCount = T::MaxRateCount;
-	type NormalizedDebt = T::Balance;
-	type Rates = RateVec<T>;
-
-	fn calculate_debt(
-		interest_rate_per_year: T::InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-		when: Moment,
-	) -> Result<T::Balance, DispatchError> {
-		Pallet::<T>::get_debt(interest_rate_per_year, normalized_debt, when)
-	}
-
-	fn adjust_normalized_debt(
-		interest_rate_per_year: T::InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-		adjustment: Adjustment<T::Balance>,
-	) -> Result<Self::NormalizedDebt, DispatchError> {
-		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_year, normalized_debt, adjustment)
-	}
-
-	fn renormalize_debt(
-		old_interest_rate: T::InterestRate,
-		new_interest_rate: T::InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Self::NormalizedDebt, DispatchError> {
-		Pallet::<T>::do_renormalize_debt(old_interest_rate, new_interest_rate, normalized_debt)
-	}
-
-	fn reference_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
-		Pallet::<T>::reference_interest_rate(interest_rate_per_year)
-	}
-
-	fn unreference_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
-		Pallet::<T>::unreference_interest_rate(interest_rate_per_year)
-	}
-
-	fn validate_rate(interest_rate_per_year: T::InterestRate) -> sp_runtime::DispatchResult {
-		Pallet::<T>::validate_interest_rate(interest_rate_per_year)
-	}
-
-	fn rates() -> Self::Rates {
-		RateVec(Rates::<T>::get())
-	}
-}
-
-pub struct RateVec<T: Config>(BoundedVec<RateDetailsOf<T>, T::MaxRateCount>);
-
-impl<T: Config> RateCollection<T::InterestRate, T::Balance, T::Balance> for RateVec<T> {
-	fn current_debt(
-		&self,
-		interest_rate_per_year: T::InterestRate,
-		normalized_debt: T::Balance,
-	) -> Result<T::Balance, DispatchError> {
-		let interest_rate_per_sec = unchecked_conversion(interest_rate_per_year)?;
-		self.0
-			.iter()
-			.find(|rate| rate.interest_rate_per_sec == interest_rate_per_sec)
-			.ok_or(Error::<T>::NoSuchRate)
-			.and_then(|rate| {
-				Pallet::<T>::calculate_debt(normalized_debt, rate.accumulated_rate)
-					.ok_or(Error::<T>::DebtCalculationFailed)
-			})
-			.map_err(Into::into)
-	}
-}
-
-fn unchecked_conversion<R: FixedPointNumber + EnsureAdd>(
-	interest_rate_per_year: R,
-) -> Result<R, ArithmeticError> {
-	interest_rate_per_year
-		.ensure_div(R::saturating_from_integer(SECONDS_PER_YEAR))?
-		.ensure_add(One::one())
 }
