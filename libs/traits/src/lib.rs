@@ -18,7 +18,6 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use cfg_primitives::Moment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
@@ -223,59 +222,6 @@ pub trait CurrencyPrice<CurrencyId> {
 		base: CurrencyId,
 		quote: Option<CurrencyId>,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
-}
-
-/// A trait that can be used to calculate interest accrual for debt
-pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
-	/// The maximum number of rates this `InterestAccrual` can
-	/// contain. It is necessary for rate calculations in consumers of
-	/// this pallet, but is otherwise unused in this interface.
-	type MaxRateCount: Get<u32>;
-	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
-	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
-
-	/// Calculate the debt at an specific moment
-	fn calculate_debt(
-		interest_rate_per_year: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-		when: Moment,
-	) -> Result<Balance, DispatchError>;
-
-	/// Increase or decrease the normalized debt
-	fn adjust_normalized_debt(
-		interest_rate_per_year: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-		adjustment: Adjustment,
-	) -> Result<Self::NormalizedDebt, DispatchError>;
-
-	/// Re-normalize a debt for a new interest rate
-	fn renormalize_debt(
-		old_interest_rate: InterestRate,
-		new_interest_rate: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Self::NormalizedDebt, DispatchError>;
-
-	/// Validate and indicate that a yearly rate is in use
-	fn reference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
-
-	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
-
-	/// Ask if the rate is valid to use by the implementation
-	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
-
-	/// Returns a collection of pre-computed rates to perform multiple operations with
-	fn rates() -> Self::Rates;
-}
-
-/// A collection of pre-computed interest rates for performing interest accrual
-pub trait RateCollection<InterestRate, Balance, NormalizedDebt> {
-	/// Calculate the current debt using normalized debt * cumulative rate
-	fn current_debt(
-		&self,
-		interest_rate_per_sec: InterestRate,
-		normalized_debt: NormalizedDebt,
-	) -> Result<Balance, DispatchError>;
 }
 
 pub trait Permissions<AccountId> {

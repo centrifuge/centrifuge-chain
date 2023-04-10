@@ -1,5 +1,5 @@
 use sp_arithmetic::traits::{One, Zero};
-use sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{traits::Get, DispatchError, DispatchResult, FixedPointNumber, FixedPointOperand};
 use sp_std::cmp::Ordering;
 
 use crate::ops::{EnsureAdd, EnsureDiv, EnsureFixedPointNumber, EnsureSub};
@@ -24,6 +24,11 @@ pub trait RateAccrual {
 	/// Type used to cache the own collection of rates
 	type Cache: RateCache<Self::OuterRate, Self::AccRate>;
 
+	/// Maximum rates this implementation can contain.
+	/// Used for weight calculations in consumers of this trait,
+	/// but is otherwise unused in this interface.
+	type MaxRateCount: Get<u32>;
+
 	/// Returns an accrual rate identified by an outer rate
 	fn accrual(outer: Self::OuterRate) -> Result<Self::AccRate, DispatchError>;
 
@@ -34,13 +39,13 @@ pub trait RateAccrual {
 	) -> Result<Self::AccRate, DispatchError>;
 
 	/// Check if the outer rate is valid
-	fn validate(outer: Self::OuterRate) -> DispatchResult;
+	fn validate_rate(outer: Self::OuterRate) -> DispatchResult;
 
 	/// Reference a outer rate in the system to start using it
-	fn reference(outer: Self::OuterRate) -> DispatchResult;
+	fn reference_rate(outer: Self::OuterRate) -> DispatchResult;
 
 	/// Unreference a outer rate indicating to the system that it's no longer in use
-	fn unreference(outer: Self::OuterRate) -> DispatchResult;
+	fn unreference_rate(outer: Self::OuterRate) -> DispatchResult;
 
 	/// Returns last moment the collection was updated
 	fn last_updated() -> Self::Moment;
@@ -81,7 +86,7 @@ where
 		let now = Self::last_updated();
 		let acc = match when.cmp(&now) {
 			Ordering::Equal => Self::accrual(outer),
-			Ordering::Less => Self::accrual_at(outer, now),
+			Ordering::Less => Self::accrual_at(outer, when),
 			Ordering::Greater => {
 				// TODO: uncomment the following once #1304 is solved
 				// return Err(DispatchError::Other("Precondition broken: when <= now"))
@@ -93,7 +98,7 @@ where
 	}
 
 	/// Increase or decrease the amount, returing the new normalized debt
-	fn adjust_debt<Amount: Into<Debt>>(
+	fn adjust_normalized_debt<Amount: Into<Debt>>(
 		outer: Self::OuterRate,
 		norm_debt: Debt,
 		adjustment: Adjustment<Amount>,
@@ -112,7 +117,7 @@ where
 	}
 
 	/// Re-normalize a debt for a new interest rate, returing the new normalize_debt
-	fn normalize_debt(
+	fn renormalize_debt(
 		old_outer: Self::OuterRate,
 		new_outer: Self::OuterRate,
 		norm_debt: Debt,

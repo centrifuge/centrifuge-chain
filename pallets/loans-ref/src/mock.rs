@@ -148,12 +148,12 @@ impl pallet_uniques::Config for Runtime {
 }
 
 impl pallet_interest_accrual::Config for Runtime {
-	type Balance = Balance;
-	type InterestRate = Rate;
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type RuntimeEvent = RuntimeEvent;
+	type SecRate = Rate;
 	type Time = Timer;
 	type Weights = ();
+	type YearRate = Rate;
 }
 
 impl pallet_mock_pools::Config for Runtime {

@@ -13,13 +13,12 @@
 
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
+	accrual::{Adjustment, DebtAccrual, DebtCache, RateAccrual},
 	ops::{
 		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
 		EnsureSubAssign,
 	},
-	InterestAccrual, RateCollection,
 };
-use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
@@ -502,7 +501,7 @@ impl<T: Config> ActiveLoan<T> {
 	/// it get it from a cache previously fetched.
 	pub fn current_present_value<C>(&self, rate_cache: &C) -> Result<T::Balance, DispatchError>
 	where
-		C: RateCollection<T::Rate, T::Balance, T::Balance>,
+		C: DebtCache<T::Rate, T::Rate, T::Balance>,
 	{
 		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
 		self.present_value(debt, T::Time::now().as_secs())

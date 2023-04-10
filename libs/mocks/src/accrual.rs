@@ -10,6 +10,7 @@ pub mod pallet {
 		type AccRate;
 		type Moment;
 		type Cache: RateCache<Self::OuterRate, Self::AccRate>;
+		type MaxRateCount: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -41,15 +42,15 @@ pub mod pallet {
 			register_call!(move |()| f());
 		}
 
-		pub fn mock_validate(f: impl Fn(T::OuterRate) -> DispatchResult + 'static) {
+		pub fn mock_validate_rate(f: impl Fn(T::OuterRate) -> DispatchResult + 'static) {
 			register_call!(f);
 		}
 
-		pub fn mock_reference(f: impl Fn(T::OuterRate) -> DispatchResult + 'static) {
+		pub fn mock_reference_rate(f: impl Fn(T::OuterRate) -> DispatchResult + 'static) {
 			register_call!(f);
 		}
 
-		pub fn mock_unreference(f: impl Fn(T::OuterRate) -> DispatchResult + 'static) {
+		pub fn mock_unreference_rate(f: impl Fn(T::OuterRate) -> DispatchResult + 'static) {
 			register_call!(f);
 		}
 
@@ -61,6 +62,7 @@ pub mod pallet {
 	impl<T: Config> RateAccrual for Pallet<T> {
 		type AccRate = T::AccRate;
 		type Cache = T::Cache;
+		type MaxRateCount = T::MaxRateCount;
 		type Moment = T::Moment;
 		type OuterRate = T::OuterRate;
 
@@ -76,15 +78,15 @@ pub mod pallet {
 			execute_call!(())
 		}
 
-		fn validate(a: T::OuterRate) -> DispatchResult {
+		fn validate_rate(a: T::OuterRate) -> DispatchResult {
 			execute_call!(a)
 		}
 
-		fn reference(a: T::OuterRate) -> DispatchResult {
+		fn reference_rate(a: T::OuterRate) -> DispatchResult {
 			execute_call!(a)
 		}
 
-		fn unreference(a: T::OuterRate) -> DispatchResult {
+		fn unreference_rate(a: T::OuterRate) -> DispatchResult {
 			execute_call!(a)
 		}
 

@@ -342,6 +342,7 @@ pub mod pallet {
 	impl<T: Config> RateAccrual for Pallet<T> {
 		type AccRate = T::SecRate;
 		type Cache = RateVec<T>;
+		type MaxRateCount = T::MaxRateCount;
 		type Moment = Moment;
 		type OuterRate = T::YearRate;
 
@@ -365,7 +366,7 @@ pub mod pallet {
 			LastUpdated::<T>::get()
 		}
 
-		fn validate(interest_rate_per_year: T::YearRate) -> DispatchResult {
+		fn validate_rate(interest_rate_per_year: T::YearRate) -> DispatchResult {
 			let four_decimals = T::YearRate::saturating_from_integer(10000);
 			let maximum = T::YearRate::saturating_from_integer(MAX_INTEREST_RATE);
 			ensure!(
@@ -378,7 +379,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn reference(interest_rate_per_year: T::YearRate) -> DispatchResult {
+		fn reference_rate(interest_rate_per_year: T::YearRate) -> DispatchResult {
 			let interest_rate_per_sec = Self::rate_conversion(interest_rate_per_year)?;
 			Rates::<T>::try_mutate(|rates| {
 				let rate = rates
@@ -388,7 +389,7 @@ pub mod pallet {
 				match rate {
 					Some(rate) => Ok(rate.reference_count.ensure_add_assign(1)?),
 					None => {
-						Self::validate(interest_rate_per_year)?;
+						Self::validate_rate(interest_rate_per_year)?;
 
 						let new_rate = RateDetailsOf::<T> {
 							interest_rate_per_sec,
@@ -406,7 +407,7 @@ pub mod pallet {
 			})
 		}
 
-		fn unreference(interest_rate_per_year: T::YearRate) -> DispatchResult {
+		fn unreference_rate(interest_rate_per_year: T::YearRate) -> DispatchResult {
 			let interest_rate_per_sec = Self::rate_conversion(interest_rate_per_year)?;
 			Rates::<T>::try_mutate(|rates| {
 				let idx = rates

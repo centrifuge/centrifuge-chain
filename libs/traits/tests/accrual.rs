@@ -7,11 +7,12 @@ use sp_runtime::DispatchError;
 impl pallet_mock_accrual::Config for Runtime {
 	type AccRate = FixedU64;
 	type Cache = ();
+	type MaxRateCount = ConstU32<0>;
 	type Moment = u64;
 	type OuterRate = u8;
 }
 
-cfg_mocks::make_runtime_for_mock!(Runtime, MockAccrual, pallet_mock_accrual, new_test_ext);
+cfg_mocks::make_runtime_for_mock!(Runtime, Mock, pallet_mock_accrual, new_test_ext);
 
 const ERROR: DispatchError = DispatchError::Other("Error");
 const OUTER_1: u8 = 1;
@@ -20,12 +21,12 @@ const WRONG_OUTER: u8 = 0;
 const LAST: u64 = 1000;
 
 fn config_mocks() {
-	MockAccrual::mock_accrual(|outer| match outer {
+	Mock::mock_accrual(|outer| match outer {
 		OUTER_1 => Ok(FixedU64::from_float(0.3)),
 		OUTER_2 => Ok(FixedU64::from_float(0.6)),
 		_ => Err(ERROR),
 	});
-	MockAccrual::mock_accrual_at(|outer, moment| {
+	Mock::mock_accrual_at(|outer, moment| {
 		assert!(moment < LAST);
 		match outer {
 			OUTER_1 => Ok(FixedU64::from_float(0.1)),
@@ -33,7 +34,7 @@ fn config_mocks() {
 			_ => Err(ERROR),
 		}
 	});
-	MockAccrual::mock_last_updated(|| LAST);
+	Mock::mock_last_updated(|| LAST);
 }
 
 #[test]
@@ -43,14 +44,14 @@ fn wrong_outer() {
 	new_test_ext().execute_with(|| {
 		config_mocks();
 
-		assert_err!(MockAccrual::current_debt(WRONG_OUTER, 1), ERROR);
-		assert_err!(MockAccrual::calculate_debt(WRONG_OUTER, 1, WHEN), ERROR);
+		assert_err!(Mock::current_debt(WRONG_OUTER, 1), ERROR);
+		assert_err!(Mock::calculate_debt(WRONG_OUTER, 1, WHEN), ERROR);
 		assert_err!(
-			MockAccrual::adjust_debt(WRONG_OUTER, 1, Adjustment::Increase(42)),
+			Mock::adjust_normalized_debt(WRONG_OUTER, 1, Adjustment::Increase(42)),
 			ERROR
 		);
-		assert_err!(MockAccrual::normalize_debt(WRONG_OUTER, OUTER_2, 1), ERROR);
-		assert_err!(MockAccrual::normalize_debt(OUTER_1, WRONG_OUTER, 1), ERROR);
+		assert_err!(Mock::renormalize_debt(WRONG_OUTER, OUTER_2, 1), ERROR);
+		assert_err!(Mock::renormalize_debt(OUTER_1, WRONG_OUTER, 1), ERROR);
 	});
 }
 
@@ -62,17 +63,17 @@ fn calculate_debt() {
 		config_mocks();
 
 		assert_ok!(
-			MockAccrual::calculate_debt(OUTER_1, NORM_DEBT, LAST),
+			Mock::calculate_debt(OUTER_1, NORM_DEBT, LAST),
 			(NORM_DEBT as f32 * 0.3) as u64
 		);
 
 		assert_ok!(
-			MockAccrual::calculate_debt(OUTER_1, NORM_DEBT, LAST + 100),
+			Mock::calculate_debt(OUTER_1, NORM_DEBT, LAST + 100),
 			(NORM_DEBT as f32 * 0.3) as u64
 		);
 
 		assert_ok!(
-			MockAccrual::calculate_debt(OUTER_1, NORM_DEBT, LAST - 100),
+			Mock::calculate_debt(OUTER_1, NORM_DEBT, LAST - 100),
 			(NORM_DEBT as f32 * 0.1) as u64
 		);
 	});

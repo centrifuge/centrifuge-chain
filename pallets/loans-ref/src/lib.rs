@@ -58,13 +58,11 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
+		accrual::{DebtAccrual, RateAccrual},
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
-		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
+		Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
-	use cfg_types::{
-		adjustments::Adjustment,
-		permissions::{PermissionScope, PoolRole, Role},
-	};
+	use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 	use frame_support::{
 		pallet_prelude::*,
 		traits::{
@@ -167,11 +165,11 @@ pub mod pallet {
 		>;
 
 		/// Used to calculate interest accrual for debt.
-		type InterestAccrual: InterestAccrual<
-			Self::Rate,
+		type InterestAccrual: DebtAccrual<
 			Self::Balance,
-			Adjustment<Self::Balance>,
-			NormalizedDebt = Self::Balance,
+			OuterRate = Self::Rate,
+			Moment = Moment,
+			AccRate = Self::Rate,
 		>;
 
 		/// Max number of active loans per pool.
@@ -707,7 +705,7 @@ pub mod pallet {
 		fn portfolio_valuation_for_pool(
 			pool_id: PoolIdOf<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
-			let rates = T::InterestAccrual::rates();
+			let rates = T::InterestAccrual::cache();
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let count = loans.len().ensure_into()?;
 			let value = loans.into_iter().try_fold(
