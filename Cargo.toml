@@ -82,11 +82,13 @@ sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "polk
 sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-network = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-network-sync = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-service = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
@@ -143,6 +145,13 @@ runtime-integration-tests = { path = "runtime/integration-tests", optional = tru
 
 # xcm
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
+
+# frontier
+fc-db = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fc-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fc-rpc-core = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fp-storage = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 
 [build-dependencies]
 substrate-build-script-utils = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }

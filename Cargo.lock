@@ -982,6 +982,11 @@ dependencies = [
  "cumulus-relay-chain-inprocess-interface",
  "cumulus-relay-chain-interface",
  "development-runtime",
+ "fc-db",
+ "fc-rpc",
+ "fc-rpc-core",
+ "fp-rpc",
+ "fp-storage",
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "frame-system",
@@ -1007,12 +1012,14 @@ dependencies = [
  "sc-finality-grandpa",
  "sc-network",
  "sc-network-sync",
+ "sc-rpc",
  "sc-rpc-api",
  "sc-service",
  "sc-service-test",
  "sc-telemetry",
  "sc-tracing",
  "sc-transaction-pool",
+ "sc-transaction-pool-api",
  "serde",
  "sp-api",
  "sp-block-builder",
@@ -2526,6 +2533,8 @@ dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
+ "fp-rpc",
+ "fp-self-contained",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -3164,6 +3173,80 @@ dependencies = [
 ]
 
 [[package]]
+name = "fc-db"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.37#4e080c6ace4de90226f4923b196bf3089cb6712f"
+dependencies = [
+ "fp-storage",
+ "kvdb-rocksdb",
+ "log",
+ "parity-db",
+ "parity-scale-codec 3.4.0",
+ "parking_lot 0.12.1",
+ "sc-client-db",
+ "smallvec",
+ "sp-blockchain",
+ "sp-core",
+ "sp-database 4.0.0-dev (git+https://github.com/PureStake/substrate?branch=moonbeam-polkadot-v0.9.37)",
+ "sp-runtime",
+]
+
+[[package]]
+name = "fc-rpc"
+version = "2.0.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.37#4e080c6ace4de90226f4923b196bf3089cb6712f"
+dependencies = [
+ "ethereum",
+ "ethereum-types 0.14.1",
+ "evm",
+ "fc-db",
+ "fc-rpc-core",
+ "fp-ethereum",
+ "fp-rpc",
+ "fp-storage",
+ "futures",
+ "hex",
+ "jsonrpsee",
+ "libsecp256k1",
+ "log",
+ "lru",
+ "parity-scale-codec 3.4.0",
+ "prometheus",
+ "rand 0.8.5",
+ "rlp",
+ "sc-client-api",
+ "sc-network",
+ "sc-network-common",
+ "sc-rpc",
+ "sc-service",
+ "sc-transaction-pool",
+ "sc-transaction-pool-api",
+ "sp-api",
+ "sp-block-builder",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-storage",
+ "substrate-prometheus-endpoint",
+ "tokio",
+]
+
+[[package]]
+name = "fc-rpc-core"
+version = "1.1.0-dev"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.37#4e080c6ace4de90226f4923b196bf3089cb6712f"
+dependencies = [
+ "ethereum",
+ "ethereum-types 0.14.1",
+ "jsonrpsee",
+ "rustc-hex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fdlimit"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3438,7 +3521,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-database",
+ "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
  "sp-externalities",
  "sp-inherents",
  "sp-keystore",
@@ -3730,7 +3813,7 @@ dependencies = [
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-core",
- "sp-database",
+ "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
  "sp-externalities",
  "sp-inherents",
  "sp-io",
@@ -10715,7 +10798,7 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-core",
- "sp-database",
+ "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
  "sp-externalities",
  "sp-keystore",
  "sp-runtime",
@@ -10743,7 +10826,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-blockchain",
  "sp-core",
- "sp-database",
+ "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
  "sp-runtime",
  "sp-state-machine",
  "sp-trie",
@@ -12224,7 +12307,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "sp-api",
  "sp-consensus",
- "sp-database",
+ "sp-database 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29)",
  "sp-runtime",
  "sp-state-machine",
  "thiserror",
@@ -12379,6 +12462,15 @@ dependencies = [
  "quote",
  "sp-core-hashing",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "sp-database"
+version = "4.0.0-dev"
+source = "git+https://github.com/PureStake/substrate?branch=moonbeam-polkadot-v0.9.37#5892a2a264a335b8ce893320ad59fd9638b63bed"
+dependencies = [
+ "kvdb",
+ "parking_lot 0.12.1",
 ]
 
 [[package]]
