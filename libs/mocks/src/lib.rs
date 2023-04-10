@@ -1,8 +1,10 @@
+mod accrual;
 mod fees;
 mod permissions;
 mod pools;
 mod rewards;
 
+pub use accrual::pallet as pallet_mock_accrual;
 pub use fees::pallet as pallet_mock_fees;
 pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
@@ -86,7 +88,7 @@ mod test {
 
 	use super::*;
 
-	make_runtime_for_mock!(Runtime, Mock, pallet_mock_template, new_test_ext);
+	make_runtime_for_mock!(Runtime, MockTemplate, pallet_mock_template, new_test_ext);
 
 	impl pallet_mock_template::Config for Runtime {
 		// Configure your associated types here
@@ -95,7 +97,7 @@ mod test {
 	#[test]
 	fn runtime_for_mock() {
 		new_test_ext().execute_with(|| {
-			// Test using the Mock
+			// Test using the MockTemplate
 		});
 	}
 }

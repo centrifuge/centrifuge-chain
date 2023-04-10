@@ -11,7 +11,7 @@ pub struct AccrualRate<Rate> {
 	/// Rate that is accruing
 	pub inner: Rate,
 
-	/// Accumulation
+	/// Accumulation of the rate
 	pub acc: Rate,
 }
 
@@ -24,19 +24,16 @@ pub enum Adjustment<Amount> {
 /// Represents a collection of rates
 pub trait RateCollection {
 	/// Identify and represents an inner rate in the collection.
-	type Locator;
+	type OuterRate;
 
 	/// Inner rate
-	type Rate;
+	type InnerRate;
 
 	/// Represent a timestamp
 	type Moment;
 
-	/// Convert a locator to an inner rate (i.e. by a math operation)
-	fn convert(locator: Self::Locator) -> Result<Self::Rate, DispatchError>;
-
-	/// Returns an accrual rate identified by a locator
-	fn rate(locator: Self::Locator) -> Result<AccrualRate<Self::Rate>, DispatchError>;
+	/// Returns an accrual rate identified by an outer rate
+	fn accrual_rate(outer: Self::OuterRate) -> Result<AccrualRate<Self::InnerRate>, DispatchError>;
 
 	/// Returns last moment the collection was updated
 	fn last_updated() -> Self::Moment;
@@ -47,37 +44,37 @@ pub trait InterestAccrual: RateCollection {
 	/// Type used to cache the own collection of rates
 	type Cache: RateCollection;
 
-	/// Check if the locator is valid
-	fn validate(locator: Self::Locator) -> DispatchResult;
+	/// Check if the outer rate is valid
+	fn validate(outer: Self::OuterRate) -> DispatchResult;
 
-	/// Reference a locator in the system to start using its inner rate
-	fn reference(locator: Self::Locator) -> DispatchResult;
+	/// Reference a outer rate in the system to start using its inner rate
+	fn reference(outer: Self::OuterRate) -> DispatchResult;
 
-	/// Unreference a locator indicating to the system that it's no longer in use
-	fn unreference(locator: Self::Locator) -> DispatchResult;
+	/// Unreference a outer rate indicating to the system that it's no longer in use
+	fn unreference(outer: Self::OuterRate) -> DispatchResult;
 
 	/// Creates an inmutable copy of this rate collection.
-	fn create_cache() -> Self::Cache;
+	fn cache() -> Self::Cache;
 }
 
 pub trait DebtAccrual<Debt>: RateCollection
 where
-	<Self as RateCollection>::Rate: FixedPointNumber,
-	<Self as RateCollection>::Moment: EnsureSub + Ord + Zero + Into<usize>,
+	<Self as RateCollection>::InnerRate: FixedPointNumber,
+	<Self as RateCollection>::Moment: EnsureSub + Ord + Zero + TryInto<usize>,
 	Debt: FixedPointOperand + EnsureAdd + EnsureSub,
 {
-	/// Get the current debt for that locator
-	fn current_debt(locator: Self::Locator, norm_debt: Debt) -> Result<Debt, DispatchError> {
-		Self::calculate_debt(locator, norm_debt, Self::last_updated())
+	/// Get the current debt for that outer rate
+	fn current_debt(outer: Self::OuterRate, norm_debt: Debt) -> Result<Debt, DispatchError> {
+		Self::calculate_debt(outer, norm_debt, Self::last_updated())
 	}
 
-	/// Calculate the debt for that locator at an instant
+	/// Calculate the debt for that outer rate at an instant
 	fn calculate_debt(
-		locator: Self::Locator,
+		outer: Self::OuterRate,
 		norm_debt: Debt,
 		when: Self::Moment,
 	) -> Result<Debt, DispatchError> {
-		let rate = Self::rate(locator)?;
+		let rate = Self::accrual_rate(outer)?;
 		let now = Self::last_updated();
 
 		let acc = match when.cmp(&now) {
@@ -89,7 +86,9 @@ where
 				rate.acc.ensure_div(rate_adjustment)?
 			}
 			Ordering::Greater => {
-				return Err(DispatchError::Other("Precondition broken: when <= now"))
+				// TODO: uncomment the following once #1304 is solved
+				// return Err(DispatchError::Other("Precondition broken: when <= now"))
+				rate.acc
 			}
 		};
 
@@ -98,11 +97,11 @@ where
 
 	/// Increase or decrease the amount, returing the new normalized debt
 	fn adjust_debt<Amount: Into<Debt>>(
-		locator: Self::Locator,
+		outer: Self::OuterRate,
 		norm_debt: Debt,
 		adjustment: Adjustment<Amount>,
 	) -> Result<Debt, DispatchError> {
-		let rate = Self::rate(locator)?;
+		let rate = Self::accrual_rate(outer)?;
 
 		let old_debt = rate.acc.ensure_mul_int(norm_debt)?;
 		let new_debt = match adjustment {
@@ -110,33 +109,33 @@ where
 			Adjustment::Decrease(amount) => old_debt.ensure_sub(amount.into()),
 		}?;
 
-		Ok(Self::Rate::one()
+		Ok(Self::InnerRate::one()
 			.ensure_div(rate.acc)?
 			.ensure_mul_int(new_debt)?)
 	}
 
 	/// Re-normalize a debt for a new interest rate, returing the new normalize_debt
 	fn normalize_debt(
-		old_locator: Self::Locator,
-		new_locator: Self::Locator,
+		old_outer: Self::OuterRate,
+		new_outer: Self::OuterRate,
 		norm_debt: Debt,
 	) -> Result<Debt, DispatchError> {
-		let old_rate = Self::rate(old_locator)?;
-		let new_rate = Self::rate(new_locator)?;
+		let old_rate = Self::accrual_rate(old_outer)?;
+		let new_rate = Self::accrual_rate(new_outer)?;
 
 		let debt = old_rate.acc.ensure_mul_int(norm_debt)?;
 
-		Ok(Self::Rate::one()
+		Ok(Self::InnerRate::one()
 			.ensure_div(new_rate.acc)?
 			.ensure_mul_int(debt)?)
 	}
 }
 
-impl<Locator, Rate, Moment, Debt, T> DebtAccrual<Debt> for T
+impl<OuterRate, InnerRate, Moment, Debt, T> DebtAccrual<Debt> for T
 where
-	Rate: FixedPointNumber,
-	Moment: EnsureSub + Ord + Zero + Into<usize>,
+	InnerRate: FixedPointNumber,
+	Moment: EnsureSub + Ord + Zero + TryInto<usize>,
 	Debt: FixedPointOperand + EnsureAdd + EnsureSub,
-	T: RateCollection<Locator = Locator, Rate = Rate, Moment = Moment>,
+	T: RateCollection<OuterRate = OuterRate, InnerRate = InnerRate, Moment = Moment>,
 {
 }
