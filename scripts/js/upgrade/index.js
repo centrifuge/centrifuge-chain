@@ -9,6 +9,7 @@ const PROPOSAL_LENGTH_BOUND = 90;
 const FAST_TRACK_BLOCKS = 15;
 const FAST_TRACK_DELAY = 0;
 const MAX_COUNT_DOWN_BLOCKS = 30;
+const WAITING_SESSIONS_AFTER_UPGRADE = 3;
 
 const run = async () => {
   let exitCode = 0;
@@ -100,11 +101,11 @@ const run = async () => {
     console.log("Waiting for ValidationFunctionApplied event")
     await waitUntilEventFound(api, "ValidationFunctionApplied")
 
-    console.log("Waiting for 3 NewSession events")
+    console.log(`Waiting for ${WAITING_SESSIONS_AFTER_UPGRADE} NewSession events`)
     let foundInBlock = 0;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < WAITING_SESSIONS_AFTER_UPGRADE; i++) {
       foundInBlock = await waitUntilEventFound(api, "NewSession", foundInBlock + 1)
-      console.log(`Session ${i + 1}/3`)
+      console.log(`Session ${i + 1}/${WAITING_SESSIONS_AFTER_UPGRADE}`)
     }
 
     console.log("Runtime Upgrade succeeded")
