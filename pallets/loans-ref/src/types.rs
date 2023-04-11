@@ -129,11 +129,18 @@ pub enum PortfolioValuationUpdateType {
 	Inexact,
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+
+pub enum WriteOffTrigger {
+	/// Number in days after the maturity date has passed
+	PrincipalOverdueDays(u32),
+}
+
 /// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffState<Rate> {
-	/// Number in days after the maturity has passed at which this write off policy is valid
-	pub overdue_days: u32,
+	/// If any of the triggers is valid, the write-off state can be applied
+	pub triggers: Vec<WriteOffTrigger>,
 
 	/// Percentage of present value we are going to write off on a loan
 	pub percentage: Rate,
@@ -148,8 +155,12 @@ where
 {
 	/// Check if a `WriteOffState` is applicable for a loan with the specified `maturity_date`.
 	fn applicable(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
-		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
-		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
+		self.triggers.any(|trigger| match trigger {
+			WriteOffTrigger::PrincipalOverdueDays(days) => {
+				let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
+				Ok(now >= maturity_date.ensure_add(overdue_secs)?)
+			}
+		})
 	}
 
 	/// From all overdue write off states, it returns the minor.
