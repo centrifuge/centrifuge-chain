@@ -7803,7 +7803,7 @@ dependencies = [
  "pallet-balances",
  "pallet-fees",
  "pallet-treasury",
- "parity-scale-codec 3.2.1",
+ "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
  "sp-core",
