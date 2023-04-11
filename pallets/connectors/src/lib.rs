@@ -14,6 +14,7 @@
 use core::convert::TryFrom;
 
 use cfg_traits::PoolInspect;
+use cfg_types::domain_address::{Domain, DomainAddress, DomainLocator};
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
 use frame_support::traits::{
@@ -23,7 +24,7 @@ use frame_support::traits::{
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
-use sp_core::{TypeId, U256};
+use sp_core::U256;
 use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
 use sp_std::{convert::TryInto, vec, vec::Vec};
 pub mod weights;
@@ -43,21 +44,6 @@ pub use contract::*;
 pub enum ParachainId {
 	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or Moonbase on a testnet.
 	Moonbeam,
-}
-
-/// A Domain is a chain or network we can send a Connectors message to.
-/// The domain indices need to match those used in the EVM contracts and these
-/// need to pass the Centrifuge domain to send tranche tokens from the other
-/// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub enum Domain {
-	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
-	/// NOTE: Connectors messages CAN NOT be sent directly from the Centrifuge chain to the
-	/// Centrifuge chain itself.
-	Centrifuge,
-	/// An EVM domain, identified by its EVM Chain Id
-	EVM(EVMChainId),
 }
 
 /// An encoding & decoding trait for the purpose of meeting the
@@ -92,56 +78,6 @@ impl Codec for Domain {
 			_ => Err(codec::Error::from("Unknown Domain variant")),
 		}
 	}
-}
-
-/// The EVM Chain ID
-/// The type should accomodate all chain ids listed on https://chainlist.org/.
-type EVMChainId = u64;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
-pub struct DomainLocator<Domain> {
-	pub domain: Domain,
-}
-
-impl<Domain> TypeId for DomainLocator<Domain> {
-	const TYPE_ID: [u8; 4] = *b"domn";
-}
-
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub enum DomainAddress {
-	/// A Centrifuge-Chain based account address, 32-bytes long
-	Centrifuge([u8; 32]),
-	/// An EVM chain address, 20-bytes long
-	EVM(EVMChainId, [u8; 20]),
-}
-
-impl From<DomainAddress> for Domain {
-	fn from(x: DomainAddress) -> Self {
-		match x {
-			DomainAddress::Centrifuge(_) => Domain::Centrifuge,
-			DomainAddress::EVM(chain_id, _) => Domain::EVM(chain_id),
-		}
-	}
-}
-
-impl DomainAddress {
-	/// Get the address in a 32-byte long representation.
-	/// For EVM addresses, append 12 zeros.
-	fn address(&self) -> [u8; 32] {
-		match self.clone() {
-			Self::Centrifuge(x) => x,
-			Self::EVM(_, x) => vec_to_fixed_array(x.to_vec()),
-		}
-	}
-
-	fn domain(&self) -> Domain {
-		self.clone().into()
-	}
-}
-
-impl TypeId for DomainAddress {
-	const TYPE_ID: [u8; 4] = *b"dadr";
 }
 
 // Type aliases
