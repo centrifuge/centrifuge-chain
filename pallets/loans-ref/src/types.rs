@@ -21,6 +21,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
 	pallet_prelude::DispatchResult,
+	storage::bounded_btree_set::BoundedBTreeSet,
 	traits::{
 		tokens::{self},
 		UnixTime,
@@ -30,10 +31,11 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
-	traits::{BlockNumberProvider, Zero},
+	traits::{BlockNumberProvider, Get, Zero},
 	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
 };
 use sp_std::cmp::Ordering;
+use strum::EnumCount;
 
 use super::pallet::{Config, Error};
 use crate::valuation::ValuationMethod;
@@ -129,24 +131,42 @@ pub enum PortfolioValuationUpdateType {
 	Inexact,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-
+/// Indicator of when the write off should be applied
+#[derive(
+	Encode,
+	Decode,
+	Clone,
+	PartialEq,
+	Eq,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	RuntimeDebug,
+	MaxEncodedLen,
+	EnumCount,
+)]
 pub enum WriteOffTrigger {
 	/// Number in days after the maturity date has passed
 	PrincipalOverdueDays(u32),
+
+	/// Seconds since the oracle valuation was last updated
+	OracleValuationOutdated(Moment),
+}
+
+impl Get<u32> for WriteOffTrigger {
+	fn get() -> u32 {
+		WriteOffTrigger::COUNT as u32
+	}
 }
 
 /// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffState<Rate> {
 	/// If any of the triggers is valid, the write-off state can be applied
-	pub triggers: Vec<WriteOffTrigger>,
+	pub triggers: BoundedBTreeSet<WriteOffTrigger, WriteOffTrigger>,
 
-	/// Percentage of present value we are going to write off on a loan
-	pub percentage: Rate,
-
-	/// Additional interest that accrues on the written off loan as penalty
-	pub penalty: Rate,
+	/// Content of this write off state
+	pub status: WriteOffStatus<Rate>,
 }
 
 impl<Rate> WriteOffState<Rate>
@@ -155,50 +175,67 @@ where
 {
 	/// Check if a `WriteOffState` is applicable for a loan with the specified `maturity_date`.
 	fn applicable(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
-		self.triggers.any(|trigger| match trigger {
-			WriteOffTrigger::PrincipalOverdueDays(days) => {
-				let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
-				Ok(now >= maturity_date.ensure_add(overdue_secs)?)
+		for trigger in self.triggers.iter() {
+			match trigger {
+				WriteOffTrigger::PrincipalOverdueDays(days) => {
+					let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
+					if now >= maturity_date.ensure_add(overdue_secs)? {
+						return Ok(true);
+					}
+				}
+				WriteOffTrigger::OracleValuationOutdated(_seconds) => {}
 			}
-		})
+		}
+		Ok(false)
 	}
 
-	/// From all overdue write off states, it returns the minor.
+	/// From all overdue write off states, it returns the one has highest percentage
+	/// (or highest penalty, if same percentage) that can be applied.
 	///
 	/// Suppose a policy with the following states:
-	/// - overdue_days: 5
-	/// - overdue_days: 10
-	/// - overdue_days: 15
+	/// - overdue_days: 5,   percentage 10%
+	/// - overdue_days: 10,  percentage 30%
+	/// - overdue_days: 15,  percentage 20%
 	///
 	/// If the loan is not overdue, it will not return any state.
 	/// If the loan overdue by 4 days, it will not return any state.
 	/// If the loan is overdue by 9 days, it will return the first state.
-	/// If the loan is overdue by 60 days, it will return the third state.
+	/// If the loan is overdue by 60 days, it will return the second state
+	/// (because it has a higher percetage).
 	pub fn find_best(
 		policy: impl Iterator<Item = WriteOffState<Rate>>,
-		maturity_date: Moment,
 		now: Moment,
+		maturity_date: Moment,
+		_oracle_last_updated: Option<Moment>,
 	) -> Option<WriteOffState<Rate>> {
 		policy
-			.filter_map(|p| p.applicable(maturity_date, now).ok()?.then_some(p))
-			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
-	}
-
-	pub fn status(&self) -> WriteOffStatus<Rate> {
-		WriteOffStatus {
-			percentage: self.percentage,
-			penalty: self.penalty,
-		}
+			.filter(|rule| match rule.applicable(maturity_date, now) {
+				Ok(value) => value,
+				Err(_) => false,
+			})
+			.max_by(|r1, r2| r1.status.cmp(&r2.status))
 	}
 }
 
 /// Diferent kinds of write off status that a loan can be
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[derive(
+	Encode,
+	Decode,
+	Clone,
+	PartialEq,
+	Eq,
+	Default,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	RuntimeDebug,
+	MaxEncodedLen,
+)]
 pub struct WriteOffStatus<Rate> {
 	/// Percentage of present value we are going to write off on a loan
 	pub percentage: Rate,
 
-	/// Additional interest that accrues on the written down loan as penalty per sec
+	/// Additional interest that accrues on the written down loan as penalty
 	pub penalty: Rate,
 }
 
@@ -213,7 +250,7 @@ where
 		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
 	}
 
-	pub fn max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
+	pub fn compose_max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
 		Self {
 			percentage: self.percentage.max(other.percentage),
 			penalty: self.penalty.max(other.penalty),
@@ -335,7 +372,7 @@ pub struct LoanInfo<Asset, Balance, Rate> {
 	/// Restrictions of this loan
 	restrictions: LoanRestrictions<Rate>,
 
-	/// Interest rate per second with any penalty applied
+	/// Interest rate per year with any penalty applied
 	interest_rate: Rate,
 }
 

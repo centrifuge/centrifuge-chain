@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::BTreeSet, time::Duration};
 
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
@@ -9,7 +9,7 @@ use super::{
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
-		WriteOffState, WriteOffStatus, WrittenOffError,
+		WriteOffState, WriteOffStatus, WriteOffTrigger, WrittenOffError,
 	},
 	valuation::{DiscountedCashFlow, ValuationMethod},
 };
@@ -62,6 +62,22 @@ mod util {
 		(interest * balance as f64) as Balance
 	}
 
+	pub fn make_write_off_rule(
+		triggers: impl IntoIterator<Item = WriteOffTrigger>,
+		percentage: f64,
+		penalty: f64,
+	) -> WriteOffState<Rate> {
+		WriteOffState {
+			triggers: BTreeSet::from_iter(triggers.into_iter())
+				.try_into()
+				.unwrap(),
+			status: WriteOffStatus {
+				percentage: Rate::from_float(percentage),
+				penalty: Rate::from_float(penalty),
+			},
+		}
+	}
+
 	pub fn set_up_policy(percentage: f64, penalty: f64) {
 		MockPermissions::mock_has(|_, _, _| true);
 		MockPools::mock_pool_exists(|_| true);
@@ -69,11 +85,11 @@ mod util {
 		Loans::update_write_off_policy(
 			RuntimeOrigin::signed(0),
 			POOL_A,
-			vec![WriteOffState {
-				overdue_days: 1,
-				percentage: Rate::from_float(percentage),
-				penalty: Rate::from_float(penalty),
-			}]
+			vec![make_write_off_rule(
+				[WriteOffTrigger::PrincipalOverdueDays(1)],
+				percentage,
+				penalty,
+			)]
 			.try_into()
 			.unwrap(),
 		)
@@ -1238,11 +1254,11 @@ mod write_off_policy {
 				Loans::update_write_off_policy(
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
-					vec![WriteOffState {
-						overdue_days: 1,
-						percentage: Rate::from_float(POLICY_PERCENTAGE),
-						penalty: Rate::from_float(POLICY_PENALTY),
-					}]
+					vec![util::make_write_off_rule(
+						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						POLICY_PERCENTAGE,
+						POLICY_PENALTY,
+					)]
 					.try_into()
 					.unwrap(),
 				),
@@ -1260,11 +1276,11 @@ mod write_off_policy {
 				Loans::update_write_off_policy(
 					RuntimeOrigin::signed(POOL_ADMIN),
 					POOL_B,
-					vec![WriteOffState {
-						overdue_days: 1,
-						percentage: Rate::from_float(POLICY_PERCENTAGE),
-						penalty: Rate::from_float(POLICY_PENALTY),
-					}]
+					vec![util::make_write_off_rule(
+						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						POLICY_PERCENTAGE,
+						POLICY_PENALTY,
+					)]
 					.try_into()
 					.unwrap(),
 				),
@@ -1281,11 +1297,11 @@ mod write_off_policy {
 			assert_ok!(Loans::update_write_off_policy(
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
-				vec![WriteOffState {
-					overdue_days: 1,
-					percentage: Rate::from_float(POLICY_PERCENTAGE),
-					penalty: Rate::from_float(POLICY_PENALTY),
-				}]
+				vec![util::make_write_off_rule(
+					[WriteOffTrigger::PrincipalOverdueDays(1)],
+					POLICY_PERCENTAGE,
+					POLICY_PENALTY,
+				)]
 				.try_into()
 				.unwrap(),
 			));
@@ -1307,21 +1323,9 @@ mod write_off_policy {
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![
-					WriteOffState {
-						overdue_days: 1,
-						percentage: Rate::from_float(0.2),
-						penalty: Rate::from_float(0.2),
-					},
-					WriteOffState {
-						overdue_days: 4,
-						percentage: Rate::from_float(0.5),
-						penalty: Rate::from_float(0.5),
-					},
-					WriteOffState {
-						overdue_days: 9,
-						percentage: Rate::from_float(0.3),
-						penalty: Rate::from_float(0.3),
-					}
+					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(1)], 0.2, 0.2),
+					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(4)], 0.5, 0.5),
+					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(9)], 0.3, 0.3),
 				]
 				.try_into()
 				.unwrap(),

@@ -488,8 +488,8 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let state = Self::find_write_off_state(pool_id, loan.maturity_date())?;
-				let limit = state.status().max(loan.write_off_status());
+				let state = Self::find_write_off_state(pool_id, loan)?;
+				let limit = state.status.compose_max(loan.write_off_status());
 
 				loan.write_off(&limit, &limit)?;
 
@@ -532,8 +532,8 @@ pub mod pallet {
 			};
 
 			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let state = Self::find_write_off_state(pool_id, loan.maturity_date());
-				let limit = state.map(|s| s.status()).unwrap_or_else(|_| status.clone());
+				let state = Self::find_write_off_state(pool_id, loan);
+				let limit = state.map(|s| s.status).unwrap_or_else(|_| status.clone());
 
 				loan.write_off(&limit, &status)
 			})?;
@@ -681,12 +681,13 @@ pub mod pallet {
 
 		fn find_write_off_state(
 			pool_id: PoolIdOf<T>,
-			maturity_date: Moment,
+			loan: &ActiveLoan<T>,
 		) -> Result<WriteOffState<T::Rate>, DispatchError> {
 			WriteOffState::find_best(
 				WriteOffPolicy::<T>::get(pool_id).into_iter(),
-				maturity_date,
 				T::Time::now().as_secs(),
+				loan.maturity_date(),
+				None,
 			)
 			.ok_or_else(|| Error::<T>::NoValidWriteOffState.into())
 		}
