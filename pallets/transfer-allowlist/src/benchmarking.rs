@@ -15,34 +15,93 @@ use frame_benchmarking::*;
 use frame_support::traits::ReservableCurrency;
 
 use super::*;
+use crate::mock::*;
 
 benchmarks! {
 	where_clause {
-	where T:   Config + pallet_fees::Config<Fees = <T as Config>::Fees> + pallet_balances::Config<Balance = <T as Config>::Balance>, <T as Config>::CurrencyId: From<CurrencyId> + Into<CurrencyId>, <T as Config>::Location: From<Location> + Into<Location>, <T as Config>::ReserveCurrency: ReservableCurrency<T::AccountId>
+	where T: Config,
+		// + pallet_fees::Config<Fees = <T as Config>::Fees>
+		// + pallet_balances::Config<Balance = <T as Config>::Balance>,
+	// T::Fee
+	<T as Config>::CurrencyId: From<CurrencyId> + Into<CurrencyId>,
+	<T as Config>::Location: From<Location> + Into<Location>,
+	<T as Config>::ReserveCurrency: ReservableCurrency<T::AccountId>
 }
 
 	add_allowance {
 
-	}
-  remove_allowance {
+	}:add_transfer_allowance(RuntimeOrigin::signed(SENDER), CurrencyId::A, ACCOUNT_RECEIVER.into())
+	verify {
+	  assert_eq!(
+				TransferAllowList::get_account_currency_transfer_allowance((
+					  SENDER,
+					  CurrencyId::A,
+					  Location::TestLocal(ACCOUNT_RECEIVER)
+				))
+					.unwrap(),
+				AllowanceDetails {
+					  allowed_at: 0u64,
+					  blocked_at: u64::MAX,
+				}
+		  )
 
   }
+  remove_allowance {
+	  add_transfer_allowance(RuntimeOrigin::signed(SENDER), CurrencyId::A, ACCOUNT_RECIEVER.into())
+  }:remove_transfer_allowance(
+			RuntimeOrigin::signed(SENDER),
+			CurrencyId::A,
+			ACCOUNT_RECEIVER.into(),
+	)
+	verify {
+
+		  assert_eq!(
+				TransferAllowList::get_account_currency_transfer_allowance((
+					  SENDER,
+					  CurrencyId::A,
+					  Location::TestLocal(ACCOUNT_RECEIVER)
+				))
+					.unwrap(),
+				AllowanceDetails {
+					  // current block is 50, no delay set
+					  allowed_at: 0u64,
+					  blocked_at: 50u64,
+				}
+		  );
+	}
 	purge_allowance {
+
+	}: {}
+	verify {
 
 	}
 	add_delay {
+
+	}: {}
+	verify {
 
 	}
 
 	update_delay {
 
+	}: {}
+	verify {
+
 	}
 
 	toggle_delay_future_modifiable {
 
+	}: {}
+	verify {
+
 	}
 	purge_delay {
+
+	}: {}
+	verify {
 
 	}
 
 }
+
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
