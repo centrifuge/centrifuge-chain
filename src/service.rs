@@ -29,6 +29,7 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
+use fc_db::Backend as FrontierBackend;
 use sc_consensus::ImportQueue;
 use sc_executor::WasmExecutor;
 use sc_network::{NetworkBlock, NetworkService};
@@ -36,6 +37,7 @@ use sc_rpc_api::DenyUnsafe;
 use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
+use sp_core::U256;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use substrate_prometheus_endpoint::Registry;
@@ -46,6 +48,8 @@ use crate::rpc::{
 	pools::{Pools, PoolsApiServer},
 	rewards::{Rewards, RewardsApiServer},
 };
+
+pub(crate) mod evm;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;
@@ -697,11 +701,14 @@ pub fn build_development_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
+	frontier_backend: Arc<FrontierBackend<Block>>,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<development_runtime::RuntimeApi>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+	let block_import = evm::BlockImport::new(block_import, client.clone(), frontier_backend);
 
 	cumulus_client_consensus_aura::import_queue::<
 		sp_consensus_aura::sr25519::AuthorityPair,
@@ -721,8 +728,9 @@ pub fn build_development_import_queue(
 					*time,
 					slot_duration,
 				);
+			let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(1)); // TODO: cli.target_gas_price
 
-			Ok((slot, time))
+			Ok((slot, time, dynamic_fee))
 		},
 		registry: config.prometheus_registry(),
 		spawner: &task_manager.spawn_essential_handle(),
@@ -741,13 +749,23 @@ pub async fn start_development_node(
 	TaskManager,
 	Arc<FullClient<development_runtime::RuntimeApi>>,
 )> {
-	start_node_impl::<development_runtime::RuntimeApi, _, _, _>(
+	let is_authority = parachain_config.role.is_authority();
+	evm::start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
 		id,
-		|client, pool, deny_unsafe| {
-			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
+		move |client,
+		      pool,
+		      deny_unsafe,
+		      subscription_task_executor,
+		      network,
+		      frontier_backend,
+		      filter_pool,
+		      fee_history_cache,
+		      overrides,
+		      block_data_cache| {
+			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
@@ -755,8 +773,26 @@ pub async fn start_development_node(
 				.merge(Pools::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Rewards::new(client).into_rpc())
+				.merge(Rewards::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			let eth_deps = rpc::evm::Deps {
+				client,
+				pool: pool.clone(),
+				graph: pool.pool().clone(),
+				converter: Some(development_runtime::TransactionConverter),
+				is_authority,
+				enable_dev_signer: false, // eth_config.enable_dev_signer,
+				network,
+				frontier_backend,
+				overrides,
+				block_data_cache,
+				filter_pool,
+				max_past_logs: 10000, // eth_config.max_past_logs,
+				fee_history_cache,
+				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
+				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
+			};
+			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
 		},
 		build_development_import_queue,
