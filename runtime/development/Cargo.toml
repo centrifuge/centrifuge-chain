@@ -130,6 +130,7 @@ pallet-pool-registry = { path = "../../pallets/pool-registry", default-features 
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
+pallet-transfer-allowlist = { path = "../../pallets/transfer-allowlist", default-features = false}
 
 # Connectors 3rd-party dependencies
 moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
