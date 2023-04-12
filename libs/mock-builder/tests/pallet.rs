@@ -5,6 +5,7 @@ pub trait TraitA {
 
 pub trait TraitB {
 	fn qux(p1: String) -> bool;
+	fn generic<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize;
 }
 
 #[frame_support::pallet]
@@ -39,6 +40,12 @@ pub mod pallet_mock_ab {
 		pub fn mock_qux(f: impl Fn(String) -> bool + 'static) {
 			register_call!(f);
 		}
+
+		pub fn mock_generic<A: Into<i32> + 'static, B: Into<u32> + 'static>(
+			f: impl Fn(A, B) -> usize + 'static,
+		) {
+			register_call!(move |(a, b)| f(a, b));
+		}
 	}
 
 	impl<T: Config> super::TraitA for Pallet<T> {
@@ -54,6 +61,10 @@ pub mod pallet_mock_ab {
 	impl<T: Config> super::TraitB for Pallet<T> {
 		fn qux(a: String) -> bool {
 			execute_call!(a)
+		}
+
+		fn generic<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize {
+			execute_call!((a, b))
 		}
 	}
 }
@@ -149,7 +160,7 @@ mod mock {
 mod test {
 	use frame_support::assert_ok;
 
-	use super::mock::*;
+	use super::{mock::*, TraitB};
 
 	#[test]
 	fn correct() {
@@ -189,5 +200,38 @@ mod test {
 		correct();
 		// The storage is dropped at this time. Mocks no longer found from here.
 		mock_not_configured();
+	}
+
+	#[test]
+	fn generic() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_generic(|p1: i8, p2: u8| {
+				assert_eq!(p1, 1);
+				assert_eq!(p2, 2);
+				8
+			});
+			MockAB::mock_generic(|p1: i16, p2: u16| {
+				assert_eq!(p1, 3);
+				assert_eq!(p2, 4);
+				16
+			});
+
+			assert_eq!(MockAB::generic(1i8, 2u8), 8);
+			assert_eq!(MockAB::generic(3i16, 4u16), 16);
+		});
+	}
+
+	#[test]
+	#[should_panic]
+	fn generic_not_found() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_generic(|p1: i8, p2: u8| {
+				assert_eq!(p1, 3);
+				assert_eq!(p2, 4);
+				8
+			});
+
+			MockAB::generic(3i16, 4u16);
+		});
 	}
 }
