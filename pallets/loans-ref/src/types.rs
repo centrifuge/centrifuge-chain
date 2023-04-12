@@ -169,54 +169,6 @@ pub struct WriteOffRule<Rate> {
 	pub status: WriteOffStatus<Rate>,
 }
 
-impl<Rate> WriteOffRule<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	/// Check if a `WriteOffRule` is applicable for a loan with the specified `maturity_date`.
-	fn applicable(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
-		for trigger in self.triggers.iter() {
-			match trigger {
-				WriteOffTrigger::PrincipalOverdueDays(days) => {
-					let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
-					if now >= maturity_date.ensure_add(overdue_secs)? {
-						return Ok(true);
-					}
-				}
-				WriteOffTrigger::OracleValuationOutdated(_seconds) => {}
-			}
-		}
-		Ok(false)
-	}
-
-	/// From all overdue write off rules, it returns the one has highest percentage
-	/// (or highest penalty, if same percentage) that can be applied.
-	///
-	/// Suppose a policy with the following rules:
-	/// - overdue_days: 5,   percentage 10%
-	/// - overdue_days: 10,  percentage 30%
-	/// - overdue_days: 15,  percentage 20%
-	///
-	/// If the loan is not overdue, it will not return any rule.
-	/// If the loan overdue by 4 days, it will not return any rule.
-	/// If the loan is overdue by 9 days, it will return the first rule.
-	/// If the loan is overdue by 60 days, it will return the second rule
-	/// (because it has a higher percetage).
-	pub fn find_best(
-		policy: impl Iterator<Item = WriteOffRule<Rate>>,
-		now: Moment,
-		maturity_date: Moment,
-		_oracle_last_updated: Option<Moment>,
-	) -> Option<WriteOffRule<Rate>> {
-		policy
-			.filter(|rule| match rule.applicable(maturity_date, now) {
-				Ok(value) => value,
-				Err(_) => false,
-			})
-			.max_by(|r1, r2| r1.status.cmp(&r2.status))
-	}
-}
-
 /// Diferent kinds of write off status that a loan can be
 #[derive(
 	Encode,
@@ -532,6 +484,23 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off_status(&self) -> &WriteOffStatus<T::Rate> {
 		&self.write_off_status
+	}
+
+	/// Check if a write off rule is applicable for this loan
+	pub fn rule_applicable(&self, rule: &WriteOffRule<T::Rate>) -> Result<bool, DispatchError> {
+		let now = T::Time::now().as_secs();
+		for trigger in rule.triggers.iter() {
+			match trigger {
+				WriteOffTrigger::PrincipalOverdueDays(days) => {
+					let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
+					if now >= self.maturity_date().ensure_add(overdue_secs)? {
+						return Ok(true);
+					}
+				}
+				WriteOffTrigger::OracleValuationOutdated(_seconds) => {}
+			}
+		}
+		Ok(false)
 	}
 
 	pub fn calculate_debt(&self, when: Moment) -> Result<T::Balance, DispatchError> {

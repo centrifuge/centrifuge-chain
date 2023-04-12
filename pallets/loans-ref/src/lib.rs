@@ -488,7 +488,8 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let rule = Self::find_write_off_rule(pool_id, loan)?;
+				let rule = Self::find_write_off_rule(pool_id, loan)?
+					.ok_or_else(|| Error::<T>::NoValidWriteOffRule)?;
 				let limit = rule.status.compose_max(loan.write_off_status());
 
 				loan.write_off(&limit, &limit)?;
@@ -532,8 +533,8 @@ pub mod pallet {
 			};
 
 			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let rule = Self::find_write_off_rule(pool_id, loan);
-				let limit = rule.map(|r| r.status).unwrap_or_else(|_| status.clone());
+				let rule = Self::find_write_off_rule(pool_id, loan)?;
+				let limit = rule.map(|r| r.status).unwrap_or_else(|| status.clone());
 
 				loan.write_off(&limit, &status)?;
 				Ok(limit)
@@ -680,17 +681,33 @@ pub mod pallet {
 			})
 		}
 
+		/// From all overdue write off rules, it returns the one has highest percentage
+		/// (or highest penalty, if same percentage) that can be applied.
+		///
+		/// Suppose a policy with the following rules:
+		/// - overdue_days: 5,   percentage 10%
+		/// - overdue_days: 10,  percentage 30%
+		/// - overdue_days: 15,  percentage 20%
+		///
+		/// If the loan is not overdue, it will not return any rule.
+		/// If the loan overdue by 4 days, it will not return any rule.
+		/// If the loan is overdue by 9 days, it will return the first rule.
+		/// If the loan is overdue by 60 days, it will return the second rule
+		/// (because it has a higher percetage).
 		fn find_write_off_rule(
 			pool_id: PoolIdOf<T>,
 			loan: &ActiveLoan<T>,
-		) -> Result<WriteOffRule<T::Rate>, DispatchError> {
-			WriteOffRule::find_best(
-				WriteOffPolicy::<T>::get(pool_id).into_iter(),
-				T::Time::now().as_secs(),
-				loan.maturity_date(),
-				None,
-			)
-			.ok_or_else(|| Error::<T>::NoValidWriteOffRule.into())
+		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
+			Ok(WriteOffPolicy::<T>::get(pool_id)
+				.into_iter()
+				.filter_map(|rule| match loan.rule_applicable(&rule) {
+					Ok(true) => Some(Ok(rule)),
+					Ok(false) => None,
+					Err(e) => Some(Err(e)),
+				})
+				.collect::<Result<Vec<_>, _>>()? // Check errors before getting the maximum
+				.into_iter()
+				.max_by(|r1, r2| r1.status.cmp(&r2.status)))
 		}
 
 		fn update_portfolio_valuation_with_pv(
