@@ -5,7 +5,8 @@ pub trait TraitA {
 
 pub trait TraitB {
 	fn qux(p1: String) -> bool;
-	fn generic<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize;
+	fn generic_input<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize;
+	fn generic_output<A: Into<i32> + 'static>() -> A;
 }
 
 #[frame_support::pallet]
@@ -41,10 +42,14 @@ pub mod pallet_mock_ab {
 			register_call!(f);
 		}
 
-		pub fn mock_generic<A: Into<i32> + 'static, B: Into<u32> + 'static>(
+		pub fn mock_generic_input<A: Into<i32> + 'static, B: Into<u32> + 'static>(
 			f: impl Fn(A, B) -> usize + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_generic_output<A: Into<i32> + 'static>(f: impl Fn() -> A + 'static) {
+			register_call!(move |()| f());
 		}
 	}
 
@@ -63,8 +68,12 @@ pub mod pallet_mock_ab {
 			execute_call!(a)
 		}
 
-		fn generic<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize {
+		fn generic_input<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize {
 			execute_call!((a, b))
+		}
+
+		fn generic_output<A: Into<i32> + 'static>() -> A {
+			execute_call!(())
 		}
 	}
 }
@@ -203,35 +212,46 @@ mod test {
 	}
 
 	#[test]
-	fn generic() {
+	fn generic_input() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_generic(|p1: i8, p2: u8| {
+			MockAB::mock_generic_input(|p1: i8, p2: u8| {
 				assert_eq!(p1, 1);
 				assert_eq!(p2, 2);
 				8
 			});
-			MockAB::mock_generic(|p1: i16, p2: u16| {
+			MockAB::mock_generic_input(|p1: i16, p2: u16| {
 				assert_eq!(p1, 3);
 				assert_eq!(p2, 4);
 				16
 			});
 
-			assert_eq!(MockAB::generic(1i8, 2u8), 8);
-			assert_eq!(MockAB::generic(3i16, 4u16), 16);
+			assert_eq!(MockAB::generic_input(1i8, 2u8), 8);
+			assert_eq!(MockAB::generic_input(3i16, 4u16), 16);
 		});
 	}
 
 	#[test]
 	#[should_panic]
-	fn generic_not_found() {
+	fn generic_input_not_found() {
 		new_test_ext().execute_with(|| {
-			MockAB::mock_generic(|p1: i8, p2: u8| {
+			MockAB::mock_generic_input(|p1: i8, p2: u8| {
 				assert_eq!(p1, 3);
 				assert_eq!(p2, 4);
 				8
 			});
 
-			MockAB::generic(3i16, 4u16);
+			MockAB::generic_input(3i16, 4u16);
+		});
+	}
+
+	#[test]
+	fn generic_output() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_generic_output(|| 8i8);
+			MockAB::mock_generic_output(|| 16i16);
+
+			assert_eq!(MockAB::generic_output::<i8>(), 8);
+			assert_eq!(MockAB::generic_output::<i16>(), 16);
 		});
 	}
 }

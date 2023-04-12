@@ -92,18 +92,19 @@ pub use storage::CallId;
 /// Prefix that the register functions should have.
 pub const MOCK_FN_PREFIX: &str = "mock_";
 
-/// Auxiliar function to get the type from a value
-pub fn type_name_of<T>(_: &T) -> &'static str {
-	std::any::type_name::<T>()
-}
-
 /// Gives the absolute string identification of a function.
 #[macro_export]
 macro_rules! function_locator {
 	() => {{
 		// Aux function to extract the path
 		fn f() {}
-		let name = $crate::type_name_of(&f);
+
+		// Auxiliar function to get the type from a value
+		pub fn type_name_of<T>(_: T) -> &'static str {
+			std::any::type_name::<T>()
+		}
+
+		let name = type_name_of(f);
 		&name[..name.len() - "::f".len()]
 	}};
 }
@@ -136,17 +137,18 @@ macro_rules! register_call {
 	($f:expr) => {{
 		use frame_support::StorageHasher;
 
-		fn get_input_type_name<F: Fn(Args) -> R, Args, R>(f: &F) -> &'static str {
-			std::any::type_name::<Args>()
+		fn get_fn_type_names<F: Fn(Args) -> R, Args, R>(f: &F) -> (&'static str, &'static str) {
+			(std::any::type_name::<Args>(), std::any::type_name::<R>())
 		}
 
 		let f = $f;
 		let locator = $crate::call_locator!();
-		let type_name = get_input_type_name(&f);
-		let uuid = format!("{}-{}", locator, type_name);
-		let call_id = frame_support::Blake2_128::hash(uuid.as_bytes());
+		let (input_type_name, output_type_name) = get_fn_type_names(&f);
+		let uuid = format!("{}:{}->{}", locator, input_type_name, output_type_name);
+		dbg!(&uuid);
+		let hash = frame_support::Blake2_128::hash(uuid.as_bytes());
 
-		CallIds::<T>::insert(call_id, $crate::storage::register_call(f));
+		CallIds::<T>::insert(hash, $crate::storage::register_call(f));
 	}};
 }
 
@@ -159,18 +161,19 @@ macro_rules! execute_call {
 	($params:expr) => {{
 		use frame_support::StorageHasher;
 
-		let params = $params;
-		let locator = $crate::call_locator!();
-		let type_name = $crate::type_name_of(&params);
-		let uuid = format!("{}-{}", locator, type_name);
+		fn process<T: Config, Args: 'static, R: 'static>(locator: String, params: Args) -> R {
+			let input_type_name = std::any::type_name::<Args>();
+			let output_type_name = std::any::type_name::<R>();
+			let uuid = format!("{}:{}->{}", locator, input_type_name, output_type_name);
 
-		let hash = frame_support::Blake2_128::hash(uuid.as_bytes());
-		let call_id = CallIds::<T>::get(hash).expect(&format!(
-			"Called to {}, but mock was not found",
-			$crate::call_locator!()
-		));
+			let hash = frame_support::Blake2_128::hash(uuid.as_bytes());
+			let call_id = CallIds::<T>::get(hash)
+				.expect(&format!("Called to {}, but mock was not found", uuid));
 
-		$crate::storage::execute_call(call_id, params)
+			$crate::storage::execute_call(call_id, params)
+		}
+
+		process::<T, _, _>($crate::call_locator!(), $params)
 	}};
 }
 
