@@ -9,7 +9,7 @@ use super::{
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
-		WriteOffState, WriteOffStatus, WriteOffTrigger, WrittenOffError,
+		WriteOffRule, WriteOffStatus, WriteOffTrigger, WrittenOffError,
 	},
 	valuation::{DiscountedCashFlow, ValuationMethod},
 };
@@ -66,8 +66,8 @@ mod util {
 		triggers: impl IntoIterator<Item = WriteOffTrigger>,
 		percentage: f64,
 		penalty: f64,
-	) -> WriteOffState<Rate> {
-		WriteOffState {
+	) -> WriteOffRule<Rate> {
+		WriteOffRule {
 			triggers: BTreeSet::from_iter(triggers.into_iter())
 				.try_into()
 				.unwrap(),
@@ -759,7 +759,7 @@ mod write_off_loan {
 
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
-				Error::<Runtime>::NoValidWriteOffState
+				Error::<Runtime>::NoValidWriteOffRule
 			);
 
 			config_mocks();
@@ -786,7 +786,7 @@ mod write_off_loan {
 			// The loan maturity date has passed, but the policy can no be applied yet.
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
-				Error::<Runtime>::NoValidWriteOffState
+				Error::<Runtime>::NoValidWriteOffRule
 			);
 		});
 	}
@@ -804,7 +804,7 @@ mod write_off_loan {
 			// The loan maturity date has no passed.
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
-				Error::<Runtime>::NoValidWriteOffState
+				Error::<Runtime>::NoValidWriteOffRule
 			);
 		});
 	}

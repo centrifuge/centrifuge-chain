@@ -161,19 +161,19 @@ impl Get<u32> for WriteOffTrigger {
 
 /// The data structure for storing a specific write off policy
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffState<Rate> {
-	/// If any of the triggers is valid, the write-off state can be applied
+pub struct WriteOffRule<Rate> {
+	/// If any of the triggers is valid, the write-off rule can be applied
 	pub triggers: BoundedBTreeSet<WriteOffTrigger, WriteOffTrigger>,
 
-	/// Content of this write off state
+	/// Content of this write off rule
 	pub status: WriteOffStatus<Rate>,
 }
 
-impl<Rate> WriteOffState<Rate>
+impl<Rate> WriteOffRule<Rate>
 where
 	Rate: FixedPointNumber,
 {
-	/// Check if a `WriteOffState` is applicable for a loan with the specified `maturity_date`.
+	/// Check if a `WriteOffRule` is applicable for a loan with the specified `maturity_date`.
 	fn applicable(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
 		for trigger in self.triggers.iter() {
 			match trigger {
@@ -189,25 +189,25 @@ where
 		Ok(false)
 	}
 
-	/// From all overdue write off states, it returns the one has highest percentage
+	/// From all overdue write off rules, it returns the one has highest percentage
 	/// (or highest penalty, if same percentage) that can be applied.
 	///
-	/// Suppose a policy with the following states:
+	/// Suppose a policy with the following rules:
 	/// - overdue_days: 5,   percentage 10%
 	/// - overdue_days: 10,  percentage 30%
 	/// - overdue_days: 15,  percentage 20%
 	///
-	/// If the loan is not overdue, it will not return any state.
-	/// If the loan overdue by 4 days, it will not return any state.
-	/// If the loan is overdue by 9 days, it will return the first state.
-	/// If the loan is overdue by 60 days, it will return the second state
+	/// If the loan is not overdue, it will not return any rule.
+	/// If the loan overdue by 4 days, it will not return any rule.
+	/// If the loan is overdue by 9 days, it will return the first rule.
+	/// If the loan is overdue by 60 days, it will return the second rule
 	/// (because it has a higher percetage).
 	pub fn find_best(
-		policy: impl Iterator<Item = WriteOffState<Rate>>,
+		policy: impl Iterator<Item = WriteOffRule<Rate>>,
 		now: Moment,
 		maturity_date: Moment,
 		_oracle_last_updated: Option<Moment>,
-	) -> Option<WriteOffState<Rate>> {
+	) -> Option<WriteOffRule<Rate>> {
 		policy
 			.filter(|rule| match rule.applicable(maturity_date, now) {
 				Ok(value) => value,

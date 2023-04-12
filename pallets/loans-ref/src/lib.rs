@@ -84,7 +84,7 @@ pub mod pallet {
 	};
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuationUpdateType, WriteOffState, WriteOffStatus, WrittenOffError,
+		PortfolioValuationUpdateType, WriteOffRule, WriteOffStatus, WrittenOffError,
 	};
 
 	use super::*;
@@ -237,7 +237,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
+		BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		ValueQuery,
 	>;
 
@@ -293,7 +293,7 @@ pub mod pallet {
 		},
 		WriteOffPolicyUpdated {
 			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		},
 	}
 
@@ -305,9 +305,9 @@ pub mod pallet {
 		LoanNotFound,
 		/// Emits when a loan exist but it's not active
 		LoanNotActive,
-		/// Emits when a write-off state is not found in a policy for a specific loan.
+		/// Emits when a write-off rule is not found in a policy for a specific loan.
 		/// It happens when there is no policy or the loan is not overdue.
-		NoValidWriteOffState,
+		NoValidWriteOffRule,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
 		/// Emits when NFT owner doesn't match the expected owner
@@ -473,7 +473,7 @@ pub mod pallet {
 		/// - Write off by admin with percentage 0.5 and penalty 0.2
 		/// - Time passes and the policy can be applied.
 		/// - Write of with a policy that says: percentage 0.3, penaly 0.4
-		/// - The loan is written off with the maximum between the policy and the current state:
+		/// - The loan is written off with the maximum between the policy and the current rule:
 		///   percentage 0.5, penaly 0.4
 		///
 		/// No special permisions are required to this call.
@@ -488,8 +488,8 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let state = Self::find_write_off_state(pool_id, loan)?;
-				let limit = state.status.compose_max(loan.write_off_status());
+				let rule = Self::find_write_off_rule(pool_id, loan)?;
+				let limit = rule.status.compose_max(loan.write_off_status());
 
 				loan.write_off(&limit, &limit)?;
 
@@ -532,10 +532,11 @@ pub mod pallet {
 			};
 
 			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let state = Self::find_write_off_state(pool_id, loan);
-				let limit = state.map(|s| s.status).unwrap_or_else(|_| status.clone());
+				let rule = Self::find_write_off_rule(pool_id, loan);
+				let limit = rule.map(|r| r.status).unwrap_or_else(|_| status.clone());
 
-				loan.write_off(&limit, &status)
+				loan.write_off(&limit, &status)?;
+				Ok(limit)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -593,7 +594,7 @@ pub mod pallet {
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
@@ -679,17 +680,17 @@ pub mod pallet {
 			})
 		}
 
-		fn find_write_off_state(
+		fn find_write_off_rule(
 			pool_id: PoolIdOf<T>,
 			loan: &ActiveLoan<T>,
-		) -> Result<WriteOffState<T::Rate>, DispatchError> {
-			WriteOffState::find_best(
+		) -> Result<WriteOffRule<T::Rate>, DispatchError> {
+			WriteOffRule::find_best(
 				WriteOffPolicy::<T>::get(pool_id).into_iter(),
 				T::Time::now().as_secs(),
 				loan.maturity_date(),
 				None,
 			)
-			.ok_or_else(|| Error::<T>::NoValidWriteOffState.into())
+			.ok_or_else(|| Error::<T>::NoValidWriteOffRule.into())
 		}
 
 		fn update_portfolio_valuation_with_pv(

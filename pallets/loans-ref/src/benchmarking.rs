@@ -19,7 +19,7 @@ use sp_std::{collections::btree_set::BTreeSet, time::Duration, vec};
 
 use super::{
 	pallet::*,
-	types::{LoanInfo, MaxBorrowAmount, WriteOffState, WriteOffStatus, WriteOffTrigger},
+	types::{LoanInfo, MaxBorrowAmount, WriteOffRule, WriteOffStatus, WriteOffTrigger},
 	valuation::{DiscountedCashFlow, ValuationMethod},
 };
 
@@ -138,14 +138,14 @@ where
 	}
 
 	// Worst case policy where you need to iterate for the whole policy.
-	fn create_policy() -> BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize> {
+	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
 		let triggers: BoundedBTreeSet<_, _> =
 			BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(0)])
 				.try_into()
 				.unwrap();
 		[
 			vec![
-				WriteOffState {
+				WriteOffRule {
 					triggers: triggers.clone(),
 					status: WriteOffStatus {
 						percentage: T::Rate::zero(),
@@ -154,7 +154,7 @@ where
 				};
 				T::MaxWriteOffPolicySize::get() as usize - 1
 			],
-			vec![WriteOffState {
+			vec![WriteOffRule {
 				triggers: triggers,
 				status: WriteOffStatus {
 					percentage: T::Rate::one(),
