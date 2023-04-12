@@ -487,20 +487,18 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	/// Check if a write off rule is applicable for this loan
-	pub fn rule_applicable(&self, rule: &WriteOffRule<T::Rate>) -> Result<bool, DispatchError> {
+	pub fn check_write_off_trigger(
+		&self,
+		trigger: &WriteOffTrigger,
+	) -> Result<bool, DispatchError> {
 		let now = T::Time::now().as_secs();
-		for trigger in rule.triggers.iter() {
-			match trigger {
-				WriteOffTrigger::PrincipalOverdueDays(days) => {
-					let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
-					if now >= self.maturity_date().ensure_add(overdue_secs)? {
-						return Ok(true);
-					}
-				}
-				WriteOffTrigger::OracleValuationOutdated(_seconds) => {}
+		match trigger {
+			WriteOffTrigger::PrincipalOverdueDays(days) => {
+				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
+				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
 			}
+			WriteOffTrigger::OracleValuationOutdated(_seconds) => Ok(false),
 		}
-		Ok(false)
 	}
 
 	pub fn calculate_debt(&self, when: Moment) -> Result<T::Balance, DispatchError> {

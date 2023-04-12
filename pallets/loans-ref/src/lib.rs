@@ -700,10 +700,15 @@ pub mod pallet {
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
 			Ok(WriteOffPolicy::<T>::get(pool_id)
 				.into_iter()
-				.filter_map(|rule| match loan.rule_applicable(&rule) {
-					Ok(true) => Some(Ok(rule)),
-					Ok(false) => None,
-					Err(e) => Some(Err(e)),
+				.filter_map(|rule| {
+					rule.triggers
+						.iter()
+						.map(|trigger| loan.check_write_off_trigger(&trigger))
+						.find(|e| match e {
+							Ok(value) => *value,
+							Err(_) => true,
+						})
+						.map(|result| result.map(|_| rule))
 				})
 				.collect::<Result<Vec<_>, _>>()? // Check errors before getting the maximum
 				.into_iter()
