@@ -1323,13 +1323,38 @@ mod write_off_policy {
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![
+					util::make_write_off_rule(
+						[WriteOffTrigger::OracleValuationOutdated(10)],
+						0.8,
+						0.8
+					),
 					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(1)], 0.2, 0.2),
 					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(4)], 0.5, 0.5),
-					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(9)], 0.3, 0.3),
+					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(9)], 0.3, 0.9),
 				]
 				.try_into()
 				.unwrap(),
 			));
+
+			// Check if a loan is
+			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY * 10);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ANY),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(
+				*util::get_loan(loan_id).write_off_status(),
+				WriteOffStatus {
+					percentage: Rate::from_float(0.5),
+					penalty: Rate::from_float(0.5),
+				}
+			);
 		});
 	}
 }

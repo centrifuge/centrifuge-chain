@@ -710,7 +710,7 @@ pub mod pallet {
 						})
 						.map(|result| result.map(|_| rule))
 				})
-				.collect::<Result<Vec<_>, _>>()? // Check errors before getting the maximum
+				.collect::<Result<Vec<_>, _>>()? // This exits if error before getting the maximum
 				.into_iter()
 				.max_by(|r1, r2| r1.status.cmp(&r2.status)))
 		}
