@@ -2529,7 +2529,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.19"
+version = "0.10.21"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
