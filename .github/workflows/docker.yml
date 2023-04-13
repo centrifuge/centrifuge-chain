@@ -30,7 +30,7 @@ jobs:
           df -h
           sudo apt-get remove -y '^dotnet-.*'
           sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y azure-cli google-cloud-sdk microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get remove -y --no-upgrade azure-cli google-cloud-sdk microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
           sudo apt-get autoremove -y
           sudo apt-get clean
           df -h
