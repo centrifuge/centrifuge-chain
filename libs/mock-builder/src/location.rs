@@ -89,7 +89,7 @@ mod tests {
 			FunctionLocation::from(|| ())
 		}
 
-		fn mock_generic_method<A: Into<i32>, B: Into<u32>>() -> FunctionLocation {
+		fn mock_generic_method<A: Into<i32>>(_: impl Into<u32>) -> FunctionLocation {
 			FunctionLocation::from(|| ())
 		}
 	}
@@ -112,7 +112,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			Example::mock_generic_method::<i8, u8>().0,
+			Example::mock_generic_method::<i8>(0u8).0,
 			format!("{PREFIX}::Example::mock_generic_method")
 		);
 
