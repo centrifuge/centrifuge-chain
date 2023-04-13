@@ -241,6 +241,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::transfer_native().max(T::WeightInfo::transfer_other()))]
+		#[pallet::call_index(0)]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -295,6 +296,7 @@ pub mod pallet {
 			T::WeightInfo::transfer_keep_alive_native().max(
 			T::WeightInfo::transfer_keep_alive_other()
 		))]
+		#[pallet::call_index(1)]
 		pub fn transfer_keep_alive(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -349,6 +351,7 @@ pub mod pallet {
 			T::WeightInfo::transfer_all_native().max(
 			T::WeightInfo::transfer_all_other())
 		)]
+		#[pallet::call_index(2)]
 		pub fn transfer_all(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -418,6 +421,7 @@ pub mod pallet {
 			    T::WeightInfo::force_transfer_native().max(
 			    T::WeightInfo::force_transfer_other())
 		  )]
+		#[pallet::call_index(3)]
 		pub fn force_transfer(
 			origin: OriginFor<T>,
 			source: <T::Lookup as StaticLookup>::Source,
@@ -464,6 +468,7 @@ pub mod pallet {
 			    T::WeightInfo::set_balance_native().max(
 			    T::WeightInfo::set_balance_other())
 		  )]
+		#[pallet::call_index(4)]
 		pub fn set_balance(
 			origin: OriginFor<T>,
 			who: <T::Lookup as StaticLookup>::Source,

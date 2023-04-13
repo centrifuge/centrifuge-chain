@@ -231,6 +231,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// A on call init. Basically a composition of the setters below
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::initialize())]
+		#[pallet::call_index(0)]
 		pub fn initialize(
 			origin: OriginFor<T>,
 			direct_payout_ratio: Perbill,
@@ -257,6 +258,7 @@ pub mod pallet {
 
 		/// Set the start of the vesting period.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_vesting_start())]
+		#[pallet::call_index(1)]
 		pub fn set_vesting_start(
 			origin: OriginFor<T>,
 			start: T::BlockNumber,
@@ -283,6 +285,7 @@ pub mod pallet {
 		/// ## Emits
 		/// UpdateVestingPeriod
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_vesting_period())]
+		#[pallet::call_index(2)]
 		pub fn set_vesting_period(
 			origin: OriginFor<T>,
 			period: T::BlockNumber,
@@ -306,6 +309,7 @@ pub mod pallet {
 		/// between vested and direct payout amount after the pallet
 		/// was initialized via a call to the [`Pallet::initialize()`] transaction.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_direct_payout_ratio())]
+		#[pallet::call_index(3)]
 		pub fn set_direct_payout_ratio(
 			origin: OriginFor<T>,
 			ratio: Perbill,

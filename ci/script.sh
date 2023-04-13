@@ -2,7 +2,7 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-08-05}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-11-14}"
 SRTOOL_VERSION="${SRTOOL_VERSION:-1.64.0}"
 PACKAGE="${PACKAGE:-centrifuge-runtime}" # Need to replicate job for all runtimes
 RUNTIME="${RUNTIME:-centrifuge}"
@@ -48,7 +48,7 @@ case $TARGET in
     ;;
 
   clippy)
-    cargo clippy --workspace -- -D warnings -A clippy::unnecessary-cast
+    cargo clippy --workspace -- -D warnings -A clippy::unnecessary-cast -A clippy::bool-to-int-with-if
     ;;
 
   benchmark)

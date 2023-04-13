@@ -129,6 +129,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_fee())]
+		#[pallet::call_index(0)]
 		pub fn set_fee(origin: OriginFor<T>, key: T::FeeKey, fee: BalanceOf<T>) -> DispatchResult {
 			T::FeeChangeOrigin::ensure_origin(origin)?;
 

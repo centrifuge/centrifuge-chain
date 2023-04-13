@@ -204,6 +204,7 @@ pub mod pallet {
 		///   - the nft is already for sale
 		///   - transferring ownership of the NFT to this pallet's account fails
 		#[pallet::weight(<T as Config>::WeightInfo::add())]
+		#[pallet::call_index(0)]
 		pub fn add(
 			origin: OriginFor<T>,
 			class_id: T::CollectionId,
@@ -250,6 +251,7 @@ pub mod pallet {
 		///   - `origin` is not the seller of the NFT
 		///   - transferring the ownership of the NFT back to the seller fails
 		#[pallet::weight(<T as Config>::WeightInfo::remove())]
+		#[pallet::call_index(1)]
 		pub fn remove(
 			origin: OriginFor<T>,
 			class_id: T::CollectionId,
@@ -291,6 +293,7 @@ pub mod pallet {
 		///   - transferring the nft to the buyer fails
 		#[pallet::weight(<T as Config>::WeightInfo::buy())]
 		#[transactional]
+		#[pallet::call_index(2)]
 		pub fn buy(
 			origin: OriginFor<T>,
 			class_id: T::CollectionId,

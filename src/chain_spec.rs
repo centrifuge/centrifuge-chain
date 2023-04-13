@@ -762,6 +762,10 @@ fn endowed_accounts() -> Vec<cfg_primitives::AccountId> {
 		get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
 		get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 		get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+		// Ethereum account 0x7F429e2e38BDeFa7a2E797e3BEB374a3955746a4
+		// Private key 0x4529cc809780dcc4bf85d99e55a757bc8fb3262d81fae92a759ec9056aca32b7
+		// kAJigCQycQoANDeHpjoSDt8hiXXqj9AmEvxfyzduSLDohfeZP
+		hex!["455448007F429e2e38BDeFa7a2E797e3BEB374a3955746a40000000000000000"].into(),
 	]
 }
 
@@ -1084,6 +1088,10 @@ fn development_genesis(
 		parachain_system: Default::default(),
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		base_fee: Default::default(),
+		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
+		ethereum: Default::default(),
+		evm: Default::default(),
 	}
 }
 

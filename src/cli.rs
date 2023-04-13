@@ -21,6 +21,7 @@ use clap::Parser;
 use crate::chain_spec;
 
 #[derive(Debug, Parser)]
+#[allow(clippy::large_enum_variant)]
 pub enum Subcommand {
 	/// Export the genesis state of the parachain.
 	#[clap(name = "export-genesis-state")]
@@ -150,7 +151,4 @@ impl RelayChainCli {
 			base: polkadot_cli::RunCmd::parse_from(relay_chain_args),
 		}
 	}
-}
-pub struct RpcConfig {
-	pub relay_chain_rpc_url: Option<url::Url>,
 }
