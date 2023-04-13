@@ -3,7 +3,8 @@ on:
   push:
     branches: [main, 'release-v**']
   pull_request:
-    paths: .github/workflow/docker.yml
+    paths:
+      - ".github/workflows/docker.yml"
   workflow_dispatch:
     inputs:
       docker_tag:
