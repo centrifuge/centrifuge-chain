@@ -14,7 +14,7 @@ use cfg_primitives::Moment;
 #[cfg(test)]
 use cfg_primitives::{Balance, PoolId, TrancheId, TrancheWeight};
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto, EnsureSub},
+	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto},
 	TrancheCurrency as TrancheCurrencyT,
 };
 #[cfg(test)]
@@ -2621,6 +2621,10 @@ pub mod test {
 				) -> frame_support::traits::tokens::WithdrawConsequence<Self::Balance> {
 					todo!()
 				}
+
+				fn asset_exists(_asset: Self::AssetId) -> bool {
+					todo!()
+				}
 			}
 
 			// No debt, reserve or APR for any tranche.
@@ -2722,6 +2726,10 @@ pub mod test {
 						_who: &TrancheCurrency,
 						_amount: Self::Balance,
 					) -> frame_support::traits::tokens::WithdrawConsequence<Self::Balance> {
+						todo!()
+					}
+
+					fn asset_exists(_asset: Self::AssetId) -> bool {
 						todo!()
 					}
 				}

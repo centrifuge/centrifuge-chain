@@ -28,7 +28,7 @@ use frame_support::{
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
 		MaybeSerializeDeserialize, Member, Zero,
 	},
 	DispatchError,
@@ -82,7 +82,6 @@ pub trait Reward {
 		+ FromStr
 		+ Hash
 		+ MaybeDisplay
-		+ MaybeMallocSizeOf
 		+ MaybeSerializeDeserialize
 		+ Member
 		+ Parameter
@@ -165,7 +164,6 @@ pub trait PoolMutate<AccountId, PoolId> {
 		tranche_inputs: Vec<Self::TrancheInput>,
 		currency: Self::CurrencyId,
 		max_reserve: Self::Balance,
-		metadata: Option<Vec<u8>>,
 	) -> DispatchResult;
 
 	fn update(pool_id: PoolId, changes: Self::PoolChanges) -> Result<UpdateState, DispatchError>;
@@ -231,27 +229,16 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
 	type Rates: RateCollection<InterestRate, Balance, Self::NormalizedDebt>;
 
-	/// Calculate the current debt using normalized debt * cumulative rate
-	fn current_debt(
-		interest_rate_per_sec: InterestRate,
-		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Balance, DispatchError>;
-
-	/// Calculate a previous debt using normalized debt * previous cumulative rate
-	///
-	/// If `when` is further in the past than the last time the
-	/// normalized debt was adjusted, this will return nonsense
-	/// (effectively "rewinding the clock" to before the value was
-	/// valid)
-	fn previous_debt(
-		interest_rate_per_sec: InterestRate,
+	/// Calculate the debt at an specific moment
+	fn calculate_debt(
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		when: Moment,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt
 	fn adjust_normalized_debt(
-		interest_rate_per_sec: InterestRate,
+		interest_rate_per_year: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
@@ -263,23 +250,14 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
-	/// Indicate that a yearly rate is in use
-	///
-	/// Validates that the rate is allowed, and converts it to a per-second rate for future operations
-	fn reference_yearly_rate(
-		interest_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
-
-	/// Indicate that a rate is in use
-	fn reference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
+	/// Validate and indicate that a yearly rate is in use
+	fn reference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
 	/// Indicate that a rate is no longer in use
-	fn unreference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
+	fn unreference_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
-	/// Verifies a yearly additive rate and converts it to a per-second additive rate
-	fn convert_additive_rate_to_per_sec(
-		interset_rate_per_year: InterestRate,
-	) -> Result<InterestRate, DispatchError>;
+	/// Ask if the rate is valid to use by the implementation
+	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
 	/// Returns a collection of pre-computed rates to perform multiple operations with
 	fn rates() -> Self::Rates;
@@ -637,4 +615,18 @@ pub mod fees {
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
 	}
+}
+
+/// Trait to determine whether a sending account and currency have a restriction,
+/// and if so is there an allowance for the reciever location.
+pub trait TransferAllowance<AccountId> {
+	type CurrencyId;
+	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
+	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
+	/// Returns result wrapped bool for whether allowance is allowed.
+	fn allowance(
+		send: AccountId,
+		recieve: Self::Location,
+		currency: Self::CurrencyId,
+	) -> DispatchResult;
 }

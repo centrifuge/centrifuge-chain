@@ -137,16 +137,28 @@ where
 	fn set_policy(pool_id: PoolIdOf<T>) {
 		let pool_admin = account::<T::AccountId>("pool_admin", 0, 0);
 
+		// Worst case policy where you need to iterate for the whole policy.
+		let policy = [
+			vec![
+				WriteOffState {
+					overdue_days: u32::MAX,
+					percentage: T::Rate::zero(),
+					penalty: T::Rate::zero(),
+				};
+				T::MaxWriteOffPolicySize::get() as usize - 1
+			],
+			vec![WriteOffState {
+				overdue_days: 0, // Last element is overdue
+				percentage: T::Rate::zero(),
+				penalty: T::Rate::zero(),
+			}],
+		]
+		.concat();
+
 		Pallet::<T>::update_write_off_policy(
 			RawOrigin::Signed(pool_admin).into(),
 			pool_id,
-			vec![WriteOffState {
-				overdue_days: 0,
-				percentage: T::Rate::zero(),
-				penalty: T::Rate::zero(),
-			}]
-			.try_into()
-			.unwrap(),
+			policy.try_into().unwrap(),
 		)
 		.unwrap();
 	}
@@ -159,7 +171,7 @@ where
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
 			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
-			T::InterestAccrual::reference_yearly_rate(rate).unwrap();
+			T::InterestAccrual::reference_rate(rate).unwrap();
 		}
 
 		let pool_id = Self::prepare_benchmark();
@@ -233,6 +245,7 @@ benchmarks! {
 		let pool_id = Helper::<T>::initialize_active_state(n);
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
+		Helper::<T>::set_policy(pool_id);
 
 	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, T::Rate::zero(), T::Rate::zero())
 
@@ -251,13 +264,14 @@ benchmarks! {
 		let pool_admin = account("pool_admin", 0, 0);
 		let pool_id = Helper::<T>::prepare_benchmark();
 
-		let policy = vec![WriteOffState {
+		let state = WriteOffState {
 			overdue_days: 0,
 			percentage: T::Rate::zero(),
 			penalty: T::Rate::zero(),
-		}]
-		.try_into()
-		.unwrap();
+		};
+		let policy = vec![state; T::MaxWriteOffPolicySize::get() as usize]
+			.try_into()
+			.unwrap();
 
 	}: _(RawOrigin::Signed(pool_admin), pool_id, policy)
 

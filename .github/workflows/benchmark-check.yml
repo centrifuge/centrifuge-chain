@@ -1,0 +1,40 @@
+on:
+  push:
+    branches: [main, 'release-v**']
+  pull_request:
+name: Check Benchmarks
+jobs:
+  tests:
+    name: ${{ matrix.target }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        target: [benchmark-check]
+        runtime: [development, altair, centrifuge]
+    runs-on: ${{ matrix.os }}
+    env:
+      RUST_TOOLCHAIN: "nightly-2022-05-09"
+    steps:
+      - name: Prep build on Ubuntu
+        if: ${{ matrix.os }} == 'ubuntu-latest'
+        run: |
+          echo "Pre cleanup"
+          df -h
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Post cleanup"
+          df -h
+          sudo apt-get install protobuf-compiler
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          default: true
+      - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
+      - name: Run fast benchmarks
+        run: ./ci/script.sh
+        env:
+          TARGET: ${{ matrix.target }}
+          RUNTIME: ${{ matrix.runtime }}

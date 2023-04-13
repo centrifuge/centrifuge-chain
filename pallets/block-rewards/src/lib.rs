@@ -282,6 +282,7 @@ pub mod pallet {
 		/// Claims the reward the associated to a currency.
 		/// The reward will be transferred to the target account.
 		#[pallet::weight(T::WeightInfo::claim_reward())]
+		#[pallet::call_index(0)]
 		pub fn claim_reward(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
 			ensure_signed(origin)?;
 
@@ -292,6 +293,7 @@ pub mod pallet {
 		/// Admin method to set the reward amount for a collator used for the next sessions.
 		/// Current session is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_collator_reward())]
+		#[pallet::call_index(1)]
 		pub fn set_collator_reward(
 			origin: OriginFor<T>,
 			collator_reward_per_session: T::Balance,
@@ -322,6 +324,7 @@ pub mod pallet {
 		///
 		/// Throws if total_reward < collator_reward * collator_count.
 		#[pallet::weight(T::WeightInfo::set_total_reward())]
+		#[pallet::call_index(2)]
 		pub fn set_total_reward(
 			origin: OriginFor<T>,
 			total_reward_per_session: T::Balance,

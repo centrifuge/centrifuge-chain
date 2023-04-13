@@ -12,7 +12,7 @@ jobs:
         target: [tests, integration]
     runs-on: ${{ matrix.os }}
     env:
-      RUST_TOOLCHAIN: "nightly-2022-05-09"
+      RUST_TOOLCHAIN: "nightly-2022-11-14"
     steps:
       - name: Prep build on Ubuntu
         if: ${{ matrix.os }} == 'ubuntu-latest'
@@ -31,13 +31,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      # We use Taplo to format our Cargo.toml files.
-      - name: Install taplo
-        uses: actions-rs/install@v0.1
-        with:
-          crate: taplo-cli
-          version: 0.7.2
-          use-tool-cache: true
       - uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
       - name: Run tests
         run: ./ci/script.sh

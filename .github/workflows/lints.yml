@@ -12,7 +12,7 @@ jobs:
         target: [fmt, taplo, clippy]
     runs-on: ${{ matrix.os }}
     env:
-      RUST_TOOLCHAIN: "nightly-2022-05-09"
+      RUST_TOOLCHAIN: "nightly-2022-11-14"
     steps:
       - name: Prep build on Ubuntu
         if: ${{ matrix.os }} == 'ubuntu-latest'

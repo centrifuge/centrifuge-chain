@@ -22,7 +22,7 @@ use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
 use sp_core::{storage::StateVersion, Encode};
 use sp_runtime::{
-	traits::{One, Zero},
+	traits::{ConstU32, One, Zero},
 	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
 };
 use xcm::{
@@ -40,8 +40,8 @@ use crate::{
 		calculate_risk_buffers, EpochExecutionTranche, EpochExecutionTranches, Tranche,
 		TrancheInput, TrancheMetadata, TrancheSolution, TrancheType, Tranches,
 	},
-	BoundedVec, Change, Config, ConstU32, EpochExecution, EpochExecutionInfo, Error, Pool,
-	PoolInspect, PoolState, UnhealthyState,
+	BoundedVec, Change, Config, EpochExecution, EpochExecutionInfo, Error, Pool, PoolInspect,
+	PoolState, UnhealthyState,
 };
 
 #[test]
@@ -89,7 +89,6 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				min_epoch_time: 0,
 				max_nav_age: 60,
 			},
-			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -174,7 +173,6 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 				min_epoch_time: 0,
 				max_nav_age: 60,
 			},
-			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -275,7 +273,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				min_epoch_time: 0,
 				max_nav_age: 60,
 			},
-			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -381,7 +378,6 @@ fn pool_constraints_pass() {
 				min_epoch_time: 0,
 				max_nav_age: 60,
 			},
-			metadata: None,
 		};
 
 		assert_eq!(
@@ -463,7 +459,6 @@ fn epoch() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
@@ -698,7 +693,6 @@ fn submission_period() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 		assert_ok!(Investments::update_invest_order(
 			RuntimeOrigin::signed(0),
@@ -887,7 +881,6 @@ fn execute_info_removed_after_epoch_execute() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -959,7 +952,6 @@ fn pool_updates_should_be_constrained() {
 			}],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		crate::Pool::<Runtime>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
@@ -1117,7 +1109,6 @@ fn tranche_ids_are_unique() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		assert_ok!(PoolSystem::create(
@@ -1169,7 +1160,6 @@ fn tranche_ids_are_unique() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		let pool_ids_0 = PoolSystem::pool(pool_id_0)
@@ -1208,7 +1198,6 @@ fn same_pool_id_not_possible() {
 			},],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		assert_noop!(
@@ -1226,7 +1215,6 @@ fn same_pool_id_not_possible() {
 				},],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
-				None
 			),
 			Error::<Runtime>::PoolInUse
 		);
@@ -1292,7 +1280,6 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
-				None
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1355,7 +1342,6 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
-				None
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1410,7 +1396,6 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
-				None
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1462,7 +1447,6 @@ fn valid_tranche_structure_is_enforced() {
 				],
 				CurrencyId::AUSD,
 				10_000 * CURRENCY,
-				None
 			),
 			Error::<Runtime>::InvalidTrancheStructure
 		);
@@ -1508,7 +1492,6 @@ fn triger_challange_period_with_zero_solution() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1603,7 +1586,6 @@ fn min_challenge_time_is_respected() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1701,7 +1683,6 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
-			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1903,7 +1884,6 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
-			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -2094,7 +2074,6 @@ fn only_usd_as_pool_currency_allowed() {
 				],
 				CurrencyId::Native,
 				200 * CURRENCY,
-				None
 			),
 			Error::<Runtime>::InvalidCurrency
 		);
@@ -2127,7 +2106,6 @@ fn only_usd_as_pool_currency_allowed() {
 				],
 				CurrencyId::Tranche(0, [0u8; 16]),
 				200 * CURRENCY,
-				None
 			),
 			Error::<Runtime>::InvalidCurrency
 		);
@@ -2159,7 +2137,6 @@ fn only_usd_as_pool_currency_allowed() {
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
-			None
 		));
 	});
 }
@@ -2204,7 +2181,6 @@ fn creation_takes_deposit() {
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
-			None
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(0).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2242,7 +2218,6 @@ fn creation_takes_deposit() {
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
-			None
 		));
 		let pool = crate::PoolDeposit::<Runtime>::get(1).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2282,7 +2257,6 @@ fn creation_takes_deposit() {
 			],
 			CurrencyId::AUSD,
 			200 * CURRENCY,
-			None
 		));
 
 		let pool = crate::PoolDeposit::<Runtime>::get(2).unwrap();
@@ -2330,7 +2304,6 @@ fn create_tranche_token_metadata() {
 			],
 			CurrencyId::AUSD,
 			10_000 * CURRENCY,
-			None
 		));
 
 		let pool = Pool::<Runtime>::get(3).unwrap();

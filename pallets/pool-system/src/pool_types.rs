@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub};
 use cfg_types::epoch::EpochState;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -95,7 +94,7 @@ where
 	MaxTranches: Get<u32>,
 {
 	pub changes: PoolChanges<Rate, MaxTokenNameLength, MaxTokenSymbolLength, MaxTranches>,
-	pub scheduled_time: Moment,
+	pub submitted_at: Moment,
 }
 
 /// A representation of a pool identifier that can be converted to an account address
@@ -111,13 +110,11 @@ pub struct PoolDetails<
 	EpochId,
 	Balance,
 	Rate,
-	MetaSize,
 	Weight,
 	TrancheId,
 	PoolId,
 	MaxTranches,
 > where
-	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
 	MaxTranches: Get<u32>,
@@ -128,8 +125,6 @@ pub struct PoolDetails<
 	pub tranches: Tranches<Balance, Rate, Weight, TrancheCurrency, TrancheId, PoolId, MaxTranches>,
 	/// Details about the parameters of the pool.
 	pub parameters: PoolParameters,
-	/// Metadata that specifies the pool.
-	pub metadata: Option<BoundedVec<u8, MetaSize>>,
 	/// The status the pool is currently in.
 	pub status: PoolStatus,
 	/// Details about the epochs of the pool.
@@ -234,7 +229,6 @@ impl<
 		EpochId,
 		Balance,
 		Rate,
-		MetaSize,
 		Weight,
 		TrancheId,
 		PoolId,
@@ -246,7 +240,6 @@ impl<
 		EpochId,
 		Balance,
 		Rate,
-		MetaSize,
 		Weight,
 		TrancheId,
 		PoolId,
@@ -255,7 +248,6 @@ impl<
 	Balance: FixedPointOperand + BaseArithmetic + Unsigned + From<u64>,
 	CurrencyId: Copy,
 	EpochId: BaseArithmetic + Copy,
-	MetaSize: Get<u32> + Copy,
 	PoolId: Copy + Encode,
 	Rate: FixedPointNumber<Inner = Balance>,
 	TrancheCurrency: Copy + cfg_traits::TrancheCurrency<PoolId, TrancheId>,

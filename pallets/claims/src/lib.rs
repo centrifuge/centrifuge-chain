@@ -81,7 +81,6 @@ mod weights;
 use frame_support::{
 	dispatch::DispatchResult,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, Get},
-	weights::Weight,
 	PalletId,
 };
 use frame_system::ensure_root;
@@ -92,27 +91,7 @@ use sp_runtime::{
 	sp_std::vec::Vec,
 	traits::{AccountIdConversion, CheckedSub, Hash},
 };
-
-// Re-export weight information in crate namespace
-pub use crate::traits::WeightInfo as PalletWeightInfo;
-
-// ----------------------------------------------------------------------------
-// Traits and types declaration
-// ----------------------------------------------------------------------------
-
-pub mod traits {
-
-	use super::*;
-
-	/// Weight information for pallet extrinsics
-	///
-	/// Weights are calculated using runtime benchmarking features.
-	pub trait WeightInfo {
-		fn claim(hashes_length: usize) -> Weight;
-		fn set_upload_account() -> Weight;
-		fn store_root_hash() -> Weight;
-	}
-} // end of 'traits' module
+pub use weights::WeightInfo;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -176,7 +155,7 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		/// Weight information for extrinsics in this pallet
-		type WeightInfo: PalletWeightInfo;
+		type WeightInfo: WeightInfo;
 	}
 
 	// ------------------------------------------------------------------------
@@ -257,6 +236,7 @@ pub mod pallet {
 		/// - Based on hashes length
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::claim(sorted_hashes.len()))]
+		#[pallet::call_index(0)]
 		pub fn claim(
 			origin: OriginFor<T>,
 			account_id: T::AccountId,
@@ -308,6 +288,7 @@ pub mod pallet {
 		/// - Based on origin check and write op
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::set_upload_account())]
+		#[pallet::call_index(1)]
 		pub fn set_upload_account(
 			origin: OriginFor<T>,
 			account_id: T::AccountId,
@@ -325,6 +306,7 @@ pub mod pallet {
 		/// - Based on origin check and write op
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::store_root_hash())]
+		#[pallet::call_index(2)]
 		pub fn store_root_hash(
 			origin: OriginFor<T>,
 			root_hash: T::Hash,

@@ -98,7 +98,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		tranche_inputs: Vec<TrancheInput<T::Rate, T::MaxTokenNameLength, T::MaxTokenSymbolLength>>,
 		currency: T::CurrencyId,
 		max_reserve: T::Balance,
-		metadata: Option<Vec<u8>>,
 	) -> DispatchResult {
 		// A single pool ID can only be used by one owner.
 		ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -137,17 +136,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			now,
 		)?;
 
-		let checked_metadata: Option<BoundedVec<u8, T::MaxSizeMetadata>> = match metadata {
-			Some(metadata_value) => {
-				let checked: BoundedVec<u8, T::MaxSizeMetadata> = metadata_value
-					.try_into()
-					.map_err(|_| Error::<T>::BadMetadata)?;
-
-				Some(checked)
-			}
-			None => None,
-		};
-
 		for (tranche, tranche_input) in tranches.tranches.iter().zip(&tranche_inputs) {
 			let token_name: BoundedVec<u8, T::MaxTokenNameLength> =
 				tranche_input.metadata.token_name.clone();
@@ -174,17 +162,6 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;
 		}
 
-		let min_epoch_time = sp_std::cmp::min(
-			sp_std::cmp::max(
-				T::DefaultMinEpochTime::get(),
-				T::MinEpochTimeLowerBound::get(),
-			),
-			T::MinEpochTimeUpperBound::get(),
-		);
-
-		let max_nav_age =
-			sp_std::cmp::min(T::DefaultMaxNAVAge::get(), T::MaxNAVAgeUpperBound::get());
-
 		let pool_details = PoolDetails {
 			currency,
 			tranches,
@@ -195,15 +172,14 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				last_executed: Zero::zero(),
 			},
 			parameters: PoolParameters {
-				min_epoch_time,
-				max_nav_age,
+				min_epoch_time: T::DefaultMinEpochTime::get(),
+				max_nav_age: T::DefaultMaxNAVAge::get(),
 			},
 			reserve: ReserveDetails {
 				max: max_reserve,
 				available: Zero::zero(),
 				total: Zero::zero(),
 			},
-			metadata: checked_metadata,
 		};
 
 		Pool::<T>::insert(pool_id, pool_details.clone());
@@ -241,6 +217,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 			Error::<T>::InvalidTrancheUpdate
 		);
 
+		// TODO: Remove this implicit behaviour. See https://github.com/centrifuge/centrifuge-chain/issues/1171
 		if changes.min_epoch_time == Change::NoChange
 			&& changes.max_nav_age == Change::NoChange
 			&& changes.tranches == Change::NoChange
@@ -279,7 +256,7 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 
 		let update = ScheduledUpdateDetails {
 			changes: changes.clone(),
-			scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
+			submitted_at: now,
 		};
 
 		let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
@@ -296,6 +273,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 	}
 
 	fn execute_update(pool_id: T::PoolId) -> Result<u32, DispatchError> {
+		let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
 		ensure!(
 			EpochExecution::<T>::try_get(pool_id).is_err(),
 			Error::<T>::InSubmissionPeriod
@@ -304,15 +283,14 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 		let update =
 			ScheduledUpdate::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoScheduledUpdate)?;
 
+		let now = Self::now();
 		ensure!(
-			Self::now() >= update.scheduled_time,
+			now >= update.submitted_at.ensure_add(T::MinUpdateDelay::get())?,
 			Error::<T>::ScheduledTimeHasNotPassed
 		);
 
-		let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-
 		ensure!(
-			T::UpdateGuard::released(&pool, &update, Self::now()),
+			T::UpdateGuard::released(&pool, &update, now),
 			Error::<T>::UpdatePrerequesitesNotFulfilled
 		);
 
@@ -463,7 +441,6 @@ mod benchmarks_utils {
 				],
 				CurrencyId::AUSD,
 				FUNDS.into(),
-				None,
 			)
 			.unwrap();
 

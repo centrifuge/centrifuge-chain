@@ -24,7 +24,6 @@
 // ----------------------------------------------------------------------------
 
 // Pallet types and traits definition
-pub mod traits;
 pub mod types;
 
 // Pallet mock runtime
@@ -35,7 +34,7 @@ mod mock;
 mod tests;
 
 // Extrinsic weight information
-mod weights;
+pub mod weights;
 
 // Export crate types and traits
 use cfg_primitives::types::FixedArray;
@@ -46,11 +45,9 @@ pub use pallet::*;
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 use sp_core::H256;
 use sp_std::{fmt::Debug, vec::Vec};
+use weights::WeightInfo;
 
-use crate::{
-	traits::WeightInfo,
-	types::{BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
-};
+use crate::types::{BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf};
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -161,6 +158,7 @@ pub mod pallet {
 		/// - depends on the arguments
 		/// # </weight>
 		#[pallet::weight(<T as Config>::WeightInfo::validate_mint())]
+		#[pallet::call_index(0)]
 		pub fn validate_mint(
 			origin: OriginFor<T>,
 			anchor_id: SystemHashOf<T>,
