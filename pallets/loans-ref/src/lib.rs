@@ -82,6 +82,7 @@ pub mod pallet {
 		traits::{BadOrigin, One, Zero},
 		ArithmeticError, FixedPointOperand,
 	};
+	use sp_std::vec::Vec;
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
 		PortfolioValuationUpdateType, WriteOffRule, WriteOffStatus, WrittenOffError,
@@ -489,7 +490,7 @@ pub mod pallet {
 
 			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				let rule = Self::find_write_off_rule(pool_id, loan)?
-					.ok_or_else(|| Error::<T>::NoValidWriteOffRule)?;
+					.ok_or(Error::<T>::NoValidWriteOffRule)?;
 				let limit = rule.status.compose_max(loan.write_off_status());
 
 				loan.write_off(&limit, &limit)?;
@@ -703,7 +704,7 @@ pub mod pallet {
 				.filter_map(|rule| {
 					rule.triggers
 						.iter()
-						.map(|trigger| loan.check_write_off_trigger(&trigger))
+						.map(|trigger| loan.check_write_off_trigger(trigger))
 						.find(|e| match e {
 							Ok(value) => *value,
 							Err(_) => true,
