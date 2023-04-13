@@ -39,194 +39,72 @@
 //!
 //! Take a look to the [pallet tests](`tests/pallet.rs`) to have a user view of how to use this crate.
 
-/// Provide methods for register/execute calls
-pub mod storage {
-	use std::{any::Any, cell::RefCell, collections::HashMap};
+/// Provide functions for register/execute calls
+pub mod storage;
 
-	/// Identify a call in the call storage
-	pub type CallId = u64;
+/// Provide functions for handle fuction locations
+pub mod location;
 
-	trait Callable {
-		fn as_any(&self) -> &dyn Any;
-	}
-
-	thread_local! {
-		static CALLS: RefCell<HashMap<CallId, Box<dyn Callable>>>
-			= RefCell::new(HashMap::default());
-	}
-
-	struct CallWrapper<Input, Output>(Box<dyn Fn(Input) -> Output>);
-
-	impl<Input: 'static, Output: 'static> Callable for CallWrapper<Input, Output> {
-		fn as_any(&self) -> &dyn Any {
-			self
-		}
-	}
-
-	/// Register a call into the call storage.
-	/// The registered call can be uniquely identified by the returned `CallId`.
-	pub fn register_call<F: Fn(Args) -> R + 'static, Args: 'static, R: 'static>(f: F) -> CallId {
-		CALLS.with(|state| {
-			let registry = &mut *state.borrow_mut();
-			let call_id = registry.len() as u64;
-			registry.insert(call_id, Box::new(CallWrapper(Box::new(f))));
-			call_id
-		})
-	}
-
-	/// Execute a call from the call storage identified by a `call_id`.
-	pub fn execute_call<Args: 'static, R: 'static>(call_id: CallId, args: Args) -> R {
-		CALLS.with(|state| {
-			let registry = &*state.borrow();
-			let call = registry.get(&call_id).unwrap();
-			call.as_any()
-				.downcast_ref::<CallWrapper<Args, R>>()
-				.expect("Bad mock implementation: expected other function type")
-				.0(args)
-		})
-	}
-}
-
+use frame_support::{Blake2_128, StorageHasher, StorageMap};
+use location::FunctionLocation;
 pub use storage::CallId;
 
 /// Prefix that the register functions should have.
 pub const MOCK_FN_PREFIX: &str = "mock_";
 
-/// Gives the absolute string identification of a function.
-#[macro_export]
-macro_rules! function_locator {
-	() => {{
-		// Aux function to extract the path
-		fn f() {}
+/// Register a mock function into the mock function storage.
+/// This function should be called with a locator used as a function identification.
+pub fn register<Map, L, F, I, O>(locator: L, f: F)
+where
+	Map: StorageMap<<Blake2_128 as StorageHasher>::Output, CallId>,
+	L: Fn(),
+	F: Fn(I) -> O + 'static,
+	I: 'static,
+	O: 'static,
+{
+	let location = FunctionLocation::from(locator)
+		.normalize()
+		.strip_name_prefix(MOCK_FN_PREFIX)
+		.append_type_signature::<I, O>();
 
-		// Auxiliar function to get the type from a value
-		pub fn type_name_of<T>(_: T) -> &'static str {
-			std::any::type_name::<T>()
-		}
-
-		let name = type_name_of(f);
-		&name[..name.len() - "::f".len()]
-	}};
+	Map::insert(location.hash::<Blake2_128>(), storage::register_call(f));
 }
 
-/// Gives the string identification of a function.
-/// The identification will be the same no matter if it belongs to a trait or has an `except_`
-/// prefix name.
-#[macro_export]
-macro_rules! call_locator {
-	() => {{
-		let path_name = $crate::function_locator!();
-		let (path, name) = path_name.rsplit_once("::").expect("always ::");
+/// Execute a function from the function storage.
+/// This function should be called with a locator used as a function identification.
+pub fn execute<Map, L, I, O>(locator: L, input: I) -> O
+where
+	Map: StorageMap<<Blake2_128 as StorageHasher>::Output, CallId>,
+	L: Fn(),
+	I: 'static,
+	O: 'static,
+{
+	let location = FunctionLocation::from(locator)
+		.normalize()
+		.append_type_signature::<I, O>();
 
-		let base_name = name.strip_prefix($crate::MOCK_FN_PREFIX).unwrap_or(name);
-		let correct_path = path
-			.strip_prefix("<")
-			.map(|trait_path| trait_path.split_once(" as").expect("always ' as'").0)
-			.unwrap_or(path);
+	let call_id = Map::try_get(location.hash::<Blake2_128>())
+		.expect(&format!("Mock was not found. Location: {location:?}"));
 
-		format!("{}::{}", correct_path, base_name)
-	}};
+	storage::execute_call(call_id, input).expect(&format!(
+		"Mock was found but the its input/output types differ than {location:?}"
+	))
 }
 
-/// Register a call into the call storage.
-/// This macro should be called from the method that wants to register `f`.
-/// This macro must be called from a pallet with the `CallIds` storage.
-/// Check the main documentation.
+/// Register a mock function into the mock function storage.
+/// Same as `register()` but with using the locator who calls this macro.
 #[macro_export]
 macro_rules! register_call {
 	($f:expr) => {{
-		use frame_support::StorageHasher;
-
-		fn get_fn_type_names<F: Fn(Args) -> R, Args, R>(f: &F) -> (&'static str, &'static str) {
-			(std::any::type_name::<Args>(), std::any::type_name::<R>())
-		}
-
-		let f = $f;
-		let locator = $crate::call_locator!();
-		let (input_type_name, output_type_name) = get_fn_type_names(&f);
-		let uuid = format!("{}:{}->{}", locator, input_type_name, output_type_name);
-		dbg!(&uuid);
-		let hash = frame_support::Blake2_128::hash(uuid.as_bytes());
-
-		CallIds::<T>::insert(hash, $crate::storage::register_call(f));
+		$crate::register::<CallIds<T>, _, _, _, _>(|| (), $f)
 	}};
 }
 
-/// Execute a call from the call storage.
-/// This macro should be called from the method that wants to execute `f`.
-/// This macro must be called from a pallet with the `CallIds` storage.
-/// Check the main documentation.
+/// Execute a function from the function storage.
+/// Same as `execute()` but with using the locator who calls this macro.
 #[macro_export]
 macro_rules! execute_call {
-	($params:expr) => {{
-		use frame_support::StorageHasher;
-
-		fn process<T: Config, Args: 'static, R: 'static>(locator: String, params: Args) -> R {
-			let input_type_name = std::any::type_name::<Args>();
-			let output_type_name = std::any::type_name::<R>();
-			let uuid = format!("{}:{}->{}", locator, input_type_name, output_type_name);
-
-			let hash = frame_support::Blake2_128::hash(uuid.as_bytes());
-			let call_id = CallIds::<T>::get(hash)
-				.expect(&format!("Called to {}, but mock was not found", uuid));
-
-			$crate::storage::execute_call(call_id, params)
-		}
-
-		process::<T, _, _>($crate::call_locator!(), $params)
+	($input:expr) => {{
+		$crate::execute::<CallIds<T>, _, _, _>(|| (), $input)
 	}};
-}
-
-#[cfg(test)]
-mod tests {
-	trait TraitExample {
-		fn function_locator() -> String;
-		fn call_locator() -> String;
-	}
-
-	struct Example;
-
-	impl Example {
-		fn mock_function_locator() -> String {
-			function_locator!().into()
-		}
-
-		fn mock_call_locator() -> String {
-			call_locator!().into()
-		}
-	}
-
-	impl TraitExample for Example {
-		fn function_locator() -> String {
-			function_locator!().into()
-		}
-
-		fn call_locator() -> String {
-			call_locator!().into()
-		}
-	}
-
-	#[test]
-	fn function_locator() {
-		assert_eq!(
-			Example::mock_function_locator(),
-			"mock_builder::tests::Example::mock_function_locator"
-		);
-
-		assert_eq!(
-			Example::function_locator(),
-			"<mock_builder::tests::Example as \
-            mock_builder::tests::TraitExample>::function_locator"
-		);
-	}
-
-	#[test]
-	fn call_locator() {
-		assert_eq!(
-			Example::call_locator(),
-			"mock_builder::tests::Example::call_locator"
-		);
-
-		assert_eq!(Example::call_locator(), Example::mock_call_locator());
-	}
 }
