@@ -87,7 +87,7 @@ where
 		.expect(&format!("Mock was not found. Location: {location:?}"));
 
 	storage::execute_call(call_id, input).expect(&format!(
-		"Mock was found but the its input/output types differ than {location:?}"
+		"Mock was found but its input/output types differ. Location: {location:?}"
 	))
 }
 
