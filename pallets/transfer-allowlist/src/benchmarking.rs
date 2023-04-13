@@ -10,33 +10,31 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::{fee_keys::FeeKey, locations::Location};
+use cfg_types::{fee_keys::FeeKey, locations::Location, tokens::CurrencyId};
+use codec::WrapperTypeDecode;
 use frame_benchmarking::*;
 use frame_support::traits::ReservableCurrency;
+use frame_system::RawOrigin;
 
 use super::*;
-use crate::mock::*;
-
+use crate::mock;
 benchmarks! {
 	where_clause {
-	where T: Config,
-		// + pallet_fees::Config<Fees = <T as Config>::Fees>
-		// + pallet_balances::Config<Balance = <T as Config>::Balance>,
-	// T::Fee
-	<T as Config>::CurrencyId: From<CurrencyId> + Into<CurrencyId>,
-	<T as Config>::Location: From<Location> + Into<Location>,
-	<T as Config>::ReserveCurrency: ReservableCurrency<T::AccountId>
+	  where <T as frame_system::Config>::AccountId: Into<<T as pallet::Config>::Location>
+		<T as pallet::Config>::CurrencyId:: CurrencyId,
 }
 
-	add_allowance {
+	add_transfer_allowance {
+	  let sender: T::AccountId = account::<T::AccountId>("Sender", 1,0);
+	  let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2,0);
 
-	}:add_transfer_allowance(RuntimeOrigin::signed(SENDER), CurrencyId::A, ACCOUNT_RECEIVER.into())
+	}:add_transfer_allowance(RawOrigin::Signed(sender), CurrencyId::Native.into(), receiver.into())
 	verify {
 	  assert_eq!(
-				TransferAllowList::get_account_currency_transfer_allowance((
-					  SENDER,
-					  CurrencyId::A,
-					  Location::TestLocal(ACCOUNT_RECEIVER)
+				get_account_currency_transfer_allowance((
+					  sender.into(),
+					  CurrencyId::Native.into(),
+					  receiver.into()
 				))
 					.unwrap(),
 				AllowanceDetails {
@@ -46,61 +44,61 @@ benchmarks! {
 		  )
 
   }
-  remove_allowance {
-	  add_transfer_allowance(RuntimeOrigin::signed(SENDER), CurrencyId::A, ACCOUNT_RECIEVER.into())
-  }:remove_transfer_allowance(
-			RuntimeOrigin::signed(SENDER),
-			CurrencyId::A,
-			ACCOUNT_RECEIVER.into(),
-	)
-	verify {
+  // remove_allowance {
+	//   add_transfer_allowance(RuntimeOrigin::signed(SENDER), CurrencyId::A, ACCOUNT_RECIEVER.into())
+  // }:remove_transfer_allowance(
+	// 		RuntimeOrigin::signed(SENDER),
+	// 		CurrencyId::A,
+	// 		ACCOUNT_RECEIVER.into(),
+	// )
+	// verify {
 
-		  assert_eq!(
-				TransferAllowList::get_account_currency_transfer_allowance((
-					  SENDER,
-					  CurrencyId::A,
-					  Location::TestLocal(ACCOUNT_RECEIVER)
-				))
-					.unwrap(),
-				AllowanceDetails {
-					  // current block is 50, no delay set
-					  allowed_at: 0u64,
-					  blocked_at: 50u64,
-				}
-		  );
-	}
-	purge_allowance {
+	// 	  assert_eq!(
+	// 			TransferAllowList::get_account_currency_transfer_allowance((
+	// 				  SENDER,
+	// 				  CurrencyId::A,
+	// 				  Location::TestLocal(ACCOUNT_RECEIVER)
+	// 			))
+	// 				.unwrap(),
+	// 			AllowanceDetails {
+	// 				  // current block is 50, no delay set
+	// 				  allowed_at: 0u64,
+	// 				  blocked_at: 50u64,
+	// 			}
+	// 	  );
+	// }
+	// purge_allowance {
 
-	}: {}
-	verify {
+	// }: {}
+	// verify {
 
-	}
-	add_delay {
+	// }
+	// add_delay {
 
-	}: {}
-	verify {
+	// }: {}
+	// verify {
 
-	}
+	// }
 
-	update_delay {
+	// update_delay {
 
-	}: {}
-	verify {
+	// }: {}
+	// verify {
 
-	}
+	// }
 
-	toggle_delay_future_modifiable {
+	// toggle_delay_future_modifiable {
 
-	}: {}
-	verify {
+	// }: {}
+	// verify {
 
-	}
-	purge_delay {
+	// }
+	// purge_delay {
 
-	}: {}
-	verify {
+	// }: {}
+	// verify {
 
-	}
+	// }
 
 }
 

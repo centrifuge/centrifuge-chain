@@ -13,41 +13,41 @@
 pub use frame_support::weights::Weight;
 
 pub trait Weights {
-	fn add_allowance() -> Weight;
-	fn remove_allowance() -> Weight;
-	fn purge_allowance() -> Weight;
-	fn add_delay() -> Weight;
-	fn update_delay() -> Weight;
-	fn toggle_delay_future_modifiable() -> Weight;
-	fn purge_delay() -> Weight;
+	fn add_transfer_allowance() -> Weight;
+	fn remove_transfer_allowance() -> Weight;
+	fn purge_transfer_allowance() -> Weight;
+	fn add_allowance_delay() -> Weight;
+	fn update_allowance_delay() -> Weight;
+	fn toggle_allowance_delay_future_modifiable() -> Weight;
+	fn purge_allowance_delay() -> Weight;
 }
 
 impl Weights for () {
-	fn add_allowance() -> Weight {
+	fn add_transfer_allowance() -> Weight {
 		Weight::zero()
 	}
 
-	fn remove_allowance() -> Weight {
+	fn remove_transfer_allowance() -> Weight {
 		Weight::zero()
 	}
 
-	fn add_delay() -> Weight {
+	fn add_allowance_delay() -> Weight {
 		Weight::zero()
 	}
 
-	fn purge_allowance() -> Weight {
+	fn purge_transfer_allowance() -> Weight {
 		Weight::zero()
 	}
 
-	fn update_delay() -> Weight {
+	fn update_allowance_delay() -> Weight {
 		Weight::zero()
 	}
 
-	fn toggle_delay_future_modifiable() -> Weight {
+	fn toggle_allowance_delay_future_modifiable() -> Weight {
 		Weight::zero()
 	}
 
-	fn purge_delay() -> Weight {
+	fn purge_allowance_delay() -> Weight {
 		Weight::zero()
 	}
 }
