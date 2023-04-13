@@ -1336,7 +1336,7 @@ mod write_off_policy {
 				.unwrap(),
 			));
 
-			// Check if a loan is
+			// Check if a loan is correctly writen off
 			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 

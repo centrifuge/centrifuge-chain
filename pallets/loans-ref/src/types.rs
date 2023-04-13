@@ -165,11 +165,11 @@ pub struct WriteOffRule<Rate> {
 	/// If any of the triggers is valid, the write-off rule can be applied
 	pub triggers: BoundedBTreeSet<WriteOffTrigger, WriteOffTrigger>,
 
-	/// Content of this write off rule
+	/// Content of this write off rule to be applied
 	pub status: WriteOffStatus<Rate>,
 }
 
-/// Diferent kinds of write off status that a loan can be
+/// The status of the writen off
 #[derive(
 	Encode,
 	Decode,
