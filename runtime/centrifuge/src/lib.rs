@@ -1192,7 +1192,10 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _)
+			| CurrencyId::Native
+			| CurrencyId::KSM
+			| CurrencyId::Staking(_) => false,
 			CurrencyId::AUSD => true,
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
 				.map(|m| m.additional.pool_currency)

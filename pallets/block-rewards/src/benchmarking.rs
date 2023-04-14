@@ -21,6 +21,7 @@ benchmarks! {
 		T::BlockNumber: From<u32> + One,
 		T::Weight: From<u32>,
 		<T as Config>::Currency: frame_support::traits::fungibles::Inspect<T::AccountId> + CurrencyT<T::AccountId>,
+		<T as Config>::CurrencyId: From<CurrencyId>,
 	}
 
 	claim_reward {
@@ -39,12 +40,12 @@ benchmarks! {
 				&beneficiary,
 			).unwrap().is_zero()
 		);
-		let before = <T as Config>::Currency::balance(CurrencyId::Native, &beneficiary);
+		let before = <T as Config>::Currency::balance(CurrencyId::Native.into(), &beneficiary);
 
 	}: _(RawOrigin::Signed(caller), beneficiary.clone())
 	verify {
 		// Does not get entire reward since another collator is auto-staked via genesis config
-		assert_eq!(<T as Config>::Currency::balance(CurrencyId::Native, &beneficiary).saturating_sub(before), (REWARD / 2).into());
+		assert_eq!(<T as Config>::Currency::balance(CurrencyId::Native.into(), &beneficiary).saturating_sub(before), (REWARD / 2).into());
 	}
 
 	set_collator_reward {
