@@ -37,8 +37,8 @@
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active loans.
 
 pub mod migrations {
-	mod nuke;
-	mod v1;
+	pub mod nuke;
+	pub mod v1;
 }
 
 pub mod types;

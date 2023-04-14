@@ -23,14 +23,12 @@ mod v0 {
 		pub penalty: Rate,
 	}
 
+	pub type WriteOffStates<T> =
+		BoundedVec<v0::WriteOffState<<T as Config>::Rate>, <T as Config>::MaxWriteOffPolicySize>;
+
 	#[storage_alias]
-	pub(crate) type WriteOffPolicy<T: Config> = StorageMap<
-		Pallet<T>,
-		Blake2_128Concat,
-		PoolIdOf<T>,
-		BoundedVec<WriteOffState<<T as Config>::Rate>, <T as Config>::MaxWriteOffPolicySize>,
-		ValueQuery,
-	>;
+	pub(crate) type WriteOffPolicy<T: Config> =
+		StorageMap<Pallet<T>, Blake2_128Concat, PoolIdOf<T>, WriteOffStates<T>, ValueQuery>;
 }
 
 /// This updates the policy to the newer version.
@@ -44,29 +42,27 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 		}
 
 		let mut count = 0;
-		WriteOffPolicy::<T>::translate_values(
-			|policy: BoundedVec<v0::WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>| {
-				count += 1;
-				Some(
-					policy
-						.into_iter()
-						.map(|old| WriteOffRule {
-							triggers: BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(
-								old.overdue_days,
-							)])
-							.try_into()
-							.expect("We have at least 1 element in the enum, qed"),
-							status: WriteOffStatus {
-								percentage: old.percentage,
-								penalty: old.penalty,
-							},
-						})
-						.collect::<Vec<_>>()
+		WriteOffPolicy::<T>::translate_values(|policy: v0::WriteOffStates<T>| {
+			count += 1;
+			Some(
+				policy
+					.into_iter()
+					.map(|old| WriteOffRule {
+						triggers: BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(
+							old.overdue_days,
+						)])
 						.try_into()
-						.expect("Size of the new vec can not be longer than previous one, qed"),
-				)
-			},
-		);
+						.expect("We have at least 1 element in the enum, qed"),
+						status: WriteOffStatus {
+							percentage: old.percentage,
+							penalty: old.penalty,
+						},
+					})
+					.collect::<Vec<_>>()
+					.try_into()
+					.expect("Size of the new vec can not be longer than previous one, qed"),
+			)
+		});
 
 		Pallet::<T>::current_storage_version().put::<Pallet<T>>();
 
@@ -82,10 +78,7 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
-		let old_policy =
-			Vec::<BoundedVec<v0::WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>>::decode(
-				&mut state.as_ref(),
-			)
+		let old_policy = Vec::<v0::WriteOffStates<T>>::decode(&mut state.as_ref())
 			.map_err(|_| "Error decoding pre-upgrade state")?;
 
 		let new_police = WriteOffPolicy::<T>::iter_values();
