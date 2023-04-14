@@ -10,7 +10,7 @@
 // target/release/centrifuge-chain
 // benchmark
 // pallet
-// --chain=altair-dev
+// --chain=development-local
 // --steps=50
 // --repeat=20
 // --pallet=pallet_restricted_tokens
