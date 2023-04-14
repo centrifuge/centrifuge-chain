@@ -84,11 +84,11 @@ where
 		.append_type_signature::<I, O>();
 
 	let call_id = Map::try_get(location.hash::<Blake2_128>())
-		.expect(&format!("Mock was not found. Location: {location:?}"));
+		.unwrap_or_else(|_| panic!("Mock was not found. Location: {location:?}"));
 
-	storage::execute_call(call_id, input).expect(&format!(
-		"Mock was found but its input/output types differ. Location: {location:?}"
-	))
+	storage::execute_call(call_id, input).unwrap_or_else(|| {
+		panic!("Mock was found but its input/output types differ. Location: {location:?}")
+	})
 }
 
 /// Register a mock function into the mock function storage.

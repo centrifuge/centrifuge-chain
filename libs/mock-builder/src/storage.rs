@@ -32,15 +32,13 @@ pub fn register_call<F: Fn(Args) -> R + 'static, Args: 'static, R: 'static>(f: F
 }
 
 /// Execute a call from the call storage identified by a `call_id`.
-pub fn execute_call<Args: 'static, R: 'static>(call_id: CallId, args: Args) -> Result<R, ()> {
+pub fn execute_call<Args: 'static, R: 'static>(call_id: CallId, args: Args) -> Option<R> {
 	CALLS.with(|state| {
 		let registry = &*state.borrow();
 		let call = registry.get(&call_id).unwrap();
-		Ok(call
-			.as_any()
+		call.as_any()
 			.downcast_ref::<CallWrapper<Args, R>>()
-			.ok_or(())?
-			.0(args))
+			.map(|wrapper| wrapper.0(args))
 	})
 }
 
@@ -54,7 +52,7 @@ mod tests {
 		let call_id_1 = register_call(func_1);
 		let result = execute_call::<_, usize>(call_id_1, 2u8);
 
-		assert_eq!(result, Ok(46));
+		assert_eq!(result, Some(46));
 	}
 
 	#[test]
@@ -63,7 +61,7 @@ mod tests {
 		let call_id_1 = register_call(func_1);
 		let result = execute_call::<_, usize>(call_id_1, 'a');
 
-		assert_eq!(result, Err(()));
+		assert_eq!(result, None);
 	}
 
 	#[test]
@@ -72,7 +70,7 @@ mod tests {
 		let call_id_1 = register_call(func_1);
 		let result = execute_call::<_, char>(call_id_1, 2u8);
 
-		assert_eq!(result, Err(()));
+		assert_eq!(result, None);
 	}
 
 	#[test]

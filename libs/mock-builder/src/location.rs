@@ -37,7 +37,7 @@ impl FunctionLocation {
 	pub fn normalize(self) -> Self {
 		let (path, name) = self.0.rsplit_once("::").expect("always ::");
 		let path = path
-			.strip_prefix("<")
+			.strip_prefix('<')
 			.map(|trait_path| trait_path.split_once(" as").expect("always ' as'").0)
 			.unwrap_or(path);
 
@@ -47,10 +47,12 @@ impl FunctionLocation {
 	/// Remove the prefix from the function name.
 	pub fn strip_name_prefix(self, prefix: &str) -> Self {
 		let (path, name) = self.0.rsplit_once("::").expect("always ::");
-		let name = name.strip_prefix(prefix).expect(&format!(
-			"Function '{name}' should have a '{prefix}' prefix. Location: {}",
-			self.0
-		));
+		let name = name.strip_prefix(prefix).unwrap_or_else(|| {
+			panic!(
+				"Function '{name}' should have a '{prefix}' prefix. Location: {}",
+				self.0
+			)
+		});
 
 		Self(format!("{}::{}", path, name))
 	}
