@@ -36,7 +36,7 @@ pub struct Migration<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 	fn on_runtime_upgrade() -> Weight {
-		if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(0) {
+		if Pallet::<T>::on_chain_storage_version() > StorageVersion::new(0) {
 			log::warn!("Migration was already done. This migration can be removed");
 			return Weight::zero();
 		}
@@ -65,6 +65,8 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 		});
 
 		Pallet::<T>::current_storage_version().put::<Pallet<T>>();
+
+		log::info!("Successful migration: v0 -> v1. Items: {count}");
 
 		T::DbWeight::get().reads_writes(count, count)
 	}
