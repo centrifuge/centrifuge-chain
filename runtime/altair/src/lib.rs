@@ -1476,12 +1476,6 @@ pub type UncheckedExtrinsic =
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-type UpgradeAltair1026 = (
-	pallet_interest_accrual::migrations::v2::Migration<Runtime>,
-	pallet_loans_ref::migrations::nuke::Migration<Runtime>,
-	pallet_pool_system::migrations::v1::Migration<Runtime, MaxSizeMetadata>,
-);
-
 type UpgradeAltair1027 = pallet_loans_ref::migrations::v1::Migration<Runtime>;
 
 /// Executive: handles dispatch to the various modules.
