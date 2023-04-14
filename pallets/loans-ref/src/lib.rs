@@ -95,7 +95,7 @@ pub mod pallet {
 		<T as Config>::CurrencyId,
 	>>::PoolId;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -587,7 +587,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Updates the write off policy.
+		/// Updates the write off policy with write off rules.
 		///
 		/// The write off policy is used to automatically set a write off minimum value to the
 		/// loan.

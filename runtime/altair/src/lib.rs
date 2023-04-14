@@ -1478,9 +1478,11 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 
 type UpgradeAltair1026 = (
 	pallet_interest_accrual::migrations::v2::Migration<Runtime>,
-	pallet_loans_ref::migrations::NukeMigration<Runtime>,
+	pallet_loans_ref::migrations::nuke::Migration<Runtime>,
 	pallet_pool_system::migrations::v1::Migration<Runtime, MaxSizeMetadata>,
 );
+
+type UpgradeAltair1027 = pallet_loans_ref::migrations::v1::Migration<Runtime>;
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1489,7 +1491,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	UpgradeAltair1026,
+	UpgradeAltair1027,
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]

@@ -1328,7 +1328,14 @@ mod write_off_policy {
 						0.8,
 						0.8
 					),
-					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(1)], 0.2, 0.2),
+					util::make_write_off_rule(
+						[
+							WriteOffTrigger::PrincipalOverdueDays(1),
+							WriteOffTrigger::OracleValuationOutdated(0)
+						],
+						0.2,
+						0.2
+					),
 					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(4)], 0.5, 0.5),
 					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(9)], 0.3, 0.9),
 				]

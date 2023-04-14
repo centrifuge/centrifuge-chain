@@ -1,91 +1,207 @@
-#[cfg(feature = "try-runtime")]
-use frame_support::ensure;
-use frame_support::{
-	pallet_prelude::ValueQuery,
-	storage, storage_alias,
-	traits::{Get, OnRuntimeUpgrade},
-	weights::Weight,
-	Blake2_128Concat,
-};
-#[cfg(feature = "try-runtime")]
-use sp_std::vec::Vec;
-
 use crate::*;
 
-mod v0 {
+pub mod nuke {
+	#[cfg(feature = "try-runtime")]
+	use frame_support::ensure;
+	use frame_support::{
+		pallet_prelude::ValueQuery,
+		storage, storage_alias,
+		traits::{Get, OnRuntimeUpgrade},
+		weights::Weight,
+		Blake2_128Concat,
+	};
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec::Vec;
+
 	use super::*;
 
-	/// This storage comes from the previous pallet loans.
-	/// It is used as an indicator that the previous pallet loans still exists.
-	/// If this storage is not found, the nuking process is aborted.
-	#[storage_alias]
-	pub(crate) type NextLoanId<T: Config> =
-		StorageMap<Pallet<T>, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery>;
-}
+	mod old {
+		use super::*;
 
-/// This migration nukes all storages from the pallet individually.
-pub struct NukeMigration<T>(sp_std::marker::PhantomData<T>);
-
-impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-		ensure!(
-			contains_prefixed_key(&loan_prefix()),
-			"Pallet loans prefix doesn't exists"
-		);
-
-		ensure!(
-			v0::NextLoanId::<T>::iter_values().count() == 1,
-			"Pallet loans contains doesn't contain old data"
-		);
-
-		Ok(Vec::new())
+		/// This storage comes from the previous pallet loans.
+		/// It is used as an indicator that the previous pallet loans still exists.
+		/// If this storage is not found, the nuking process is aborted.
+		#[storage_alias]
+		pub(crate) type NextLoanId<T: Config> =
+			StorageMap<Pallet<T>, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery>;
 	}
 
-	fn on_runtime_upgrade() -> Weight {
-		let old_values = v0::NextLoanId::<T>::iter_values().count();
-		if old_values > 0 {
-			let result = storage::unhashed::clear_prefix(&loan_prefix(), None, None);
+	/// This migration nukes all storages from the pallet individually.
+	pub struct Migration<T>(sp_std::marker::PhantomData<T>);
 
-			match result.maybe_cursor {
-				None => log::info!("Loans: storage cleared successful"),
-				Some(_) => log::error!("Loans: storage not totally cleared"),
+	impl<T: Config> OnRuntimeUpgrade for Migration<T> {
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			ensure!(
+				contains_prefixed_key(&loan_prefix()),
+				"Pallet loans prefix doesn't exists"
+			);
+
+			ensure!(
+				old::NextLoanId::<T>::iter_values().count() == 1,
+				"Pallet loans contains doesn't contain old data"
+			);
+
+			Ok(Vec::new())
+		}
+
+		fn on_runtime_upgrade() -> Weight {
+			let old_values = old::NextLoanId::<T>::iter_values().count();
+			if old_values > 0 {
+				let result = storage::unhashed::clear_prefix(&loan_prefix(), None, None);
+
+				match result.maybe_cursor {
+					None => log::info!("Loans: storage cleared successful"),
+					Some(_) => log::error!("Loans: storage not totally cleared"),
+				}
+
+				T::DbWeight::get().writes(result.unique.into())
+					+ T::DbWeight::get().reads(result.loops.into())
+			} else {
+				log::warn!("Loans: storage was already clear. This migration can be removed.");
+
+				T::DbWeight::get().reads(old_values as u64)
 			}
+		}
 
-			T::DbWeight::get().writes(result.unique.into())
-				+ T::DbWeight::get().reads(result.loops.into())
-		} else {
-			log::warn!("Loans: storage was already clear. This migration can be removed.");
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
+			ensure!(
+				!contains_prefixed_key(&loan_prefix()),
+				"Pallet loans prefix still exists!"
+			);
 
-			T::DbWeight::get().reads(old_values as u64)
+			ensure!(
+				old::NextLoanId::<T>::iter_values().count() == 0,
+				"Pallet loans still contains old data"
+			);
+
+			Ok(())
 		}
 	}
 
+	fn loan_prefix() -> [u8; 16] {
+		sp_io::hashing::twox_128(b"Loans")
+	}
+
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
-		ensure!(
-			!contains_prefixed_key(&loan_prefix()),
-			"Pallet loans prefix still exists!"
-		);
-
-		ensure!(
-			v0::NextLoanId::<T>::iter_values().count() == 0,
-			"Pallet loans still contains old data"
-		);
-
-		Ok(())
+	fn contains_prefixed_key(prefix: &[u8]) -> bool {
+		// Implementation extracted from a newer version of `frame_support`.
+		match sp_io::storage::next_key(prefix) {
+			Some(key) => key.starts_with(prefix),
+			None => false,
+		}
 	}
 }
 
-fn loan_prefix() -> [u8; 16] {
-	sp_io::hashing::twox_128(b"Loans")
-}
+pub mod v1 {
+	use codec::{Decode, Encode, MaxEncodedLen};
+	use frame_support::{
+		pallet_prelude::*, storage::bounded_vec::BoundedVec, storage_alias,
+		traits::OnRuntimeUpgrade, weights::Weight, Blake2_128Concat, RuntimeDebug,
+	};
+	use scale_info::TypeInfo;
+	use sp_std::collections::btree_set::BTreeSet;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec::Vec;
 
-#[cfg(feature = "try-runtime")]
-fn contains_prefixed_key(prefix: &[u8]) -> bool {
-	// Implementation extracted from a newer version of `frame_support`.
-	match sp_io::storage::next_key(prefix) {
-		Some(key) => key.starts_with(prefix),
-		None => false,
+	use super::*;
+	use crate::types::{WriteOffRule, WriteOffStatus, WriteOffTrigger};
+
+	mod v0 {
+		use super::*;
+
+		#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+		pub struct WriteOffState<Rate> {
+			pub overdue_days: u32,
+			pub percentage: Rate,
+			pub penalty: Rate,
+		}
+
+		#[storage_alias]
+		pub(crate) type WriteOffPolicy<T: Config> = StorageMap<
+			Pallet<T>,
+			Blake2_128Concat,
+			PoolIdOf<T>,
+			BoundedVec<WriteOffState<<T as Config>::Rate>, <T as Config>::MaxWriteOffPolicySize>,
+			ValueQuery,
+		>;
+	}
+
+	/// This updates the policy to the newer version.
+	pub struct Migration<T>(sp_std::marker::PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for Migration<T> {
+		fn on_runtime_upgrade() -> Weight {
+			if Pallet::<T>::on_chain_storage_version() == StorageVersion::new(0) {
+				log::warn!("Migration was already done. This migration can be removed");
+				return Weight::zero();
+			}
+
+			let mut count = 0;
+			WriteOffPolicy::<T>::translate_values(
+				|policy: BoundedVec<v0::WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>| {
+					count += 1;
+					Some(
+						policy
+							.into_iter()
+							.map(|old| WriteOffRule {
+								triggers: BTreeSet::from_iter([
+									WriteOffTrigger::PrincipalOverdueDays(old.overdue_days),
+								])
+								.try_into()
+								.expect("We have at least 1 element in the enum, qed"),
+								status: WriteOffStatus {
+									percentage: old.percentage,
+									penalty: old.penalty,
+								},
+							})
+							.collect::<Vec<_>>()
+							.try_into()
+							.expect("Size of the new vec can not be longer than previous one, qed"),
+					)
+				},
+			);
+
+			Pallet::<T>::current_storage_version().put::<Pallet<T>>();
+
+			T::DbWeight::get().reads_writes(count, count)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			Ok(v0::WriteOffPolicy::<T>::iter_values()
+				.collect::<Vec<_>>()
+				.encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+			let old_policy =
+				Vec::<BoundedVec<v0::WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>>::decode(
+					&mut state.as_ref(),
+				)
+				.map_err(|_| "Error decoding pre-upgrade state")?;
+
+			let new_police = WriteOffPolicy::<T>::iter_values();
+
+			old_policy
+				.into_iter()
+				.zip(new_police)
+				.all(|(old_vector, new_vector)| {
+					let mut policy = old_vector.iter().zip(new_vector.iter());
+					policy.all(|(old, new)| {
+						let trigger = new
+							.triggers
+							.contains(&WriteOffTrigger::PrincipalOverdueDays(old.overdue_days));
+
+						trigger
+							&& old.percentage == new.status.percentage
+							&& old.penalty == new.status.penalty
+					})
+				})
+				.then_some(())
+				.ok_or("Error: policies differ")
+		}
 	}
 }
