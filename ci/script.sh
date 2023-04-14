@@ -3,7 +3,7 @@
 set -eux
 
 RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-11-14}"
-SRTOOL_VERSION="${SRTOOL_VERSION:-1.64.0}"
+SRTOOL_VERSION="${SRTOOL_VERSION:-1.66.1-0.9.25}"
 PACKAGE="${PACKAGE:-centrifuge-runtime}" # Need to replicate job for all runtimes
 RUNTIME="${RUNTIME:-centrifuge}"
 
