@@ -17,7 +17,7 @@ jobs:
   docker:
     strategy:
       matrix:
-        os: [ ubuntu-latest-8-cores ]
+        os: [ ubuntu-latest-4-cores ]
         target: [ release, test ]
     runs-on: ${{ matrix.os }}
     env:
