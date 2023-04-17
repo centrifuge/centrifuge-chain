@@ -153,9 +153,67 @@ pub enum WriteOffTrigger {
 	OracleValuationOutdated(Moment),
 }
 
-impl Get<u32> for WriteOffTrigger {
+/// Wrapper type to identify equality berween kinds of triggers, without taking into account their
+/// inner values
+#[derive(Encode, Decode, Clone, Eq, PartialOrd, Ord, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct UniqueWriteOffTrigger(pub WriteOffTrigger);
+
+impl PartialEq for UniqueWriteOffTrigger {
+	fn eq(&self, other: &Self) -> bool {
+		match self.0 {
+			WriteOffTrigger::PrincipalOverdueDays(_) => {
+				matches!(other.0, WriteOffTrigger::PrincipalOverdueDays(_))
+			}
+			WriteOffTrigger::OracleValuationOutdated(_) => {
+				matches!(other.0, WriteOffTrigger::OracleValuationOutdated(_))
+			}
+		}
+	}
+}
+
+impl From<WriteOffTrigger> for UniqueWriteOffTrigger {
+	fn from(trigger: WriteOffTrigger) -> Self {
+		UniqueWriteOffTrigger(trigger)
+	}
+}
+
+pub struct WriteOffTriggerLen;
+impl Get<u32> for WriteOffTriggerLen {
 	fn get() -> u32 {
 		WriteOffTrigger::COUNT as u32
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use sp_std::collections::btree_set::BTreeSet;
+
+	use super::*;
+
+	#[test]
+	fn same_triggers() {
+		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen> =
+			BTreeSet::from_iter([
+				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
+				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(2)),
+			])
+			.try_into()
+			.unwrap();
+
+		assert_eq!(triggers.len(), 1);
+	}
+
+	#[test]
+	fn different_triggers() {
+		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen> =
+			BTreeSet::from_iter([
+				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
+				UniqueWriteOffTrigger(WriteOffTrigger::OracleValuationOutdated(1)),
+			])
+			.try_into()
+			.unwrap();
+
+		assert_eq!(triggers.len(), 2);
 	}
 }
 
@@ -163,7 +221,7 @@ impl Get<u32> for WriteOffTrigger {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffRule<Rate> {
 	/// If any of the triggers is valid, the write-off rule can be applied
-	pub triggers: BoundedBTreeSet<WriteOffTrigger, WriteOffTrigger>,
+	pub triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen>,
 
 	/// Content of this write off rule to be applied
 	pub status: WriteOffStatus<Rate>,

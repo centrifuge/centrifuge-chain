@@ -708,7 +708,7 @@ pub mod pallet {
 				.filter_map(|rule| {
 					rule.triggers
 						.iter()
-						.map(|trigger| loan.check_write_off_trigger(trigger))
+						.map(|trigger| loan.check_write_off_trigger(&trigger.0))
 						.find(|e| match e {
 							Ok(value) => *value,
 							Err(_) => true,

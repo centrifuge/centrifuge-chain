@@ -9,7 +9,7 @@ use super::{
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
-		WriteOffRule, WriteOffStatus, WriteOffTrigger, WrittenOffError,
+		UniqueWriteOffTrigger, WriteOffRule, WriteOffStatus, WriteOffTrigger, WrittenOffError,
 	},
 	valuation::{DiscountedCashFlow, ValuationMethod},
 };
@@ -63,7 +63,7 @@ mod util {
 	}
 
 	pub fn make_write_off_rule(
-		triggers: impl IntoIterator<Item = WriteOffTrigger>,
+		triggers: impl IntoIterator<Item = UniqueWriteOffTrigger>,
 		percentage: f64,
 		penalty: f64,
 	) -> WriteOffRule<Rate> {
@@ -86,7 +86,7 @@ mod util {
 			RuntimeOrigin::signed(0),
 			POOL_A,
 			vec![make_write_off_rule(
-				[WriteOffTrigger::PrincipalOverdueDays(1)],
+				[WriteOffTrigger::PrincipalOverdueDays(1).into()],
 				percentage,
 				penalty,
 			)]
@@ -1255,7 +1255,7 @@ mod write_off_policy {
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
 					vec![util::make_write_off_rule(
-						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						[WriteOffTrigger::PrincipalOverdueDays(1).into()],
 						POLICY_PERCENTAGE,
 						POLICY_PENALTY,
 					)]
@@ -1277,7 +1277,7 @@ mod write_off_policy {
 					RuntimeOrigin::signed(POOL_ADMIN),
 					POOL_B,
 					vec![util::make_write_off_rule(
-						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						[WriteOffTrigger::PrincipalOverdueDays(1).into()],
 						POLICY_PERCENTAGE,
 						POLICY_PENALTY,
 					)]
@@ -1298,7 +1298,7 @@ mod write_off_policy {
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![util::make_write_off_rule(
-					[WriteOffTrigger::PrincipalOverdueDays(1)],
+					[WriteOffTrigger::PrincipalOverdueDays(1).into()],
 					POLICY_PERCENTAGE,
 					POLICY_PENALTY,
 				)]
@@ -1324,20 +1324,28 @@ mod write_off_policy {
 				POOL_A,
 				vec![
 					util::make_write_off_rule(
-						[WriteOffTrigger::OracleValuationOutdated(10)],
+						[WriteOffTrigger::OracleValuationOutdated(10).into()],
 						0.8,
 						0.8
 					),
 					util::make_write_off_rule(
 						[
-							WriteOffTrigger::PrincipalOverdueDays(1),
-							WriteOffTrigger::OracleValuationOutdated(0)
+							WriteOffTrigger::PrincipalOverdueDays(1).into(),
+							WriteOffTrigger::OracleValuationOutdated(0).into()
 						],
 						0.2,
 						0.2
 					),
-					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(4)], 0.5, 0.5),
-					util::make_write_off_rule([WriteOffTrigger::PrincipalOverdueDays(9)], 0.3, 0.9),
+					util::make_write_off_rule(
+						[WriteOffTrigger::PrincipalOverdueDays(4).into()],
+						0.5,
+						0.5
+					),
+					util::make_write_off_rule(
+						[WriteOffTrigger::PrincipalOverdueDays(9).into()],
+						0.3,
+						0.9
+					),
 				]
 				.try_into()
 				.unwrap(),

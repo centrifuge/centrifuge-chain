@@ -140,7 +140,7 @@ where
 	// Worst case policy where you need to iterate for the whole policy.
 	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
 		let triggers: BoundedBTreeSet<_, _> =
-			BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(0)])
+			BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(0).into()])
 				.try_into()
 				.unwrap();
 		[

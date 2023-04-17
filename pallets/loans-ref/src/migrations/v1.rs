@@ -48,7 +48,8 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 					.map(|old| WriteOffRule {
 						triggers: BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(
 							old.overdue_days,
-						)])
+						)
+						.into()])
 						.try_into()
 						.expect("We have at least 1 element in the enum, qed"),
 						status: WriteOffStatus {
@@ -89,9 +90,8 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 			.all(|(old_vector, new_vector)| {
 				let mut policy = old_vector.iter().zip(new_vector.iter());
 				policy.all(|(old, new)| {
-					let trigger = new
-						.triggers
-						.contains(&WriteOffTrigger::PrincipalOverdueDays(old.overdue_days));
+					let trigger = new.triggers.first().unwrap().0
+						== WriteOffTrigger::PrincipalOverdueDays(old.overdue_days);
 
 					trigger
 						&& old.percentage == new.status.percentage
