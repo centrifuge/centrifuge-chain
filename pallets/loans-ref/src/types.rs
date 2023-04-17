@@ -21,7 +21,6 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
 	pallet_prelude::DispatchResult,
-	storage::bounded_btree_set::BoundedBTreeSet,
 	traits::{
 		tokens::{self},
 		UnixTime,
@@ -31,14 +30,16 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
-	traits::{BlockNumberProvider, Get, Zero},
-	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
+	traits::{BlockNumberProvider, Zero},
+	ArithmeticError, DispatchError, FixedPointNumber,
 };
 use sp_std::cmp::Ordering;
-use strum::EnumCount;
 
 use super::pallet::{Config, Error};
-use crate::valuation::ValuationMethod;
+use crate::{
+	valuation::ValuationMethod,
+	write_off::{WriteOffStatus, WriteOffTrigger},
+};
 
 /// Error related to loan creation
 #[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -129,147 +130,6 @@ pub enum PortfolioValuationUpdateType {
 	Exact,
 	/// Portfolio Valuation was updated inexactly based on loan status changes
 	Inexact,
-}
-
-/// Indicator of when the write off should be applied
-#[derive(
-	Encode,
-	Decode,
-	Clone,
-	PartialEq,
-	Eq,
-	PartialOrd,
-	Ord,
-	TypeInfo,
-	RuntimeDebug,
-	MaxEncodedLen,
-	EnumCount,
-)]
-pub enum WriteOffTrigger {
-	/// Number in days after the maturity date has passed
-	PrincipalOverdueDays(u32),
-
-	/// Seconds since the oracle valuation was last updated
-	OracleValuationOutdated(Moment),
-}
-
-/// Wrapper type to identify equality berween kinds of triggers, without taking into account their
-/// inner values
-#[derive(Encode, Decode, Clone, Eq, PartialOrd, Ord, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct UniqueWriteOffTrigger(pub WriteOffTrigger);
-
-impl PartialEq for UniqueWriteOffTrigger {
-	fn eq(&self, other: &Self) -> bool {
-		match self.0 {
-			WriteOffTrigger::PrincipalOverdueDays(_) => {
-				matches!(other.0, WriteOffTrigger::PrincipalOverdueDays(_))
-			}
-			WriteOffTrigger::OracleValuationOutdated(_) => {
-				matches!(other.0, WriteOffTrigger::OracleValuationOutdated(_))
-			}
-		}
-	}
-}
-
-impl From<WriteOffTrigger> for UniqueWriteOffTrigger {
-	fn from(trigger: WriteOffTrigger) -> Self {
-		UniqueWriteOffTrigger(trigger)
-	}
-}
-
-pub struct WriteOffTriggerLen;
-impl Get<u32> for WriteOffTriggerLen {
-	fn get() -> u32 {
-		WriteOffTrigger::COUNT as u32
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use sp_std::collections::btree_set::BTreeSet;
-
-	use super::*;
-
-	#[test]
-	fn same_triggers() {
-		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen> =
-			BTreeSet::from_iter([
-				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
-				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(2)),
-			])
-			.try_into()
-			.unwrap();
-
-		assert_eq!(triggers.len(), 1);
-	}
-
-	#[test]
-	fn different_triggers() {
-		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen> =
-			BTreeSet::from_iter([
-				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
-				UniqueWriteOffTrigger(WriteOffTrigger::OracleValuationOutdated(1)),
-			])
-			.try_into()
-			.unwrap();
-
-		assert_eq!(triggers.len(), 2);
-	}
-}
-
-/// The data structure for storing a specific write off policy
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffRule<Rate> {
-	/// If any of the triggers is valid, the write-off rule can be applied
-	pub triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen>,
-
-	/// Content of this write off rule to be applied
-	pub status: WriteOffStatus<Rate>,
-}
-
-/// The status of the writen off
-#[derive(
-	Encode,
-	Decode,
-	Clone,
-	PartialEq,
-	Eq,
-	Default,
-	PartialOrd,
-	Ord,
-	TypeInfo,
-	RuntimeDebug,
-	MaxEncodedLen,
-)]
-pub struct WriteOffStatus<Rate> {
-	/// Percentage of present value we are going to write off on a loan
-	pub percentage: Rate,
-
-	/// Additional interest that accrues on the written down loan as penalty
-	pub penalty: Rate,
-}
-
-impl<Rate> WriteOffStatus<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		debt: Balance,
-	) -> Result<Balance, ArithmeticError> {
-		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
-	}
-
-	pub fn compose_max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
-		Self {
-			percentage: self.percentage.max(other.percentage),
-			penalty: self.penalty.max(other.penalty),
-		}
-	}
-
-	pub fn is_none(&self) -> bool {
-		self.percentage.is_zero() && self.penalty.is_zero()
-	}
 }
 
 /// Specify the expected repayments date

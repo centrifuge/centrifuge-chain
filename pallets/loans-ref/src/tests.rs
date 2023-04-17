@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, time::Duration};
+use std::time::Duration;
 
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
@@ -9,9 +9,10 @@ use super::{
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
-		UniqueWriteOffTrigger, WriteOffRule, WriteOffStatus, WriteOffTrigger, WrittenOffError,
+		WrittenOffError,
 	},
 	valuation::{DiscountedCashFlow, ValuationMethod},
+	write_off::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 };
 
 const COLLATERAL_VALUE: Balance = 10000;
@@ -62,22 +63,6 @@ mod util {
 		(interest * balance as f64) as Balance
 	}
 
-	pub fn make_write_off_rule(
-		triggers: impl IntoIterator<Item = UniqueWriteOffTrigger>,
-		percentage: f64,
-		penalty: f64,
-	) -> WriteOffRule<Rate> {
-		WriteOffRule {
-			triggers: BTreeSet::from_iter(triggers.into_iter())
-				.try_into()
-				.unwrap(),
-			status: WriteOffStatus {
-				percentage: Rate::from_float(percentage),
-				penalty: Rate::from_float(penalty),
-			},
-		}
-	}
-
 	pub fn set_up_policy(percentage: f64, penalty: f64) {
 		MockPermissions::mock_has(|_, _, _| true);
 		MockPools::mock_pool_exists(|_| true);
@@ -85,10 +70,10 @@ mod util {
 		Loans::update_write_off_policy(
 			RuntimeOrigin::signed(0),
 			POOL_A,
-			vec![make_write_off_rule(
-				[WriteOffTrigger::PrincipalOverdueDays(1).into()],
-				percentage,
-				penalty,
+			vec![WriteOffRule::new(
+				[WriteOffTrigger::PrincipalOverdueDays(1)],
+				Rate::from_float(percentage),
+				Rate::from_float(penalty),
 			)]
 			.try_into()
 			.unwrap(),
@@ -1254,10 +1239,10 @@ mod write_off_policy {
 				Loans::update_write_off_policy(
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
-					vec![util::make_write_off_rule(
-						[WriteOffTrigger::PrincipalOverdueDays(1).into()],
-						POLICY_PERCENTAGE,
-						POLICY_PENALTY,
+					vec![WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						Rate::from_float(POLICY_PERCENTAGE),
+						Rate::from_float(POLICY_PENALTY),
 					)]
 					.try_into()
 					.unwrap(),
@@ -1276,10 +1261,10 @@ mod write_off_policy {
 				Loans::update_write_off_policy(
 					RuntimeOrigin::signed(POOL_ADMIN),
 					POOL_B,
-					vec![util::make_write_off_rule(
-						[WriteOffTrigger::PrincipalOverdueDays(1).into()],
-						POLICY_PERCENTAGE,
-						POLICY_PENALTY,
+					vec![WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						Rate::from_float(POLICY_PERCENTAGE),
+						Rate::from_float(POLICY_PENALTY),
 					)]
 					.try_into()
 					.unwrap(),
@@ -1297,10 +1282,10 @@ mod write_off_policy {
 			assert_ok!(Loans::update_write_off_policy(
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
-				vec![util::make_write_off_rule(
-					[WriteOffTrigger::PrincipalOverdueDays(1).into()],
-					POLICY_PERCENTAGE,
-					POLICY_PENALTY,
+				vec![WriteOffRule::new(
+					[WriteOffTrigger::PrincipalOverdueDays(1)],
+					Rate::from_float(POLICY_PERCENTAGE),
+					Rate::from_float(POLICY_PENALTY),
 				)]
 				.try_into()
 				.unwrap(),
@@ -1323,28 +1308,28 @@ mod write_off_policy {
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![
-					util::make_write_off_rule(
-						[WriteOffTrigger::OracleValuationOutdated(10).into()],
-						0.8,
-						0.8
+					WriteOffRule::new(
+						[WriteOffTrigger::OracleValuationOutdated(10)],
+						Rate::from_float(0.8),
+						Rate::from_float(0.8)
 					),
-					util::make_write_off_rule(
+					WriteOffRule::new(
 						[
-							WriteOffTrigger::PrincipalOverdueDays(1).into(),
-							WriteOffTrigger::OracleValuationOutdated(0).into()
+							WriteOffTrigger::PrincipalOverdueDays(1),
+							WriteOffTrigger::OracleValuationOutdated(0)
 						],
-						0.2,
-						0.2
+						Rate::from_float(0.2),
+						Rate::from_float(0.2)
 					),
-					util::make_write_off_rule(
-						[WriteOffTrigger::PrincipalOverdueDays(4).into()],
-						0.5,
-						0.5
+					WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(4)],
+						Rate::from_float(0.5),
+						Rate::from_float(0.5)
 					),
-					util::make_write_off_rule(
-						[WriteOffTrigger::PrincipalOverdueDays(9).into()],
-						0.3,
-						0.9
+					WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(9)],
+						Rate::from_float(0.3),
+						Rate::from_float(0.9)
 					),
 				]
 				.try_into()

@@ -6,7 +6,7 @@ use cfg_types::{
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::{
-	storage::{bounded_btree_set::BoundedBTreeSet, bounded_vec::BoundedVec},
+	storage::bounded_vec::BoundedVec,
 	traits::{
 		tokens::nonfungibles::{Create, Mutate},
 		UnixTime,
@@ -15,12 +15,13 @@ use frame_support::{
 use frame_system::RawOrigin;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Get, One, Zero};
-use sp_std::{collections::btree_set::BTreeSet, time::Duration, vec};
+use sp_std::{time::Duration, vec};
 
 use super::{
 	pallet::*,
-	types::{LoanInfo, MaxBorrowAmount, WriteOffRule, WriteOffStatus, WriteOffTrigger},
+	types::{LoanInfo, MaxBorrowAmount},
 	valuation::{DiscountedCashFlow, ValuationMethod},
+	write_off::{WriteOffRule, WriteOffTrigger},
 };
 
 const OFFSET: Duration = Duration::from_secs(120);
@@ -139,30 +140,14 @@ where
 
 	// Worst case policy where you need to iterate for the whole policy.
 	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
-		let triggers: BoundedBTreeSet<_, _> =
-			BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(0).into()])
-				.try_into()
-				.unwrap();
-		[
-			vec![
-				WriteOffRule {
-					triggers: triggers.clone(),
-					status: WriteOffStatus {
-						percentage: T::Rate::zero(),
-						penalty: T::Rate::zero(),
-					},
-				};
-				T::MaxWriteOffPolicySize::get() as usize - 1
-			],
-			vec![WriteOffRule {
-				triggers: triggers,
-				status: WriteOffStatus {
-					percentage: T::Rate::one(),
-					penalty: T::Rate::zero(),
-				},
-			}],
+		vec![
+			WriteOffRule::new(
+				[WriteOffTrigger::PrincipalOverdueDays(0)],
+				T::Rate::zero(),
+				T::Rate::zero(),
+			);
+			T::MaxWriteOffPolicySize::get() as usize
 		]
-		.concat()
 		.try_into()
 		.unwrap()
 	}

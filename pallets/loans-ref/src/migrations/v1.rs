@@ -7,7 +7,7 @@ use scale_info::TypeInfo;
 use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 
 use crate::{
-	types::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
+	write_off::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 	*,
 };
 
@@ -90,12 +90,9 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 			.all(|(old_vector, new_vector)| {
 				let mut policy = old_vector.iter().zip(new_vector.iter());
 				policy.all(|(old, new)| {
-					let trigger = new.triggers.first().unwrap().0
-						== WriteOffTrigger::PrincipalOverdueDays(old.overdue_days);
-
-					trigger
-						&& old.percentage == new.status.percentage
-						&& old.penalty == new.status.penalty
+					new.has_trigger_value(WriteOffTrigger::PrincipalOverdueDays(old.overdue_days))
+						&& new.status.percentage == old.percentage
+						&& new.status.penalty == old.penalty
 				})
 			})
 			.then_some(())

@@ -43,6 +43,7 @@ pub mod migrations {
 
 pub mod types;
 pub mod valuation;
+pub mod write_off;
 
 #[cfg(test)]
 mod mock;
@@ -89,8 +90,9 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuationUpdateType, WriteOffRule, WriteOffStatus, WrittenOffError,
+		PortfolioValuationUpdateType, WrittenOffError,
 	};
+	use write_off::{WriteOffRule, WriteOffStatus};
 
 	use super::*;
 
