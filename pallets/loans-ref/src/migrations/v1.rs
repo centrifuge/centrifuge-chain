@@ -4,10 +4,10 @@ use frame_support::{
 	weights::Weight, Blake2_128Concat, RuntimeDebug,
 };
 use scale_info::TypeInfo;
-use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+use sp_std::vec::Vec;
 
 use crate::{
-	write_off::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
+	write_off::{WriteOffRule, WriteOffTrigger},
 	*,
 };
 
@@ -45,17 +45,12 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 			Some(
 				policy
 					.into_iter()
-					.map(|old| WriteOffRule {
-						triggers: BTreeSet::from_iter([WriteOffTrigger::PrincipalOverdueDays(
-							old.overdue_days,
+					.map(|old| {
+						WriteOffRule::new(
+							[WriteOffTrigger::PrincipalOverdueDays(old.overdue_days)],
+							old.percentage,
+							old.penalty,
 						)
-						.into()])
-						.try_into()
-						.expect("We have at least 1 element in the enum, qed"),
-						status: WriteOffStatus {
-							percentage: old.percentage,
-							penalty: old.penalty,
-						},
 					})
 					.collect::<Vec<_>>()
 					.try_into()
@@ -90,12 +85,49 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 			.all(|(old_vector, new_vector)| {
 				let mut policy = old_vector.iter().zip(new_vector.iter());
 				policy.all(|(old, new)| {
-					new.has_trigger_value(WriteOffTrigger::PrincipalOverdueDays(old.overdue_days))
-						&& new.status.percentage == old.percentage
-						&& new.status.penalty == old.penalty
+					*new == WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(old.overdue_days)],
+						old.percentage,
+						old.penalty,
+					)
 				})
 			})
 			.then_some(())
 			.ok_or("Error: policies differ")
+	}
+}
+
+#[cfg(all(test, feature = "try-runtime"))]
+mod tests {
+	use super::*;
+	use crate::mock::*;
+
+	#[test]
+	fn migrate() {
+		new_test_ext().execute_with(|| {
+			v0::WriteOffPolicy::<Runtime>::insert(
+				POOL_A,
+				BoundedVec::try_from(vec![
+					v0::WriteOffState {
+						overdue_days: 12,
+						percentage: Rate::from_float(0.3),
+						penalty: Rate::from_float(0.2),
+					},
+					v0::WriteOffState {
+						overdue_days: 23,
+						percentage: Rate::from_float(0.4),
+						penalty: Rate::from_float(0.1),
+					},
+				])
+				.unwrap(),
+			);
+
+			let pre_state = Migration::<Runtime>::pre_upgrade().unwrap();
+			Migration::<Runtime>::on_runtime_upgrade();
+			Migration::<Runtime>::post_upgrade(pre_state).unwrap();
+
+			let new_policy = WriteOffPolicy::<Runtime>::get(POOL_A);
+			assert_eq!(new_policy.len(), 2);
+		});
 	}
 }
