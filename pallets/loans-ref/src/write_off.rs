@@ -58,9 +58,9 @@ impl From<WriteOffTrigger> for UniqueWriteOffTrigger {
 }
 
 /// Type representing the length of different trigger kinds
-pub struct WriteOffTriggerLen;
+pub struct TriggerSize;
 
-impl Get<u32> for WriteOffTriggerLen {
+impl Get<u32> for TriggerSize {
 	fn get() -> u32 {
 		WriteOffTrigger::COUNT as u32
 	}
@@ -70,7 +70,7 @@ impl Get<u32> for WriteOffTriggerLen {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffRule<Rate> {
 	/// If any of the triggers is valid, the write-off rule can be applied
-	pub triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen>,
+	pub triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize>,
 
 	/// Content of this write off rule to be applied
 	pub status: WriteOffStatus<Rate>,
@@ -83,13 +83,9 @@ impl<Rate> WriteOffRule<Rate> {
 		penalty: Rate,
 	) -> Self {
 		Self {
-			triggers: BTreeSet::from_iter(
-				triggers
-					.into_iter()
-					.map(|trigger| UniqueWriteOffTrigger(trigger)),
-			)
-			.try_into()
-			.expect("Using `WriteOffTriggerLen`, exists no input can exceed the len, qed"),
+			triggers: BTreeSet::from_iter(triggers.into_iter().map(UniqueWriteOffTrigger))
+				.try_into()
+				.expect("Cannot exist more unique triggers in a set than `TriggerSize`, qed"),
 			status: WriteOffStatus {
 				percentage,
 				penalty,
@@ -98,15 +94,13 @@ impl<Rate> WriteOffRule<Rate> {
 	}
 
 	pub fn has_trigger(&self, trigger: WriteOffTrigger) -> bool {
-		self.triggers
-			.contains(&UniqueWriteOffTrigger(trigger.clone()))
+		self.triggers.contains(&UniqueWriteOffTrigger(trigger))
 	}
 
 	pub fn has_trigger_value(&self, trigger: WriteOffTrigger) -> bool {
 		self.triggers
 			.iter()
-			.find(|unique_trigger| unique_trigger.0 == trigger)
-			.is_some()
+			.any(|unique_trigger| unique_trigger.0 == trigger)
 	}
 }
 
@@ -162,26 +156,24 @@ mod tests {
 
 	#[test]
 	fn same_trigger_kinds() {
-		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen> =
-			BTreeSet::from_iter([
-				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
-				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(2)),
-			])
-			.try_into()
-			.unwrap();
+		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(2)),
+		])
+		.try_into()
+		.unwrap();
 
 		assert_eq!(triggers.len(), 1);
 	}
 
 	#[test]
 	fn different_trigger_kinds() {
-		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, WriteOffTriggerLen> =
-			BTreeSet::from_iter([
-				UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
-				UniqueWriteOffTrigger(WriteOffTrigger::OracleValuationOutdated(1)),
-			])
-			.try_into()
-			.unwrap();
+		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
+			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
+			UniqueWriteOffTrigger(WriteOffTrigger::OracleValuationOutdated(1)),
+		])
+		.try_into()
+		.unwrap();
 
 		assert_eq!(triggers.len(), 2);
 	}

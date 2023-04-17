@@ -81,7 +81,7 @@ where
 		T::NonFungible::create_collection(&COLLECION_ID.into(), &borrower, &borrower).unwrap();
 		T::Permissions::add(
 			PermissionScope::Pool(pool_id),
-			borrower.clone(),
+			borrower,
 			Role::PoolRole(PoolRole::Borrower),
 		)
 		.unwrap();
