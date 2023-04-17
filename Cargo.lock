@@ -978,6 +978,7 @@ dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
  "cumulus-client-service",
+ "cumulus-pallet-session-benchmarking",
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
  "cumulus-relay-chain-inprocess-interface",
@@ -2060,6 +2061,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-pallet-session-benchmarking"
+version = "3.0.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.37#09418fc04c2608b123f36ca80f16df3d2096753b"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-session",
+ "parity-scale-codec 3.4.0",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "cumulus-pallet-xcm"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=09418fc04c2608b123f36ca80f16df3d2096753b#09418fc04c2608b123f36ca80f16df3d2096753b"
@@ -2538,6 +2553,7 @@ dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
@@ -2566,6 +2582,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-block-rewards",
  "pallet-bridge",
  "pallet-claims",
  "pallet-collator-allowlist",
@@ -6694,6 +6711,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-block-rewards"
+version = "0.1.0"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "num-traits",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-collator-selection",
+ "pallet-restricted-tokens",
+ "pallet-rewards",
+ "pallet-session",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-bounties"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29#f38bd6671d460293c93062cc1e4fe9e9e490cb29"
@@ -7728,6 +7773,7 @@ name = "pallet-rewards"
 version = "0.1.0"
 dependencies = [
  "cfg-traits",
+ "cfg-types",
  "frame-support",
  "frame-system",
  "lazy_static",
@@ -10525,12 +10571,15 @@ dependencies = [
  "orml-xtokens",
  "pallet-aura",
  "pallet-balances",
+ "pallet-block-rewards",
+ "pallet-collator-selection",
  "pallet-connectors",
  "pallet-loans-ref",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-rewards",
+ "pallet-session",
  "pallet-transaction-payment",
  "pallet-uniques",
  "pallet-xcm",

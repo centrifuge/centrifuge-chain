@@ -27,7 +27,6 @@ use cfg_traits::{
 	rewards::AccountRewards, CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect,
 	PoolNAV, PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
-pub use cfg_types::tokens::CurrencyId;
 use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
@@ -36,7 +35,10 @@ use cfg_types::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
 	time::TimeProvider,
-	tokens::{CustomMetadata, TrancheCurrency},
+	tokens::{
+		CurrencyId, CustomMetadata, StakingCurrency::BlockRewards as BlockRewardsCurrency,
+		TrancheCurrency,
+	},
 };
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -123,6 +125,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub aura: Aura,
+		pub block_rewards: BlockRewards,
 	}
 }
 
@@ -341,7 +344,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const Period: u32 = 6 * HOURS;
+	pub Period: u32 = polkadot_runtime_common::prod_or_fast!(6 * HOURS, 1 * MINUTES, "DEV_SESSION_PERIOD");
 	pub const Offset: u32 = 0;
 }
 
@@ -349,17 +352,17 @@ impl pallet_session::Config for Runtime {
 	type Keys = SessionKeys;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
-	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type SessionManager = CollatorSelection;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type WeightInfo = pallet_session::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_session::WeightInfo<Self>;
 }
 
 parameter_types! {
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxAuthorities: u32 = 32;
 }
 
@@ -492,6 +495,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// Specifically omitting Investments `update_invest_order`, `update_redeem_order`,
 					// `collect_investments`, `collect_redemptions`
 					RuntimeCall::LiquidityRewards(..) |
+					RuntimeCall::BlockRewards(..) |
 					// Specifically omitting Connectors
 					// Specifically omitting ALL XCM related pallets
 					// Specifically omitting OrmlTokens
@@ -508,6 +512,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					| RuntimeCall::Elections(..)
 					| RuntimeCall::Utility(..)
 			),
+			// TODO: Should be no change when adding BlockRewards, right?
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {
 				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
@@ -1051,7 +1056,10 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _)
+			| CurrencyId::Native
+			| CurrencyId::KSM
+			| CurrencyId::Staking(_) => false,
 			CurrencyId::AUSD => true,
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
 				.map(|m| m.additional.pool_currency)
@@ -1203,6 +1211,8 @@ impl pallet_crowdloan_claim::Config for Runtime {
 // Parameterize collator selection pallet
 parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
+
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxCandidates: u32 = 1000;
 	pub const MinCandidates: u32 = 5;
 	pub const MaxVoters: u32 = 10 * 1000;
@@ -1229,7 +1239,7 @@ impl pallet_collator_selection::Config for Runtime {
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ValidatorRegistration = Session;
-	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Self>;
 }
 
 #[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
@@ -1665,6 +1675,30 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 }
 
 frame_support::parameter_types! {
+	// BlockRewards have exactly one group and currency
+	#[derive(scale_info::TypeInfo)]
+	pub const SingleCurrencyMovement: u32 = 1;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type DomainId = RewardDomain;
+	type GroupId = u32;
+	type PalletId = RewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
+		Balance,
+		IBalance,
+		FixedI128,
+		SingleCurrencyMovement,
+	>;
+	type RuntimeEvent = RuntimeEvent;
+}
+
+frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
 	pub const MaxGroups: u32 = 20;
 
@@ -1689,6 +1723,32 @@ impl pallet_liquidity_rewards::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Weight = u64;
 	type WeightInfo = ();
+}
+
+frame_support::parameter_types! {
+	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
+	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
+	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
+	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
+}
+
+impl pallet_block_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type AuthorityId = AuraId;
+	type Balance = Balance;
+	type Beneficiary = Treasury;
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type Domain = BlockRewardsDomain;
+	type MaxChangesPerSession = MaxChangesPerEpoch;
+	type MaxCollators = MaxAuthorities;
+	type Rewards = BlockRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type StakeAmount = StakeAmount;
+	type StakeCurrencyId = BlockRewardCurrency;
+	type StakeGroupId = CollatorGroupId;
+	type Weight = u64;
+	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -1754,6 +1814,8 @@ construct_runtime!(
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
+		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>} = 110,
+		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1831,6 +1893,13 @@ pub type UncheckedExtrinsic =
 pub type CheckedExtrinsic =
 	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
 
+parameter_types! {
+	// = 16.65 CFG per epoch (12h)
+	pub const CollatorRewards: Balance = 8_325 * MILLI_CFG;
+	// = 20,096 CFG per epoch (12h)
+	pub const TotalRewards: Balance = 10_048 * CFG;
+}
+
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -1838,10 +1907,11 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	UpgradeDev1019,
+	UpgradeDev1020,
 >;
 
-type UpgradeDev1019 = SchedulerMigrationV4;
+type UpgradeDev1020 =
+	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
@@ -1922,14 +1992,6 @@ impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConv
 		let encoded = extrinsic.encode();
 		sp_runtime::OpaqueExtrinsic::decode(&mut &encoded[..])
 			.expect("Encoded extrinsic is always valid")
-	}
-}
-
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct SchedulerMigrationV4;
-impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV4 {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v3_to_v4()
 	}
 }
 
@@ -2104,11 +2166,18 @@ impl_runtime_apis! {
 	// RewardsApi
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
 		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
-			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(account_id)
+			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id)
+			.into_iter().chain(
+				pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id).into_iter()
+			).collect()
 		}
 
 		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
-			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok()
+			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
+			.or_else(|_|
+				<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
+			)
+			.ok()
 		}
 	}
 
@@ -2273,8 +2342,10 @@ impl_runtime_apis! {
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 
 			impl frame_system_benchmarking::Config for Runtime {}
+			impl cumulus_pallet_session_benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2302,6 +2373,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
+			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_balances, Balances);
@@ -2312,6 +2384,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
+			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
+			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2325,6 +2399,8 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -2334,6 +2410,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
+			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_balances, Balances);
@@ -2344,10 +2421,24 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
 			return (list, storage_info)
+		}
+	}
+
+	#[cfg(feature = "try-runtime")]
+	impl frame_try_runtime::TryRuntime<Block> for Runtime {
+		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
+			let weight = Executive::try_runtime_upgrade(checks).unwrap();
+			(weight, RuntimeBlockWeights::get().max_block)
+		}
+
+		fn execute_block(block: Block, state_root_check: bool, signature_check: bool, select: frame_try_runtime::TryStateSelect) -> Weight {
+			Executive::try_execute_block(block, state_root_check, signature_check, select).expect("execute-block failed")
 		}
 	}
 }

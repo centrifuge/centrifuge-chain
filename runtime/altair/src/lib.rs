@@ -1228,7 +1228,8 @@ impl Contains<CurrencyId> for PoolCurrency {
 			CurrencyId::Tranche(_, _)
 			| CurrencyId::Native
 			| CurrencyId::KSM
-			| CurrencyId::ForeignAsset(_) => false,
+			| CurrencyId::ForeignAsset(_)
+			| CurrencyId::Staking(_) => false,
 			CurrencyId::AUSD => true,
 		}
 	}

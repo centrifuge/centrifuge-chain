@@ -23,7 +23,7 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::AIR;
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG};
+use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
@@ -90,7 +90,10 @@ pub fn get_centrifuge_session_keys(
 pub fn get_development_session_keys(
 	keys: development_runtime::AuraId,
 ) -> development_runtime::SessionKeys {
-	development_runtime::SessionKeys { aura: keys }
+	development_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 type AccountPublic = <cfg_primitives::Signature as Verify>::Signer;
@@ -1088,6 +1091,15 @@ fn development_genesis(
 		parachain_system: Default::default(),
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		block_rewards: development_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 8_325 * MILLI_CFG,
+			total_reward: 10_048 * CFG,
+		},
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
 		ethereum: Default::default(),

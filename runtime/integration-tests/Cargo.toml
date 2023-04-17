@@ -84,6 +84,7 @@ hex = { version = "0.4.3", default_features = false }
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
 cfg-utils = { path = "../../libs/utils" }
+pallet-block-rewards = { path = "../../pallets/block-rewards" }
 pallet-connectors = { path = "../../pallets/connectors" }
 pallet-loans = { package = "pallet-loans-ref", path = "../../pallets/loans-ref" }
 pallet-permissions = { path = "../../pallets/permissions" }
@@ -91,12 +92,16 @@ pallet-pool-registry = { path = "../../pallets/pool-registry" }
 pallet-pool-system = { path = "../../pallets/pool-system" }
 pallet-rewards = { path = "../../pallets/rewards" }
 
+pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.37" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.37" }
 
+pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
+
 [features]
 default = ["runtime-development"]
+fast-runtime = ["development-runtime/fast-runtime"]
 runtime-benchmarks = [
   "default",
   "development-runtime/runtime-benchmarks",

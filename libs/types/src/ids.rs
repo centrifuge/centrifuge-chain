@@ -36,3 +36,7 @@ pub const STAKE_POT_PALLET_ID: PalletId = PalletId(*b"PotStake");
 // Other ids
 pub const CHAIN_BRIDGE_HASH_ID: [u8; 13] = *b"cent_nft_hash";
 pub const CHAIN_BRIDGE_NATIVE_TOKEN_ID: [u8; 4] = *b"xCFG";
+
+// Reward related
+/// The identifier of the group eligible to receive block rewards.
+pub const COLLATOR_GROUP_ID: u32 = 1;
