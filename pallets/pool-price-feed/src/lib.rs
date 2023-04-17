@@ -4,6 +4,7 @@ pub use pallet::*;
 pub mod pallet {
 	use cfg_traits::prices::{PriceCache, PriceRegistry};
 	use frame_support::pallet_prelude::*;
+	use orml_traits::OnNewData;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -78,6 +79,12 @@ pub mod pallet {
 			price_id: Self::PriceId,
 			collection_id: Self::CollectionId,
 		) -> DispatchResult {
+			todo!()
+		}
+	}
+
+	impl<T: Config> OnNewData<T::AccountId, T::PriceId, T::Price> for Pallet<T> {
+		fn on_new_data(who: &T::AccountId, price_id: &T::PriceId, price: &T::Price) {
 			todo!()
 		}
 	}

@@ -7591,6 +7591,7 @@ dependencies = [
  "cfg-traits",
  "frame-support",
  "frame-system",
+ "orml-traits",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "sp-arithmetic",
