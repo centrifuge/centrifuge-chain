@@ -7584,6 +7584,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-pool-price-feed"
+version = "1.0.0"
+dependencies = [
+ "cfg-mocks",
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-pool-registry"
 version = "1.0.0"
 dependencies = [

@@ -1,6 +1,6 @@
 use sp_runtime::{DispatchError, DispatchResult};
 
-/// Abstraction that represnets a storage where
+/// Abstraction that represents a storage where
 /// you can subscribe to price updates and collect them
 pub trait PriceRegistry {
 	/// A price identification
@@ -18,7 +18,8 @@ pub trait PriceRegistry {
 	/// Represents a timestamp
 	type Moment;
 
-	/// Get the price for a price id
+	/// Return the last price value for a price id
+	/// along with the moment it was updated last time
 	fn price(price_id: Self::PriceId) -> Result<(Self::Price, Self::Moment), DispatchError>;
 
 	/// Retrives a collection of prices with all prices associated to a collection id
@@ -39,6 +40,7 @@ pub trait PriceRegistry {
 
 /// Abstration to represent a cached collection of prices in memory
 pub trait PriceCache<PriceId, Price, Moment> {
-	/// Return the last price along with the moment it was updated last time
+	/// Return the last price value for a price id
+	/// along with the moment it was updated last time
 	fn price(&self, price_id: PriceId) -> Result<(Price, Moment), DispatchError>;
 }
