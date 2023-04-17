@@ -49,7 +49,7 @@ benchmarks! {
 	}
 
 	set_collator_reward {
-		assert_ok!(BlockRewards::<T>::set_total_reward(RawOrigin::Root.into(), REWARD.into()));
+		assert_ok!(BlockRewards::<T>::set_total_reward(RawOrigin::Root.into(), u128::MAX.into()));
 	}: _(RawOrigin::Root, REWARD.into())
 	verify {
 		assert_eq!(BlockRewards::<T>::next_session_changes().collator_reward, Some(REWARD.into()));
