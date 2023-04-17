@@ -11,35 +11,38 @@
 // GNU General Public License for more details.
 
 use cfg_types::{fee_keys::FeeKey, locations::Location, tokens::CurrencyId};
-use codec::WrapperTypeDecode;
+use codec::{EncodeLike, WrapperTypeDecode};
 use frame_benchmarking::*;
-use frame_support::traits::ReservableCurrency;
+use frame_support::traits::{tokens::AssetId, ReservableCurrency};
 use frame_system::RawOrigin;
+use sp_runtime::{traits::AtLeast32BitUnsigned, Saturating};
 
 use super::*;
-use crate::mock;
 benchmarks! {
 	where_clause {
-	  where <T as frame_system::Config>::AccountId: Into<<T as pallet::Config>::Location>
-		<T as pallet::Config>::CurrencyId:: CurrencyId,
+	  where
+		T: Config<CurrencyId = CurrencyId, Location = Location>,
+	<T as frame_system::Config>::AccountId: Into<<T as pallet::Config>::Location> + AtLeast32BitUnsigned,
+	  <T as pallet::Config>::Location: From<<T as frame_system::Config>::AccountId> + EncodeLike<<T as pallet::Config>::Location>,
+	  <T as frame_system::Config>::BlockNumber: AtLeast32BitUnsigned
+
 }
 
 	add_transfer_allowance {
 	  let sender: T::AccountId = account::<T::AccountId>("Sender", 1,0);
 	  let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2,0);
 
-	}:add_transfer_allowance(RawOrigin::Signed(sender), CurrencyId::Native.into(), receiver.into())
+	}:add_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
 	verify {
 	  assert_eq!(
-				get_account_currency_transfer_allowance((
-					  sender.into(),
-					  CurrencyId::Native.into(),
-					  receiver.into()
-				))
-					.unwrap(),
+				Pallet::<T>::get_account_currency_transfer_allowance(
+					  (sender,
+					  CurrencyId::Native,
+					  Location::from(receiver))
+				).unwrap(),
 				AllowanceDetails {
-					  allowed_at: 0u64,
-					  blocked_at: u64::MAX,
+					  allowed_at: 0u32.into(),
+					  blocked_at: u32::MAX.into(),
 				}
 		  )
 
