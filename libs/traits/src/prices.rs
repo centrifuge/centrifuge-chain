@@ -18,9 +18,9 @@ pub trait PriceRegistry {
 	/// Represents a timestamp
 	type Moment;
 
-	/// Return the last price value for a price id
-	/// along with the moment it was updated last time
-	fn price(price_id: Self::PriceId) -> Result<(Self::Price, Self::Moment), DispatchError>;
+	/// Return the last price value for a price id along with the moment it was updated last time
+	fn price(price_id: Self::PriceId)
+		-> Result<Option<(Self::Price, Self::Moment)>, DispatchError>;
 
 	/// Retrives a collection of prices with all prices associated to a collection id
 	fn cache(collection_id: Self::CollectionId) -> Result<Self::Cache, DispatchError>;
@@ -40,7 +40,6 @@ pub trait PriceRegistry {
 
 /// Abstration to represent a cached collection of prices in memory
 pub trait PriceCache<PriceId, Price, Moment> {
-	/// Return the last price value for a price id
-	/// along with the moment it was updated last time
-	fn price(&self, price_id: PriceId) -> Result<(Price, Moment), DispatchError>;
+	/// Return the last price value for a price id along with the moment it was updated last time
+	fn price(&self, price_id: PriceId) -> Result<Option<(Price, Moment)>, DispatchError>;
 }
