@@ -3,19 +3,24 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::prices::{PriceCache, PriceRegistry};
-	use frame_support::{pallet_prelude::*, storage::bounded_btree_set::BoundedBTreeSet};
+	use frame_support::{
+		pallet_prelude::*,
+		storage::{bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet},
+	};
 	use orml_traits::{DataProviderExtended, OnNewData, TimestampedValue};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
 		DispatchError,
 	};
 
-	/// Type that contains price information
+	/// Type that contains price information associated to a collection
 	#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
 	#[scale_info(skip_type_params(T))]
 	pub struct PriceInfo<T: Config> {
-		price_id: T::PriceId,
+		/// If it has been feeded with a value, it contains the price and the moment it was updated
 		value: Option<(T::Price, T::Moment)>,
+
+		/// Counts how many times this price has been registered for the collection it belongs
 		count: u32,
 	}
 
@@ -29,7 +34,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// A price identification
-		type PriceId: Parameter + MaxEncodedLen;
+		type PriceId: Parameter + MaxEncodedLen + Ord;
 
 		/// A collection identification
 		type CollectionId: Parameter + MaxEncodedLen + Ord;
@@ -71,7 +76,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::CollectionId,
-		BoundedVec<PriceInfo<T>, T::MaxCollectionSize>,
+		BoundedBTreeMap<T::PriceId, PriceInfo<T>, T::MaxCollectionSize>,
 		ValueQuery,
 	>;
 
@@ -88,7 +93,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PriceRegistry for Pallet<T> {
-		type Cache = PriceCacheVec<T>;
+		type Cache = CachedCollection<T>;
 		type CollectionId = T::CollectionId;
 		type Moment = T::Moment;
 		type Price = T::Price;
@@ -100,7 +105,7 @@ pub mod pallet {
 		}
 
 		fn cache(collection_id: &T::CollectionId) -> Self::Cache {
-			PriceCacheVec(PoolPrices::<T>::get(collection_id))
+			CachedCollection(PoolPrices::<T>::get(collection_id))
 		}
 
 		fn register_price_id(
@@ -112,17 +117,17 @@ pub mod pallet {
 					.map_err(|_| Error::<T>::MaxCollectionSize)
 			})?;
 			PoolPrices::<T>::try_mutate(collection_id, |collection| -> Result<_, DispatchError> {
-				match collection
-					.iter_mut()
-					.find(|info| &info.price_id == price_id)
-				{
+				match collection.get_mut(price_id) {
 					Some(info) => info.count.ensure_add_assign(1).map_err(|e| e.into()),
 					None => collection
-						.try_push(PriceInfo {
-							price_id: price_id.clone(),
-							value: Self::price(price_id),
-							count: 1,
-						})
+						.try_insert(
+							price_id.clone(),
+							PriceInfo {
+								value: Self::price(price_id),
+								count: 1,
+							},
+						)
+						.map(|_| ())
 						.map_err(|_| Error::<T>::MaxCollectionSize.into()),
 				}
 			})
@@ -133,15 +138,13 @@ pub mod pallet {
 			collection_id: &T::CollectionId,
 		) -> DispatchResult {
 			PoolPrices::<T>::mutate(collection_id, |collection| -> Result<_, DispatchError> {
-				let (index, info) = collection
-					.iter_mut()
-					.enumerate()
-					.find(|(_, info)| &info.price_id == price_id)
+				let info = collection
+					.get_mut(price_id)
 					.ok_or(Error::<T>::PriceIdNotInCollection)?;
 
 				info.count.ensure_sub_assign(1)?;
 				if info.count == 0 {
-					collection.swap_remove(index);
+					collection.remove(price_id);
 					Listening::<T>::mutate(price_id, |ids| ids.remove(collection_id));
 				}
 
@@ -155,8 +158,7 @@ pub mod pallet {
 			for collection_id in Listening::<T>::get(price_id) {
 				PoolPrices::<T>::mutate(collection_id, |collection| {
 					collection
-						.iter_mut()
-						.find(|info| &info.price_id == price_id)
+						.get_mut(price_id)
 						.map(|info| info.value = Self::price(price_id))
 				});
 			}
@@ -164,16 +166,17 @@ pub mod pallet {
 	}
 
 	/// A collection cached in memory
-	pub struct PriceCacheVec<T: Config>(BoundedVec<PriceInfo<T>, T::MaxCollectionSize>);
+	pub struct CachedCollection<T: Config>(
+		BoundedBTreeMap<T::PriceId, PriceInfo<T>, T::MaxCollectionSize>,
+	);
 
-	impl<T: Config> PriceCache<T::PriceId, T::Price, T::Moment> for PriceCacheVec<T> {
+	impl<T: Config> PriceCache<T::PriceId, T::Price, T::Moment> for CachedCollection<T> {
 		fn price(
 			&self,
 			price_id: &T::PriceId,
 		) -> Result<Option<(T::Price, T::Moment)>, DispatchError> {
 			self.0
-				.iter()
-				.find(|info| &info.price_id == price_id)
+				.get(price_id)
 				.map(|info| info.value.clone())
 				.ok_or(Error::<T>::PriceIdNotInCollection.into())
 		}
