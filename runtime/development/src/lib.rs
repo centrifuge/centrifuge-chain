@@ -1910,8 +1910,10 @@ pub type Executive = frame_executive::Executive<
 	UpgradeDev1020,
 >;
 
-type UpgradeDev1020 =
-	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>;
+type UpgradeDev1020 = (
+	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>,
+	pallet_loans_ref::migrations::v1::Migration<Runtime>,
+);
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;

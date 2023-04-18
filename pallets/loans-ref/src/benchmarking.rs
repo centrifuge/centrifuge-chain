@@ -5,9 +5,12 @@ use cfg_types::{
 	permissions::{PermissionScope, PoolRole, Role},
 };
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::traits::{
-	tokens::nonfungibles::{Create, Mutate},
-	UnixTime,
+use frame_support::{
+	storage::bounded_vec::BoundedVec,
+	traits::{
+		tokens::nonfungibles::{Create, Mutate},
+		UnixTime,
+	},
 };
 use frame_system::RawOrigin;
 use sp_arithmetic::FixedPointNumber;
@@ -16,8 +19,9 @@ use sp_std::{time::Duration, vec};
 
 use super::{
 	pallet::*,
-	types::{LoanInfo, MaxBorrowAmount, WriteOffState},
+	types::{LoanInfo, MaxBorrowAmount},
 	valuation::{DiscountedCashFlow, ValuationMethod},
+	write_off::{WriteOffRule, WriteOffTrigger},
 };
 
 const OFFSET: Duration = Duration::from_secs(120);
@@ -77,7 +81,7 @@ where
 		T::NonFungible::create_collection(&COLLECION_ID.into(), &borrower, &borrower).unwrap();
 		T::Permissions::add(
 			PermissionScope::Pool(pool_id),
-			borrower.clone(),
+			borrower,
 			Role::PoolRole(PoolRole::Borrower),
 		)
 		.unwrap();
@@ -134,31 +138,27 @@ where
 		.unwrap();
 	}
 
+	// Worst case policy where you need to iterate for the whole policy.
+	fn create_policy() -> BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize> {
+		vec![
+			WriteOffRule::new(
+				[WriteOffTrigger::PrincipalOverdueDays(0)],
+				T::Rate::zero(),
+				T::Rate::zero(),
+			);
+			T::MaxWriteOffPolicySize::get() as usize
+		]
+		.try_into()
+		.unwrap()
+	}
+
 	fn set_policy(pool_id: PoolIdOf<T>) {
 		let pool_admin = account::<T::AccountId>("pool_admin", 0, 0);
-
-		// Worst case policy where you need to iterate for the whole policy.
-		let policy = [
-			vec![
-				WriteOffState {
-					overdue_days: u32::MAX,
-					percentage: T::Rate::zero(),
-					penalty: T::Rate::zero(),
-				};
-				T::MaxWriteOffPolicySize::get() as usize - 1
-			],
-			vec![WriteOffState {
-				overdue_days: 0, // Last element is overdue
-				percentage: T::Rate::zero(),
-				penalty: T::Rate::zero(),
-			}],
-		]
-		.concat();
 
 		Pallet::<T>::update_write_off_policy(
 			RawOrigin::Signed(pool_admin).into(),
 			pool_id,
-			policy.try_into().unwrap(),
+			Self::create_policy(),
 		)
 		.unwrap();
 	}
@@ -263,15 +263,7 @@ benchmarks! {
 	update_write_off_policy {
 		let pool_admin = account("pool_admin", 0, 0);
 		let pool_id = Helper::<T>::prepare_benchmark();
-
-		let state = WriteOffState {
-			overdue_days: 0,
-			percentage: T::Rate::zero(),
-			penalty: T::Rate::zero(),
-		};
-		let policy = vec![state; T::MaxWriteOffPolicySize::get() as usize]
-			.try_into()
-			.unwrap();
+		let policy = Helper::<T>::create_policy();
 
 	}: _(RawOrigin::Signed(pool_admin), pool_id, policy)
 

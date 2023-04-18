@@ -31,12 +31,15 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Zero},
-	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
+	ArithmeticError, DispatchError, FixedPointNumber,
 };
 use sp_std::cmp::Ordering;
 
 use super::pallet::{Config, Error};
-use crate::valuation::ValuationMethod;
+use crate::{
+	valuation::ValuationMethod,
+	write_off::{WriteOffStatus, WriteOffTrigger},
+};
 
 /// Error related to loan creation
 #[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -127,91 +130,6 @@ pub enum PortfolioValuationUpdateType {
 	Exact,
 	/// Portfolio Valuation was updated inexactly based on loan status changes
 	Inexact,
-}
-
-/// The data structure for storing a specific write off policy
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffState<Rate> {
-	/// Number in days after the maturity has passed at which this write off policy is valid
-	pub overdue_days: u32,
-
-	/// Percentage of present value we are going to write off on a loan
-	pub percentage: Rate,
-
-	/// Additional interest that accrues on the written off loan as penalty
-	pub penalty: Rate,
-}
-
-impl<Rate> WriteOffState<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	/// Check if a `WriteOffState` is applicable for a loan with the specified `maturity_date`.
-	fn applicable(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
-		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
-		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
-	}
-
-	/// From all overdue write off states, it returns the minor.
-	///
-	/// Suppose a policy with the following states:
-	/// - overdue_days: 5
-	/// - overdue_days: 10
-	/// - overdue_days: 15
-	///
-	/// If the loan is not overdue, it will not return any state.
-	/// If the loan overdue by 4 days, it will not return any state.
-	/// If the loan is overdue by 9 days, it will return the first state.
-	/// If the loan is overdue by 60 days, it will return the third state.
-	pub fn find_best(
-		policy: impl Iterator<Item = WriteOffState<Rate>>,
-		maturity_date: Moment,
-		now: Moment,
-	) -> Option<WriteOffState<Rate>> {
-		policy
-			.filter_map(|p| p.applicable(maturity_date, now).ok()?.then_some(p))
-			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
-	}
-
-	pub fn status(&self) -> WriteOffStatus<Rate> {
-		WriteOffStatus {
-			percentage: self.percentage,
-			penalty: self.penalty,
-		}
-	}
-}
-
-/// Diferent kinds of write off status that a loan can be
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffStatus<Rate> {
-	/// Percentage of present value we are going to write off on a loan
-	pub percentage: Rate,
-
-	/// Additional interest that accrues on the written down loan as penalty per sec
-	pub penalty: Rate,
-}
-
-impl<Rate> WriteOffStatus<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		debt: Balance,
-	) -> Result<Balance, ArithmeticError> {
-		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
-	}
-
-	pub fn max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
-		Self {
-			percentage: self.percentage.max(other.percentage),
-			penalty: self.penalty.max(other.penalty),
-		}
-	}
-
-	pub fn is_none(&self) -> bool {
-		self.percentage.is_zero() && self.penalty.is_zero()
-	}
 }
 
 /// Specify the expected repayments date
@@ -324,7 +242,7 @@ pub struct LoanInfo<Asset, Balance, Rate> {
 	/// Restrictions of this loan
 	restrictions: LoanRestrictions<Rate>,
 
-	/// Interest rate per second with any penalty applied
+	/// Interest rate per year with any penalty applied
 	interest_rate: Rate,
 }
 
@@ -484,6 +402,21 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off_status(&self) -> &WriteOffStatus<T::Rate> {
 		&self.write_off_status
+	}
+
+	/// Check if a write off rule is applicable for this loan
+	pub fn check_write_off_trigger(
+		&self,
+		trigger: &WriteOffTrigger,
+	) -> Result<bool, DispatchError> {
+		let now = T::Time::now().as_secs();
+		match trigger {
+			WriteOffTrigger::PrincipalOverdueDays(days) => {
+				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
+				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
+			}
+			WriteOffTrigger::OracleValuationOutdated(_seconds) => Ok(false),
+		}
 	}
 
 	pub fn calculate_debt(&self, when: Moment) -> Result<T::Balance, DispatchError> {
