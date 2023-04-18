@@ -30,10 +30,7 @@ benchmarks! {
 }
 
 	add_transfer_allowance {
-	  let sender: T::AccountId = account::<T::AccountId>("Sender", 1,0);
-	  let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2,0);
-		  T::ReserveCurrency::deposit_creating(&sender, 100u32.into());
-
+	let (sender, receiver) = set_up_users::<T>();
 	}:add_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
 	verify {
 	  assert_eq!(
@@ -51,11 +48,8 @@ benchmarks! {
   }
 
   remove_transfer_allowance {
-		let sender: T::AccountId = account::<T::AccountId>("Sender", 1,0);
-		let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2,0);
-		T::ReserveCurrency::deposit_creating(&sender, 100u32.into());
+	  let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
-
   }:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
 	verify {
 	assert_eq!(
@@ -70,6 +64,29 @@ benchmarks! {
 				}
 		  )
 	}
+  add_allowance_delay {
+		let (sender, receiver) = set_up_users::<T>();
+  }:add_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native, 200u32.into())
+  verify {
+	  assert_eq!(
+		  Pallet::<T>::get_account_currency_restriction_count_delay(
+			  sender,
+						CurrencyId::Native,
+		  ).unwrap(),
+		  AllowanceMetadata {
+			  allowance_count: 0,
+			  current_delay: Some(200u32.into()),
+			  once_modifiable_after: None
+		  }
+	  )
+  }
+}
+
+fn set_up_users<T: Config>() -> (T::AccountId, T::AccountId) {
+	let sender: T::AccountId = account::<T::AccountId>("Sender", 1, 0);
+	let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2, 0);
+	T::ReserveCurrency::deposit_creating(&sender, 100u32.into());
+	(sender, receiver)
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
