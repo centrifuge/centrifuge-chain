@@ -36,10 +36,10 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 	fn on_runtime_upgrade() -> Weight {
 		if Pallet::<T>::on_chain_storage_version() > StorageVersion::new(0) {
 			log::warn!("Migration was already done. This migration can be removed");
-			return Weight::zero();
+			return T::DbWeight::get().reads(1);
 		}
 
-		let mut count = 0;
+		let mut count: u64 = 0;
 		WriteOffPolicy::<T>::translate_values(|policy: v0::WriteOffStates<T>| {
 			count += 1;
 			Some(
@@ -62,7 +62,7 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 
 		log::info!("Successful migration: v0 -> v1. Items: {count}");
 
-		T::DbWeight::get().reads_writes(count, count)
+		T::DbWeight::get().reads_writes(count.saturating_add(1), count.saturating_add(1))
 	}
 
 	#[cfg(feature = "try-runtime")]

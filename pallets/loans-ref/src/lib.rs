@@ -481,7 +481,7 @@ pub mod pallet {
 		/// - Time passes and the policy can be applied.
 		/// - Write of with a policy that says: percentage 0.3, penaly 0.4
 		/// - The loan is written off with the maximum between the policy and the current rule:
-		///   percentage 0.5, penaly 0.4
+		///   percentage 0.5, penalty 0.4
 		///
 		/// No special permisions are required to this call.
 		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
@@ -688,7 +688,7 @@ pub mod pallet {
 			})
 		}
 
-		/// From all overdue write off rules, it returns the one has highest percentage
+		/// From all overdue write off rules, it returns the one with the highest percentage
 		/// (or highest penalty, if same percentage) that can be applied.
 		///
 		/// Suppose a policy with the following rules:
@@ -697,7 +697,7 @@ pub mod pallet {
 		/// - overdue_days: 15,  percentage 20%
 		///
 		/// If the loan is not overdue, it will not return any rule.
-		/// If the loan overdue by 4 days, it will not return any rule.
+		/// If the loan is overdue by 4 days, it will not return any rule.
 		/// If the loan is overdue by 9 days, it will return the first rule.
 		/// If the loan is overdue by 60 days, it will return the second rule
 		/// (because it has a higher percetage).
