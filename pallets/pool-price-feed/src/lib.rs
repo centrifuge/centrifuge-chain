@@ -3,26 +3,14 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::prices::{PriceCache, PriceRegistry};
-	use frame_support::{
-		pallet_prelude::*,
-		storage::{bounded_btree_map::BoundedBTreeMap, bounded_btree_set::BoundedBTreeSet},
-	};
+	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
 	use orml_traits::{DataProviderExtended, OnNewData, TimestampedValue};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
 		DispatchError,
 	};
 
-	/// Type that contains price information associated to a collection
-	#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebugNoBound)]
-	#[scale_info(skip_type_params(T))]
-	pub struct PriceInfo<T: Config> {
-		/// If it has been feeded with a value, it contains the price and the moment it was updated
-		value: Option<(T::Price, T::Moment)>,
-
-		/// Counts how many times this price has been registered for the collection it belongs
-		count: u32,
-	}
+	type PriceValueOf<T> = Option<(<T as Config>::Price, <T as Config>::Moment)>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -60,23 +48,23 @@ pub mod pallet {
 		type MaxCollections: Get<u32>;
 	}
 
-	/// Storage that holds the collection ids where a price id is registered
+	/// Storage that contains the registering information
 	#[pallet::storage]
 	pub(crate) type Listening<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::PriceId,
-		BoundedBTreeSet<T::CollectionId, T::MaxCollections>,
+		BoundedBTreeMap<T::CollectionId, u32, T::MaxCollections>,
 		ValueQuery,
 	>;
 
-	/// Type that contains the price information associated to a collection.
+	/// Storage that contains the price values of a collection.
 	#[pallet::storage]
 	pub(crate) type PoolPrices<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::CollectionId,
-		BoundedBTreeMap<T::PriceId, PriceInfo<T>, T::MaxCollectionSize>,
+		BoundedBTreeMap<T::PriceId, PriceValueOf<T>, T::MaxCollectionSize>,
 		ValueQuery,
 	>;
 
@@ -99,7 +87,7 @@ pub mod pallet {
 		type Price = T::Price;
 		type PriceId = T::PriceId;
 
-		fn price(price_id: &T::PriceId) -> Option<(T::Price, T::Moment)> {
+		fn price(price_id: &T::PriceId) -> PriceValueOf<T> {
 			T::DataProvider::get_no_op(&price_id)
 				.map(|timestamped| (timestamped.value, timestamped.timestamp))
 		}
@@ -112,23 +100,19 @@ pub mod pallet {
 			price_id: &T::PriceId,
 			collection_id: &T::CollectionId,
 		) -> DispatchResult {
-			Listening::<T>::try_mutate(price_id, |ids| {
-				ids.try_insert(collection_id.clone())
-					.map_err(|_| Error::<T>::MaxCollectionSize)
-			})?;
-			PoolPrices::<T>::try_mutate(collection_id, |collection| -> Result<_, DispatchError> {
-				match collection.get_mut(price_id) {
-					Some(info) => info.count.ensure_add_assign(1).map_err(|e| e.into()),
-					None => collection
-						.try_insert(
-							price_id.clone(),
-							PriceInfo {
-								value: Self::price(price_id),
-								count: 1,
-							},
-						)
-						.map(|_| ())
-						.map_err(|_| Error::<T>::MaxCollectionSize.into()),
+			Listening::<T>::try_mutate(price_id, |counters| match counters.get_mut(collection_id) {
+				Some(counter) => counter.ensure_add_assign(1).map_err(|e| e.into()),
+				None => {
+					counters
+						.try_insert(collection_id.clone(), 0)
+						.map_err(|_| Error::<T>::MaxCollectionNumber)?;
+
+					PoolPrices::<T>::try_mutate(collection_id, |collection| {
+						collection
+							.try_insert(price_id.clone(), Self::price(price_id))
+							.map(|_| ())
+							.map_err(|_| Error::<T>::MaxCollectionSize.into())
+					})
 				}
 			})
 		}
@@ -137,15 +121,17 @@ pub mod pallet {
 			price_id: &T::PriceId,
 			collection_id: &T::CollectionId,
 		) -> DispatchResult {
-			PoolPrices::<T>::mutate(collection_id, |collection| -> Result<_, DispatchError> {
-				let info = collection
-					.get_mut(price_id)
+			Listening::<T>::mutate(price_id, |counters| {
+				let counter = counters
+					.get_mut(collection_id)
 					.ok_or(Error::<T>::PriceIdNotInCollection)?;
 
-				info.count.ensure_sub_assign(1)?;
-				if info.count == 0 {
-					collection.remove(price_id);
-					Listening::<T>::mutate(price_id, |ids| ids.remove(collection_id));
+				counter.ensure_sub_assign(1)?;
+				if *counter == 0 {
+					counters.remove(collection_id);
+					PoolPrices::<T>::mutate(collection_id, |collection| {
+						collection.remove(price_id)
+					});
 				}
 
 				Ok(())
@@ -155,11 +141,11 @@ pub mod pallet {
 
 	impl<T: Config> OnNewData<T::AccountId, T::PriceId, T::Price> for Pallet<T> {
 		fn on_new_data(_: &T::AccountId, price_id: &T::PriceId, _: &T::Price) {
-			for collection_id in Listening::<T>::get(price_id) {
+			for collection_id in Listening::<T>::get(price_id).keys() {
 				PoolPrices::<T>::mutate(collection_id, |collection| {
 					collection
 						.get_mut(price_id)
-						.map(|info| info.value = Self::price(price_id))
+						.map(|value| *value = Self::price(price_id))
 				});
 			}
 		}
@@ -167,17 +153,14 @@ pub mod pallet {
 
 	/// A collection cached in memory
 	pub struct CachedCollection<T: Config>(
-		BoundedBTreeMap<T::PriceId, PriceInfo<T>, T::MaxCollectionSize>,
+		BoundedBTreeMap<T::PriceId, PriceValueOf<T>, T::MaxCollectionSize>,
 	);
 
 	impl<T: Config> PriceCache<T::PriceId, T::Price, T::Moment> for CachedCollection<T> {
-		fn price(
-			&self,
-			price_id: &T::PriceId,
-		) -> Result<Option<(T::Price, T::Moment)>, DispatchError> {
+		fn price(&self, price_id: &T::PriceId) -> Result<PriceValueOf<T>, DispatchError> {
 			self.0
 				.get(price_id)
-				.map(|info| info.value.clone())
+				.map(|value| value.clone())
 				.ok_or(Error::<T>::PriceIdNotInCollection.into())
 		}
 	}

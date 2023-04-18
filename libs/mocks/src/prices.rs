@@ -26,24 +26,24 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_price(f: impl Fn(T::PriceId) -> DispatchResult + 'static) {
+		pub fn mock_price(f: impl Fn(&T::PriceId) -> DispatchResult + 'static) {
 			register_call!(f);
 		}
 
 		pub fn mock_cache(
-			f: impl Fn(T::CollectionId) -> Result<T::Cache, DispatchResult> + 'static,
+			f: impl Fn(&T::CollectionId) -> Result<T::Cache, DispatchResult> + 'static,
 		) {
 			register_call!(f);
 		}
 
 		pub fn mock_register_price_id(
-			f: impl Fn(T::PriceId, T::CollectionId) -> DispatchResult + 'static,
+			f: impl Fn(&T::PriceId, &T::CollectionId) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
 		pub fn mock_unregister_price_id(
-			f: impl Fn(T::PriceId, T::CollectionId) -> DispatchResult + 'static,
+			f: impl Fn(&T::PriceId, &T::CollectionId) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
@@ -56,19 +56,25 @@ pub mod pallet {
 		type Price = T::Price;
 		type PriceId = T::PriceId;
 
-		fn price(a: T::PriceId) -> Result<(T::Price, T::Moment), DispatchError> {
+		fn price(a: &T::PriceId) -> Option<(T::Price, T::Moment)> {
+			let a = unsafe { std::mem::transmute::<_, &'static T::PriceId>(a) };
 			execute_call!(a)
 		}
 
-		fn cache(a: T::CollectionId) -> Result<T::Cache, DispatchError> {
+		fn cache(a: &T::CollectionId) -> T::Cache {
+			let a = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(a) };
 			execute_call!(a)
 		}
 
-		fn register_price_id(a: T::PriceId, b: T::CollectionId) -> DispatchResult {
+		fn register_price_id(a: &T::PriceId, b: &T::CollectionId) -> DispatchResult {
+			let a = unsafe { std::mem::transmute::<_, &'static T::PriceId>(a) };
+			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
 		}
 
-		fn unregister_price_id(a: T::PriceId, b: T::CollectionId) -> DispatchResult {
+		fn unregister_price_id(a: &T::PriceId, b: &T::CollectionId) -> DispatchResult {
+			let a = unsafe { std::mem::transmute::<_, &'static T::PriceId>(a) };
+			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
 		}
 	}
@@ -79,7 +85,9 @@ pub mod pallet {
 
 		use super::*;
 
-		pub struct MockPriceCache<T: Config>(pub HashMap<T::PriceId, (T::Price, T::Moment)>);
+		pub struct MockPriceCache<T: Config>(
+			pub HashMap<T::PriceId, Option<(T::Price, T::Moment)>>,
+		);
 
 		impl<T: Config> PriceCache<T::PriceId, T::Price, T::Moment> for MockPriceCache<T>
 		where
@@ -87,7 +95,10 @@ pub mod pallet {
 			T::Price: Clone,
 			T::Moment: Clone,
 		{
-			fn price(&self, price_id: T::PriceId) -> Result<(T::Price, T::Moment), DispatchError> {
+			fn price(
+				&self,
+				price_id: &T::PriceId,
+			) -> Result<Option<(T::Price, T::Moment)>, DispatchError> {
 				Ok(self
 					.0
 					.get(&price_id)
