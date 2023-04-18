@@ -19,27 +19,26 @@ pub trait PriceRegistry {
 	type Moment;
 
 	/// Return the last price value for a price id along with the moment it was updated last time
-	fn price(price_id: Self::PriceId)
-		-> Result<Option<(Self::Price, Self::Moment)>, DispatchError>;
+	fn price(price_id: &Self::PriceId) -> Option<(Self::Price, Self::Moment)>;
 
 	/// Retrives a collection of prices with all prices associated to a collection id
-	fn cache(collection_id: Self::CollectionId) -> Result<Self::Cache, DispatchError>;
+	fn cache(collection_id: &Self::CollectionId) -> Self::Cache;
 
 	/// Start listening price changes for a price id in a collection id
 	fn register_price_id(
-		price_id: Self::PriceId,
-		collection_id: Self::CollectionId,
+		price_id: &Self::PriceId,
+		collection_id: &Self::CollectionId,
 	) -> DispatchResult;
 
 	/// Start listening price changes for a price id in a collection id
 	fn unregister_price_id(
-		price_id: Self::PriceId,
-		collection_id: Self::CollectionId,
+		price_id: &Self::PriceId,
+		collection_id: &Self::CollectionId,
 	) -> DispatchResult;
 }
 
 /// Abstration to represent a cached collection of prices in memory
 pub trait PriceCache<PriceId, Price, Moment> {
 	/// Return the last price value for a price id along with the moment it was updated last time
-	fn price(&self, price_id: PriceId) -> Result<Option<(Price, Moment)>, DispatchError>;
+	fn price(&self, price_id: &PriceId) -> Result<Option<(Price, Moment)>, DispatchError>;
 }
