@@ -28,10 +28,10 @@ pub mod pallet {
 		type CollectionId: Parameter + MaxEncodedLen + Ord;
 
 		/// Represents a price
-		type Price: Parameter + MaxEncodedLen + Ord + Copy;
+		type Price: Parameter + MaxEncodedLen + Ord;
 
 		/// Represents a timestamp
-		type Moment: Parameter + MaxEncodedLen + Copy;
+		type Moment: Parameter + MaxEncodedLen;
 
 		/// Data provider for initializing price values
 		type DataProvider: DataProviderExtended<
@@ -88,7 +88,7 @@ pub mod pallet {
 		type PriceId = T::PriceId;
 
 		fn price(price_id: &T::PriceId) -> PriceValueOf<T> {
-			T::DataProvider::get_no_op(&price_id)
+			T::DataProvider::get_no_op(price_id)
 				.map(|timestamped| (timestamped.value, timestamped.timestamp))
 		}
 
@@ -160,8 +160,8 @@ pub mod pallet {
 		fn price(&self, price_id: &T::PriceId) -> Result<PriceValueOf<T>, DispatchError> {
 			self.0
 				.get(price_id)
-				.map(|value| value.clone())
-				.ok_or(Error::<T>::PriceIdNotInCollection.into())
+				.cloned()
+				.ok_or_else(|| Error::<T>::PriceIdNotInCollection.into())
 		}
 	}
 }
