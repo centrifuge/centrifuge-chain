@@ -86,8 +86,8 @@ where
 	let call_id = Map::try_get(location.hash::<Blake2_128>())
 		.unwrap_or_else(|_| panic!("Mock was not found. Location: {location:?}"));
 
-	storage::execute_call(call_id, input).unwrap_or_else(|| {
-		panic!("Mock was found but its input/output types differ. Location: {location:?}")
+	storage::execute_call(call_id, input).unwrap_or_else(|err| {
+		panic!("{err}. Location: {location:?}");
 	})
 }
 

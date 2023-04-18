@@ -5,12 +5,12 @@ use frame_support::StorageHasher;
 pub struct FunctionLocation(String);
 
 impl FunctionLocation {
-	/// Creates a location for the function who has create the given clousure used as a locator
+	/// Creates a location for the function which created the given closure used as a locator
 	pub fn from<F: Fn()>(_: F) -> Self {
 		let location = std::any::type_name::<F>();
 		let location = &location[..location.len() - "::{{closure}}".len()];
 
-		// Remove generic attributes from signature if it has
+		// Remove generic attributes from signature if it has any
 		let location = location
 			.ends_with('>')
 			.then(|| {
