@@ -43,68 +43,33 @@ benchmarks! {
 					  Location::from(receiver))
 				).unwrap(),
 				AllowanceDetails {
-					  allowed_at: 0u32.into(),
+					  allowed_at: T::BlockNumber::zero(),
 					  blocked_at: T::BlockNumber::max_value(),
 				}
 		  )
 
   }
-  // remove_allowance {
-	//   add_transfer_allowance(RuntimeOrigin::signed(SENDER), CurrencyId::A, ACCOUNT_RECIEVER.into())
-  // }:remove_transfer_allowance(
-	// 		RuntimeOrigin::signed(SENDER),
-	// 		CurrencyId::A,
-	// 		ACCOUNT_RECEIVER.into(),
-	// )
-	// verify {
 
-	// 	  assert_eq!(
-	// 			TransferAllowList::get_account_currency_transfer_allowance((
-	// 				  SENDER,
-	// 				  CurrencyId::A,
-	// 				  Location::TestLocal(ACCOUNT_RECEIVER)
-	// 			))
-	// 				.unwrap(),
-	// 			AllowanceDetails {
-	// 				  // current block is 50, no delay set
-	// 				  allowed_at: 0u64,
-	// 				  blocked_at: 50u64,
-	// 			}
-	// 	  );
-	// }
-	// purge_allowance {
+  remove_transfer_allowance {
+		let sender: T::AccountId = account::<T::AccountId>("Sender", 1,0);
+		let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2,0);
+		T::ReserveCurrency::deposit_creating(&sender, 100u32.into());
+		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
 
-	// }: {}
-	// verify {
-
-	// }
-	// add_delay {
-
-	// }: {}
-	// verify {
-
-	// }
-
-	// update_delay {
-
-	// }: {}
-	// verify {
-
-	// }
-
-	// toggle_delay_future_modifiable {
-
-	// }: {}
-	// verify {
-
-	// }
-	// purge_delay {
-
-	// }: {}
-	// verify {
-
-	// }
-
+  }:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
+	verify {
+	assert_eq!(
+			Pallet::<T>::get_account_currency_transfer_allowance(
+					(sender,
+					 CurrencyId::Native,
+					 Location::from(receiver))
+			).unwrap(),
+				AllowanceDetails {
+					  allowed_at: T::BlockNumber::zero(),
+					  blocked_at: <frame_system::Pallet<T>>::block_number(),
+				}
+		  )
+	}
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);
