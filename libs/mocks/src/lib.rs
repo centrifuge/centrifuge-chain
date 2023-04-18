@@ -1,13 +1,13 @@
+mod data;
 mod fees;
 mod permissions;
 mod pools;
-mod prices;
 mod rewards;
 
+pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
 pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
-pub use prices::pallet as pallet_mock_prices;
 pub use rewards::pallet as pallet_mock_rewards;
 
 #[cfg(test)]

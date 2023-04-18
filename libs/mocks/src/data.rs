@@ -1,15 +1,15 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::prices::{PriceCollection, PriceRegistry};
+	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type PriceId;
+		type DataId;
 		type CollectionId;
-		type Collection: PriceCollection<Self::PriceId, Self::Price, Self::Moment>;
-		type Price;
+		type Collection: DataCollection<Self::DataId, Self::Data, Self::Moment>;
+		type Data;
 		type Moment;
 	}
 
@@ -26,7 +26,7 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_price(f: impl Fn(&T::PriceId) -> Option<(T::Price, T::Moment)> + 'static) {
+		pub fn mock_get(f: impl Fn(&T::DataId) -> Option<(T::Data, T::Moment)> + 'static) {
 			register_call!(f);
 		}
 
@@ -34,28 +34,28 @@ pub mod pallet {
 			register_call!(f);
 		}
 
-		pub fn mock_register_price_id(
-			f: impl Fn(&T::PriceId, &T::CollectionId) -> DispatchResult + 'static,
+		pub fn mock_register_data_id(
+			f: impl Fn(&T::DataId, &T::CollectionId) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_unregister_price_id(
-			f: impl Fn(&T::PriceId, &T::CollectionId) -> DispatchResult + 'static,
+		pub fn mock_unregister_data_id(
+			f: impl Fn(&T::DataId, &T::CollectionId) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 	}
 
-	impl<T: Config> PriceRegistry for Pallet<T> {
+	impl<T: Config> DataRegistry for Pallet<T> {
 		type Collection = T::Collection;
 		type CollectionId = T::CollectionId;
+		type Data = T::Data;
+		type DataId = T::DataId;
 		type Moment = T::Moment;
-		type Price = T::Price;
-		type PriceId = T::PriceId;
 
-		fn price(a: &T::PriceId) -> Option<(T::Price, T::Moment)> {
-			let a = unsafe { std::mem::transmute::<_, &'static T::PriceId>(a) };
+		fn get(a: &T::DataId) -> Option<(T::Data, T::Moment)> {
+			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
 			execute_call!(a)
 		}
 
@@ -64,14 +64,14 @@ pub mod pallet {
 			execute_call!(a)
 		}
 
-		fn register_price_id(a: &T::PriceId, b: &T::CollectionId) -> DispatchResult {
-			let a = unsafe { std::mem::transmute::<_, &'static T::PriceId>(a) };
+		fn register_data_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
+			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
 			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
 		}
 
-		fn unregister_price_id(a: &T::PriceId, b: &T::CollectionId) -> DispatchResult {
-			let a = unsafe { std::mem::transmute::<_, &'static T::PriceId>(a) };
+		fn unregister_data_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
+			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
 			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
 		}
@@ -83,23 +83,23 @@ pub mod pallet {
 
 		use super::*;
 
-		pub struct MockPriceCollection<T: Config>(
-			pub HashMap<T::PriceId, Option<(T::Price, T::Moment)>>,
+		pub struct MockDataCollection<T: Config>(
+			pub HashMap<T::DataId, Option<(T::Data, T::Moment)>>,
 		);
 
-		impl<T: Config> PriceCollection<T::PriceId, T::Price, T::Moment> for MockPriceCollection<T>
+		impl<T: Config> DataCollection<T::DataId, T::Data, T::Moment> for MockDataCollection<T>
 		where
-			T::PriceId: std::hash::Hash + Eq,
-			T::Price: Clone,
+			T::DataId: std::hash::Hash + Eq,
+			T::Data: Clone,
 			T::Moment: Clone,
 		{
-			fn price(
+			fn data(
 				&self,
-				price_id: &T::PriceId,
-			) -> Result<Option<(T::Price, T::Moment)>, DispatchError> {
+				data_id: &T::DataId,
+			) -> Result<Option<(T::Data, T::Moment)>, DispatchError> {
 				Ok(self
 					.0
-					.get(&price_id)
+					.get(&data_id)
 					.ok_or(DispatchError::CannotLookup)?
 					.clone())
 			}
