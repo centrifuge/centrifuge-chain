@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::prices::{PriceCache, PriceRegistry};
+	use cfg_traits::prices::{PriceCollection, PriceRegistry};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -8,7 +8,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type PriceId;
 		type CollectionId;
-		type Cache: PriceCache<Self::PriceId, Self::Price, Self::Moment>;
+		type Collection: PriceCollection<Self::PriceId, Self::Price, Self::Moment>;
 		type Price;
 		type Moment;
 	}
@@ -26,13 +26,11 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_price(f: impl Fn(&T::PriceId) -> DispatchResult + 'static) {
+		pub fn mock_price(f: impl Fn(&T::PriceId) -> Option<(T::Price, T::Moment)> + 'static) {
 			register_call!(f);
 		}
 
-		pub fn mock_cache(
-			f: impl Fn(&T::CollectionId) -> Result<T::Cache, DispatchResult> + 'static,
-		) {
+		pub fn mock_cache(f: impl Fn(&T::CollectionId) -> T::Collection + 'static) {
 			register_call!(f);
 		}
 
@@ -50,7 +48,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PriceRegistry for Pallet<T> {
-		type Cache = T::Cache;
+		type Collection = T::Collection;
 		type CollectionId = T::CollectionId;
 		type Moment = T::Moment;
 		type Price = T::Price;
@@ -61,7 +59,7 @@ pub mod pallet {
 			execute_call!(a)
 		}
 
-		fn cache(a: &T::CollectionId) -> T::Cache {
+		fn collection(a: &T::CollectionId) -> T::Collection {
 			let a = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(a) };
 			execute_call!(a)
 		}
@@ -85,11 +83,11 @@ pub mod pallet {
 
 		use super::*;
 
-		pub struct MockPriceCache<T: Config>(
+		pub struct MockPriceCollection<T: Config>(
 			pub HashMap<T::PriceId, Option<(T::Price, T::Moment)>>,
 		);
 
-		impl<T: Config> PriceCache<T::PriceId, T::Price, T::Moment> for MockPriceCache<T>
+		impl<T: Config> PriceCollection<T::PriceId, T::Price, T::Moment> for MockPriceCollection<T>
 		where
 			T::PriceId: std::hash::Hash + Eq,
 			T::Price: Clone,

@@ -2,7 +2,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::prices::{PriceCache, PriceRegistry};
+	use cfg_traits::prices::{PriceCollection, PriceRegistry};
 	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
 	use orml_traits::{DataProviderExtended, OnNewData, TimestampedValue};
 	use sp_runtime::{
@@ -81,7 +81,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PriceRegistry for Pallet<T> {
-		type Cache = CachedCollection<T>;
+		type Collection = CachedCollection<T>;
 		type CollectionId = T::CollectionId;
 		type Moment = T::Moment;
 		type Price = T::Price;
@@ -92,7 +92,7 @@ pub mod pallet {
 				.map(|timestamped| (timestamped.value, timestamped.timestamp))
 		}
 
-		fn cache(collection_id: &T::CollectionId) -> Self::Cache {
+		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
 			CachedCollection(PoolPrices::<T>::get(collection_id))
 		}
 
@@ -156,7 +156,7 @@ pub mod pallet {
 		BoundedBTreeMap<T::PriceId, PriceValueOf<T>, T::MaxCollectionSize>,
 	);
 
-	impl<T: Config> PriceCache<T::PriceId, T::Price, T::Moment> for CachedCollection<T> {
+	impl<T: Config> PriceCollection<T::PriceId, T::Price, T::Moment> for CachedCollection<T> {
 		fn price(&self, price_id: &T::PriceId) -> Result<PriceValueOf<T>, DispatchError> {
 			self.0
 				.get(price_id)
