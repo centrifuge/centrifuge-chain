@@ -1494,7 +1494,7 @@ impl pallet_interest_accrual::Config for Runtime {
 
 parameter_types! {
 	#[derive(scale_info::TypeInfo)]
-	pub const LocalCurrencyPrefix: [u8; 14] = CONNECTORS_LOCAL_CURRENCY_PREFIX;
+	pub const GeneralCurrencyPrefix: [u8; 12] = GENERAL_CURRENCY_INDEX_PREFIX;
 }
 
 impl pallet_connectors::Config for Runtime {
@@ -1502,7 +1502,7 @@ impl pallet_connectors::Config for Runtime {
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type LocalCurrencyPrefix = LocalCurrencyPrefix;
+	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
 	type Permission = Permissions;
 	type PoolInspect = PoolSystem;
 	type Rate = Rate;

@@ -13,19 +13,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{PoolInspect};
+use cfg_traits::{GeneralCurrencyIndex, PoolInspect};
 use cfg_types::domain_address::{Domain, DomainAddress, DomainLocator};
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
-use frame_support::traits::{
-	fungibles::{Inspect, Mutate, Transfer},
-	OriginTrait,
+use frame_support::{
+	ensure,
+	traits::{
+		fungibles::{Inspect, Mutate, Transfer},
+		OriginTrait,
+	},
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::U256;
-use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
+use sp_runtime::{traits::AtLeast32BitUnsigned, DispatchError, FixedPointNumber};
 use sp_std::{convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
@@ -171,11 +174,16 @@ pub mod pallet {
 			+ Ord
 			+ TypeInfo
 			+ MaxEncodedLen
-			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>;
+			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>
+			+ GeneralCurrencyIndex<
+				<Self as Config>::GeneralCurrencyPrefix,
+				CurrencyId = <Self as Config>::CurrencyId,
+				GeneralIndex = u128,
+			>;
 
 		/// The prefix for currencies added via Connectors.
 		#[pallet::constant]
-		type LocalCurrencyPrefix: Get<[u8; 14]>;
+		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 	}
 
 	#[pallet::event]
@@ -208,20 +216,10 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type KnownConnectors<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 
-	/// The set of tokens which can be used by connectors in its local `u16` representation.
-	/// Each token can be represented by `u128` via `T::LocalCurrencyPrefix ++ LocalCurrencyId`.
-	///
-	/// NOTE: New entries are assumed to derive their corresponding identifier from [NextFreeLocalCurrencyId].
-	#[pallet::storage]
-	pub(crate) type LocalCurrencyId<T: Config> =
-		StorageMap<_, Blake2_128Concat, <T as pallet::Config>::CurrencyId, u16>;
-
-	/// The pointer to the next free local token identifier.
-	#[pallet::storage]
-	pub(crate) type NextFreeLocalCurrencyId<T: Config> = StorageValue<_, u16, OptionQuery>;
-
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Failed to map the asset to its u128 representation
+		AssetNotFound,
 		/// A pool could not be found
 		PoolNotFound,
 		/// A tranche could not be found
@@ -244,8 +242,6 @@ pub mod pallet {
 		InvalidIncomingMessageOrigin,
 		/// Failed to decode an incoming message
 		InvalidIncomingMessage,
-		/// Failed to map the asset to its u128 representation
-		UnregisteredAsset,
 	}
 
 	#[pallet::call]
@@ -284,7 +280,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			currency: CurrencyIdOf<T>,
-			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -298,8 +293,9 @@ pub mod pallet {
 				who,
 				Message::AddPool {
 					pool_id,
-					decimals,
-					currency: Self::try_get_u128(currency)?,
+					currency: <Pallet<T> as GeneralCurrencyIndex<
+						<T as Config>::GeneralCurrencyPrefix,
+					>>::get_general_index(currency)?,
 				},
 				domain,
 			)?;
@@ -358,7 +354,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
-			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -373,7 +368,6 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					price,
-					decimals,
 				},
 				domain,
 			)?;
@@ -513,9 +507,39 @@ pub mod pallet {
 				who.clone(),
 				Message::Transfer {
 					amount,
-					token: Self::try_get_u128(asset_id)?,
+					currency: <Pallet<T> as GeneralCurrencyIndex<
+						<T as Config>::GeneralCurrencyPrefix,
+					>>::get_general_index(asset_id)?,
 					source_address: account_to_bytes(&who)?,
 					destination_address: domain_address.address(),
+				},
+				domain_address.domain(),
+			)?;
+
+			Ok(())
+		}
+
+		/// Add a CurrencyId to the set of known currencies, enabling that currency for Pool creation.
+		// TODO: Replace weight after benchmarking
+		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		#[pallet::call_index(8)]
+		pub fn add_currency(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			domain_address: DomainAddress,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let general_index = <Pallet<T> as GeneralCurrencyIndex<
+				<T as Config>::GeneralCurrencyPrefix,
+			>>::get_general_index(currency_id)?;
+
+			Self::do_send_message(
+				who,
+				Message::AddCurrency {
+					currency: general_index,
+					// FIXME: In PR which adds evm_address to AssetRegistry
+					evm_address: [0u8; 20],
 				},
 				domain_address.domain(),
 			)?;
@@ -632,20 +656,25 @@ pub mod pallet {
 
 			encoded
 		}
+	}
+}
 
-		/// Returns the `u128` representation of a currency if there exists a local token identifier for it.
-		/// Prepends the local token identifier with the [LocalCurrencyPrefix].
-		pub(crate) fn try_get_u128(
-			asset: <T as pallet::Config>::CurrencyId,
-		) -> Result<u128, DispatchError> {
-			let local_token_id: u16 =
-				LocalCurrencyId::<T>::get(asset).ok_or(Error::<T>::UnregisteredAsset)?;
-			let mut prefix_bytes = [0u8; 16];
-			prefix_bytes[..14].copy_from_slice(&<T as pallet::Config>::LocalCurrencyPrefix::get());
-			let prefix = u128::from_be_bytes(prefix_bytes);
-			let global_id: u128 = prefix.ensure_add(local_token_id.into())?;
-			Ok(global_id)
-		}
+impl<T, Prefix> GeneralCurrencyIndex<Prefix> for Pallet<T>
+where
+	T: pallet::Config,
+{
+	type CurrencyId = <T as pallet::Config>::CurrencyId;
+	type GeneralIndex = u128;
+
+	fn get_general_index(
+		currency: <T as pallet::Config>::CurrencyId,
+	) -> Result<Self::GeneralIndex, DispatchError> {
+		ensure!(
+			<T as Config>::AssetRegistry::metadata(&currency).is_some(),
+			Error::<T>::AssetNotFound
+		);
+
+		CurrencyIdOf::<T>::get_general_index(currency)
 	}
 }
 

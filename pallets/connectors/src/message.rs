@@ -35,10 +35,17 @@ where
 	Rate: Encode + Decode,
 {
 	Invalid,
+	AddCurrency {
+		currency: u128,
+		evm_address: [u8; 20],
+	},
 	AddPool {
 		pool_id: PoolId,
 		currency: u128,
-		decimals: u8,
+	},
+	AllowPoolCurrency {
+		currency: u128,
+		pool_id: PoolId,
 	},
 	AddTranche {
 		pool_id: PoolId,
@@ -51,7 +58,6 @@ where
 	UpdateTrancheTokenPrice {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		decimals: u8,
 		price: Rate,
 	},
 	UpdateMember {
@@ -63,7 +69,7 @@ where
 	// Bidirectional: Domain must not accept every incoming token.
 	// Sender must ensure beforehand that the receiver will not reject
 	Transfer {
-		token: u128,
+		currency: u128,
 		source_address: Address,
 		destination_address: Address,
 		amount: Balance,
@@ -80,28 +86,28 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		address: Address,
-		token: u128,
+		currency: u128,
 		amount: Balance,
 	},
 	DecreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		address: Address,
-		token: u128,
+		currency: u128,
 		amount: Balance,
 	},
 	IncreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		address: Address,
-		token: u128,
+		currency: u128,
 		amount: Balance,
 	},
 	DecreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		address: Address,
-		token: u128,
+		currency: u128,
 		amount: Balance,
 	},
 	CollectRedem {
@@ -144,21 +150,23 @@ impl<
 	/// in other domains and MUST follow the defined standard.
 	fn call_type(&self) -> u8 {
 		match self {
-			Self::Invalid => 0,
-			Self::AddPool { .. } => 1,
-			Self::AddTranche { .. } => 2,
-			Self::UpdateTrancheTokenPrice { .. } => 3,
-			Self::UpdateMember { .. } => 4,
-			Self::Transfer { .. } => 5,
-			Self::TransferTrancheTokens { .. } => 6,
-			Self::IncreaseInvestOrder { .. } => 7,
-			Self::DecreaseInvestOrder { .. } => 8,
-			Self::IncreaseRedeemOrder { .. } => 9,
-			Self::DecreaseRedeemOrder { .. } => 10,
-			Self::CollectRedem { .. } => 11,
-			Self::CollectForRedeem { .. } => 12,
-			Self::CollectInvest { .. } => 13,
-			Self::CollectForInvest { .. } => 14,
+			Self::Invalid { .. } => 0,
+			Self::AddCurrency { .. } => 1,
+			Self::AddPool { .. } => 2,
+			Self::AllowPoolCurrency { .. } => 3,
+			Self::AddTranche { .. } => 4,
+			Self::UpdateTrancheTokenPrice { .. } => 5,
+			Self::UpdateMember { .. } => 6,
+			Self::Transfer { .. } => 7,
+			Self::TransferTrancheTokens { .. } => 8,
+			Self::IncreaseInvestOrder { .. } => 9,
+			Self::DecreaseInvestOrder { .. } => 10,
+			Self::IncreaseRedeemOrder { .. } => 11,
+			Self::DecreaseRedeemOrder { .. } => 12,
+			Self::CollectRedem { .. } => 13,
+			Self::CollectForRedeem { .. } => 14,
+			Self::CollectInvest { .. } => 15,
+			Self::CollectForInvest { .. } => 16,
 		}
 	}
 }
@@ -174,13 +182,20 @@ impl<
 	fn serialize(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![self.call_type()],
-			Message::AddPool {
-				pool_id,
+			Message::AddCurrency {
 				currency,
-				decimals,
+				evm_address,
 			} => encoded_message(
 				self.call_type(),
-				vec![encode_be(pool_id), encode_be(currency), decimals.encode()],
+				vec![encode_be(currency), evm_address.to_vec()],
+			),
+			Message::AddPool { pool_id, currency } => encoded_message(
+				self.call_type(),
+				vec![encode_be(pool_id), encode_be(currency)],
+			),
+			Message::AllowPoolCurrency { currency, pool_id } => encoded_message(
+				self.call_type(),
+				vec![encode_be(currency), encode_be(pool_id)],
 			),
 			Message::AddTranche {
 				pool_id,
@@ -204,15 +219,9 @@ impl<
 				pool_id,
 				tranche_id,
 				price,
-				decimals,
 			} => encoded_message(
 				self.call_type(),
-				vec![
-					encode_be(pool_id),
-					tranche_id.encode(),
-					encode_be(price),
-					decimals.encode(),
-				],
+				vec![encode_be(pool_id), tranche_id.encode(), encode_be(price)],
 			),
 			Message::UpdateMember {
 				pool_id,
@@ -229,7 +238,7 @@ impl<
 				],
 			),
 			Message::Transfer {
-				token,
+				currency: token,
 				source_address,
 				destination_address,
 				amount,
@@ -264,7 +273,7 @@ impl<
 				pool_id,
 				tranche_id,
 				address,
-				token,
+				currency: token,
 				amount,
 			} => encoded_message(
 				self.call_type(),
@@ -280,7 +289,7 @@ impl<
 				pool_id,
 				tranche_id,
 				address,
-				token,
+				currency: token,
 				amount,
 			} => encoded_message(
 				self.call_type(),
@@ -296,7 +305,7 @@ impl<
 				pool_id,
 				tranche_id,
 				address,
-				token,
+				currency: token,
 				amount,
 			} => encoded_message(
 				self.call_type(),
@@ -312,7 +321,7 @@ impl<
 				pool_id,
 				tranche_id,
 				address,
-				token,
+				currency: token,
 				amount,
 			} => encoded_message(
 				self.call_type(),
@@ -376,12 +385,19 @@ impl<
 
 		match call_type {
 			0 => Ok(Self::Invalid),
-			1 => Ok(Self::AddPool {
+			1 => Ok(Self::AddCurrency {
+				currency: decode_be_bytes::<16, _, _>(input)?,
+				evm_address: decode::<20, _, _>(input)?,
+			}),
+			2 => Ok(Self::AddPool {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
-				decimals: decode::<1, _, _>(input)?,
 			}),
-			2 => Ok(Self::AddTranche {
+			3 => Ok(Self::AllowPoolCurrency {
+				currency: decode_be_bytes::<16, _, _>(input)?,
+				pool_id: decode_be_bytes::<8, _, _>(input)?,
+			}),
+			4 => Ok(Self::AddTranche {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				decimals: decode::<1, _, _>(input)?,
@@ -389,25 +405,24 @@ impl<
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			3 => Ok(Self::UpdateTrancheTokenPrice {
+			5 => Ok(Self::UpdateTrancheTokenPrice {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
-				decimals: decode::<1, _, _>(input)?,
 			}),
-			4 => Ok(Self::UpdateMember {
+			6 => Ok(Self::UpdateMember {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
 				valid_until: decode_be_bytes::<8, _, _>(input)?,
 			}),
-			5 => Ok(Self::Transfer {
-				token: decode_be_bytes::<16, _, _>(input)?,
+			7 => Ok(Self::Transfer {
+				currency: decode_be_bytes::<16, _, _>(input)?,
 				source_address: decode::<32, _, _>(input)?,
 				destination_address: decode::<32, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			6 => Ok(Self::TransferTrancheTokens {
+			8 => Ok(Self::TransferTrancheTokens {
 				domain: deserialize::<9, _, _>(input)?,
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
@@ -415,51 +430,51 @@ impl<
 				destination_address: decode::<32, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			7 => Ok(Self::IncreaseInvestOrder {
+			9 => Ok(Self::IncreaseInvestOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
-				token: decode_be_bytes::<16, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			8 => Ok(Self::DecreaseInvestOrder {
+			10 => Ok(Self::DecreaseInvestOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
-				token: decode_be_bytes::<16, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			9 => Ok(Self::IncreaseRedeemOrder {
+			11 => Ok(Self::IncreaseRedeemOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
-				token: decode_be_bytes::<16, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			10 => Ok(Self::DecreaseRedeemOrder {
+			12 => Ok(Self::DecreaseRedeemOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
-				token: decode_be_bytes::<16, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			11 => Ok(Self::CollectRedem {
+			13 => Ok(Self::CollectRedem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
 			}),
-			12 => Ok(Self::CollectForRedeem {
+			14 => Ok(Self::CollectForRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				caller: decode::<32, _, _>(input)?,
 				user: decode::<32, _, _>(input)?,
 			}),
-			13 => Ok(Self::CollectInvest {
+			15 => Ok(Self::CollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
 			}),
-			14 => Ok(Self::CollectForInvest {
+			16 => Ok(Self::CollectForInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				caller: decode::<32, _, _>(input)?,
@@ -561,9 +576,8 @@ mod tests {
 			ConnectorMessage::AddPool {
 				pool_id: 0,
 				currency: 0,
-				decimals: 0,
 			},
-			"0100000000000000000000000000000000000000000000000000",
+			"02000000000000000000000000000000000000000000000000",
 		)
 	}
 
@@ -573,25 +587,45 @@ mod tests {
 			ConnectorMessage::AddPool {
 				pool_id: POOL_ID,
 				currency: TOKEN_ID,
-				decimals: 15,
 			},
-			"010000000000bce1a40000000000000000000000000eb5ec7b0f",
+			"020000000000bce1a40000000000000000000000000eb5ec7b",
+		)
+	}
+
+	#[test]
+	fn add_currency() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddCurrency {
+				currency: TOKEN_ID,
+				evm_address: address20_from_hex(ADDRESS_20_HEX),
+			},
+			"010000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
+		)
+	}
+	#[test]
+	fn allow_pool_currency() {
+		test_encode_decode_identity(
+			ConnectorMessage::AllowPoolCurrency {
+				currency: TOKEN_ID,
+				pool_id: 1,
+			},
+			"030000000000000000000000000eb5ec7b0000000000000001",
 		)
 	}
 
 	#[test]
 	fn add_tranche() {
 		test_encode_decode_identity(
-				ConnectorMessage::AddTranche {
-					pool_id: POOL_ID,
-					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-					token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
-					token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
-					price: Rate::one(),
-        			decimals: 0,
-				},
-				"020000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b00536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000"
-			)
+			ConnectorMessage::AddTranche {
+				pool_id: 1,
+				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				decimals: 15,
+				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
+				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+				price: Rate::one(),
+			},
+			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b0f536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000",
+		)
 	}
 
 	#[test]
@@ -601,9 +635,8 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 				price: Rate::one(),
-				decimals: 15,
 			},
-			"030000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce80000000f",
+			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000",
 		)
 	}
 
@@ -616,7 +649,7 @@ mod tests {
 					address: address32_from_hex(ADDRESS_32_HEX),
 					valid_until: 1706260138,
 				},
-				"040000000000000002811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000065b376aa"
+				"060000000000000002811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000065b376aa"
 			)
 	}
 
@@ -633,7 +666,7 @@ mod tests {
 					destination_address: domain_address.address(),
 					amount: AMOUNT,
 				},
-				"060100000000000005040000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+				"080100000000000005040000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
 			);
 	}
 
@@ -648,7 +681,7 @@ mod tests {
 					destination_address: address32_from_hex(ADDRESS_32_HEX),
 					amount: AMOUNT,
 				},
-				"060000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
+				"080000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 			)
 	}
 
@@ -661,9 +694,9 @@ mod tests {
 					destination_address: domain_address.address(),
 					source_address: address32_from_hex(ADDRESS_32_HEX),
 					amount: AMOUNT,
-        			token: TOKEN_ID,
+        			currency: TOKEN_ID,
 				},
-				"050000000000000000000000000eb5ec7b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+				"070000000000000000000000000eb5ec7b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
 			);
 	}
 
@@ -674,9 +707,9 @@ mod tests {
 					source_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
 					destination_address: address32_from_hex(ADDRESS_32_HEX),
 					amount: AMOUNT,
-        			token: TOKEN_ID,
+        			currency: TOKEN_ID,
 				},
-				"050000000000000000000000000eb5ec7b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
+				"070000000000000000000000000eb5ec7b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 			);
 	}
 
@@ -687,10 +720,10 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 				address: address32_from_hex(ADDRESS_32_HEX),
-				token: TOKEN_ID,
+				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
-			"070000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+			"090000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 
@@ -701,10 +734,10 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 				address: address32_from_hex(ADDRESS_32_HEX),
-				token: TOKEN_ID,
+				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
-			"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+			"0a0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 
@@ -715,10 +748,10 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 				address: address32_from_hex(ADDRESS_32_HEX),
-				token: TOKEN_ID,
+				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
-			"090000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+			"0b0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 
@@ -729,10 +762,10 @@ mod tests {
 				pool_id: 1,
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 				address: address32_from_hex(ADDRESS_32_HEX),
-				token: TOKEN_ID,
+				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
-			"0a0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
+			"0c0000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000000000000000000000eb5ec7b000000000052b7d2dcc80cd2e4000000",
 		)
 	}
 
@@ -745,7 +778,7 @@ mod tests {
 				caller: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
 				user: address32_from_hex(ADDRESS_32_HEX),
 			},
-			"0c0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
+			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
 		)
 	}
 
@@ -757,7 +790,7 @@ mod tests {
 				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
 				address: address32_from_hex(ADDRESS_32_HEX),
 			},
-			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+			"0f0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
 		)
 	}
 
@@ -770,7 +803,7 @@ mod tests {
 				caller: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
 				user: address32_from_hex(ADDRESS_32_HEX),
 			},
-			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
+			"100000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
 		)
 	}
 

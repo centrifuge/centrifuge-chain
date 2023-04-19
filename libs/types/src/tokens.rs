@@ -11,12 +11,13 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::types::{PoolId, TrancheId};
-use cfg_traits::TrancheCurrency as TrancheCurrencyT;
+use cfg_traits::{GeneralCurrencyIndex, TrancheCurrency as TrancheCurrencyT};
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::{traits::Get, DispatchError, TokenError};
 
 use crate::xcm::XcmMetadata;
 
@@ -76,6 +77,29 @@ impl From<u32> for CurrencyId {
 impl From<StakingCurrency> for CurrencyId {
 	fn from(inner: StakingCurrency) -> Self {
 		CurrencyId::Staking(inner)
+	}
+}
+
+impl<Prefix> GeneralCurrencyIndex<Prefix> for CurrencyId
+where
+	Prefix: Get<[u8; 12]>,
+{
+	type CurrencyId = CurrencyId;
+	type GeneralIndex = u128;
+
+	fn get_general_index(
+		currency_id: Self::CurrencyId,
+	) -> Result<Self::GeneralIndex, DispatchError> {
+		let mut bytes = [0u8; 16];
+		bytes[..12].copy_from_slice(&Prefix::get());
+
+		let currency_bytes: [u8; 4] = match currency_id.into() {
+			CurrencyId::ForeignAsset(id32) => Ok(id32.to_be_bytes()),
+			_ => Err(DispatchError::Token(TokenError::Unsupported)),
+		}?;
+
+		bytes[12..].copy_from_slice(&currency_bytes[..]);
+		Ok(u128::from_be_bytes(bytes))
 	}
 }
 
@@ -150,4 +174,7 @@ pub struct CustomMetadata {
 
 	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
 	pub pool_currency: bool,
+	// TODO: Enable in follow-up PR
+	// /// The corresponding 20-byte EVM address of the asset.
+	// pub evm_address: [u8; 20],
 }
