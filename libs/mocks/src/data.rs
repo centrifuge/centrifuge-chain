@@ -83,9 +83,8 @@ pub mod pallet {
 
 		use super::*;
 
-		pub struct MockDataCollection<T: Config>(
-			pub HashMap<T::DataId, Option<(T::Data, T::Moment)>>,
-		);
+		pub type Value<T> = (<T as Config>::Data, <T as Config>::Moment);
+		pub struct MockDataCollection<T: Config>(pub HashMap<T::DataId, Option<Value<T>>>);
 
 		impl<T: Config> DataCollection<T::DataId, T::Data, T::Moment> for MockDataCollection<T>
 		where
@@ -93,10 +92,7 @@ pub mod pallet {
 			T::Data: Clone,
 			T::Moment: Clone,
 		{
-			fn get(
-				&self,
-				data_id: &T::DataId,
-			) -> Result<Option<(T::Data, T::Moment)>, DispatchError> {
+			fn get(&self, data_id: &T::DataId) -> Result<Option<Value<T>>, DispatchError> {
 				Ok(self
 					.0
 					.get(data_id)
