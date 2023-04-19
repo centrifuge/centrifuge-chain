@@ -41,6 +41,19 @@ pub enum CurrencyId {
 
 	/// A foreign asset
 	ForeignAsset(ForeignAssetId),
+
+	/// A staking token
+	Staking(StakingCurrency),
+}
+
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum StakingCurrency {
+	/// An emulated internal, non-transferrable currency
+	/// Its issuance and holding is handled inherently
+	BlockRewards,
 }
 
 pub type ForeignAssetId = u32;
@@ -56,6 +69,13 @@ impl Default for CurrencyId {
 impl From<u32> for CurrencyId {
 	fn from(value: u32) -> Self {
 		CurrencyId::ForeignAsset(value)
+	}
+}
+
+// A shortcut anchoring the assumption made about `StakingCurrency`.
+impl From<StakingCurrency> for CurrencyId {
+	fn from(inner: StakingCurrency) -> Self {
+		CurrencyId::Staking(inner)
 	}
 }
 

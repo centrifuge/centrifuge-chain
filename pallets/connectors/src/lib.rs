@@ -13,7 +13,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{ops::EnsureAdd, PoolInspect};
+use cfg_traits::{PoolInspect};
+use cfg_types::domain_address::{Domain, DomainAddress, DomainLocator};
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
 use frame_support::traits::{
@@ -23,9 +24,9 @@ use frame_support::traits::{
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
-use sp_core::{TypeId, U256};
+use sp_core::U256;
 use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
-use sp_std::{boxed::Box, convert::TryInto, vec, vec::Vec};
+use sp_std::{convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
 mod message;
@@ -43,21 +44,6 @@ pub use contract::*;
 pub enum ParachainId {
 	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or Moonbase on a testnet.
 	Moonbeam,
-}
-
-/// A Domain is a chain or network we can send a Connectors message to.
-/// The domain indices need to match those used in the EVM contracts and these
-/// need to pass the Centrifuge domain to send tranche tokens from the other
-/// domain here. Therefore, DO NOT remove or move variants around.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub enum Domain {
-	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
-	/// NOTE: Connectors messages CAN NOT be sent directly from the Centrifuge chain to the
-	/// Centrifuge chain itself.
-	Centrifuge,
-	/// An EVM domain, identified by its EVM Chain Id
-	EVM(EVMChainId),
 }
 
 /// An encoding & decoding trait for the purpose of meeting the
@@ -92,56 +78,6 @@ impl Codec for Domain {
 			_ => Err(codec::Error::from("Unknown Domain variant")),
 		}
 	}
-}
-
-/// The EVM Chain ID
-/// The type should accomodate all chain ids listed on https://chainlist.org/.
-type EVMChainId = u64;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
-pub struct DomainLocator<Domain> {
-	pub domain: Domain,
-}
-
-impl<Domain> TypeId for DomainLocator<Domain> {
-	const TYPE_ID: [u8; 4] = *b"domn";
-}
-
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub enum DomainAddress {
-	/// A Centrifuge-Chain based account address, 32-bytes long
-	Centrifuge([u8; 32]),
-	/// An EVM chain address, 20-bytes long
-	EVM(EVMChainId, [u8; 20]),
-}
-
-impl From<DomainAddress> for Domain {
-	fn from(x: DomainAddress) -> Self {
-		match x {
-			DomainAddress::Centrifuge(_) => Domain::Centrifuge,
-			DomainAddress::EVM(chain_id, _) => Domain::EVM(chain_id),
-		}
-	}
-}
-
-impl DomainAddress {
-	/// Get the address in a 32-byte long representation.
-	/// For EVM addresses, append 12 zeros.
-	fn address(&self) -> [u8; 32] {
-		match self.clone() {
-			Self::Centrifuge(x) => x,
-			Self::EVM(_, x) => vec_to_fixed_array(x.to_vec()),
-		}
-	}
-
-	fn domain(&self) -> Domain {
-		self.clone().into()
-	}
-}
-
-impl TypeId for DomainAddress {
-	const TYPE_ID: [u8; 4] = *b"dadr";
 }
 
 // Type aliases
@@ -316,6 +252,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Set a Domain's router
 		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
+		#[pallet::call_index(0)]
 		pub fn set_domain_router(
 			origin: OriginFor<T>,
 			domain: Domain,
@@ -332,6 +269,7 @@ pub mod pallet {
 		/// Add an AccountId to the set of known connectors, allowing that origin
 		/// to send incoming messages.
 		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 			<KnownConnectors<T>>::insert(connector, ());
@@ -341,6 +279,7 @@ pub mod pallet {
 
 		/// Add a pool to a given domain
 		#[pallet::weight(< T as Config >::WeightInfo::add_pool())]
+		#[pallet::call_index(2)]
 		pub fn add_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -370,6 +309,7 @@ pub mod pallet {
 
 		/// Add a tranche to a given domain
 		#[pallet::weight(< T as Config >::WeightInfo::add_tranche())]
+		#[pallet::call_index(3)]
 		pub fn add_tranche(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -413,6 +353,7 @@ pub mod pallet {
 
 		/// Update a token price
 		#[pallet::weight(< T as Config >::WeightInfo::update_token_price())]
+		#[pallet::call_index(4)]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -442,6 +383,7 @@ pub mod pallet {
 
 		/// Update a member
 		#[pallet::weight(< T as Config >::WeightInfo::update_member())]
+		#[pallet::call_index(5)]
 		pub fn update_member(
 			origin: OriginFor<T>,
 			domain_address: DomainAddress,
@@ -492,6 +434,7 @@ pub mod pallet {
 
 		/// Transfer tranche tokens to a given address
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		#[pallet::call_index(6)]
 		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -543,6 +486,7 @@ pub mod pallet {
 
 		/// Transfer non-tranche tokens to a given address
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		#[pallet::call_index(7)]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			asset_id: CurrencyIdOf<T>,
@@ -581,8 +525,8 @@ pub mod pallet {
 
 		/// Handle an incoming message
 		/// TODO(nuno): we probably need a custom origin type for these messages to ensure they have
-		/// come in through XCM. Probably even handle it in a separate pallet? For now, let's have a
-		/// POC here to test the pipeline Ethereum ---> Moonbeam ---> Centrifuge::connectors
+		/// come in through XCM. For now, let's have a POC here to test the pipeline
+		/// Ethereum ---> Moonbeam ---> Centrifuge::connectors
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::handle())]
 		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
@@ -625,7 +569,7 @@ pub mod pallet {
 			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
 				T::RuntimeOrigin::root(),
 				// The destination to which the message should be sent
-				Box::new(xcm_domain.location),
+				xcm_domain.location,
 				fee_payer,
 				// The currency in which we want to pay fees
 				CurrencyPayment {

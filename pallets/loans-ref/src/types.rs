@@ -13,10 +13,7 @@
 
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
-	ops::{
-		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
-		EnsureSubAssign,
-	},
+	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
 	InterestAccrual, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
@@ -34,12 +31,15 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Zero},
-	ArithmeticError, DispatchError, FixedPointNumber, FixedPointOperand,
+	ArithmeticError, DispatchError, FixedPointNumber,
 };
 use sp_std::cmp::Ordering;
 
 use super::pallet::{Config, Error};
-use crate::valuation::ValuationMethod;
+use crate::{
+	valuation::ValuationMethod,
+	write_off::{WriteOffStatus, WriteOffTrigger},
+};
 
 /// Error related to loan creation
 #[derive(Encode, Decode, TypeInfo, PalletError)]
@@ -130,91 +130,6 @@ pub enum PortfolioValuationUpdateType {
 	Exact,
 	/// Portfolio Valuation was updated inexactly based on loan status changes
 	Inexact,
-}
-
-/// The data structure for storing a specific write off policy
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffState<Rate> {
-	/// Number in days after the maturity has passed at which this write off policy is valid
-	pub overdue_days: u32,
-
-	/// Percentage of present value we are going to write off on a loan
-	pub percentage: Rate,
-
-	/// Additional interest that accrues on the written off loan as penalty
-	pub penalty: Rate,
-}
-
-impl<Rate> WriteOffState<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	/// Check if a `WriteOffState` is applicable for a loan with the specified `maturity_date`.
-	fn applicable(&self, maturity_date: Moment, now: Moment) -> Result<bool, ArithmeticError> {
-		let overdue_secs = SECONDS_PER_DAY.ensure_mul(self.overdue_days.ensure_into()?)?;
-		Ok(now >= maturity_date.ensure_add(overdue_secs)?)
-	}
-
-	/// From all overdue write off states, it returns the minor.
-	///
-	/// Suppose a policy with the following states:
-	/// - overdue_days: 5
-	/// - overdue_days: 10
-	/// - overdue_days: 15
-	///
-	/// If the loan is not overdue, it will not return any state.
-	/// If the loan overdue by 4 days, it will not return any state.
-	/// If the loan is overdue by 9 days, it will return the first state.
-	/// If the loan is overdue by 60 days, it will return the third state.
-	pub fn find_best(
-		policy: impl Iterator<Item = WriteOffState<Rate>>,
-		maturity_date: Moment,
-		now: Moment,
-	) -> Option<WriteOffState<Rate>> {
-		policy
-			.filter_map(|p| p.applicable(maturity_date, now).ok()?.then_some(p))
-			.max_by(|a, b| a.overdue_days.cmp(&b.overdue_days))
-	}
-
-	pub fn status(&self) -> WriteOffStatus<Rate> {
-		WriteOffStatus {
-			percentage: self.percentage,
-			penalty: self.penalty,
-		}
-	}
-}
-
-/// Diferent kinds of write off status that a loan can be
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffStatus<Rate> {
-	/// Percentage of present value we are going to write off on a loan
-	pub percentage: Rate,
-
-	/// Additional interest that accrues on the written down loan as penalty per sec
-	pub penalty: Rate,
-}
-
-impl<Rate> WriteOffStatus<Rate>
-where
-	Rate: FixedPointNumber,
-{
-	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		debt: Balance,
-	) -> Result<Balance, ArithmeticError> {
-		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
-	}
-
-	pub fn max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
-		Self {
-			percentage: self.percentage.max(other.percentage),
-			penalty: self.penalty.max(other.penalty),
-		}
-	}
-
-	pub fn is_none(&self) -> bool {
-		self.percentage.is_zero() && self.penalty.is_zero()
-	}
 }
 
 /// Specify the expected repayments date
@@ -327,7 +242,7 @@ pub struct LoanInfo<Asset, Balance, Rate> {
 	/// Restrictions of this loan
 	restrictions: LoanRestrictions<Rate>,
 
-	/// Interest rate per second with any penalty applied
+	/// Interest rate per year with any penalty applied
 	interest_rate: Rate,
 }
 
@@ -357,17 +272,7 @@ where
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
-		// TODO: correct rate validation.
-		// Ideally we would like only to check here if the yearly rate is valid,
-		// without reference_yearly_rate() and popule the accrual storage.
-		// Once the loan becomes active, it will be referenced.
-		// Thus, a validate method should be immutable, without alter any storage.
-		// This can be easier modeled once:
-		// https://github.com/centrifuge/centrifuge-chain/issues/1189 be merged.
-		// By now, the following line does the trick.
-		T::InterestAccrual::convert_additive_rate_to_per_sec(self.interest_rate)?;
-
-		Ok(())
+		T::InterestAccrual::validate_rate(self.interest_rate)
 	}
 }
 
@@ -469,12 +374,11 @@ impl<T: Config> ActiveLoan<T> {
 		borrower: T::AccountId,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
+		T::InterestAccrual::reference_rate(info.interest_rate)?;
+
 		Ok(ActiveLoan {
 			loan_id,
-			info: LoanInfo {
-				interest_rate: T::InterestAccrual::reference_yearly_rate(info.interest_rate)?,
-				..info
-			},
+			info,
 			borrower,
 			write_off_status: WriteOffStatus::default(),
 			origination_date: now,
@@ -500,23 +404,27 @@ impl<T: Config> ActiveLoan<T> {
 		&self.write_off_status
 	}
 
-	/// Returns the debt for the current loan.
-	/// If None, it returns the corresponding debt at now().
-	pub fn debt(&self, when: Option<Moment>) -> Result<T::Balance, DispatchError> {
-		// TODO: simplify this once issue
-		// https://github.com/centrifuge/centrifuge-chain/issues/1203 is merged.
-		match when {
-			Some(when) if when != T::Time::now().as_secs() => T::InterestAccrual::previous_debt(
-				self.info.interest_rate,
-				self.normalized_debt,
-				when,
-			),
-			_ => T::InterestAccrual::current_debt(self.info.interest_rate, self.normalized_debt),
+	/// Check if a write off rule is applicable for this loan
+	pub fn check_write_off_trigger(
+		&self,
+		trigger: &WriteOffTrigger,
+	) -> Result<bool, DispatchError> {
+		let now = T::Time::now().as_secs();
+		match trigger {
+			WriteOffTrigger::PrincipalOverdueDays(days) => {
+				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
+				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
+			}
+			WriteOffTrigger::OracleValuationOutdated(_seconds) => Ok(false),
 		}
 	}
 
+	pub fn calculate_debt(&self, when: Moment) -> Result<T::Balance, DispatchError> {
+		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, when)
+	}
+
 	pub fn present_value_at(&self, when: Moment) -> Result<T::Balance, DispatchError> {
-		self.present_value(self.debt(Some(when))?, when)
+		self.present_value(self.calculate_debt(when)?, when)
 	}
 
 	/// An optimized version of `ActiveLoan::present_value_at()` when last updated is now.
@@ -574,14 +482,14 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::unreference_rate(old_interest_rate)
 	}
 
-	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
+	fn max_borrow_amount(&self, when: Moment) -> Result<T::Balance, DispatchError> {
 		Ok(match self.info.restrictions.max_borrow_amount {
 			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
 				.saturating_sub(self.total_borrowed),
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.debt(None)?),
+				.saturating_sub(self.calculate_debt(when)?),
 		})
 	}
 
@@ -603,7 +511,7 @@ impl<T: Config> ActiveLoan<T> {
 		);
 
 		ensure!(
-			amount <= self.max_borrow_amount()?,
+			amount <= self.max_borrow_amount(now)?,
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 
@@ -625,8 +533,10 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
+		let now = T::Time::now().as_secs();
+
 		// Only repay until the current debt
-		let amount = amount.min(self.debt(None)?);
+		let amount = amount.min(self.calculate_debt(now)?);
 
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),

@@ -9,9 +9,10 @@ use super::{
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	types::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
-		WriteOffState, WriteOffStatus, WrittenOffError,
+		WrittenOffError,
 	},
 	valuation::{DiscountedCashFlow, ValuationMethod},
+	write_off::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 };
 
 const COLLATERAL_VALUE: Balance = 10000;
@@ -47,7 +48,7 @@ mod util {
 	}
 
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
-		get_loan(loan_id).debt(None).unwrap()
+		get_loan(loan_id).calculate_debt(now().as_secs()).unwrap()
 	}
 
 	pub fn current_loan_pv(loan_id: LoanId) -> Balance {
@@ -69,11 +70,11 @@ mod util {
 		Loans::update_write_off_policy(
 			RuntimeOrigin::signed(0),
 			POOL_A,
-			vec![WriteOffState {
-				overdue_days: 1,
-				percentage: Rate::from_float(percentage),
-				penalty: Rate::from_float(penalty),
-			}]
+			vec![WriteOffRule::new(
+				[WriteOffTrigger::PrincipalOverdueDays(1)],
+				Rate::from_float(percentage),
+				Rate::from_float(penalty),
+			)]
 			.try_into()
 			.unwrap(),
 		)
@@ -246,7 +247,7 @@ mod create_loan {
 				.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
 					probability_of_default: Rate::from_float(0.0),
 					loss_given_default: Rate::from_float(0.0),
-					discount_rate: Rate::from_float(0.9),
+					discount_rate: Rate::from_float(1.1),
 				}));
 
 			assert_noop!(
@@ -743,7 +744,7 @@ mod write_off_loan {
 
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
-				Error::<Runtime>::NoValidWriteOffState
+				Error::<Runtime>::NoValidWriteOffRule
 			);
 
 			config_mocks();
@@ -770,7 +771,7 @@ mod write_off_loan {
 			// The loan maturity date has passed, but the policy can no be applied yet.
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
-				Error::<Runtime>::NoValidWriteOffState
+				Error::<Runtime>::NoValidWriteOffRule
 			);
 		});
 	}
@@ -788,7 +789,7 @@ mod write_off_loan {
 			// The loan maturity date has no passed.
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
-				Error::<Runtime>::NoValidWriteOffState
+				Error::<Runtime>::NoValidWriteOffRule
 			);
 		});
 	}
@@ -999,10 +1000,7 @@ mod write_off_loan {
 			assert_eq!(
 				WriteOffStatus {
 					percentage: Rate::from_float(POLICY_PERCENTAGE),
-					penalty: Rate::from_float(
-						// TODO: Simplify when issue #1189 is merged
-						POLICY_PENALTY / cfg_primitives::SECONDS_PER_YEAR as f64
-					),
+					penalty: Rate::from_float(POLICY_PENALTY),
 				},
 				*util::get_loan(loan_id).write_off_status()
 			);
@@ -1037,10 +1035,7 @@ mod write_off_loan {
 			assert_eq!(
 				WriteOffStatus {
 					percentage: Rate::from_float(POLICY_PERCENTAGE + 0.1),
-					penalty: Rate::from_float(
-						// TODO: Simplify when issue #1189 is merged
-						(POLICY_PENALTY + 0.1) / cfg_primitives::SECONDS_PER_YEAR as f64
-					),
+					penalty: Rate::from_float(POLICY_PENALTY + 0.1),
 				},
 				*util::get_loan(loan_id).write_off_status()
 			);
@@ -1244,11 +1239,11 @@ mod write_off_policy {
 				Loans::update_write_off_policy(
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
-					vec![WriteOffState {
-						overdue_days: 1,
-						percentage: Rate::from_float(POLICY_PERCENTAGE),
-						penalty: Rate::from_float(POLICY_PENALTY),
-					}]
+					vec![WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						Rate::from_float(POLICY_PERCENTAGE),
+						Rate::from_float(POLICY_PENALTY),
+					)]
 					.try_into()
 					.unwrap(),
 				),
@@ -1266,11 +1261,11 @@ mod write_off_policy {
 				Loans::update_write_off_policy(
 					RuntimeOrigin::signed(POOL_ADMIN),
 					POOL_B,
-					vec![WriteOffState {
-						overdue_days: 1,
-						percentage: Rate::from_float(POLICY_PERCENTAGE),
-						penalty: Rate::from_float(POLICY_PENALTY),
-					}]
+					vec![WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(1)],
+						Rate::from_float(POLICY_PERCENTAGE),
+						Rate::from_float(POLICY_PENALTY),
+					)]
 					.try_into()
 					.unwrap(),
 				),
@@ -1287,11 +1282,11 @@ mod write_off_policy {
 			assert_ok!(Loans::update_write_off_policy(
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
-				vec![WriteOffState {
-					overdue_days: 1,
-					percentage: Rate::from_float(POLICY_PERCENTAGE),
-					penalty: Rate::from_float(POLICY_PENALTY),
-				}]
+				vec![WriteOffRule::new(
+					[WriteOffTrigger::PrincipalOverdueDays(1)],
+					Rate::from_float(POLICY_PERCENTAGE),
+					Rate::from_float(POLICY_PENALTY),
+				)]
 				.try_into()
 				.unwrap(),
 			));
@@ -1313,25 +1308,53 @@ mod write_off_policy {
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
 				vec![
-					WriteOffState {
-						overdue_days: 1,
-						percentage: Rate::from_float(0.2),
-						penalty: Rate::from_float(0.2),
-					},
-					WriteOffState {
-						overdue_days: 4,
-						percentage: Rate::from_float(0.5),
-						penalty: Rate::from_float(0.5),
-					},
-					WriteOffState {
-						overdue_days: 9,
-						percentage: Rate::from_float(0.3),
-						penalty: Rate::from_float(0.3),
-					}
+					WriteOffRule::new(
+						[WriteOffTrigger::OracleValuationOutdated(10)],
+						Rate::from_float(0.8),
+						Rate::from_float(0.8)
+					),
+					WriteOffRule::new(
+						[
+							WriteOffTrigger::PrincipalOverdueDays(1),
+							WriteOffTrigger::OracleValuationOutdated(0)
+						],
+						Rate::from_float(0.2),
+						Rate::from_float(0.2)
+					),
+					WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(4)],
+						Rate::from_float(0.5),
+						Rate::from_float(0.5)
+					),
+					WriteOffRule::new(
+						[WriteOffTrigger::PrincipalOverdueDays(9)],
+						Rate::from_float(0.3),
+						Rate::from_float(0.9)
+					),
 				]
 				.try_into()
 				.unwrap(),
 			));
+
+			// Check if a loan is correctly writen off
+			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR + DAY * 10);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ANY),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(
+				*util::get_loan(loan_id).write_off_status(),
+				WriteOffStatus {
+					percentage: Rate::from_float(0.5),
+					penalty: Rate::from_float(0.5),
+				}
+			);
 		});
 	}
 }

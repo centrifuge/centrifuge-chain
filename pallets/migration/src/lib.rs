@@ -179,6 +179,7 @@ pub mod pallet {
 		/// off-chain.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_system_account(T::MigrationMaxAccounts::get()))]
 		#[transactional]
+		#[pallet::call_index(0)]
 		pub fn migrate_system_account(
 			origin: OriginFor<T>,
 			accounts: Vec<(Vec<u8>, Vec<u8>)>,
@@ -218,6 +219,7 @@ pub mod pallet {
 		/// which means, that the `AccountInfo` from the frame_system is migrated afterwards.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_balances_issuance())]
 		#[transactional]
+		#[pallet::call_index(1)]
 		pub fn migrate_balances_issuance(
 			origin: OriginFor<T>,
 			additional_issuance: T::Balance,
@@ -247,6 +249,7 @@ pub mod pallet {
 		/// on this chain.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_vesting_vesting(T::MigrationMaxVestings::get()))]
 		#[transactional]
+		#[pallet::call_index(2)]
 		pub fn migrate_vesting_vesting(
 			origin: OriginFor<T>,
 			vestings: Vec<(T::AccountId, VestingInfo<BalanceOf<T>, T::BlockNumber>)>,
@@ -305,6 +308,7 @@ pub mod pallet {
 		/// must be done on this account and the proxies for this account.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_proxy_proxies(T::MigrationMaxProxies::get()))]
 		#[transactional]
+		#[pallet::call_index(3)]
 		pub fn migrate_proxy_proxies(
 			origin: OriginFor<T>,
 			proxies: Vec<(
@@ -372,6 +376,7 @@ pub mod pallet {
 		/// Update the migration status to `Complete`
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::finalize())]
 		#[transactional]
+		#[pallet::call_index(4)]
 		pub fn finalize(origin: OriginFor<T>) -> DispatchResult {
 			ensure_root(origin)?;
 

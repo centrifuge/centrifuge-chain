@@ -77,7 +77,7 @@ frame_support::construct_runtime!(
 
 frame_support::parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 5;
-	pub const MaxWriteOffPolicySize: u32 = 3;
+	pub const MaxWriteOffPolicySize: u32 = 4;
 }
 
 impl frame_system::Config for Runtime {

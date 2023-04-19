@@ -238,7 +238,6 @@ pub mod pallet {
 		) -> Result<Self::Balance, DispatchError> {
 			Group::<T, I>::try_mutate(group_id, |group| {
 				let reward_to_mint = T::RewardMechanism::reward_group(group, reward)?;
-
 				T::RewardIssuance::issue_reward(
 					T::RewardCurrency::get(),
 					&T::PalletId::get().into_account_truncating(),
@@ -442,7 +441,7 @@ pub mod pallet {
 		RewardAccountOf<T, I>: FullCodec + Default,
 	{
 		pub fn list_currencies(
-			account_id: T::AccountId,
+			account_id: &T::AccountId,
 		) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
 			StakeAccount::<T, I>::iter_prefix(account_id)
 				.map(|(currency_id, _)| currency_id)

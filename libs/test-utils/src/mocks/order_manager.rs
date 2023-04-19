@@ -176,9 +176,9 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			let mut orders = InvestOrders::<T>::get(&investment_id).unwrap_or_default();
+			let mut orders = InvestOrders::<T>::get(investment_id).unwrap_or_default();
 			orders.amount += amount;
-			InvestOrders::<T>::insert(&investment_id, orders);
+			InvestOrders::<T>::insert(investment_id, orders);
 
 			let details = T::Accountant::info(investment_id)?;
 
@@ -201,9 +201,9 @@ pub mod pallet {
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			let mut orders = RedeemOrders::<T>::get(&investment_id).unwrap_or_default();
+			let mut orders = RedeemOrders::<T>::get(investment_id).unwrap_or_default();
 			orders.amount += amount;
-			RedeemOrders::<T>::insert(&investment_id, orders);
+			RedeemOrders::<T>::insert(investment_id, orders);
 
 			// NOTE: TrancheTokens NEVER leave the TEST_PALLET_ID account and hence we can keep them here and
 			//       need no transfer.

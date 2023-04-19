@@ -252,6 +252,7 @@ pub mod pallet {
 		/// if not, an Err will be returned.
 		#[pallet::weight(T::WeightInfo::stake())]
 		#[transactional]
+		#[pallet::call_index(0)]
 		pub fn stake(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -267,6 +268,7 @@ pub mod pallet {
 		/// if not, an Err will be returned.
 		#[pallet::weight(T::WeightInfo::unstake())]
 		#[transactional]
+		#[pallet::call_index(1)]
 		pub fn unstake(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -281,6 +283,7 @@ pub mod pallet {
 		/// The reward will be transferred to the origin's account.
 		#[pallet::weight(T::WeightInfo::claim_reward())]
 		#[transactional]
+		#[pallet::call_index(2)]
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
@@ -290,6 +293,7 @@ pub mod pallet {
 		/// Admin method to set the reward amount used for the next epochs.
 		/// Current epoch is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_distributed_reward())]
+		#[pallet::call_index(3)]
 		pub fn set_distributed_reward(origin: OriginFor<T>, balance: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
@@ -301,6 +305,7 @@ pub mod pallet {
 		/// Admin method to set the duration used for the next epochs.
 		/// Current epoch is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_epoch_duration())]
+		#[pallet::call_index(4)]
 		pub fn set_epoch_duration(origin: OriginFor<T>, blocks: T::BlockNumber) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 
@@ -312,6 +317,7 @@ pub mod pallet {
 		/// Admin method to set the group weights used for the next epochs.
 		/// Current epoch is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_group_weight())]
+		#[pallet::call_index(5)]
 		pub fn set_group_weight(
 			origin: OriginFor<T>,
 			group_id: T::GroupId,
@@ -334,6 +340,7 @@ pub mod pallet {
 		///
 		/// This method will do the currency available for using it in stake/unstake/claim calls.
 		#[pallet::weight(T::WeightInfo::set_currency_group())]
+		#[pallet::call_index(6)]
 		pub fn set_currency_group(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,

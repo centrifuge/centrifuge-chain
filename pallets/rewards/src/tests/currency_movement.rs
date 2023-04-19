@@ -259,25 +259,25 @@ macro_rules! currency_movement_tests {
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_X, &USER_A, STAKE_A));
 					assert!(expected_currency_ids[0..1]
 						.iter()
-						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+						.all(|x| $pallet::list_currencies(&USER_A).contains(x)));
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_Y, &USER_A, STAKE_A));
 					assert!(expected_currency_ids[0..2]
 						.iter()
-						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+						.all(|x| $pallet::list_currencies(&USER_A).contains(x)));
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_Z, &USER_A, STAKE_A));
 					assert!(expected_currency_ids[0..3]
 						.iter()
-						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+						.all(|x| $pallet::list_currencies(&USER_A).contains(x)));
 
 					assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_A));
 					assert!(expected_currency_ids
 						.iter()
-						.all(|x| $pallet::list_currencies(USER_A).contains(x)));
+						.all(|x| $pallet::list_currencies(&USER_A).contains(x)));
 
 					assert_ok!($pallet::withdraw_stake(DOM_1_CURRENCY_X, &USER_A, STAKE_A));
-					assert_eq!($pallet::list_currencies(USER_A).len(), 4);
+					assert_eq!($pallet::list_currencies(&USER_A).len(), 4);
 				});
 			}
 		}

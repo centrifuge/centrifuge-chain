@@ -15,6 +15,7 @@
 #![allow(unused)]
 
 mod pools;
+mod rewards;
 mod runtime_apis;
 mod utils;
 mod xcm;

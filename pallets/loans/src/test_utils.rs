@@ -31,10 +31,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_pool_system::tranches::TrancheLoc;
-use pallet_pool_system::{
-	tranches::{TrancheInput, TrancheMetadata, TrancheType},
-	Pallet as PoolPallet, Pool as PoolStorage,
-};
+use pallet_pool_system::tranches::{TrancheInput, TrancheMetadata, TrancheType};
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
 	Perquintill,
@@ -165,7 +162,6 @@ pub(crate) fn create<T, OM: Investment<T::AccountId>>(
 		],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
-		None
 	));
 
 	let account: <T as frame_system::Config>::AccountId =
