@@ -93,7 +93,7 @@ where
 		let mut bytes = [0u8; 16];
 		bytes[..12].copy_from_slice(&Prefix::get());
 
-		let currency_bytes: [u8; 4] = match currency_id.into() {
+		let currency_bytes: [u8; 4] = match currency_id {
 			CurrencyId::ForeignAsset(id32) => Ok(id32.to_be_bytes()),
 			_ => Err(DispatchError::Token(TokenError::Unsupported)),
 		}?;
