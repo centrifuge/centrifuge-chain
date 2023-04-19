@@ -1,10 +1,16 @@
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
-	use orml_traits::{DataProviderExtended, OnNewData, TimestampedValue};
+	use orml_traits::{DataProviderExtended, OnNewData};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
 		DispatchError,
@@ -34,10 +40,7 @@ pub mod pallet {
 		type Moment: Parameter + MaxEncodedLen;
 
 		/// Data provider for initializing data values
-		type DataProvider: DataProviderExtended<
-			Self::DataId,
-			TimestampedValue<Self::Data, Self::Moment>,
-		>;
+		type DataProvider: DataProviderExtended<Self::DataId, (Self::Data, Self::Moment)>;
 
 		/// Max size of a data collection
 		#[pallet::constant]
@@ -89,7 +92,6 @@ pub mod pallet {
 
 		fn get(data_id: &T::DataId) -> DataValueOf<T> {
 			T::DataProvider::get_no_op(data_id)
-				.map(|timestamped| (timestamped.value, timestamped.timestamp))
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
@@ -104,7 +106,7 @@ pub mod pallet {
 				Some(counter) => counter.ensure_add_assign(1).map_err(|e| e.into()),
 				None => {
 					counters
-						.try_insert(collection_id.clone(), 0)
+						.try_insert(collection_id.clone(), 1)
 						.map_err(|_| Error::<T>::MaxCollectionNumber)?;
 
 					Collection::<T>::try_mutate(collection_id, |collection| {
@@ -121,7 +123,7 @@ pub mod pallet {
 			data_id: &T::DataId,
 			collection_id: &T::CollectionId,
 		) -> DispatchResult {
-			Listening::<T>::mutate(data_id, |counters| {
+			Listening::<T>::try_mutate(data_id, |counters| {
 				let counter = counters
 					.get_mut(collection_id)
 					.ok_or(Error::<T>::DataIdNotInCollection)?;
@@ -139,6 +141,8 @@ pub mod pallet {
 
 	impl<T: Config> OnNewData<T::AccountId, T::DataId, T::Data> for Pallet<T> {
 		fn on_new_data(_: &T::AccountId, data_id: &T::DataId, _: &T::Data) {
+			// Input Data parameter could not correspond with the data comming from `DataProvider`.
+			// This implementation use `DataProvider` as a source of truth for Data values.
 			for collection_id in Listening::<T>::get(data_id).keys() {
 				Collection::<T>::mutate(collection_id, |collection| {
 					collection
@@ -155,7 +159,7 @@ pub mod pallet {
 	);
 
 	impl<T: Config> DataCollection<T::DataId, T::Data, T::Moment> for CachedCollection<T> {
-		fn data(&self, data_id: &T::DataId) -> Result<DataValueOf<T>, DispatchError> {
+		fn get(&self, data_id: &T::DataId) -> Result<DataValueOf<T>, DispatchError> {
 			self.0
 				.get(data_id)
 				.cloned()

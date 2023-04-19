@@ -28,7 +28,8 @@ cfg-traits = { path = "../../libs/traits", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
-cfg-mocks = { path = "../../libs/mocks" }
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 [features]
 default = ["std"]
@@ -48,11 +49,9 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
-  "cfg-mocks/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "cfg-traits/try-runtime",
-  "cfg-mocks/try-runtime",
 ]

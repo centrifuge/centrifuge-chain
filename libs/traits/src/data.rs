@@ -40,5 +40,5 @@ pub trait DataRegistry {
 /// Abstration to represent a collection of datas in memory
 pub trait DataCollection<DataId, Data, Moment> {
 	/// Return the last data value for a data id along with the moment it was updated last time
-	fn data(&self, data_id: &DataId) -> Result<Option<(Data, Moment)>, DispatchError>;
+	fn get(&self, data_id: &DataId) -> Result<Option<(Data, Moment)>, DispatchError>;
 }

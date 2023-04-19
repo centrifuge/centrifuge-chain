@@ -93,13 +93,13 @@ pub mod pallet {
 			T::Data: Clone,
 			T::Moment: Clone,
 		{
-			fn data(
+			fn get(
 				&self,
 				data_id: &T::DataId,
 			) -> Result<Option<(T::Data, T::Moment)>, DispatchError> {
 				Ok(self
 					.0
-					.get(&data_id)
+					.get(data_id)
 					.ok_or(DispatchError::CannotLookup)?
 					.clone())
 			}

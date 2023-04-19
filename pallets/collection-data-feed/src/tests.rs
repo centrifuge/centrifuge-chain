@@ -1,0 +1,205 @@
+use cfg_traits::data::{DataCollection, DataRegistry};
+use frame_support::{assert_noop, assert_ok, pallet_prelude::Hooks};
+use orml_traits::DataFeeder;
+
+use super::{mock::*, pallet::Error};
+
+const COLLECTION_ID: CollectionId = 1;
+const DATA_ID: DataId = 10;
+
+#[test]
+fn get_no_fed_data() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(CollectionDataFeed::get(&DATA_ID), None);
+	});
+}
+
+#[test]
+fn get_fed_data() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+
+		assert_eq!(CollectionDataFeed::get(&DATA_ID), Some((100, Timer::now())));
+
+		Oracle::on_finalize(0);
+		advance_time(BLOCK_TIME_MS);
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 200));
+
+		assert_eq!(CollectionDataFeed::get(&DATA_ID), Some((200, Timer::now())));
+	});
+}
+
+#[test]
+fn feed_and_then_register() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+		assert_ok!(CollectionDataFeed::register_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		assert_ok!(
+			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
+			Some((100, Timer::now()))
+		);
+
+		Oracle::on_finalize(0);
+		advance_time(BLOCK_TIME_MS);
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 200));
+
+		assert_ok!(
+			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
+			Some((200, Timer::now()))
+		);
+	});
+}
+
+#[test]
+fn register_and_then_feed() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(CollectionDataFeed::register_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+
+		assert_ok!(
+			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
+			Some((100, Timer::now()))
+		);
+
+		Oracle::on_finalize(0);
+		advance_time(BLOCK_TIME_MS);
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 200));
+
+		assert_ok!(
+			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
+			Some((200, Timer::now()))
+		);
+	});
+}
+
+#[test]
+fn data_not_registered_in_collection() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+		Oracle::on_finalize(0);
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID + 1, 200));
+
+		assert_ok!(CollectionDataFeed::register_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		let collection = CollectionDataFeed::collection(&COLLECTION_ID);
+		assert_noop!(
+			collection.get(&(DATA_ID + 1)),
+			Error::<Runtime>::DataIdNotInCollection
+		);
+	});
+}
+
+#[test]
+fn data_not_registered_after_unregister() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+		assert_ok!(CollectionDataFeed::register_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		assert_ok!(CollectionDataFeed::unregister_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		let collection = CollectionDataFeed::collection(&COLLECTION_ID);
+		assert_noop!(
+			collection.get(&DATA_ID),
+			Error::<Runtime>::DataIdNotInCollection
+		);
+	});
+}
+
+#[test]
+fn unregister_without_register() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			CollectionDataFeed::unregister_data_id(&DATA_ID, &COLLECTION_ID),
+			Error::<Runtime>::DataIdNotInCollection
+		);
+	});
+}
+
+#[test]
+fn register_twice() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(CollectionDataFeed::register_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		assert_ok!(CollectionDataFeed::register_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		assert_ok!(CollectionDataFeed::unregister_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		assert_ok!(CollectionDataFeed::unregister_data_id(
+			&DATA_ID,
+			&COLLECTION_ID
+		));
+
+		assert_noop!(
+			CollectionDataFeed::unregister_data_id(&DATA_ID, &COLLECTION_ID),
+			Error::<Runtime>::DataIdNotInCollection
+		);
+	});
+}
+
+#[test]
+fn max_collection_number() {
+	new_test_ext().execute_with(|| {
+		let max = MaxCollections::get() as CollectionId;
+		for i in 0..max {
+			assert_ok!(CollectionDataFeed::register_data_id(
+				&DATA_ID,
+				&(COLLECTION_ID + i)
+			));
+		}
+
+		assert_noop!(
+			CollectionDataFeed::register_data_id(&DATA_ID, &(COLLECTION_ID + max)),
+			Error::<Runtime>::MaxCollectionNumber
+		);
+	});
+}
+
+#[test]
+fn max_collection_size() {
+	new_test_ext().execute_with(|| {
+		let max = MaxCollectionSize::get();
+		for i in 0..max {
+			assert_ok!(CollectionDataFeed::register_data_id(
+				&(DATA_ID + i),
+				&COLLECTION_ID
+			));
+		}
+
+		assert_noop!(
+			CollectionDataFeed::register_data_id(&(DATA_ID + max), &COLLECTION_ID),
+			Error::<Runtime>::MaxCollectionSize
+		);
+
+		// Other collections can still be registered
+		assert_ok!(CollectionDataFeed::register_data_id(
+			&DATA_ID,
+			&(COLLECTION_ID + 1)
+		));
+	});
+}
