@@ -7,6 +7,15 @@ use super::{mock::*, pallet::Error};
 const COLLECTION_ID: CollectionId = 1;
 const DATA_ID: DataId = 10;
 
+fn advance_time(elapsed: u64) {
+	Timer::set_timestamp(Timer::get() + elapsed);
+}
+
+fn feed(data_id: DataId, data: Data) {
+	Oracle::on_finalize(0); // For testing we want any call to feed_value()
+	Oracle::feed_value(ORACLE_MEMBER, data_id, data).unwrap();
+}
+
 #[test]
 fn get_no_fed_data() {
 	new_test_ext().execute_with(|| {
@@ -17,13 +26,12 @@ fn get_no_fed_data() {
 #[test]
 fn get_fed_data() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+		feed(DATA_ID, 100);
 
 		assert_eq!(CollectionDataFeed::get(&DATA_ID), Some((100, Timer::now())));
 
-		Oracle::on_finalize(0);
 		advance_time(BLOCK_TIME_MS);
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 200));
+		feed(DATA_ID, 200);
 
 		assert_eq!(CollectionDataFeed::get(&DATA_ID), Some((200, Timer::now())));
 	});
@@ -32,7 +40,8 @@ fn get_fed_data() {
 #[test]
 fn feed_and_then_register() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+		feed(DATA_ID, 100);
+
 		assert_ok!(CollectionDataFeed::register_data_id(
 			&DATA_ID,
 			&COLLECTION_ID
@@ -43,9 +52,8 @@ fn feed_and_then_register() {
 			Some((100, Timer::now()))
 		);
 
-		Oracle::on_finalize(0);
 		advance_time(BLOCK_TIME_MS);
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 200));
+		feed(DATA_ID, 200);
 
 		assert_ok!(
 			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
@@ -62,16 +70,15 @@ fn register_and_then_feed() {
 			&COLLECTION_ID
 		));
 
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+		feed(DATA_ID, 100);
 
 		assert_ok!(
 			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
 			Some((100, Timer::now()))
 		);
 
-		Oracle::on_finalize(0);
 		advance_time(BLOCK_TIME_MS);
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 200));
+		feed(DATA_ID, 200);
 
 		assert_ok!(
 			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
@@ -83,9 +90,8 @@ fn register_and_then_feed() {
 #[test]
 fn data_not_registered_in_collection() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
-		Oracle::on_finalize(0);
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID + 1, 200));
+		feed(DATA_ID, 100);
+		feed(DATA_ID + 1, 100);
 
 		assert_ok!(CollectionDataFeed::register_data_id(
 			&DATA_ID,
@@ -103,7 +109,8 @@ fn data_not_registered_in_collection() {
 #[test]
 fn data_not_registered_after_unregister() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Oracle::feed_value(ORACLE_MEMBER, DATA_ID, 100));
+		feed(DATA_ID, 100);
+
 		assert_ok!(CollectionDataFeed::register_data_id(
 			&DATA_ID,
 			&COLLECTION_ID

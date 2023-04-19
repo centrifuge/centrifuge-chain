@@ -132,7 +132,3 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	sp_io::TestExternalities::new(storage)
 }
-
-pub fn advance_time(elapsed: u64) {
-	Timer::set_timestamp(Timer::get() + elapsed);
-}
