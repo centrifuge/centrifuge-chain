@@ -41,7 +41,6 @@ where
 	},
 	AddPool {
 		pool_id: PoolId,
-		currency: u128,
 	},
 	AllowPoolCurrency {
 		currency: u128,
@@ -50,9 +49,9 @@ where
 	AddTranche {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		decimals: u8,
 		token_name: [u8; TOKEN_NAME_SIZE],
 		token_symbol: [u8; TOKEN_SYMBOL_SIZE],
+		decimals: u8,
 		price: Rate,
 	},
 	UpdateTrancheTokenPrice {
@@ -70,16 +69,16 @@ where
 	// Sender must ensure beforehand that the receiver will not reject
 	Transfer {
 		currency: u128,
-		source_address: Address,
-		destination_address: Address,
+		sender: Address,
+		receiver: Address,
 		amount: Balance,
 	},
 	TransferTrancheTokens {
 		domain: Domain,
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		source_address: Address,
-		destination_address: Address,
+		sender: Address,
+		receiver: Address,
 		amount: Balance,
 	},
 	IncreaseInvestOrder {
@@ -189,10 +188,9 @@ impl<
 				self.call_type(),
 				vec![encode_be(currency), evm_address.to_vec()],
 			),
-			Message::AddPool { pool_id, currency } => encoded_message(
-				self.call_type(),
-				vec![encode_be(pool_id), encode_be(currency)],
-			),
+			Message::AddPool { pool_id } => {
+				encoded_message(self.call_type(), vec![encode_be(pool_id)])
+			}
 			Message::AllowPoolCurrency { currency, pool_id } => encoded_message(
 				self.call_type(),
 				vec![encode_be(currency), encode_be(pool_id)],
@@ -209,9 +207,9 @@ impl<
 				vec![
 					encode_be(pool_id),
 					tranche_id.encode(),
-					decimals.encode(),
 					token_name.encode(),
 					token_symbol.encode(),
+					decimals.encode(),
 					encode_be(price),
 				],
 			),
@@ -239,15 +237,15 @@ impl<
 			),
 			Message::Transfer {
 				currency: token,
-				source_address,
-				destination_address,
+				sender,
+				receiver,
 				amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
 					encode_be(token),
-					source_address.to_vec(),
-					destination_address.to_vec(),
+					sender.to_vec(),
+					receiver.to_vec(),
 					encode_be(amount),
 				],
 			),
@@ -255,8 +253,8 @@ impl<
 				domain,
 				pool_id,
 				tranche_id,
-				source_address,
-				destination_address,
+				sender,
+				receiver,
 				amount,
 			} => encoded_message(
 				self.call_type(),
@@ -264,8 +262,8 @@ impl<
 					domain.serialize(),
 					encode_be(pool_id),
 					tranche_id.encode(),
-					source_address.to_vec(),
-					destination_address.to_vec(),
+					sender.to_vec(),
+					receiver.to_vec(),
 					encode_be(amount),
 				],
 			),
@@ -391,7 +389,6 @@ impl<
 			}),
 			2 => Ok(Self::AddPool {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			3 => Ok(Self::AllowPoolCurrency {
 				currency: decode_be_bytes::<16, _, _>(input)?,
@@ -400,9 +397,9 @@ impl<
 			4 => Ok(Self::AddTranche {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				decimals: decode::<1, _, _>(input)?,
 				token_name: decode::<TOKEN_NAME_SIZE, _, _>(input)?,
 				token_symbol: decode::<TOKEN_SYMBOL_SIZE, _, _>(input)?,
+				decimals: decode::<1, _, _>(input)?,
 				price: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			5 => Ok(Self::UpdateTrancheTokenPrice {
@@ -418,16 +415,16 @@ impl<
 			}),
 			7 => Ok(Self::Transfer {
 				currency: decode_be_bytes::<16, _, _>(input)?,
-				source_address: decode::<32, _, _>(input)?,
-				destination_address: decode::<32, _, _>(input)?,
+				sender: decode::<32, _, _>(input)?,
+				receiver: decode::<32, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			8 => Ok(Self::TransferTrancheTokens {
 				domain: deserialize::<9, _, _>(input)?,
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				source_address: decode::<32, _, _>(input)?,
-				destination_address: decode::<32, _, _>(input)?,
+				sender: decode::<32, _, _>(input)?,
+				receiver: decode::<32, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			9 => Ok(Self::IncreaseInvestOrder {
@@ -556,22 +553,16 @@ mod tests {
 	#[test]
 	fn add_pool_zero() {
 		test_encode_decode_identity(
-			ConnectorMessage::AddPool {
-				pool_id: 0,
-				currency: 0,
-			},
-			"02000000000000000000000000000000000000000000000000",
+			ConnectorMessage::AddPool { pool_id: 0 },
+			"020000000000000000",
 		)
 	}
 
 	#[test]
 	fn add_pool_long() {
 		test_encode_decode_identity(
-			ConnectorMessage::AddPool {
-				pool_id: POOL_ID,
-				currency: TOKEN_ID,
-			},
-			"020000000000bce1a40000000000000000000000000eb5ec7b",
+			ConnectorMessage::AddPool { pool_id: POOL_ID },
+			"020000000000bce1a4",
 		)
 	}
 
@@ -602,12 +593,12 @@ mod tests {
 			ConnectorMessage::AddTranche {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				decimals: 15,
 				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
+				decimals: 15,
 				price: Rate::one(),
 			},
-			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b0f536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c000000000000000000000000000000000000000000000000000000000000033b2e3c9fd0803ce8000000",
+			"040000000000000001811acd5b3f17c06841c7e41e9e04cb1b536f6d65204e616d65000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053594d424f4c00000000000000000000000000000000000000000000000000000f00000000033b2e3c9fd0803ce8000000",
 		)
 	}
 
@@ -645,8 +636,8 @@ mod tests {
 					pool_id: 1,
 					tranche_id: default_tranche_id(),
 					domain: domain_address.clone().into(),
-					source_address: default_address_32(),
-					destination_address: domain_address.address(),
+					sender: default_address_32(),
+					receiver: domain_address.address(),
 					amount: AMOUNT,
 				},
 				"080100000000000005040000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
@@ -660,8 +651,8 @@ mod tests {
 					pool_id: 1,
 					tranche_id: default_tranche_id(),
 					domain: Domain::Centrifuge,
-					source_address: vec_to_fixed_array(default_address_20().to_vec()),
-					destination_address: default_address_32(),
+					sender: vec_to_fixed_array(default_address_20().to_vec()),
+					receiver: default_address_32(),
 					amount: AMOUNT,
 				},
 				"080000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
@@ -674,8 +665,8 @@ mod tests {
 
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
-					destination_address: domain_address.address(),
-					source_address: default_address_32(),
+					receiver: domain_address.address(),
+					sender: default_address_32(),
 					amount: AMOUNT,
         			currency: TOKEN_ID,
 				},
@@ -687,8 +678,8 @@ mod tests {
 	fn transfer_to_centrifuge() {
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
-					source_address: vec_to_fixed_array(default_address_20().to_vec()),
-					destination_address: default_address_32(),
+					sender: vec_to_fixed_array(default_address_20().to_vec()),
+					receiver: default_address_32(),
 					amount: AMOUNT,
         			currency: TOKEN_ID,
 				},

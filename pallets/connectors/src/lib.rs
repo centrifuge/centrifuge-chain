@@ -279,7 +279,6 @@ pub mod pallet {
 		pub fn add_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			currency: CurrencyIdOf<T>,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -289,16 +288,7 @@ pub mod pallet {
 				Error::<T>::PoolNotFound
 			);
 
-			Self::do_send_message(
-				who,
-				Message::AddPool {
-					pool_id,
-					currency: <Pallet<T> as GeneralCurrencyIndex<
-						<T as Config>::GeneralCurrencyPrefix,
-					>>::get_general_index(currency)?,
-				},
-				domain,
-			)?;
+			Self::do_send_message(who, Message::AddPool { pool_id }, domain)?;
 
 			Ok(())
 		}
@@ -469,8 +459,8 @@ pub mod pallet {
 					tranche_id,
 					amount,
 					domain: domain_address.domain(),
-					destination_address: domain_address.address(),
-					source_address: who
+					receiver: domain_address.address(),
+					sender: who
 						.encode()
 						.try_into()
 						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
@@ -513,11 +503,11 @@ pub mod pallet {
 					currency: <Pallet<T> as GeneralCurrencyIndex<
 						<T as Config>::GeneralCurrencyPrefix,
 					>>::get_general_index(asset_id)?,
-					source_address: who
+					sender: who
 						.encode()
 						.try_into()
 						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
-					destination_address: domain_address.address(),
+					receiver: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;

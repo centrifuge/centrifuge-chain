@@ -84,14 +84,12 @@ fn add_pool() {
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
 		let pool_id: u64 = 42;
-		let asset_id: ForeignAssetId = 69u32;
 
 		// Verify that the pool must exist before we can call Connectors::add_pool
 		assert_noop!(
 			Connectors::add_pool(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id,
-				CurrencyId::ForeignAsset(asset_id),
 				Domain::EVM(1284),
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::PoolNotFound
@@ -100,33 +98,10 @@ fn add_pool() {
 		// Now create the pool
 		utils::create_pool(pool_id);
 
-		// Register the ephemeral asset required before pool creation
-		let asset_location = MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::polkadot::acala::ID),
-				general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".as_bytes()),
-			),
-		);
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 6,
-			name: "Wormhole USDC".into(),
-			symbol: "WUSDC".into(),
-			existential_deposit: 1,
-			location: Some(VersionedMultiLocation::V1(asset_location.clone())),
-			additional: CustomMetadata::default(),
-		};
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			RuntimeOrigin::root(),
-			meta,
-			Some(CurrencyId::ForeignAsset(asset_id))
-		));
-
 		// Verify that we can now call Connectors::add_pool successfully
 		assert_ok!(Connectors::add_pool(
 			RuntimeOrigin::signed(ALICE.into()),
 			pool_id,
-			CurrencyId::ForeignAsset(asset_id),
 			Domain::EVM(1284),
 		));
 	});
@@ -390,7 +365,7 @@ fn encoded_ethereum_xcm_add_pool() {
 	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was our first
 	// successfully ethereum_xcm encoded call tested in Moonbase.
 	// TODO: Verify on EVM side before merging
-	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000019020000000000bce1a40000000000000000000000000eb5ec7b0000000000000000";
+	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009020000000000bce1a4000000000000000000000000000000000000000000000000";
 
 	let moonbase_location = MultiLocation {
 		parents: 1,
@@ -409,10 +384,8 @@ fn encoded_ethereum_xcm_add_pool() {
 		max_gas_limit: 700_000,
 	};
 
-	let connectors_message = Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool {
-		pool_id: 12378532,
-		currency: 246803579,
-	};
+	let connectors_message =
+		Message::<Domain, PoolId, TrancheId, Balance, Rate>::AddPool { pool_id: 12378532 };
 
 	let contract_call = encoded_contract_call(connectors_message.serialize());
 	let encoded_call = Connectors::encoded_ethereum_xcm_call(domain_info, contract_call);
