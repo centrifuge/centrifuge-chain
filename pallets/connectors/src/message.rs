@@ -505,20 +505,6 @@ fn encoded_message(call_type: u8, fields: Vec<Vec<u8>>) -> Vec<u8> {
 	message
 }
 
-// Converts a 32 byte AccountId to its byte-array equivalent form.
-pub(crate) fn account_to_bytes<AccountId>(
-	account: &AccountId,
-) -> Result<[u8; 32], sp_runtime::DispatchError>
-where
-	AccountId: Encode,
-{
-	let account_vec = account.encode();
-	frame_support::ensure!(account_vec.len() == 32, "AccountId must be 32 bytes.");
-	let mut bytes = [0u8; 32];
-	bytes.copy_from_slice(&account_vec);
-	Ok(bytes)
-}
-
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::{Balance, PoolId, TrancheId};
@@ -535,9 +521,6 @@ mod tests {
 	const AMOUNT: Balance = 100000000000000000000000000;
 	const POOL_ID: PoolId = 12378532;
 	const TOKEN_ID: u128 = 246803579;
-	const TRANCHE_HEX: &str = "811acd5b3f17c06841c7e41e9e04cb1b";
-	const ADDRESS_20_HEX: &str = "1231231231231231231231231231231231231231";
-	const ADDRESS_32_HEX: &str = "4564564564564564564564564564564564564564564564564564564564564564";
 
 	#[test]
 	fn invalid() {
@@ -597,7 +580,7 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::AddCurrency {
 				currency: TOKEN_ID,
-				evm_address: address20_from_hex(ADDRESS_20_HEX),
+				evm_address: default_address_20(),
 			},
 			"010000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
 		)
@@ -618,7 +601,7 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::AddTranche {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				tranche_id: default_tranche_id(),
 				decimals: 15,
 				token_name: vec_to_fixed_array("Some Name".to_string().into_bytes()),
 				token_symbol: vec_to_fixed_array("SYMBOL".to_string().into_bytes()),
@@ -633,7 +616,7 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::UpdateTrancheTokenPrice {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+				tranche_id: default_tranche_id(),
 				price: Rate::one(),
 			},
 			"050000000000000001811acd5b3f17c06841c7e41e9e04cb1b00000000033b2e3c9fd0803ce8000000",
@@ -645,8 +628,8 @@ mod tests {
 		test_encode_decode_identity(
 				ConnectorMessage::UpdateMember {
 					pool_id: 2,
-					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-					address: address32_from_hex(ADDRESS_32_HEX),
+					tranche_id: default_tranche_id(),
+					address: default_address_32(),
 					valid_until: 1706260138,
 				},
 				"060000000000000002811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000065b376aa"
@@ -655,14 +638,14 @@ mod tests {
 
 	#[test]
 	fn transfer_tranche_tokens_to_moonbeam() {
-		let domain_address = DomainAddress::EVM(1284, address20_from_hex(ADDRESS_20_HEX));
+		let domain_address = DomainAddress::EVM(1284, default_address_20());
 
 		test_encode_decode_identity(
 				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
-					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+					tranche_id: default_tranche_id(),
 					domain: domain_address.clone().into(),
-					source_address: address32_from_hex(ADDRESS_32_HEX),
+					source_address: default_address_32(),
 					destination_address: domain_address.address(),
 					amount: AMOUNT,
 				},
@@ -675,10 +658,10 @@ mod tests {
 		test_encode_decode_identity(
 				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
-					tranche_id: tranche_id_from_hex(TRANCHE_HEX),
+					tranche_id: default_tranche_id(),
 					domain: Domain::Centrifuge,
-					source_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
-					destination_address: address32_from_hex(ADDRESS_32_HEX),
+					source_address: vec_to_fixed_array(default_address_20().to_vec()),
+					destination_address: default_address_32(),
 					amount: AMOUNT,
 				},
 				"080000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
@@ -687,12 +670,12 @@ mod tests {
 
 	#[test]
 	fn transfer_to_moonbeam() {
-		let domain_address = DomainAddress::EVM(1284, address20_from_hex(ADDRESS_20_HEX));
+		let domain_address = DomainAddress::EVM(1284, default_address_20());
 
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
 					destination_address: domain_address.address(),
-					source_address: address32_from_hex(ADDRESS_32_HEX),
+					source_address: default_address_32(),
 					amount: AMOUNT,
         			currency: TOKEN_ID,
 				},
@@ -704,8 +687,8 @@ mod tests {
 	fn transfer_to_centrifuge() {
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
-					source_address: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
-					destination_address: address32_from_hex(ADDRESS_32_HEX),
+					source_address: vec_to_fixed_array(default_address_20().to_vec()),
+					destination_address: default_address_32(),
 					amount: AMOUNT,
         			currency: TOKEN_ID,
 				},
@@ -718,8 +701,8 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::IncreaseInvestOrder {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				address: address32_from_hex(ADDRESS_32_HEX),
+				tranche_id: default_tranche_id(),
+				address: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -732,8 +715,8 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::DecreaseInvestOrder {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				address: address32_from_hex(ADDRESS_32_HEX),
+				tranche_id: default_tranche_id(),
+				address: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -746,8 +729,8 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::IncreaseRedeemOrder {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				address: address32_from_hex(ADDRESS_32_HEX),
+				tranche_id: default_tranche_id(),
+				address: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -760,8 +743,8 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::DecreaseRedeemOrder {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				address: address32_from_hex(ADDRESS_32_HEX),
+				tranche_id: default_tranche_id(),
+				address: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -774,9 +757,9 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::CollectForRedeem {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				caller: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
-				user: address32_from_hex(ADDRESS_32_HEX),
+				tranche_id: default_tranche_id(),
+				caller: vec_to_fixed_array(default_address_20().to_vec()),
+				user: default_address_32(),
 			},
 			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
 		)
@@ -787,8 +770,8 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::CollectInvest {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				address: address32_from_hex(ADDRESS_32_HEX),
+				tranche_id: default_tranche_id(),
+				address: default_address_32(),
 			},
 			"0f0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
 		)
@@ -799,9 +782,9 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::CollectForInvest {
 				pool_id: 1,
-				tranche_id: tranche_id_from_hex(TRANCHE_HEX),
-				caller: vec_to_fixed_array(address20_from_hex(ADDRESS_20_HEX).to_vec()),
-				user: address32_from_hex(ADDRESS_32_HEX),
+				tranche_id: default_tranche_id(),
+				caller: vec_to_fixed_array(default_address_20().to_vec()),
+				user: default_address_32(),
 			},
 			"100000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
 		)
@@ -821,15 +804,16 @@ mod tests {
 		assert_eq!(msg, decoded);
 	}
 
-	fn tranche_id_from_hex(hex: &str) -> TrancheId {
-		<[u8; 16]>::from_hex(hex).expect("Should be valid tranche id")
+	fn default_address_20() -> [u8; 20] {
+		<[u8; 20]>::from_hex("1231231231231231231231231231231231231231")
+			.expect("Should be valid 20 bytes")
 	}
-
-	fn address20_from_hex(hex: &str) -> [u8; 20] {
-		<[u8; 20]>::from_hex(hex).expect("Should be valid 20 bytes")
+	fn default_address_32() -> [u8; 32] {
+		<[u8; 32]>::from_hex("4564564564564564564564564564564564564564564564564564564564564564")
+			.expect("Should be valid 32 bytes")
 	}
-
-	fn address32_from_hex(hex: &str) -> [u8; 32] {
-		<[u8; 32]>::from_hex(hex).expect("Should be valid 32 bytes")
+	fn default_tranche_id() -> TrancheId {
+		<[u8; 16]>::from_hex("811acd5b3f17c06841c7e41e9e04cb1b")
+			.expect("Should be valid tranche id")
 	}
 }

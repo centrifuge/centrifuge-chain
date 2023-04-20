@@ -470,7 +470,10 @@ pub mod pallet {
 					amount,
 					domain: domain_address.domain(),
 					destination_address: domain_address.address(),
-					source_address: account_to_bytes(&who)?,
+					source_address: who
+						.encode()
+						.try_into()
+						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
 				},
 				domain_address.domain(),
 			)?;
@@ -510,7 +513,10 @@ pub mod pallet {
 					currency: <Pallet<T> as GeneralCurrencyIndex<
 						<T as Config>::GeneralCurrencyPrefix,
 					>>::get_general_index(asset_id)?,
-					source_address: account_to_bytes(&who)?,
+					source_address: who
+						.encode()
+						.try_into()
+						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
 					destination_address: domain_address.address(),
 				},
 				domain_address.domain(),
