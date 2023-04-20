@@ -100,23 +100,7 @@ fn add_pool() {
 		// Now create the pool
 		utils::create_pool(pool_id);
 
-		// // Verify that the currency must exist before we can call Connectors::add_pool
-		// assert_noop!(
-		// 	Connectors::add_pool(
-		// 		RuntimeOrigin::signed(ALICE.into()),
-		// 		pool_id,
-		// 		CurrencyId::ForeignAsset(asset_id),
-		// 		Domain::EVM(1284),
-		// 	),
-		// 	pallet_connectors::Error::<development_runtime::Runtime>::AssetNotFound
-		// );
-
-		// // Register the currency_id
-		// assert_ok!(Connectors::add_currency(
-		// 	RuntimeOrigin::root(),
-		// 	CurrencyId::ForeignAsset(asset_id),
-		// ));
-
+		// Register the ephemeral asset required before pool creation
 		let asset_location = MultiLocation::new(
 			1,
 			X2(
@@ -132,7 +116,6 @@ fn add_pool() {
 			location: Some(VersionedMultiLocation::V1(asset_location.clone())),
 			additional: CustomMetadata::default(),
 		};
-
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
