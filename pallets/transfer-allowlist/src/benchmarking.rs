@@ -124,7 +124,7 @@ benchmarks! {
 			let (sender, receiver) = set_up_users::<T>();
 		  Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
 		  Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
-	  advance_n_blocks::<T>(1);
+	  advance_n_blocks::<T>(1u32.into());
   }:update_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native, 200u32.into())
 		verify {
 			assert_eq!(
