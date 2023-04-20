@@ -8,9 +8,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type DataId;
 		type CollectionId;
-		type Collection: DataCollection<Self::DataId, Self::Data, Self::Moment>;
+		type Collection: DataCollection<Self::DataId>;
 		type Data;
-		type Moment;
 	}
 
 	#[pallet::pallet]
@@ -26,7 +25,7 @@ pub mod pallet {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_get(f: impl Fn(&T::DataId) -> Option<(T::Data, T::Moment)> + 'static) {
+		pub fn mock_get(f: impl Fn(&T::DataId) -> T::Data + 'static) {
 			register_call!(f);
 		}
 
@@ -47,14 +46,11 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> DataRegistry for Pallet<T> {
+	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
 		type Collection = T::Collection;
-		type CollectionId = T::CollectionId;
 		type Data = T::Data;
-		type DataId = T::DataId;
-		type Moment = T::Moment;
 
-		fn get(a: &T::DataId) -> Option<(T::Data, T::Moment)> {
+		fn get(a: &T::DataId) -> T::Data {
 			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
 			execute_call!(a)
 		}
@@ -83,16 +79,16 @@ pub mod pallet {
 
 		use super::*;
 
-		pub type Value<T> = (<T as Config>::Data, <T as Config>::Moment);
-		pub struct MockDataCollection<T: Config>(pub HashMap<T::DataId, Option<Value<T>>>);
+		pub struct MockDataCollection<T: Config>(pub HashMap<T::DataId, T::Data>);
 
-		impl<T: Config> DataCollection<T::DataId, T::Data, T::Moment> for MockDataCollection<T>
+		impl<T: Config> DataCollection<T::DataId> for MockDataCollection<T>
 		where
 			T::DataId: std::hash::Hash + Eq,
 			T::Data: Clone,
-			T::Moment: Clone,
 		{
-			fn get(&self, data_id: &T::DataId) -> Result<Option<Value<T>>, DispatchError> {
+			type Data = Result<T::Data, DispatchError>;
+
+			fn get(&self, data_id: &T::DataId) -> Self::Data {
 				Ok(self
 					.0
 					.get(data_id)

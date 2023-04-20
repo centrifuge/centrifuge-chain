@@ -83,12 +83,9 @@ pub mod pallet {
 		MaxCollectionNumber,
 	}
 
-	impl<T: Config> DataRegistry for Pallet<T> {
+	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
 		type Collection = CachedCollection<T>;
-		type CollectionId = T::CollectionId;
-		type Data = T::Data;
-		type DataId = T::DataId;
-		type Moment = T::Moment;
+		type Data = DataValueOf<T>;
 
 		fn get(data_id: &T::DataId) -> DataValueOf<T> {
 			T::DataProvider::get_no_op(data_id)
@@ -158,8 +155,10 @@ pub mod pallet {
 		BoundedBTreeMap<T::DataId, DataValueOf<T>, T::MaxCollectionSize>,
 	);
 
-	impl<T: Config> DataCollection<T::DataId, T::Data, T::Moment> for CachedCollection<T> {
-		fn get(&self, data_id: &T::DataId) -> Result<DataValueOf<T>, DispatchError> {
+	impl<T: Config> DataCollection<T::DataId> for CachedCollection<T> {
+		type Data = Result<DataValueOf<T>, DispatchError>;
+
+		fn get(&self, data_id: &T::DataId) -> Self::Data {
 			self.0
 				.get(data_id)
 				.cloned()
