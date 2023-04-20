@@ -112,7 +112,7 @@ where
 		currency: u128,
 		amount: Balance,
 	},
-	CollectRedem {
+	CollectRedeem {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		address: Address,
@@ -153,8 +153,8 @@ impl<
 			Self::DecreaseInvestOrder { .. } => 10,
 			Self::IncreaseRedeemOrder { .. } => 11,
 			Self::DecreaseRedeemOrder { .. } => 12,
-			Self::CollectRedem { .. } => 13,
-			Self::CollectInvest { .. } => 15,
+			Self::CollectRedeem { .. } => 13,
+			Self::CollectInvest { .. } => 14,
 		}
 	}
 }
@@ -320,7 +320,7 @@ impl<
 					encode_be(amount),
 				],
 			),
-			Message::CollectRedem {
+			Message::CollectRedeem {
 				pool_id,
 				tranche_id,
 				address,
@@ -416,12 +416,12 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			13 => Ok(Self::CollectRedem {
+			13 => Ok(Self::CollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
 			}),
-			15 => Ok(Self::CollectInvest {
+			14 => Ok(Self::CollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
@@ -516,6 +516,16 @@ mod tests {
 	}
 
 	#[test]
+	fn add_currency_zero() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddCurrency {
+				currency: 0,
+				evm_address: default_address_20(),
+			},
+			"01000000000000000000000000000000001231231231231231231231231231231231231231",
+		)
+	}
+	#[test]
 	fn add_currency() {
 		test_encode_decode_identity(
 			ConnectorMessage::AddCurrency {
@@ -525,14 +535,26 @@ mod tests {
 			"010000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
 		)
 	}
+
 	#[test]
 	fn allow_pool_currency() {
 		test_encode_decode_identity(
 			ConnectorMessage::AllowPoolCurrency {
 				currency: TOKEN_ID,
-				pool_id: 1,
+				pool_id: POOL_ID,
 			},
-			"030000000000000000000000000eb5ec7b0000000000000001",
+			"030000000000000000000000000eb5ec7b0000000000bce1a4",
+		)
+	}
+
+	#[test]
+	fn allow_pool_currency_zero() {
+		test_encode_decode_identity(
+			ConnectorMessage::AllowPoolCurrency {
+				currency: 0,
+				pool_id: 0,
+			},
+			"03000000000000000000000000000000000000000000000000",
 		)
 	}
 
@@ -552,7 +574,7 @@ mod tests {
 	}
 
 	#[test]
-	fn update_token_price() {
+	fn update_tranche_token_price() {
 		test_encode_decode_identity(
 			ConnectorMessage::UpdateTrancheTokenPrice {
 				pool_id: 1,
@@ -693,19 +715,6 @@ mod tests {
 	}
 
 	#[test]
-	fn collect_for_redeem() {
-		test_encode_decode_identity(
-			ConnectorMessage::CollectForRedeem {
-				pool_id: 1,
-				tranche_id: default_tranche_id(),
-				caller: vec_to_fixed_array(default_address_20().to_vec()),
-				user: default_address_32(),
-			},
-			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
-		)
-	}
-
-	#[test]
 	fn collect_invest() {
 		test_encode_decode_identity(
 			ConnectorMessage::CollectInvest {
@@ -713,20 +722,7 @@ mod tests {
 				tranche_id: default_tranche_id(),
 				address: default_address_32(),
 			},
-			"0f0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
-		)
-	}
-
-	#[test]
-	fn collect_for_invest() {
-		test_encode_decode_identity(
-			ConnectorMessage::CollectForInvest {
-				pool_id: 1,
-				tranche_id: default_tranche_id(),
-				caller: vec_to_fixed_array(default_address_20().to_vec()),
-				user: default_address_32(),
-			},
-			"100000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564",
+			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
 		)
 	}
 
@@ -742,6 +738,18 @@ mod tests {
 		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
 			Message::deserialize(&mut hex::decode(expected_hex).expect("").as_slice()).expect("");
 		assert_eq!(msg, decoded);
+	}
+
+	#[test]
+	fn collect_redeem() {
+		test_encode_decode_identity(
+			ConnectorMessage::CollectRedeem {
+				pool_id: POOL_ID,
+				tranche_id: default_tranche_id(),
+				address: default_address_32(),
+			},
+			"0d0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+		)
 	}
 
 	fn default_address_20() -> [u8; 20] {

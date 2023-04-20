@@ -515,7 +515,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a CurrencyId to the set of known currencies, enabling that currency for Pool creation.
+		/// Add a CurrencyId to the set of known currencies on a given Domain.
 		// TODO: Replace weight after benchmarking
 		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
 		#[pallet::call_index(8)]
