@@ -18,7 +18,7 @@ pub fn advance_n_blocks<T: frame_system::Config>(n: T::BlockNumber) {
 			let h = frame_system::Pallet::<T>::finalize();
 			let b = h
 				.number()
-				.checked_add(&1u32.into())
+				.checked_add(&T::BlockNumber::one())
 				.expect("Mock block count increase failed");
 			frame_system::Pallet::<T>::initialize(&b.into(), h.parent_hash(), h.digest());
 			advance_n_blocks::<T>(
