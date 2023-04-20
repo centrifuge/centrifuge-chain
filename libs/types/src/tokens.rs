@@ -10,8 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use core::marker::PhantomData;
+
 use cfg_primitives::types::{PoolId, TrancheId};
-use cfg_traits::{GeneralCurrencyIndex, TrancheCurrency as TrancheCurrencyT};
+use cfg_traits::TrancheCurrency as TrancheCurrencyT;
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use orml_asset_registry::AssetMetadata;
 use scale_info::TypeInfo;
@@ -80,28 +82,39 @@ impl From<StakingCurrency> for CurrencyId {
 	}
 }
 
-impl<Prefix> GeneralCurrencyIndex<Prefix> for CurrencyId
+/// A general index wrapper for a given currency representation which is the concatenation
+/// of the generic prefix and the identifier of the respective currency.
+pub struct GeneralCurrencyIndex<Index, Prefix> {
+	pub index: Index,
+	_phantom: PhantomData<Prefix>,
+}
+
+impl<Index, Prefix> TryInto<GeneralCurrencyIndex<Index, Prefix>> for CurrencyId
 where
+	Index: From<u128>,
 	Prefix: Get<[u8; 12]>,
 {
-	type CurrencyId = CurrencyId;
-	type GeneralIndex = u128;
+	type Error = DispatchError;
 
-	fn get_general_index(
-		currency_id: Self::CurrencyId,
-	) -> Result<Self::GeneralIndex, DispatchError> {
+	fn try_into(self) -> Result<GeneralCurrencyIndex<Index, Prefix>, Self::Error> {
 		let mut bytes = [0u8; 16];
 		bytes[..12].copy_from_slice(&Prefix::get());
 
-		let currency_bytes: [u8; 4] = match currency_id {
+		let currency_bytes: [u8; 4] = match &self {
 			CurrencyId::ForeignAsset(id32) => Ok(id32.to_be_bytes()),
 			_ => Err(DispatchError::Token(TokenError::Unsupported)),
 		}?;
-
 		bytes[12..].copy_from_slice(&currency_bytes[..]);
-		Ok(u128::from_be_bytes(bytes))
+
+		Ok(GeneralCurrencyIndex {
+			index: u128::from_be_bytes(bytes).into(),
+			_phantom: Default::default(),
+		})
 	}
 }
+
+// TODO: Add TryFrom<GeneralCurrencyIndex> for CurrencyId
+// TODO: Add unit tests for both cases
 
 /// A Currency that is solely used by tranches.
 ///

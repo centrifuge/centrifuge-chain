@@ -630,13 +630,3 @@ pub trait TransferAllowance<AccountId> {
 		currency: Self::CurrencyId,
 	) -> DispatchResult;
 }
-
-/// A trait that enables mapping a currency type to some general index with a distinct prefix.
-pub trait GeneralCurrencyIndex<Prefix> {
-	type CurrencyId;
-	type GeneralIndex;
-
-	/// Returns the `GeneralIndex` of a currency as a concatenation of the generic prefix
-	/// and its local currency identifier.
-	fn get_general_index(currency: Self::CurrencyId) -> Result<Self::GeneralIndex, DispatchError>;
-}

@@ -13,22 +13,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{GeneralCurrencyIndex, PoolInspect};
+use cfg_traits::PoolInspect;
 use cfg_types::domain_address::{Domain, DomainAddress, DomainLocator};
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
-use frame_support::{
-	ensure,
-	traits::{
-		fungibles::{Inspect, Mutate, Transfer},
-		OriginTrait,
-	},
+use frame_support::traits::{
+	fungibles::{Inspect, Mutate, Transfer},
+	OriginTrait,
 };
 use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::U256;
-use sp_runtime::{traits::AtLeast32BitUnsigned, DispatchError, FixedPointNumber};
+use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
 use sp_std::{convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
@@ -105,7 +102,7 @@ pub mod pallet {
 	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::CustomMetadata,
+		tokens::{CustomMetadata, GeneralCurrencyIndex},
 	};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -175,10 +172,9 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen
 			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>
-			+ GeneralCurrencyIndex<
-				<Self as Config>::GeneralCurrencyPrefix,
-				CurrencyId = <Self as Config>::CurrencyId,
-				GeneralIndex = u128,
+			+ TryInto<
+				GeneralCurrencyIndex<u128, <Self as Config>::GeneralCurrencyPrefix>,
+				Error = DispatchError,
 			>;
 
 		/// The prefix for currencies added via Connectors.
@@ -500,9 +496,7 @@ pub mod pallet {
 				who.clone(),
 				Message::Transfer {
 					amount,
-					currency: <Pallet<T> as GeneralCurrencyIndex<
-						<T as Config>::GeneralCurrencyPrefix,
-					>>::get_general_index(asset_id)?,
+					currency: Self::try_get_general_index(asset_id)?,
 					sender: who
 						.encode()
 						.try_into()
@@ -515,7 +509,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a CurrencyId to the set of known currencies on a given Domain.
+		/// Add a `CurrencyId` to the set of known currencies on a given Domain.
 		// TODO: Replace weight after benchmarking
 		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
 		#[pallet::call_index(8)]
@@ -526,14 +520,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let general_index = <Pallet<T> as GeneralCurrencyIndex<
-				<T as Config>::GeneralCurrencyPrefix,
-			>>::get_general_index(currency_id)?;
-
 			Self::do_send_message(
 				who,
 				Message::AddCurrency {
-					currency: general_index,
+					currency: Self::try_get_general_index(currency_id)?,
 					// FIXME: In PR which adds evm_address to AssetRegistry
 					evm_address: [0u8; 20],
 				},
@@ -652,25 +642,26 @@ pub mod pallet {
 
 			encoded
 		}
-	}
-}
 
-impl<T, Prefix> GeneralCurrencyIndex<Prefix> for Pallet<T>
-where
-	T: pallet::Config,
-{
-	type CurrencyId = <T as pallet::Config>::CurrencyId;
-	type GeneralIndex = u128;
+		/// Returns the `u128` general index of a currency as the concatenation of the
+		/// configured `GeneralCurrencyPrefix` and its local currency identifier.
+		///
+		/// Assumes the currency to be registered in the `AssetRegistry`.
+		pub fn try_get_general_index(
+			currency: <T as pallet::Config>::CurrencyId,
+		) -> Result<u128, DispatchError> {
+			ensure!(
+				<T as Config>::AssetRegistry::metadata(&currency).is_some(),
+				Error::<T>::AssetNotFound
+			);
 
-	fn get_general_index(
-		currency: <T as pallet::Config>::CurrencyId,
-	) -> Result<Self::GeneralIndex, DispatchError> {
-		ensure!(
-			<T as Config>::AssetRegistry::metadata(&currency).is_some(),
-			Error::<T>::AssetNotFound
-		);
+			let general_index: GeneralCurrencyIndex<
+				u128,
+				<T as pallet::Config>::GeneralCurrencyPrefix,
+			> = CurrencyIdOf::<T>::try_into(currency)?;
 
-		CurrencyIdOf::<T>::get_general_index(currency)
+			Ok(general_index.index)
+		}
 	}
 }
 
