@@ -1,6 +1,6 @@
+use cfg_test_utils::system::time_travel::advance_n_blocks;
 use cfg_types::{locations::Location, tokens::CurrencyId};
 use frame_support::{assert_err, assert_noop, assert_ok};
-use sp_runtime::traits::Header;
 
 use super::*;
 use crate::mock::*;
@@ -368,7 +368,7 @@ fn purge_transfer_allowance_works() {
 			ACCOUNT_RECEIVER.into(),
 		));
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
-		advance_n_blocks(6u64);
+		advance_n_blocks::<Runtime>(6u64);
 
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
@@ -467,7 +467,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			ACCOUNT_RECEIVER.into(),
 		));
 
-		advance_n_blocks(6u64);
+		advance_n_blocks::<Runtime>(6u64);
 
 		// test removal
 		assert_ok!(TransferAllowList::purge_transfer_allowance(
@@ -650,7 +650,7 @@ fn set_allowance_delay_future_modifiable_fails_if_modifiable_set_and_not_reached
 				CurrencyId::Native
 			)
 		);
-		advance_n_blocks(20);
+		advance_n_blocks::<Runtime>(20);
 
 		assert_noop!(
 			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
@@ -676,7 +676,7 @@ fn set_allowance_delay_future_modifiable_works_if_modifiable_set_and_reached() {
 				CurrencyId::Native
 			)
 		);
-		advance_n_blocks(200);
+		advance_n_blocks::<Runtime>(200);
 
 		assert_ok!(
 			TransferAllowList::toggle_allowance_delay_once_future_modifiable(
@@ -727,7 +727,7 @@ fn purge_allowance_delay_works() {
 				CurrencyId::Native
 			)
 		);
-		advance_n_blocks(201);
+		advance_n_blocks::<Runtime>(201);
 		assert_ok!(TransferAllowList::purge_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::Native
@@ -803,7 +803,7 @@ fn purge_allowance_delay_fails_if_modifiable_at_not_reached() {
 			),
 			Error::<Runtime>::DelayUnmodifiable
 		);
-		advance_n_blocks(20u64);
+		advance_n_blocks::<Runtime>(20u64);
 		assert_noop!(
 			TransferAllowList::purge_allowance_delay(
 				RuntimeOrigin::signed(SENDER),
@@ -836,7 +836,7 @@ fn update_allowance_delay_fails_if_modifiable_after_not_set() {
 			CurrencyId::Native,
 			10u64
 		));
-		advance_n_blocks(15);
+		advance_n_blocks::<Runtime>(15);
 		assert_noop!(
 			TransferAllowList::update_allowance_delay(
 				RuntimeOrigin::signed(SENDER),
@@ -862,7 +862,7 @@ fn update_allowance_delay_fails_if_modifiable_after_not_reached() {
 				CurrencyId::Native
 			)
 		);
-		advance_n_blocks(15);
+		advance_n_blocks::<Runtime>(15);
 		assert_noop!(
 			TransferAllowList::update_allowance_delay(
 				RuntimeOrigin::signed(SENDER),
@@ -889,7 +889,7 @@ fn update_allowance_delay_works() {
 				CurrencyId::Native
 			)
 		);
-		advance_n_blocks(12);
+		advance_n_blocks::<Runtime>(12);
 		assert_ok!(TransferAllowList::update_allowance_delay(
 			RuntimeOrigin::signed(SENDER),
 			CurrencyId::Native,
@@ -923,16 +923,4 @@ fn update_allowance_delay_works() {
 			})
 		)
 	})
-}
-
-fn advance_n_blocks(n: u64) {
-	match n {
-		n if n > 0 => {
-			let h = System::finalize();
-			let b = h.number.checked_add(1).unwrap();
-			System::initialize(&b.into(), h.parent_hash(), h.digest());
-			advance_n_blocks(n - 1);
-		}
-		_ => (),
-	}
 }

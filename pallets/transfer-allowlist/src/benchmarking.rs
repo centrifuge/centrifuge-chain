@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use cfg_test_utils::system::time_travel::advance_n_blocks;
 use cfg_types::{locations::Location, tokens::CurrencyId};
 use codec::EncodeLike;
 use frame_benchmarking::*;
@@ -100,7 +101,8 @@ benchmarks! {
 			  )
 		}
 
-	toggle_allowance_delay_once_future_modifiable_delay_missing {
+
+	toggle_allowance_delay_once_future_modifiable {
 			let (sender, receiver) = set_up_users::<T>();
 		  Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
 	}:toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()), CurrencyId::Native)
@@ -116,7 +118,28 @@ benchmarks! {
 								once_modifiable_after: Some(2u32.into())
 						  }
 				  )
-			}
+	}
+
+  update_allowance_delay_present {
+			let (sender, receiver) = set_up_users::<T>();
+		  Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
+		  Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
+	  advance_n_blocks::<T>(1);
+  }:update_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native, 200u32.into())
+		verify {
+			assert_eq!(
+
+							Pallet::<T>::get_account_currency_restriction_count_delay(
+									sender,
+									  CurrencyId::Native,
+							).unwrap(),
+							AllowanceMetadata {
+									allowance_count: 0,
+									current_delay: Some(200u32.into()),
+									once_modifiable_after: None
+							}
+			)
+		}
 
 
 

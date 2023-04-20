@@ -19,6 +19,7 @@
 use frame_support::PalletId;
 
 pub mod mocks;
+pub mod system;
 
 /// A pallet id for testing.
 /// Can be used for a single point of storage for tokens in testing for example
