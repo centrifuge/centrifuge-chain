@@ -66,7 +66,10 @@ where
 		valid_until: Moment,
 	},
 	// Bidirectional: Domain must not accept every incoming token.
-	// Sender must ensure beforehand that the receiver will not reject
+	// Sender cannot ensure whether the receiver rejects.
+	//
+	// For transfers from Centrifuge to EVM domain, `AddCurrency` should have been called beforehand.
+	// For transfers from EVm domain to Centrifuge, we can assume `AddCurrency` has been called for that domain already.
 	Transfer {
 		currency: u128,
 		sender: Address,
@@ -114,22 +117,10 @@ where
 		tranche_id: TrancheId,
 		address: Address,
 	},
-	CollectForRedeem {
-		pool_id: PoolId,
-		tranche_id: TrancheId,
-		caller: Address,
-		user: Address,
-	},
 	CollectInvest {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		address: Address,
-	},
-	CollectForInvest {
-		pool_id: PoolId,
-		tranche_id: TrancheId,
-		caller: Address,
-		user: Address,
 	},
 }
 
@@ -163,9 +154,7 @@ impl<
 			Self::IncreaseRedeemOrder { .. } => 11,
 			Self::DecreaseRedeemOrder { .. } => 12,
 			Self::CollectRedem { .. } => 13,
-			Self::CollectForRedeem { .. } => 14,
 			Self::CollectInvest { .. } => 15,
-			Self::CollectForInvest { .. } => 16,
 		}
 	}
 }
@@ -339,20 +328,6 @@ impl<
 				self.call_type(),
 				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
 			),
-			Message::CollectForRedeem {
-				pool_id,
-				tranche_id,
-				caller: call_address,
-				user: collect_address,
-			} => encoded_message(
-				self.call_type(),
-				vec![
-					encode_be(pool_id),
-					tranche_id.encode(),
-					call_address.to_vec(),
-					collect_address.to_vec(),
-				],
-			),
 			Message::CollectInvest {
 				pool_id,
 				tranche_id,
@@ -360,20 +335,6 @@ impl<
 			} => encoded_message(
 				self.call_type(),
 				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
-			),
-			Message::CollectForInvest {
-				pool_id,
-				tranche_id,
-				caller: call_address,
-				user: collect_address,
-			} => encoded_message(
-				self.call_type(),
-				vec![
-					encode_be(pool_id),
-					tranche_id.encode(),
-					call_address.to_vec(),
-					collect_address.to_vec(),
-				],
 			),
 		}
 	}
@@ -460,22 +421,10 @@ impl<
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
 			}),
-			14 => Ok(Self::CollectForRedeem {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				tranche_id: decode::<16, _, _>(input)?,
-				caller: decode::<32, _, _>(input)?,
-				user: decode::<32, _, _>(input)?,
-			}),
 			15 => Ok(Self::CollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				address: decode::<32, _, _>(input)?,
-			}),
-			16 => Ok(Self::CollectForInvest {
-				pool_id: decode_be_bytes::<8, _, _>(input)?,
-				tranche_id: decode::<16, _, _>(input)?,
-				caller: decode::<32, _, _>(input)?,
-				user: decode::<32, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
