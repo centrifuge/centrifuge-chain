@@ -634,7 +634,7 @@ mod tests {
 	fn transfer_to_evm_address() {
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
-        			currency: TOKEN_ID,
+					currency: TOKEN_ID,
 					sender: default_address_32(),
 					receiver: vec_to_fixed_array(default_address_20().to_vec()),
 					amount: AMOUNT,
