@@ -404,7 +404,7 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					address: domain_address.address(),
+					member: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;

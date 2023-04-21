@@ -62,7 +62,7 @@ where
 	UpdateMember {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: Address,
+		member: Address,
 		valid_until: Moment,
 	},
 	// Bidirectional: Domain must not accept every incoming token.
@@ -77,50 +77,50 @@ where
 		amount: Balance,
 	},
 	TransferTrancheTokens {
-		domain: Domain,
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		sender: Address,
+		domain: Domain,
 		receiver: Address,
 		amount: Balance,
 	},
 	IncreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: Address,
+		investor: Address,
 		currency: u128,
 		amount: Balance,
 	},
 	DecreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: Address,
+		investor: Address,
 		currency: u128,
 		amount: Balance,
 	},
 	IncreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: Address,
+		investor: Address,
 		currency: u128,
 		amount: Balance,
 	},
 	DecreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: Address,
+		investor: Address,
 		currency: u128,
 		amount: Balance,
 	},
 	CollectRedeem {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: Address,
+		investor: Address,
 	},
 	CollectInvest {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
-		address: Address,
+		investor: Address,
 	},
 }
 
@@ -213,7 +213,7 @@ impl<
 			Message::UpdateMember {
 				pool_id,
 				tranche_id,
-				address,
+				member: address,
 				valid_until,
 			} => encoded_message(
 				self.call_type(),
@@ -239,19 +239,19 @@ impl<
 				],
 			),
 			Message::TransferTrancheTokens {
-				domain,
 				pool_id,
 				tranche_id,
 				sender,
+				domain,
 				receiver,
 				amount,
 			} => encoded_message(
 				self.call_type(),
 				vec![
-					domain.serialize(),
 					encode_be(pool_id),
 					tranche_id.encode(),
 					sender.to_vec(),
+					domain.serialize(),
 					receiver.to_vec(),
 					encode_be(amount),
 				],
@@ -259,7 +259,7 @@ impl<
 			Message::IncreaseInvestOrder {
 				pool_id,
 				tranche_id,
-				address,
+				investor: address,
 				currency: token,
 				amount,
 			} => encoded_message(
@@ -275,7 +275,7 @@ impl<
 			Message::DecreaseInvestOrder {
 				pool_id,
 				tranche_id,
-				address,
+				investor: address,
 				currency: token,
 				amount,
 			} => encoded_message(
@@ -291,7 +291,7 @@ impl<
 			Message::IncreaseRedeemOrder {
 				pool_id,
 				tranche_id,
-				address,
+				investor: address,
 				currency: token,
 				amount,
 			} => encoded_message(
@@ -307,7 +307,7 @@ impl<
 			Message::DecreaseRedeemOrder {
 				pool_id,
 				tranche_id,
-				address,
+				investor: address,
 				currency: token,
 				amount,
 			} => encoded_message(
@@ -323,7 +323,7 @@ impl<
 			Message::CollectRedeem {
 				pool_id,
 				tranche_id,
-				address,
+				investor: address,
 			} => encoded_message(
 				self.call_type(),
 				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
@@ -331,7 +331,7 @@ impl<
 			Message::CollectInvest {
 				pool_id,
 				tranche_id,
-				address,
+				investor: address,
 			} => encoded_message(
 				self.call_type(),
 				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
@@ -371,7 +371,7 @@ impl<
 			6 => Ok(Self::UpdateMember {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				member: decode::<32, _, _>(input)?,
 				valid_until: decode_be_bytes::<8, _, _>(input)?,
 			}),
 			7 => Ok(Self::Transfer {
@@ -381,50 +381,50 @@ impl<
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			8 => Ok(Self::TransferTrancheTokens {
-				domain: deserialize::<9, _, _>(input)?,
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				sender: decode::<32, _, _>(input)?,
+				domain: deserialize::<9, _, _>(input)?,
 				receiver: decode::<32, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			9 => Ok(Self::IncreaseInvestOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			10 => Ok(Self::DecreaseInvestOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			11 => Ok(Self::IncreaseRedeemOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			12 => Ok(Self::DecreaseRedeemOrder {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			13 => Ok(Self::CollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
 			}),
 			14 => Ok(Self::CollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
-				address: decode::<32, _, _>(input)?,
+				investor: decode::<32, _, _>(input)?,
 			}),
 			_ => Err(codec::Error::from(
 				"Unsupported decoding for this Message variant",
@@ -591,7 +591,7 @@ mod tests {
 				ConnectorMessage::UpdateMember {
 					pool_id: 2,
 					tranche_id: default_tranche_id(),
-					address: default_address_32(),
+					member: default_address_32(),
 					valid_until: 1706260138,
 				},
 				"060000000000000002811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640000000065b376aa"
@@ -606,12 +606,12 @@ mod tests {
 				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
 					tranche_id: default_tranche_id(),
-					domain: domain_address.clone().into(),
 					sender: default_address_32(),
+					domain: domain_address.clone().into(),
 					receiver: domain_address.address(),
 					amount: AMOUNT,
 				},
-				"080100000000000005040000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+				"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
 			);
 	}
 
@@ -621,25 +621,23 @@ mod tests {
 				ConnectorMessage::TransferTrancheTokens {
 					pool_id: 1,
 					tranche_id: default_tranche_id(),
-					domain: Domain::Centrifuge,
 					sender: vec_to_fixed_array(default_address_20().to_vec()),
+					domain: Domain::Centrifuge,
 					receiver: default_address_32(),
 					amount: AMOUNT,
 				},
-				"080000000000000000000000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
+				"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 			)
 	}
 
 	#[test]
-	fn transfer_to_moonbeam() {
-		let domain_address = DomainAddress::EVM(1284, default_address_20());
-
+	fn transfer_to_evm_address() {
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
-					receiver: domain_address.address(),
-					sender: default_address_32(),
-					amount: AMOUNT,
         			currency: TOKEN_ID,
+					sender: default_address_32(),
+					receiver: vec_to_fixed_array(default_address_20().to_vec()),
+					amount: AMOUNT,
 				},
 				"070000000000000000000000000eb5ec7b45645645645645645645645645645645645645645645645645645645645645641231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
 			);
@@ -649,10 +647,10 @@ mod tests {
 	fn transfer_to_centrifuge() {
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
+        			currency: TOKEN_ID,
 					sender: vec_to_fixed_array(default_address_20().to_vec()),
 					receiver: default_address_32(),
 					amount: AMOUNT,
-        			currency: TOKEN_ID,
 				},
 				"070000000000000000000000000eb5ec7b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 			);
@@ -664,7 +662,7 @@ mod tests {
 			ConnectorMessage::IncreaseInvestOrder {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				address: default_address_32(),
+				investor: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -678,7 +676,7 @@ mod tests {
 			ConnectorMessage::DecreaseInvestOrder {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				address: default_address_32(),
+				investor: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -692,7 +690,7 @@ mod tests {
 			ConnectorMessage::IncreaseRedeemOrder {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				address: default_address_32(),
+				investor: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -706,7 +704,7 @@ mod tests {
 			ConnectorMessage::DecreaseRedeemOrder {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				address: default_address_32(),
+				investor: default_address_32(),
 				currency: TOKEN_ID,
 				amount: AMOUNT,
 			},
@@ -720,9 +718,21 @@ mod tests {
 			ConnectorMessage::CollectInvest {
 				pool_id: 1,
 				tranche_id: default_tranche_id(),
-				address: default_address_32(),
+				investor: default_address_32(),
 			},
 			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+		)
+	}
+
+	#[test]
+	fn collect_redeem() {
+		test_encode_decode_identity(
+			ConnectorMessage::CollectRedeem {
+				pool_id: POOL_ID,
+				tranche_id: default_tranche_id(),
+				investor: default_address_32(),
+			},
+			"0d0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
 		)
 	}
 
@@ -738,18 +748,6 @@ mod tests {
 		let decoded: Message<Domain, PoolId, TrancheId, Balance, Rate> =
 			Message::deserialize(&mut hex::decode(expected_hex).expect("").as_slice()).expect("");
 		assert_eq!(msg, decoded);
-	}
-
-	#[test]
-	fn collect_redeem() {
-		test_encode_decode_identity(
-			ConnectorMessage::CollectRedeem {
-				pool_id: POOL_ID,
-				tranche_id: default_tranche_id(),
-				address: default_address_32(),
-			},
-			"0d0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
-		)
 	}
 
 	fn default_address_20() -> [u8; 20] {
