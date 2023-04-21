@@ -203,6 +203,22 @@ benchmarks! {
 				)
 		  }
 
+	purge_transfer_allowance {
+			let (sender, receiver) = set_up_users::<T>();
+			  Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+			Pallet::<T>::remove_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+	}:purge_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
+	verify {
+			  assert_eq!(
+					  Pallet::<T>::get_account_currency_transfer_allowance(
+							  (sender,
+							   CurrencyId::Native,
+							   Location::from(receiver))
+					  ),
+			None
+				)
+	}
+
 }
 
 fn set_up_users<T: Config>() -> (T::AccountId, T::AccountId) {
