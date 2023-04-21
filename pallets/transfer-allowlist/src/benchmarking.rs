@@ -141,7 +141,26 @@ benchmarks! {
 			)
 		}
 
+	purge_allowance_delay  {
+			let (sender, receiver) = set_up_users::<T>();
+		  Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
+		  Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
+		advance_n_blocks::<T>(1u32.into());
+	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native)
+		verify{
+				  assert_eq!(
 
+							  Pallet::<T>::get_account_currency_restriction_count_delay(
+									  sender,
+									  CurrencyId::Native,
+							  ).unwrap(),
+							  AllowanceMetadata {
+									  allowance_count: 0,
+									  current_delay: None,
+									  once_modifiable_after: None
+							  }
+				  )
+		}
 
 	remove_transfer_allowance_no_delay {
 		  let (sender, receiver) = set_up_users::<T>();
