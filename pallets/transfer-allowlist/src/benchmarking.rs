@@ -16,7 +16,8 @@ use codec::EncodeLike;
 use frame_benchmarking::*;
 use frame_support::traits::{Currency, ReservableCurrency};
 use frame_system::RawOrigin;
-use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded};
+use scale_info::TypeInfo;
+use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One};
 
 use super::*;
 benchmarks! {
@@ -26,7 +27,7 @@ benchmarks! {
 	<T as frame_system::Config>::AccountId: Into<<T as pallet::Config>::Location> + AtLeast32BitUnsigned,
 	  <T as pallet::Config>::Location: From<<T as frame_system::Config>::AccountId> + EncodeLike<<T as pallet::Config>::Location>,
 	  <T as pallet::Config>::ReserveCurrency: Currency<<T as frame_system::Config>::AccountId> + ReservableCurrency<<T as frame_system::Config>::AccountId>,
-	  <T as frame_system::Config>::BlockNumber: AtLeast32BitUnsigned + Bounded
+	  <T as frame_system::Config>::BlockNumber: AtLeast32BitUnsigned + Bounded + TypeInfo
 
 }
 
@@ -161,6 +162,28 @@ benchmarks! {
 							  }
 				  )
 		}
+
+
+  remove_transfer_allowance_delay_present {
+		  let (sender, receiver) = set_up_users::<T>();
+	  let delay = T::BlockNumber::one();
+		  Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, delay.clone())?;
+			Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+		  advance_n_blocks::<T>(1u32.into());
+  }:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
+			verify {
+				  assert_eq!(
+						  Pallet::<T>::get_account_currency_transfer_allowance(
+								  (sender,
+								   CurrencyId::Native,
+								   Location::from(receiver))
+						  ).unwrap(),
+							AllowanceDetails {
+								  allowed_at: T::BlockNumber::one(),
+								  blocked_at: <frame_system::Pallet<T>>::block_number().checked_add(&delay).expect("Invalid blocked at."),
+							}
+					)
+			}
 
 	remove_transfer_allowance_no_delay {
 		  let (sender, receiver) = set_up_users::<T>();
