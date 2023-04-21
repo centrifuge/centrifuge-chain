@@ -113,8 +113,23 @@ where
 	}
 }
 
-// TODO: Add TryFrom<GeneralCurrencyIndex> for CurrencyId
-// TODO: Add unit tests for both cases
+impl<Index, Prefix> TryFrom<GeneralCurrencyIndex<Index, Prefix>> for CurrencyId
+where
+	Index: Into<u128>,
+	Prefix: Get<[u8; 12]>,
+{
+	type Error = DispatchError;
+
+	fn try_from(value: GeneralCurrencyIndex<Index, Prefix>) -> Result<Self, Self::Error> {
+		let bytes: [u8; 16] = value.index.into().to_be_bytes();
+		let currency_bytes: [u8; 4] = bytes[12..]
+			.try_into()
+			// should never throw but lets be safe
+			.map_err(|_| DispatchError::Corruption)?;
+
+		Ok(CurrencyId::ForeignAsset(u32::from_be_bytes(currency_bytes)))
+	}
+}
 
 /// A Currency that is solely used by tranches.
 ///
@@ -187,7 +202,67 @@ pub struct CustomMetadata {
 
 	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
 	pub pool_currency: bool,
-	// TODO: Enable in follow-up PR
-	// /// The corresponding 20-byte EVM address of the asset.
-	// pub evm_address: [u8; 20],
+}
+
+#[cfg(test)]
+mod tests {
+	use frame_support::parameter_types;
+
+	use super::*;
+
+	const FOREIGN: CurrencyId = CurrencyId::ForeignAsset(1u32);
+
+	parameter_types! {
+		pub const ZeroPrefix: [u8; 12] = [0u8; 12];
+		pub const NonZeroPrefix: [u8; 12] = *b"TestPrefix12";
+	}
+
+	#[test]
+	fn zero_prefix_general_index_conversion() {
+		let general_index: GeneralCurrencyIndex<u128, ZeroPrefix> = FOREIGN.try_into().unwrap();
+		assert_eq!(general_index.index, 1u128);
+
+		// check identity condition on reverse conversion
+		let reconvert = CurrencyId::try_from(general_index).unwrap();
+		assert_eq!(reconvert, CurrencyId::ForeignAsset(1u32));
+	}
+
+	#[test]
+	fn non_zero_prefix_general_index_conversion() {
+		let general_index: GeneralCurrencyIndex<u128, NonZeroPrefix> = FOREIGN.try_into().unwrap();
+		assert_eq!(
+			general_index.index,
+			112181915321113319688489505016241979393u128
+		);
+
+		// check identity condition on reverse conversion
+		let reconvert = CurrencyId::try_from(general_index).unwrap();
+		assert_eq!(reconvert, CurrencyId::ForeignAsset(1u32));
+	}
+
+	#[test]
+	fn non_foreign_asset_general_index_conversion() {
+		assert!(
+			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::Native)
+				.is_err()
+		);
+		assert!(
+			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::Tranche(
+				2, [1u8; 16]
+			))
+			.is_err()
+		);
+		assert!(
+			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::KSM).is_err()
+		);
+		assert!(
+			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::AUSD).is_err()
+		);
+		assert!(
+			TryInto::<GeneralCurrencyIndex<u128, ZeroPrefix>>::try_into(CurrencyId::Staking(
+				StakingCurrency::BlockRewards
+			))
+			.is_err()
+		);
+	}
 }
