@@ -10,22 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General
 
-use sp_runtime::traits::{CheckedAdd, CheckedSub, Header, One, Zero};
+use sp_runtime::traits::{CheckedAdd, Header, One};
 
-pub fn advance_n_blocks<T: frame_system::Config>(n: T::BlockNumber) {
-	match n {
-		n if n > T::BlockNumber::zero() => {
-			let h = frame_system::Pallet::<T>::finalize();
-			let b = h
-				.number()
-				.checked_add(&T::BlockNumber::one())
-				.expect("Mock block count increase failed");
-			frame_system::Pallet::<T>::initialize(&b.into(), h.parent_hash(), h.digest());
-			advance_n_blocks::<T>(
-				n.checked_sub(&T::BlockNumber::one())
-					.expect("Mock block count increase failed"),
-			);
-		}
-		_ => (),
+pub fn advance_n_blocks<T: frame_system::Config>(n: u64) {
+	for _ in 0..n {
+		let h = frame_system::Pallet::<T>::finalize();
+		let b = h
+			.number()
+			.checked_add(&T::BlockNumber::one())
+			.expect("Mock block count increase failed");
+		frame_system::Pallet::<T>::initialize(&b.into(), h.parent_hash(), h.digest());
 	}
 }
