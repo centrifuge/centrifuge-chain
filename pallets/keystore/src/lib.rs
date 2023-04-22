@@ -162,6 +162,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Add keys to the storages.
 		#[pallet::weight(T::WeightInfo::add_keys(T::MaxKeys::get() as u32))]
+		#[pallet::call_index(0)]
 		pub fn add_keys(origin: OriginFor<T>, keys: Vec<AddKey<T::Hash>>) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
@@ -182,6 +183,7 @@ pub mod pallet {
 
 		/// Revoke keys with specified purpose.
 		#[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
+		#[pallet::call_index(1)]
 		pub fn revoke_keys(
 			origin: OriginFor<T>,
 			keys: Vec<T::Hash>,
@@ -204,6 +206,7 @@ pub mod pallet {
 
 		/// Set a new key deposit.
 		#[pallet::weight(T::WeightInfo::set_deposit())]
+		#[pallet::call_index(2)]
 		pub fn set_deposit(origin: OriginFor<T>, new_deposit: T::Balance) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
 

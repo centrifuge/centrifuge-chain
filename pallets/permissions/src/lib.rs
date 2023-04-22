@@ -115,6 +115,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::add_as_admin().max(T::WeightInfo::add_as_editor()))]
+		#[pallet::call_index(0)]
 		pub fn add(
 			origin: OriginFor<T>,
 			with_role: T::Role,
@@ -133,6 +134,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::remove_as_editor().max(T::WeightInfo::remove_as_admin()))]
+		#[pallet::call_index(1)]
 		pub fn remove(
 			origin: OriginFor<T>,
 			with_role: T::Role,
@@ -151,6 +153,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::purge())]
+		#[pallet::call_index(2)]
 		pub fn purge(origin: OriginFor<T>, scope: T::Scope) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 
@@ -167,6 +170,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::admin_purge())]
+		#[pallet::call_index(3)]
 		pub fn admin_purge(
 			origin: OriginFor<T>,
 			from: T::AccountId,

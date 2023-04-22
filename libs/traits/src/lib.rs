@@ -28,7 +28,7 @@ use frame_support::{
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+		AtLeast32BitUnsigned, Bounded, Get, MaybeDisplay, MaybeSerialize,
 		MaybeSerializeDeserialize, Member, Zero,
 	},
 	DispatchError,
@@ -82,7 +82,6 @@ pub trait Reward {
 		+ FromStr
 		+ Hash
 		+ MaybeDisplay
-		+ MaybeMallocSizeOf
 		+ MaybeSerializeDeserialize
 		+ Member
 		+ Parameter
@@ -616,4 +615,18 @@ pub mod fees {
 			fee: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult;
 	}
+}
+
+/// Trait to determine whether a sending account and currency have a restriction,
+/// and if so is there an allowance for the reciever location.
+pub trait TransferAllowance<AccountId> {
+	type CurrencyId;
+	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
+	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
+	/// Returns result wrapped bool for whether allowance is allowed.
+	fn allowance(
+		send: AccountId,
+		recieve: Self::Location,
+		currency: Self::CurrencyId,
+	) -> DispatchResult;
 }

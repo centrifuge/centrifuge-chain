@@ -387,6 +387,7 @@ pub mod pallet {
 			.max(<T as Config>::WeightInfo::claim_reward_ed25519())
 			.max(<T as Config>::WeightInfo::claim_reward_ecdsa())
 		)]
+		#[pallet::call_index(0)]
 		pub fn claim_reward(
 			origin: OriginFor<T>,
 			relaychain_account_id: T::RelayChainAccountId,
@@ -473,6 +474,7 @@ pub mod pallet {
 		/// to the crowdloan campaign, and that the amount of the contribution is correct as
 		/// well.
 		#[pallet::weight(<T as Config>::WeightInfo::initialize())]
+		#[pallet::call_index(1)]
 		pub fn initialize(
 			origin: OriginFor<T>,
 			contributions: RootHashOf<T>,
@@ -520,6 +522,7 @@ pub mod pallet {
 
 		/// Set the start of the lease period.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_start())]
+		#[pallet::call_index(2)]
 		pub fn set_lease_start(
 			origin: OriginFor<T>,
 			start: T::BlockNumber,
@@ -539,6 +542,7 @@ pub mod pallet {
 
 		/// Set the lease period.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_period())]
+		#[pallet::call_index(3)]
 		pub fn set_lease_period(
 			origin: OriginFor<T>,
 			period: T::BlockNumber,
@@ -561,6 +565,7 @@ pub mod pallet {
 		/// This root-hash MUST be the root-hash of the relay-chain at the block
 		/// we locked at. This root-hash will be used to verify proofs of contribution.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_contributions_root())]
+		#[pallet::call_index(4)]
 		pub fn set_contributions_root(
 			origin: OriginFor<T>,
 			root: RootHashOf<T>,
@@ -585,6 +590,7 @@ pub mod pallet {
 		/// will not be found in the generated proof of the contributor, which will
 		/// lead to a rejection of the proof.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_locked_at())]
+		#[pallet::call_index(5)]
 		pub fn set_locked_at(
 			origin: OriginFor<T>,
 			locked_at: T::BlockNumber,
@@ -608,6 +614,7 @@ pub mod pallet {
 		/// is used to derive the internal patricia key inside the child trie. The index is
 		/// stored in the `FundInfo` of the relay chain crowdloan pallet.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_crowdloan_trie_index())]
+		#[pallet::call_index(6)]
 		pub fn set_crowdloan_trie_index(
 			origin: OriginFor<T>,
 			trie_index: TrieIndex,

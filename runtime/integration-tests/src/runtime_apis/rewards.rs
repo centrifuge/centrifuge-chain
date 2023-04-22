@@ -12,6 +12,7 @@
 
 use cfg_primitives::{AccountId, CFG};
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards};
+use cfg_types::tokens::CurrencyId;
 use development_runtime::apis::RewardsApi;
 use frame_support::assert_ok;
 use sp_core::{sr25519, Pair};
@@ -25,10 +26,7 @@ async fn test() {
 	ApiEnv::new(Handle::current())
 		.startup(|| {
 			let currencies = vec![(
-				(
-					development_runtime::RewardDomain::Block,
-					development_runtime::CurrencyId::Native,
-				),
+				(development_runtime::RewardDomain::Block, CurrencyId::Native),
 				1,
 			)];
 			let stake_accounts = vec![(
@@ -38,10 +36,7 @@ async fn test() {
 						.public()
 						.into_account(),
 				),
-				(
-					development_runtime::RewardDomain::Block,
-					development_runtime::CurrencyId::Native,
-				),
+				(development_runtime::RewardDomain::Block, CurrencyId::Native),
 				100 * CFG,
 			)];
 			let rewards = vec![(1, 200 * CFG)];

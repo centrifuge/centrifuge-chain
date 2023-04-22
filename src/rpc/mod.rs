@@ -28,6 +28,7 @@ use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use substrate_frame_rpc_system::{System, SystemApiServer};
 
 pub mod anchors;
+pub mod evm;
 pub mod pools;
 pub mod rewards;
 

@@ -226,6 +226,7 @@ pub mod pallet {
 		/// For a more detailed explanation refer section 3.4 of
 		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::pre_commit())]
+		#[pallet::call_index(0)]
 		pub fn pre_commit(
 			origin: OriginFor<T>,
 			anchor_id: T::Hash,
@@ -274,6 +275,7 @@ pub mod pallet {
 		/// For a more detailed explanation refer section 3.4 of
 		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::commit())]
+		#[pallet::call_index(1)]
 		pub fn commit(
 			origin: OriginFor<T>,
 			anchor_id_preimage: T::Hash,
@@ -362,6 +364,7 @@ pub mod pallet {
 		/// For each evicted pre-commits, the deposit holded by [`Pallet::pre_commit()`] call
 		/// will be returned to the same account that made it originally.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_pre_commits())]
+		#[pallet::call_index(2)]
 		pub fn evict_pre_commits(
 			origin: OriginFor<T>,
 			anchor_ids: BoundedVec<T::Hash, ConstU32<EVICT_PRE_COMMIT_LIST_SIZE>>,
@@ -380,6 +383,7 @@ pub mod pallet {
 		/// date_represented_by_root < current_date. Additionally it needs to take care of indexes
 		/// created for accessing anchors, eg: to find an anchor given an id.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_anchors())]
+		#[pallet::call_index(3)]
 		pub fn evict_anchors(origin: OriginFor<T>) -> DispatchResult {
 			ensure_signed(origin)?;
 

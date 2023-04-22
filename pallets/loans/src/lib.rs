@@ -383,6 +383,7 @@ pub mod pallet {
 		/// Adding LoanAccount as admin to the NFT class will be enough to mint new NFTs.
 		/// The origin must be an Admin origin
 		#[pallet::weight(<T as Config>::WeightInfo::initialise_pool())]
+		#[pallet::call_index(0)]
 		pub fn initialise_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -423,6 +424,7 @@ pub mod pallet {
 		/// Collateral NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
 		#[pallet::weight(<T as Config>::WeightInfo::create())]
 		#[transactional]
+		#[pallet::call_index(1)]
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -454,6 +456,7 @@ pub mod pallet {
 			)
 		)]
 		#[transactional]
+		#[pallet::call_index(2)]
 		pub fn close(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -497,6 +500,7 @@ pub mod pallet {
 			)
 		)]
 		#[transactional]
+		#[pallet::call_index(3)]
 		pub fn borrow(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -528,6 +532,7 @@ pub mod pallet {
 		/// Amount of token will be transferred from owner to Pool reserve.
 		#[pallet::weight(<T as Config>::WeightInfo::repay(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
 		#[transactional]
+		#[pallet::call_index(4)]
 		pub fn repay(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -556,6 +561,7 @@ pub mod pallet {
 		///     such that an APR of XX.YY% becomes 0.XXYY. Valid values are 0.0001
 		///     through 0.9999, with no more than four significant figures.
 		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
+		#[pallet::call_index(5)]
 		pub fn price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -622,6 +628,7 @@ pub mod pallet {
 		/// Once the NAV calculation is done, we check how many loans we have updated and return the actual weight so that
 		/// transaction payment can return the deposit.
 		#[pallet::weight(T::WeightInfo::update_nav(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
+		#[pallet::call_index(6)]
 		pub fn update_nav(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -652,6 +659,7 @@ pub mod pallet {
 		/// we only allow adding new write off groups.
 		/// Overdue days doesn't need to be in the sorted order.
 		#[pallet::weight(<T as Config>::WeightInfo::add_write_off_group())]
+		#[pallet::call_index(7)]
 		pub fn add_write_off_group(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -695,6 +703,7 @@ pub mod pallet {
 		/// Weight is calculated for one group. Since there is no extra read or writes for groups more than 1,
 		/// We need to ensure we are charging the reads and write only once but the actual compute to be equal to number of groups processed
 		#[pallet::weight(<T as Config>::WeightInfo::write_off(T::MaxActiveLoansPerPool::get(), T::MaxWriteOffGroups::get(), MaxRateCountOf::<T>::get()))]
+		#[pallet::call_index(8)]
 		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -738,6 +747,7 @@ pub mod pallet {
 		///
 		/// `penalty_interest_rate_per_year` is specified in the same format as used for pricing loans.
 		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get(), MaxRateCountOf::<T>::get()))]
+		#[pallet::call_index(9)]
 		pub fn admin_write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,

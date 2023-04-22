@@ -12,7 +12,7 @@ use sp_std::vec::Vec;
 
 use crate::*;
 
-mod v0 {
+mod old {
 	use super::*;
 
 	/// This storage comes from the previous pallet loans.
@@ -24,9 +24,9 @@ mod v0 {
 }
 
 /// This migration nukes all storages from the pallet individually.
-pub struct NukeMigration<T>(sp_std::marker::PhantomData<T>);
+pub struct Migration<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
+impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
 		ensure!(
@@ -35,7 +35,7 @@ impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 		);
 
 		ensure!(
-			v0::NextLoanId::<T>::iter_values().count() == 1,
+			old::NextLoanId::<T>::iter_values().count() == 1,
 			"Pallet loans contains doesn't contain old data"
 		);
 
@@ -43,7 +43,7 @@ impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 	}
 
 	fn on_runtime_upgrade() -> Weight {
-		let old_values = v0::NextLoanId::<T>::iter_values().count();
+		let old_values = old::NextLoanId::<T>::iter_values().count();
 		if old_values > 0 {
 			let result = storage::unhashed::clear_prefix(&loan_prefix(), None, None);
 
@@ -69,7 +69,7 @@ impl<T: Config> OnRuntimeUpgrade for NukeMigration<T> {
 		);
 
 		ensure!(
-			v0::NextLoanId::<T>::iter_values().count() == 0,
+			old::NextLoanId::<T>::iter_values().count() == 0,
 			"Pallet loans still contains old data"
 		);
 
