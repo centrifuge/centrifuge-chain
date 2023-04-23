@@ -12,7 +12,6 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-// Frontier
 use fc_db::Backend as FrontierBackend;
 pub use fc_rpc::{
 	EthBlockDataCacheTask, OverrideHandle, RuntimeApiStorageOverride, SchemaV1Override,
@@ -22,7 +21,6 @@ pub use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_rpc::{ConvertTransaction, ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 use fp_storage::EthereumStorageSchema;
 use jsonrpsee::RpcModule;
-// Substrate
 use sc_client_api::{
 	backend::{AuxStore, Backend, StateBackend, StorageProvider},
 	client::BlockchainEvents,
