@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
 //
 // This file is part of the Centrifuge chain project.
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -22,6 +22,9 @@ use crate::{AccountId, Aura};
 
 pub mod precompile;
 
+// To create valid Ethereum-compatible blocks, we need a 20-byte
+// "author" for the block. Since that author is purely informational,
+// we do a simple truncation of the 32-byte Substrate author
 pub struct FindAuthorTruncated<F>(PhantomData<F>);
 impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	fn find_author<'a, I>(digests: I) -> Option<H160>
@@ -37,22 +40,29 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 }
 
 #[derive(Encode, Decode, Default)]
-struct EthereumAccount(H160);
+struct Account(H160);
 
-impl sp_runtime::TypeId for EthereumAccount {
+impl sp_runtime::TypeId for Account {
 	const TYPE_ID: [u8; 4] = *b"ETH\0";
 }
 
-pub struct ExtendedAddressMapping;
+pub struct ExpandedAddressMapping;
 
-impl AddressMapping<AccountId> for ExtendedAddressMapping {
+// Ethereum chain interactions are done with a 20-byte account ID. But
+// Substrate uses a 32-byte account ID. This implementation stretches
+// a 20-byte account into a 32-byte account by adding a tag and a few
+// zero bytes.
+impl AddressMapping<AccountId> for ExpandedAddressMapping {
 	fn into_account_id(address: H160) -> AccountId {
-		EthereumAccount(address).into_account_truncating()
+		Account(address).into_account_truncating()
 	}
 }
 
 pub struct BaseFeeThreshold;
 
+// TODO: These values are corrently copypasta from the Frontier
+// template. They must be understood and dialed in for our chain
+// before we consider this production-ready.
 impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
 	fn lower() -> Permill {
 		Permill::zero()
@@ -75,7 +85,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for crate::Runtime {
-	type AddressMapping = ExtendedAddressMapping;
+	type AddressMapping = ExpandedAddressMapping;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressTruncated;
