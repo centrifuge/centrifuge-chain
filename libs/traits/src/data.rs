@@ -16,10 +16,10 @@ pub trait DataRegistry<DataId, CollectionId> {
 	fn collection(collection_id: &CollectionId) -> Self::Collection;
 
 	/// Start listening data changes for a data id in a collection id
-	fn register_data_id(data_id: &DataId, collection_id: &CollectionId) -> DispatchResult;
+	fn register_id(data_id: &DataId, collection_id: &CollectionId) -> DispatchResult;
 
 	/// Start listening data changes for a data id in a collection id
-	fn unregister_data_id(data_id: &DataId, collection_id: &CollectionId) -> DispatchResult;
+	fn unregister_id(data_id: &DataId, collection_id: &CollectionId) -> DispatchResult;
 }
 
 /// Abstration to represent a collection of data in memory

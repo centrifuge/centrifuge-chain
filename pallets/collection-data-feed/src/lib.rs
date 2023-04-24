@@ -109,10 +109,7 @@ pub mod pallet {
 			CachedCollection(Collection::<T>::get(collection_id))
 		}
 
-		fn register_data_id(
-			data_id: &T::DataId,
-			collection_id: &T::CollectionId,
-		) -> DispatchResult {
+		fn register_id(data_id: &T::DataId, collection_id: &T::CollectionId) -> DispatchResult {
 			Listening::<T>::try_mutate(data_id, |counters| match counters.get_mut(collection_id) {
 				Some(counter) => counter.ensure_add_assign(1).map_err(|e| e.into()),
 				None => {
@@ -130,10 +127,7 @@ pub mod pallet {
 			})
 		}
 
-		fn unregister_data_id(
-			data_id: &T::DataId,
-			collection_id: &T::CollectionId,
-		) -> DispatchResult {
+		fn unregister_id(data_id: &T::DataId, collection_id: &T::CollectionId) -> DispatchResult {
 			Listening::<T>::try_mutate(data_id, |counters| {
 				let counter = counters
 					.get_mut(collection_id)

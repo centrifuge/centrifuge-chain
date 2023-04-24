@@ -33,13 +33,13 @@ pub mod pallet {
 			register_call!(f);
 		}
 
-		pub fn mock_register_data_id(
+		pub fn mock_register_id(
 			f: impl Fn(&T::DataId, &T::CollectionId) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_unregister_data_id(
+		pub fn mock_unregister_id(
 			f: impl Fn(&T::DataId, &T::CollectionId) -> DispatchResult + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
@@ -60,13 +60,13 @@ pub mod pallet {
 			execute_call!(a)
 		}
 
-		fn register_data_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
+		fn register_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
 			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
 			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
 		}
 
-		fn unregister_data_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
+		fn unregister_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
 			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
 			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
