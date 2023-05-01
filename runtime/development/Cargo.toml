@@ -132,9 +132,9 @@ pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-f
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 
 # Connectors 3rd-party dependencies
-moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
-pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
-xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
+moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }

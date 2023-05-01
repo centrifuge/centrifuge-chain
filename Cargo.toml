@@ -355,6 +355,7 @@ sc-rpc-server = { git = "https://github.com/paritytech//substrate", rev = "bcff6
 sc-service = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-sync-state-rpc = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-sysinfo = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
+sc-storage-monitor = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-telemetry = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-tracing = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
@@ -566,6 +567,7 @@ sc-rpc-server = { git = "https://github.com/paritytech//substrate", rev = "bcff6
 sc-service = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-sync-state-rpc = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-sysinfo = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
+sc-storage-monitor = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-telemetry = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-tracing = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }
 sc-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "bcff60a227d455d95b4712b6cb356ce56b1ff672" }

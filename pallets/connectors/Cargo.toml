@@ -41,8 +41,8 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
-xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
 
 [dev-dependencies]
 hex = "0.4.3"
