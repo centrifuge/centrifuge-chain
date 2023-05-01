@@ -19,7 +19,10 @@ use cfg_traits::{
 };
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
-use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
+use cfg_types::{
+	tokens::{CrossChainTransferability, CustomMetadata},
+	xcm::XcmMetadata,
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -251,6 +254,7 @@ where
 				xcm: XcmMetadata {
 					fee_per_second: None,
 				},
+				transferability: Some(CrossChainTransferability::Connectors),
 			},
 		}
 	}

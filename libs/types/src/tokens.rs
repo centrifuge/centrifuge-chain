@@ -66,7 +66,7 @@ pub enum CurrencyId {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum StakingCurrency {
-	/// An emulated internal, non-transferrable currency
+	/// An emulated internal, non-transferable currency
 	/// Its issuance and holding is handled inherently
 	BlockRewards,
 }
@@ -180,18 +180,7 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 /// OrmlAssetRegistry.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
-	Clone,
-	Copy,
-	Default,
-	PartialOrd,
-	Ord,
-	PartialEq,
-	Eq,
-	Debug,
-	Encode,
-	Decode,
-	TypeInfo,
-	MaxEncodedLen,
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 pub struct CustomMetadata {
 	/// XCM-related metadata.
@@ -210,6 +199,61 @@ pub struct CustomMetadata {
 
 	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
 	pub pool_currency: bool,
+
+	/// The ways, if any, this token is cross-chain transferable
+	pub transferability: Option<CrossChainTransferability>,
+}
+
+impl Default for CustomMetadata {
+	fn default() -> Self {
+		Self {
+			xcm: Default::default(),
+			mintable: false,
+			permissioned: false,
+			pool_currency: false,
+			transferability: Some(CrossChainTransferability::Xcm),
+		}
+	}
+}
+
+/// The Cross Chain Transferability property of an asset describes the way(s),
+/// if any, that said asset is cross-chain transferable. It may currently be
+/// transferable through Xcm, Centrifuge Connectors, or All .
+///
+/// NOTE: Once set to `All`, the asset is automatically transferable through any
+/// eventual new option added at a later stage. A migration might be required if
+/// that's undesirable for any registered asset.
+#[derive(
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum CrossChainTransferability {
+	/// The asset is only transferable through XCM
+	#[default]
+	Xcm,
+
+	/// The asset is only transferable through Centrifuge Connectors
+	Connectors,
+
+	/// The asset is transferable through all available options
+	All,
+}
+
+impl CrossChainTransferability {
+	pub fn includes(self, other: Self) -> bool {
+		self == other || self == Self::All
+	}
 }
 
 #[cfg(test)]
