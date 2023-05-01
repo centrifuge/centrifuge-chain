@@ -7767,6 +7767,7 @@ dependencies = [
  "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
+ "cfg-utils",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

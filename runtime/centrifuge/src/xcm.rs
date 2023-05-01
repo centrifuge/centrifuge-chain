@@ -191,22 +191,9 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		match id {
-			CurrencyId::AUSD => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::polkadot::acala::ID),
-					general_key(parachains::polkadot::acala::AUSD_KEY),
-				),
-			)),
-			CurrencyId::Native => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(ParachainInfo::get().into()),
-					general_key(parachains::polkadot::centrifuge::CFG_KEY),
-				),
-			)),
-			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
-			_ => None,
+			CurrencyId::Tranche(_, _) => None,
+			_ => OrmlAssetRegistry::multilocation(&id).ok()?,
+			// todo(nuno): verify this will work correctly
 		}
 	}
 }
@@ -217,29 +204,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
 		match location.clone() {
-			MultiLocation {
-				parents: 0,
-				interior: X1(GeneralKey(key)),
-			} => match &key[..] {
-				parachains::polkadot::centrifuge::CFG_KEY => Ok(CurrencyId::Native),
-				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
-			},
-			MultiLocation {
-				parents: 1,
-				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} => match para_id {
-				parachains::polkadot::acala::ID => match &key[..] {
-					parachains::polkadot::acala::AUSD_KEY => Ok(CurrencyId::AUSD),
-					_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
-				},
-
-				id if id == u32::from(ParachainInfo::get()) => match &key[..] {
-					parachains::polkadot::centrifuge::CFG_KEY => Ok(CurrencyId::Native),
-					_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
-				},
-
-				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
-			},
+			// todo(nuno): verify this will work correctly
 			MultiLocation {
 				parents: 1,
 				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey(_)),
@@ -251,7 +216,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				// from being transferred through XCM without permission checks. This is fine since
 				// we don't have any other native token represented as an X3 neither do we plan to.
 				id if id == u32::from(ParachainInfo::get()) => Err(location),
-				// Still support X3-based Multilocations native to other chains
+				// Still support X3-based MultiLocations native to other chains
 				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
 			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),

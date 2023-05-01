@@ -28,6 +28,8 @@ use frame_support::{
 	traits::{fungibles::Inspect, Get},
 	Blake2_128, BoundedVec, Parameter, RuntimeDebug, StorageHasher,
 };
+use cfg_utils::{vec_to_fixed_array};
+use frame_support::traits::Len;
 use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;
 use rev_slice::{RevSlice, SliceExt};
@@ -245,8 +247,7 @@ where
 		Currency: Encode,
 		CustomMetadata: Parameter + Member + TypeInfo,
 	{
-		let tranche_id =
-			WeakBoundedVec::<u8, ConstU32<32>>::force_from(self.currency.encode(), None);
+		let tranche_id: Vec<u8> =self.currency.encode();
 
 		AssetMetadata {
 			decimals,
@@ -258,7 +259,8 @@ where
 				interior: X3(
 					Parachain(parachain_id.into()),
 					PalletInstance(pallet_index),
-					GeneralKey(tranche_id),
+					// todo(nuno): revisit this
+					GeneralKey { length: 16u8, data: vec_to_fixed_array(tranche_id) },
 				),
 			})),
 			additional: CustomMetadata {
@@ -1854,7 +1856,7 @@ pub mod test {
 			assert_eq!(asset_metadata.symbol[..], [71, 76, 77, 82]);
 			assert_eq!(asset_metadata.decimals, decimals);
 			assert!(match asset_metadata.location {
-				Some(VersionedMultiLocation::V1(xcm::v1::MultiLocation {
+				Some(VersionedMultiLocation::V1(xcm::latest::MultiLocation {
 					parents: 1,
 					interior: X3(Parachain(42), PalletInstance(42), GeneralKey(_)),
 				})) => true,
