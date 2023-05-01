@@ -242,10 +242,11 @@ pub mod xcm {
 		}
 	}
 
-	pub fn general_key(key: &[u8]) -> xcm::latest::Junction {
-		GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-			key.into(),
-			None,
-		))
+	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
+		// todo(nuno): revisit this
+		GeneralKey {
+			length: data.len().min(32) as u8,
+			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
+		}
 	}
 }

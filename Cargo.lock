@@ -10653,6 +10653,7 @@ version = "1.0.0"
 dependencies = [
  "cfg-primitives",
  "cfg-types",
+ "cfg-utils",
  "frame-support",
  "frame-system",
  "orml-traits",
