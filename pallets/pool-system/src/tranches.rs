@@ -254,7 +254,7 @@ where
 			name: token_name,
 			symbol: token_symbol,
 			existential_deposit: Zero::zero(),
-			location: Some(VersionedMultiLocation::V1(MultiLocation {
+			location: Some(VersionedMultiLocation::V3(MultiLocation {
 				parents: 1,
 				interior: X3(
 					Parachain(parachain_id.into()),
