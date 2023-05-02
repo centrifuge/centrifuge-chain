@@ -61,7 +61,8 @@ members = [
   "runtime/altair",
   "runtime/centrifuge",
   "runtime/common",
-  #  "runtime/integration-tests",
+  # todo(nuno): re-enable this
+  "runtime/integration-tests",
 ]
 
 [dependencies]
@@ -75,6 +76,8 @@ jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 log = "0.4.8"
 serde = { version = "1.0.119", features = ["derive"] }
 url = "2.2.2"
+getrandom = { version = "0.2", features = ["js"] }
+
 
 # client dependencies
 grandpa = { package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -215,6 +218,7 @@ std = [
   "fp-storage/std",
   "futures/std",
   "sp-io/std",
+  "getrandom/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
