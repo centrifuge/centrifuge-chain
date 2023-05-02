@@ -158,9 +158,7 @@ impl FindAuthor<u64> for AuthorGiven {
 // Implement Substrate FRAME authorship pallet for the mock runtime
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
-	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
-	type UncleGenerations = ();
 }
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime

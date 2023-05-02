@@ -139,9 +139,7 @@ impl pallet_balances::Config for Runtime {
 // Required as a tight dependency from pallet_fees, but not used for it in the bridge pallet.
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
-	type FilterUncle = ();
 	type FindAuthor = ();
-	type UncleGenerations = ();
 }
 
 parameter_types! {

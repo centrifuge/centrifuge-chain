@@ -466,9 +466,7 @@ parameter_types! {
 // We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = CollatorSelection;
-	type FilterUncle = ();
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = UncleGenerations;
 }
 
 parameter_types! {

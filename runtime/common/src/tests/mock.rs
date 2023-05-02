@@ -103,9 +103,7 @@ impl FindAuthor<AccountId> for OneAuthor {
 }
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
-	type FilterUncle = ();
 	type FindAuthor = OneAuthor;
-	type UncleGenerations = ();
 }
 
 pub struct TestExternalitiesBuilder {}

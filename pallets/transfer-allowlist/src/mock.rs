@@ -140,9 +140,7 @@ parameter_types! {
 // Tight coupling--no assoc type for fees
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
-	type FilterUncle = ();
 	type FindAuthor = ();
-	type UncleGenerations = ();
 }
 
 // used to set/retrieve reserve fee amount
