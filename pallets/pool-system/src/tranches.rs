@@ -20,16 +20,15 @@ use cfg_traits::{
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
 use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
+use cfg_utils::vec_to_fixed_array;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
 	sp_runtime::ArithmeticError,
-	traits::{fungibles::Inspect, Get},
+	traits::{fungibles::Inspect, Get, Len},
 	Blake2_128, BoundedVec, Parameter, RuntimeDebug, StorageHasher,
 };
-use cfg_utils::{vec_to_fixed_array};
-use frame_support::traits::Len;
 use orml_traits::asset_registry::AssetMetadata;
 use polkadot_parachain::primitives::Id as ParachainId;
 use rev_slice::{RevSlice, SliceExt};
@@ -247,7 +246,7 @@ where
 		Currency: Encode,
 		CustomMetadata: Parameter + Member + TypeInfo,
 	{
-		let tranche_id: Vec<u8> =self.currency.encode();
+		let tranche_id: Vec<u8> = self.currency.encode();
 
 		AssetMetadata {
 			decimals,
@@ -260,7 +259,10 @@ where
 					Parachain(parachain_id.into()),
 					PalletInstance(pallet_index),
 					// todo(nuno): revisit this
-					GeneralKey { length: 16u8, data: vec_to_fixed_array(tranche_id) },
+					GeneralKey {
+						length: 16u8,
+						data: vec_to_fixed_array(tranche_id),
+					},
 				),
 			})),
 			additional: CustomMetadata {

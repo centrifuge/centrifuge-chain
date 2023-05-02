@@ -72,6 +72,7 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
@@ -86,6 +87,7 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "frame-support/try-runtime",
   "cfg-types/try-runtime",
+  "cfg-utils/try-runtime",
   "frame-system/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
@@ -93,4 +95,5 @@ try-runtime = [
   "pallet-pool-system/try-runtime",
   "pallet-treasury/try-runtime",
   "cfg-primitives/try-runtime",
+  "sp-runtime/try-runtime",
 ]

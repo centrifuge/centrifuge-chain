@@ -115,5 +115,5 @@ try-runtime = [
   "pallet-ethereum/try-runtime",
   "pallet-xcm-transactor/try-runtime",
   "fp-self-contained/try-runtime",
-  "sp-runtime/try-runtime"
+  "sp-runtime/try-runtime",
 ]

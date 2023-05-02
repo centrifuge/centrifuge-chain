@@ -40,7 +40,6 @@ pallet-investments = { path = "../../pallets/investments", default-features = fa
 
 cfg-utils = { path = "../../libs/utils", default-features = true }
 
-
 [dev-dependencies]
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }

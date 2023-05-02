@@ -58,11 +58,11 @@ members = [
   "pallets/restricted-tokens",
   "pallets/transfer-allowlist",
   "pallets/rewards",
-  "runtime/altair",
-  "runtime/centrifuge",
+#  "runtime/altair",
+#  "runtime/centrifuge",
   "runtime/common",
   # todo(nuno): re-enable this
-  "runtime/integration-tests",
+#  "runtime/integration-tests",
 ]
 
 [dependencies]
@@ -71,13 +71,12 @@ async-trait = "0.1"
 clap = { version = "4.0.9", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 futures = "0.3.25"
+getrandom = { version = "0.2", features = ["js"] }
 hex-literal = "0.2.1"
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 log = "0.4.8"
 serde = { version = "1.0.119", features = ["derive"] }
 url = "2.2.2"
-getrandom = { version = "0.2", features = ["js"] }
-
 
 # client dependencies
 grandpa = { package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
@@ -140,17 +139,17 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.38" }
 
 # node-specific dependencies
-altair-runtime = { path = "runtime/altair" }
-centrifuge-runtime = { path = "runtime/centrifuge" }
+altair-runtime = { path = "runtime/altair", default-features = false }
+centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
 cfg-primitives = { path = "libs/primitives" }
-development-runtime = { path = "runtime/development" }
+development-runtime = { path = "runtime/development", default-features = false}
 runtime-common = { path = "runtime/common" }
 
 # benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.38" }
 
 # integration testing
-runtime-integration-tests = { path = "runtime/integration-tests", optional = true }
+runtime-integration-tests = { path = "runtime/integration-tests", optional = true, default-features = false }
 
 # xcm
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
@@ -176,6 +175,7 @@ pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", 
 sc-service-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 tempfile = "3.1.0"
+getrandom = { version = "0.2", features = ["js"] }
 
 [features]
 default = ["std", "cli"]
