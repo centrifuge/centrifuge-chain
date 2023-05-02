@@ -214,7 +214,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Failed to map the asset to its u128 representation
+		/// Failed to map the asset to the corresponding Connector's General
+		/// Index representation
 		AssetNotFound,
 		/// A pool could not be found
 		PoolNotFound,
