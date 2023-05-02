@@ -211,7 +211,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 			// todo(nuno): verify this will work correctly
 			MultiLocation {
 				parents: 1,
-				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey(_)),
+				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. } ),
 			} => match para_id {
 				// Note: Until we have pools on Centrifuge, we don't know the pools pallet index
 				// and can't therefore match specifically on the Tranche tokens' multilocation;
@@ -289,7 +289,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, R
 /// into the right message queues.
 pub type XcmRouter = (
 	// Use UMP to communicate with the relay chain
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm, ()>,
 	// Use XCMP to communicate with sibling parachains
 	XcmpQueue,
 );
