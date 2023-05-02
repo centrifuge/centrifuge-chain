@@ -115,6 +115,65 @@ pub mod v2 {
 	}
 }
 
+pub mod storage_version {
+	use super::*;
+
+	#[storage_alias]
+	pub(super) type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
+
+	pub struct StorageVersionMigration<T: Config>(PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for StorageVersionMigration<T> {
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+			assert!(StorageVersion::get() == Some(Release::V2));
+
+			// no migration needed
+			assert!(
+				Pallet::<T>::current_storage_version() == 2,
+				"New StorageVersion should be set via pallet macro already"
+			);
+
+			info!("InterestAccrual passes PRE migrate storage version checks ✅",);
+			Ok(())
+		}
+
+		fn on_runtime_upgrade() -> Weight {
+			if Pallet::<T>::on_chain_storage_version() <= 1 {
+				// remove deprecated storage versioning entry
+				frame_support::migration::remove_storage_prefix(
+					Pallet::<T>::name().as_bytes(),
+					b"StorageVersion",
+					&[],
+				);
+				Pallet::<T>::current_storage_version().put::<Pallet<T>>();
+				info!("InterestAccrual migrated storage version ✅",);
+				T::DbWeight::get().reads_writes(0, 2)
+			} else {
+				T::DbWeight::get().zero()
+			}
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+			assert!(
+				!frame_support::migration::have_storage_value(
+					Pallet::<T>::name().as_bytes(),
+					b"StorageVersion",
+					&[]
+				),
+				"Old StorageVersion should not exist anymore"
+			);
+
+			info!(
+				"InterestAccrual pallet migration to {:?} passes POST migrate checks ✅",
+				Pallet::<T>::current_storage_version()
+			);
+			Ok(())
+		}
+	}
+}
+
 pub mod centrifuge {
 	use super::*;
 

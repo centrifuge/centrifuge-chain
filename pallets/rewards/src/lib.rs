@@ -92,6 +92,8 @@ pub mod pallet {
 
 	use super::*;
 
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	#[pallet::config]
 	pub trait Config<I: 'static = ()>: frame_system::Config {
 		type RuntimeEvent: From<Event<Self, I>>
@@ -132,6 +134,7 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T, I = ()>(_);
 
 	// --------------------------

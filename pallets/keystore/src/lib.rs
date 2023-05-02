@@ -64,6 +64,8 @@ pub mod pallet {
 
 	use super::*;
 
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -98,6 +100,7 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	/// Keys that are currently stored.

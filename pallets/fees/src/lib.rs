@@ -42,10 +42,13 @@ pub mod pallet {
 
 	use super::*;
 
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
 	// method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]

@@ -67,12 +67,15 @@ pub mod pallet {
 
 	use super::*;
 
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	// Bridge pallet type declaration.
 	//
 	// This structure is a placeholder for traits and functions implementation
 	// for the pallet.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	// ------------------------------------------------------------------------

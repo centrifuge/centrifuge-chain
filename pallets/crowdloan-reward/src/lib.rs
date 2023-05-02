@@ -106,9 +106,12 @@ pub mod pallet {
 
 	use super::*;
 
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	// Declare pallet structure placeholder
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	// ----------------------------------------------------------------------------

@@ -43,6 +43,8 @@ pub mod pallet {
 	use super::*;
 	use crate::weights::WeightInfo;
 
+	pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -71,6 +73,7 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
