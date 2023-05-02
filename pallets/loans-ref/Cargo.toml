@@ -48,6 +48,7 @@ cfg-mocks = { path = "../../libs/mocks" }
 default = ["std"]
 std = [
   "codec/std",
+  "log/std",
   "scale-info/std",
   "frame-support/std",
   "frame-system/std",
@@ -79,4 +80,5 @@ try-runtime = [
   "cfg-traits/try-runtime",
   "cfg-types/try-runtime",
   "cfg-mocks/try-runtime",
+  "sp-runtime/try-runtime",
 ]

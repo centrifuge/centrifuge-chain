@@ -71,4 +71,5 @@ try-runtime = [
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
   "pallet-balances/try-runtime",
+  "sp-runtime/try-runtime",
 ]

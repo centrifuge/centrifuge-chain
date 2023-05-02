@@ -55,4 +55,5 @@ try-runtime = [
   "frame-support/try-runtime",
   "cfg-types/try-runtime",
   "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
 ]

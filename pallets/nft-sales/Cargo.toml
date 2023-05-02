@@ -74,4 +74,5 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
+  "sp-runtime/try-runtime",
 ]

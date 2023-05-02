@@ -59,6 +59,7 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
@@ -87,9 +88,12 @@ std = [
   "xcm/std",
   "frame-benchmarking/std",
   "serde/std",
+  "cfg-utils/std",
+  "log/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
+  "cfg-utils/try-runtime",
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "lazy_static/spin_no_std",
@@ -98,4 +102,5 @@ try-runtime = [
   "orml-asset-registry/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-timestamp/try-runtime",
+  "sp-runtime/try-runtime",
 ]

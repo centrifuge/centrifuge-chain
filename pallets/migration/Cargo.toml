@@ -60,4 +60,5 @@ try-runtime = [
   "pallet-balances/try-runtime",
   "pallet-proxy/try-runtime",
   "pallet-vesting/try-runtime",
+  "sp-runtime/try-runtime",
 ]

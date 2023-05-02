@@ -43,6 +43,8 @@ runtime-benchmarks = [
   'sp-runtime',
   'cfg-types/runtime-benchmarks',
   'cfg-traits/runtime-benchmarks',
+  'frame-support/runtime-benchmarks',
+  'frame-system/runtime-benchmarks',
 ]
 std = [
   'codec/std',
@@ -53,11 +55,16 @@ std = [
   'sp-std/std',
   'cfg-types/std',
   'cfg-traits/std',
+  'xcm/std',
+  'serde/std',
+  'sp-core/std',
+  'frame-benchmarking/std',
 ]
 
 try-runtime = [
   'frame-support/try-runtime',
-  'frame-support/try-runtime',
+  'frame-system/try-runtime',
   'cfg-types/try-runtime',
   'cfg-traits/try-runtime',
+  "sp-runtime/try-runtime",
 ]

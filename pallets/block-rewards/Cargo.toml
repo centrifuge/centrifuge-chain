@@ -49,6 +49,7 @@ try-runtime = [
   "frame-system/try-runtime",
   "pallet-collator-selection/try-runtime",
   "pallet-session/try-runtime",
+  "sp-runtime/try-runtime",
 ]
 runtime-benchmarks = [
   "frame-benchmarking",

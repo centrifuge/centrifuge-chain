@@ -54,9 +54,9 @@ std = [
   "frame-benchmarking/std",
 ]
 try-runtime = [
-
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "pallet-authorship/try-runtime",
+  "sp-runtime/try-runtime",
 ]

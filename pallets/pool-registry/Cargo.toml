@@ -84,4 +84,5 @@ try-runtime = [
   "frame-system/try-runtime",
   "orml-asset-registry/try-runtime",
   "pallet-investments/try-runtime",
+  "sp-runtime/try-runtime",
 ]

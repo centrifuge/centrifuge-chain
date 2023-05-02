@@ -57,6 +57,7 @@ try-runtime = [
   "frame-system/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-timestamp/try-runtime",
+  "sp-runtime/try-runtime",
 ]
 std = [
   "codec/std",
