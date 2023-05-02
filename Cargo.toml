@@ -58,11 +58,10 @@ members = [
   "pallets/restricted-tokens",
   "pallets/transfer-allowlist",
   "pallets/rewards",
-#  "runtime/altair",
-#  "runtime/centrifuge",
+  "runtime/altair",
+  "runtime/centrifuge",
   "runtime/common",
-  # todo(nuno): re-enable this
-#  "runtime/integration-tests",
+  "runtime/integration-tests",
 ]
 
 [dependencies]
@@ -104,7 +103,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-keystore = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-offchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-timestamp = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }

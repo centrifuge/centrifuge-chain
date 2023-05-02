@@ -35,7 +35,7 @@ sp-consensus-slots = { git = "https://github.com/paritytech/substrate", branch =
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 
 ## Substrate-Client
