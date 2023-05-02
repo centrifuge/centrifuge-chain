@@ -24,6 +24,9 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 /// message type, followed by its field. Integers are big-endian encoded and enum values
 /// (such as `[crate::Domain]`) also have a custom CGMPF implementation, aiming for a
 /// fixed-size encoded representation for each message variant.
+///
+/// NOTE: The sender of a connector message cannot ensure whether the corresponding
+/// receiver rejects it.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
@@ -35,17 +38,32 @@ where
 	Rate: Encode + Decode,
 {
 	Invalid,
+	/// Add a currency to a domain, i.e, register the mapping of a currency id to
+	/// the corresponding EVM Address.
+	///
+	/// Outgoing: Directional from Centrifuge to EVM Domain.
 	AddCurrency {
 		currency: u128,
 		evm_address: [u8; 20],
 	},
+	/// Add a pool to a domain.
+	///
+	/// Outgoing: Directional from Centrifuge to EVM Domain.
 	AddPool {
 		pool_id: PoolId,
 	},
+	/// Allow a currency to be used as a pool currency and to invest in a pool.
+	///
+	/// Outgoing: Directional from Centrifuge to EVM Domain.
 	AllowPoolCurrency {
-		currency: u128,
 		pool_id: PoolId,
+		currency: u128,
 	},
+	/// Add a tranche to an already existing pool on the target domain.
+	/// The decimals of a tranche MUST be equal to the decimals of a pool.
+	/// Thus, consuming domains MUST take care of storing the decimals upon receiving an AddPool message.
+	///
+	/// Outgoing: Directional from Centrifuge to EVM Domain.
 	AddTranche {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -54,28 +72,37 @@ where
 		decimals: u8,
 		price: Rate,
 	},
+	/// Update the price of a tranche token on the target domain.
+	///
+	/// Outgoing: Directional from Centrifuge to EVM Domain.
 	UpdateTrancheTokenPrice {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		price: Rate,
 	},
+	/// Whitelist an address for the specified pair of pool and tranche token on the target domain.
+	///
+	/// Outgoing: Directional from Centrifuge to EVM Domain.
 	UpdateMember {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		member: Address,
 		valid_until: Moment,
 	},
-	// Bidirectional: Domain must not accept every incoming token.
-	// Sender cannot ensure whether the receiver rejects.
-	//
-	// For transfers from Centrifuge to EVM domain, `AddCurrency` should have been called beforehand.
-	// For transfers from EVm domain to Centrifuge, we can assume `AddCurrency` has been called for that domain already.
+	/// Transfer non-tranche tokens fungibles. For v2, it will only support stable-coins.
+	///
+	/// Bidirectional: Domain must not accept every incoming token.
+	/// For transfers from Centrifuge to EVM domain, `AddCurrency` should have been called beforehand.
+	/// For transfers from EVm domain to Centrifuge, we can assume `AddCurrency` has been called for that domain already.
 	Transfer {
 		currency: u128,
 		sender: Address,
 		receiver: Address,
 		amount: Balance,
 	},
+	/// Transfer tranche tokens between domains.
+	///
+	/// Bidirectional and relaying message.
 	TransferTrancheTokens {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -84,6 +111,10 @@ where
 		receiver: Address,
 		amount: Balance,
 	},
+	/// Increase the invest order amount for the specified pair of pool and
+	/// tranche token.
+	///
+	/// Incoming: Directional from EVM Domain to Centrifuge.
 	IncreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -91,6 +122,15 @@ where
 		currency: u128,
 		amount: Balance,
 	},
+	/// Reduce the invest order amount for the specified pair of pool and
+	/// tranche token.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Outgoing: Directional from Centrifuge to EVM Domain.
 	DecreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -98,6 +138,10 @@ where
 		currency: u128,
 		amount: Balance,
 	},
+	/// Increase the redeem order amount for the specified pair of pool and
+	/// tranche token.
+	///
+	/// Incoming: Directional from EVM Domain to Centrifuge.
 	IncreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -105,6 +149,15 @@ where
 		currency: u128,
 		amount: Balance,
 	},
+	/// Reduce the redeem order amount for the specified pair of pool and
+	/// tranche token.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Incoming: Directional from EVM Domain to Centrifuge.
 	DecreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -112,12 +165,30 @@ where
 		currency: u128,
 		amount: Balance,
 	},
-	CollectRedeem {
+	/// Collect the investment for the specified pair of pool and
+	/// tranche token.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Incoming: Directional from EVM Domain to Centrifuge.
+	CollectInvest {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		investor: Address,
 	},
-	CollectInvest {
+	/// Collect the proceeds for the specified pair of pool and
+	/// tranche token.
+	///
+	/// On success, triggers a message sent back to the sending domain.
+	/// The message will take care of re-funding the investor with the given
+	/// amount the order was reduced with. The `investor` address is used as
+	/// the receiver of that tokens.
+	///
+	/// Incoming: Directional from EVM Domain to Centrifuge.
+	CollectRedeem {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		investor: Address,
@@ -153,8 +224,8 @@ impl<
 			Self::DecreaseInvestOrder { .. } => 10,
 			Self::IncreaseRedeemOrder { .. } => 11,
 			Self::DecreaseRedeemOrder { .. } => 12,
-			Self::CollectRedeem { .. } => 13,
-			Self::CollectInvest { .. } => 14,
+			Self::CollectInvest { .. } => 13,
+			Self::CollectRedeem { .. } => 14,
 		}
 	}
 }
@@ -182,7 +253,7 @@ impl<
 			}
 			Message::AllowPoolCurrency { currency, pool_id } => encoded_message(
 				self.call_type(),
-				vec![encode_be(currency), encode_be(pool_id)],
+				vec![encode_be(pool_id), encode_be(currency)],
 			),
 			Message::AddTranche {
 				pool_id,
@@ -320,7 +391,7 @@ impl<
 					encode_be(amount),
 				],
 			),
-			Message::CollectRedeem {
+			Message::CollectInvest {
 				pool_id,
 				tranche_id,
 				investor: address,
@@ -328,7 +399,7 @@ impl<
 				self.call_type(),
 				vec![encode_be(pool_id), tranche_id.encode(), address.to_vec()],
 			),
-			Message::CollectInvest {
+			Message::CollectRedeem {
 				pool_id,
 				tranche_id,
 				investor: address,
@@ -352,8 +423,8 @@ impl<
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 			}),
 			3 => Ok(Self::AllowPoolCurrency {
-				currency: decode_be_bytes::<16, _, _>(input)?,
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
+				currency: decode_be_bytes::<16, _, _>(input)?,
 			}),
 			4 => Ok(Self::AddTranche {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
@@ -416,12 +487,12 @@ impl<
 				currency: decode_be_bytes::<16, _, _>(input)?,
 				amount: decode_be_bytes::<16, _, _>(input)?,
 			}),
-			13 => Ok(Self::CollectRedeem {
+			13 => Ok(Self::CollectInvest {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
 			}),
-			14 => Ok(Self::CollectInvest {
+			14 => Ok(Self::CollectRedeem {
 				pool_id: decode_be_bytes::<8, _, _>(input)?,
 				tranche_id: decode::<16, _, _>(input)?,
 				investor: decode::<32, _, _>(input)?,
@@ -543,7 +614,7 @@ mod tests {
 				currency: TOKEN_ID,
 				pool_id: POOL_ID,
 			},
-			"030000000000000000000000000eb5ec7b0000000000bce1a4",
+			"030000000000bce1a40000000000000000000000000eb5ec7b",
 		)
 	}
 
@@ -720,7 +791,7 @@ mod tests {
 				tranche_id: default_tranche_id(),
 				investor: default_address_32(),
 			},
-			"0e0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+			"0d0000000000000001811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
 		)
 	}
 
@@ -732,7 +803,7 @@ mod tests {
 				tranche_id: default_tranche_id(),
 				investor: default_address_32(),
 			},
-			"0d0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
+			"0e0000000000bce1a4811acd5b3f17c06841c7e41e9e04cb1b4564564564564564564564564564564564564564564564564564564564564564",
 		)
 	}
 
