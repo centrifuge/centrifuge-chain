@@ -130,7 +130,7 @@ where
 	/// amount the order was reduced with. The `investor` address is used as
 	/// the receiver of that tokens.
 	///
-	/// Outgoing: Directional from Centrifuge to EVM Domain.
+	/// Incoming: Directional from EVM Domain to Centrifuge. 
 	DecreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
