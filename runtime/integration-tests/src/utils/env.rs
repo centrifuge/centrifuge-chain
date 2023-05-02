@@ -35,7 +35,6 @@ use lazy_static::lazy_static;
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
-use rand::Rng;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{TFullClient, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;

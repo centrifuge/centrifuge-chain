@@ -70,7 +70,6 @@ async-trait = "0.1"
 clap = { version = "4.0.9", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 futures = "0.3.25"
-getrandom = { version = "0.2.9", default-features = false, features = ["js"] }
 hex-literal = "0.2.1"
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 log = "0.4.8"

@@ -10724,7 +10724,6 @@ dependencies = [
  "polkadot-runtime",
  "polkadot-runtime-common",
  "polkadot-runtime-parachains",
- "rand 0.8.5",
  "rococo-runtime",
  "runtime-common",
  "sc-client-api",

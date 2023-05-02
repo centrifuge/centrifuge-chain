@@ -11,7 +11,6 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.38" }
 lazy_static = "1.4.0"
-rand = "0.8.5"
 serde = { version = "1.0.119" }
 tokio = { version = "1.15", features = ["macros"] }
 tracing-subscriber = "0.2"
