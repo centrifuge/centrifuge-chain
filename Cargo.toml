@@ -219,6 +219,7 @@ std = [
   "futures/std",
   "sp-io/std",
   "getrandom/std",
+  "runtime-integration-tests/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
