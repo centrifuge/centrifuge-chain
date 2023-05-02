@@ -76,9 +76,6 @@ impl xcm_executor::Config for XcmConfig {
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
 	FixedRateOfFungible<CanonicalNativePerSecond, ToTreasury>,
-	FixedRateOfFungible<NativePerSecond, ToTreasury>,
-	FixedRateOfFungible<AUSDPerSecond, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	AssetRegistryTrader<
 		FixedRateAssetRegistryTrader<FixedConversionRateProvider<OrmlAssetRegistry>>,
 		ToTreasury,
@@ -87,12 +84,13 @@ pub type Trader = (
 
 parameter_types! {
 	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
-	pub CanonicalNativePerSecond: (AssetId, u128) = (
+	pub CanonicalNativePerSecond: (AssetId, u128, u128) = (
 		MultiLocation::new(
 			0,
 			X1(general_key(parachains::kusama::altair::AIR_KEY)),
 		).into(),
 		native_per_second(),
+		0,
 	);
 
 	pub NativePerSecond: (AssetId, u128) = (
