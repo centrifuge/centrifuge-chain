@@ -10,7 +10,6 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 fudge = { git = "https://github.com/centrifuge/fudge", branch = "polkadot-v0.9.38" }
-getrandom = { version = "0.2", features = ["js"] }
 lazy_static = "1.4.0"
 rand = "0.8.5"
 serde = { version = "1.0.119" }
@@ -104,7 +103,6 @@ pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", bra
 default = ["runtime-development"]
 fast-runtime = ["development-runtime/fast-runtime"]
 std = [
-  "getrandom/std",
   "altair-runtime/std",
   "centrifuge-runtime/std",
   "cfg-primitives/std",

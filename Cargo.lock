@@ -10694,7 +10694,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "fudge",
- "getrandom 0.2.9",
  "hex",
  "kusama-runtime",
  "lazy_static",
