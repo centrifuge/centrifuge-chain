@@ -500,9 +500,9 @@ pub mod pallet {
 				TransactWeights {
 					// Convert the max gas_limit into a max transact weight following Moonbeam's formula.
 					// todo(nuno): revisit this
-					transact_required_weight_at_most: (xcm_domain.max_gas_limit * 25_000
-						+ 100_000_000)
-						.into(),
+					transact_required_weight_at_most: Weight::from_ref_time(
+						xcm_domain.max_gas_limit * 25_000 + 100_000_000,
+					),
 					overall_weight: None,
 				},
 			)?;

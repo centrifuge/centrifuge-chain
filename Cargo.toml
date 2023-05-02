@@ -140,7 +140,7 @@ polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "r
 altair-runtime = { path = "runtime/altair", default-features = false }
 centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
 cfg-primitives = { path = "libs/primitives" }
-development-runtime = { path = "runtime/development", default-features = false}
+development-runtime = { path = "runtime/development", default-features = false }
 runtime-common = { path = "runtime/common" }
 
 # benchmarking
@@ -169,11 +169,11 @@ vergen = "3.0.4"
 
 [dev-dependencies]
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+getrandom = { version = "0.2", features = ["js"] }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sc-service-test = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 tempfile = "3.1.0"
-getrandom = { version = "0.2", features = ["js"] }
 
 [features]
 default = ["std", "cli"]
