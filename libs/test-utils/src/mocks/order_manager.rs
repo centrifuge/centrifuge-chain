@@ -207,7 +207,7 @@ pub mod pallet {
 			RedeemOrders::<T>::insert(investment_id, orders);
 
 			// NOTE: TrancheTokens NEVER leave the TEST_PALLET_ID account and hence we can
-			// keep them here and       need no transfer.
+			// keep them here and need no transfer.
 
 			Ok(())
 		}
