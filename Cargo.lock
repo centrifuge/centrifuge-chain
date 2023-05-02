@@ -7392,7 +7392,6 @@ dependencies = [
  "pallet-balances",
  "pallet-restricted-tokens",
  "parity-scale-codec 3.4.0",
- "rand 0.8.5",
  "runtime-common",
  "scale-info",
  "serde",
