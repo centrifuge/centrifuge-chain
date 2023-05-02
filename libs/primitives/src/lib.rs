@@ -251,7 +251,7 @@ pub mod constants {
 	}
 
 	/// The prefix for tokens managed by Connectors.
-	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 12] = *b"CfgCnctTknId";
+	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 12] = *b"CfgCnctCurId";
 }
 
 /// Listing of parachains we integrate with.
