@@ -455,11 +455,11 @@ pub mod pallet {
 					tranche_id,
 					amount,
 					domain: domain_address.domain(),
-					receiver: domain_address.address(),
 					sender: who
 						.encode()
 						.try_into()
 						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
+					receiver: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;
