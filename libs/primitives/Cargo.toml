@@ -54,4 +54,5 @@ try-runtime = [
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "pallet-collective/try-runtime",
+  "sp-runtime/try-runtime",
 ]

@@ -41,6 +41,7 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
   "orml-asset-registry/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
@@ -57,10 +58,14 @@ std = [
   "serde/std",
   "sp-arithmetic/std",
   "xcm/std",
+  "cfg-utils/std",
+  "sp-core/std",
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
+  "cfg-utils/try-runtime",
   "frame-support/try-runtime",
   "orml-asset-registry/try-runtime",
+  "sp-runtime/try-runtime",
 ]
