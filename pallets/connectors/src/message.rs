@@ -41,20 +41,20 @@ where
 	/// Add a currency to a domain, i.e, register the mapping of a currency id to
 	/// the corresponding EVM Address.
 	///
-	/// Outgoing: Directional from Centrifuge to EVM Domain.
+	/// Directionality: Centrifuge -> EVM Domain.
 	AddCurrency {
 		currency: u128,
 		evm_address: [u8; 20],
 	},
 	/// Add a pool to a domain.
 	///
-	/// Outgoing: Directional from Centrifuge to EVM Domain.
+	/// Directionality: Centrifuge -> EVM Domain.
 	AddPool {
 		pool_id: PoolId,
 	},
 	/// Allow a currency to be used as a pool currency and to invest in a pool.
 	///
-	/// Outgoing: Directional from Centrifuge to EVM Domain.
+	/// Directionality: Centrifuge -> EVM Domain.
 	AllowPoolCurrency {
 		pool_id: PoolId,
 		currency: u128,
@@ -63,7 +63,7 @@ where
 	/// The decimals of a tranche MUST be equal to the decimals of a pool.
 	/// Thus, consuming domains MUST take care of storing the decimals upon receiving an AddPool message.
 	///
-	/// Outgoing: Directional from Centrifuge to EVM Domain.
+	/// Directionality: Centrifuge -> EVM Domain.
 	AddTranche {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -74,7 +74,7 @@ where
 	},
 	/// Update the price of a tranche token on the target domain.
 	///
-	/// Outgoing: Directional from Centrifuge to EVM Domain.
+	/// Directionality: Centrifuge -> EVM Domain.
 	UpdateTrancheTokenPrice {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -82,7 +82,7 @@ where
 	},
 	/// Whitelist an address for the specified pair of pool and tranche token on the target domain.
 	///
-	/// Outgoing: Directional from Centrifuge to EVM Domain.
+	/// Directionality: Centrifuge -> EVM Domain.
 	UpdateMember {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -91,9 +91,11 @@ where
 	},
 	/// Transfer non-tranche tokens fungibles. For v2, it will only support stable-coins.
 	///
-	/// Bidirectional: Domain must not accept every incoming token.
-	/// For transfers from Centrifuge to EVM domain, `AddCurrency` should have been called beforehand.
-	/// For transfers from EVm domain to Centrifuge, we can assume `AddCurrency` has been called for that domain already.
+	/// Directionality: Centrifuge <-> EVM Domain.
+	///
+	/// NOTE: Receiving domain must not accept every incoming token.
+	/// For Centrifuge -> EVM Domain: `AddCurrency` should have been called beforehand.
+	/// For Centrifuge <- EVM Domain: We can assume `AddCurrency` has been called for that domain already.
 	Transfer {
 		currency: u128,
 		sender: Address,
@@ -102,7 +104,7 @@ where
 	},
 	/// Transfer tranche tokens between domains.
 	///
-	/// Bidirectional and relaying message.
+	/// Directionality: Centrifuge <-> EVM Domain.
 	TransferTrancheTokens {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -114,7 +116,7 @@ where
 	/// Increase the invest order amount for the specified pair of pool and
 	/// tranche token.
 	///
-	/// Incoming: Directional from EVM Domain to Centrifuge.
+	/// Directionality: Centrifuge <- EVM Domain.
 	IncreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -130,7 +132,7 @@ where
 	/// amount the order was reduced with. The `investor` address is used as
 	/// the receiver of that tokens.
 	///
-	/// Incoming: Directional from EVM Domain to Centrifuge. 
+	/// Directionality: Centrifuge <- EVM Domain.
 	DecreaseInvestOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -141,7 +143,7 @@ where
 	/// Increase the redeem order amount for the specified pair of pool and
 	/// tranche token.
 	///
-	/// Incoming: Directional from EVM Domain to Centrifuge.
+	/// Directionality: Centrifuge <- EVM Domain.
 	IncreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -157,7 +159,7 @@ where
 	/// amount the order was reduced with. The `investor` address is used as
 	/// the receiver of that tokens.
 	///
-	/// Incoming: Directional from EVM Domain to Centrifuge.
+	/// Directionality: Centrifuge <- EVM Domain.
 	DecreaseRedeemOrder {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -173,7 +175,7 @@ where
 	/// amount the order was reduced with. The `investor` address is used as
 	/// the receiver of that tokens.
 	///
-	/// Incoming: Directional from EVM Domain to Centrifuge.
+	/// Directionality: Centrifuge <- EVM Domain.
 	CollectInvest {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
@@ -187,7 +189,7 @@ where
 	/// amount the order was reduced with. The `investor` address is used as
 	/// the receiver of that tokens.
 	///
-	/// Incoming: Directional from EVM Domain to Centrifuge.
+	/// Directionality: Centrifuge <- EVM Domain.
 	CollectRedeem {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
