@@ -1,8 +1,9 @@
 //! # Migration pallet for runtime
 //!
-//! This pallet provides functionality for migrating a previous chain-state (possibly from a
-//! stand-alone chain) to a new chain state (possbily a parachain now). This pallet is necessary due
-//! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.
+//! This pallet provides functionality for migrating a previous chain-state
+//! (possibly from a stand-alone chain) to a new chain state (possbily a
+//! parachain now). This pallet is necessary due to the exising boundaries that
+//! are put onto runtime upgrades from the relay-chain side.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 
@@ -55,8 +56,8 @@ pub mod pallet {
 
 	pub type NumAccounts = u64;
 
-	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
-	// method.
+	// Simple declaration of the `Pallet` type. It is placeholder we use to
+	// implement traits and method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -115,8 +116,9 @@ pub mod pallet {
 		/// [`OldIssuance`, `NewIssuance`]
 		MigratedTotalIssuance(T::Balance, T::Balance),
 
-		/// This is an error that must be dispatched as an Event, as we do not want to fail the whole batch
-		/// when one account fails. Should also not happen, as we take them from mainnet. But...
+		/// This is an error that must be dispatched as an Event, as we do not
+		/// want to fail the whole batch when one account fails. Should also not
+		/// happen, as we take them from mainnet. But...
 		FailedToMigrateVestingFor(T::AccountId),
 
 		/// Defines the vesting we migrated
@@ -131,8 +133,9 @@ pub mod pallet {
 			T::BlockNumber,
 		),
 
-		/// Indicates if a migration of proxy data failed, this should NEVER happen, and can only
-		/// happen due to insufficient balances during reserve
+		/// Indicates if a migration of proxy data failed, this should NEVER
+		/// happen, and can only happen due to insufficient balances during
+		/// reserve
 		FailedToMigrateProxyDataFor(T::AccountId),
 
 		/// Indicates that proxy data has been migrated succesfully for
@@ -151,20 +154,24 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Too many accounts in the vector for the call of `migrate_system_account`.
+		/// Too many accounts in the vector for the call of
+		/// `migrate_system_account`.
 		TooManyAccounts,
 
-		/// Too many vestingInfos in the vector for the call of `migrate_veting_vesting`.
+		/// Too many vestingInfos in the vector for the call of
+		/// `migrate_veting_vesting`.
 		TooManyVestings,
 
-		/// Too many proxies in the vector for the call of `migrate_proxy_proxies`.
+		/// Too many proxies in the vector for the call of
+		/// `migrate_proxy_proxies`.
 		TooManyProxies,
 
-		/// Indicates that a migration call happened, although the migration is already closed
+		/// Indicates that a migration call happened, although the migration is
+		/// already closed
 		MigrationAlreadyCompleted,
 
-		/// Indicates that a finalize call happened, although the migration pallet is not in an
-		/// ongoing migration
+		/// Indicates that a finalize call happened, although the migration
+		/// pallet is not in an ongoing migration
 		OnlyFinalizeOngoing,
 	}
 
@@ -172,11 +179,12 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Migrating the Account informations from frame_system.
 		///
-		/// This call takes the raw scale encoded key (= patricia-key for each account in the `Account` storage and inserts
-		/// the provided scale encoded value (= `AccountInfo`) into the underlying DB.
+		/// This call takes the raw scale encoded key (= patricia-key for each
+		/// account in the `Account` storage and inserts the provided scale
+		/// encoded value (= `AccountInfo`) into the underlying DB.
 		///
-		/// Note: As we are converting from substrate-v2 to substrate-v3 we must do type-conversions. Those conversions are done
-		/// off-chain.
+		/// Note: As we are converting from substrate-v2 to substrate-v3 we must
+		/// do type-conversions. Those conversions are done off-chain.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_system_account(T::MigrationMaxAccounts::get()))]
 		#[transactional]
 		#[pallet::call_index(0)]
@@ -214,9 +222,11 @@ pub mod pallet {
 
 		/// Migrates a the `TotalIssuance`.
 		///
-		/// The provide balance here, will be ADDED to the existing `TotalIssuance` of the system.
-		/// Calley better be sure, that the total issuance matches the actual total issuance in the system,
-		/// which means, that the `AccountInfo` from the frame_system is migrated afterwards.
+		/// The provide balance here, will be ADDED to the existing
+		/// `TotalIssuance` of the system. Calley better be sure, that the total
+		/// issuance matches the actual total issuance in the system,
+		/// which means, that the `AccountInfo` from the frame_system is
+		/// migrated afterwards.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_balances_issuance())]
 		#[transactional]
 		#[pallet::call_index(1)]
@@ -245,8 +255,8 @@ pub mod pallet {
 
 		/// Migrates vesting information to this system.
 		///
-		/// The `VestingInfo` is adapted off-chain, so that it represents the correct vesting information
-		/// on this chain.
+		/// The `VestingInfo` is adapted off-chain, so that it represents the
+		/// correct vesting information on this chain.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_vesting_vesting(T::MigrationMaxVestings::get()))]
 		#[transactional]
 		#[pallet::call_index(2)]
@@ -303,9 +313,10 @@ pub mod pallet {
 
 		/// Migrates to `Proxies` storage from another chain.
 		///
-		/// As the `Proxies` storage changed between v2 and v3, a transformation for the v2 data is done off-chain.
-		/// The input defines an array of of tuples, where each tuple defines, the proxied account, the reserve that
-		/// must be done on this account and the proxies for this account.
+		/// As the `Proxies` storage changed between v2 and v3, a transformation
+		/// for the v2 data is done off-chain. The input defines an array of of
+		/// tuples, where each tuple defines, the proxied account, the reserve
+		/// that must be done on this account and the proxies for this account.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_proxy_proxies(T::MigrationMaxProxies::get()))]
 		#[transactional]
 		#[pallet::call_index(3)]

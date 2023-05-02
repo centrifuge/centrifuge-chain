@@ -81,10 +81,10 @@ impl From<StakingCurrency> for CurrencyId {
 
 /// A Currency that is solely used by tranches.
 ///
-/// We distinguish here between the enum variant CurrencyId::Tranche(PoolId, TranchId)
-/// in order to be able to have a clear separation of concerns. This enables us
-/// to use the `TrancheCurrency` type separately where solely this enum variant would be
-/// relevant. Most notably, in the `struct Tranche`.
+/// We distinguish here between the enum variant CurrencyId::Tranche(PoolId,
+/// TranchId) in order to be able to have a clear separation of concerns. This
+/// enables us to use the `TrancheCurrency` type separately where solely this
+/// enum variant would be relevant. Most notably, in the `struct Tranche`.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
@@ -117,7 +117,8 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 	}
 }
 
-/// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
+/// A type describing our custom additional metadata stored in the
+/// OrmlAssetRegistry.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
 	Clone,

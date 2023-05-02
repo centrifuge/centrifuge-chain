@@ -28,8 +28,9 @@ pub enum FungiblesInspectEffects<AssetId, AccountId, Balance> {
 	/// * tuple.0 = `asset`. The asset that should be used.
 	/// * tuple.1 = `who`. The person who's balance should be checked.
 	/// * tuple.2 = `keep_alive`. The liveness bool.
-	/// * tuple.3 = `<T::Fungibles as Inspect<T::AccountId>>::reducible_balance()`. The result of the call to the
-	///   not-filtered trait `fungibles::Inspect` implementation.
+	/// * tuple.3 = `<T::Fungibles as
+	///   Inspect<T::AccountId>>::reducible_balance()`. The result of the call
+	///   to the not-filtered trait `fungibles::Inspect` implementation.
 	ReducibleBalance(AssetId, AccountId, bool, Balance),
 }
 
@@ -131,8 +132,9 @@ pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
 	/// * tuple.0 = `asset`. The asset that should be used.
 	/// * tuple.1 = `who`. The person who's balance should be reserved.
 	/// * tuple.2 = `amount`. The amount that should be reserved.
-	/// * tuple.3 = `<T::Fungibles as InspectHold<T::AccountId>>::can_hold()`. The result of the call to the
-	///   not-filtered trait `fungibles::InspectHold` implementation.
+	/// * tuple.3 = `<T::Fungibles as InspectHold<T::AccountId>>::can_hold()`.
+	///   The result of the call to the not-filtered trait
+	///   `fungibles::InspectHold` implementation.
 	CanHold(AssetId, AccountId, Balance, bool),
 }
 
@@ -244,15 +246,16 @@ pub enum FungiblesMutateHoldEffects<AssetId, AccountId, Balance> {
 
 	/// A call to the `MutateHold::transfer_held()`.
 	///
-	/// Interpretation of tuple `(AssetId, AccountId, AccountId, Balance, bool, bool)`:
+	/// Interpretation of tuple `(AssetId, AccountId, AccountId, Balance, bool,
+	/// bool)`:
 	/// * tuple.0 = `asset`. The asset that should be used.
 	/// * tuple.1 = `send`. The sender of the tokens.
 	/// * tuple.2 = `recv`. The receiver of the tokens.
 	/// * tuple.3 = `amount`. The amount that should be transferred.
-	/// * tuple.4 = `on_hold`. Indicating if on_hold transfers should
-	///   still be on_hold at receiver.
-	/// * tuple.5 = `best_effort`. Indicating if the transfer should be done
-	///   on a best effort base.
+	/// * tuple.4 = `on_hold`. Indicating if on_hold transfers should still be
+	///   on_hold at receiver.
+	/// * tuple.5 = `best_effort`. Indicating if the transfer should be done on
+	///   a best effort base.
 	TransferHeld(AssetId, AccountId, AccountId, Balance, bool, bool),
 }
 
@@ -343,7 +346,8 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 pub enum FungiblesTransferEffects<AssetId, AccountId, Balance> {
 	/// A call to the `Transfer::transfer()`.
 	///
-	/// Interpretation of tuple `(AssetId, AccountId, AccountId, Balance, bool)`:
+	/// Interpretation of tuple `(AssetId, AccountId, AccountId, Balance,
+	/// bool)`:
 	/// * tuple.0 = `asset`. The asset that should be used.
 	/// * tuple.1 = `send`. The sender of the tokens.
 	/// * tuple.2 = `recv`. The receiver of the tokens.

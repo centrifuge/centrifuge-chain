@@ -88,8 +88,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + chainbridge::Config {
 		/// Pallet identifier.
 		///
-		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)
-		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
+		/// The module identifier may be of the form
+		/// ```PalletId(*b"c/bridge")``` (a string of eight characters) and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]
 		type BridgePalletId: Get<PalletId>;
@@ -117,7 +117,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type NativeTokenId: Get<ResourceId>;
 
-		/// Key used to retrieve the fee that are charged when transferring native tokens to target chains.
+		/// Key used to retrieve the fee that are charged when transferring
+		/// native tokens to target chains.
 		#[pallet::constant]
 		type NativeTokenTransferFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
@@ -129,7 +130,8 @@ pub mod pallet {
 	// Pallet events
 	// ------------------------------------------------------------------------
 
-	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
+	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and
+	// Codec
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -199,13 +201,14 @@ pub mod pallet {
 
 	// Declare Call struct and implement dispatchable (or callable) functions.
 	//
-	// Dispatchable functions are transactions modifying the state of the chain. They
-	// are also called extrinsics are constitute the pallet's public interface.
+	// Dispatchable functions are transactions modifying the state of the chain.
+	// They are also called extrinsics are constitute the pallet's public interface.
 	// Note that each parameter used in functions must implement `Clone`, `Debug`,
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
+		/// Transfers some amount of the native token to some recipient on a
+		/// (whitelisted) destination chain.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native())]
 		#[transactional]
 		#[pallet::call_index(0)]
@@ -240,7 +243,8 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Executes a simple currency transfer using the chainbridge account as the source
+		/// Executes a simple currency transfer using the chainbridge account as
+		/// the source
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
 		#[transactional]
 		#[pallet::call_index(1)]
@@ -256,7 +260,8 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.
+		/// This can be called by the chainbridge to demonstrate an arbitrary
+		/// call from a proposal.
 		#[pallet::weight(<T as Config>::WeightInfo::remark())]
 		#[pallet::call_index(2)]
 		pub fn remark(

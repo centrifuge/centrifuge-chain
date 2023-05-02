@@ -13,8 +13,8 @@
 
 //! Offer utilities to create custom pallet mocks for generic traits.
 //!
-//! [`register_call!()`] and [`execute_call!()`] expect the following storage in the pallet.
-//! It's safe to just copy and paste in your pallet mock.
+//! [`register_call!()`] and [`execute_call!()`] expect the following storage in
+//! the pallet. It's safe to just copy and paste in your pallet mock.
 //!
 //! ```no_run
 //! # #[frame_support::pallet]
@@ -37,7 +37,8 @@
 //! # }
 //! ```
 //!
-//! Take a look to the [pallet tests](`tests/pallet.rs`) to have a user view of how to use this crate.
+//! Take a look to the [pallet tests](`tests/pallet.rs`) to have a user view of
+//! how to use this crate.
 
 /// Provide functions for register/execute calls
 pub mod storage;
@@ -53,7 +54,8 @@ pub use storage::CallId;
 pub const MOCK_FN_PREFIX: &str = "mock_";
 
 /// Register a mock function into the mock function storage.
-/// This function should be called with a locator used as a function identification.
+/// This function should be called with a locator used as a function
+/// identification.
 pub fn register<Map, L, F, I, O>(locator: L, f: F)
 where
 	Map: StorageMap<<Blake2_128 as StorageHasher>::Output, CallId>,
@@ -71,7 +73,8 @@ where
 }
 
 /// Execute a function from the function storage.
-/// This function should be called with a locator used as a function identification.
+/// This function should be called with a locator used as a function
+/// identification.
 pub fn execute<Map, L, I, O>(locator: L, input: I) -> O
 where
 	Map: StorageMap<<Blake2_128 as StorageHasher>::Output, CallId>,

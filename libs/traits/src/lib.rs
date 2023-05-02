@@ -44,15 +44,17 @@ pub mod rewards;
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
-/// The crowdloan reward mechanism is separated from the crowdloan claiming process, the latter
-/// being generic, acting as a kind of proxy to the rewarding mechanism, that is specific to
-/// to each crowdloan campaign. The aim of this pallet is to ensure that a claim for a reward
-/// payout is well-formed, checking for replay attacks, spams or invalid claim (e.g. unknown
+/// The crowdloan reward mechanism is separated from the crowdloan claiming
+/// process, the latter being generic, acting as a kind of proxy to the
+/// rewarding mechanism, that is specific to to each crowdloan campaign. The aim
+/// of this pallet is to ensure that a claim for a reward payout is well-formed,
+/// checking for replay attacks, spams or invalid claim (e.g. unknown
 /// contributor, exceeding reward amount, ...).
-/// See the [`crowdloan-reward`] pallet, that implements a reward mechanism with vesting, for
-/// instance.
+/// See the [`crowdloan-reward`] pallet, that implements a reward mechanism with
+/// vesting, for instance.
 pub trait Reward {
-	/// The account from the parachain, that the claimer provided in her/his transaction.
+	/// The account from the parachain, that the claimer provided in her/his
+	/// transaction.
 	type ParachainAccountId: Debug
 		+ MaybeSerialize
 		+ MaybeSerializeDeserialize
@@ -89,8 +91,8 @@ pub trait Reward {
 
 	/// Rewarding function that is invoked from the claim pallet.
 	///
-	/// If this function returns successfully, any subsequent claim of the same claimer will be
-	/// rejected by the claim module.
+	/// If this function returns successfully, any subsequent claim of the same
+	/// claimer will be rejected by the claim module.
 	fn reward(
 		who: Self::ParachainAccountId,
 		contribution: Self::ContributionAmount,
@@ -111,7 +113,8 @@ pub trait PoolNAV<PoolId, Amount> {
 	) -> DispatchResult;
 }
 
-/// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
+/// A trait that support pool inspection operations such as pool existence
+/// checks and pool admin of permission set.
 pub trait PoolInspect<AccountId, CurrencyId> {
 	type PoolId: Parameter
 		+ Member
@@ -212,8 +215,9 @@ pub trait CurrencyPrice<CurrencyId> {
 	type Rate;
 	type Moment;
 
-	/// Retrieve the latest price of `base` currency, denominated in the `quote` currency
-	/// If `quote` currency is not passed, then the default `quote` currency is used (when possible)
+	/// Retrieve the latest price of `base` currency, denominated in the `quote`
+	/// currency If `quote` currency is not passed, then the default `quote`
+	/// currency is used (when possible)
 	fn get_latest(
 		base: CurrencyId,
 		quote: Option<CurrencyId>,
@@ -259,7 +263,8 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	/// Ask if the rate is valid to use by the implementation
 	fn validate_rate(interest_rate_per_year: InterestRate) -> DispatchResult;
 
-	/// Returns a collection of pre-computed rates to perform multiple operations with
+	/// Returns a collection of pre-computed rates to perform multiple
+	/// operations with
 	fn rates() -> Self::Rates;
 }
 
@@ -383,8 +388,8 @@ pub trait Investment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	/// Returns, if possible, the current investment amount of who into the given investment
-	/// class
+	/// Returns, if possible, the current investment amount of who into the
+	/// given investment class
 	fn investment(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
@@ -400,8 +405,8 @@ pub trait Investment<AccountId> {
 		amount: Self::Amount,
 	) -> Result<(), Self::Error>;
 
-	/// Returns, if possible, the current redemption amount of who into the given investment
-	/// class
+	/// Returns, if possible, the current redemption amount of who into the
+	/// given investment class
 	fn redemption(
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
@@ -594,8 +599,8 @@ pub mod fees {
 		fn fee_value(key: Self::FeeKey) -> Self::Balance;
 
 		/// Pay an amount of fee to the block author
-		/// If the `from` account has not enough balance or the author is invalid the fees are not
-		/// paid.
+		/// If the `from` account has not enough balance or the author is
+		/// invalid the fees are not paid.
 		fn fee_to_author(
 			from: &Self::AccountId,
 			fee: Fee<Self::Balance, Self::FeeKey>,
@@ -617,13 +622,14 @@ pub mod fees {
 	}
 }
 
-/// Trait to determine whether a sending account and currency have a restriction,
-/// and if so is there an allowance for the reciever location.
+/// Trait to determine whether a sending account and currency have a
+/// restriction, and if so is there an allowance for the reciever location.
 pub trait TransferAllowance<AccountId> {
 	type CurrencyId;
 	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
-	/// Determines whether the `send` account is allowed to make a transfer to the  `recieve` loocation with `currency` type currency.
-	/// Returns result wrapped bool for whether allowance is allowed.
+	/// Determines whether the `send` account is allowed to make a transfer to
+	/// the  `recieve` loocation with `currency` type currency. Returns result
+	/// wrapped bool for whether allowance is allowed.
 	fn allowance(
 		send: AccountId,
 		recieve: Self::Location,

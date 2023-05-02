@@ -14,17 +14,18 @@
 //!
 //! The BlockRewards pallet provides functionality for distributing rewards to
 //! different accounts with different currencies.
-//! The distribution happens when an session (a constant time interval) finalizes.
-//! Users cannot stake manually as their collator membership is syncronized via
-//! a provider.
-//! Thus, when new collators join, they will automatically be staked and vice-versa
-//! when collators leave, they are unstaked.
+//! The distribution happens when an session (a constant time interval)
+//! finalizes. Users cannot stake manually as their collator membership is
+//! syncronized via a provider.
+//! Thus, when new collators join, they will automatically be staked and
+//! vice-versa when collators leave, they are unstaked.
 //!
 //! The BlockRewards pallet provides functions for:
 //!
-//! - Claiming the reward given for a staked currency. The reward will be the native network's token.
-//! - Admin methods to configure the reward amount for collators and an optional beneficiary.
-//!
+//! - Claiming the reward given for a staked currency. The reward will be the
+//!   native network's token.
+//! - Admin methods to configure the reward amount for collators and an optional
+//!   beneficiary.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -119,7 +120,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// Required origin for admin purposes for configuring groups and currencies.
+		/// Required origin for admin purposes for configuring groups and
+		/// currencies.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Type used to handle balances.
@@ -159,11 +161,13 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
-		/// The identifier of the artificial block rewards currency which is minted and burned for collators.
+		/// The identifier of the artificial block rewards currency which is
+		/// minted and burned for collators.
 		#[pallet::constant]
 		type StakeCurrencyId: Get<<Self as Config>::CurrencyId>;
 
-		/// The amount of the artificial block rewards currency which is minted and burned for collators.
+		/// The amount of the artificial block rewards currency which is minted
+		/// and burned for collators.
 		#[pallet::constant]
 		type StakeAmount: Get<<Self as Config>::Balance>;
 
@@ -171,9 +175,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type StakeGroupId: Get<u32>;
 
-		/// Max number of changes of the same type enqueued to apply in the next session.
-		/// Max calls to [`Pallet::set_collator_reward()`] or to [`Pallet::set_total_reward()`] with
-		/// the same id.
+		/// Max number of changes of the same type enqueued to apply in the next
+		/// session. Max calls to [`Pallet::set_collator_reward()`] or to
+		/// [`Pallet::set_total_reward()`] with the same id.
 		#[pallet::constant]
 		type MaxChangesPerSession: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
@@ -181,7 +185,8 @@ pub mod pallet {
 		type MaxCollators: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
 		/// Target of receiving non-collator-rewards.
-		/// NOTE: If set to none, collators are the only group receiving rewards.
+		/// NOTE: If set to none, collators are the only group receiving
+		/// rewards.
 		type Beneficiary: OnUnbalanced<NegativeImbalanceOf<Self>>;
 
 		/// The identifier type for an authority.
@@ -226,8 +231,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Limit of max calls with same id to [`Pallet::set_collator_reward()`] or
-		/// [`Pallet::set_total_reward()`] reached.
+		/// Limit of max calls with same id to [`Pallet::set_collator_reward()`]
+		/// or [`Pallet::set_total_reward()`] reached.
 		MaxChangesPerSessionReached,
 		InsufficientTotalReward,
 	}
@@ -290,8 +295,8 @@ pub mod pallet {
 				.map(|_| ())
 		}
 
-		/// Admin method to set the reward amount for a collator used for the next sessions.
-		/// Current session is not affected by this call.
+		/// Admin method to set the reward amount for a collator used for the
+		/// next sessions. Current session is not affected by this call.
 		#[pallet::weight(T::WeightInfo::set_collator_reward())]
 		#[pallet::call_index(1)]
 		pub fn set_collator_reward(
@@ -319,8 +324,8 @@ pub mod pallet {
 			})
 		}
 
-		/// Admin method to set the total reward distribution for the next sessions.
-		/// Current session is not affected by this call.
+		/// Admin method to set the total reward distribution for the next
+		/// sessions. Current session is not affected by this call.
 		///
 		/// Throws if total_reward < collator_reward * collator_count.
 		#[pallet::weight(T::WeightInfo::set_total_reward())]
@@ -360,7 +365,8 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Weight (6 reads, 6 writes):
 	///  * mint_into (2 reads, 2 writes): Account, TotalIssuance
-	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount, Account
+	///  * deposit_stake (4 reads, 4 writes): Currency, Group, StakeAccount,
+	///    Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
 		T::Currency::mint_into(T::StakeCurrencyId::get(), who, T::StakeAmount::get())?;
 		T::Rewards::deposit_stake(
@@ -370,8 +376,8 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
-	/// Withdraw currently staked amount for target address and immediately burn it.
-	/// Disables receiving rewards onwards.
+	/// Withdraw currently staked amount for target address and immediately burn
+	/// it. Disables receiving rewards onwards.
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
 		let amount = T::Rewards::account_stake((T::Domain::get(), T::StakeCurrencyId::get()), who);
 		T::Rewards::withdraw_stake((T::Domain::get(), T::StakeCurrencyId::get()), who, amount)?;
@@ -447,7 +453,8 @@ impl<T: Config> sp_runtime::BoundToRuntimeAppPublic for Pallet<T> {
 	type Public = T::AuthorityId;
 }
 
-// Should be instantiated after the original SessionHandler such that current and queued collators are up-to-date for the current session.
+// Should be instantiated after the original SessionHandler such that current
+// and queued collators are up-to-date for the current session.
 impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 	type Key = T::AuthorityId;
 
@@ -495,8 +502,8 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 					collators.out = BoundedVec::<_, T::MaxCollators>::truncate_from(out);
 
 					// Should never require saturation as queued_validator length is bounded by u32.
-					// Moreover, this bound pallet_aura::Config::MaxAuthorities is assumed to be the same
-					// T::Config::MaxCollators.
+					// Moreover, this bound pallet_aura::Config::MaxAuthorities is assumed to be the
+					// same T::Config::MaxCollators.
 					*collator_count = Some(next.len().saturated_into::<u32>());
 				},
 			);

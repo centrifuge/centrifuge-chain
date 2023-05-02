@@ -194,7 +194,8 @@ parameter_types! {
 }
 
 // Implement the migration manager pallet
-// The actual associated type, which executes the migration can be found in the migration folder
+// The actual associated type, which executes the migration can be found in the
+// migration folder
 impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxAccounts = MigrationMaxAccounts;
 	type MigrationMaxProxies = MigrationMaxProxies;

@@ -63,12 +63,15 @@ type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// Expiration duration in blocks of a pre-commit
-/// This is the maximum expected time for document consensus to take place between a pre-commit of an anchor and a
-/// commit to be received for the pre-committed anchor. Currently we expect to provide around 80 mins for this.
-/// Since our current block time as per chain_spec.rs is 6s, we set this to 80 * 60 secs / 6 secs/block = 800 blocks.
+/// This is the maximum expected time for document consensus to take place
+/// between a pre-commit of an anchor and a commit to be received for the
+/// pre-committed anchor. Currently we expect to provide around 80 mins for
+/// this. Since our current block time as per chain_spec.rs is 6s, we set this
+/// to 80 * 60 secs / 6 secs/block = 800 blocks.
 pub const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u32 = 800;
 
-/// Determines how many loop iterations are allowed to run at a time inside the runtime.
+/// Determines how many loop iterations are allowed to run at a time inside the
+/// runtime.
 const MAX_LOOP_IN_TX: u64 = 100;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
@@ -108,8 +111,8 @@ pub mod pallet {
 
 	use super::*;
 
-	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
-	// method.
+	// Simple declaration of the `Pallet` type. It is placeholder we use to
+	// implement traits and method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -122,8 +125,9 @@ pub mod pallet {
 		/// Key used to retrieve the fee balances in the commit method.
 		type CommitAnchorFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
-		/// Key to identify the amount of funds reserved in a [`Pallet::pre_commit()`] call.
-		/// These funds will be unreserved once the user make the [`Pallet::commit()`] succesfully
+		/// Key to identify the amount of funds reserved in a
+		/// [`Pallet::pre_commit()`] call. These funds will be unreserved once
+		/// the user make the [`Pallet::commit()`] succesfully
 		/// or call [`Pallet::evict_pre_commits()`]
 		type PreCommitDepositFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
@@ -134,7 +138,8 @@ pub mod pallet {
 		type Currency: ReservableCurrency<Self::AccountId>;
 	}
 
-	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
+	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock
+	/// on an anchor id to be committed later
 	#[pallet::storage]
 	#[pallet::getter(fn get_pre_commit)]
 	pub(super) type PreCommits<T: Config> = StorageMap<
@@ -159,23 +164,24 @@ pub mod pallet {
 	#[pallet::getter(fn get_latest_anchor_index)]
 	pub(super) type LatestAnchorIndex<T: Config> = StorageValue<_, u64>;
 
-	/// Latest evicted anchor index. This would keep track of the latest evicted anchor index so
-	/// that we can start the removal of AnchorEvictDates index from that index onwards. Going
-	/// from AnchorIndexes => AnchorEvictDates
+	/// Latest evicted anchor index. This would keep track of the latest evicted
+	/// anchor index so that we can start the removal of AnchorEvictDates index
+	/// from that index onwards. Going from AnchorIndexes => AnchorEvictDates
 	#[pallet::storage]
 	#[pallet::getter(fn get_latest_evicted_anchor_index)]
 	pub(super) type LatestEvictedAnchorIndex<T: Config> = StorageValue<_, u64>;
 
-	/// This is to keep track of the date when a child trie of anchors was evicted last. It is
-	/// to evict historic anchor data child tries if they weren't evicted in a timely manner.
+	/// This is to keep track of the date when a child trie of anchors was
+	/// evicted last. It is to evict historic anchor data child tries if they
+	/// weren't evicted in a timely manner.
 	#[pallet::storage]
 	#[pallet::getter(fn get_latest_evicted_date)]
 	pub(super) type LatestEvictedDate<T: Config> = StorageValue<_, u32>;
 
-	/// Storage for evicted anchor child trie roots. Anchors with a given expiry/eviction date
-	/// are stored on-chain in a single child trie. This child trie is removed after the expiry
-	/// date has passed while its root is stored permanently for proving an existence of an
-	/// evicted anchor.
+	/// Storage for evicted anchor child trie roots. Anchors with a given
+	/// expiry/eviction date are stored on-chain in a single child trie. This
+	/// child trie is removed after the expiry date has passed while its root is
+	/// stored permanently for proving an existence of an evicted anchor.
 	#[pallet::storage]
 	#[pallet::getter(fn get_evicted_anchor_root_by_day)]
 	pub(super) type EvictedAnchorRoots<T: Config> =
@@ -210,21 +216,24 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Obtains an exclusive lock to make the next update to a certain document version
-		/// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given
-		/// by [`PRE_COMMIT_EXPIRATION_DURATION_BLOCKS`] value. `signing_root` is a child node of
-		/// the off-chain merkle tree of that document. In Centrifuge protocol, a document is
-		/// committed only after reaching consensus with the other collaborators on the document.
-		/// Consensus is reached by getting a cryptographic signature from other parties by
-		/// sending them the `signing_root`. To deny the counter-party the free option of publishing
-		/// its own state commitment upon receiving a request for signature, the node can first
-		/// publish a pre-commit. Only the pre-committer account in the Centrifuge chain is
-		/// allowed to `commit` a corresponding anchor before the pre-commit has expired.
+		/// Obtains an exclusive lock to make the next update to a certain
+		/// document version identified by `anchor_id` on Centrifuge p2p network
+		/// for a number of blocks given
+		/// by [`PRE_COMMIT_EXPIRATION_DURATION_BLOCKS`] value. `signing_root`
+		/// is a child node of the off-chain merkle tree of that document. In
+		/// Centrifuge protocol, a document is committed only after reaching
+		/// consensus with the other collaborators on the document. Consensus is
+		/// reached by getting a cryptographic signature from other parties by
+		/// sending them the `signing_root`. To deny the counter-party the free
+		/// option of publishing its own state commitment upon receiving a
+		/// request for signature, the node can first publish a pre-commit. Only
+		/// the pre-committer account in the Centrifuge chain is allowed to
+		/// `commit` a corresponding anchor before the pre-commit has expired.
 		/// Some funds are reserved on a succesful pre-commit call.
-		/// These funds are returned to the same account after a succesful [`Pallet::commit()`] call
-		/// or explicitely if evicting the pre-commits by calling [`Pallet::evict_pre_commits()`].
-		/// For a more detailed explanation refer section 3.4 of
-		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+		/// These funds are returned to the same account after a succesful
+		/// [`Pallet::commit()`] call or explicitely if evicting the pre-commits
+		/// by calling [`Pallet::evict_pre_commits()`]. For a more detailed
+		/// explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::pre_commit())]
 		#[pallet::call_index(0)]
 		pub fn pre_commit(
@@ -263,17 +272,18 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Commits a `document_root` of a merklized off chain document in Centrifuge p2p network as
-		/// the latest version id(`anchor_id`) obtained by hashing `anchor_id_preimage`.
-		/// If a pre-commit exists for the obtained `anchor_id`, hash of pre-committed
-		/// `signing_root + proof` must match the given `doc_root`.
-		/// Any pre-committed data is automatically removed on a succesful commit and the reserved
-		/// funds from [`Pallet::pre_commit()`] are returned to the same account.
-		/// To avoid state bloat on chain,
-		/// the committed anchor would be evicted after the given `stored_until_date`.
-		/// The calling account would be charged accordingly for the storage period.
-		/// For a more detailed explanation refer section 3.4 of
-		/// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+		/// Commits a `document_root` of a merklized off chain document in
+		/// Centrifuge p2p network as the latest version id(`anchor_id`)
+		/// obtained by hashing `anchor_id_preimage`. If a pre-commit exists for
+		/// the obtained `anchor_id`, hash of pre-committed `signing_root +
+		/// proof` must match the given `doc_root`. Any pre-committed data is
+		/// automatically removed on a succesful commit and the reserved
+		/// funds from [`Pallet::pre_commit()`] are returned to the same
+		/// account. To avoid state bloat on chain,
+		/// the committed anchor would be evicted after the given
+		/// `stored_until_date`. The calling account would be charged
+		/// accordingly for the storage period. For a more detailed explanation
+		/// refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::commit())]
 		#[pallet::call_index(1)]
 		pub fn commit(
@@ -331,8 +341,9 @@ pub mod pallet {
 				.checked_sub(today_in_days_from_epoch)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
-			// we use the fee config setup on genesis for anchoring to calculate the state rent
+			// TODO(dev): move the fee to treasury account once its integrated instead of
+			// burning fee we use the fee config setup on genesis for anchoring to calculate
+			// the state rent
 			let fee = T::Fees::fee_value(T::CommitAnchorFeeKey::get())
 				.checked_mul(&multiplier.into())
 				.ok_or(ArithmeticError::Overflow)?;
@@ -360,9 +371,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Initiates eviction of pre-commits that has expired given a list on anchor ids.
-		/// For each evicted pre-commits, the deposit holded by [`Pallet::pre_commit()`] call
-		/// will be returned to the same account that made it originally.
+		/// Initiates eviction of pre-commits that has expired given a list on
+		/// anchor ids. For each evicted pre-commits, the deposit holded by
+		/// [`Pallet::pre_commit()`] call will be returned to the same account
+		/// that made it originally.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_pre_commits())]
 		#[pallet::call_index(2)]
 		pub fn evict_pre_commits(
@@ -378,16 +390,18 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Initiates eviction of expired anchors. Since anchors are stored on a child trie indexed by
-		/// their eviction date, what this function does is to remove those child tries which has
-		/// date_represented_by_root < current_date. Additionally it needs to take care of indexes
+		/// Initiates eviction of expired anchors. Since anchors are stored on a
+		/// child trie indexed by their eviction date, what this function does
+		/// is to remove those child tries which has date_represented_by_root <
+		/// current_date. Additionally it needs to take care of indexes
 		/// created for accessing anchors, eg: to find an anchor given an id.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::evict_anchors())]
 		#[pallet::call_index(3)]
 		pub fn evict_anchors(origin: OriginFor<T>) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			// get the today counting epoch, so that we can remove the corresponding child trie
+			// get the today counting epoch, so that we can remove the corresponding child
+			// trie
 			let now_u64 = TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get())
 				.or(Err(ArithmeticError::Overflow))?;
 			let today_in_days_from_epoch = common::get_days_since_epoch(now_u64)
@@ -420,8 +434,8 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
-	/// `expiration_block` < `current_block_number`.
+	/// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a
+	/// pre-commit with `expiration_block` < `current_block_number`.
 	fn get_valid_pre_commit(
 		anchor_id: T::Hash,
 	) -> Option<PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>> {
@@ -443,9 +457,10 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// Checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
-	/// of `signing_root` and `proof` is done in a fixed order (signing_root + proof).
-	/// assumes there is a valid pre-commit under PreCommits
+	/// Checks if `hash(signing_root, proof) == doc_root` for the given
+	/// `anchor_id`. Concatenation of `signing_root` and `proof` is done in a
+	/// fixed order (signing_root + proof). assumes there is a valid pre-commit
+	/// under PreCommits
 	fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
 		let signing_root = match <PreCommits<T>>::get(anchor_id) {
 			Some(pre_commit) => pre_commit.signing_root,
@@ -486,9 +501,10 @@ impl<T: Config> Pallet<T> {
 			.count()
 	}
 
-	/// Iterate from the last evicted anchor to latest anchor, while removing indexes that
-	/// are no longer valid because they belong to an expired/evicted anchor. The loop is
-	/// only allowed to run MAX_LOOP_IN_TX at a time.
+	/// Iterate from the last evicted anchor to latest anchor, while removing
+	/// indexes that are no longer valid because they belong to an
+	/// expired/evicted anchor. The loop is only allowed to run MAX_LOOP_IN_TX
+	/// at a time.
 	fn remove_anchor_indexes(yesterday: u32) -> Result<usize, DispatchError> {
 		let evicted_index = <LatestEvictedAnchorIndex<T>>::get()
 			.unwrap_or_default()
@@ -507,7 +523,8 @@ impl<T: Config> Pallet<T> {
 				let eviction_date = <AnchorEvictDates<T>>::get(anchor_id).unwrap_or_default();
 				Some((idx, anchor_id, eviction_date))
 			})
-			// filter out evictable anchors, anchor_evict_date can be 0 when evicting before any anchors are created
+			// filter out evictable anchors, anchor_evict_date can be 0 when evicting before any
+			// anchors are created
 			.filter(|(_, _, anchor_evict_date)| anchor_evict_date <= &yesterday)
 			// remove indexes
 			.map(|(idx, anchor_id, _)| {

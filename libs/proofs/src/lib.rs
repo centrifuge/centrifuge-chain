@@ -1,6 +1,7 @@
 //! # Optimized Merkle proof verifier and bundle hasher
 //!
-//! This pallet provides functionality of verifying optimized merkle proofs and bundle hasher.
+//! This pallet provides functionality of verifying optimized merkle proofs and
+//! bundle hasher.
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -58,7 +59,8 @@ pub trait Verifier: Hasher {
 	/// `None` implies a failed proof verification
 	fn initial_matches(&self, doc_root: Self::Hash) -> Option<Vec<Self::Hash>>;
 
-	/// Verifies each proof and return true if all the proofs are valid else returns false
+	/// Verifies each proof and return true if all the proofs are valid else
+	/// returns false
 	fn verify_proofs(&self, doc_root: Self::Hash, proofs: &[Proof<Self::Hash>]) -> bool {
 		if proofs.is_empty() {
 			return false;
@@ -89,17 +91,19 @@ mod inner {
 	use super::*;
 	use crate::{Proof, Verifier};
 
-	/// This is an optimized Merkle proof checker. It caches all valid leaves in an array called
-	/// matches. If a proof is validated, all the intermediate hashes will be added to the array.
-	/// When validating a subsequent proof, that proof will stop being validated as soon as a hash
-	/// has been computed that has been a computed hash in a previously validated proof.
+	/// This is an optimized Merkle proof checker. It caches all valid leaves in
+	/// an array called matches. If a proof is validated, all the intermediate
+	/// hashes will be added to the array. When validating a subsequent proof,
+	/// that proof will stop being validated as soon as a hash has been computed
+	/// that has been a computed hash in a previously validated proof.
 	///
-	/// When submitting a list of proofs, the client can thus choose to chop of all the already proven
-	/// nodes when submitting multiple proofs.
+	/// When submitting a list of proofs, the client can thus choose to chop of
+	/// all the already proven nodes when submitting multiple proofs.
 	///
-	/// matches: matches will have a pre computed hashes provided by the client and document root of the
-	/// reference anchor. static proofs are used to computed the pre computed hashes and the result is
-	/// checked against document root provided.
+	/// matches: matches will have a pre computed hashes provided by the client
+	/// and document root of the reference anchor. static proofs are used to
+	/// computed the pre computed hashes and the result is checked against
+	/// document root provided.
 	pub fn verify_proof<V: Verifier>(matches: &mut Vec<V::Hash>, proof: &Proof<V::Hash>) -> bool {
 		let Proof {
 			leaf_hash,
@@ -149,8 +153,8 @@ pub mod hashing {
 
 	/// Return a bundled hash from a list of hashes.
 	///
-	/// This function appends `deposit_address` and all the given `hashes` from the proofs and
-	/// returns the result hash
+	/// This function appends `deposit_address` and all the given `hashes` from
+	/// the proofs and returns the result hash
 	pub fn bundled_hash<H: Hasher>(
 		hashes: Vec<H::Hash>,
 		deposit_address: DepositAddress,

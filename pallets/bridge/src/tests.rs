@@ -55,7 +55,8 @@ fn transfer_native() {
 				dest_chain.clone()
 			));
 
-			// Using account with not enough balance for fee should fail when requesting transfer
+			// Using account with not enough balance for fee should fail when requesting
+			// transfer
 			assert_err!(
 				Bridge::transfer_native(
 					RuntimeOrigin::signed(RELAYER_C),
@@ -273,7 +274,8 @@ fn create_successful_transfer_proposal() {
 				resource
 			));
 
-			// First relayer (i.e. RELAYER_A) creates a new transfer proposal (so that an amount of 10 is transfered to his account)
+			// First relayer (i.e. RELAYER_A) creates a new transfer proposal (so that an
+			// amount of 10 is transfered to his account)
 			assert_ok!(ChainBridge::acknowledge_proposal(
 				RuntimeOrigin::signed(RELAYER_A),
 				prop_id,
@@ -330,10 +332,12 @@ fn create_successful_transfer_proposal() {
 			};
 			assert_eq!(actual_votes, expected_votes);
 
-			// First relayer's (i.e. RELAYER_A) account balance is increased of 10 as there were 2 votes for (i.e. RELAYER_A and RELAYER_B)
+			// First relayer's (i.e. RELAYER_A) account balance is increased of 10 as there
+			// were 2 votes for (i.e. RELAYER_A and RELAYER_B)
 			assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
-			//The chainbridge pallet's account balance must now be decreased by 10 after the transfer proposal was accepted
+			//The chainbridge pallet's account balance must now be decreased by 10 after
+			// the transfer proposal was accepted
 			assert_eq!(
 				Balances::free_balance(ChainBridge::account_id()),
 				ENDOWED_BALANCE - 10
