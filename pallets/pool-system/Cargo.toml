@@ -21,6 +21,7 @@ serde = { version = "1.0.119" }
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
+cfg-utils = { path = "../../libs/utils", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
@@ -37,8 +38,6 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 # Benchmarking dependencies - optional
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 pallet-investments = { path = "../../pallets/investments", default-features = false, optional = true }
-
-cfg-utils = { path = "../../libs/utils", default-features = true }
 
 [dev-dependencies]
 cfg-test-utils = { path = "../../libs/test-utils", default-features = true }
