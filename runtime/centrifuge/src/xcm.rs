@@ -167,7 +167,7 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	// We dont want to allow teleporting assets
 	NoChecking,
 	// We don't support teleports therefore we don't track them
-	(),
+	CheckingAccount,
 >;
 
 parameter_types! {

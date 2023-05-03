@@ -26,3 +26,4 @@ pub mod pallet_pool_registry;
 pub mod pallet_pool_system;
 pub mod pallet_restricted_tokens;
 pub mod pallet_session;
+pub mod pallet_xcm;

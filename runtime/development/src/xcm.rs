@@ -46,7 +46,7 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
 	AccountId, Balance, OrmlAssetRegistry, OrmlTokens, ParachainInfo, ParachainSystem, PolkadotXcm,
-	PoolPalletIndex, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount,
 	XcmpQueue,
 };
 
@@ -170,7 +170,7 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	// We dont want to allow teleporting assets
 	NoChecking,
 	// We don't support teleports therefore we don't track them
-	(),
+	CheckingAccount,
 >;
 
 parameter_types! {
@@ -250,16 +250,30 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub ReachableDest: Option<MultiLocation> = Some(Parent.into());
+}
+
 /// Pallet Xcm offers a lot of out-of-the-box functionality and features to configure
 /// and handle XCM messages.
 impl pallet_xcm::Config for Runtime {
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type Currency = crate::Balances;
+	type CurrencyMatcher = ();
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+	type MaxLockers = ConstU32<8>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ReachableDest = ReachableDest;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+	type SovereignAccountOf = ();
+	type TrustedLockers = ();
+	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+	type WeightInfo = crate::weights::pallet_xcm::WeightInfo<Runtime>;
 	type XcmExecuteFilter = Nothing;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type XcmReserveTransferFilter = Everything;
