@@ -58,12 +58,14 @@ mod weights;
 mod benchmarking;
 
 pub use pallet::*;
+pub use types::PoolIdOf;
 pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
+		data::{DataCollection, DataRegistry},
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
@@ -90,17 +92,12 @@ pub mod pallet {
 	};
 	use sp_std::vec::Vec;
 	use types::{
-		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuationUpdateType, WrittenOffError,
+		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo,
+		OraclePriceOf, PoolIdOf, PortfolioValuationUpdateType, PriceCollectionOf, WrittenOffError,
 	};
 	use write_off::{WriteOffRule, WriteOffStatus};
 
 	use super::*;
-
-	pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
-		<T as frame_system::Config>::AccountId,
-		<T as Config>::CurrencyId,
-	>>::PoolId;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -145,6 +142,15 @@ pub mod pallet {
 			+ EnsureAdd
 			+ One;
 
+		/// Identify a loan in the pallet
+		type OracleId: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Default
+			+ TypeInfo
+			+ Copy
+			+ MaxEncodedLen;
+
 		/// Defines the rate type used for math computations
 		type Rate: Parameter
 			+ Member
@@ -172,6 +178,13 @@ pub mod pallet {
 			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
 			Role = Role,
 			Error = DispatchError,
+		>;
+
+		/// Used to fetch and update Oracle prices
+		type PriceRegistry: DataRegistry<
+			Self::OracleId,
+			PoolIdOf<Self>,
+			Data = Result<OraclePriceOf<Self>, DispatchError>,
 		>;
 
 		/// Used to calculate interest accrual for debt.
@@ -222,7 +235,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<(ActiveLoan<T>, Moment), T::MaxActiveLoansPerPool>,
+		BoundedVec<(ActiveLoan<T>, T::Balance), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -268,7 +281,7 @@ pub mod pallet {
 		Created {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			loan_info: LoanInfoOf<T>,
+			loan_info: LoanInfo<T>,
 		},
 		/// An amount was borrowed for a loan
 		Borrowed {
@@ -360,7 +373,11 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		PriceCollectionOf<T>:
+			DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+	{
 		/// Creates a new loan against the collateral provided
 		///
 		/// The origin must be the owner of the collateral.
@@ -370,14 +387,14 @@ pub mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			info: LoanInfoOf<T>,
+			info: LoanInfo<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
-			Self::ensure_collateral_owner(&who, *info.collateral())?;
+			Self::ensure_collateral_owner(&who, info.collateral())?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			info.validate::<T>(Self::now())?;
+			info.validate(Self::now())?;
 
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
@@ -416,7 +433,7 @@ pub mod pallet {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
-					let mut active_loan = created_loan.activate(loan_id)?;
+					let mut active_loan = created_loan.activate(pool_id, loan_id)?;
 					active_loan.borrow(amount)?;
 
 					Self::insert_active_loan(pool_id, active_loan)?
@@ -582,7 +599,7 @@ pub mod pallet {
 				Some(created_loan) => (created_loan.close()?, Zero::zero()),
 				None => {
 					let (active_loan, count) = Self::take_active_loan(pool_id, loan_id)?;
-					(active_loan.close()?, count)
+					(active_loan.close(pool_id)?, count)
 				}
 			};
 
@@ -654,7 +671,11 @@ pub mod pallet {
 	}
 
 	/// Utility methods
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		PriceCollectionOf<T>:
+			DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+	{
 		fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
@@ -757,12 +778,13 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
+			let prices = T::PriceRegistry::collection(&pool_id);
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let count = loans.len().ensure_into()?;
 			let value = loans.into_iter().try_fold(
 				T::Balance::zero(),
 				|sum, (loan, _)| -> Result<T::Balance, DispatchError> {
-					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
+					Ok(sum.ensure_add(loan.present_value_by(&rates, &prices)?)?)
 				},
 			)?;
 
@@ -774,14 +796,13 @@ pub mod pallet {
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				let last_updated = Self::now();
-				let new_pv = loan.present_value_at(last_updated)?;
+				let new_pv = loan.present_value()?;
 
 				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, Zero::zero(), new_pv)?;
 
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					active_loans
-						.try_push((loan, last_updated))
+						.try_push((loan, new_pv))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					Ok(active_loans.len().ensure_into()?)
@@ -799,7 +820,7 @@ pub mod pallet {
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let (loan, last_updated) = active_loans
+					let (loan, old_pv) = active_loans
 						.iter_mut()
 						.find(|(loan, _)| loan.loan_id() == loan_id)
 						.ok_or_else(|| {
@@ -810,15 +831,11 @@ pub mod pallet {
 							}
 						})?;
 
-					*last_updated = (*last_updated).max(portfolio.last_updated());
-					let old_pv = loan.present_value_at(*last_updated)?;
-
 					let result = f(loan)?;
 
-					*last_updated = Self::now();
-					let new_pv = loan.present_value_at(*last_updated)?;
-
-					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
+					let new_pv = loan.present_value()?;
+					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, *old_pv, new_pv)?;
+					*old_pv = new_pv;
 
 					Ok((result, active_loans.len().ensure_into()?))
 				})
@@ -854,7 +871,11 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
-	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T> {
+	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T>
+	where
+		PriceCollectionOf<T>:
+			DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+	{
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 

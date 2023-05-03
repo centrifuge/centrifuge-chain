@@ -13,8 +13,9 @@
 
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
+	data::{DataCollection, DataRegistry},
 	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
-	InterestAccrual, RateCollection,
+	InterestAccrual, PoolInspect, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -25,13 +26,13 @@ use frame_support::{
 		tokens::{self},
 		UnixTime,
 	},
-	PalletError, RuntimeDebug,
+	PalletError, RuntimeDebug, RuntimeDebugNoBound,
 };
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Zero},
-	ArithmeticError, DispatchError, FixedPointNumber,
+	ArithmeticError, DispatchError,
 };
 use sp_std::cmp::Ordering;
 
@@ -226,46 +227,54 @@ pub struct LoanRestrictions<Rate> {
 	pub repayments: RepayRestrictions,
 }
 
+// =================================================================
+//  High level types related to the pallet's Config and Error types
+// -----------------------------------------------------------------
+pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
+	<T as Config>::OracleId,
+	PoolIdOf<T>,
+>>::Collection;
+
+pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::CurrencyId,
+>>::PoolId;
+
+pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
+pub type OraclePriceOf<T> = (<T as Config>::Rate, Moment);
+
 /// Loan information.
 /// It contemplates the loan proposal by the borrower and the pricing properties
 /// by the issuer.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct LoanInfo<Asset, Balance, Rate> {
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct LoanInfo<T: Config> {
 	/// Specify the repayments schedule of the loan
 	schedule: RepaymentSchedule,
 
 	/// Collateral used for this loan
-	collateral: Asset,
+	collateral: AssetOf<T>,
 
 	/// Value of the collateral used for this loan
-	collateral_value: Balance,
+	collateral_value: T::Balance,
 
 	/// Valuation method of this loan
-	valuation_method: ValuationMethod<Rate>,
+	valuation_method: ValuationMethod<T::Balance, T::Rate, T::OracleId>,
 
 	/// Restrictions of this loan
-	restrictions: LoanRestrictions<Rate>,
+	restrictions: LoanRestrictions<T::Rate>,
 
 	/// Interest rate per year with any penalty applied
-	interest_rate: Rate,
+	interest_rate: T::Rate,
 }
 
-impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate> {
-	pub fn collateral(&self) -> &Asset {
-		&self.collateral
+impl<T: Config> LoanInfo<T> {
+	pub fn collateral(&self) -> AssetOf<T> {
+		self.collateral
 	}
-}
 
-// =================================================================
-//  High level types related to the pallet's Config and Error types
-// -----------------------------------------------------------------
-
-impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
-where
-	Rate: FixedPointNumber,
-{
 	/// Validates the loan information againts to a T configuration.
-	pub fn validate<T: Config<Rate = Rate>>(&self, now: Moment) -> DispatchResult {
+	pub fn validate(&self, now: Moment) -> DispatchResult {
 		ensure!(
 			self.valuation_method.is_valid(),
 			Error::<T>::from(CreateLoanError::InvalidValuationMethod)
@@ -280,22 +289,19 @@ where
 	}
 }
 
-pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-pub type LoanInfoOf<T> = LoanInfo<AssetOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
-
 /// Data containing a loan that has been created but is not active yet.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct CreatedLoan<T: Config> {
 	/// Loan information
-	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+	info: LoanInfo<T>,
 
 	/// Borrower account that created this loan
 	borrower: T::AccountId,
 }
 
 impl<T: Config> CreatedLoan<T> {
-	pub fn new(info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>, borrower: T::AccountId) -> Self {
+	pub fn new(info: LoanInfo<T>, borrower: T::AccountId) -> Self {
 		Self { info, borrower }
 	}
 
@@ -303,8 +309,18 @@ impl<T: Config> CreatedLoan<T> {
 		&self.borrower
 	}
 
-	pub fn activate(self, loan_id: T::LoanId) -> Result<ActiveLoan<T>, DispatchError> {
-		ActiveLoan::new(loan_id, self.info, self.borrower, T::Time::now().as_secs())
+	pub fn activate(
+		self,
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+	) -> Result<ActiveLoan<T>, DispatchError> {
+		ActiveLoan::new(
+			pool_id,
+			loan_id,
+			self.info,
+			self.borrower,
+			T::Time::now().as_secs(),
+		)
 	}
 
 	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
@@ -327,7 +343,7 @@ pub struct ClosedLoan<T: Config> {
 	closed_at: T::BlockNumber,
 
 	/// Loan information
-	info: LoanInfo<AssetOf<T>, T::Balance, T::Rate>,
+	info: LoanInfo<T>,
 
 	/// Total borrowed amount of this loan
 	total_borrowed: T::Balance,
@@ -350,7 +366,7 @@ pub struct ActiveLoan<T: Config> {
 	loan_id: T::LoanId,
 
 	/// Loan information
-	info: LoanInfoOf<T>,
+	info: LoanInfo<T>,
 
 	/// Borrower account that created this loan
 	borrower: T::AccountId,
@@ -373,12 +389,16 @@ pub struct ActiveLoan<T: Config> {
 
 impl<T: Config> ActiveLoan<T> {
 	pub fn new(
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		info: LoanInfoOf<T>,
+		info: LoanInfo<T>,
 		borrower: T::AccountId,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
 		T::InterestAccrual::reference_rate(info.interest_rate)?;
+		if let ValuationMethod::Oracle(oracle) = &info.valuation_method {
+			T::PriceRegistry::register_id(&oracle.id, &pool_id)?;
+		}
 
 		Ok(ActiveLoan {
 			loan_id,
@@ -408,6 +428,13 @@ impl<T: Config> ActiveLoan<T> {
 		&self.write_off_status
 	}
 
+	pub fn oracle_id(&self) -> Option<T::OracleId> {
+		match &self.info.valuation_method {
+			ValuationMethod::Oracle(oracle) => Some(oracle.id),
+			_ => None,
+		}
+	}
+
 	/// Check if a write off rule is applicable for this loan
 	pub fn check_write_off_trigger(
 		&self,
@@ -419,7 +446,7 @@ impl<T: Config> ActiveLoan<T> {
 				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
 				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
 			}
-			WriteOffTrigger::OracleValuationOutdated(_seconds) => Ok(false),
+			WriteOffTrigger::OracleValuationOutdated(_seconds) => todo!(),
 		}
 	}
 
@@ -427,36 +454,68 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, when)
 	}
 
-	pub fn present_value_at(&self, when: Moment) -> Result<T::Balance, DispatchError> {
-		self.present_value(self.calculate_debt(when)?, when)
+	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
+		let now = T::Time::now().as_secs();
+		let debt = self.calculate_debt(now)?;
+		let price = self
+			.oracle_id()
+			.map(|id| T::PriceRegistry::get(&id))
+			.transpose()?;
+
+		self.compute_present_value(debt, price)
 	}
 
-	/// An optimized version of `ActiveLoan::present_value_at()` when last
-	/// updated is now. Instead of fetch the current deb from the accrual,
-	/// it get it from a cache previously fetched.
-	pub fn current_present_value<C>(&self, rate_cache: &C) -> Result<T::Balance, DispatchError>
+	/// An optimized version of `ActiveLoan::present_value()` when some input
+	/// data can be used from cached collections. Instead of fetch the current
+	/// debt and prices from the pallets,
+	/// it get the values from caches previously fetched.
+	pub fn present_value_by<Rates, Prices>(
+		&self,
+		rate_cache: &Rates,
+		price_cache: &Prices,
+	) -> Result<T::Balance, DispatchError>
 	where
-		C: RateCollection<T::Rate, T::Balance, T::Balance>,
+		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
+		Prices: DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
 	{
 		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
-		self.present_value(debt, T::Time::now().as_secs())
+		let price = self
+			.oracle_id()
+			.map(|id| price_cache.get(&id))
+			.transpose()?;
+
+		self.compute_present_value(debt, price)
 	}
 
-	fn present_value(&self, debt: T::Balance, when: Moment) -> Result<T::Balance, DispatchError> {
+	fn compute_present_value(
+		&self,
+		debt: T::Balance,
+		oracle_price: Option<OraclePriceOf<T>>,
+	) -> Result<T::Balance, DispatchError> {
 		let debt = self.write_off_status.write_down(debt)?;
 
 		match &self.info.valuation_method {
 			ValuationMethod::DiscountedCashFlow(dcf) => {
+				let now = T::Time::now().as_secs();
 				let maturity_date = self.info.schedule.maturity.date();
 				Ok(dcf.compute_present_value(
 					debt,
-					when,
+					now,
 					self.info.interest_rate,
 					maturity_date,
 					self.origination_date,
 				)?)
 			}
 			ValuationMethod::OutstandingDebt => Ok(debt),
+			ValuationMethod::Oracle(oracle) => {
+				let price = oracle_price
+					.ok_or(DispatchError::Other(
+						"If a loan has oracle valuation, it should be priced",
+					))?
+					.0;
+
+				Ok(price.ensure_mul_int(oracle.quantity)?)
+			}
 		}
 	}
 
@@ -599,10 +658,17 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(())
 	}
 
-	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
+	pub fn close(
+		self,
+		pool_id: PoolIdOf<T>,
+	) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
 		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
+
+		if let ValuationMethod::Oracle(oracle) = &self.info.valuation_method {
+			T::PriceRegistry::unregister_id(&oracle.id, &pool_id)?;
+		}
 
 		let loan = ClosedLoan {
 			closed_at: frame_system::Pallet::<T>::current_block_number(),
@@ -621,12 +687,8 @@ mod test_utils {
 
 	use super::*;
 
-	impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate>
-	where
-		Rate: Default,
-		Balance: Default,
-	{
-		pub fn new(collateral: Asset) -> Self {
+	impl<T: Config> LoanInfo<T> {
+		pub fn new(collateral: AssetOf<T>) -> Self {
 			Self {
 				schedule: RepaymentSchedule {
 					maturity: Maturity::Fixed(0),
@@ -634,16 +696,16 @@ mod test_utils {
 					pay_down_schedule: PayDownSchedule::None,
 				},
 				collateral,
-				collateral_value: Balance::default(),
+				collateral_value: T::Balance::default(),
 				valuation_method: ValuationMethod::OutstandingDebt,
 				restrictions: LoanRestrictions {
 					max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
-						advance_rate: Rate::default(),
+						advance_rate: T::Rate::default(),
 					},
 					borrows: BorrowRestrictions::WrittenOff,
 					repayments: RepayRestrictions::None,
 				},
-				interest_rate: Rate::default(),
+				interest_rate: T::Rate::default(),
 			}
 		}
 
@@ -657,27 +719,30 @@ mod test_utils {
 			self
 		}
 
-		pub fn max_borrow_amount(mut self, input: MaxBorrowAmount<Rate>) -> Self {
+		pub fn max_borrow_amount(mut self, input: MaxBorrowAmount<T::Rate>) -> Self {
 			self.restrictions.max_borrow_amount = input;
 			self
 		}
 
-		pub fn collateral_value(mut self, input: Balance) -> Self {
+		pub fn collateral_value(mut self, input: T::Balance) -> Self {
 			self.collateral_value = input;
 			self
 		}
 
-		pub fn valuation_method(mut self, input: ValuationMethod<Rate>) -> Self {
+		pub fn valuation_method(
+			mut self,
+			input: ValuationMethod<T::Balance, T::Rate, T::OracleId>,
+		) -> Self {
 			self.valuation_method = input;
 			self
 		}
 
-		pub fn restrictions(mut self, input: LoanRestrictions<Rate>) -> Self {
+		pub fn restrictions(mut self, input: LoanRestrictions<T::Rate>) -> Self {
 			self.restrictions = input;
 			self
 		}
 
-		pub fn interest_rate(mut self, input: Rate) -> Self {
+		pub fn interest_rate(mut self, input: T::Rate) -> Self {
 			self.interest_rate = input;
 			self
 		}

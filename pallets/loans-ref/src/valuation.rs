@@ -106,16 +106,24 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 	}
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct Oracle<OracleId, Balance> {
+	pub id: OracleId,
+	pub quantity: Balance,
+}
+
 /// Defines the valuation method of a loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum ValuationMethod<Rate> {
+pub enum ValuationMethod<Balance, Rate, OracleId> {
 	/// Dicounted cash flow valuation
 	DiscountedCashFlow(DiscountedCashFlow<Rate>),
 	/// Outstanding debt valuation
 	OutstandingDebt,
+	/// Based in an external oracle
+	Oracle(Oracle<OracleId, Balance>),
 }
 
-impl<Rate> ValuationMethod<Rate>
+impl<Balance, Rate, OracleId> ValuationMethod<Balance, Rate, OracleId>
 where
 	Rate: FixedPointNumber,
 {
@@ -123,6 +131,7 @@ where
 		match self {
 			ValuationMethod::DiscountedCashFlow(dcf) => dcf.discount_rate <= One::one(),
 			ValuationMethod::OutstandingDebt => true,
+			ValuationMethod::Oracle(_) => true,
 		}
 	}
 }

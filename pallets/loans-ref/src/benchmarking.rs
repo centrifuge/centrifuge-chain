@@ -19,7 +19,7 @@ use sp_std::{time::Duration, vec};
 
 use super::{
 	pallet::*,
-	types::{LoanInfo, MaxBorrowAmount},
+	types::{LoanInfo, MaxBorrowAmount, PoolIdOf},
 	valuation::{DiscountedCashFlow, ValuationMethod},
 	write_off::{WriteOffRule, WriteOffTrigger},
 };
