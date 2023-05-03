@@ -18,8 +18,7 @@ pub trait Weights {
 	fn add_allowance_delay_no_existing_metadata() -> Weight;
 	fn add_allowance_delay_existing_metadata() -> Weight;
 	fn toggle_allowance_delay_once_future_modifiable() -> Weight;
-	fn update_allowance_delay_present() -> Weight;
-	fn update_allowance_delay_missing() -> Weight;
+	fn update_allowance_delay() -> Weight;
 	fn purge_allowance_delay_remaining_metadata() -> Weight;
 	fn purge_allowance_delay_no_remaining_metadata() -> Weight;
 	fn remove_transfer_allowance_missing_allowance() -> Weight;
@@ -50,11 +49,7 @@ impl Weights for () {
 		Weight::zero()
 	}
 
-	fn update_allowance_delay_present() -> Weight {
-		Weight::zero()
-	}
-
-	fn update_allowance_delay_missing() -> Weight {
+	fn update_allowance_delay() -> Weight {
 		Weight::zero()
 	}
 

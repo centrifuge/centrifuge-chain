@@ -121,7 +121,7 @@ benchmarks! {
 				  )
 	}
 
-  update_allowance_delay_present {
+  update_allowance_delay {
 			let (sender, receiver) = set_up_users::<T>();
 		  Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
 		  Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
