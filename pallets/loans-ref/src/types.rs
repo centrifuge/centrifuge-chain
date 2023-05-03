@@ -450,13 +450,14 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	pub fn calculate_debt(&self, when: Moment) -> Result<T::Balance, DispatchError> {
-		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, when)
+	pub fn calculate_debt(&self) -> Result<T::Balance, DispatchError> {
+		let now = T::Time::now().as_secs();
+		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, now)
 	}
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
 		let now = T::Time::now().as_secs();
-		let debt = self.calculate_debt(now)?;
+		let debt = self.calculate_debt()?;
 		let price = self
 			.oracle_id()
 			.map(|id| T::PriceRegistry::get(&id))
@@ -546,14 +547,14 @@ impl<T: Config> ActiveLoan<T> {
 		T::InterestAccrual::unreference_rate(old_interest_rate)
 	}
 
-	fn max_borrow_amount(&self, when: Moment) -> Result<T::Balance, DispatchError> {
+	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
 		Ok(match self.info.restrictions.max_borrow_amount {
 			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
 				.saturating_sub(self.total_borrowed),
 			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
 				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.calculate_debt(when)?),
+				.saturating_sub(self.calculate_debt()?),
 		})
 	}
 
@@ -575,7 +576,7 @@ impl<T: Config> ActiveLoan<T> {
 		);
 
 		ensure!(
-			amount <= self.max_borrow_amount(now)?,
+			amount <= self.max_borrow_amount()?,
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 
@@ -597,10 +598,8 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		let now = T::Time::now().as_secs();
-
 		// Only repay until the current debt
-		let amount = amount.min(self.calculate_debt(now)?);
+		let amount = amount.min(self.calculate_debt()?);
 
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),
