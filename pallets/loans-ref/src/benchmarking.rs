@@ -58,6 +58,7 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
+		MockPrices::mock_collection(|_| MockDataCollection::new(|_| 0));
 	}
 
 	fn prepare_benchmark() -> PoolIdOf<T> {
