@@ -36,7 +36,7 @@ use sp_runtime::traits::{Convert, Zero};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
+	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
 	FixedWeightBounds, FungiblesAdapter, ParentIsPreset, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
 	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
@@ -152,7 +152,7 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	Tokens,
 	// This means that this adapter should handle any token that `CurrencyIdConvert` can convert
 	// to `CurrencyId`, the `CurrencyId` type of `Tokens`, the fungibles implementation it uses.
-	ConvertedConcreteAssetId<CurrencyId, Balance, CurrencyIdConvert, JustTry>,
+	ConvertedConcreteId<CurrencyId, Balance, CurrencyIdConvert, JustTry>,
 	// Convert an XCM MultiLocation into a local account id
 	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly)
