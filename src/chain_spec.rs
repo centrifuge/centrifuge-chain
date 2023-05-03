@@ -23,6 +23,7 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::AIR;
+use cfg_utils::vec_to_fixed_array;
 use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
@@ -993,9 +994,9 @@ fn development_genesis(
 						// NOTE: We can only mint these foreign assets on development
 						vec![
 							// USDT is a 6-decimal asset, so 1 million + 6 zeros
-							(x, DEV_USDT_CURRENCY_ID, 1_000_000_000_000),
+							(x.clone(), DEV_USDT_CURRENCY_ID, 1_000_000_000_000),
 							// AUSD is a 12-decimal asset, so 1 million + 12 zeros
-							(x.clone(), DEV_AUSD_CURRENCY_ID, 1_000_000_000_000_000_000),
+							(x, DEV_AUSD_CURRENCY_ID, 1_000_000_000_000_000_000),
 						]
 					})
 					.collect(),

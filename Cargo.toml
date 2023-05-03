@@ -140,6 +140,7 @@ polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "r
 altair-runtime = { path = "runtime/altair", default-features = false }
 centrifuge-runtime = { path = "runtime/centrifuge", default-features = false }
 cfg-primitives = { path = "libs/primitives" }
+cfg-utils = { path = "libs/utils" }
 development-runtime = { path = "runtime/development", default-features = false }
 runtime-common = { path = "runtime/common" }
 
@@ -185,6 +186,7 @@ std = [
   "centrifuge-runtime/std",
   "cfg-primitives/std",
   "cfg-types/std",
+  "cfg-utils/std",
   "clap/std",
   "cumulus-primitives-core/std",
   "cumulus-primitives-parachain-inherent/std",
@@ -229,6 +231,7 @@ runtime-benchmarks = [
   "polkadot-cli/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cfg-utils/runtime-benchmarks",
   "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "frame-benchmarking-cli/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
@@ -249,6 +252,7 @@ try-runtime = [
   "development-runtime/try-runtime",
   "try-runtime-cli",
   "cfg-types/try-runtime",
+  "cfg-utils/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-pool-system/try-runtime",
   "polkadot-cli/try-runtime",

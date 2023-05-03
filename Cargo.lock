@@ -1002,6 +1002,7 @@ dependencies = [
  "centrifuge-runtime",
  "cfg-primitives",
  "cfg-types",
+ "cfg-utils",
  "clap",
  "cumulus-client-cli",
  "cumulus-client-consensus-aura",
