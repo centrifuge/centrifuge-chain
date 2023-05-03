@@ -317,6 +317,10 @@ parameter_types! {
 parameter_types! {
 	/// The `MultiLocation` identifying this very parachain
 	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+	pub UniversalLocation: InteriorMultiLocation = X2(
+		GlobalConsensus(RelayNetwork::get()),
+		Parachain(ParachainInfo::parachain_id().into())
+	);
 }
 
 parameter_type_with_key! {
@@ -331,7 +335,6 @@ impl orml_xtokens::Config for Runtime {
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdConvert = CurrencyIdConvert;
-	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
 	type MultiLocationsFilter = Everything;
@@ -340,6 +343,7 @@ impl orml_xtokens::Config for Runtime {
 	type SelfLocation = SelfLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type UniversalLocation = UniversalLocation;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

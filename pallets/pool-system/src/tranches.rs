@@ -37,7 +37,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 use sp_runtime::{
-	traits::{ConstU32, Member, One, Zero},
+	traits::{Member, One, Zero},
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, WeakBoundedVec,
 };
 use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};
