@@ -91,6 +91,7 @@ impl pallet_evm::Config for crate::Runtime {
 	type RuntimeEvent = crate::RuntimeEvent;
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressTruncated;
+	type OnCreate = ();
 }
 
 impl pallet_evm_chain_id::Config for crate::Runtime {}
