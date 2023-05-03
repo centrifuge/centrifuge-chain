@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 use sp_runtime::{
 	traits::{Member, One, Zero},
-	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill, WeakBoundedVec,
+	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill,
 };
 use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};
 use xcm::{
