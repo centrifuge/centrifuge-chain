@@ -216,7 +216,9 @@ pub mod xcm {
 	use cfg_types::tokens::{CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
 	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
+	use sp_runtime::traits::Convert;
 	use xcm::latest::{Junction::GeneralKey, MultiLocation};
+	use xcm::prelude::{AccountId32, X1};
 
 	use crate::xcm_fees::default_per_second;
 
@@ -247,6 +249,21 @@ pub mod xcm {
 		GeneralKey {
 			length: data.len().min(32) as u8,
 			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
+		}
+	}
+
+	/// How we convert an `[AccountId]` into an XCM MultiLocation
+	pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
+	impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
+		where
+			AccountId: Into<[u8; 32]>,
+	{
+		fn convert(account: AccountId) -> MultiLocation {
+			X1(AccountId32 {
+				network: None,
+				id: account.into(),
+			})
+				.into()
 		}
 	}
 }

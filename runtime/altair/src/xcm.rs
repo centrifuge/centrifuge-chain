@@ -42,6 +42,7 @@ use xcm_builder::{
 	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
+use runtime_common::xcm::AccountIdToMultiLocation;
 
 use super::{
 	AccountId, Balance, OrmlAssetRegistry, OrmlTokens, ParachainInfo, ParachainSystem, PolkadotXcm,
@@ -334,7 +335,7 @@ parameter_type_with_key! {
 }
 
 impl orml_xtokens::Config for Runtime {
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
@@ -353,17 +354,6 @@ impl orml_xtokens::Config for Runtime {
 impl cumulus_pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-}
-
-pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
-		X1(AccountId32 {
-			network: NetworkId::Any,
-			id: account.into(),
-		})
-		.into()
-	}
 }
 
 impl orml_xcm::Config for Runtime {
