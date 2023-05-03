@@ -1,64 +1,96 @@
-use std::{any::Any, cell::RefCell, collections::HashMap, fmt};
+use std::{cell::RefCell, collections::HashMap, fmt};
 
 /// Identify a call in the call storage
 pub type CallId = u64;
 
-trait Callable {
-	fn as_any(&self) -> &dyn Any;
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeSignature(String);
+
+impl TypeSignature {
+	pub fn new<I, O>() -> TypeSignature {
+		Self(format!(
+			"{}->{}",
+			std::any::type_name::<I>(),
+			std::any::type_name::<O>(),
+		))
+	}
+}
+
+struct CallInfo {
+	ptr: u128,
+	type_signature: TypeSignature,
 }
 
 thread_local! {
-	static CALLS: RefCell<HashMap<CallId, Box<dyn Callable>>>
-		= RefCell::new(HashMap::default());
-}
-
-struct CallWrapper<Input, Output>(Box<dyn Fn(Input) -> Output>);
-
-impl<Input: 'static, Output: 'static> Callable for CallWrapper<Input, Output> {
-	fn as_any(&self) -> &dyn Any {
-		self
-	}
+	static CALLS: RefCell<HashMap<CallId, CallInfo>> = RefCell::new(HashMap::default());
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
 	CallNotFound,
-	TypeNotMatch,
+	TypeNotMatch(TypeSignature, TypeSignature),
 }
 
 impl fmt::Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(
-			f,
-			"{}",
-			match self {
-				Error::CallNotFound => "Trying to call a function that is not registered",
-				Error::TypeNotMatch => "The function is registered but the type mismatches",
-			}
-		)
+		match self {
+			Error::CallNotFound => write!(f, "Trying to call a function that is not registered"),
+			Error::TypeNotMatch(expected, found) => write!(
+				f,
+				"The function is registered but the type mismatches. Expected {}, found: {}",
+				expected.0, found.0
+			),
+		}
 	}
 }
 
 /// Register a call into the call storage.
 /// The registered call can be uniquely identified by the returned `CallId`.
-pub fn register_call<F: Fn(Args) -> R + 'static, Args: 'static, R: 'static>(f: F) -> CallId {
+pub fn register_call<F: Fn(I) -> O + 'static, I, O>(f: F) -> CallId {
+	let f = Box::new(f) as Box<dyn Fn(I) -> O>;
+	let p = Box::into_raw(f);
+
+	// SAFETY: transforming a wide pointer to an u128 is always safe.
+	let call = CallInfo {
+		ptr: unsafe { std::mem::transmute(p) },
+		type_signature: TypeSignature::new::<I, O>(),
+	};
+
 	CALLS.with(|state| {
 		let registry = &mut *state.borrow_mut();
 		let call_id = registry.len() as u64;
-		registry.insert(call_id, Box::new(CallWrapper(Box::new(f))));
+		registry.insert(call_id, call);
 		call_id
 	})
 }
 
 /// Execute a call from the call storage identified by a `call_id`.
-pub fn execute_call<Args: 'static, R: 'static>(call_id: CallId, args: Args) -> Result<R, Error> {
+pub fn execute_call<I, O>(call_id: CallId, input: I) -> Result<O, Error> {
+	let expected_type_signature = TypeSignature::new::<I, O>();
+
 	CALLS.with(|state| {
 		let registry = &*state.borrow();
 		let call = registry.get(&call_id).ok_or(Error::CallNotFound)?;
-		call.as_any()
-			.downcast_ref::<CallWrapper<Args, R>>()
-			.map(|wrapper| wrapper.0(args))
-			.ok_or(Error::TypeNotMatch)
+
+		if expected_type_signature != call.type_signature {
+			return Err(Error::TypeNotMatch(
+				expected_type_signature,
+				call.type_signature.clone(),
+			));
+		}
+
+		// SAFETY: The existance of this clousure is ensured by the forget call below.
+		// The type of the transmuted call is ensured in runtime by the above type signature
+		// check.
+		let f = unsafe {
+			let p: *mut dyn Fn(I) -> O = std::mem::transmute(call.ptr);
+			Box::from_raw(p)
+		};
+
+		let output = f(input);
+
+		std::mem::forget(f);
+		Ok(output)
 	})
 }
 
@@ -81,7 +113,13 @@ mod tests {
 		let call_id_1 = register_call(func_1);
 		let result = execute_call::<_, usize>(call_id_1, 'a');
 
-		assert_eq!(result, Err(Error::TypeNotMatch));
+		assert_eq!(
+			result,
+			Err(Error::TypeNotMatch(
+				TypeSignature::new::<char, usize>(),
+				TypeSignature::new::<u8, usize>()
+			))
+		);
 	}
 
 	#[test]
@@ -90,7 +128,13 @@ mod tests {
 		let call_id_1 = register_call(func_1);
 		let result = execute_call::<_, char>(call_id_1, 2u8);
 
-		assert_eq!(result, Err(Error::TypeNotMatch));
+		assert_eq!(
+			result,
+			Err(Error::TypeNotMatch(
+				TypeSignature::new::<u8, char>(),
+				TypeSignature::new::<u8, usize>()
+			))
+		);
 	}
 
 	#[test]
