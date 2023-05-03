@@ -11,7 +11,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Collects data from a feeder entity into collections to fastly read data in one memory access.
+//! Collects data from a feeder entity into collections to fastly read data in
+//! one memory access.
 pub use pallet::*;
 
 #[cfg(test)]
@@ -146,8 +147,9 @@ pub mod pallet {
 
 	impl<T: Config> OnNewData<T::AccountId, T::DataId, T::Data> for Pallet<T> {
 		fn on_new_data(_: &T::AccountId, data_id: &T::DataId, _: &T::Data) {
-			// Input Data parameter could not correspond with the data comming from `DataProvider`.
-			// This implementation use `DataProvider` as a source of truth for Data values.
+			// Input Data parameter could not correspond with the data comming from
+			// `DataProvider`. This implementation use `DataProvider` as a source of truth
+			// for Data values.
 			for collection_id in Listening::<T>::get(data_id).keys() {
 				Collection::<T>::mutate(collection_id, |collection| {
 					collection
