@@ -1262,7 +1262,7 @@ parameter_types! {
 
 impl pallet_xcm_transactor::Config for Runtime {
 	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
-	type AssetTransactor = xcm::FungiblesTransactor;
+	type AssetTransactor = FungiblesTransactor;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;

@@ -215,7 +215,6 @@ pub mod xcm {
 	use cfg_primitives::types::Balance;
 	use cfg_types::tokens::{CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
 	use sp_runtime::traits::Convert;
 	use xcm::latest::{Junction::GeneralKey, MultiLocation};
 	use xcm::prelude::{AccountId32, X1};

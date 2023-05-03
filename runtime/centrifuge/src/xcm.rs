@@ -34,13 +34,7 @@ use runtime_common::{
 };
 use sp_runtime::traits::{Convert, Zero};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
-use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, FungiblesAdapter, ParentIsPreset, RelayChainAsNative,
-	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
-};
+use xcm_builder::{AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit};
 use xcm_executor::{traits::JustTry, XcmExecutor};
 use runtime_common::xcm::AccountIdToMultiLocation;
 
@@ -144,6 +138,7 @@ pub type Barrier = (
 );
 
 /// Means for transacting the fungibles assets of this parachain.
+/// todo(nuno): consider using `MultiCurrencyAdapter` instead
 pub type FungiblesTransactor = FungiblesAdapter<
 	// Use this fungibles implementation
 	Tokens,
@@ -154,11 +149,10 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly)
 	AccountId,
-	// We only want to allow teleports of known assets. We use non-zero issuance as an indication
-	// that this asset is known.
-	NonZeroIssuance<AccountId, Tokens>,
-	// The account to use for tracking teleports.
-	CheckingAccount,
+	// We dont want to allow teleporting assets
+	NoChecking,
+	// We don't support teleports therefore we don't track them
+	(),
 >;
 
 parameter_types! {
