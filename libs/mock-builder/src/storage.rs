@@ -37,11 +37,11 @@ impl fmt::Display for Error {
 /// The registered call can be uniquely identified by the returned `CallId`.
 pub fn register_call<F: Fn(I) -> O + 'static, I, O>(f: F) -> CallId {
 	let f = Box::new(f) as Box<dyn Fn(I) -> O>;
-	let p = Box::into_raw(f);
+	let ptr = Box::into_raw(f);
 
 	// SAFETY: transforming a wide pointer to an u128 is always safe.
 	let call = CallInfo {
-		ptr: unsafe { std::mem::transmute(p) },
+		ptr: unsafe { std::mem::transmute(ptr) },
 		type_signature: TypeSignature::new::<I, O>(),
 	};
 
@@ -68,12 +68,14 @@ pub fn execute_call<I, O>(call_id: CallId, input: I) -> Result<O, Error> {
 			));
 		}
 
-		// SAFETY: The existance of this clousure is ensured by the forget call below.
+		// SAFETY: The existance of this boxed clousure in consequent calls is ensured by the forget
+		// call below.
 		// The type of the transmuted call is ensured in runtime by the above type signature
 		// check.
 		let f = unsafe {
-			let p: *mut dyn Fn(I) -> O = std::mem::transmute(call.ptr);
-			Box::from_raw(p)
+			#[allow(clippy::useless_transmute)] // Clippy hints something erroneous
+			let ptr: *mut dyn Fn(I) -> O = std::mem::transmute(call.ptr);
+			Box::from_raw(ptr)
 		};
 
 		let output = f(input);
