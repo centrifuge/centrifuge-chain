@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::BadOrigin;
@@ -48,11 +49,11 @@ mod util {
 	}
 
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
-		get_loan(loan_id).calculate_debt(now().as_secs()).unwrap()
+		get_loan(loan_id).calculate_debt().unwrap()
 	}
 
 	pub fn current_loan_pv(loan_id: LoanId) -> Balance {
-		get_loan(loan_id).present_value_at(now().as_secs()).unwrap()
+		get_loan(loan_id).present_value().unwrap()
 	}
 
 	pub fn interest_for(rate: f64, elapsed: Duration) -> f64 {
@@ -1363,6 +1364,9 @@ mod portfolio_valuation {
 	use super::*;
 
 	fn config_mocks() {
+		MockPrices::mock_collection(|_| {
+			MockDataCollection::new(|_| unimplemented!("never called"))
+		});
 		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
 	}
 
