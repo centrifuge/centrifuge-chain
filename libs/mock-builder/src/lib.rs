@@ -63,8 +63,6 @@ where
 	Map: StorageMap<<Blake2_128 as StorageHasher>::Output, CallId>,
 	L: Fn(),
 	F: Fn(I) -> O + 'static,
-	I: 'static,
-	O: 'static,
 {
 	let location = FunctionLocation::from(locator)
 		.normalize()
@@ -81,8 +79,6 @@ pub fn execute<Map, L, I, O>(locator: L, input: I) -> O
 where
 	Map: StorageMap<<Blake2_128 as StorageHasher>::Output, CallId>,
 	L: Fn(),
-	I: 'static,
-	O: 'static,
 {
 	let location = FunctionLocation::from(locator)
 		.normalize()
