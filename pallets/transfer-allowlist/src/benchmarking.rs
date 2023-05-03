@@ -146,7 +146,7 @@ benchmarks! {
 			let (sender, receiver) = set_up_users::<T>();
 		  Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
 		  Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
-		advance_n_blocks::<T>(1u32.into());
+		advance_n_blocks::<T>(2u32.into());
 	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native)
 		verify{
 				  assert_eq!(
@@ -154,12 +154,8 @@ benchmarks! {
 							  Pallet::<T>::get_account_currency_restriction_count_delay(
 									  sender,
 									  CurrencyId::Native,
-							  ).unwrap(),
-							  AllowanceMetadata {
-									  allowance_count: 0,
-									  current_delay: None,
-									  once_modifiable_after: None
-							  }
+							  ),
+			  None
 				  )
 		}
 
@@ -203,7 +199,7 @@ benchmarks! {
 				)
 		  }
 
-	purge_transfer_allowance {
+	purge_transfer_allowance_no_remaining_metadata {
 			let (sender, receiver) = set_up_users::<T>();
 			  Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
 			Pallet::<T>::remove_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
@@ -211,14 +207,52 @@ benchmarks! {
 	verify {
 			  assert_eq!(
 					  Pallet::<T>::get_account_currency_transfer_allowance(
-							  (sender,
+							  (sender.clone(),
 							   CurrencyId::Native,
 							   Location::from(receiver))
 					  ),
 			None
-				)
+				);
+			assert_eq!(
+
+					Pallet::<T>::get_account_currency_restriction_count_delay(
+							sender,
+							CurrencyId::Native,
+					),
+					None
+			)
 	}
 
+	  purge_transfer_allowance_remaining_metadata {
+			  let (sender, receiver) = set_up_users::<T>();
+		let receiver_1 = set_up_second_reciever::<T>();
+			  Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+			  Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver_1.clone().into())?;
+			  Pallet::<T>::remove_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+	  }:purge_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
+		  verify {
+				  assert_eq!(
+						  Pallet::<T>::get_account_currency_transfer_allowance(
+								  (sender.clone(),
+								   CurrencyId::Native,
+								   Location::from(receiver))
+						  ),
+					  None
+					);
+
+		assert_eq!(
+
+				Pallet::<T>::get_account_currency_restriction_count_delay(
+						sender,
+						CurrencyId::Native,
+				).unwrap(),
+				AllowanceMetadata {
+						allowance_count: 1,
+						current_delay: None,
+						once_modifiable_after: None
+				}
+		)
+	}
 }
 
 fn set_up_users<T: Config>() -> (T::AccountId, T::AccountId) {
@@ -226,6 +260,10 @@ fn set_up_users<T: Config>() -> (T::AccountId, T::AccountId) {
 	let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2, 0);
 	T::ReserveCurrency::deposit_creating(&sender, 100u32.into());
 	(sender, receiver)
+}
+
+fn set_up_second_reciever<T: Config>() -> T::AccountId {
+	account::<T::AccountId>("Receiver_1", 3, 0)
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime,);

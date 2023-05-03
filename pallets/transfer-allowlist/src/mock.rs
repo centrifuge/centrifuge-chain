@@ -170,6 +170,7 @@ impl transfer_allowlist::Config for Runtime {
 	type Location = Location;
 	type ReserveCurrency = Balances;
 	type RuntimeEvent = RuntimeEvent;
+	type Weights = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

@@ -25,7 +25,8 @@ pub trait Weights {
 	fn remove_transfer_allowance_missing_allowance() -> Weight;
 	fn remove_transfer_allowance_delay_present() -> Weight;
 	fn remove_transfer_allowance_no_delay() -> Weight;
-	fn purge_transfer_allowance() -> Weight;
+	fn purge_transfer_allowance_no_remaining_metadata() -> Weight;
+	fn purge_transfer_allowance_remaining_metadata() -> Weight;
 }
 
 impl Weights for () {
@@ -77,7 +78,11 @@ impl Weights for () {
 		Weight::zero()
 	}
 
-	fn purge_transfer_allowance() -> Weight {
+	fn purge_transfer_allowance_no_remaining_metadata() -> Weight {
+		Weight::zero()
+	}
+
+	fn purge_transfer_allowance_remaining_metadata() -> Weight {
 		Weight::zero()
 	}
 }

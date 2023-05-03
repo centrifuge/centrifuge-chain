@@ -34,6 +34,7 @@ pub mod weights;
 
 pub use cfg_traits::TransferAllowance;
 pub use pallet::*;
+pub use weights::Weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -112,6 +113,9 @@ pub mod pallet {
 			+ EncodeLike
 			+ Decode
 			+ MaxEncodedLen;
+
+		/// Type for pallet weights
+		type Weights: Weights;
 	}
 
 	//
@@ -319,7 +323,7 @@ pub mod pallet {
 		/// Running this for an existing allowance generates a new allowance
 		/// based on the current delay, or lack thereof
 		#[pallet::call_index(0)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		#[pallet::weight(T::Weights::add_transfer_allowance_no_existing_metadata().max(T::Weights::add_transfer_allowance_existing_metadata()))]
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -372,7 +376,7 @@ pub mod pallet {
 		/// - either the current block + delay if a delay is set
 		/// - or the current block if no delay is set
 		#[pallet::call_index(1)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		#[pallet::weight(T::Weights::remove_transfer_allowance_missing_allowance().max(T::Weights::remove_transfer_allowance_delay_present()))]
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -418,7 +422,7 @@ pub mod pallet {
 		/// receiving location Decrements or removes the sending
 		/// account/currency count.
 		#[pallet::call_index(2)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
+		#[pallet::weight(T::Weights::purge_transfer_allowance_no_remaining_metadata())]
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
