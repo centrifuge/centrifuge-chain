@@ -446,7 +446,13 @@ impl<T: Config> ActiveLoan<T> {
 				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
 				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
 			}
-			WriteOffTrigger::OracleValuationOutdated(_seconds) => todo!(),
+			WriteOffTrigger::OracleValuationOutdated(secs) => match self.oracle_id() {
+				Some(id) => {
+					let (_, last_updated) = T::PriceRegistry::get(&id)?;
+					Ok(now >= last_updated.ensure_add(*secs)?)
+				}
+				None => Ok(false),
+			},
 		}
 	}
 
@@ -456,7 +462,6 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let now = T::Time::now().as_secs();
 		let debt = self.calculate_debt()?;
 		let price = self
 			.oracle_id()
