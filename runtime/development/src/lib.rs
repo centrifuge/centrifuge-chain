@@ -18,7 +18,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::v2::{MultiAsset, MultiLocation};
+use ::xcm::latest::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
@@ -1261,7 +1261,7 @@ parameter_types! {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
+	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation<AccountId>;
 	type AssetTransactor = FungiblesTransactor;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
@@ -1772,7 +1772,7 @@ construct_runtime!(
 		// authoring stuff
 		// collator_selection must go here in order for the storage to be available to pallet_session
 		CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
-		Authorship: pallet_authorship::{Pallet, Call, Storage} = 30,
+		Authorship: pallet_authorship::{Pallet, Storage, Storage} = 30,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 31,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 32,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 33,
