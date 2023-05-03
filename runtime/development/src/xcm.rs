@@ -33,7 +33,7 @@ use runtime_common::{
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
 };
 use sp_runtime::traits::{Convert, Zero};
-use xcm::latest::prelude::*;
+use xcm::{prelude::*, latest::Weight as XcmWeight};
 use xcm_builder::{
 	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
@@ -167,7 +167,7 @@ pub type FungiblesTransactor = FungiblesAdapter<
 
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
-	pub const UnitWeightCost: u64 = 200_000_000;
+	pub const UnitWeightCost: XcmWeight = XcmWeight::from_ref_time(200_000_000);
 	pub const MaxInstructions: u32 = 100;
 }
 
@@ -320,7 +320,7 @@ pub type XcmOriginToTransactDispatchOrigin = (
 );
 
 parameter_types! {
-	pub const BaseXcmWeight: u64 = 100_000_000;
+	pub const BaseXcmWeight: XcmWeight = XcmWeight::from_ref_time(100_000_000);
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 

@@ -1850,11 +1850,6 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
-parameter_types! {
-	pub UnitWeightCost: u64 = 100_000_000;
-	pub const MaxInstructions: u32 = 100;
-}
-
 /// XCMP Queue is responsible to handle XCM messages coming directly from sibling parachains.
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
