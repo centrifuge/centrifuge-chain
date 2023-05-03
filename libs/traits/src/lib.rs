@@ -41,6 +41,8 @@ pub mod ops;
 /// Traits related to rewards.
 pub mod rewards;
 
+pub mod data;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
