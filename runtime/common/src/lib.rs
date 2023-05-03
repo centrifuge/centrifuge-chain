@@ -216,8 +216,10 @@ pub mod xcm {
 	use cfg_types::tokens::{CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
 	use sp_runtime::traits::Convert;
-	use xcm::latest::{Junction::GeneralKey, MultiLocation};
-	use xcm::prelude::{AccountId32, X1};
+	use xcm::{
+		latest::{Junction::GeneralKey, MultiLocation},
+		prelude::{AccountId32, X1},
+	};
 
 	use crate::xcm_fees::default_per_second;
 
@@ -254,15 +256,15 @@ pub mod xcm {
 	/// How we convert an `[AccountId]` into an XCM MultiLocation
 	pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
 	impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
-		where
-			AccountId: Into<[u8; 32]>,
+	where
+		AccountId: Into<[u8; 32]>,
 	{
 		fn convert(account: AccountId) -> MultiLocation {
 			X1(AccountId32 {
 				network: None,
 				id: account.into(),
 			})
-				.into()
+			.into()
 		}
 	}
 }

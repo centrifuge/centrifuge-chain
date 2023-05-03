@@ -28,16 +28,21 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, Mu
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use sp_core::ConstU32;
 use runtime_common::{
-	xcm::{general_key, FixedConversionRateProvider},
+	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, native_per_second},
 };
+use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
 use xcm::{prelude::*, v3::Weight as XcmWeight};
-use xcm_builder::{AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit};
+use xcm_builder::{
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
+	FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative,
+	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+};
 use xcm_executor::{traits::JustTry, XcmExecutor};
-use runtime_common::xcm::AccountIdToMultiLocation;
 
 use super::{
 	AccountId, Balance, OrmlAssetRegistry, OrmlTokens, ParachainInfo, ParachainSystem, PolkadotXcm,
@@ -56,7 +61,6 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
-
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type ResponseHandler = PolkadotXcm;
 	type RuntimeCall = RuntimeCall;
@@ -202,7 +206,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 			// todo(nuno): verify this will work correctly
 			MultiLocation {
 				parents: 1,
-				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. } ),
+				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. }),
 			} => match para_id {
 				// Note: Until we have pools on Centrifuge, we don't know the pools pallet index
 				// and can't therefore match specifically on the Tranche tokens' multilocation;
@@ -241,31 +245,29 @@ parameter_types! {
 /// Pallet Xcm offers a lot of out-of-the-box functionality and features to configure
 /// and handle XCM messages.
 impl pallet_xcm::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency =  crate::Balances;
-
-	type CurrencyMatcher = ();
-	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type XcmRouter = XcmRouter;
-	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-	type XcmExecuteFilter = Nothing;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmTeleportFilter = Everything;
-	type XcmReserveTransferFilter = Everything;
-	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type UniversalLocation = UniversalLocation;
-
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
-	type TrustedLockers = ();
-	type SovereignAccountOf = ();
+	type Currency = crate::Balances;
+	type CurrencyMatcher = ();
+	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
 	type MaxLockers = ConstU32<8>;
-	type WeightInfo = crate::weights::pallet_xcm::WeightInfo<Runtime>;
-
 	#[cfg(feature = "runtime-benchmarks")]
 	type ReachableDest = ReachableDest;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type SendXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
+	type SovereignAccountOf = ();
+	type TrustedLockers = ();
+	type UniversalLocation = UniversalLocation;
+	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+	type WeightInfo = crate::weights::pallet_xcm::WeightInfo<Runtime>;
+	type XcmExecuteFilter = Nothing;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type XcmReserveTransferFilter = Everything;
+	type XcmRouter = XcmRouter;
+	type XcmTeleportFilter = Everything;
+
+	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
 }
 
 parameter_types! {
@@ -352,9 +354,9 @@ impl orml_xtokens::Config for Runtime {
 	type ReserveProvider = AbsoluteReserveProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
+	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type UniversalLocation = UniversalLocation;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

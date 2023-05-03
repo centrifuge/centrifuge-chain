@@ -85,13 +85,13 @@ impl pallet_evm::Config for crate::Runtime {
 	type FindAuthor = FindAuthorTruncated<Aura>;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
+	type OnCreate = ();
 	type PrecompilesType = precompile::CentrifugePrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = crate::RuntimeEvent;
 	type WeightPerGas = WeightPerGas;
 	type WithdrawOrigin = EnsureAddressTruncated;
-	type OnCreate = ();
 }
 
 impl pallet_evm_chain_id::Config for crate::Runtime {}

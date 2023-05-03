@@ -29,14 +29,19 @@ use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use runtime_common::{
-	xcm::{general_key, FixedConversionRateProvider},
+	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
 };
 use sp_runtime::traits::{Convert, Zero};
-use xcm::{prelude::*, latest::Weight as XcmWeight};
-use xcm_builder::{Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit};
+use xcm::{latest::Weight as XcmWeight, prelude::*};
+use xcm_builder::{
+	Account32Hash, AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
+	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedRateOfFungible,
+	FixedWeightBounds, FungiblesAdapter, NoChecking, ParentIsPreset, RelayChainAsNative,
+	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+};
 use xcm_executor::{traits::JustTry, XcmExecutor};
-use runtime_common::xcm::AccountIdToMultiLocation;
 
 use super::{
 	AccountId, Balance, OrmlAssetRegistry, OrmlTokens, ParachainInfo, ParachainSystem, PolkadotXcm,
@@ -56,7 +61,6 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
-
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type ResponseHandler = PolkadotXcm;
 	type RuntimeCall = RuntimeCall;
@@ -204,7 +208,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 			// todo(nuno): verify this will work correctly
 			MultiLocation {
 				parents: 1,
-				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. } ),
+				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. }),
 			} => match para_id {
 				// Note: Until we have pools on Centrifuge, we don't know the pools pallet index
 				// and can't therefore match specifically on the Tranche tokens' multilocation;
@@ -240,7 +244,6 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 impl pallet_xcm::Config for Runtime {
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
-
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
@@ -344,9 +347,9 @@ impl orml_xtokens::Config for Runtime {
 	type ReserveProvider = AbsoluteReserveProvider;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
+	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type UniversalLocation = UniversalLocation;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
