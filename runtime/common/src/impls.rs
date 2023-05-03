@@ -196,9 +196,8 @@ pub mod xcm {
 	}
 
 	pub fn general_key(key: &[u8]) -> xcm::latest::Junction {
-		GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-			key.into(),
-			None,
-		))
+		GeneralKey {
+
+		}
 	}
 }
