@@ -230,10 +230,8 @@ pub struct LoanRestrictions<Rate> {
 // =================================================================
 //  High level types related to the pallet's Config and Error types
 // -----------------------------------------------------------------
-pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
-	<T as Config>::OracleId,
-	PoolIdOf<T>,
->>::Collection;
+pub type PriceCollectionOf<T> =
+	<<T as Config>::PriceRegistry as DataRegistry<<T as Config>::PriceId, PoolIdOf<T>>>::Collection;
 
 pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 	<T as frame_system::Config>::AccountId,
@@ -259,7 +257,7 @@ pub struct LoanInfo<T: Config> {
 	collateral_value: T::Balance,
 
 	/// Valuation method of this loan
-	valuation_method: ValuationMethod<T::Balance, T::Rate, T::OracleId>,
+	valuation_method: ValuationMethod<T::Balance, T::Rate, T::PriceId>,
 
 	/// Restrictions of this loan
 	restrictions: LoanRestrictions<T::Rate>,
@@ -428,7 +426,7 @@ impl<T: Config> ActiveLoan<T> {
 		&self.write_off_status
 	}
 
-	pub fn oracle_id(&self) -> Option<T::OracleId> {
+	pub fn oracle_id(&self) -> Option<T::PriceId> {
 		match &self.info.valuation_method {
 			ValuationMethod::Oracle(oracle) => Some(oracle.id),
 			_ => None,
@@ -482,7 +480,7 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
-		Prices: DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = Result<OraclePriceOf<T>, DispatchError>>,
 	{
 		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
 		let price = self
@@ -735,7 +733,7 @@ mod test_utils {
 
 		pub fn valuation_method(
 			mut self,
-			input: ValuationMethod<T::Balance, T::Rate, T::OracleId>,
+			input: ValuationMethod<T::Balance, T::Rate, T::PriceId>,
 		) -> Self {
 			self.valuation_method = input;
 			self

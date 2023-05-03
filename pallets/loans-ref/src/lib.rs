@@ -143,7 +143,7 @@ pub mod pallet {
 			+ One;
 
 		/// Identify a loan in the pallet
-		type OracleId: Parameter
+		type PriceId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Default
@@ -182,7 +182,7 @@ pub mod pallet {
 
 		/// Used to fetch and update Oracle prices
 		type PriceRegistry: DataRegistry<
-			Self::OracleId,
+			Self::PriceId,
 			PoolIdOf<Self>,
 			Data = Result<OraclePriceOf<Self>, DispatchError>,
 		>;
@@ -376,7 +376,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T>
 	where
 		PriceCollectionOf<T>:
-			DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+			DataCollection<T::PriceId, Data = Result<OraclePriceOf<T>, DispatchError>>,
 	{
 		/// Creates a new loan against the collateral provided
 		///
@@ -674,7 +674,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T>
 	where
 		PriceCollectionOf<T>:
-			DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+			DataCollection<T::PriceId, Data = Result<OraclePriceOf<T>, DispatchError>>,
 	{
 		fn now() -> Moment {
 			T::Time::now().as_secs()
@@ -874,7 +874,7 @@ pub mod pallet {
 	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T>
 	where
 		PriceCollectionOf<T>:
-			DataCollection<T::OracleId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+			DataCollection<T::PriceId, Data = Result<OraclePriceOf<T>, DispatchError>>,
 	{
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;

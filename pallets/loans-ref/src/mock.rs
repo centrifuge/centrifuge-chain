@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cfg_mocks::{pallet_mock_permissions, pallet_mock_pools};
+use cfg_mocks::{pallet_mock_data, pallet_mock_permissions, pallet_mock_pools};
 use cfg_primitives::Moment;
 use cfg_types::permissions::PermissionScope;
 use frame_support::traits::{
@@ -12,7 +12,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	FixedU128,
+	DispatchError, FixedU128,
 };
 
 use crate::pallet as pallet_loans;
@@ -57,6 +57,7 @@ pub type CurrencyId = u32;
 pub type PoolId = u32;
 pub type TrancheId = u64;
 pub type LoanId = u64;
+pub type PriceId = u64;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -71,6 +72,7 @@ frame_support::construct_runtime!(
 		InterestAccrual: pallet_interest_accrual,
 		MockPools: pallet_mock_pools,
 		MockPermissions: pallet_mock_permissions,
+		MockPrices: pallet_mock_data,
 		Loans: pallet_loans,
 	}
 );
@@ -168,6 +170,13 @@ impl pallet_mock_permissions::Config for Runtime {
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 }
 
+impl pallet_mock_data::Config for Runtime {
+	type Collection = pallet_mock_data::util::MockDataCollection<PriceId, Self::Data>;
+	type CollectionId = PoolId;
+	type Data = Result<(Rate, Moment), DispatchError>;
+	type DataId = PriceId;
+}
+
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
 	type CollectionId = CollectionId;
@@ -180,6 +189,8 @@ impl pallet_loans::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = MockPermissions;
 	type Pool = MockPools;
+	type PriceId = PriceId;
+	type PriceRegistry = MockPrices;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timer;
