@@ -28,6 +28,7 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, Mu
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
+use sp_core::ConstU32;
 use runtime_common::{
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
@@ -54,20 +55,30 @@ use super::{
 /// how fees are calculated, what barriers we impose on incoming XCM messages, etc.
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
-	type AssetClaims = PolkadotXcm;
+	type RuntimeCall = RuntimeCall;
+	type XcmSender = XcmRouter;
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = FungiblesTransactor;
-	type AssetTrap = PolkadotXcm;
-	type Barrier = Barrier;
+	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
-	type OriginConverter = XcmOriginToTransactDispatchOrigin;
-	type ResponseHandler = PolkadotXcm;
-	type RuntimeCall = RuntimeCall;
-	type SubscriptionService = PolkadotXcm;
-	type Trader = Trader;
+	type UniversalLocation = UniversalLocation;
+	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type XcmSender = XcmRouter;
+	type Trader = Trader;
+	type ResponseHandler = PolkadotXcm;
+	type AssetTrap = PolkadotXcm;
+	type AssetLocker = ();
+	type AssetExchanger = ();
+	type AssetClaims = PolkadotXcm;
+	type SubscriptionService = PolkadotXcm;
+	type PalletInstancesInfo = crate::AllPalletsWithSystem;
+	type MaxAssetsIntoHolding = ConstU32<64>;
+	type FeeManager = ();
+	type MessageExporter = ();
+	type UniversalAliases = Nothing;
+	type CallDispatcher = RuntimeCall;
+	type SafeCallFilter = Everything;
 }
 
 /// Trader - The means of purchasing weight credit for XCM execution.
