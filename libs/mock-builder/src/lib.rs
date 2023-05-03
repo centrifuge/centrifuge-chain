@@ -41,7 +41,9 @@
 //! how to use this crate.
 
 /// Provide functions for register/execute calls
-pub mod storage;
+//pub mod storage;
+pub mod storage_2;
+pub use storage_2 as storage;
 
 /// Provide functions for handle fuction locations
 pub mod location;

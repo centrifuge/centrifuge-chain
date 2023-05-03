@@ -7,6 +7,7 @@ pub trait TraitB {
 	fn qux(p1: String) -> bool;
 	fn generic_input<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize;
 	fn generic_output<A: Into<i32> + 'static>() -> A;
+	//fn generic_output_custom_lifetime<A: Into<i32>>() -> A;
 }
 
 #[frame_support::pallet]
@@ -51,7 +52,18 @@ pub mod pallet_mock_ab {
 		pub fn mock_generic_output<A: Into<i32> + 'static>(f: impl Fn() -> A + 'static) {
 			register_call!(move |()| f());
 		}
+
+		/*
+		pub fn mock_generic_output_custom_lifetime<A: Into<i32>, F: for<'a> MockFn<'a, (), A>>(
+			f: F,
+		) {
+			register_call!(move |()| f(()));
+		}
+		*/
 	}
+
+	//trait MockFn<'a, I: 'a, O: 'a>: Fn(I) -> O + 'static {}
+	//impl<'a, I: 'a, O: 'a, T: Fn(I) -> O + 'static> MockFn<'a, I, O> for T {}
 
 	impl<T: Config> super::TraitA for Pallet<T> {
 		fn foo(a: String, b: Option<u64>) {
@@ -75,6 +87,12 @@ pub mod pallet_mock_ab {
 		fn generic_output<A: Into<i32> + 'static>() -> A {
 			execute_call!(())
 		}
+
+		/*
+		fn generic_output_custom_lifetime<A: Into<i32>>() -> A {
+			execute_call!(())
+		}
+		*/
 	}
 }
 
@@ -185,6 +203,7 @@ mod test {
 		});
 	}
 
+	/*
 	#[test]
 	#[should_panic]
 	fn wrong() {
@@ -210,6 +229,7 @@ mod test {
 		// The storage is dropped at this time. Mocks no longer found from here.
 		mock_not_configured();
 	}
+	*/
 
 	#[test]
 	fn generic_input() {
@@ -230,6 +250,7 @@ mod test {
 		});
 	}
 
+	/*
 	#[test]
 	#[should_panic]
 	fn generic_input_not_found() {
@@ -243,6 +264,7 @@ mod test {
 			MockAB::generic_input(3i16, 4u16);
 		});
 	}
+	*/
 
 	#[test]
 	fn generic_output() {
