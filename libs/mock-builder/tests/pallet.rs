@@ -203,7 +203,6 @@ mod test {
 		});
 	}
 
-	/*
 	#[test]
 	#[should_panic]
 	fn wrong() {
@@ -229,7 +228,6 @@ mod test {
 		// The storage is dropped at this time. Mocks no longer found from here.
 		mock_not_configured();
 	}
-	*/
 
 	#[test]
 	fn generic_input() {
@@ -250,7 +248,6 @@ mod test {
 		});
 	}
 
-	/*
 	#[test]
 	#[should_panic]
 	fn generic_input_not_found() {
@@ -264,7 +261,6 @@ mod test {
 			MockAB::generic_input(3i16, 4u16);
 		});
 	}
-	*/
 
 	#[test]
 	fn generic_output() {
