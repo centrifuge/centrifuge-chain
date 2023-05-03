@@ -36,7 +36,7 @@ fn register_dot() {
 		name: "Polkadot".into(),
 		symbol: "DOT".into(),
 		existential_deposit: 100_000_000,
-		location: Some(VersionedMultiLocation::V1(MultiLocation::parent())),
+		location: Some(VersionedMultiLocation::V3(MultiLocation::parent())),
 		additional: CustomMetadata {
 			xcm: XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is

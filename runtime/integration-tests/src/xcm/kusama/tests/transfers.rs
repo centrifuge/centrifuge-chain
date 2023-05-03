@@ -87,7 +87,7 @@ fn transfer_air_to_sibling() {
 			name: "Altair".into(),
 			symbol: "AIR".into(),
 			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::kusama::altair::ID),
@@ -114,14 +114,14 @@ fn transfer_air_to_sibling() {
 					X2(
 						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -183,14 +183,14 @@ fn transfer_air_sibling_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Bobs's balance is initial balance - amount transferred
@@ -259,14 +259,14 @@ fn transfer_ausd_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(8_000_000_000.into()),
 		));
 
 		assert_eq!(
@@ -303,13 +303,12 @@ fn transfer_ksm_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(Parachain(parachains::kusama::altair::ID).into().into()),
+			Box::new(Parachain(parachains::kusama::altair::ID).into()),
 			Box::new(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: BOB,
 				}
-				.into()
 				.into()
 			),
 			Box::new((Here, transfer_amount).into()),
@@ -337,12 +336,12 @@ fn transfer_ksm_to_relay_chain() {
 					1,
 					X1(Junction::AccountId32 {
 						id: BOB,
-						network: NetworkId::Any,
+						network: None,
 					})
 				)
 				.into()
 			),
-			WeightLimit::Limited(4_000_000_000)
+			WeightLimit::Limited(4_000_000_000.into())
 		));
 	});
 
@@ -367,7 +366,7 @@ fn transfer_foreign_sibling_to_altair() {
 		name: "Sibling Native Token".into(),
 		symbol: "SBLNG".into(),
 		existential_deposit: 1_000_000_000_000,
-		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
 		additional: CustomMetadata {
 			xcm: XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
@@ -403,14 +402,14 @@ fn transfer_foreign_sibling_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -450,7 +449,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 		name: "Wormhole USDC".into(),
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
-		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
 		additional: CustomMetadata::default(),
 	};
 	let transfer_amount = foreign(12, meta.decimals);
@@ -494,14 +493,14 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 					X2(
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(8_000_000_000.into()),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred

@@ -47,6 +47,7 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
+use cfg_utils::vec_to_fixed_array;
 
 use super::register_dot;
 use crate::xcm::polkadot::{
@@ -103,7 +104,7 @@ fn convert_tranche() {
 		interior: X3(
 			Parachain(parachains::polkadot::centrifuge::ID),
 			PalletInstance(MOCK_POOLS_PALLET_INDEX),
-			GeneralKey(tranche_id),
+			GeneralKey { length: tranche_id.len() as u8, data: vec_to_fixed_array(tranche_id.to_vec()) },
 		),
 	};
 

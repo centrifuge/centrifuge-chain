@@ -372,7 +372,7 @@ fn encoded_ethereum_xcm_add_pool() {
 		<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882").expect("Decoding failed"),
 	);
 	let domain_info = XcmDomain {
-		location: Box::new(VersionedMultiLocation::V1(moonbase_location.clone())),
+		location: Box::new(VersionedMultiLocation::V3(moonbase_location.clone())),
 		ethereum_xcm_transact_call_index,
 		contract_address,
 		fee_currency: ForeignAsset(1),
@@ -418,15 +418,15 @@ mod utils {
 		// We need to set the Transact info for Moonbeam in the XcmTransactor pallet
 		assert_ok!(XcmTransactor::set_transact_info(
 			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V1(moonbeam_location.clone())),
-			1,
-			8_000_000_000_000_000,
-			Some(3)
+			Box::new(VersionedMultiLocation::V3(moonbeam_location.clone())),
+			1.into(),
+			8_000_000_000_000_000.into(),
+			Some(3.into())
 		));
 
 		assert_ok!(XcmTransactor::set_fee_per_second(
 			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V1(moonbeam_native_token.clone())),
+			Box::new(VersionedMultiLocation::V3(moonbeam_native_token.clone())),
 			default_per_second(18), // default fee_per_second for this token which has 18 decimals
 		));
 
@@ -437,7 +437,7 @@ mod utils {
 			name: "Glimmer".into(),
 			symbol: "GLMR".into(),
 			existential_deposit: 1_000_000,
-			location: Some(VersionedMultiLocation::V1(moonbeam_native_token)),
+			location: Some(VersionedMultiLocation::V3(moonbeam_native_token)),
 			additional: CustomMetadata::default(),
 		};
 

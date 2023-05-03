@@ -33,6 +33,7 @@ use cfg_types::{
 };
 use codec::Encode;
 use frame_support::assert_ok;
+use frame_support::traits::Len;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::{
 	xcm::general_key,
@@ -48,6 +49,7 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
+use cfg_utils::vec_to_fixed_array;
 
 use crate::xcm::kusama::{
 	setup::{
@@ -99,7 +101,7 @@ fn convert_tranche() {
 		interior: X3(
 			Parachain(parachains::kusama::altair::ID),
 			PalletInstance(PoolPalletIndex::get()),
-			GeneralKey(tranche_id),
+			GeneralKey { length: tranche_id.len() as u8, data: vec_to_fixed_array(tranche_id.to_vec()) },
 		),
 	};
 

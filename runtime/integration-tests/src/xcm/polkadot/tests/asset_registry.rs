@@ -56,7 +56,7 @@ fn register_cfg_works() {
 			name: "Centrifuge".into(),
 			symbol: "CFG".into(),
 			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				0,
 				X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
 			))),
@@ -79,7 +79,7 @@ fn register_foreign_asset_works() {
 			name: "Acala Dollar".into(),
 			symbol: "AUSD".into(),
 			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
 				X2(
 					Parachain(2000),
@@ -106,7 +106,7 @@ fn register_tranche_asset_blocked() {
 			name: "Tranche Token 1".into(),
 			symbol: "TRNCH".into(),
 			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
 				X2(Parachain(2000), general_key(&[42])),
 			))),

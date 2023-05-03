@@ -88,7 +88,7 @@ fn transfer_cfg_to_sibling() {
 			name: "Centrifuge".into(),
 			symbol: "CFG".into(),
 			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::polkadot::centrifuge::ID),
@@ -115,14 +115,14 @@ fn transfer_cfg_to_sibling() {
 					X2(
 						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -184,14 +184,14 @@ fn transfer_cfg_sibling_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: ALICE.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Bobs's balance is initial balance - amount transferred
@@ -260,14 +260,14 @@ fn transfer_ausd_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(8_000_000_000.into()),
 		));
 
 		assert_eq!(
@@ -309,14 +309,12 @@ fn transfer_dot_from_relay_chain() {
 			Box::new(
 				Parachain(parachains::polkadot::centrifuge::ID)
 					.into()
-					.into()
 			),
 			Box::new(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
+					network: None,
 					id: BOB,
 				}
-				.into()
 				.into()
 			),
 			Box::new((Here, transfer_amount).into()),
@@ -346,12 +344,12 @@ fn transfer_dot_to_relay_chain() {
 					1,
 					X1(Junction::AccountId32 {
 						id: BOB,
-						network: NetworkId::Any,
+						network: None,
 					})
 				)
 				.into()
 			),
-			WeightLimit::Limited(4_000_000_000)
+			WeightLimit::Limited(4_000_000_000.into())
 		));
 	});
 
@@ -376,7 +374,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 		name: "Sibling Native Token".into(),
 		symbol: "SBLNG".into(),
 		existential_deposit: 1_000_000_000_000,
-		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
 		additional: CustomMetadata {
 			xcm: XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
@@ -412,14 +410,14 @@ fn transfer_foreign_sibling_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -459,7 +457,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		name: "Wormhole USDC".into(),
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
-		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
 		additional: CustomMetadata::default(),
 	};
 	let transfer_amount = foreign(12, meta.decimals);
@@ -502,14 +500,14 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
+							network: None,
 							id: BOB.into(),
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(8_000_000_000.into()),
 		));
 		// Confirm that Alice's balance is initial balance - amount transferred
 		assert_eq!(
