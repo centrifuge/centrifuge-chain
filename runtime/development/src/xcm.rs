@@ -28,11 +28,11 @@ use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, Mu
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use sp_core::ConstU32;
 use runtime_common::{
 	xcm::{general_key, AccountIdToMultiLocation, FixedConversionRateProvider},
 	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
 };
+use sp_core::ConstU32;
 use sp_runtime::traits::{Convert, Zero};
 use xcm::{latest::Weight as XcmWeight, prelude::*};
 use xcm_builder::{
@@ -46,8 +46,7 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use super::{
 	AccountId, Balance, OrmlAssetRegistry, OrmlTokens, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount,
-	XcmpQueue,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, Tokens, TreasuryAccount, XcmpQueue,
 };
 
 /// The main XCM config
@@ -55,30 +54,30 @@ use super::{
 /// how fees are calculated, what barriers we impose on incoming XCM messages, etc.
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
-	type RuntimeCall = RuntimeCall;
-	type XcmSender = XcmRouter;
+	type AssetClaims = PolkadotXcm;
+	type AssetExchanger = ();
+	type AssetLocker = ();
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = FungiblesTransactor;
-	type OriginConverter = XcmOriginToTransactDispatchOrigin;
+	type AssetTrap = PolkadotXcm;
+	type Barrier = Barrier;
+	type CallDispatcher = RuntimeCall;
+	type FeeManager = ();
 	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
-	type UniversalLocation = UniversalLocation;
-	type Barrier = Barrier;
-	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type Trader = Trader;
-	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = PolkadotXcm;
-	type AssetLocker = ();
-	type AssetExchanger = ();
-	type AssetClaims = PolkadotXcm;
-	type SubscriptionService = PolkadotXcm;
-	type PalletInstancesInfo = crate::AllPalletsWithSystem;
 	type MaxAssetsIntoHolding = ConstU32<64>;
-	type FeeManager = ();
 	type MessageExporter = ();
-	type UniversalAliases = Nothing;
-	type CallDispatcher = RuntimeCall;
+	type OriginConverter = XcmOriginToTransactDispatchOrigin;
+	type PalletInstancesInfo = crate::AllPalletsWithSystem;
+	type ResponseHandler = PolkadotXcm;
+	type RuntimeCall = RuntimeCall;
 	type SafeCallFilter = Everything;
+	type SubscriptionService = PolkadotXcm;
+	type Trader = Trader;
+	type UniversalAliases = Nothing;
+	type UniversalLocation = UniversalLocation;
+	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+	type XcmSender = XcmRouter;
 }
 
 /// Trader - The means of purchasing weight credit for XCM execution.

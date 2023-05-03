@@ -23,12 +23,12 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use altair_runtime::constants::currency::AIR;
-use cfg_utils::vec_to_fixed_array;
 use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
 };
+use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
@@ -1132,7 +1132,6 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			}
 			.encode(),
 		),
-
 		(
 			DEV_AUSD_CURRENCY_ID,
 			AssetMetadata::<Balance, CustomMetadata> {
@@ -1147,7 +1146,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 						GeneralKey {
 							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
 							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
-						}
+						},
 					),
 				})),
 				additional: CustomMetadata {
@@ -1157,7 +1156,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					pool_currency: true,
 				},
 			}
-				.encode(),
+			.encode(),
 		),
 	]
 }

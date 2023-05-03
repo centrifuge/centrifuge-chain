@@ -1073,15 +1073,15 @@ impl pallet_nft_sales::Config for Runtime {
 
 /// XCMP Queue is responsible to handle XCM messages coming directly from sibling parachains.
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = PolkadotXcm;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type PriceForSiblingDelivery = ();
+	type RuntimeEvent = RuntimeEvent;
+	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 /// The config for the Downward Message Passing Queue, i.e., how messages coming from the

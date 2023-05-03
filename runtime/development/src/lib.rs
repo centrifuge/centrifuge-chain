@@ -83,8 +83,11 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
-use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
+use runtime_common::{
+	fees::{DealWithFees, WeightToFee},
+	xcm::AccountIdToMultiLocation,
+};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -109,7 +112,6 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
-use runtime_common::xcm::AccountIdToMultiLocation;
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -1261,25 +1263,25 @@ parameter_types! {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
+	type AssetTransactor = FungiblesTransactor;
 	type Balance = Balance;
+	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
-	type Transactor = NullTransactor;
-	type AssetTransactor = FungiblesTransactor;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
+	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
-	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type UniversalLocation = UniversalLocation;
+	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
-	type XcmSender = XcmRouter;
-	type BaseXcmWeight = BaseXcmWeight;
-	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
-	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
-	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
+	type Transactor = NullTransactor;
+	type UniversalLocation = UniversalLocation;
+	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type WeightInfo = ();
+	type XcmSender = XcmRouter;
 }
 
 parameter_types! {
@@ -1852,15 +1854,15 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 
 /// XCMP Queue is responsible to handle XCM messages coming directly from sibling parachains.
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = PolkadotXcm;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type PriceForSiblingDelivery = ();
+	type RuntimeEvent = RuntimeEvent;
+	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 /// Block type as expected by this runtime.
