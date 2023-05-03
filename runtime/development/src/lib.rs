@@ -109,6 +109,7 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
+use runtime_common::xcm::AccountIdToMultiLocation;
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -1261,25 +1262,25 @@ parameter_types! {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation<AccountId>;
-	type AssetTransactor = FungiblesTransactor;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
-	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
 	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
+	type Transactor = NullTransactor;
+	type AssetTransactor = FungiblesTransactor;
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
-	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
-	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
-	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
-	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
-	type RuntimeEvent = RuntimeEvent;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
+	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+	type UniversalLocation = UniversalLocation;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
-	type Transactor = NullTransactor;
-	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type WeightInfo = ();
 	type XcmSender = XcmRouter;
+	type BaseXcmWeight = BaseXcmWeight;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
+	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
+	type WeightInfo = ();
 }
 
 parameter_types! {
