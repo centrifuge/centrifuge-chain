@@ -1,5 +1,5 @@
 use cfg_primitives::CFG;
-use cfg_traits::{InterestAccrual, Permissions, PoolBenchmarkHelper};
+use cfg_traits::{data::DataCollection, InterestAccrual, Permissions, PoolBenchmarkHelper};
 use cfg_types::{
 	adjustments::Adjustment,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -19,7 +19,7 @@ use sp_std::{time::Duration, vec};
 
 use super::{
 	pallet::*,
-	types::{LoanInfo, MaxBorrowAmount, PoolIdOf},
+	types::{LoanInfo, MaxBorrowAmount, PoolIdOf, PriceCollectionOf, PriceResultOf},
 	valuation::{DiscountedCashFlow, ValuationMethod},
 	write_off::{WriteOffRule, WriteOffTrigger},
 };
@@ -44,6 +44,7 @@ where
 	T::ItemId: From<u16>,
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 {
 	#[cfg(test)]
 	fn config_mocks() {
@@ -194,6 +195,7 @@ benchmarks! {
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 	}
 
 	create {

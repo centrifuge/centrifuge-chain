@@ -239,7 +239,8 @@ pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 >>::PoolId;
 
 pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-pub type OraclePriceOf<T> = (<T as Config>::Rate, Moment);
+pub type PriceOf<T> = (<T as Config>::Rate, Moment);
+pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 
 /// Loan information.
 /// It contemplates the loan proposal by the borrower and the pricing properties
@@ -480,7 +481,7 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
-		Prices: DataCollection<T::PriceId, Data = Result<OraclePriceOf<T>, DispatchError>>,
+		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
 	{
 		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
 		let price = self
@@ -494,7 +495,7 @@ impl<T: Config> ActiveLoan<T> {
 	fn compute_present_value(
 		&self,
 		debt: T::Balance,
-		oracle_price: Option<OraclePriceOf<T>>,
+		oracle_price: Option<PriceOf<T>>,
 	) -> Result<T::Balance, DispatchError> {
 		let debt = self.write_off_status.write_down(debt)?;
 
