@@ -1,20 +1,9 @@
 use std::{cell::RefCell, collections::HashMap, fmt};
 
+use super::util::TypeSignature;
+
 /// Identify a call in the call storage
 pub type CallId = u64;
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypeSignature(String);
-
-impl TypeSignature {
-	pub fn new<I, O>() -> TypeSignature {
-		Self(format!(
-			"{}->{}",
-			std::any::type_name::<I>(),
-			std::any::type_name::<O>(),
-		))
-	}
-}
 
 struct CallInfo {
 	ptr: u128,
@@ -38,7 +27,7 @@ impl fmt::Display for Error {
 			Error::TypeNotMatch(expected, found) => write!(
 				f,
 				"The function is registered but the type mismatches. Expected {}, found: {}",
-				expected.0, found.0
+				expected, found
 			),
 		}
 	}

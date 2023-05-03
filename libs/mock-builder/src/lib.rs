@@ -46,6 +46,8 @@ pub mod storage;
 /// Provide functions for handle fuction locations
 pub mod location;
 
+mod util;
+
 use frame_support::{Blake2_128, StorageHasher, StorageMap};
 use location::FunctionLocation;
 pub use storage::CallId;
