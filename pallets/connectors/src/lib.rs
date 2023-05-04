@@ -95,7 +95,7 @@ pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 pub type MessageOf<T> =
 	Message<Domain, PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
 
-pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
+pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -103,7 +103,7 @@ pub mod pallet {
 	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::CustomMetadata,
+		tokens::{CustomMetadata, GeneralCurrencyIndex},
 	};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -164,6 +164,24 @@ pub mod pallet {
 			Balance = <Self as Config>::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
+
+		/// The currency type of transferrable token.
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen
+			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>
+			+ TryInto<
+				GeneralCurrencyIndex<u128, <Self as Config>::GeneralCurrencyPrefix>,
+				Error = DispatchError,
+			>;
+
+		/// The prefix for currencies added via Connectors.
+		#[pallet::constant]
+		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 	}
 
 	#[pallet::event]
@@ -199,6 +217,9 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Failed to map the asset to the corresponding Connector's General
+		/// Index representation
+		AssetNotFound,
 		/// A pool could not be found
 		PoolNotFound,
 		/// A tranche could not be found
@@ -221,6 +242,8 @@ pub mod pallet {
 		InvalidIncomingMessageOrigin,
 		/// Failed to decode an incoming message
 		InvalidIncomingMessage,
+		/// A transfer attempt from the local to the local domain
+		InvalidTransferDomain,
 	}
 
 	#[pallet::call]
@@ -279,6 +302,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
+			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -304,6 +328,7 @@ pub mod pallet {
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
+					decimals,
 					token_name,
 					token_symbol,
 					price,
@@ -331,7 +356,7 @@ pub mod pallet {
 
 			Self::do_send_message(
 				who,
-				Message::UpdateTokenPrice {
+				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
 					price,
@@ -386,7 +411,7 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					address: domain_address.address(),
+					member: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;
@@ -397,7 +422,7 @@ pub mod pallet {
 		/// Transfer tranche tokens to a given address
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
 		#[pallet::call_index(6)]
-		pub fn transfer(
+		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
@@ -406,6 +431,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
+			// Check that the destination is not the local domain
+			ensure!(
+				domain_address.domain() != Domain::Centrifuge,
+				Error::<T>::InvalidTransferDomain
+			);
 			// Check that the destination is a member of this tranche token
 			ensure!(
 				T::Permission::has(
@@ -431,13 +461,17 @@ pub mod pallet {
 			)?;
 
 			Self::do_send_message(
-				who,
-				Message::Transfer {
+				who.clone(),
+				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
 					amount,
 					domain: domain_address.domain(),
-					address: domain_address.address(),
+					sender: who
+						.encode()
+						.try_into()
+						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
+					receiver: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;
@@ -496,7 +530,7 @@ pub mod pallet {
 				fee_payer,
 				// The currency in which we want to pay fees
 				CurrencyPayment {
-					currency: Currency::AsCurrencyId(xcm_domain.fee_currency),
+					currency: Currency::AsCurrencyId(xcm_domain.fee_currency.into()),
 					fee_amount: None,
 				},
 				// The call to be executed in the destination chain
@@ -557,6 +591,23 @@ pub mod pallet {
 			);
 
 			encoded
+		}
+
+		/// Returns the `u128` general index of a currency as the concatenation
+		/// of the configured `GeneralCurrencyPrefix` and its local currency
+		/// identifier.
+		///
+		/// Assumes the currency to be registered in the `AssetRegistry`.
+		pub fn try_get_general_index(currency: CurrencyIdOf<T>) -> Result<u128, DispatchError> {
+			ensure!(
+				T::AssetRegistry::metadata(&currency).is_some(),
+				Error::<T>::AssetNotFound
+			);
+
+			let general_index: GeneralCurrencyIndex<u128, T::GeneralCurrencyPrefix> =
+				CurrencyIdOf::<T>::try_into(currency)?;
+
+			Ok(general_index.index)
 		}
 	}
 }

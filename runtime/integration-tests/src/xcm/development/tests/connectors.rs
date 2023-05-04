@@ -122,6 +122,7 @@ fn add_tranche() {
 
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
+		let decimals: u8 = 15;
 
 		// Now create the pool
 		let pool_id: u64 = 42;
@@ -134,6 +135,7 @@ fn add_tranche() {
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id.clone(),
 				nonexistent_tranche,
+				decimals,
 				Domain::EVM(1284),
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::TrancheNotFound
@@ -152,6 +154,7 @@ fn add_tranche() {
 			RuntimeOrigin::signed(ALICE.into()),
 			pool_id.clone(),
 			tranche_id,
+			decimals,
 			Domain::EVM(1284),
 		));
 	});
@@ -237,6 +240,7 @@ fn update_token_price() {
 
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
+		let decimals: u8 = 15;
 
 		// Now create the pool
 		let pool_id: u64 = 42;
@@ -260,7 +264,7 @@ fn update_token_price() {
 }
 
 #[test]
-fn transfer() {
+fn transfer_tranche_tokens() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
@@ -281,7 +285,7 @@ fn transfer() {
 
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
-			Connectors::transfer(
+			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id.clone(),
 				tranche_id.clone(),
@@ -289,6 +293,18 @@ fn transfer() {
 				42,
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::UnauthorizedTransfer
+		);
+
+		// Verify that we cannot transfer to the local domain
+		assert_noop!(
+			Connectors::transfer_tranche_tokens(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id.clone(),
+				tranche_id.clone(),
+				DomainAddress::Centrifuge(BOB),
+				42,
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::InvalidTransferDomain
 		);
 
 		// Make BOB the MembersListAdmin of this Pool
@@ -320,7 +336,7 @@ fn transfer() {
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
 		let amount = 123;
-		assert_ok!(Connectors::transfer(
+		assert_ok!(Connectors::transfer_tranche_tokens(
 			RuntimeOrigin::signed(BOB.into()),
 			pool_id.clone(),
 			tranche_id.clone(),
@@ -366,7 +382,8 @@ fn test_vec_to_fixed_array() {
 fn encoded_ethereum_xcm_add_pool() {
 	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was
 	// our first successfully ethereum_xcm encoded call tested in Moonbase.
-	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009010000000000bce1a4000000000000000000000000000000000000000000000000";
+	// TODO: Verify on EVM side before merging
+	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009020000000000bce1a4000000000000000000000000000000000000000000000000";
 
 	let moonbase_location = MultiLocation {
 		parents: 1,

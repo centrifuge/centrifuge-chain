@@ -255,6 +255,9 @@ pub mod constants {
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
+
+	/// Unhashed 36-bytes prefix for currencies managed by Connectors.
+	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 36] = *b"CentrifugeGeneralCurrencyIndexPrefix";
 }
 
 /// Listing of parachains we integrate with.
@@ -301,6 +304,24 @@ pub mod parachains {
 		pub mod acala {
 			pub const ID: u32 = 2000;
 			pub const AUSD_KEY: &[u8] = &[0, 129];
+		}
+	}
+}
+
+pub mod connectors {
+	/// The hashed prefix for currencies managed by Connectors.
+	pub struct GeneralCurrencyPrefix;
+
+	impl sp_core::Get<[u8; 12]> for GeneralCurrencyPrefix {
+		fn get() -> [u8; 12] {
+			let hash: [u8; 16] = frame_support::sp_io::hashing::blake2_128(
+				&crate::constants::GENERAL_CURRENCY_INDEX_PREFIX,
+			);
+			let (trimmed, _) = hash.split_at(12);
+
+			trimmed
+				.try_into()
+				.expect("Should not fail to trim 16-length byte array to length 12")
 		}
 	}
 }
