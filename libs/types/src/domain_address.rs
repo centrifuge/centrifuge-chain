@@ -14,7 +14,6 @@ use cfg_traits::connectors::Codec;
 use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
 use codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_core::TypeId;
 use sp_std::{vec, vec::Vec};
 
 /// The EVM Chain ID
@@ -66,10 +65,6 @@ impl Codec for Domain {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
 pub struct DomainLocator<Domain> {
 	pub domain: Domain,
-}
-
-impl<Domain> TypeId for DomainLocator<Domain> {
-	const TYPE_ID: [u8; 4] = *b"domn";
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
