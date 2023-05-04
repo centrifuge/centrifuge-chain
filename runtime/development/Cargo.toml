@@ -89,6 +89,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 
 # frontier pallets
 fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
@@ -165,6 +166,7 @@ std = [
   "orml-asset-registry/std",
   "orml-tokens/std",
   "orml-xtokens/std",
+  "orml-oracle/std",
   "pallet-anchors/std",
   "pallet-aura/std",
   "pallet-authorship/std",
@@ -347,6 +349,7 @@ try-runtime = [
   "orml-tokens/try-runtime",
   "orml-xcm/try-runtime",
   "orml-xtokens/try-runtime",
+  "orml-oracle/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",

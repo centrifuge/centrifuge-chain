@@ -2576,6 +2576,7 @@ dependencies = [
  "hex-literal 0.3.4",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
+ "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "orml-xcm",

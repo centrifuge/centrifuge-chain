@@ -25,6 +25,7 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
+	data::{DataCollection, DataRegistry},
 	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolNAV,
 	PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
@@ -66,6 +67,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
+use orml_oracle::{CombineData, DataProviderExtended};
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
@@ -1295,6 +1297,110 @@ impl pallet_xcm_transactor::Config for Runtime {
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 50;
 	pub const MaxWriteOffPolicySize: u32 = 10;
+	pub const MaxHasDispatchedSize: u32 = 1;
+	pub const MaxPools: u32 = 50;
+	pub RootMember: AccountId = PalletId(*b"changeme").into_account_truncating(); //TODO
+}
+
+type OracleValue = orml_oracle::TimestampedValue<Rate, Moment>;
+
+pub struct LastData;
+impl CombineData<PriceId, OracleValue> for LastData {
+	fn combine_data(
+		_: &PriceId,
+		values: Vec<OracleValue>,
+		_: Option<OracleValue>,
+	) -> Option<OracleValue> {
+		values
+			.into_iter()
+			.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
+	}
+}
+
+impl orml_oracle::Config for Runtime {
+	type CombineData = LastData;
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
+	//TODO
+	type Members = Elections;
+	type OnNewData = ();
+	//CollectionDataFeed;
+	type OracleKey = PriceId;
+	type OracleValue = Rate;
+	type RootOperatorAccountId = RootMember;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type WeightInfo = ();
+}
+
+/*
+// This part is forced because of https://github.com/open-web3-stack/open-runtime-module-library/issues/904
+pub struct DataProviderBridge;
+impl DataProviderExtended<PriceId, (Rate, Moment)> for DataProviderBridge {
+	fn get_no_op(key: &PriceId) -> Option<(Rate, Moment)> {
+		OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
+	}
+
+	fn get_all_values() -> Vec<(PriceId, Option<(Rate, Moment)>)> {
+		OrmlOracle::get_all_values()
+			.into_iter()
+			.map(|elem| {
+				(
+					elem.0,
+					elem.1
+						.map(|OracleValue { value, timestamp }| (value, timestamp)),
+				)
+			})
+			.collect()
+	}
+}
+
+impl pallet_collection_data_feed::Config for Runtime {
+	type CollectionId = PoolId;
+	type Data = Rate;
+	type DataId = PriceId;
+	type DataProvider = DataProviderBridge;
+	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxCollections = MaxPools;
+	type Moment = Moment;
+}
+*/
+
+pub struct MockDataCollection<DataId, Data>(Box<dyn Fn(&DataId) -> Data>);
+
+impl<DataId, Data> MockDataCollection<DataId, Data> {
+	pub fn new(f: impl Fn(&DataId) -> Data + 'static) -> Self {
+		Self(Box::new(f))
+	}
+}
+
+impl<DataId, Data> DataCollection<DataId> for MockDataCollection<DataId, Data> {
+	type Data = Data;
+
+	fn get(&self, data_id: &DataId) -> Self::Data {
+		unimplemented!()
+	}
+}
+
+pub struct PriceRegistry;
+impl DataRegistry<PriceId, PoolId> for PriceRegistry {
+	type Collection = MockDataCollection<PriceId, Self::Data>;
+	type Data = Result<(Rate, Moment), DispatchError>;
+
+	fn get(_: &PriceId) -> Self::Data {
+		unimplemented!()
+	}
+
+	fn collection(_: &PoolId) -> Self::Collection {
+		unimplemented!()
+	}
+
+	fn register_id(_: &PriceId, _: &PoolId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn unregister_id(_: &PriceId, _: &PoolId) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 impl pallet_loans_ref::Config for Runtime {
@@ -1309,6 +1415,8 @@ impl pallet_loans_ref::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
+	type PriceId = PriceId;
+	type PriceRegistry = PriceRegistry;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1843,6 +1951,7 @@ construct_runtime!(
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
+		OrmlOracle: orml_oracle::{Pallet, Storage, Call, Event<T>} = 154,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
