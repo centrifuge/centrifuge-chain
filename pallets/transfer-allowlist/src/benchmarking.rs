@@ -10,6 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+#![cfg(feature = "runtime-benchmarks")]
+
 use cfg_test_utils::system::time_travel::advance_n_blocks;
 use cfg_types::{locations::Location, tokens::CurrencyId};
 use codec::EncodeLike;
