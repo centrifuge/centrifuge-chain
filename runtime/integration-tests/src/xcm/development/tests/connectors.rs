@@ -291,6 +291,18 @@ fn transfer_tranche_tokens() {
 			pallet_connectors::Error::<development_runtime::Runtime>::UnauthorizedTransfer
 		);
 
+		// Verify that we cannot transfer to the local domain
+		assert_noop!(
+			Connectors::transfer_tranche_tokens(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id.clone(),
+				tranche_id.clone(),
+				DomainAddress::Centrifuge(BOB),
+				42,
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::InvalidTransferDomain
+		);
+
 		// Make BOB the MembersListAdmin of this Pool
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),

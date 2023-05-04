@@ -239,6 +239,8 @@ pub mod pallet {
 		InvalidIncomingMessageOrigin,
 		/// Failed to decode an incoming message
 		InvalidIncomingMessage,
+		/// A transfer attempt from the local to the local domain
+		InvalidTransferDomain,
 	}
 
 	#[pallet::call]
@@ -425,6 +427,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
+			// Check that the destination is not the local domain
+			ensure!(
+				domain_address.domain() != Domain::Centrifuge,
+				Error::<T>::InvalidTransferDomain
+			);
 			// Check that the destination is a member of this tranche token
 			ensure!(
 				T::Permission::has(
@@ -480,6 +487,11 @@ pub mod pallet {
 			let who = ensure_signed(origin.clone())?;
 
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
+			// Check that the destination is not the local domain
+			ensure!(
+				domain_address.domain() != Domain::Centrifuge,
+				Error::<T>::InvalidTransferDomain
+			);
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -525,7 +537,7 @@ pub mod pallet {
 				who,
 				Message::AddCurrency {
 					currency: Self::try_get_general_index(currency_id)?,
-					// FIXME: In PR which adds evm_address to AssetRegistry
+					// FIXME: @NunoAlexandre as part of metadata update
 					evm_address: [0u8; 20],
 				},
 				domain_address.domain(),
