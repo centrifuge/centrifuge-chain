@@ -20,14 +20,15 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
 /// A Connector Message
 ///
-/// A connector message requires a custom decoding & encoding, meeting the Connector Generic
-/// Message Passing Format (CGMPF): Every message is encoded with a u8 at head flagging the
-/// message type, followed by its field. Integers are big-endian encoded and enum values
-/// (such as `[crate::Domain]`) also have a custom CGMPF implementation, aiming for a
-/// fixed-size encoded representation for each message variant.
+/// A connector message requires a custom decoding & encoding, meeting the
+/// Connector Generic Message Passing Format (CGMPF): Every message is encoded
+/// with a u8 at head flagging the message type, followed by its field. Integers
+/// are big-endian encoded and enum values (such as `[crate::Domain]`) also have
+/// a custom CGMPF implementation, aiming for a fixed-size encoded
+/// representation for each message variant.
 ///
-/// NOTE: The sender of a connector message cannot ensure whether the corresponding
-/// receiver rejects it.
+/// NOTE: The sender of a connector message cannot ensure whether the
+/// corresponding receiver rejects it.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
@@ -39,8 +40,8 @@ where
 	Rate: Encode + Decode,
 {
 	Invalid,
-	/// Add a currency to a domain, i.e, register the mapping of a currency id to
-	/// the corresponding EVM Address.
+	/// Add a currency to a domain, i.e, register the mapping of a currency id
+	/// to the corresponding EVM Address.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
 	AddCurrency {
@@ -62,7 +63,8 @@ where
 	},
 	/// Add a tranche to an already existing pool on the target domain.
 	/// The decimals of a tranche MUST be equal to the decimals of a pool.
-	/// Thus, consuming domains MUST take care of storing the decimals upon receiving an AddPool message.
+	/// Thus, consuming domains MUST take care of storing the decimals upon
+	/// receiving an AddPool message.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
 	AddTranche {
@@ -81,7 +83,8 @@ where
 		tranche_id: TrancheId,
 		price: Rate,
 	},
-	/// Whitelist an address for the specified pair of pool and tranche token on the target domain.
+	/// Whitelist an address for the specified pair of pool and tranche token on
+	/// the target domain.
 	///
 	/// Directionality: Centrifuge -> EVM Domain.
 	UpdateMember {
@@ -90,13 +93,15 @@ where
 		member: Address,
 		valid_until: Moment,
 	},
-	/// Transfer non-tranche tokens fungibles. For v2, it will only support stable-coins.
+	/// Transfer non-tranche tokens fungibles. For v2, it will only support
+	/// stable-coins.
 	///
 	/// Directionality: Centrifuge <-> EVM Domain.
 	///
 	/// NOTE: Receiving domain must not accept every incoming token.
-	/// For Centrifuge -> EVM Domain: `AddCurrency` should have been called beforehand.
-	/// For Centrifuge <- EVM Domain: We can assume `AddCurrency` has been called for that domain already.
+	/// For Centrifuge -> EVM Domain: `AddCurrency` should have been called
+	/// beforehand. For Centrifuge <- EVM Domain: We can assume `AddCurrency`
+	/// has been called for that domain already.
 	Transfer {
 		currency: u128,
 		sender: Address,

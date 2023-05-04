@@ -664,8 +664,9 @@ pub mod pallet {
 			encoded
 		}
 
-		/// Returns the `u128` general index of a currency as the concatenation of the
-		/// configured `GeneralCurrencyPrefix` and its local currency identifier.
+		/// Returns the `u128` general index of a currency as the concatenation
+		/// of the configured `GeneralCurrencyPrefix` and its local currency
+		/// identifier.
 		///
 		/// Assumes the currency to be registered in the `AssetRegistry`.
 		pub fn try_get_general_index(currency: CurrencyIdOf<T>) -> Result<u128, DispatchError> {

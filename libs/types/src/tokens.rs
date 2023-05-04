@@ -82,8 +82,9 @@ impl From<StakingCurrency> for CurrencyId {
 	}
 }
 
-/// A general index wrapper for a given currency representation which is the concatenation
-/// of the generic prefix and the identifier of the respective currency.
+/// A general index wrapper for a given currency representation which is the
+/// concatenation of the generic prefix and the identifier of the respective
+/// currency.
 pub struct GeneralCurrencyIndex<Index, Prefix> {
 	pub index: Index,
 	_phantom: PhantomData<Prefix>,

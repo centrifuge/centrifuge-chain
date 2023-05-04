@@ -380,8 +380,8 @@ fn test_vec_to_fixed_array() {
 
 #[test]
 fn encoded_ethereum_xcm_add_pool() {
-	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was our first
-	// successfully ethereum_xcm encoded call tested in Moonbase.
+	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was
+	// our first successfully ethereum_xcm encoded call tested in Moonbase.
 	// TODO: Verify on EVM side before merging
 	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009020000000000bce1a4000000000000000000000000000000000000000000000000";
 
