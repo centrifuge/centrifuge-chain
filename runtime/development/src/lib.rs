@@ -1322,8 +1322,7 @@ impl orml_oracle::Config for Runtime {
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	//TODO
 	type Members = Elections;
-	type OnNewData = ();
-	//CollectionDataFeed;
+	type OnNewData = CollectionPriceFeed;
 	type OracleKey = PriceId;
 	type OracleValue = Rate;
 	type RootOperatorAccountId = RootMember;
@@ -1332,7 +1331,6 @@ impl orml_oracle::Config for Runtime {
 	type WeightInfo = ();
 }
 
-/*
 // This part is forced because of https://github.com/open-web3-stack/open-runtime-module-library/issues/904
 pub struct DataProviderBridge;
 impl DataProviderExtended<PriceId, (Rate, Moment)> for DataProviderBridge {
@@ -1363,45 +1361,6 @@ impl pallet_collection_data_feed::Config for Runtime {
 	type MaxCollections = MaxPools;
 	type Moment = Moment;
 }
-*/
-
-pub struct MockDataCollection<DataId, Data>(Box<dyn Fn(&DataId) -> Data>);
-
-impl<DataId, Data> MockDataCollection<DataId, Data> {
-	pub fn new(f: impl Fn(&DataId) -> Data + 'static) -> Self {
-		Self(Box::new(f))
-	}
-}
-
-impl<DataId, Data> DataCollection<DataId> for MockDataCollection<DataId, Data> {
-	type Data = Data;
-
-	fn get(&self, data_id: &DataId) -> Self::Data {
-		unimplemented!()
-	}
-}
-
-pub struct PriceRegistry;
-impl DataRegistry<PriceId, PoolId> for PriceRegistry {
-	type Collection = MockDataCollection<PriceId, Self::Data>;
-	type Data = Result<(Rate, Moment), DispatchError>;
-
-	fn get(_: &PriceId) -> Self::Data {
-		unimplemented!()
-	}
-
-	fn collection(_: &PoolId) -> Self::Collection {
-		unimplemented!()
-	}
-
-	fn register_id(_: &PriceId, _: &PoolId) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn unregister_id(_: &PriceId, _: &PoolId) -> DispatchResult {
-		unimplemented!()
-	}
-}
 
 impl pallet_loans_ref::Config for Runtime {
 	type Balance = Balance;
@@ -1416,7 +1375,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PriceId = PriceId;
-	type PriceRegistry = PriceRegistry;
+	type PriceRegistry = CollectionPriceFeed;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;

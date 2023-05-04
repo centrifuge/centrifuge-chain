@@ -248,6 +248,9 @@ std = [
   "pallet-pool-system/std",
   "polkadot-parachain/std",
   "scale-info/std",
+  "fp-rpc/std",
+  "fp-self-contained/std",
+  "moonbeam-relay-encoder/std",
 ]
 
 runtime-benchmarks = [
@@ -311,6 +314,7 @@ runtime-benchmarks = [
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -387,6 +391,8 @@ try-runtime = [
   "pallet-evm-chain-id/try-runtime",
   "pallet-base-fee/try-runtime",
   "pallet-ethereum/try-runtime",
+  "fp-self-contained/try-runtime",
+  "sp-runtime/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
