@@ -35,13 +35,14 @@ use sp_runtime::{
 };
 use sp_std::{fmt::Debug, hash::Hash, str::FromStr, vec::Vec};
 
+/// Traits related to connectors.
+pub mod connectors;
+/// Traits related to data registry and collection.
+pub mod data;
 /// Traits related to operations.
 pub mod ops;
-
 /// Traits related to rewards.
 pub mod rewards;
-
-pub mod data;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///

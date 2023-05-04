@@ -1,10 +1,9 @@
 use cfg_primitives::Moment;
+use cfg_traits::connectors::Codec;
 use cfg_utils::{decode, decode_be_bytes, encode_be};
 use codec::{Decode, Encode, Input};
 use scale_info::TypeInfo;
 use sp_std::{vec, vec::Vec};
-
-use crate::Codec;
 
 /// Address type
 /// Note: It can be used to represent any address type with a length <= 32
