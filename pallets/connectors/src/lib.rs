@@ -445,6 +445,77 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Transfer non-tranche tokens to a given address
+		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
+		#[pallet::call_index(7)]
+		pub fn transfer(
+			origin: OriginFor<T>,
+			asset_id: CurrencyIdOf<T>,
+			domain_address: DomainAddress,
+			amount: <T as pallet::Config>::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
+			// Check that the destination is not the local domain
+			ensure!(
+				domain_address.domain() != Domain::Centrifuge,
+				Error::<T>::InvalidTransferDomain
+			);
+
+			// Transfer to the domain account for bookkeeping
+			T::Tokens::transfer(
+				asset_id,
+				&who,
+				&DomainLocator::<Domain> {
+					domain: domain_address.domain(),
+				}
+				.into_account_truncating(),
+				amount,
+				false,
+			)?;
+
+			Self::do_send_message(
+				who.clone(),
+				Message::Transfer {
+					amount,
+					currency: Self::try_get_general_index(asset_id)?,
+					sender: who
+						.encode()
+						.try_into()
+						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
+					receiver: domain_address.address(),
+				},
+				domain_address.domain(),
+			)?;
+
+			Ok(())
+		}
+
+		/// Add a `CurrencyId` to the set of known currencies on a given Domain.
+		// TODO: Replace weight after benchmarking
+		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		#[pallet::call_index(8)]
+		pub fn add_currency(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			domain_address: DomainAddress,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			Self::do_send_message(
+				who,
+				Message::AddCurrency {
+					currency: Self::try_get_general_index(currency_id)?,
+					// FIXME: @NunoAlexandre as part of metadata update
+					evm_address: [0u8; 20],
+				},
+				domain_address.domain(),
+			)?;
+
+			Ok(())
+		}
+
 		/// Handle an incoming message
 		/// TODO(nuno): we probably need a custom origin type for these messages
 		/// to ensure they have come in through XCM. For now, let's have a POC
