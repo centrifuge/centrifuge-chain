@@ -26,6 +26,7 @@ pub use cfg_primitives::{
 };
 use cfg_traits::{
 	data::{DataCollection, DataRegistry},
+	rewards::AccountRewards,
 	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolNAV,
 	PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
