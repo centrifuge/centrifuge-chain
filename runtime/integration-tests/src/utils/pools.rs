@@ -47,11 +47,12 @@ use crate::{
 
 /// Creates a default pool.
 ///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
+/// This will also inject the extrinsics needed for this. Furthermore, it
+/// progresses the chain to a point where all extrinsics are included in the
+/// state.
 ///
-/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
-/// its collateral and loan nft classes.
+/// Given keyring will be the origin that dispatches the calls and the admin of
+/// the pool and its collateral and loan nft classes.
 pub fn default_pool(
 	env: &mut TestEnv,
 	nfts: &mut NftManager,
@@ -67,11 +68,12 @@ pub fn default_pool(
 
 /// Creates a custom pool.
 ///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
+/// This will also inject the extrinsics needed for this. Furthermore, it
+/// progresses the chain to a point where all extrinsics are included in the
+/// state.
 ///
-/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
-/// its collateral and loan nft classes.
+/// Given keyring will be the origin that dispatches the calls and the admin of
+/// the pool and its collateral and loan nft classes.
 pub fn custom_pool(
 	env: &mut TestEnv,
 	nfts: &mut NftManager,
@@ -97,8 +99,9 @@ pub fn custom_pool(
 
 /// Creates a default pool.
 ///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
+/// This will also inject the extrinsics needed for this. Furthermore, it
+/// progresses the chain to a point where all extrinsics are included in the
+/// state.
 
 /// Creates the necessary calls for initialising a pool.
 /// This includes:
@@ -110,7 +113,8 @@ pub fn custom_pool(
 /// in order to be included into the next block.
 ///
 /// * Pool id as given
-/// * Admin as provided (also owner of pool, and owner of nft-classes for collateral and loans)
+/// * Admin as provided (also owner of pool, and owner of nft-classes for
+///   collateral and loans)
 /// * 5 Tranches
 ///     * 0: Junior Tranche
 ///     * 1: 10% APR, 5% Risk buffer
@@ -118,11 +122,16 @@ pub fn custom_pool(
 ///     * 3: 5% APR, 10% Risk buffer
 ///     * 4: 3% APR, 25% Risk buffer
 /// * Whitelistings
-/// 	* Keyring::TrancheInvestor(index) accounts with index 0 - 9 for tranche with id 0
-///  	* Keyring::TrancheInvestor(index) accounts with index 10 - 19 for tranche with id 1
-/// 	* Keyring::TrancheInvestor(index) accounts with index 20 - 29 for tranche with id 2
-/// 	* Keyring::TrancheInvestor(index) accounts with index 30 - 39 for tranche with id 3
-/// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche with id 4
+/// 	* Keyring::TrancheInvestor(index) accounts with index 0 - 9 for tranche
+///    with id 0
+///  	* Keyring::TrancheInvestor(index) accounts with index 10 - 19 for tranche
+///     with id 1
+/// 	* Keyring::TrancheInvestor(index) accounts with index 20 - 29 for tranche
+///    with id 2
+/// 	* Keyring::TrancheInvestor(index) accounts with index 30 - 39 for tranche
+///    with id 3
+/// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche
+///    with id 4
 /// * Currency: CurrencyId::AUSD,
 /// * MaxReserve: 100_000 AUSD
 pub fn default_pool_calls(
@@ -180,8 +189,8 @@ pub fn pool_setup_calls(
 /// Creates a TrancheInput vector given the input.
 /// The given input data MUST be sorted from residual-to-non-residual tranches.
 ///
-/// DOES NOT check whether the length of the vectors match. It will simply zip starting with
-/// rates.
+/// DOES NOT check whether the length of the vectors match. It will simply zip
+/// starting with rates.
 pub fn create_tranche_input(
 	rates: Vec<Option<u64>>,
 	risk_buffs: Vec<Option<u64>>,
@@ -289,8 +298,8 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<RuntimeCall> {
 /// investors per tranche.
 ///
 /// Note:
-/// * Tranche-ids are calcualted as if no tranches were removed or added
-///    -> tranche-id for residual tranche blake2_128::hash((0, pool_id))
+/// * Tranche-ids are calcualted as if no tranches were removed or added ->
+///   tranche-id for residual tranche blake2_128::hash((0, pool_id))
 /// * Investor accounts whitelisted for respective tranche like
 ///    * Investors whitelisted for tranche 0
 ///       * Keyring::TrancheInvestor(1)
@@ -462,7 +471,8 @@ mod with_ext {
 		.expect("ESSENTIAL: Adding a permission for a role should not fail.");
 	}
 
-	/// Adds all roles that `PoolRole`s currently provides to the Keyring::Admin account
+	/// Adds all roles that `PoolRole`s currently provides to the Keyring::Admin
+	/// account
 	///
 	/// **Needs: Mut Externalities to persist**
 	pub fn permit_admin(id: PoolId) {
@@ -473,8 +483,8 @@ mod with_ext {
 		permission_for(Keyring::Admin.into(), id, PoolRole::Borrower);
 	}
 
-	/// Add a `PoolRole::TrancheInvestor to a Keyring::TrancheInvestor(u32) account.
-	/// Role is permitted for 1 year.
+	/// Add a `PoolRole::TrancheInvestor to a Keyring::TrancheInvestor(u32)
+	/// account. Role is permitted for 1 year.
 	///
 	/// **Needs: Mut Externalities to persist**
 	pub fn permit_investor(investor: u32, pool: PoolId, tranche: TrancheId) {

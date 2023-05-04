@@ -5,7 +5,8 @@ use frame_support::StorageHasher;
 pub struct FunctionLocation(String);
 
 impl FunctionLocation {
-	/// Creates a location for the function which created the given closure used as a locator
+	/// Creates a location for the function which created the given closure used
+	/// as a locator
 	pub fn from<F: Fn()>(_: F) -> Self {
 		let location = std::any::type_name::<F>();
 		let location = &location[..location.len() - "::{{closure}}".len()];

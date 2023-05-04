@@ -34,7 +34,8 @@ use sp_std::{
 	prelude::*,
 };
 
-/// Data type used as intermediate storage in some computations to avoid overflow.
+/// Data type used as intermediate storage in some computations to avoid
+/// overflow.
 struct I129 {
 	value: u128,
 	negative: bool,
@@ -87,8 +88,9 @@ fn to_bound<N: FixedPointOperand, D: FixedPointOperand, R: Bounded>(n: N, m: D) 
 
 // Trait that allows us to specify rounding behaviour fixed point multiplication
 pub trait FixedPointNumberExtension: FixedPointNumber {
-	/// Checked multiplication by FixedPointOperand, with Rounding:SignedRounding rounding preference.
-	/// Returns None if out of bounds.
+	/// Checked multiplication by FixedPointOperand, with
+	/// Rounding:SignedRounding rounding preference. Returns None if out of
+	/// bounds.
 	fn checked_mul_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -107,8 +109,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		.and_then(|value| from_i129(I129 { value, negative }))
 	}
 
-	/// Multiples by FixedPointOperand, with Rounding::SignedRounding rounding preference.
-	/// Saturates if out of bounds.
+	/// Multiples by FixedPointOperand, with Rounding::SignedRounding rounding
+	/// preference. Saturates if out of bounds.
 	fn saturating_mul_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -130,24 +132,25 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.checked_mul_int_with_rounding(int, SignedRounding::Major)
 	}
 
-	/// Checked multiplication by another val of Type Self, with Rounding::SignedRounding rounding preference.
-	/// Returns None if out of bounds.
+	/// Checked multiplication by another val of Type Self, with
+	/// Rounding::SignedRounding rounding preference. Returns None if out of
+	/// bounds.
 	fn checked_mul_with_rounding(&self, other: &Self, r: SignedRounding) -> Option<Self>;
 
-	/// Checked multiplication by another val of Type Self; rounds precision to floor.
-	/// Returns None if out of bounds.
+	/// Checked multiplication by another val of Type Self; rounds precision to
+	/// floor. Returns None if out of bounds.
 	fn checked_mul_floor(&self, other: &Self) -> Option<Self> {
 		self.checked_mul_with_rounding(other, SignedRounding::Minor)
 	}
 
-	/// Checked multiplication by another val of Type Self; rounds precision to ceil.
-	/// Returns None if out of bounds.
+	/// Checked multiplication by another val of Type Self; rounds precision to
+	/// ceil. Returns None if out of bounds.
 	fn checked_mul_ceil(&self, other: &Self) -> Option<Self> {
 		self.checked_mul_with_rounding(other, SignedRounding::Major)
 	}
 
-	/// Multiples by another val of type Self, with Rounding::SignedRounding rounding preference.
-	/// Saturates if out of bounds.
+	/// Multiples by another val of type Self, with Rounding::SignedRounding
+	/// rounding preference. Saturates if out of bounds.
 	fn saturating_mul_with_rounding(self, other: Self, r: SignedRounding) -> Self;
 
 	/// Multiples by another val of type Self; rounds precision to floor.
@@ -162,8 +165,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.saturating_mul_with_rounding(other, SignedRounding::Major)
 	}
 
-	/// Multiplies by FixedPointOperand with Rounding::SignedRounding rounding preference.
-	/// Saturates if result out of bounds.
+	/// Multiplies by FixedPointOperand with Rounding::SignedRounding rounding
+	/// preference. Saturates if result out of bounds.
 	// this should be superfluous though
 	fn saturating_mul_int_floor<N: FixedPointOperand>(self, int: N) -> N {
 		self.saturating_mul_int_with_rounding(int, SignedRounding::Minor)
@@ -175,8 +178,9 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.saturating_mul_int_with_rounding(int, SignedRounding::Major)
 	}
 
-	/// Creates Self from rational of FixedPointOperands, with Rounding::SignedRounding rounding preference
-	/// Returns None if out of bounds
+	/// Creates Self from rational of FixedPointOperands, with
+	/// Rounding::SignedRounding rounding preference Returns None if out of
+	/// bounds
 	fn checked_from_rational_with_rounding<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
 		d: D,
@@ -200,8 +204,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		.map(Self::from_inner)
 	}
 
-	/// Creates Self from rational of FixedPointOperands; rounds precision to ceil.
-	/// Returns None if out of bounds.
+	/// Creates Self from rational of FixedPointOperands; rounds precision to
+	/// ceil. Returns None if out of bounds.
 	fn checked_from_rational_ceil<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
 		d: D,
@@ -209,8 +213,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		Self::checked_from_rational_with_rounding(n, d, SignedRounding::Major)
 	}
 
-	/// Creates Self from rational of FixedPointOperands; rounds precision to floor.
-	/// Returns None if out of bounds.
+	/// Creates Self from rational of FixedPointOperands; rounds precision to
+	/// floor. Returns None if out of bounds.
 	fn checked_from_rational_floor<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
 		d: D,
@@ -218,9 +222,9 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		Self::checked_from_rational_with_rounding(n, d, SignedRounding::Minor)
 	}
 
-	/// Creates Self from rational of FixedPointOperands, with Rounding::SignedRounding rounding preference.
-	/// Panics if denominator 0 is.
-	/// Saturates if result out of bounds.
+	/// Creates Self from rational of FixedPointOperands, with
+	/// Rounding::SignedRounding rounding preference. Panics if denominator 0
+	/// is. Saturates if result out of bounds.
 	fn saturating_from_rational_with_rounding<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
 		d: D,
@@ -232,8 +236,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		Self::checked_from_rational_with_rounding(n, d, r).unwrap_or_else(|| to_bound(n, d))
 	}
 
-	/// Creates Self from rational of FixedPointOperands; rounds precision to floor.
-	/// Panics if denominator 0 is.
+	/// Creates Self from rational of FixedPointOperands; rounds precision to
+	/// floor. Panics if denominator 0 is.
 	/// Saturates if result out of bounds.
 	fn saturating_from_rational_floor<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
@@ -242,8 +246,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		Self::saturating_from_rational_with_rounding(n, d, SignedRounding::Minor)
 	}
 
-	/// Creates Self from rational of FixedPointOperands; rounds precision to ceil.
-	/// Panics if denominator 0 is.
+	/// Creates Self from rational of FixedPointOperands; rounds precision to
+	/// ceil. Panics if denominator 0 is.
 	/// Saturates if result out of bounds.
 	fn saturating_from_rational_ceil<N: FixedPointOperand, D: FixedPointOperand>(
 		n: N,
@@ -252,8 +256,9 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		Self::saturating_from_rational_with_rounding(n, d, SignedRounding::Major)
 	}
 
-	/// Checked division by another val of Type Self, with Rounding::SignedRounding rounding preference.
-	/// Returns None if out of bounds.
+	/// Checked division by another val of Type Self, with
+	/// Rounding::SignedRounding rounding preference. Returns None if out of
+	/// bounds.
 	fn checked_div_with_rounding(&self, other: &Self, r: SignedRounding) -> Option<Self>;
 
 	/// Checked division by another val of Type Self; rounds precision to floor.
@@ -268,8 +273,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.checked_div_with_rounding(other, SignedRounding::Major)
 	}
 
-	/// Divides by another val of type Self, with Rounding::SignedRounding rounding preference.
-	/// Saturates if out of bounds.
+	/// Divides by another val of type Self, with Rounding::SignedRounding
+	/// rounding preference. Saturates if out of bounds.
 	fn saturating_div_with_rounding(&self, other: &Self, r: SignedRounding) -> Self;
 
 	/// Divides by another val of type Self; rounds precision to floor.
@@ -284,16 +289,19 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.saturating_div_with_rounding(other, SignedRounding::Major)
 	}
 
-	/// Checked division by FixedPointOperand, with Rounding:SignedRounding rounding preference.
-	/// Returns None if out of bounds.
+	/// Checked division by FixedPointOperand, with Rounding:SignedRounding
+	/// rounding preference. Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (Rate in this case).
-	/// For example:  Rate::saturating_from_rational(2).checked_div_with_rounding(2, SignedRounding::..) would be equivalent to
-	///               (2 * Rate::accuracy) * (Rate::accuracy / 2) instead of 2 * 1/2
-	/// Whereas Rate::saturating_from_rational(2).checked_div_with_rounding(2 * Rate::accuracy)would be equivalent to
-	///               2 * Rate::accuracy * (Rate::accuracy / 2 * Rate::accuracy)
-	///               Which would be 1 * Rate::accuracy
+	/// For example:
+	/// Rate::saturating_from_rational(2).checked_div_with_rounding(2,
+	/// SignedRounding::..) would be equivalent to               (2 *
+	/// Rate::accuracy) * (Rate::accuracy / 2) instead of 2 * 1/2
+	/// Whereas Rate::saturating_from_rational(2).checked_div_with_rounding(2 *
+	/// Rate::accuracy)would be equivalent to               2 * Rate::accuracy *
+	/// (Rate::accuracy / 2 * Rate::accuracy)               Which would be 1 *
+	/// Rate::accuracy
 	fn checked_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -318,8 +326,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.checked_div_int_with_rounding(int, SignedRounding::Major)
 	}
 
-	/// Divides by FixedPointOperand, with Rounding:SignedRounding rounding preference.
-	/// Panics if denominator 0 is.
+	/// Divides by FixedPointOperand, with Rounding:SignedRounding rounding
+	/// preference. Panics if denominator 0 is.
 	/// Saturates if result out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
@@ -356,8 +364,8 @@ pub trait FixedPointNumberExtension: FixedPointNumber {
 		self.saturating_div_int_with_rounding(int, SignedRounding::Major)
 	}
 
-	/// Returns the reciprocal -- 1 / self, with Rounding:SignedRounding rounding preference.
-	/// Returns None if self is 0
+	/// Returns the reciprocal -- 1 / self, with Rounding:SignedRounding
+	/// rounding preference. Returns None if self is 0
 	fn reciprocal_with_rounding(self, r: SignedRounding) -> Option<Self> {
 		Self::one().checked_div_with_rounding(&self, r)
 	}
@@ -532,16 +540,19 @@ impl FixedPointNumberExtension for Rate {
 			.unwrap_or_else(|| to_bound(self.0, other.0))
 	}
 
-	/// Checked division by FixedPointOperand, with Rounding:SignedRounding rounding preference.
-	/// Returns None if out of bounds.
+	/// Checked division by FixedPointOperand, with Rounding:SignedRounding
+	/// rounding preference. Returns None if out of bounds.
 	///
 	/// Note:  This assumes that the FP accuracy has been adjusted to match
 	/// the accuracy of the FP extended type in question (Rate in this case).
-	/// For example:  Rate::saturating_from_rational(2).checked_div_with_rounding(2, SignedRounding::..) would be equivalent to
-	///               (2 * Rate::accuracy) * (Rate::accuracy / 2) instead of 2 * 1/2
-	/// Whereas Rate::saturating_from_rational(2).checked_div_with_rounding(2 * Rate::accuracy)would be equivalent to
-	///               2 * Rate::accuracy * (Rate::accuracy / 2 * Rate::accuracy)
-	///               Which would be 1 * Rate::accuracy
+	/// For example:
+	/// Rate::saturating_from_rational(2).checked_div_with_rounding(2,
+	/// SignedRounding::..) would be equivalent to               (2 *
+	/// Rate::accuracy) * (Rate::accuracy / 2) instead of 2 * 1/2
+	/// Whereas Rate::saturating_from_rational(2).checked_div_with_rounding(2 *
+	/// Rate::accuracy)would be equivalent to               2 * Rate::accuracy *
+	/// (Rate::accuracy / 2 * Rate::accuracy)               Which would be 1 *
+	/// Rate::accuracy
 	fn checked_div_int_with_rounding<N: FixedPointOperand>(
 		self,
 		int: N,
@@ -2335,7 +2346,8 @@ mod test_rate {
 			Some(333333333333333333333333333)
 		);
 
-		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be .16666....
+		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be
+		// .16666....
 		assert_eq!(
 			d.checked_div_int_with_rounding(6 * accuracy, SignedRounding::Minor),
 			Some(166666666666666666666666666)
@@ -2379,7 +2391,8 @@ mod test_rate {
 				2000000000000000000000000000u128,
 				SignedRounding::NearestPrefLow
 			),
-			Some(2500000000000000000000000000u128) // Some(Rate::saturating_from_rational(5, 2).into_inner().into())
+			Some(2500000000000000000000000000u128) /* Some(Rate::saturating_from_rational(5,
+			                                        * 2).into_inner().into()) */
 		);
 
 		assert_eq!(
@@ -2387,7 +2400,8 @@ mod test_rate {
 			Some(1 * accuracy)
 		);
 		// Note with FP decimal point accounted for this would be:
-		// 3402823669209.38463463374607431768211455/2.000000000000000000000000000 == 17014118346.0469231731687303715884105727
+		// 3402823669209.38463463374607431768211455/2.000000000000000000000000000 ==
+		// 17014118346.0469231731687303715884105727
 		assert_eq!(
 			a.checked_div_int_with_rounding(
 				2000000000000000000000000000u128,
@@ -2468,7 +2482,8 @@ mod test_rate {
 			Some(333333333333333333333333333)
 		);
 
-		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be .16666....
+		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be
+		// .16666....
 		assert_eq!(
 			a.checked_div_int_floor(6 * accuracy),
 			Some(166666666666666666666666666)
@@ -2502,7 +2517,8 @@ mod test_rate {
 			Some(333333333333333333333333334)
 		);
 
-		// Note 166666666666666666666666667 adjusted for Fixed Point accuracy would be .16666....
+		// Note 166666666666666666666666667 adjusted for Fixed Point accuracy would be
+		// .16666....
 		assert_eq!(
 			a.checked_div_int_with_rounding(6 * accuracy, SignedRounding::Major),
 			Some(166666666666666666666666667)
@@ -2591,7 +2607,8 @@ mod test_rate {
 			333333333333333333333333333
 		);
 
-		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be .16666....
+		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be
+		// .16666....
 		assert_eq!(
 			d.saturating_div_int_with_rounding(6 * accuracy, SignedRounding::Minor),
 			166666666666666666666666666
@@ -2648,7 +2665,8 @@ mod test_rate {
 			333333333333333333333333333
 		);
 
-		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be .16666....
+		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be
+		// .16666....
 		assert_eq!(
 			a.saturating_div_int_floor(6 * accuracy),
 			166666666666666666666666666
@@ -2686,7 +2704,8 @@ mod test_rate {
 			333333333333333333333333334
 		);
 
-		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be .16666....
+		// Note 166666666666666666666666666 adjusted for Fixed Point accuracy would be
+		// .16666....
 		assert_eq!(
 			a.saturating_div_int_ceil(6 * accuracy),
 			166666666666666666666666667

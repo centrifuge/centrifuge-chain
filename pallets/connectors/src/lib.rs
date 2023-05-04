@@ -42,7 +42,8 @@ pub use contract::*;
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum ParachainId {
-	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or Moonbase on a testnet.
+	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or
+	/// Moonbase on a testnet.
 	Moonbeam,
 }
 
@@ -133,7 +134,8 @@ pub mod pallet {
 
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
-		/// The origin allowed to make admin-like changes, such calling `set_domain_router`.
+		/// The origin allowed to make admin-like changes, such calling
+		/// `set_domain_router`.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
@@ -207,8 +209,9 @@ pub mod pallet {
 	pub(crate) type DomainRouter<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
 
-	/// The set of known connectors. This set is used as an allow-list when authorizing
-	/// the origin of incoming messages through the `handle` extrinsic.
+	/// The set of known connectors. This set is used as an allow-list when
+	/// authorizing the origin of incoming messages through the `handle`
+	/// extrinsic.
 	#[pallet::storage]
 	pub(crate) type KnownConnectors<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 
@@ -261,8 +264,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add an AccountId to the set of known connectors, allowing that origin
-		/// to send incoming messages.
+		/// Add an AccountId to the set of known connectors, allowing that
+		/// origin to send incoming messages.
 		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
 		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
@@ -387,8 +390,9 @@ pub mod pallet {
 			);
 
 			// Now add the destination address as a TrancheInvestor of the given tranche if
-			// not already one. This check is necessary shall a user have called `update_member`
-			// already but the call has failed on the EVM side and needs to be retried.
+			// not already one. This check is necessary shall a user have called
+			// `update_member` already but the call has failed on the EVM side and needs to
+			// be retried.
 			if !T::Permission::has(
 				PermissionScope::Pool(pool_id),
 				domain_address.into_account_truncating(),
@@ -547,9 +551,10 @@ pub mod pallet {
 		}
 
 		/// Handle an incoming message
-		/// TODO(nuno): we probably need a custom origin type for these messages to ensure they have
-		/// come in through XCM. For now, let's have a POC here to test the pipeline
-		/// Ethereum ---> Moonbeam ---> Centrifuge::connectors
+		/// TODO(nuno): we probably need a custom origin type for these messages
+		/// to ensure they have come in through XCM. For now, let's have a POC
+		/// here to test the pipeline Ethereum ---> Moonbeam --->
+		/// Centrifuge::connectors
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::handle())]
 		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
@@ -603,7 +608,8 @@ pub mod pallet {
 				ethereum_xcm_call,
 				OriginKind::SovereignAccount,
 				TransactWeights {
-					// Convert the max gas_limit into a max transact weight following Moonbeam's formula.
+					// Convert the max gas_limit into a max transact weight following Moonbeam's
+					// formula.
 					transact_required_weight_at_most: xcm_domain.max_gas_limit * 25_000
 						+ 100_000_000,
 					overall_weight: None,
@@ -618,9 +624,11 @@ pub mod pallet {
 		/// Build the encoded `ethereum_xcm::transact(eth_tx)` call that should
 		/// request to execute `evm_call`.
 		///
-		/// * `xcm_domain` - All the necessary info regarding the xcm-based domain
+		/// * `xcm_domain` - All the necessary info regarding the xcm-based
+		///   domain
 		/// where this `ethereum_xcm` call is to be executed
-		/// * `evm_call` - The encoded EVM call calling ConnectorsXcmRouter::handle(msg)
+		/// * `evm_call` - The encoded EVM call calling
+		///   ConnectorsXcmRouter::handle(msg)
 		pub fn encoded_ethereum_xcm_call(
 			xcm_domain: XcmDomain<CurrencyIdOf<T>>,
 			evm_call: Vec<u8>,

@@ -7,8 +7,9 @@ use sp_std::{vec, vec::Vec};
 use crate::Codec;
 
 /// Address type
-/// Note: It can be used to represent any address type with a length <= 32 bytes;
-/// For example, it can represent an Ethereum address (20-bytes long) by padding it with 12 zeros.
+/// Note: It can be used to represent any address type with a length <= 32
+/// bytes; For example, it can represent an Ethereum address (20-bytes long) by
+/// padding it with 12 zeros.
 type Address = [u8; 32];
 
 /// The fixed size for the array representing a tranche token name
@@ -205,12 +206,12 @@ impl<
 		Rate: Encode + Decode,
 	> Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
-	/// The call type that identifies a specific Message variant. This value is used
-	/// to encode/decode a Message to/from a bytearray, whereas the head of the bytearray
-	/// is the call type, followed by each message's param values.
+	/// The call type that identifies a specific Message variant. This value is
+	/// used to encode/decode a Message to/from a bytearray, whereas the head of
+	/// the bytearray is the call type, followed by each message's param values.
 	///
-	/// NOTE: Each message must immutably  map to the same u8. Messages are decoded
-	/// in other domains and MUST follow the defined standard.
+	/// NOTE: Each message must immutably  map to the same u8. Messages are
+	/// decoded in other domains and MUST follow the defined standard.
 	fn call_type(&self) -> u8 {
 		match self {
 			Self::Invalid { .. } => 0,

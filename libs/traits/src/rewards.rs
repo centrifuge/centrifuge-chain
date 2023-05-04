@@ -29,14 +29,15 @@ pub trait GroupRewards {
 	type GroupId;
 
 	/// Check if the group is ready to be rewarded.
-	/// Most of the cases it means that the group has stake that should be rewarded.
+	/// Most of the cases it means that the group has stake that should be
+	/// rewarded.
 	fn is_ready(group_id: Self::GroupId) -> bool;
 
-	/// Reward a group distributing the reward amount proportionally to all associated accounts.
-	/// This method is called by distribution method only when the group is considered ready,
-	/// check [`GroupRewards::is_ready()`].
-	/// The method returns the minted reward. Depending on the implementation it may be less
-	/// than requested.
+	/// Reward a group distributing the reward amount proportionally to all
+	/// associated accounts. This method is called by distribution method only
+	/// when the group is considered ready, check [`GroupRewards::is_ready()`].
+	/// The method returns the minted reward. Depending on the implementation it
+	/// may be less than requested.
 	fn reward_group(
 		group_id: Self::GroupId,
 		reward: Self::Balance,
@@ -47,7 +48,8 @@ pub trait GroupRewards {
 }
 
 /// Distribution mechanisms over group rewards.
-/// This trait is implemented automatically for all `GroupRewards` with the requested bounds.
+/// This trait is implemented automatically for all `GroupRewards` with the
+/// requested bounds.
 pub trait DistributedRewards: GroupRewards
 where
 	<Self as GroupRewards>::Balance: FixedPointOperand + Zero,
@@ -56,9 +58,9 @@ where
 	/// Distribute uniformly the reward given to the entire list of groups.
 	/// Only groups with stake will be taken for distribution.
 	///
-	/// This method makes several calls to `Rewards::reward_group()` under the hood.
-	/// If one of those calls fail, this method will continue to reward the rest of the groups,
-	/// The failed group errors will be returned.
+	/// This method makes several calls to `Rewards::reward_group()` under the
+	/// hood. If one of those calls fail, this method will continue to reward
+	/// the rest of the groups, The failed group errors will be returned.
 	fn distribute_reward<It>(
 		reward: Self::Balance,
 		groups: It,
@@ -77,9 +79,9 @@ where
 	/// Only groups with stake will be taken for distribution.
 	/// Each group will recive a `weight / total_weight` part of the reward.
 	///
-	/// This method makes several calls to `Rewards::reward_group()` under the hood.
-	/// If one of those calls fail, this method will continue to reward the rest of the groups,
-	/// The failed group errors will be returned.
+	/// This method makes several calls to `Rewards::reward_group()` under the
+	/// hood. If one of those calls fail, this method will continue to reward
+	/// the rest of the groups, The failed group errors will be returned.
 	fn distribute_reward_with_weights<Weight, It>(
 		reward: Self::Balance,
 		groups: It,
@@ -154,8 +156,9 @@ pub trait AccountRewards<AccountId> {
 		account_id: &AccountId,
 	) -> Result<Self::Balance, DispatchError>;
 
-	/// Computes the reward the account_id can receive for a currency_id and claim it.
-	/// A reward using the native currency will be sent to the account_id.
+	/// Computes the reward the account_id can receive for a currency_id and
+	/// claim it. A reward using the native currency will be sent to the
+	/// account_id.
 	fn claim_reward(
 		currency_id: Self::CurrencyId,
 		account_id: &AccountId,
@@ -174,8 +177,8 @@ pub trait CurrencyGroupChange {
 	type CurrencyId;
 
 	/// Associate the currency to a group.
-	/// If the currency was previously associated to another group, the associated stake is moved
-	/// to the new group.
+	/// If the currency was previously associated to another group, the
+	/// associated stake is moved to the new group.
 	fn attach_currency(currency_id: Self::CurrencyId, group_id: Self::GroupId) -> DispatchResult;
 
 	/// Returns the associated group of a currency.

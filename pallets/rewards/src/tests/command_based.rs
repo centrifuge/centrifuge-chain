@@ -95,8 +95,8 @@ where
 	});
 }
 
-/// A sample that emulates a fuzzer that only generates and tests one hardcoded command combination
-/// from the following matrix:
+/// A sample that emulates a fuzzer that only generates and tests one hardcoded
+/// command combination from the following matrix:
 ///
 /// | Action     | Participants | Calls  | Total  |
 /// |-           |-             |-       |-       |

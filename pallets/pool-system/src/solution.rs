@@ -30,10 +30,12 @@ impl PoolState {
 	/// Updates a PoolState to update.
 	///
 	/// NOTE:
-	/// * This will switch a PoolState::Healthy -> PoolState::Unhealthy(_) and vice versa
-	/// * If an already unhealthy state is updated, the new `Vec<UnhealthyState>` inside the
-	///   enum will be **overwritten** with the newly passed unhealthy states.
-	///   -> Use `add_unhealthy` or `rm_unhealthy` if the other states should be kept.
+	/// * This will switch a PoolState::Healthy -> PoolState::Unhealthy(_) and
+	///   vice versa
+	/// * If an already unhealthy state is updated, the new
+	///   `Vec<UnhealthyState>` inside the enum will be **overwritten** with the
+	///   newly passed unhealthy states. -> Use `add_unhealthy` or
+	///   `rm_unhealthy` if the other states should be kept.
 	pub fn update(&mut self, update: PoolState) -> &mut Self {
 		*self = update;
 		self
@@ -132,18 +134,21 @@ impl<Balance, MaxTranches> EpochSolution<Balance, MaxTranches>
 where
 	MaxTranches: Get<u32>,
 {
-	/// Calculates the score for a given solution. Should only be called inside the
-	/// `fn score_solution()` from the runtime, as there are no checks if solution
-	/// length matches tranche length.
+	/// Calculates the score for a given solution. Should only be called inside
+	/// the `fn score_solution()` from the runtime, as there are no checks if
+	/// solution length matches tranche length.
 	///
 	/// Scores are calculated with the following function
 	///
 	/// Notation:
-	///  * X(a) -> A vector of a's, where each element is associated with a tranche
-	///  * ||X(a)||1 -> 1-Norm of a vector, i.e. the absolute sum over all elements
+	///  * X(a) -> A vector of a's, where each element is associated with a
+	///    tranche
+	///  * ||X(a)||1 -> 1-Norm of a vector, i.e. the absolute sum over all
+	///    elements
 	///
-	///  X = X(%-invest-fulfillments) * X(investments) * X(invest_tranche_weights)
-	///            + X(%-redeem-fulfillments) * X(redemptions) * X(redeem_tranche_weights)
+	///  X = X(%-invest-fulfillments) * X(investments) *
+	/// X(invest_tranche_weights)            + X(%-redeem-fulfillments) *
+	/// X(redemptions) * X(redeem_tranche_weights)
 	///
 	///  score = ||X||1
 	///
@@ -217,7 +222,6 @@ where
 	}
 
 	/// Scores an solution, that would bring a pool into an unhealthy state.
-	///
 	pub fn score_solution_unhealthy<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
 		solution: &[TrancheSolution],
 		tranches: &EpochExecutionTranches<
@@ -341,7 +345,8 @@ where
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct HealthySolution<Balance, MaxTranches: Get<u32>> {
-	// TODO: Check depedency of Tranches, Solutions and States. E.g. can we use the same max bounds for multiple different bounded vecs?
+	// TODO: Check depedency of Tranches, Solutions and States. E.g. can we use the same max bounds
+	// for multiple different bounded vecs?
 	pub solution: BoundedVec<TrancheSolution, MaxTranches>,
 	pub score: Balance,
 }
@@ -359,7 +364,8 @@ where
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct UnhealthySolution<Balance, MaxTranches: Get<u32>> {
-	// TODO: Check depedency of Tranches, Solutions and States. E.g. can we use the same max bounds for multiple different bounded vecs?
+	// TODO: Check depedency of Tranches, Solutions and States. E.g. can we use the same max bounds
+	// for multiple different bounded vecs?
 	pub state: BoundedVec<UnhealthyState, MaxTranches>,
 	pub solution: BoundedVec<TrancheSolution, MaxTranches>,
 	// The risk buffer score per tranche (less junior tranche) for this solution
@@ -407,8 +413,8 @@ where
 			(false, false) => (),
 		}
 
-		// If there are no differences in risk buffer scores or there is no risk buffer violation
-		// we look at the reserve improvement score.
+		// If there are no differences in risk buffer scores or there is no risk buffer
+		// violation we look at the reserve improvement score.
 		match (
 			self.has_state(&UnhealthyState::MaxReserveViolated),
 			other.has_state(&UnhealthyState::MaxReserveViolated),
@@ -737,8 +743,9 @@ mod test {
 		assert!(!unhealthy.has_state(&UnhealthyState::MinRiskBufferViolated));
 	}
 
-	// Here we start with tests that cover the scoring behaviour which is implemented
-	// via the `ParitalOrd` implementation of `EpochSolution`, `HealthySolution` and `UnhealthySolution`.
+	// Here we start with tests that cover the scoring behaviour which is
+	// implemented via the `ParitalOrd` implementation of `EpochSolution`,
+	// `HealthySolution` and `UnhealthySolution`.
 	#[test]
 	fn higher_score_is_better() {
 		let solution_1 = EpochSolution::<u128, MaxTranches>::Healthy(HealthySolution {

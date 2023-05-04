@@ -20,21 +20,23 @@
 //! Denial of Service or replay attacks).
 //!
 //! ## Overview
-//! The function of this pallet is to provide the Centrifuge-specific reward functionality for
-//! contributors of the relay chain crowdloan. In order to provide this functionality the pallet
-//! implements the `Reward` Trait from the `Claim` Pallet.
-//! Before any rewards can be provided to contributors the pallet MUST be initialized, so that the
-//! modules account holds the necessary funds to reward.
-//! All rewards are payed in form of a `vested_transfer` with a fixed vesting time. The vesting time
-//! is defined via the modules `Config` trait.
+//! The function of this pallet is to provide the Centrifuge-specific reward
+//! functionality for contributors of the relay chain crowdloan. In order to
+//! provide this functionality the pallet implements the `Reward` Trait from the
+//! `Claim` Pallet. Before any rewards can be provided to contributors the
+//! pallet MUST be initialized, so that the modules account holds the necessary
+//! funds to reward. All rewards are payed in form of a `vested_transfer` with a
+//! fixed vesting time. The vesting time is defined via the modules `Config`
+//! trait.
 //!
 //! ## Terminology
 //! For information on terms and concepts used in this pallet,
 //! please refer to the [pallet' specification document](https://centrifuge.hackmd.io/JIGbo97DSiCPFnBFN62aTQ?both).
 //!
 //! ## Dependencies
-//! This pallet works hand in hand with [`pallet-crowdloan-claim`] pallet. In fact, it must
-//! implement this pallet's [`pallet-crowdloan-claim::traits::Reward`] trait so that to interact.
+//! This pallet works hand in hand with [`pallet-crowdloan-claim`] pallet. In
+//! fact, it must implement this pallet's
+//! [`pallet-crowdloan-claim::traits::Reward`] trait so that to interact.
 //!
 //! ## References
 //!
@@ -117,26 +119,27 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_vesting::Config {
-		/// Constant configuration parameter to store the module identifier for the pallet.
+		/// Constant configuration parameter to store the module identifier for
+		/// the pallet.
 		///
-		/// The module identifier may be of the form ```PalletId(*b"cc/rwrd")```. This
-		/// constant is set when building this config trait for the runtime.
+		/// The module identifier may be of the form
+		/// ```PalletId(*b"cc/rwrd")```. This constant is set when building this
+		/// config trait for the runtime.
 		///
 		/// # Example
 		/// ```rust,ignore
 		///
 		/// // Parameterize crowdloan reward pallet configuration
 		/// parameter_types! {
-		///   pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rwrd");
-		/// }
+		///   pub const CrowdloanRewardPalletId: PalletId =
+		/// PalletId(*b"cc/rwrd"); }
 		///
-		/// // Implement crowdloan reward pallet's configuration trait for the runtime
-		/// impl pallet_crowdloarn_reward::Config for Runtime {
+		/// // Implement crowdloan reward pallet's configuration trait for the
+		/// runtime impl pallet_crowdloarn_reward::Config for Runtime {
 		///   type Event = Event;
 		///   type WeightInfo = ();
 		///   type PalletId = CrowdloanRewardPalletId;
 		/// }
-		///
 		/// ```
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -144,8 +147,9 @@ pub mod pallet {
 		/// Associated type for Event enum
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// Admin or the module. I.e. this is necessary in cases, where the vesting parameters need
-		/// to be changed without an additional initialization.
+		/// Admin or the module. I.e. this is necessary in cases, where the
+		/// vesting parameters need to be changed without an additional
+		/// initialization.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Weight information for extrinsics in this pallet
@@ -156,7 +160,8 @@ pub mod pallet {
 	// Pallet events
 	// ----------------------------------------------------------------------------
 
-	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
+	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and
+	// Codec
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -165,8 +170,8 @@ pub mod pallet {
 		/// \[who, direct_reward, vested_reward\]
 		RewardClaimed(T::AccountId, BalanceOf<T>, BalanceOf<T>),
 
-		/// Event triggered when the reward module is ready to reward contributors
-		/// \[vesting_start, vesting_period, direct_payout_ratio\]
+		/// Event triggered when the reward module is ready to reward
+		/// contributors \[vesting_start, vesting_period, direct_payout_ratio\]
 		RewardPalletInitialized(T::BlockNumber, T::BlockNumber, Perbill),
 
 		/// Direct payout ratio for contributors has been updated
@@ -187,7 +192,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn direct_payout_ratio)]
-	/// Which ratio of the rewards are payed directly. The rest is transferred via a vesting schedule.
+	/// Which ratio of the rewards are payed directly. The rest is transferred
+	/// via a vesting schedule.
 	pub(super) type DirectPayoutRatio<T: Config> =
 		StorageValue<_, Perbill, ValueQuery, OnRatioEmpty>;
 
@@ -223,8 +229,8 @@ pub mod pallet {
 
 	// Declare Call struct and implement dispatchable (or callable) functions.
 	//
-	// Dispatchable functions are transactions modifying the state of the chain. They
-	// are also called extrinsics are constitute the pallet's public interface.
+	// Dispatchable functions are transactions modifying the state of the chain.
+	// They are also called extrinsics are constitute the pallet's public interface.
 	// Note that each parameter used in functions must implement `Clone`, `Debug`,
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
@@ -279,8 +285,8 @@ pub mod pallet {
 		/// Set vesting period.
 		///
 		/// This administrative transaction allows to modify the vesting period
-		/// after a previous [`Pallet::initialize()`] transaction was triggered in order
-		/// to perform seminal pallet configuration.
+		/// after a previous [`Pallet::initialize()`] transaction was triggered
+		/// in order to perform seminal pallet configuration.
 		///
 		/// ## Emits
 		/// UpdateVestingPeriod
@@ -307,7 +313,8 @@ pub mod pallet {
 		///
 		/// This administrative function allows to modify the ratio
 		/// between vested and direct payout amount after the pallet
-		/// was initialized via a call to the [`Pallet::initialize()`] transaction.
+		/// was initialized via a call to the [`Pallet::initialize()`]
+		/// transaction.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_direct_payout_ratio())]
 		#[pallet::call_index(3)]
 		pub fn set_direct_payout_ratio(
@@ -391,7 +398,8 @@ where
 				.unwrap_or_default()
 				.len() < pallet_vesting::MaxVestingSchedulesGet::<T>::get()
 				.try_into()
-				.unwrap_or(0), // This is currently a u32, but in case it changes, we will fail-safe to zero.
+				.unwrap_or(0), /* This is currently a u32, but in case it changes, we will
+			                 * fail-safe to zero. */
 			pallet_vesting::Error::<T>::AtMaxVestingSchedules,
 		);
 
@@ -402,8 +410,8 @@ where
 			))
 			// In case period is 0 we will give everything on the first block
 			.unwrap_or(vested_reward)
-			// Ensure that we are at least giving out 1 per block. Otherwise, vesting will be ongoing
-			// forever.
+			// Ensure that we are at least giving out 1 per block. Otherwise, vesting will be
+			// ongoing forever.
 			.max(One::one());
 
 		let schedule = pallet_vesting::VestingInfo::new(
@@ -419,9 +427,11 @@ where
 		// Mint the new tokens
 		let positive_imbalance = T::Currency::deposit_creating(&from, contribution);
 
-		// We are transferring everything and add the vesting schedule afterwards. This makes it easier.
+		// We are transferring everything and add the vesting schedule afterwards. This
+		// makes it easier.
 		//
-		// The reward pallet account only holds enough funds for this reward. So we must allow it to die.
+		// The reward pallet account only holds enough funds for this reward. So we must
+		// allow it to die.
 		T::Currency::transfer(&from, &who, contribution, AllowDeath)
 			.expect("Move what we created. Qed.");
 

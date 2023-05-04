@@ -16,7 +16,8 @@ use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_std::cmp::PartialEq;
 
-/// A representation of a investment identifier that can be converted to an account address
+/// A representation of a investment identifier that can be converted to an
+/// account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct InvestmentAccount<InvestmentId> {
 	pub investment_id: InvestmentId,

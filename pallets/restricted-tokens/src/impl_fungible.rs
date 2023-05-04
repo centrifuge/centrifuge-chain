@@ -26,8 +26,9 @@ pub enum FungibleInspectEffects<AccountId, Balance> {
 	/// Interpretation of tuple `(AccountId, bool, Balance)`:
 	/// * tuple.0 = `who`. The person who's balance should be checked.
 	/// * tuple.1 = `keep_alive`. The liveness bool.
-	/// * tuple.2 = `<T::NativeFungible as Inspect<T::AccountId>>::reducible_balance()`. The result of the call to the
-	///   not-filtered trait `fungible::Inspect` implementation.
+	/// * tuple.2 = `<T::NativeFungible as
+	///   Inspect<T::AccountId>>::reducible_balance()`. The result of the call
+	///   to the not-filtered trait `fungible::Inspect` implementation.
 	ReducibleBalance(AccountId, bool, Balance),
 }
 
@@ -86,7 +87,8 @@ pub enum FungibleInspectHoldEffects<AccountId, Balance> {
 	/// Interpretation of tuple `(AccountId, Balance, bool)`:
 	/// * tuple.0 = `who`. The person who's balance should be reserved.
 	/// * tuple.1 = `amount`. The amount that should be reserved.
-	/// * tuple.2 = `<T::NativeFungible as InspectHold<T::AccountId>>::can_hold()`. The result of the call to the
+	/// * tuple.2 = `<T::NativeFungible as
+	///   InspectHold<T::AccountId>>::can_hold()`. The result of the call to the
 	///   not-filtered trait `fungible::InspectHold` implementation.
 	CanHold(AccountId, Balance, bool),
 }
@@ -156,10 +158,10 @@ pub enum FungibleMutateHoldEffects<AccountId, Balance> {
 	/// * tuple.0 = `send`. The sender of the tokens.
 	/// * tuple.1 = `recv`. The receiver of the tokens.
 	/// * tuple.2 = `amount`. The amount that should be transferred.
-	/// * tuple.3 = `on_hold`. Indicating if on_hold transfers should
-	///   still be on_hold at receiver.
-	/// * tuple.4 = `best_effort`. Indicating if the transfer should be done
-	///   on a best effort base.
+	/// * tuple.3 = `on_hold`. Indicating if on_hold transfers should still be
+	///   on_hold at receiver.
+	/// * tuple.4 = `best_effort`. Indicating if the transfer should be done on
+	///   a best effort base.
 	TransferHeld(AccountId, AccountId, Balance, bool, bool),
 }
 

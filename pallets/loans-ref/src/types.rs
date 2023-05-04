@@ -64,7 +64,8 @@ pub enum BorrowLoanError {
 /// Error related to loan borrowing
 #[derive(Encode, Decode, TypeInfo, PalletError)]
 pub enum WrittenOffError {
-	/// Emits when a write off action tries to write off the more than the policy allows
+	/// Emits when a write off action tries to write off the more than the
+	/// policy allows
 	LessThanPolicy,
 }
 
@@ -80,8 +81,8 @@ pub enum CloseLoanError {
 //   1. When we are calculating portfolio valuation for a pool.
 //   2. When there is borrow or repay or write off on a loan under this pool
 // So the portfolio valuation could be:
-//	 - Approximate when current time != last_updated
-//	 - Exact when current time == last_updated
+// 	 - Approximate when current time != last_updated
+// 	 - Exact when current time == last_updated
 #[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
 pub struct PortfolioValuation<Balance> {
 	// Computed portfolio valuation for the given pool
@@ -163,7 +164,8 @@ pub enum InterestPayments {
 /// Specify the paydown schedules of the loan
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum PayDownSchedule {
-	/// The entire borrowed amount is expected to be paid back at the maturity date
+	/// The entire borrowed amount is expected to be paid back at the maturity
+	/// date
 	None,
 }
 
@@ -176,7 +178,8 @@ pub struct RepaymentSchedule {
 	/// Period at which interest is paid
 	pub interest_payments: InterestPayments,
 
-	/// How much of the initially borrowed amount is paid back during interest payments
+	/// How much of the initially borrowed amount is paid back during interest
+	/// payments
 	pub pay_down_schedule: PayDownSchedule,
 }
 
@@ -224,7 +227,8 @@ pub struct LoanRestrictions<Rate> {
 }
 
 /// Loan information.
-/// It contemplates the loan proposal by the borrower and the pricing properties by the issuer.
+/// It contemplates the loan proposal by the borrower and the pricing properties
+/// by the issuer.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct LoanInfo<Asset, Balance, Rate> {
 	/// Specify the repayments schedule of the loan
@@ -427,8 +431,8 @@ impl<T: Config> ActiveLoan<T> {
 		self.present_value(self.calculate_debt(when)?, when)
 	}
 
-	/// An optimized version of `ActiveLoan::present_value_at()` when last updated is now.
-	/// Instead of fetch the current deb from the accrual,
+	/// An optimized version of `ActiveLoan::present_value_at()` when last
+	/// updated is now. Instead of fetch the current deb from the accrual,
 	/// it get it from a cache previously fetched.
 	pub fn current_present_value<C>(&self, rate_cache: &C) -> Result<T::Balance, DispatchError>
 	where
@@ -457,9 +461,10 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	/// Returns a penalized version of the interest rate in an absolute way.
-	/// This method first unpenalized the rate based on the current write off status before
-	/// penalize it with the input parameter.
-	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization
+	/// This method first unpenalized the rate based on the current write off
+	/// status before penalize it with the input parameter.
+	/// `interest_rate_with(0)` with returns the original interest_rate without
+	/// any penalization
 	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
 		self.info
 			.interest_rate

@@ -396,7 +396,8 @@ pub(crate) fn fulfillment_of(perc: Perquintill, price: Rate) -> FulfillmentWithP
 	}
 }
 
-/// Fulfills the given fulfillment for INVESTMENT_0_0 on both invest and redeem side
+/// Fulfills the given fulfillment for INVESTMENT_0_0 on both invest and redeem
+/// side
 pub(crate) fn fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
 	fulfill_invest_x(fulfillment.clone())?;
 	fulfill_redeem_x(fulfillment.clone())
@@ -448,8 +449,8 @@ pub(crate) fn invest_x_per_fulfill_x(
 	Investments::invest_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
-/// Invest given amount per Investor into INVESTMENT_0_0, run the given closure and fulfills
-/// the given fulfillment.
+/// Invest given amount per Investor into INVESTMENT_0_0, run the given closure
+/// and fulfills the given fulfillment.
 pub(crate) fn invest_x_runner_fulfill_x<F>(
 	invest_per_investor: Balance,
 	fulfillment: FulfillmentWithPrice<Rate>,
@@ -498,8 +499,8 @@ pub(crate) fn redeem_x_per_fulfill_x(
 	Investments::redeem_fulfillment(INVESTMENT_0_0, fulfillment)
 }
 
-/// Redeem given amount per TrancheHolder into INVESTMENT_0_0, run the given closure and fulfills
-/// the given fulfillment.
+/// Redeem given amount per TrancheHolder into INVESTMENT_0_0, run the given
+/// closure and fulfills the given fulfillment.
 pub(crate) fn redeem_x_runner_fulfill_x<F>(
 	redeem_per_investor: Balance,
 	fulfillment: FulfillmentWithPrice<Rate>,

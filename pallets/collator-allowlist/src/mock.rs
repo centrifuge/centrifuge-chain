@@ -103,7 +103,8 @@ impl ValidatorRegistration<ValidatorId> for MockSession {
 	fn is_registered(id: &ValidatorId) -> bool {
 		match id {
 			1 | 2 | 3 => true,
-			2077282123132384724 => true, // This is from the benchmarks, which generate a more-real ID
+			2077282123132384724 => true, /* This is from the benchmarks, which generate a */
+			// more-real ID
 			_ => false,
 		}
 	}

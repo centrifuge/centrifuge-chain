@@ -121,7 +121,8 @@ fn total_reward_change_over_sessions() {
 			assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
 			assert_eq!(ActiveSessionData::<Test>::get().total_reward, REWARD);
 
-			// Total reward update must be at least 2 * collator_reward since collator size increases by one
+			// Total reward update must be at least 2 * collator_reward since collator size
+			// increases by one
 			assert_eq!(ActiveSessionData::<Test>::get().collator_count, 1);
 			assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(2));
 			assert_noop!(
@@ -145,7 +146,8 @@ fn total_reward_change_over_sessions() {
 			assert_eq!(NextSessionChanges::<Test>::get().total_reward, None);
 			assert_eq!(ActiveSessionData::<Test>::get().total_reward, 2 * REWARD);
 
-			// Total reward update must be at least 3 * collator_reward since collator size increases by one
+			// Total reward update must be at least 3 * collator_reward since collator size
+			// increases by one
 			assert_eq!(ActiveSessionData::<Test>::get().collator_count, 2);
 			assert_eq!(NextSessionChanges::<Test>::get().collator_count, Some(3));
 			assert_noop!(

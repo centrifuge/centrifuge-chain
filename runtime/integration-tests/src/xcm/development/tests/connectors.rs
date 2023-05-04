@@ -68,15 +68,18 @@ use crate::{
 	*,
 };
 
-/// NOTE: We can't actually verify that the Connectors messages hits the ConnectorsXcmRouter
-/// contract on Moonbeam since that would require a rather heavy e2e setup to emulate, involving
-/// depending on Moonbeam's runtime, having said contract deployed to their evm environment, and
-/// be able to query the evm side. Instead, these tests verify that - given all pre-requirements
-/// are set up correctly - we succeed to send the Connectors message from the Centrifuge chain pov.
-/// We have other unit tests verifying the Connectors' messages encoding and the encoding of the
-/// remote EVM call to be executed on Moonbeam.
+/// NOTE: We can't actually verify that the Connectors messages hits the
+/// ConnectorsXcmRouter contract on Moonbeam since that would require a rather
+/// heavy e2e setup to emulate, involving depending on Moonbeam's runtime,
+/// having said contract deployed to their evm environment, and be able to query
+/// the evm side. Instead, these tests verify that - given all pre-requirements
+/// are set up correctly - we succeed to send the Connectors message from the
+/// Centrifuge chain pov. We have other unit tests verifying the Connectors'
+/// messages encoding and the encoding of the remote EVM call to be executed on
+/// Moonbeam.
 
-/// Verify that `Connectors::add_pool` succeeds when called with all the necessary requirements.
+/// Verify that `Connectors::add_pool` succeeds when called with all the
+/// necessary requirements.
 #[test]
 fn add_pool() {
 	TestNet::reset();
@@ -107,10 +110,11 @@ fn add_pool() {
 	});
 }
 
-/// Verify that `Connectors::add_tranche` succeeds when called with all the necessary requirements.
-/// We can't actually verify that the call hits the ConnectorsXcmRouter contract on Moonbeam
-/// since that would require a very heavy e2e setup to emulate. Instead, here we test that we
-/// can send the extrinsic and we have other unit tests verifying the encoding of the remote
+/// Verify that `Connectors::add_tranche` succeeds when called with all the
+/// necessary requirements. We can't actually verify that the call hits the
+/// ConnectorsXcmRouter contract on Moonbeam since that would require a very
+/// heavy e2e setup to emulate. Instead, here we test that we can send the
+/// extrinsic and we have other unit tests verifying the encoding of the remote
 /// EVM call to be executed on Moonbeam.
 #[test]
 fn add_tranche() {
@@ -312,7 +316,8 @@ fn transfer_tranche_tokens() {
 			Role::PoolRole(PoolRole::MemberListAdmin),
 		));
 
-		// Call the Connectors::update_member which ensures the destination address is whitelisted.
+		// Call the Connectors::update_member which ensures the destination address is
+		// whitelisted.
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(BOB.into()),
 			dest_address.clone(),
@@ -328,7 +333,8 @@ fn transfer_tranche_tokens() {
 			100_000,
 		);
 
-		// Finally, verify that we can now transfer the tranche to the destination address
+		// Finally, verify that we can now transfer the tranche to the destination
+		// address
 		let amount = 123;
 		assert_ok!(Connectors::transfer_tranche_tokens(
 			RuntimeOrigin::signed(BOB.into()),
@@ -406,7 +412,8 @@ fn encoded_ethereum_xcm_add_pool() {
 	assert_eq!(encoded_call_hex, expected_encoded_hex);
 }
 
-// Verify that the max tranche token symbol and name lengths are what the Connectors pallet expects.
+// Verify that the max tranche token symbol and name lengths are what the
+// Connectors pallet expects.
 #[test]
 fn verify_tranche_fields_sizes() {
 	assert_eq!(
@@ -515,8 +522,8 @@ mod utils {
 					seniority: None,
 					metadata: TrancheMetadata {
 						// NOTE: For now, we have to set these metadata fields of the first tranche
-						// to be convertible to the 32-byte size expected by the connectors AddTranche
-						// message.
+						// to be convertible to the 32-byte size expected by the connectors
+						// AddTranche message.
 						token_name: BoundedVec::<
 							u8,
 							cfg_types::consts::pools::MaxTrancheNameLengthBytes,

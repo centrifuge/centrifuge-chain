@@ -219,10 +219,12 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Add a key to the `Keys` and `LastKeyByPurpose` storages if the following checks pass:
+		/// Add a key to the `Keys` and `LastKeyByPurpose` storages if the
+		/// following checks pass:
 		///
 		/// - The account has enough funds to cover the `key_deposit`;
-		/// - A key with the same hash and purpose does not exist in the `Keys` storage;
+		/// - A key with the same hash and purpose does not exist in the `Keys`
+		///   storage;
 		///
 		/// The `key_deposit` is reserved upon success.
 		fn add_key(

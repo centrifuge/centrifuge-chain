@@ -111,7 +111,8 @@ fn assert_all_staked(v: &[AccountId]) {
 	}));
 }
 
-/// Verifies that none of the provided account addresses is staked for block rewards.
+/// Verifies that none of the provided account addresses is staked for block
+/// rewards.
 fn assert_all_not_staked(v: &[AccountId]) {
 	assert!(v.iter().all(|acc| {
 		<Runtime as pallet_block_rewards::Config>::Rewards::account_stake(

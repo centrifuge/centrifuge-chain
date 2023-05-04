@@ -109,8 +109,9 @@ mod filter {
 						actually_reducible,
 					) => {
 						match asset {
-							// Note this filter actually never filters CurrencyId::Cfg. As CFG is the native one, which is passe
-							// directly to the fungible::Inspect implementation and the respective filters.
+							// Note this filter actually never filters CurrencyId::Cfg. As CFG is
+							// the native one, which is passe directly to the fungible::Inspect
+							// implementation and the respective filters.
 							_ => actually_reducible / 2,
 						}
 					}
@@ -118,8 +119,9 @@ mod filter {
 			}
 		}
 
-		/// Dummmy filter for InspectHold, that does not allow any holding periods on AUSD and
-		/// forwards the result of the actual holding period otherwise.
+		/// Dummmy filter for InspectHold, that does not allow any holding
+		/// periods on AUSD and forwards the result of the actual holding period
+		/// otherwise.
 		pub struct InspectHoldFilter;
 		impl PreConditions<FungiblesInspectHoldEffects<CurrencyId, AccountId, Balance>>
 			for InspectHoldFilter
@@ -143,8 +145,9 @@ mod filter {
 			}
 		}
 
-		/// Dummy filter for Mutate. Allows min and burns normally for all expect the Restricted-token.
-		/// This token is only allowed to be minted/burned into/from the pool-account
+		/// Dummy filter for Mutate. Allows min and burns normally for all
+		/// expect the Restricted-token. This token is only allowed to be
+		/// minted/burned into/from the pool-account
 		pub struct MutateFilter;
 		impl PreConditions<FungiblesMutateEffects<CurrencyId, AccountId, Balance>> for MutateFilter {
 			type Result = bool;
@@ -190,7 +193,8 @@ mod filter {
 			}
 		}
 
-		/// Dummy filter for Transfer. Enforces rules for RestrictedTokens struct on trait level
+		/// Dummy filter for Transfer. Enforces rules for RestrictedTokens
+		/// struct on trait level
 		pub struct TransferFilter;
 		impl PreConditions<FungiblesTransferEffects<CurrencyId, AccountId, Balance>> for TransferFilter {
 			type Result = bool;
@@ -224,7 +228,8 @@ mod filter {
 			},
 		};
 
-		/// Dummy filter, that allows to reduce only till the ExistentialDeposit.
+		/// Dummy filter, that allows to reduce only till the
+		/// ExistentialDeposit.
 		pub struct InspectFilter;
 		impl PreConditions<FungibleInspectEffects<AccountId, Balance>> for InspectFilter {
 			type Result = Balance;
@@ -246,7 +251,8 @@ mod filter {
 			}
 		}
 
-		/// Dummy filter for Transfer. Only allows transfer of native token after min holding period.
+		/// Dummy filter for Transfer. Only allows transfer of native token
+		/// after min holding period.
 		pub struct TransferFilter;
 		impl PreConditions<FungibleTransferEffects<AccountId, Balance>> for TransferFilter {
 			type Result = bool;
@@ -283,9 +289,10 @@ mod filter {
 			mock::{AccountId, Balance},
 		};
 
-		/// A dummy filter that ensures that a call to Currency::ensure_can_withdraw and
-		/// withdraw result in the expected behaviour. Especially, it only allows
-		/// withdraws for TRANSACTION_PAYMENT reasons.
+		/// A dummy filter that ensures that a call to
+		/// Currency::ensure_can_withdraw and withdraw result in the expected
+		/// behaviour. Especially, it only allows withdraws for
+		/// TRANSACTION_PAYMENT reasons.
 		pub struct CurrencyFilter;
 		impl PreConditions<CurrencyEffects<AccountId, Balance>> for CurrencyFilter {
 			type Result = bool;
