@@ -51,8 +51,8 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 // Radial token definition
 //
 // This avoids circular dependency on the runtime crate. Though for testing
-// we do not care about real CFG token "value", it helps understanding and reading
-// the testing code.
+// we do not care about real CFG token "value", it helps understanding and
+// reading the testing code.
 pub(crate) const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
 pub(crate) const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
 pub(crate) const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01

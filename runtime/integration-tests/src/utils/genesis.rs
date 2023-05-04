@@ -21,7 +21,8 @@ use crate::utils::{
 	tokens::{DECIMAL_BASE_12, DECIMAL_BASE_18},
 };
 
-/// Provides 100_000 * DECIMAL_BASE_18 native tokens to the `accounts::default_accounts()`
+/// Provides 100_000 * DECIMAL_BASE_18 native tokens to the
+/// `accounts::default_accounts()`
 pub fn default_native_balances<Runtime>(storage: &mut Storage)
 where
 	Runtime: pallet_balances::Config,
@@ -43,7 +44,8 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Provides 100_000 * DECIMAL_BASE_12 CurrencyId::AUSD tokens to the `accounts::default_accounts()`
+/// Provides 100_000 * DECIMAL_BASE_12 CurrencyId::AUSD tokens to the
+/// `accounts::default_accounts()`
 pub fn default_ausd_balances<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_tokens::Config,
@@ -67,8 +69,8 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Provides 100_000 * DECIMAL_BASE_18 and Provides 100_000 * DECIMAL_BASE_12 CurrencyId::AUSD
-/// tokens to the `accounts::default_accounts()`
+/// Provides 100_000 * DECIMAL_BASE_18 and Provides 100_000 * DECIMAL_BASE_12
+/// CurrencyId::AUSD tokens to the `accounts::default_accounts()`
 pub fn default_balances<Runtime>(storage: &mut Storage)
 where
 	Runtime: orml_tokens::Config + pallet_balances::Config,
@@ -99,7 +101,8 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Register the given asset in the orml_asset_registry storage from genesis onwards
+/// Register the given asset in the orml_asset_registry storage from genesis
+/// onwards
 pub fn register_asset<Runtime>(asset: CurrencyId, storage: &mut Storage)
 where
 	Runtime: orml_asset_registry::Config + Default,
@@ -148,13 +151,14 @@ where
 	}
 }
 
-/// Sets up dummy session keys for all `accounts::default_accounts()` by assigning their sr25519 public keys.
+/// Sets up dummy session keys for all `accounts::default_accounts()` by
+/// assigning their sr25519 public keys.
 pub fn default_session_keys<Runtime>(storage: &mut Storage)
 where
 	Runtime: pallet_session::Config,
 	Runtime::AccountId: From<AccountId32>,
 	<Runtime as pallet_session::Config>::ValidatorId: From<AccountId32>,
-	<Runtime as pallet_session::Config>::Keys: From<development_runtime::SessionKeys>, // <Runtime as pallet_session::Config>::Keys: From<sp_core::sr25519::Public>,
+	<Runtime as pallet_session::Config>::Keys: From<development_runtime::SessionKeys>, /* <Runtime as pallet_session::Config>::Keys: From<sp_core::sr25519::Public>, */
 {
 	pallet_session::GenesisConfig::<Runtime> {
 		keys: default_accounts()
@@ -176,7 +180,8 @@ where
 	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
 }
 
-/// Sets `Keyring::Admin` as the genesis invulnerable of `pallet_collator_selection`.
+/// Sets `Keyring::Admin` as the genesis invulnerable of
+/// `pallet_collator_selection`.
 pub fn admin_invulnerable<Runtime>(storage: &mut Storage)
 where
 	Runtime::AccountId: From<AccountId32>,

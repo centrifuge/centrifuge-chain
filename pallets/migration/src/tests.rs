@@ -266,8 +266,8 @@ fn migrate_vesting_vesting() {
 			assert_eq!(data, vesting);
 
 			for event in reward_events() {
-				// The id here is irrelevant as we are checking for the discriminant below and not the
-				// actual id
+				// The id here is irrelevant as we are checking for the discriminant below and
+				// not the actual id
 				let not = pallet_migration_manager::Event::<Runtime>::FailedToMigrateVestingFor(
 					AccountId32::from(bytes_id),
 				);
@@ -393,8 +393,8 @@ fn migrate_proxy_proxies() {
 			assert_eq!(data, proxy_info);
 
 			for event in reward_events() {
-				// The id here is irrelevant as we are checking for the discriminant below and not the
-				// actual id
+				// The id here is irrelevant as we are checking for the discriminant below and
+				// not the actual id
 				let not = pallet_migration_manager::Event::<Runtime>::FailedToMigrateProxyDataFor(
 					AccountId32::from(bytes_id),
 				);

@@ -709,7 +709,8 @@ fn fulfillment_flow_for_everything_works() {
 					.expect("Price is larger equal 1")
 					.checked_mul_int(TOTAL_INVEST_AMOUNT)
 					.expect("Unwrapping test checked_mul_int must work")
-					// We need to take into account that the 3 TrancheHolders have submitted redeem orders already
+					// We need to take into account that the 3 TrancheHolders have submitted redeem
+					// orders already
 					.checked_add(TOTAL_REDEEM_AMOUNT)
 					.expect("Unwrapping test checked_add must work")
 			)
@@ -867,8 +868,8 @@ fn fulfillment_partially_works_low_price() {
 			));
 		}
 
-		// We now have fulfilled x% of the SINGLE_INVEST_AMOUNT and y% of the SINGLE_REDEEM_AMOUNT
-		// fulfilled. We must check first the correct balances.
+		// We now have fulfilled x% of the SINGLE_INVEST_AMOUNT and y% of the
+		// SINGLE_REDEEM_AMOUNT fulfilled. We must check first the correct balances.
 		{
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
@@ -1276,12 +1277,13 @@ fn fulfillment_partially_works_low_price() {
 		// - ActiveInvestOrders = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT
 		// - ActiveRedeemOrders = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT
 		// - Balance of investment account
-		//     - AUSD = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT
-		//                  + PERC_REDEEM_FULFILL * TOTAL_REDEEM_AMOUNT * PRICE
+		//     - AUSD = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT +
+		//       PERC_REDEEM_FULFILL * TOTAL_REDEEM_AMOUNT * PRICE
 		//                  - PERC_REDEEM_FULFILL * SINGLE_REDEEM_AMOUNT * PRICE
-		//     - InvestmentId = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT
-		// 		                  + PERC_INVEST_FULFILL * TOTAL_INVEST_AMOUNT * 1/PRICE
-		// 		                  - 2 * PERC_INVEST_FULFILL * SINGLE_INVEST_AMOUNT * 1/PRICE
+		//     - InvestmentId = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT +
+		//       PERC_INVEST_FULFILL * TOTAL_INVEST_AMOUNT * 1/PRICE
+		// 		                  - 2 * PERC_INVEST_FULFILL * SINGLE_INVEST_AMOUNT *
+		//                       1/PRICE
 		//
 		// Only checking balances of investment account here:
 		{
@@ -1296,10 +1298,10 @@ fn fulfillment_partially_works_low_price() {
 		}
 
 		// Over a loop we partially fulfill all orders
-		// Investors{A..C} have all PERC_INVEST_FULFILL of their initial amounts fulfilled
-		// InvestorD has nothing fulfilled yet
-		// TrancheHolder{A..C} have all PERC_REDEEM_FULFILL of their initial amounts fulfilled
-		// TrancheHolderD has nothing fulfilled yet
+		// Investors{A..C} have all PERC_INVEST_FULFILL of their initial amounts
+		// fulfilled InvestorD has nothing fulfilled yet
+		// TrancheHolder{A..C} have all PERC_REDEEM_FULFILL of their initial amounts
+		// fulfilled TrancheHolderD has nothing fulfilled yet
 		{
 			// Over 4 rounds we fulfill PERC_FULFIL_ALL
 			let perc_fulfill = Perquintill::from_rational(25u64, 100u64);
@@ -1561,8 +1563,8 @@ fn fulfillment_partially_works_high_price() {
 			));
 		}
 
-		// We now have fulfilled x% of the SINGLE_INVEST_AMOUNT and y% of the SINGLE_REDEEM_AMOUNT
-		// fulfilled. We must check first the correct balances.
+		// We now have fulfilled x% of the SINGLE_INVEST_AMOUNT and y% of the
+		// SINGLE_REDEEM_AMOUNT fulfilled. We must check first the correct balances.
 		{
 			assert_eq!(
 				free_balance_of(investment_account(INVESTMENT_0_0), CurrencyId::AUSD),
@@ -1970,12 +1972,13 @@ fn fulfillment_partially_works_high_price() {
 		// - ActiveInvestOrders = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT
 		// - ActiveRedeemOrders = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT
 		// - Balance of investment account
-		//     - AUSD = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT
-		//                  + PERC_REDEEM_FULFILL * TOTAL_REDEEM_AMOUNT * PRICE
+		//     - AUSD = (PERC_INVEST_UNFULFILL * 4 + 1) * SINGLE_INVEST_AMOUNT +
+		//       PERC_REDEEM_FULFILL * TOTAL_REDEEM_AMOUNT * PRICE
 		//                  - PERC_REDEEM_FULFILL * SINGLE_REDEEM_AMOUNT * PRICE
-		//     - InvestmentId = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT
-		// 		                  + PERC_INVEST_FULFILL * TOTAL_INVEST_AMOUNT * 1/PRICE
-		// 		                  - 2 * PERC_INVEST_FULFILL * SINGLE_INVEST_AMOUNT * 1/PRICE
+		//     - InvestmentId = (PERC_REDEEM_UNFULFILL * 4 + 1) * SINGLE_REDEEM_AMOUNT +
+		//       PERC_INVEST_FULFILL * TOTAL_INVEST_AMOUNT * 1/PRICE
+		// 		                  - 2 * PERC_INVEST_FULFILL * SINGLE_INVEST_AMOUNT *
+		//                       1/PRICE
 		//
 		// Only checking balances of investment account here:
 		{
@@ -1990,10 +1993,10 @@ fn fulfillment_partially_works_high_price() {
 		}
 
 		// Over a loop we partially fulfill all orders
-		// Investors{A..C} have all PERC_INVEST_FULFILL of their initial amounts fulfilled
-		// InvestorD has nothing fulfilled yet
-		// TrancheHolder{A..C} have all PERC_REDEEM_FULFILL of their initial amounts fulfilled
-		// TrancheHolderD has nothing fulfilled yet
+		// Investors{A..C} have all PERC_INVEST_FULFILL of their initial amounts
+		// fulfilled InvestorD has nothing fulfilled yet
+		// TrancheHolder{A..C} have all PERC_REDEEM_FULFILL of their initial amounts
+		// fulfilled TrancheHolderD has nothing fulfilled yet
 		{
 			// Over 4 rounds we fulfill PERC_FULFIL_ALL
 			let perc_fulfill = Perquintill::from_rational(25u64, 100u64);

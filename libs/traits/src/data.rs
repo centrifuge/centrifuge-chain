@@ -12,7 +12,8 @@ pub trait DataRegistry<DataId, CollectionId> {
 	/// Return the last data value for a data id
 	fn get(data_id: &DataId) -> Self::Data;
 
-	/// Retrives a collection of data with all data associated to a collection id
+	/// Retrives a collection of data with all data associated to a collection
+	/// id
 	fn collection(collection_id: &CollectionId) -> Self::Collection;
 
 	/// Start listening data changes for a data id in a collection id

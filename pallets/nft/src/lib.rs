@@ -82,8 +82,8 @@ pub mod pallet {
 	///
 	/// Associated types and constants are declared in this trait. If the pallet
 	/// depends on other super-traits, the latter must be added to this trait,
-	/// such as, in this case, [`pallet_balances::Config`] super-traits. Note that
-	/// [`frame_system::Config`] must always be included.
+	/// such as, in this case, [`pallet_balances::Config`] super-traits. Note
+	/// that [`frame_system::Config`] must always be included.
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config
@@ -99,12 +99,13 @@ pub mod pallet {
 
 		/// Resource hash id.
 		///
-		/// This type was initially declared in the bridge pallet but was moved here
-		/// to avoid circular dependencies.
+		/// This type was initially declared in the bridge pallet but was moved
+		/// here to avoid circular dependencies.
 		#[pallet::constant]
 		type ResourceHashId: Get<ResourceId>;
 
-		/// Additional fee charged for validating NFT proof (when minting a NFT).
+		/// Additional fee charged for validating NFT proof (when minting a
+		/// NFT).
 		#[pallet::constant]
 		type NftProofValidationFeeKey: Get<<Self::Fees as Fees>::FeeKey>;
 
@@ -116,7 +117,8 @@ pub mod pallet {
 	// Pallet events
 	// ------------------------------------------------------------------------
 
-	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
+	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and
+	// Codec
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -130,10 +132,12 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Unable to recreate the anchor hash from the proofs and data provided.
+		/// Unable to recreate the anchor hash from the proofs and data
+		/// provided.
 		InvalidProofs,
 
-		/// A given document id does not match a corresponding document in the anchor storage.
+		/// A given document id does not match a corresponding document in the
+		/// anchor storage.
 		DocumentNotAnchored,
 	}
 
@@ -143,15 +147,16 @@ pub mod pallet {
 
 	// Declare Call structure and implement dispatchable (or callable) functions.
 	//
-	// Dispatchable functions are transactions modifying the state of the chain. They
-	// are also called extrinsics are constitute the pallet's public interface.
+	// Dispatchable functions are transactions modifying the state of the chain.
+	// They are also called extrinsics are constitute the pallet's public interface.
 	// Note that each parameter used in functions must implement `Clone`, `Debug`,
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Validates the proofs provided against the document root associated with the anchor_id.
-		/// Once the proofs are verified, we create a bundled hash `(deposit_address + [proof[i].hash])`
-		/// Bundled Hash is deposited to an DepositAsset event for bridging purposes.
+		/// Validates the proofs provided against the document root associated
+		/// with the anchor_id. Once the proofs are verified, we create a
+		/// bundled hash `(deposit_address + [proof[i].hash])` Bundled Hash is
+		/// deposited to an DepositAsset event for bridging purposes.
 		///
 		/// Adds additional fee to compensate the current cost of target chains
 		/// # <weight>
@@ -183,7 +188,8 @@ pub mod pallet {
 				Error::<T>::InvalidProofs
 			);
 
-			// Returns a Ethereum-compatible Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
+			// Returns a Ethereum-compatible Keccak hash of deposit_address +
+			// hash(keccak(name+value+salt)) of each proof provided.
 			let bundled_hash = Self::get_bundled_hash_from_proofs(proofs, deposit_address);
 			Self::deposit_event(Event::<T>::DepositAsset(bundled_hash));
 
@@ -207,10 +213,11 @@ pub mod pallet {
 // Implement public and private pallet functions.
 //
 // This main implementation block contains two categories of functions, namely:
-// - Public functions: These are functions that are `pub` and generally fall into
-//   inspector functions that do not write to storage and operation functions that do.
-// - Private functions: These are private helpers or utilities that cannot be called
-//   from other pallets.
+// - Public functions: These are functions that are `pub` and generally fall
+//   into inspector functions that do not write to storage and operation
+//   functions that do.
+// - Private functions: These are private helpers or utilities that cannot be
+//   called from other pallets.
 impl<T: Config> Pallet<T> {
 	/// Returns a Ethereum compatible (i.e. Keccak-based) hash.
 	///

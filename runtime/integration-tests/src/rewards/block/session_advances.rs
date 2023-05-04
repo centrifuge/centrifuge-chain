@@ -38,9 +38,10 @@ use crate::{
 	},
 };
 
-/// Execute extrinsic to add the given keyring as a candidate of the CollatorSelection.
-/// Upon success, the collator's session key will be included in the next sessions queued keys
-/// and thus be added to `NextEpochChanges::<Runtime>.collators.joining.`
+/// Execute extrinsic to add the given keyring as a candidate of the
+/// CollatorSelection. Upon success, the collator's session key will be included
+/// in the next sessions queued keys and thus be added to
+/// `NextEpochChanges::<Runtime>.collators.joining.`
 pub(crate) fn add_collator(env: &mut TestEnv, who: Keyring) {
 	let xt = xt_centrifuge(
 		&env,

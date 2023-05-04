@@ -50,8 +50,9 @@ use super::{
 };
 
 /// The main XCM config
-/// This is where we configure the core of our XCM integrations: how tokens are transferred,
-/// how fees are calculated, what barriers we impose on incoming XCM messages, etc.
+/// This is where we configure the core of our XCM integrations: how tokens are
+/// transferred, how fees are calculated, what barriers we impose on incoming
+/// XCM messages, etc.
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type AssetClaims = PolkadotXcm;
@@ -72,8 +73,9 @@ impl xcm_executor::Config for XcmConfig {
 }
 
 /// Trader - The means of purchasing weight credit for XCM execution.
-/// We need to ensure we have at least one rule per token we want to handle or else
-/// the xcm executor won't know how to charge fees for a transfer of said token.
+/// We need to ensure we have at least one rule per token we want to handle or
+/// else the xcm executor won't know how to charge fees for a transfer of said
+/// token.
 pub type Trader = (
 	FixedRateOfFungible<CanonicalNativePerSecond, ToTreasury>,
 	FixedRateOfFungible<NativePerSecond, ToTreasury>,
@@ -137,7 +139,8 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
-/// Barrier is a filter-like option controlling what messages are allows to be executed.
+/// Barrier is a filter-like option controlling what messages are allows to be
+/// executed.
 pub type Barrier = (
 	TakeWeightCredit,
 	xcm_primitives::AllowTopLevelPaidExecutionDescendOriginFirst<Everything>,
@@ -185,9 +188,10 @@ where
 }
 
 /// CurrencyIdConvert
-/// This type implements conversions from our `CurrencyId` type into `MultiLocation` and vice-versa.
-/// A currency locally is identified with a `CurrencyId` variant but in the network it is identified
-/// in the form of a `MultiLocation`, in this case a pair (Para-Id, Currency-Id).
+/// This type implements conversions from our `CurrencyId` type into
+/// `MultiLocation` and vice-versa. A currency locally is identified with a
+/// `CurrencyId` variant but in the network it is identified in the form of a
+/// `MultiLocation`, in this case a pair (Para-Id, Currency-Id).
 pub struct CurrencyIdConvert;
 
 /// Convert our `CurrencyId` type into its `MultiLocation` representation.
@@ -218,8 +222,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 }
 
 /// Convert an incoming `MultiLocation` into a `CurrencyId` if possible.
-/// Here we need to know the canonical representation of all the tokens we handle in order to
-/// correctly convert their `MultiLocation` representation into our internal `CurrencyId` type.
+/// Here we need to know the canonical representation of all the tokens we
+/// handle in order to correctly convert their `MultiLocation` representation
+/// into our internal `CurrencyId` type.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
 		if location == MultiLocation::parent() {
@@ -283,8 +288,8 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
-/// Pallet Xcm offers a lot of out-of-the-box functionality and features to configure
-/// and handle XCM messages.
+/// Pallet Xcm offers a lot of out-of-the-box functionality and features to
+/// configure and handle XCM messages.
 impl pallet_xcm::Config for Runtime {
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
@@ -311,9 +316,10 @@ parameter_types! {
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();
 }
 
-/// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
-/// when determining ownership of accounts for asset transacting and when attempting to use XCM
-/// `Transact` in order to determine the dispatch Origin.
+/// Type for specifying how a `MultiLocation` can be converted into an
+/// `AccountId`. This is used when determining ownership of accounts for asset
+/// transacting and when attempting to use XCM `Transact` in order to determine
+/// the dispatch Origin.
 pub type LocationToAccountId = (
 	// The parent (Relay-chain) origin converts to the default `AccountId`.
 	ParentIsPreset<AccountId>,
@@ -339,9 +345,10 @@ pub type XcmRouter = (
 	XcmpQueue,
 );
 
-/// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
-/// ready for dispatching a transaction with Xcm's `Transact`. There is an `OriginKind` which can
-/// biases the kind of local `Origin` it will become.
+/// This is the type we use to convert an (incoming) XCM origin into a local
+/// `Origin` instance, ready for dispatching a transaction with Xcm's
+/// `Transact`. There is an `OriginKind` which can biases the kind of local
+/// `Origin` it will become.
 pub type XcmOriginToTransactDispatchOrigin = (
 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for

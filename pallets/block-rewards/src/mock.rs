@@ -217,7 +217,8 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 }
 
 // pub type MockRewards =
-// 	cfg_traits::rewards::mock::MockRewards<Balance, u32, (u8, CurrencyId), AccountId>;
+// 	cfg_traits::rewards::mock::MockRewards<Balance, u32, (u8, CurrencyId),
+// AccountId>;
 
 frame_support::parameter_types! {
 	#[derive(scale_info::TypeInfo)]
@@ -279,9 +280,10 @@ pub(crate) fn assert_not_staked(who: &AccountId) {
 
 /// Progress to the given block triggering session changes.
 ///
-/// This will finalize the previous block, initialize up to the given block, essentially simulating
-/// a block import/propose process where we first initialize the block, then execute some stuff (not
-/// in the function), and then finalize the block.
+/// This will finalize the previous block, initialize up to the given block,
+/// essentially simulating a block import/propose process where we first
+/// initialize the block, then execute some stuff (not in the function), and
+/// then finalize the block.
 pub(crate) fn run_to_block(n: BlockNumber) {
 	while System::block_number() < n {
 		<AllPalletsWithSystem as OnFinalize<BlockNumber>>::on_finalize(System::block_number());
@@ -290,7 +292,8 @@ pub(crate) fn run_to_block(n: BlockNumber) {
 	}
 }
 
-/// Progresses from the current block number (whatever that may be) to the `P * session_index + 1`.
+/// Progresses from the current block number (whatever that may be) to the `P *
+/// session_index + 1`.
 pub(crate) fn start_session(session_index: SessionIndex) {
 	let end: u64 = if Offset::get().is_zero() {
 		(session_index as u64) * Period::get()

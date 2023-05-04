@@ -11,12 +11,13 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-//! This module checks whether an account should be allowed to make a transfer to
-//! a receiving location with a specific currency.
-//! If there are no allowances specified, then the account is assumed to be allowed
-//! to send to any location without restrictions.
-//! However once an allowance for a sender to a specific recieving location and currency is made,
-//! /then/ transfers from the sending account are restricted for that currency to:
+//! This module checks whether an account should be allowed to make a transfer
+//! to a receiving location with a specific currency.
+//! If there are no allowances specified, then the account is assumed to be
+//! allowed to send to any location without restrictions.
+//! However once an allowance for a sender to a specific recieving location and
+//! currency is made, /then/ transfers from the sending account are restricted
+//! for that currency to:
 //! - the account(s) for which allowances have been made
 //! - the block range specified in the allowance
 
@@ -114,22 +115,25 @@ pub mod pallet {
 	/// Struct to define when a transfer should be allowed from
 	/// the sender, receiver, and currency combination.
 	/// Transfer allowed time set by range of block numbers
-	/// Defaults to `allowed_at` starting at 0, and `blocked_at` ending at MAX block value
-	/// as per `Default` impl.
+	/// Defaults to `allowed_at` starting at 0, and `blocked_at` ending at MAX
+	/// block value as per `Default` impl.
 	/// Current block must be between allowed at and blocked at
-	/// for transfer to be approved if allowance for sender/currency/receiver present.
+	/// for transfer to be approved if allowance for sender/currency/receiver
+	/// present.
 	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 	pub struct AllowanceDetails<BlockNumber> {
 		/// Specifies a block number after which transfers will be allowed
 		/// for the sender & currency and destination location.
 		/// This is by default set to 0 with the add allowance extrinsic,
-		/// unless a delay is set, in which case it is set to the current block + delay.
+		/// unless a delay is set, in which case it is set to the current block
+		/// + delay.
 		pub allowed_at: BlockNumber,
 		/// Specifies a block number after-which transfers will be blocked
 		/// for the sender & currency and destination location.
-		/// This is by default set to `BlockNumber::Max()`, except when an allowance has been removed but not purged.
-		/// In that case it is set to the current block + delay.
-		/// if the allowance is later updated with the add allowance extrinsic, it is set back to max.
+		/// This is by default set to `BlockNumber::Max()`, except when an
+		/// allowance has been removed but not purged. In that case it is set to
+		/// the current block + delay. if the allowance is later updated with
+		/// the add allowance extrinsic, it is set back to max.
 		pub blocked_at: BlockNumber,
 	}
 
@@ -145,10 +149,11 @@ pub mod pallet {
 		}
 	}
 
-	/// Metadata values used to track and manage Allowances for a sending Account/Currency combination.
-	/// contains the number of allowances/presence of existing allowances for said combination, as well as
-	/// whether a delay is set for the allowance to take effect,
-	/// and if--and then when--a delay is modifiable.
+	/// Metadata values used to track and manage Allowances for a sending
+	/// Account/Currency combination. contains the number of allowances/presence
+	/// of existing allowances for said combination, as well as whether a delay
+	/// is set for the allowance to take effect, and if--and then when--a delay
+	/// is modifiable.
 	#[derive(Clone, Copy, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 	pub struct AllowanceMetadata<BlockNumber> {
 		pub(super) allowance_count: u64,
@@ -168,19 +173,28 @@ pub mod pallet {
 			}
 		}
 	}
-	/// Storage item containing number of allowances set, delay for sending account/currency, and block number delay is modifiable at.
-	/// Contains an instance of AllowanceMetadata with allowance count as `u64`, current_delay as `Option<T::BlockNumber>`, and modifiable_at as `Option<T::BlockNumber>`.
-	/// If a delay is set, but no allowances have been created, `allowance_count` will be set to `0`.
-	/// A double map is used here as we need to know whether there is a restriction set
-	/// for the account and currency in the case where there is no allowance for destination location.
-	/// Using an StorageNMap would not allow us to look up whether there was a restriction for the sending account and currency, given that:
-	/// - we're checking whether there's an allowance specified for the receiver location
-	///   - we would only find whether a restriction was set for the account in this case if:
-	///     - an allowance was specified for the receiving location, which would render blocked restrictions useless
-	/// - we would otherwise need to store a vec of locations, which is problematic given that there isn't a set limit on receivers
+	/// Storage item containing number of allowances set, delay for sending
+	/// account/currency, and block number delay is modifiable at. Contains an
+	/// instance of AllowanceMetadata with allowance count as `u64`,
+	/// current_delay as `Option<T::BlockNumber>`, and modifiable_at as
+	/// `Option<T::BlockNumber>`. If a delay is set, but no allowances have been
+	/// created, `allowance_count` will be set to `0`. A double map is used here
+	/// as we need to know whether there is a restriction set for the account
+	/// and currency in the case where there is no allowance for destination
+	/// location. Using an StorageNMap would not allow us to look up whether
+	/// there was a restriction for the sending account and currency, given
+	/// that:
+	/// - we're checking whether there's an allowance specified for the receiver
+	///   location
+	///   - we would only find whether a restriction was set for the account in
+	///     this case if:
+	///     - an allowance was specified for the receiving location, which would
+	///       render blocked restrictions useless
+	/// - we would otherwise need to store a vec of locations, which is
+	///   problematic given that there isn't a set limit on receivers
 	/// If a transfer restriction is in place, then a second lookup is done on
-	/// AccountCurrencyAllowances to see if there is an allowance for the receiver
-	/// This allows us to keep storage map vals to known/bounded sizes.
+	/// AccountCurrencyAllowances to see if there is an allowance for the
+	/// receiver This allows us to keep storage map vals to known/bounded sizes.
 	#[pallet::storage]
 	#[pallet::getter(fn get_account_currency_restriction_count_delay)]
 	pub type AccountCurrencyTransferCountDelay<T: Config> = StorageDoubleMap<
@@ -193,7 +207,8 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
-	/// Storage item for allowances specified for a sending account, currency type and receiving location
+	/// Storage item for allowances specified for a sending account, currency
+	/// type and receiving location
 	#[pallet::storage]
 	#[pallet::getter(fn get_account_currency_transfer_allowance)]
 	pub type AccountCurrencyTransferAllowance<T: Config> = StorageNMap<
@@ -212,9 +227,11 @@ pub mod pallet {
 	//
 	#[pallet::error]
 	pub enum Error<T> {
-		/// An operation expecting one or more allowances for a sending Account/Currency set, where none present
+		/// An operation expecting one or more allowances for a sending
+		/// Account/Currency set, where none present
 		NoAllowancesSet,
-		/// Attempted to create allowance for existing Sending Account, Currency, and Receiver combination
+		/// Attempted to create allowance for existing Sending Account,
+		/// Currency, and Receiver combination
 		DuplicateAllowance,
 		/// No matching allowance for Location/Currency
 		NoMatchingAllowance,
@@ -223,11 +240,13 @@ pub mod pallet {
 		NoMatchingDelay,
 		/// Delay already exists
 		DuplicateDelay,
-		/// Delay has not been set to modified, or delay at which modification has been set has not been reached.
+		/// Delay has not been set to modified, or delay at which modification
+		/// has been set has not been reached.
 		DelayUnmodifiable,
 		/// Attempted to clear active allowance
 		AllowanceHasNotExpired,
-		/// Transfer from sending account and currency not allowed to destination
+		/// Transfer from sending account and currency not allowed to
+		/// destination
 		NoAllowanceForDestination,
 	}
 
@@ -284,13 +303,16 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Adds a transfer allowance for a sending Account/Currency.
-		/// Allowance either starts at the current block + the delay set for the account,
-		/// if a delay is present.
+		/// Allowance either starts at the current block + the delay set for the
+		/// account, if a delay is present.
 		/// or block 0 if no delay is present.
-		/// Important! Account/Currency sets with an allowance set are restricted to just the allowances added for the account -
-		/// to have unrestricted transfers allowed for the sending Account and Currency, no allowances should be present.
+		/// Important! Account/Currency sets with an allowance set are
+		/// restricted to just the allowances added for the account -
+		/// to have unrestricted transfers allowed for the sending Account and
+		/// Currency, no allowances should be present.
 		///
-		/// Running this for an existing allowance generates a new allowance based on the current delay, or lack thereof
+		/// Running this for an existing allowance generates a new allowance
+		/// based on the current delay, or lack thereof
 		#[pallet::call_index(0)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
 		pub fn add_transfer_allowance(
@@ -340,7 +362,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Restricts a transfer allowance for a sending account/currency/receiver location to:
+		/// Restricts a transfer allowance for a sending
+		/// account/currency/receiver location to:
 		/// - either the current block + delay if a delay is set
 		/// - or the current block if no delay is set
 		#[pallet::call_index(1)]
@@ -386,8 +409,9 @@ pub mod pallet {
 			}
 		}
 
-		/// Removes a transfer allowance for a sending account/currency and receiving location
-		/// Decrements or removes the sending account/currency count.
+		/// Removes a transfer allowance for a sending account/currency and
+		/// receiving location Decrements or removes the sending
+		/// account/currency count.
 		#[pallet::call_index(2)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
 		pub fn purge_transfer_allowance(
@@ -469,8 +493,9 @@ pub mod pallet {
 
 		#[pallet::call_index(4)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
-		/// Updates an allowance delay, only callable if the delay has been set to allow future modifications and
-		/// the delay modifiable_at block has been passed.
+		/// Updates an allowance delay, only callable if the delay has been set
+		/// to allow future modifications and the delay modifiable_at block has
+		/// been passed.
 		pub fn update_allowance_delay(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -498,8 +523,8 @@ pub mod pallet {
 						currency_id,
 						AllowanceMetadata {
 							current_delay: Some(delay),
-							// we want to ensure that after the delay is modified, it cannot be modified on a whim
-							// without another modifiable_at set.
+							// we want to ensure that after the delay is modified, it cannot be
+							// modified on a whim without another modifiable_at set.
 							once_modifiable_after: None,
 							..metadata
 						},
@@ -516,8 +541,9 @@ pub mod pallet {
 
 		#[pallet::call_index(5)]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
-		/// This allows the delay value to be modified after the current delay has passed since the current block
-		/// Or sets the delay value to be not modifiable iff modifiable at has already passed
+		/// This allows the delay value to be modified after the current delay
+		/// has passed since the current block Or sets the delay value to be not
+		/// modifiable iff modifiable at has already passed
 		pub fn toggle_allowance_delay_once_future_modifiable(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -616,13 +642,15 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Increments number of allowances present for a sending account/currency set.
-		/// If no allowances set, an entry with 1 added, if entry already present, it is then incremented.
+		/// Increments number of allowances present for a sending
+		/// account/currency set. If no allowances set, an entry with 1 added,
+		/// if entry already present, it is then incremented.
 		pub fn increment_or_create_allowance_count(
 			account_id: &T::AccountId,
 			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
-			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
+			// not using try_mutate here as we're not sure if key exits, and we're already
+			// doing a some value check on result of exists query check
 			match Self::get_account_currency_restriction_count_delay(account_id, currency_id) {
 				Some(
 					metadata @ AllowanceMetadata {
@@ -651,15 +679,16 @@ pub mod pallet {
 			}
 		}
 
-		/// Decrements the number of allowances tracked for a sending account/currency set.
-		/// If the allowance count is currently 1, then it removes the entry
-		/// If greater than 1, then decremented.
+		/// Decrements the number of allowances tracked for a sending
+		/// account/currency set. If the allowance count is currently 1, then it
+		/// removes the entry If greater than 1, then decremented.
 		/// If no entry present, NoAllowancesSet error returned.
 		pub fn decrement_or_remove_allowance_count(
 			account_id: &T::AccountId,
 			currency_id: &T::CurrencyId,
 		) -> DispatchResult {
-			// not using try_mutate here as we're not sure if key exits, and we're already doing a some value check on result of exists query check
+			// not using try_mutate here as we're not sure if key exits, and we're already
+			// doing a some value check on result of exists query check
 			match Self::get_account_currency_restriction_count_delay(account_id, currency_id) {
 				Some(AllowanceMetadata {
 					allowance_count,
@@ -710,13 +739,15 @@ pub mod pallet {
 		type CurrencyId = T::CurrencyId;
 		type Location = T::Location;
 
-		/// This checks to see if a transfer from an account and currency should be allowed to a given location.
-		/// If there are no allowances defined for the sending account and currency, then the transfer is allowed.
+		/// This checks to see if a transfer from an account and currency should
+		/// be allowed to a given location. If there are no allowances defined
+		/// for the sending account and currency, then the transfer is allowed.
 		/// If there is an allowance for the sending account and currency,
-		/// but the destination does not have an allowance added then the transfer is not allowed.
-		/// If there is an allowance for the sending account and currency,
-		/// and there's an allowance present:
-		/// then we check whether the current block is between the `allowed_at` and `blocked_at` blocks in the allowance.
+		/// but the destination does not have an allowance added then the
+		/// transfer is not allowed. If there is an allowance for the sending
+		/// account and currency, and there's an allowance present:
+		/// then we check whether the current block is between the `allowed_at`
+		/// and `blocked_at` blocks in the allowance.
 		fn allowance(
 			send: T::AccountId,
 			receive: Self::Location,

@@ -7,8 +7,9 @@ use sp_std::{vec, vec::Vec};
 use crate::Codec;
 
 /// Address type
-/// Note: It can be used to represent any address type with a length <= 32 bytes;
-/// For example, it can represent an Ethereum address (20-bytes long) by padding it with 12 zeros.
+/// Note: It can be used to represent any address type with a length <= 32
+/// bytes; For example, it can represent an Ethereum address (20-bytes long) by
+/// padding it with 12 zeros.
 type Address = [u8; 32];
 
 /// The fixed size for the array representing a tranche token name
@@ -19,11 +20,12 @@ pub const TOKEN_SYMBOL_SIZE: usize = 32;
 
 /// A Connector Message
 ///
-/// A connector message requires a custom decoding & encoding, meeting the Connector Generic
-/// Message Passing Format (CGMPF): Every message is encoded with a u8 at head flagging the
-/// message type, followed by its field. Integers are big-endian encoded and enum values
-/// (such as `[crate::Domain]`) also have a custom CGMPF implementation, aiming for a
-/// fixed-size encoded representation for each message variant.
+/// A connector message requires a custom decoding & encoding, meeting the
+/// Connector Generic Message Passing Format (CGMPF): Every message is encoded
+/// with a u8 at head flagging the message type, followed by its field. Integers
+/// are big-endian encoded and enum values (such as `[crate::Domain]`) also have
+/// a custom CGMPF implementation, aiming for a fixed-size encoded
+/// representation for each message variant.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Message<Domain, PoolId, TrancheId, Balance, Rate>
@@ -73,12 +75,12 @@ impl<
 		Rate: Encode + Decode,
 	> Message<Domain, PoolId, TrancheId, Balance, Rate>
 {
-	/// The call type that identifies a specific Message variant. This value is used
-	/// to encode/decode a Message to/from a bytearray, whereas the head of the bytearray
-	/// is the call type, followed by each message's param values.
+	/// The call type that identifies a specific Message variant. This value is
+	/// used to encode/decode a Message to/from a bytearray, whereas the head of
+	/// the bytearray is the call type, followed by each message's param values.
 	///
-	/// NOTE: Each message must immutably  map to the same u8. Messages are decoded
-	/// in other domains and MUST follow the defined standard.
+	/// NOTE: Each message must immutably  map to the same u8. Messages are
+	/// decoded in other domains and MUST follow the defined standard.
 	fn call_type(&self) -> u8 {
 		match self {
 			Self::Invalid => 0,

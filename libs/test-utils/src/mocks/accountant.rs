@@ -10,14 +10,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-/// Exposes a struct $name that implements the `trait Accountant`. The struct expects one generic
-/// parameter that implements the fungibles traits `Inspect`, `Mutate` and `Transfer`. Furthermore,
-/// there exists a struct `GenesisConfig` that implements `trait GenesisBuild` that can be used
-/// like any other `GenesisConfig` to initialize state in the `TestExternalities`.
+/// Exposes a struct $name that implements the `trait Accountant`. The struct
+/// expects one generic parameter that implements the fungibles traits
+/// `Inspect`, `Mutate` and `Transfer`. Furthermore, there exists a struct
+/// `GenesisConfig` that implements `trait GenesisBuild` that can be used
+/// like any other `GenesisConfig` to initialize state in the
+/// `TestExternalities`.
 ///
 /// Also exports a `struct InvestmentInfo` to be used in the `GenesisConfig`
 ///
-/// * E.g.: `MockAccountant<Tokens: frame_support::traits::tokens::fungibles::{Inspect, Mutate, Transfer}>`
+/// * E.g.: `MockAccountant<Tokens:
+///   frame_support::traits::tokens::fungibles::{Inspect, Mutate, Transfer}>`
 ///
 /// # Example macro usage:
 /// ```ignore
