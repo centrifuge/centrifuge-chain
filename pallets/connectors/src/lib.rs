@@ -660,18 +660,14 @@ pub mod pallet {
 		/// configured `GeneralCurrencyPrefix` and its local currency identifier.
 		///
 		/// Assumes the currency to be registered in the `AssetRegistry`.
-		pub fn try_get_general_index(
-			currency: <T as pallet::Config>::CurrencyId,
-		) -> Result<u128, DispatchError> {
+		pub fn try_get_general_index(currency: CurrencyIdOf<T>) -> Result<u128, DispatchError> {
 			ensure!(
-				<T as Config>::AssetRegistry::metadata(&currency).is_some(),
+				T::AssetRegistry::metadata(&currency).is_some(),
 				Error::<T>::AssetNotFound
 			);
 
-			let general_index: GeneralCurrencyIndex<
-				u128,
-				<T as pallet::Config>::GeneralCurrencyPrefix,
-			> = CurrencyIdOf::<T>::try_into(currency)?;
+			let general_index: GeneralCurrencyIndex<u128, T::GeneralCurrencyPrefix> =
+				CurrencyIdOf::<T>::try_into(currency)?;
 
 			Ok(general_index.index)
 		}
