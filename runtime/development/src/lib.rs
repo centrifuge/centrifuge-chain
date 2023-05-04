@@ -1492,17 +1492,12 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Weights = ();
 }
 
-parameter_types! {
-	#[derive(scale_info::TypeInfo)]
-	pub const GeneralCurrencyPrefix: [u8; 12] = GENERAL_CURRENCY_INDEX_PREFIX;
-}
-
 impl pallet_connectors::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type GeneralCurrencyPrefix = GeneralCurrencyPrefix;
+	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
 	type Permission = Permissions;
 	type PoolInspect = PoolSystem;
 	type Rate = Rate;
