@@ -42,6 +42,7 @@ pub mod migrations {
 	pub mod v1;
 }
 
+pub mod config;
 pub mod types;
 pub mod valuation;
 pub mod write_off;
