@@ -20,8 +20,6 @@
 // --heap-pages=4096
 // --output=/tmp/pallet_transfer_allowlist.rs
 
-// Note: generated locally -- will be replaced with CI benchmark value on correctly spec'd machine
-// once PR ready.
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
