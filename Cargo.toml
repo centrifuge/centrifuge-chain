@@ -39,6 +39,7 @@ members = [
   "pallets/bridge",
   "pallets/block-rewards",
   "pallets/connectors",
+  "pallets/connectors-gateway",
   "pallets/claims",
   "pallets/collator-allowlist",
   "pallets/crowdloan-claim",
