@@ -1767,7 +1767,7 @@ impl pallet_block_rewards::Config for Runtime {
 }
 
 parameter_types! {
-	TransferAllowlistFeeKey: FeeKey = FeeKey::AllowanceCreation;
+	pub const TransferAllowlistFeeKey: FeeKey = FeeKey::AllowanceCreation;
 }
 
 impl pallet_transfer_allowlist::Config for Runtime {
