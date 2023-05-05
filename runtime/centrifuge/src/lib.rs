@@ -55,7 +55,6 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_oracle::{CombineData, DataProviderExtended};
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
@@ -1549,69 +1548,6 @@ impl pallet_interest_accrual::Config for Runtime {
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxWriteOffPolicySize: u32 = 100;
-	pub const MaxHasDispatchedSize: u32 = 1;
-	pub const MaxPools: u32 = 50;
-	pub RootMember: AccountId = PalletId(*b"changeme").into_account_truncating(); //TODO
-}
-
-type OracleValue = orml_oracle::TimestampedValue<Rate, Moment>;
-
-pub struct LastData;
-impl CombineData<PriceId, OracleValue> for LastData {
-	fn combine_data(
-		_: &PriceId,
-		values: Vec<OracleValue>,
-		_: Option<OracleValue>,
-	) -> Option<OracleValue> {
-		values
-			.into_iter()
-			.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
-	}
-}
-
-impl orml_oracle::Config for Runtime {
-	type CombineData = LastData;
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
-	//TODO
-	type Members = Elections;
-	type OnNewData = CollectionPriceFeed;
-	type OracleKey = PriceId;
-	type OracleValue = Rate;
-	type RootOperatorAccountId = RootMember;
-	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
-	type WeightInfo = ();
-}
-
-// This part is forced because of https://github.com/open-web3-stack/open-runtime-module-library/issues/904
-pub struct DataProviderBridge;
-impl DataProviderExtended<PriceId, (Rate, Moment)> for DataProviderBridge {
-	fn get_no_op(key: &PriceId) -> Option<(Rate, Moment)> {
-		OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
-	}
-
-	fn get_all_values() -> Vec<(PriceId, Option<(Rate, Moment)>)> {
-		OrmlOracle::get_all_values()
-			.into_iter()
-			.map(|elem| {
-				(
-					elem.0,
-					elem.1
-						.map(|OracleValue { value, timestamp }| (value, timestamp)),
-				)
-			})
-			.collect()
-	}
-}
-
-impl pallet_collection_data_feed::Config for Runtime {
-	type CollectionId = PoolId;
-	type Data = Rate;
-	type DataId = PriceId;
-	type DataProvider = DataProviderBridge;
-	type MaxCollectionSize = MaxActiveLoansPerPool;
-	type MaxCollections = MaxPools;
-	type Moment = Moment;
 }
 
 impl pallet_loans_ref::Config for Runtime {
@@ -1627,7 +1563,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PriceId = PriceId;
-	type PriceRegistry = CollectionPriceFeed;
+	type PriceRegistry = pallet_loans_ref::config::NoPriceRegistry<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1753,7 +1689,6 @@ construct_runtime!(
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
-		OrmlOracle: orml_oracle::{Pallet, Storage, Call, Event<T>} = 154,
 
 		// Synced pallets across all runtimes - Range: 180-240
 		// WHY: * integrations like fireblocks will need to know the index in the enum
@@ -1767,7 +1702,6 @@ construct_runtime!(
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
 		Loans: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 187,
-		CollectionPriceFeed: pallet_collection_data_feed::{Pallet, Storage} = 188,
 	}
 );
 

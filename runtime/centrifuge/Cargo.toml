@@ -88,7 +88,6 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
-orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 
 # Our pallets and modules
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
@@ -113,7 +112,6 @@ pallet-pool-registry = { path = "../../pallets/pool-registry", default-features 
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
-pallet-collection-data-feed = { path = "../../pallets/collection-data-feed", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 # bridge pallets
@@ -152,7 +150,6 @@ std = [
   "orml-xcm-support/std",
   "orml-xcm/std",
   "orml-xtokens/std",
-  "orml-oracle/std",
   "pallet-anchors/std",
   "pallet-aura/std",
   "pallet-authorship/std",
@@ -179,7 +176,6 @@ std = [
   "pallet-permissions/std",
   "pallet-pool-registry/std",
   "pallet-pool-system/std",
-  "pallet-collection-data-feed/std",
   "pallet-preimage/std",
   "pallet-proxy/std",
   "pallet-randomness-collective-flip/std",
@@ -293,7 +289,6 @@ try-runtime = [
   "orml-tokens/try-runtime",
   "orml-xcm/try-runtime",
   "orml-xtokens/try-runtime",
-  "orml-oracle/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
