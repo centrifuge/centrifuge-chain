@@ -16,8 +16,8 @@ use scale_info::TypeInfo;
 use sp_core::TypeId;
 
 /// The EVM Chain ID
-/// The type should accomodate all chain ids listed on https://chainlist.org/.
-type EVMChainId = u64;
+/// The type should accommodate all chain ids listed on https://chainlist.org/.
+pub type EVMChainId = u64;
 
 /// A Domain is a chain or network we can send a Connectors message to.
 /// The domain indices need to match those used in the EVM contracts and these
