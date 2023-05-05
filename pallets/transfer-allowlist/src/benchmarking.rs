@@ -13,10 +13,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use cfg_test_utils::system::time_travel::advance_n_blocks;
+use cfg_traits::fees::Fees;
 use cfg_types::{locations::Location, tokens::CurrencyId};
 use codec::EncodeLike;
 use frame_benchmarking::*;
-use frame_support::traits::{Currency, ReservableCurrency};
+use frame_support::traits::{Currency, Get, ReservableCurrency};
 use frame_system::RawOrigin;
 use scale_info::TypeInfo;
 use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One};
@@ -283,7 +284,10 @@ benchmarks! {
 fn set_up_users<T: Config>() -> (T::AccountId, T::AccountId) {
 	let sender: T::AccountId = account::<T::AccountId>("Sender", 1, 0);
 	let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2, 0);
-	T::ReserveCurrency::deposit_creating(&sender, 100u32.into());
+	T::ReserveCurrency::deposit_creating(
+		&sender,
+		T::Fees::fee_value(T::AllowanceFeeKey::get()) * 4u32.into(),
+	);
 	(sender, receiver)
 }
 
