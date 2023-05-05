@@ -9,7 +9,7 @@ use crate::{
 
 const DEFAULT_ERR: DispatchError = DispatchError::Other("No price registry for pallet-loans");
 
-pub struct NoPriceRegistry<T>(std::marker::PhantomData<T>);
+pub struct NoPriceRegistry<T>(PhantomData<T>);
 
 impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	type Collection = NoPriceCollection<T>;
