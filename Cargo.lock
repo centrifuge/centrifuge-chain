@@ -2645,6 +2645,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-connectors",
+ "pallet-connectors-gateway",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
  "pallet-data-collector",
@@ -7033,6 +7034,21 @@ dependencies = [
  "sp-std",
  "xcm",
  "xcm-primitives",
+]
+
+[[package]]
+name = "pallet-connectors-gateway"
+version = "0.0.1"
+dependencies = [
+ "cfg-traits",
+ "cfg-types",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

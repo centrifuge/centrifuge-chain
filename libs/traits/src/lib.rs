@@ -47,6 +47,9 @@ pub mod data;
 /// Traits related to checked changes.
 pub mod changes;
 
+/// Traits related to connectors.
+pub mod connectors;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
