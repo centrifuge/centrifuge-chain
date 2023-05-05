@@ -12,7 +12,7 @@ use super::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
 		WrittenOffError,
 	},
-	valuation::{DiscountedCashFlow, ValuationMethod},
+	valuation::{DiscountedCashFlow, Oracle, ValuationMethod},
 	write_off::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 };
 
@@ -85,7 +85,7 @@ mod util {
 		MockPools::mock_pool_exists(|_| panic!("no mock"));
 	}
 
-	pub fn create_loan(asset: Asset, max_borrow_amount: MaxBorrowAmount<Rate>) -> LoanId {
+	pub fn create_loan(loan_info: LoanInfo<Runtime>) -> LoanId {
 		MockPermissions::mock_has(|_, _, _| true);
 		MockPools::mock_pool_exists(|_| true);
 		MockPools::mock_account_for(|_| POOL_A_ACCOUNT);
@@ -93,11 +93,11 @@ mod util {
 		Loans::create(
 			RuntimeOrigin::signed(BORROWER),
 			POOL_A,
-			LoanInfo::new(asset)
+			loan_info
 				.maturity(now() + YEAR)
 				.interest_rate(Rate::from_float(DEFAULT_INTEREST_RATE))
 				.collateral_value(COLLATERAL_VALUE)
-				.max_borrow_amount(max_borrow_amount),
+				.max_borrow_amount(util::total_borrowed_rate(1.0)),
 		)
 		.expect("successful creation");
 
@@ -317,7 +317,7 @@ mod borrow_loan {
 	#[test]
 	fn from_other_borrower() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			config_mocks(COLLATERAL_VALUE);
 
@@ -336,7 +336,7 @@ mod borrow_loan {
 	#[test]
 	fn has_been_written_off() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			config_mocks(COLLATERAL_VALUE / 2);
 			assert_ok!(Loans::borrow(
@@ -364,7 +364,7 @@ mod borrow_loan {
 	#[test]
 	fn with_maturity_passed() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			advance_time(YEAR);
 
@@ -382,6 +382,11 @@ mod borrow_loan {
 	}
 
 	#[test]
+	fn with_oracle_id_not_set() {
+		new_test_ext().execute_with(|| todo!());
+	}
+
+	#[test]
 	fn with_wrong_amounts() {
 		let borrow_inputs = [
 			(COLLATERAL_VALUE + 1, util::total_borrowed_rate(1.0)),
@@ -394,7 +399,8 @@ mod borrow_loan {
 
 		for (amount, max_borrow_amount) in borrow_inputs {
 			new_test_ext().execute_with(|| {
-				let loan_id = util::create_loan(ASSET_AA, max_borrow_amount);
+				let loan_id =
+					util::create_loan(LoanInfo::new(ASSET_AA).max_borrow_amount(max_borrow_amount));
 
 				config_mocks(amount);
 				assert_noop!(
@@ -418,7 +424,8 @@ mod borrow_loan {
 
 		for (amount, max_borrow_amount) in borrow_inputs {
 			new_test_ext().execute_with(|| {
-				let loan_id = util::create_loan(ASSET_AA, max_borrow_amount);
+				let loan_id =
+					util::create_loan(LoanInfo::new(ASSET_AA).max_borrow_amount(max_borrow_amount));
 
 				config_mocks(amount);
 				assert_ok!(Loans::borrow(
@@ -435,7 +442,7 @@ mod borrow_loan {
 	#[test]
 	fn twice() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			config_mocks(COLLATERAL_VALUE / 2);
 
@@ -467,7 +474,7 @@ mod borrow_loan {
 	#[test]
 	fn twice_with_elapsed_time() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			config_mocks(COLLATERAL_VALUE / 2);
 
@@ -523,7 +530,7 @@ mod repay_loan {
 	#[test]
 	fn without_borrow_first() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			config_mocks(COLLATERAL_VALUE);
 			assert_noop!(
@@ -553,7 +560,7 @@ mod repay_loan {
 	#[test]
 	fn from_other_borrower() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE);
@@ -572,7 +579,7 @@ mod repay_loan {
 	#[test]
 	fn has_been_written_off() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -591,7 +598,7 @@ mod repay_loan {
 	#[test]
 	fn with_success() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE);
@@ -608,7 +615,7 @@ mod repay_loan {
 	#[test]
 	fn with_more_than_required() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE);
@@ -624,7 +631,7 @@ mod repay_loan {
 	#[test]
 	fn twice() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE / 2);
@@ -659,7 +666,7 @@ mod repay_loan {
 	#[test]
 	fn twice_with_elapsed_time() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE / 2);
@@ -706,7 +713,9 @@ mod repay_loan {
 	#[test]
 	fn outstanding_debt_rate_no_increase_if_fully_repaid() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::outstanding_debt_rate(1.0));
+			let loan_id = util::create_loan(
+				LoanInfo::new(ASSET_AA).max_borrow_amount(util::outstanding_debt_rate(1.0)),
+			);
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			config_mocks(COLLATERAL_VALUE);
@@ -740,7 +749,7 @@ mod write_off_loan {
 	#[test]
 	fn without_policy() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			assert_noop!(
@@ -764,7 +773,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + BLOCK_TIME);
@@ -782,7 +791,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR / 2);
@@ -824,7 +833,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			config_mocks();
 			assert_noop!(
@@ -849,7 +858,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -873,7 +882,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -891,7 +900,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -941,7 +950,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -979,7 +988,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -1011,7 +1020,7 @@ mod write_off_loan {
 	#[test]
 	fn with_policy_change_after_admin() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			config_mocks();
@@ -1048,7 +1057,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, 0.0);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -1074,7 +1083,7 @@ mod write_off_loan {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(0.0, POLICY_PENALTY);
 
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -1114,7 +1123,7 @@ mod write_off_loan {
 	#[test]
 	fn fully() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY);
@@ -1153,7 +1162,7 @@ mod close_loan {
 	#[test]
 	fn with_wrong_borrower() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			assert_noop!(
 				Loans::close(RuntimeOrigin::signed(OTHER_BORROWER), POOL_A, loan_id),
@@ -1174,7 +1183,7 @@ mod close_loan {
 	#[test]
 	fn without_fully_repaid() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 			util::repay_loan(loan_id, COLLATERAL_VALUE / 2);
 
@@ -1188,7 +1197,7 @@ mod close_loan {
 	#[test]
 	fn with_fully_repaid() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 			util::repay_loan(loan_id, COLLATERAL_VALUE);
 
@@ -1205,7 +1214,7 @@ mod close_loan {
 	#[test]
 	fn just_created() {
 		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 
 			assert_ok!(Loans::close(
 				RuntimeOrigin::signed(BORROWER),
@@ -1338,7 +1347,7 @@ mod write_off_policy {
 			));
 
 			// Check if a loan is correctly writen off
-			let loan_id = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_id = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
 			advance_time(YEAR + DAY * 10);
@@ -1403,7 +1412,7 @@ mod portfolio_valuation {
 	#[test]
 	fn with_no_active_loans() {
 		new_test_ext().execute_with(|| {
-			util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			util::create_loan(LoanInfo::new(ASSET_AA));
 
 			advance_time(YEAR / 2);
 
@@ -1415,10 +1424,10 @@ mod portfolio_valuation {
 	#[test]
 	fn with_active_loans() {
 		new_test_ext().execute_with(|| {
-			let loan_1 = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_1 = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_1, COLLATERAL_VALUE / 2);
 
-			let loan_2 = util::create_loan(ASSET_BA, util::total_borrowed_rate(1.0));
+			let loan_2 = util::create_loan(LoanInfo::new(ASSET_BA));
 			util::borrow_loan(loan_2, COLLATERAL_VALUE);
 			util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
 
@@ -1437,10 +1446,10 @@ mod portfolio_valuation {
 	#[test]
 	fn with_active_written_off_loans() {
 		new_test_ext().execute_with(|| {
-			let loan_1 = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_1 = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_1, COLLATERAL_VALUE / 2);
 
-			let loan_2 = util::create_loan(ASSET_BA, util::total_borrowed_rate(1.0));
+			let loan_2 = util::create_loan(LoanInfo::new(ASSET_BA));
 			util::borrow_loan(loan_2, COLLATERAL_VALUE);
 			util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
 
@@ -1456,10 +1465,10 @@ mod portfolio_valuation {
 	#[test]
 	fn filled_and_cleaned() {
 		new_test_ext().execute_with(|| {
-			let loan_1 = util::create_loan(ASSET_AA, util::total_borrowed_rate(1.0));
+			let loan_1 = util::create_loan(LoanInfo::new(ASSET_AA));
 			util::borrow_loan(loan_1, COLLATERAL_VALUE / 2);
 
-			let loan_2 = util::create_loan(ASSET_BA, util::total_borrowed_rate(1.0));
+			let loan_2 = util::create_loan(LoanInfo::new(ASSET_BA));
 			util::borrow_loan(loan_2, COLLATERAL_VALUE);
 			util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
 
