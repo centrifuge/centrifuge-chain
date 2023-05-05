@@ -403,6 +403,17 @@ pub mod pallet {
 				Error::<T>::InvalidTransferDomain
 			);
 			// Check that the destination is a member of this tranche token
+			// TODO: Add check to integration tests
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+			// TODO: Add check to integration tests
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
@@ -411,8 +422,6 @@ pub mod pallet {
 				),
 				Error::<T>::UnauthorizedTransfer
 			);
-
-			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -462,6 +471,7 @@ pub mod pallet {
 				domain_address.domain() != Domain::Centrifuge,
 				Error::<T>::InvalidTransferDomain
 			);
+			let currency = Self::try_get_general_index(asset_id)?;
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -479,7 +489,7 @@ pub mod pallet {
 				who.clone(),
 				Message::Transfer {
 					amount,
-					currency: Self::try_get_general_index(asset_id)?,
+					currency,
 					sender: who
 						.encode()
 						.try_into()
