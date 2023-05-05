@@ -12,6 +12,9 @@
 
 use sp_runtime::traits::{CheckedAdd, Header, One};
 
+/// Advances the chain `n` number of blocks
+/// for use with tests where actions would need to take
+/// place a certain number of blocks after another action.
 pub fn advance_n_blocks<T: frame_system::Config>(n: u64) {
 	for _ in 0..n {
 		let h = frame_system::Pallet::<T>::finalize();
