@@ -211,11 +211,6 @@ std = [
   "sp-transaction-pool/std",
   "xcm/std",
   "cumulus-pallet-session-benchmarking/std",
-  "fp-consensus/std",
-  "fp-rpc/std",
-  "fp-storage/std",
-  "futures/std",
-  "sp-io/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
