@@ -1,0 +1,26 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Centrifuge Connectors Gateway Pallet"
+edition = "2018"
+license = "LGPL-3.0"
+name = "pallet-connectors-gateway"
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "0.0.1"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+
+# Substrate crates
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+
+# Our custom pallets
+cfg-traits = { path = "../../libs/traits", default-features = false }
+cfg-types = { path = "../../libs/types", default-features = false }

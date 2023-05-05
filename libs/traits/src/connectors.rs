@@ -27,16 +27,16 @@ pub trait OutboundQueue {
 	/// The sender type of the outgoing message.
 	type Sender;
 
-	/// The destination this message should go to.
-	type Destination;
-
 	/// The message type that is processed.
 	type Message;
 
+	/// The destination this message should go to.
+	type Destination;
+
 	/// Submit a message to the outbound queue.
 	fn submit(
-		sender: Self::Sender,
 		destination: Self::Destination,
+		sender: Self::Sender,
 		msg: Self::Message,
 	) -> DispatchResult;
 }
