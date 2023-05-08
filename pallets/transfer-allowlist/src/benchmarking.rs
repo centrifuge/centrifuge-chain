@@ -20,7 +20,7 @@ use frame_benchmarking::*;
 use frame_support::traits::{Currency, Get, ReservableCurrency};
 use frame_system::RawOrigin;
 use scale_info::TypeInfo;
-use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One};
+use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, One};
 
 use super::*;
 benchmarks! {
@@ -43,10 +43,6 @@ benchmarks! {
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 200u32.into())?;
 	}:add_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
-
-	add_allowance_delay_no_existing_metadata {
-		let (sender, receiver) = set_up_users::<T>();
-	}:add_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native, 200u32.into())
 
 	add_allowance_delay_existing_metadata {
 		let (sender, receiver) = set_up_users::<T>();
@@ -80,17 +76,6 @@ benchmarks! {
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
 		advance_n_blocks::<T>(1u32.into());
 	}:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
-
-	remove_transfer_allowance_no_delay {
-		let (sender, receiver) = set_up_users::<T>();
-		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
-	}:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
-
-	purge_transfer_allowance_no_remaining_metadata {
-		let (sender, receiver) = set_up_users::<T>();
-		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
-		Pallet::<T>::remove_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
-	}:purge_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
 
 	purge_transfer_allowance_remaining_metadata {
 		let (sender, receiver) = set_up_users::<T>();

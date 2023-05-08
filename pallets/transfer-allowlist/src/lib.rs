@@ -323,7 +323,7 @@ pub mod pallet {
 		/// Running this for an existing allowance generates a new allowance
 		/// based on the current delay, or lack thereof
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::Weights::add_transfer_allowance_no_existing_metadata().max(T::Weights::add_transfer_allowance_existing_metadata()))]
+		#[pallet::weight(T::Weights::add_transfer_allowance_existing_metadata())]
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -376,7 +376,7 @@ pub mod pallet {
 		/// - either the current block + delay if a delay is set
 		/// - or the current block if no delay is set
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::Weights::remove_transfer_allowance_missing_allowance().max(T::Weights::remove_transfer_allowance_delay_present()))]
+		#[pallet::weight(T::Weights::remove_transfer_allowance_delay_present())]
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -422,7 +422,7 @@ pub mod pallet {
 		/// receiving location Decrements or removes the sending
 		/// account/currency count.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::Weights::purge_transfer_allowance())]
+		#[pallet::weight(T::Weights::purge_transfer_allowance_remaining_metadata())]
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -456,7 +456,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::Weights::add_allowance_delay_existing_metadata().max(T::Weights::add_allowance_delay_no_existing_metadata()))]
+		#[pallet::weight(T::Weights::add_allowance_delay_existing_metadata())]
 		/// Adds an account/currency delay
 		/// Calling on an account/currency with an existing delay will fail.
 		/// To update a delay the delay has to be set to future modifiable.
@@ -601,7 +601,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::Weights::purge_allowance_delay().max(T::Weights::purge_allowance_delay_no_remaining_metadata()))]
+		#[pallet::weight(T::Weights::purge_allowance_delay())]
 		/// Removes an existing sending account/currency delay
 		pub fn purge_allowance_delay(
 			origin: OriginFor<T>,

@@ -13,30 +13,17 @@
 pub use frame_support::weights::Weight;
 
 pub trait Weights {
-	fn add_transfer_allowance_no_existing_metadata() -> Weight;
 	fn add_transfer_allowance_existing_metadata() -> Weight;
-	fn add_allowance_delay_no_existing_metadata() -> Weight;
 	fn add_allowance_delay_existing_metadata() -> Weight;
 	fn toggle_allowance_delay_once_future_modifiable() -> Weight;
 	fn update_allowance_delay() -> Weight;
 	fn purge_allowance_delay() -> Weight;
-	fn remove_transfer_allowance_missing_allowance() -> Weight;
 	fn remove_transfer_allowance_delay_present() -> Weight;
-	fn remove_transfer_allowance_no_delay() -> Weight;
-	fn purge_transfer_allowance_no_remaining_metadata() -> Weight;
 	fn purge_transfer_allowance_remaining_metadata() -> Weight;
 }
 
 impl Weights for () {
-	fn add_transfer_allowance_no_existing_metadata() -> Weight {
-		Weight::zero()
-	}
-
 	fn add_transfer_allowance_existing_metadata() -> Weight {
-		Weight::zero()
-	}
-
-	fn add_allowance_delay_no_existing_metadata() -> Weight {
 		Weight::zero()
 	}
 
@@ -56,19 +43,7 @@ impl Weights for () {
 		Weight::zero()
 	}
 
-	fn remove_transfer_allowance_missing_allowance() -> Weight {
-		Weight::zero()
-	}
-
 	fn remove_transfer_allowance_delay_present() -> Weight {
-		Weight::zero()
-	}
-
-	fn remove_transfer_allowance_no_delay() -> Weight {
-		Weight::zero()
-	}
-
-	fn purge_transfer_allowance_no_remaining_metadata() -> Weight {
 		Weight::zero()
 	}
 
