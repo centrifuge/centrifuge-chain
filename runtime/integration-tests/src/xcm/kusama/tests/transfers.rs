@@ -43,13 +43,12 @@ use xcm_emulator::TestExt;
 
 use crate::xcm::kusama::{
 	setup::{
-		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
-		PARA_ID_SIBLING,
+		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
+		AUSD_ASSET_ID, BOB, PARA_ID_SIBLING,
 	},
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+	tests::register_ausd,
 };
-use crate::xcm::kusama::setup::AUSD_ASSET_ID;
-use crate::xcm::kusama::tests::register_ausd;
 
 /*
 
@@ -257,10 +256,7 @@ fn transfer_ausd_to_altair() {
 	Altair::execute_with(|| {
 		register_ausd();
 
-		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()),
-			0,
-		);
+		assert_eq!(OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()), 0,);
 	});
 
 	Karura::execute_with(|| {
@@ -329,10 +325,7 @@ fn transfer_ksm_from_relay_chain() {
 			Some(currency_id.clone()),
 		));
 
-		assert_eq!(
-			OrmlTokens::free_balance(currency_id, &BOB.into()),
-			0
-		);
+		assert_eq!(OrmlTokens::free_balance(currency_id, &BOB.into()), 0);
 	});
 
 	KusamaNet::execute_with(|| {

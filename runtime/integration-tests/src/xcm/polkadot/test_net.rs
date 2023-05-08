@@ -87,9 +87,7 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![
-			(AccountId::from(ALICE), dot(10)),
-		],
+		balances: vec![(AccountId::from(ALICE), dot(10))],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();

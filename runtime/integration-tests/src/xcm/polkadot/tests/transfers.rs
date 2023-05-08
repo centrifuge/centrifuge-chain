@@ -44,13 +44,12 @@ use xcm_emulator::TestExt;
 use super::register_dot;
 use crate::xcm::polkadot::{
 	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE, BOB,
-		DOT_ASSET_ID, PARA_ID_SIBLING,
+		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+	tests::register_ausd,
 };
-use crate::xcm::polkadot::setup::AUSD_ASSET_ID;
-use crate::xcm::polkadot::tests::register_ausd;
 
 /*
 
@@ -244,10 +243,7 @@ fn transfer_ausd_to_centrifuge() {
 	Centrifuge::execute_with(|| {
 		register_ausd();
 
-		assert_eq!(
-			OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()),
-			0,
-		);
+		assert_eq!(OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()), 0,);
 	});
 
 	Acala::execute_with(|| {
@@ -303,10 +299,7 @@ fn transfer_dot_from_relay_chain() {
 
 	Centrifuge::execute_with(|| {
 		register_dot();
-		assert_eq!(
-			OrmlTokens::free_balance(DOT_ASSET_ID, &ALICE.into()),
-			0
-		);
+		assert_eq!(OrmlTokens::free_balance(DOT_ASSET_ID, &ALICE.into()), 0);
 	});
 
 	PolkadotNet::execute_with(|| {
@@ -350,17 +343,15 @@ fn transfer_dot_to_relay_chain() {
 	Centrifuge::execute_with(|| {
 		let alice_initial_dot = OrmlTokens::free_balance(DOT_ASSET_ID, &ALICE.into());
 
-		assert_eq!(
-			alice_initial_dot,
-			dot(3) - dot_fee(),
-		);
+		assert_eq!(alice_initial_dot, dot(3) - dot_fee(),);
 
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(ALICE.into()),
 			DOT_ASSET_ID,
 			dot(1),
 			Box::new(
-				MultiLocation::new( // nuno
+				MultiLocation::new(
+					// nuno
 					1,
 					X1(Junction::AccountId32 {
 						id: ALICE,
