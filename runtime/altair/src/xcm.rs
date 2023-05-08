@@ -214,7 +214,6 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
 		match location.clone() {
-			// todo(nuno): verify this will work correctly
 			MultiLocation {
 				parents: 1,
 				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. }),
@@ -232,7 +231,11 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 			MultiLocation {
 				parents: 0,
 				interior: X1(x),
-			} => OrmlAssetRegistry::location_to_asset_id(MultiLocation { parents: 1, interior: X2(Parachain(u32::from(ParachainInfo::get())), x)}).ok_or(location),
+			} => OrmlAssetRegistry::location_to_asset_id(MultiLocation {
+				parents: 1,
+				interior: X2(Parachain(u32::from(ParachainInfo::get())), x),
+			})
+			.ok_or(location),
 			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 		}
 	}

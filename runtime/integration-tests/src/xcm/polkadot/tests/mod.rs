@@ -11,20 +11,22 @@
 // GNU General Public License for more details.
 
 use centrifuge_runtime::{OrmlAssetRegistry, RuntimeOrigin};
-use cfg_primitives::{Balance, parachains};
+use cfg_primitives::{parachains, Balance};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use frame_support::assert_ok;
 use orml_traits::asset_registry::AssetMetadata;
-use runtime_common::xcm_fees::ksm_per_second;
-use xcm::{latest::MultiLocation, VersionedMultiLocation};
-use xcm::prelude::{Parachain, X2};
-use runtime_common::xcm::general_key;
-use crate::xcm::polkadot::setup::AUSD_ASSET_ID;
+use runtime_common::{xcm::general_key, xcm_fees::ksm_per_second};
+use xcm::{
+	latest::MultiLocation,
+	prelude::{Parachain, X2},
+	VersionedMultiLocation,
+};
 
 use super::setup::DOT_ASSET_ID;
+use crate::xcm::polkadot::setup::AUSD_ASSET_ID;
 
 mod asset_registry;
 mod currency_id_convert;
@@ -56,7 +58,7 @@ fn register_dot() {
 	));
 }
 
-/// Register DOT in the asset registry.
+/// Register AUSD in the asset registry.
 /// It should be executed within an externalities environment.
 fn register_ausd() {
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -81,3 +83,27 @@ fn register_ausd() {
 	));
 }
 
+/// Register DOT in the asset registry.
+/// It should be executed within an externalities environment.
+fn register_cfg() {
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 18,
+		name: "Centrifuge".into(),
+		symbol: "CFG".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::polkadot::centrifuge::ID),
+				general_key(parachains::polkadot::centrifuge::CFG_KEY),
+			),
+		))),
+		additional: CustomMetadata::default(),
+	};
+
+	assert_ok!(OrmlAssetRegistry::register_asset(
+		RuntimeOrigin::root(),
+		meta,
+		Some(CurrencyId::Native)
+	));
+}

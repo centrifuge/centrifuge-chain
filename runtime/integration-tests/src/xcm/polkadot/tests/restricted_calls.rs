@@ -55,10 +55,10 @@ use crate::xcm::polkadot::{
 /// Verify that calls that would allow for Tranche token to be transferred through XCM
 /// fail because the underlying CurrencyIdConvert doesn't handle Tranche tokens.
 pub mod blocked {
+	use cfg_utils::vec_to_fixed_array;
 	use frame_support::weights::Weight;
 	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
 	use xcm::{latest::MultiAssets, VersionedMultiAsset, VersionedMultiAssets};
-	use cfg_utils::vec_to_fixed_array;
 
 	use super::*;
 
@@ -103,7 +103,14 @@ pub mod blocked {
 			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 		let tranche_location = MultiLocation {
 			parents: 1,
-			interior: X3(Parachain(123), PalletInstance(42), GeneralKey { length: tranche_id.len() as u8, data: vec_to_fixed_array(tranche_id.to_vec()) }),
+			interior: X3(
+				Parachain(123),
+				PalletInstance(42),
+				GeneralKey {
+					length: tranche_id.len() as u8,
+					data: vec_to_fixed_array(tranche_id.to_vec()),
+				},
+			),
 		};
 		let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
 			AssetId::Concrete(tranche_location),
@@ -144,7 +151,14 @@ pub mod blocked {
 			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 		let tranche_location = MultiLocation {
 			parents: 1,
-			interior: X3(Parachain(123), PalletInstance(42), GeneralKey { length: tranche_id.len() as u8, data: vec_to_fixed_array(tranche_id.to_vec()) }),
+			interior: X3(
+				Parachain(123),
+				PalletInstance(42),
+				GeneralKey {
+					length: tranche_id.len() as u8,
+					data: vec_to_fixed_array(tranche_id.to_vec()),
+				},
+			),
 		};
 		let tranche_multi_asset = MultiAsset::from((
 			AssetId::Concrete(tranche_location),

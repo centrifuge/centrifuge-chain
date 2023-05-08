@@ -30,6 +30,7 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
+use cfg_utils::vec_to_fixed_array;
 use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
@@ -47,44 +48,44 @@ use xcm::{
 };
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
-use cfg_utils::vec_to_fixed_array;
 
 use super::register_dot;
 use crate::xcm::polkadot::{
 	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE, BOB,
-		DOT_ASSET_ID, PARA_ID_SIBLING,
+		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+	tests::{register_ausd, register_cfg},
 };
-use crate::xcm::polkadot::setup::AUSD_ASSET_ID;
-use crate::xcm::polkadot::tests::register_ausd;
 
 #[test]
 fn convert_cfg() {
 	assert_eq!(parachains::polkadot::centrifuge::CFG_KEY, &[0, 1]);
 
-	// The way CFG is represented relative within the Centrifuge runtime
-	let cfg_location_inner: MultiLocation = MultiLocation::new(
-		0,
-		X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
-	);
-
-	assert_eq!(
-		<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
-		Ok(CurrencyId::Native),
-	);
-
-	// The canonical way CFG is represented out in the wild
-	let cfg_location_canonical: MultiLocation = MultiLocation::new(
-		1,
-		X2(
-			Parachain(parachains::polkadot::centrifuge::ID),
-			general_key(parachains::polkadot::centrifuge::CFG_KEY),
-		),
-	);
-
 	Centrifuge::execute_with(|| {
+		// The way CFG is represented relative within the Centrifuge runtime
+		let cfg_location_inner: MultiLocation = MultiLocation::new(
+			0,
+			X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
+		);
+
+		register_cfg();
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
+			Ok(CurrencyId::Native),
+		);
+
+		// The canonical way CFG is represented out in the wild
+		let cfg_location_canonical: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::polkadot::centrifuge::ID),
+				general_key(parachains::polkadot::centrifuge::CFG_KEY),
+			),
+		);
+
 		assert_eq!(
 			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
 			Some(cfg_location_canonical)
@@ -106,7 +107,10 @@ fn convert_tranche() {
 		interior: X3(
 			Parachain(parachains::polkadot::centrifuge::ID),
 			PalletInstance(MOCK_POOLS_PALLET_INDEX),
-			GeneralKey { length: tranche_id.len() as u8, data: vec_to_fixed_array(tranche_id.to_vec()) },
+			GeneralKey {
+				length: tranche_id.len() as u8,
+				data: vec_to_fixed_array(tranche_id.to_vec()),
+			},
 		),
 	};
 
@@ -138,7 +142,7 @@ fn convert_ausd() {
 	);
 
 	Centrifuge::execute_with(|| {
-        register_ausd();
+		register_ausd();
 
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
