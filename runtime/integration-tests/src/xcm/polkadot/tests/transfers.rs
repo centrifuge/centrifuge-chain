@@ -149,7 +149,7 @@ fn transfer_cfg_to_sibling() {
 		assert_eq!(current_balance, transfer_amount - fee(18));
 
 		// Sanity check for the actual amount BOB ends up with
-		assert_eq!(current_balance, 4991917600000000000);
+		assert_eq!(current_balance, 4991987200000000000);
 	});
 }
 
@@ -224,6 +224,8 @@ fn transfer_ausd_to_centrifuge() {
 	let alice_initial_balance = ausd(10);
 	let bob_initial_balance = ausd(10);
 	let transfer_amount = ausd(7);
+
+	let currency_id = CurrencyId::ForeignAsset(42);
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: 12,
 		name: "Acala Dollar".into(),
@@ -232,45 +234,51 @@ fn transfer_ausd_to_centrifuge() {
 		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::kusama::karura::ID),
-				general_key(parachains::kusama::karura::AUSD_KEY),
+				Parachain(parachains::polkadot::acala::ID),
+				general_key(parachains::polkadot::acala::AUSD_KEY),
 			),
 		))),
 		additional: CustomMetadata::default(),
 	};
 
-	assert_ok!(OrmlAssetRegistry::register_asset(
+	Acala::execute_with(|| {
+		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
-			meta,
-			Some(CurrencyId::ForeignAsset(42))
+			meta.clone(),
+			Some(CurrencyId::Native),
 		));
 
-	Acala::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::AUSD,
+			CurrencyId::Native,
 			&ALICE.into(),
 			alice_initial_balance
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &centrifuge_account()),
+			OrmlTokens::free_balance(CurrencyId::Native, &centrifuge_account()),
 			0
 		);
 	});
 
 	Centrifuge::execute_with(|| {
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta.clone(),
+			Some(currency_id.clone()),
+		));
+
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::AUSD,
+			currency_id.clone(),
 			&BOB.into(),
 			bob_initial_balance
 		));
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
+			OrmlTokens::free_balance(currency_id.clone(), &BOB.into()),
 			bob_initial_balance,
 		);
 
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::AUSD,
+			currency_id.clone(),
 			&acala_account().into(),
 			bob_initial_balance
 		));
@@ -279,7 +287,7 @@ fn transfer_ausd_to_centrifuge() {
 	Acala::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(ALICE.into()),
-			CurrencyId::AUSD,
+			CurrencyId::Native,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -298,13 +306,13 @@ fn transfer_ausd_to_centrifuge() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &ALICE.into()),
+			OrmlTokens::free_balance(CurrencyId::Native, &ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
 
 		// Verify that the amount transferred is now part of the centrifuge parachain account here
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &centrifuge_account()),
+			OrmlTokens::free_balance(CurrencyId::Native, &centrifuge_account()),
 			transfer_amount
 		);
 	});
@@ -312,13 +320,13 @@ fn transfer_ausd_to_centrifuge() {
 	Centrifuge::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
+			OrmlTokens::free_balance(currency_id.clone(), &BOB.into()),
 			bob_initial_balance + transfer_amount - ausd_fee()
 		);
 
 		// Sanity check the actual balance
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
+			OrmlTokens::free_balance(currency_id, &BOB.into()),
 			16991917600000
 		);
 	});

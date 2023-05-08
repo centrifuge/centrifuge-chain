@@ -82,8 +82,8 @@ fn register_foreign_asset_works() {
 			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
 				X2(
-					Parachain(2000),
-					general_key(parachains::polkadot::centrifuge::CFG_KEY),
+					Parachain(parachains::polkadot::acala::ID),
+					general_key(parachains::polkadot::acala::AUSD_KEY),
 				),
 			))),
 			additional: CustomMetadata::default(),

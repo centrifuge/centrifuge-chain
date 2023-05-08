@@ -84,8 +84,8 @@ fn register_foreign_asset_works() {
 			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
 				1,
 				X2(
-					Parachain(2000),
-					general_key(parachains::kusama::altair::AIR_KEY),
+					Parachain(parachains::kusama::karura::ID),
+					general_key(parachains::kusama::karura::AUSD_KEY),
 				),
 			))),
 			additional: CustomMetadata::default(),

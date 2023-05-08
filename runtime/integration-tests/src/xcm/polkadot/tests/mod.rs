@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 use centrifuge_runtime::{OrmlAssetRegistry, RuntimeOrigin};
-use cfg_primitives::Balance;
+use cfg_primitives::{Balance, parachains};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
@@ -20,6 +20,9 @@ use frame_support::assert_ok;
 use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::xcm_fees::ksm_per_second;
 use xcm::{latest::MultiLocation, VersionedMultiLocation};
+use xcm::prelude::{Parachain, X2};
+use runtime_common::xcm::general_key;
+use crate::xcm::polkadot::setup::AUSD_ASSET_ID;
 
 use super::setup::DOT_ASSET_ID;
 
@@ -52,3 +55,29 @@ fn register_dot() {
 		Some(DOT_ASSET_ID)
 	));
 }
+
+/// Register DOT in the asset registry.
+/// It should be executed within an externalities environment.
+fn register_ausd() {
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 12,
+		name: "Acala Dollar".into(),
+		symbol: "AUSD".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::polkadot::acala::ID),
+				general_key(parachains::polkadot::acala::AUSD_KEY),
+			),
+		))),
+		additional: CustomMetadata::default(),
+	};
+
+	assert_ok!(OrmlAssetRegistry::register_asset(
+		RuntimeOrigin::root(),
+		meta,
+		Some(AUSD_ASSET_ID)
+	));
+}
+
