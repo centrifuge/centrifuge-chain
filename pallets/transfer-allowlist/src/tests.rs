@@ -16,7 +16,7 @@ fn add_transfer_allowance_works() {
 			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				<Runtime as Config>::CurrencyId::default(),
-				<Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER)
+				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -47,7 +47,7 @@ fn add_transfer_allowance_works() {
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceCreated {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER),
+				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
 				allowed_at: 0,
 				blocked_at: u64::MAX
 			})
@@ -80,7 +80,7 @@ fn add_transfer_allowance_updates_with_delay_set() {
 			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				<Runtime as Config>::CurrencyId::default(),
-				<Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER)
+				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -245,7 +245,7 @@ fn remove_transfer_allowance_works() {
 			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				<Runtime as Config>::CurrencyId::default(),
-				<Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER)
+				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -278,7 +278,7 @@ fn remove_transfer_allowance_works() {
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER),
+				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
 				allowed_at: 0u64,
 				blocked_at: 50u64
 			})
@@ -308,7 +308,7 @@ fn remove_transfer_allowance_with_delay_works() {
 			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				<Runtime as Config>::CurrencyId::default(),
-				<Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER)
+				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
 			))
 			.unwrap(),
 			AllowanceDetails {
@@ -342,7 +342,7 @@ fn remove_transfer_allowance_with_delay_works() {
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER),
+				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
 				allowed_at: 0u64,
 				blocked_at: 250u64
 			})
@@ -384,7 +384,7 @@ fn purge_transfer_allowance_works() {
 			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				<Runtime as Config>::CurrencyId::default(),
-				<Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER)
+				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
 			)),
 			None
 		);
@@ -421,7 +421,7 @@ fn purge_transfer_allowance_works() {
 			RuntimeEvent::TransferAllowList(Event::TransferAllowancePurged {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
-				receiver: <Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER),
+				receiver: <Runtime as Config>::Location::from(ACCOUNT_RECEIVER),
 			})
 		);
 	})
@@ -487,7 +487,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				<Runtime as Config>::CurrencyId::default(),
-				<Runtime as Config>::Location::TestLocal(ACCOUNT_RECEIVER)
+				<Runtime as Config>::Location::from(ACCOUNT_RECEIVER)
 			)),
 			None
 		);
@@ -497,7 +497,7 @@ fn purge_transfer_allowance_when_multiple_present_for_sender_currency_properly_d
 			TransferAllowList::get_account_currency_transfer_allowance((
 				SENDER,
 				<Runtime as Config>::CurrencyId::default(),
-				<Runtime as Config>::Location::TestLocal(100u64)
+				<Runtime as Config>::Location::from(100u64)
 			))
 			.unwrap(),
 			AllowanceDetails {
