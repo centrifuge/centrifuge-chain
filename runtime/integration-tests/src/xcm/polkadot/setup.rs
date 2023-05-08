@@ -113,7 +113,7 @@ pub fn ausd(amount: Balance) -> Balance {
 }
 
 pub fn dot(amount: Balance) -> Balance {
-	amount * dollar(currency_decimals::KSM)
+	amount * dollar(10)
 }
 
 pub fn foreign(amount: Balance, decimals: u32) -> Balance {

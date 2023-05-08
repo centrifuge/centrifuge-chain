@@ -24,6 +24,9 @@ pub const BOB: [u8; 32] = [5u8; 32];
 /// It must be one that doesn't collide with any other in use.
 pub const PARA_ID_SIBLING: u32 = 3000;
 
+/// The test asset id attributed to AUSD
+pub const AUSD_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(42);
+
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
 	parachain_id: u32,

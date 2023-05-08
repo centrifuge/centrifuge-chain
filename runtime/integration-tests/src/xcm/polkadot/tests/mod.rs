@@ -37,19 +37,12 @@ mod transfers;
 /// It should be executed within an externalities environment.
 fn register_dot() {
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-		decimals: 12,
+		decimals: 10,
 		name: "Polkadot".into(),
 		symbol: "DOT".into(),
 		existential_deposit: 100_000_000,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::parent())),
-		additional: CustomMetadata {
-			xcm: XcmMetadata {
-				// We specify a custom fee_per_second and verify below that this value is
-				// used when XCM transfer fees are charged for this token.
-				fee_per_second: Some(ksm_per_second()),
-			},
-			..CustomMetadata::default()
-		},
+		additional: CustomMetadata::default(),
 	};
 	assert_ok!(OrmlAssetRegistry::register_asset(
 		RuntimeOrigin::root(),

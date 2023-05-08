@@ -48,6 +48,8 @@ use crate::xcm::kusama::{
 	},
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
 };
+use crate::xcm::kusama::setup::AUSD_ASSET_ID;
+use crate::xcm::kusama::tests::register_ausd;
 
 /*
 
@@ -235,79 +237,40 @@ fn transfer_ausd_to_altair() {
 	TestNet::reset();
 
 	let alice_initial_balance = ausd(10);
-	let bob_initial_balance = ausd(10);
 	let transfer_amount = ausd(7);
 
-	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-		decimals: 12,
-		name: "Acala Dollar".into(),
-		symbol: "AUSD".into(),
-		existential_deposit: 1_000_000_000_000,
-		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::kusama::karura::ID),
-				general_key(parachains::kusama::karura::AUSD_KEY),
-			),
-		))),
-		additional: CustomMetadata::default(),
-	};
-	let currency_id = CurrencyId::ForeignAsset(42);
-
-	Altair::execute_with(|| {
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			RuntimeOrigin::root(),
-			meta.clone(),
-			Some(currency_id.clone()),
-		));
-	});
-
 	Karura::execute_with(|| {
-		assert_ok!(OrmlAssetRegistry::register_asset(
-			RuntimeOrigin::root(),
-			meta.clone(),
-			Some(CurrencyId::Native)
-		));
+		register_ausd();
 
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::Native,
+			AUSD_ASSET_ID,
 			&ALICE.into(),
 			alice_initial_balance
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Native, &altair_account()),
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &altair_account()),
 			0
 		);
 	});
 
 	Altair::execute_with(|| {
-		assert_ok!(OrmlTokens::deposit(
-			currency_id.clone(),
-			&BOB.into(),
-			bob_initial_balance
-		));
-		assert_eq!(
-			OrmlTokens::free_balance(currency_id.clone(), &BOB.into()),
-			bob_initial_balance,
-		);
+		register_ausd();
 
-		assert_ok!(OrmlTokens::deposit(
-			currency_id.clone(),
-			&karura_account().into(),
-			bob_initial_balance
-		));
+		assert_eq!(
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()),
+			0,
+		);
 	});
 
 	Karura::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Native, &ALICE.into()),
-			alice_initial_balance
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
+			ausd(10),
 		);
-
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(ALICE.into()),
-			CurrencyId::Native,
+			AUSD_ASSET_ID,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -326,30 +289,24 @@ fn transfer_ausd_to_altair() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Native, &ALICE.into()),
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
 
 		// Verify that the amount transferred is now part of the altair parachain account here
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Native, &altair_account()),
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &altair_account()),
 			transfer_amount
 		);
 	});
 
-	// Altair::execute_with(|| {
-	// 	// Verify that BOB now has initial balance + amount transferred - fee
-	// 	assert_eq!(
-	// 		OrmlTokens::free_balance(currency_id.clone(), &BOB.into()),
-	// 		bob_initial_balance + transfer_amount - ausd_fee()
-	// 	);
-	//
-	// 	// Sanity check the actual balance
-	// 	assert_eq!(
-	// 		OrmlTokens::free_balance(currency_id.clone(), &BOB.into()),
-	// 		16991917600000
-	// 	);
-	// });
+	Altair::execute_with(|| {
+		// Verify that BOB now has initial balance + amount transferred - fee
+		assert_eq!(
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()),
+			transfer_amount - ausd_fee()
+		);
+	});
 }
 
 #[test]

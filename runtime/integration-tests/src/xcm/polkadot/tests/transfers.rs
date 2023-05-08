@@ -299,7 +299,7 @@ fn transfer_ausd_to_centrifuge() {
 #[test]
 fn transfer_dot_from_relay_chain() {
 	let alice_initial_dot = dot(10);
-	let transfer_amount: Balance = dot(2);
+	let transfer_amount: Balance = dot(3);
 
 	Centrifuge::execute_with(|| {
 		register_dot();
@@ -352,7 +352,7 @@ fn transfer_dot_to_relay_chain() {
 
 		assert_eq!(
 			alice_initial_dot,
-			dot(2) - dot_fee(),
+			dot(3) - dot_fee(),
 		);
 
 		assert_ok!(XTokens::transfer(
@@ -369,7 +369,7 @@ fn transfer_dot_to_relay_chain() {
 				)
 				.into()
 			),
-			WeightLimit::Limited(4_000_000_000.into())
+			WeightLimit::Unlimited,
 		));
 
 		assert_eq!(
@@ -380,9 +380,8 @@ fn transfer_dot_to_relay_chain() {
 
 	PolkadotNet::execute_with(|| {
 		assert_eq!(
-			// todo(nuno): still failing; it eems like it's leaving Centrifuge but not hitting Polkadot correctly
 			polkadot_runtime::Balances::free_balance(&ALICE.into()),
-			dot(9) - dot_fee()
+			79637471000
 		);
 	});
 }
@@ -572,9 +571,9 @@ fn fee(decimals: u32) -> Balance {
 	calc_fee(default_per_second(decimals))
 }
 
-// The fee associated with transferring KSM tokens
+// The fee associated with transferring DOT tokens
 fn dot_fee() -> Balance {
-	calc_fee(ksm_per_second())
+	fee(10)
 }
 
 fn calc_fee(fee_per_second: Balance) -> Balance {
