@@ -81,6 +81,7 @@ pub mod pallet {
 		type CurrencyId: AssetId
 			+ Parameter
 			+ Debug
+			+ Default
 			+ Member
 			+ Copy
 			+ MaybeSerializeDeserialize

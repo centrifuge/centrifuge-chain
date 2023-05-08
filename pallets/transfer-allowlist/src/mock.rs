@@ -10,13 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::{fee_keys::FeeKey, locations::Location, tokens::CurrencyId};
+use cfg_types::{fee_keys::FeeKey, locations::Location};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, ConstU64, EitherOfDiverse, SortedMembers},
-	PalletId,
+	Deserialize, PalletId, Serialize,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
+use scale_info::TypeInfo;
 use sp_core::{Get, H256};
 use sp_runtime::{
 	testing::Header,
@@ -154,6 +156,34 @@ impl pallet_fees::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Treasury = Treasury;
 	type WeightInfo = ();
+}
+
+#[derive(
+	Clone,
+	Copy,
+	Debug,
+	PartialOrd,
+	Ord,
+	Encode,
+	Decode,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
+	TypeInfo,
+	Deserialize,
+	Serialize,
+)]
+pub enum CurrencyId {
+	A,
+	B,
+	C,
+	D,
+}
+
+impl Default for CurrencyId {
+	fn default() -> Self {
+		Self::A
+	}
 }
 
 pub struct TransferAllowlistFeeKey<Runtime>(sp_std::marker::PhantomData<Runtime>);
