@@ -35,7 +35,7 @@ benchmarks! {
 	}
 
 	add_transfer_allowance_no_existing_metadata {
-	let (sender, receiver) = set_up_users::<T>();
+		let (sender, receiver) = set_up_users::<T>();
 	}:add_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
 
 
@@ -74,11 +74,11 @@ benchmarks! {
 	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native)
 
 	purge_allowance_delay_remaining_metadata {
-			let (sender, receiver) = set_up_users::<T>();
-			Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
-			Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
-			Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
-			advance_n_blocks::<T>(2u32.into());
+		let (sender, receiver) = set_up_users::<T>();
+		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
+		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+		Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
+		advance_n_blocks::<T>(2u32.into());
 	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native)
 
 
