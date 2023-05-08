@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_types::{fee_keys::FeeKey, locations::Location};
+use cfg_types::fee_keys::FeeKey;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
@@ -186,6 +186,29 @@ impl Default for CurrencyId {
 	}
 }
 
+#[derive(
+	Clone,
+	Debug,
+	PartialOrd,
+	Ord,
+	Encode,
+	Decode,
+	Eq,
+	PartialEq,
+	MaxEncodedLen,
+	TypeInfo,
+	Deserialize,
+	Serialize,
+)]
+pub enum Location {
+	TestLocal(u64),
+}
+
+impl From<u64> for Location {
+	fn from(a: u64) -> Self {
+		Self::TestLocal(a)
+	}
+}
 pub struct TransferAllowlistFeeKey<Runtime>(sp_std::marker::PhantomData<Runtime>);
 impl<Runtime> Get<FeeKey> for TransferAllowlistFeeKey<Runtime> {
 	fn get() -> FeeKey {
