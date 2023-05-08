@@ -249,7 +249,7 @@ benchmarks! {
 
 	purge_transfer_allowance_remaining_metadata {
 		let (sender, receiver) = set_up_users::<T>();
-		let receiver_1 = set_up_second_reciever::<T>();
+		let receiver_1 = set_up_second_receiver::<T>();
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver_1.clone().into())?;
 		Pallet::<T>::remove_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
@@ -289,7 +289,7 @@ fn set_up_users<T: Config>() -> (T::AccountId, T::AccountId) {
 	(sender, receiver)
 }
 
-fn set_up_second_reciever<T: Config>() -> T::AccountId {
+fn set_up_second_receiver<T: Config>() -> T::AccountId {
 	account::<T::AccountId>("Receiver_1", 3, 0)
 }
 
