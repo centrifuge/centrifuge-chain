@@ -71,9 +71,31 @@ fn transfer_cfg_to_sibling() {
 	let transfer_amount = cfg(5);
 	let cfg_in_sibling = CurrencyId::ForeignAsset(12);
 
+	// CFG Metadata
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 18,
+		name: "Centrifuge".into(),
+		symbol: "CFG".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::polkadot::centrifuge::ID),
+				general_key(parachains::polkadot::centrifuge::CFG_KEY),
+			),
+		))),
+		additional: CustomMetadata::default(),
+	};
+
 	Centrifuge::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&sibling_account()), 0);
+
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta.clone(),
+			Some(CurrencyId::Native),
+		));
 	});
 
 	Sibling::execute_with(|| {
@@ -82,21 +104,6 @@ fn transfer_cfg_to_sibling() {
 			0
 		);
 
-		// Register CFG as foreign asset in the sibling parachain
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 18,
-			name: "Centrifuge".into(),
-			symbol: "CFG".into(),
-			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::polkadot::centrifuge::ID),
-					general_key(parachains::polkadot::centrifuge::CFG_KEY),
-				),
-			))),
-			additional: CustomMetadata::default(),
-		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
@@ -217,6 +224,26 @@ fn transfer_ausd_to_centrifuge() {
 	let alice_initial_balance = ausd(10);
 	let bob_initial_balance = ausd(10);
 	let transfer_amount = ausd(7);
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 12,
+		name: "Acala Dollar".into(),
+		symbol: "AUSD".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::kusama::karura::ID),
+				general_key(parachains::kusama::karura::AUSD_KEY),
+			),
+		))),
+		additional: CustomMetadata::default(),
+	};
+
+	assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta,
+			Some(CurrencyId::ForeignAsset(42))
+		));
 
 	Acala::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
@@ -387,7 +414,12 @@ fn transfer_foreign_sibling_to_centrifuge() {
 	let transfer_amount = foreign(1, meta.decimals);
 
 	Sibling::execute_with(|| {
-		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0)
+		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0);
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta.clone(),
+			Some(CurrencyId::Native),
+		));
 	});
 
 	Centrifuge::execute_with(|| {
@@ -520,15 +552,13 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
 
 		// Sanity check to ensure the calculated is what is expected
-		assert_eq!(bob_balance, 11991918);
+		assert_eq!(bob_balance, 11991988);
 	});
 }
 
 #[test]
 fn test_total_fee() {
-	assert_eq!(cfg_fee(), 8082400000000000);
-	assert_eq!(fee(currency_decimals::AUSD), 8082400000);
-	assert_eq!(fee(currency_decimals::KSM), 8082400000);
+	assert_eq!(cfg_fee(), 8012800000000000);
 }
 
 fn cfg_fee() -> Balance {

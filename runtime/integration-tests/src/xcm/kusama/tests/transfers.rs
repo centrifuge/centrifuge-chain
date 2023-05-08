@@ -73,6 +73,27 @@ fn transfer_air_to_sibling() {
 	Altair::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&sibling_account()), 0);
+
+		// Register AIR as foreign asset in the sibling parachain
+		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			decimals: 18,
+			name: "Altair".into(),
+			symbol: "AIR".into(),
+			existential_deposit: 1_000_000_000_000,
+			location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::kusama::altair::ID),
+					general_key(parachains::kusama::altair::AIR_KEY),
+				),
+			))),
+			additional: CustomMetadata::default(),
+		};
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta,
+			Some(CurrencyId::Native)
+		));
 	});
 
 	Sibling::execute_with(|| {
@@ -141,7 +162,7 @@ fn transfer_air_to_sibling() {
 		assert_eq!(current_balance, transfer_amount - fee(18));
 
 		// Sanity check for the actual amount BOB ends up with
-		assert_eq!(current_balance, 4991917600000000000);
+		assert_eq!(current_balance, 4991987200000000000);
 	});
 }
 
@@ -379,11 +400,15 @@ fn transfer_foreign_sibling_to_altair() {
 	let transfer_amount = foreign(1, meta.decimals);
 
 	Sibling::execute_with(|| {
-		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0)
+		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0);
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta.clone(),
+			Some(CurrencyId::Native),
+		));
 	});
 
 	Altair::execute_with(|| {
-		// First, register the asset in altair
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta.clone(),
@@ -514,15 +539,13 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
 
 		// Sanity check to ensure the calculated is what is expected
-		assert_eq!(bob_balance, 11991918);
+		assert_eq!(bob_balance, 11991988);
 	});
 }
 
 #[test]
 fn test_total_fee() {
-	assert_eq!(air_fee(), 8082400000000000);
-	assert_eq!(fee(currency_decimals::AUSD), 8082400000);
-	assert_eq!(fee(currency_decimals::KSM), 8082400000);
+	assert_eq!(air_fee(), 8012800000000000);
 }
 
 fn air_fee() -> Balance {

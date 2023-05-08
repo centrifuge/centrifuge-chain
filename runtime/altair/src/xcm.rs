@@ -229,6 +229,10 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				// Still support X3-based MultiLocations native to other chains
 				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
+			MultiLocation {
+				parents: 0,
+				interior: X1(x),
+			} => OrmlAssetRegistry::location_to_asset_id(MultiLocation { parents: 1, interior: X2(Parachain(u32::from(ParachainInfo::get())), x)}).ok_or(location),
 			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 		}
 	}
