@@ -48,7 +48,9 @@ where
 {
 	#[cfg(test)]
 	fn config_mocks() {
-		use crate::mock::{MockPermissions, MockPools};
+		use cfg_mocks::pallet_mock_data::util::MockDataCollection;
+
+		use crate::mock::{MockPermissions, MockPools, MockPrices};
 
 		MockPermissions::mock_add(|_, _, _| Ok(()));
 		MockPermissions::mock_has(|_, _, _| true);
@@ -58,7 +60,7 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
-		MockPrices::mock_collection(|_| MockDataCollection::new(|_| 0));
+		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
 	}
 
 	fn prepare_benchmark() -> PoolIdOf<T> {

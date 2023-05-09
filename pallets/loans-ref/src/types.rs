@@ -239,7 +239,7 @@ pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 >>::PoolId;
 
 pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-pub type PriceOf<T> = (<T as Config>::Rate, Moment);
+pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 
 /// Loan information.
@@ -519,7 +519,7 @@ impl<T: Config> ActiveLoan<T> {
 					))?
 					.0;
 
-				Ok(price.ensure_mul_int(oracle.quantity)?)
+				Ok(price.ensure_mul(oracle.quantity)?)
 			}
 		}
 	}

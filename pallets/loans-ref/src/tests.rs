@@ -12,7 +12,7 @@ use super::{
 		ActiveLoan, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo, MaxBorrowAmount,
 		WrittenOffError,
 	},
-	valuation::{DiscountedCashFlow, Oracle, ValuationMethod},
+	valuation::{DiscountedCashFlow, ValuationMethod},
 	write_off::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 };
 
@@ -381,10 +381,12 @@ mod borrow_loan {
 		});
 	}
 
+	/*
 	#[test]
 	fn with_oracle_id_not_set() {
 		new_test_ext().execute_with(|| todo!());
 	}
+	*/
 
 	#[test]
 	fn with_wrong_amounts() {
