@@ -34,7 +34,8 @@ pub struct XcmDomain<CurrencyId> {
 	pub max_gas_limit: u64,
 }
 
-// NOTE: Remove this custom implementation once the following underlying data implements MaxEncodedLen:
+// NOTE: Remove this custom implementation once the following underlying data
+// implements MaxEncodedLen:
 /// * Polkadot Repo: xcm::VersionedMultiLocation
 /// * PureStake Repo: pallet_xcm_transactor::Config<Self = T>::CurrencyId
 impl<CurrencyId> MaxEncodedLen for XcmDomain<CurrencyId>

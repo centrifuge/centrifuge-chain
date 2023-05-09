@@ -107,10 +107,8 @@ where
 	/// * (Residual, Residual) => false
 	/// * (Residual, NonResidual) => true,
 	/// * (NonResidual, Residual) => false,
-	/// * (NonResidual, NonResidual) =>
-	///         interest rate of next tranche must be smaller
-	///         equal to the interest rate of self.
-	///
+	/// * (NonResidual, NonResidual) => interest rate of next tranche must be
+	///   smaller equal to the interest rate of self.
 	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
 		match (self, next) {
 			(TrancheType::Residual, TrancheType::Residual) => false,
@@ -131,7 +129,8 @@ where
 }
 
 #[derive(Debug, Encode, PartialEq, Eq, Decode, Clone, TypeInfo, MaxEncodedLen)]
-// TODO: Why same struct twice? pool-registry and pool-system. Maybe because of circular dependencies?
+// TODO: Why same struct twice? pool-registry and pool-system. Maybe because of
+// circular dependencies?
 pub struct TrancheMetadata<MaxTokenNameLength, MaxTokenSymbolLength>
 where
 	MaxTokenNameLength: Get<u32>,
@@ -190,8 +189,9 @@ where
 		Ok(self.reserve)
 	}
 
-	/// Update the debt of a Tranche by multiplying with the accrued interest since the last update:
-	///     debt = debt * interest_rate_per_second ^ (now - last_update)
+	/// Update the debt of a Tranche by multiplying with the accrued interest
+	/// since the last update:     debt = debt * interest_rate_per_second ^ (now
+	/// - last_update)
 	pub fn accrue(&mut self, now: Moment) -> Result<(), ArithmeticError> {
 		let delta = now - self.last_updated_interest;
 		let interest = self.interest_rate_per_sec();
@@ -227,7 +227,8 @@ where
 		}
 	}
 
-	/// Updates the debt by applying the accrued interest rate since the last update moment and returns it.
+	/// Updates the debt by applying the accrued interest rate since the last
+	/// update moment and returns it.
 	pub fn debt(&mut self, now: Moment) -> Result<Balance, DispatchError> {
 		self.accrue(now)?;
 		Ok(self.debt)
@@ -280,11 +281,11 @@ where
 /// The index type for tranches
 ///
 /// The `TrancheIndex` can be seen as an normal index into a vector, just
-/// specified here as new-type to make this clear. U64 in order to keep the public api
-/// clear.
-/// In contrast to a `TrancheId` a `TrancheIndex` is not unique and does NOT refer to a
-/// specific tranche, but rather to a specific tranche-location in the tranche-structure
-/// of a pool.
+/// specified here as new-type to make this clear. U64 in order to keep the
+/// public api clear.
+/// In contrast to a `TrancheId` a `TrancheIndex` is not unique and does NOT
+/// refer to a specific tranche, but rather to a specific tranche-location in
+/// the tranche-structure of a pool.
 //
 // Example:
 //
@@ -502,8 +503,8 @@ where
 	}
 
 	/// Generate ids after the following schema:
-	/// * salt: The salt is a counter in our case that will always go
-	///         up, even if we remove tranches.
+	/// * salt: The salt is a counter in our case that will always go up, even
+	///   if we remove tranches.
 	/// * pool-id: The pool id is ensured to be unique on-chain
 	///
 	/// -> tranche id = Twox128::hash(salt)
@@ -660,7 +661,8 @@ where
 		Ok(())
 	}
 
-	/// Removing should only be possible if the Tranche at the given index has zero balance and is not the residual one.
+	/// Removing should only be possible if the Tranche at the given index has
+	/// zero balance and is not the residual one.
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
 		self.get_tranche(TrancheLoc::Index(at))
 			.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))
@@ -825,8 +827,10 @@ where
 		)
 	}
 
-	/// Returns the current prices of the tranches based on the current NAV and each tranche's balance and total issuance at this exact moment.
-	/// The correctness of the waterfall is ensured by starting at the top non-residual tranch.
+	/// Returns the current prices of the tranches based on the current NAV and
+	/// each tranche's balance and total issuance at this exact moment.
+	/// The correctness of the waterfall is ensured by starting at the top
+	/// non-residual tranch.
 	pub fn calculate_prices<BalanceRatio, Tokens, AccountId>(
 		&mut self,
 		total_assets: Balance,
@@ -1005,7 +1009,8 @@ where
 		let total_assets = pool_total_reserve.ensure_add(pool_nav)?;
 
 		// Calculate the new total asset value for each tranche
-		// This uses the current state of the tranches, rather than the cached epoch-close-time values.
+		// This uses the current state of the tranches, rather than the cached
+		// epoch-close-time values.
 		let mut total_assets = total_assets;
 		let tranche_assets = self.combine_with_mut_non_residual_top(
 			executed_amounts.iter().rev(),
@@ -1462,9 +1467,12 @@ where
 	Ok(risk_buffers)
 }
 
-// TODO: Check whether these three helper functions should be moved inside a new trait. However, does not seem to make sense as we don't want to expose them.
+// TODO: Check whether these three helper functions should be moved inside a new
+// trait. However, does not seem to make sense as we don't want to expose them.
 
-/// Generic internal helper function for combining a tranches slice of either [Tranches] or [EpochExecutionTranche] with a given iterator `with` under the provided closure `f`.
+/// Generic internal helper function for combining a tranches slice of either
+/// [Tranches] or [EpochExecutionTranche] with a given iterator `with` under the
+/// provided closure `f`.
 ///
 /// Throws iff the sizes of the tranches slice and combining iterator mismatch.
 fn combine_with<'t, R, T, IT, W, IW, F>(
@@ -1496,7 +1504,9 @@ where
 	finalize_combine(res, tranche_slice.next(), with_iter.next())
 }
 
-/// Generic internal helper function for combining a mutable tranches slice of either [Tranches] or [EpochExecutionTranche] with a given iterator `with` under the provided closure `f`.
+/// Generic internal helper function for combining a mutable tranches slice of
+/// either [Tranches] or [EpochExecutionTranche] with a given iterator `with`
+/// under the provided closure `f`.
 ///
 /// Throws iff the sizes of the tranches slice and combining iterator mismatch.
 fn combine_with_mut<'t, R, T, IT, W, IW, F>(
@@ -1528,10 +1538,11 @@ where
 	finalize_combine(res, tranche_slice.next(), with_iter.next())
 }
 
-/// Generic internal helper function for finalizing the combining of any mutable tranches slice with a given iterator `with`.
+/// Generic internal helper function for finalizing the combining of any mutable
+/// tranches slice with a given iterator `with`.
 ///
-/// Throws iff the combining iterator holds more elements than the tranche slice.
-/// Else returns the provided resolution.
+/// Throws iff the combining iterator holds more elements than the tranche
+/// slice. Else returns the provided resolution.
 fn finalize_combine<R, T, W>(
 	res: R,
 	next_tranche: Option<T>,
@@ -1634,7 +1645,9 @@ pub mod test {
 		}
 	}
 
-	/// Sets up three tranches: The default residual and two non residual ones with (10, 10, 0) and (5, 25, 0) for (interest_rate_per_sec, buffer_in_perc, seniority).
+	/// Sets up three tranches: The default residual and two non residual ones
+	/// with (10, 10, 0) and (5, 25, 0) for (interest_rate_per_sec,
+	/// buffer_in_perc, seniority).
 	fn default_tranches() -> TTranches {
 		TTranches::new(
 			DEFAULT_POOL_ID,
@@ -1647,7 +1660,9 @@ pub mod test {
 		.unwrap()
 	}
 
-	/// Sets up three tranches: The default residual and two non residual ones with (10, 10, 1) and (5, 25, 2) for (interest_rate_per_sec, buffer_in_perc, seniority).
+	/// Sets up three tranches: The default residual and two non residual ones
+	/// with (10, 10, 1) and (5, 25, 2) for (interest_rate_per_sec,
+	/// buffer_in_perc, seniority).
 	fn default_tranches_with_seniority() -> TTranches {
 		TTranches::new(
 			DEFAULT_POOL_ID,
@@ -2111,12 +2126,14 @@ pub mod test {
 			}
 		}
 
-		// Replace should work if interest is lower than tranche w/ lower index ("next").
+		// Replace should work if interest is lower than tranche w/ lower index
+		// ("next").
 		#[test]
 		fn replace_tranche_less_interest_than_next_works() {
 			let mut tranches = default_tranches();
 
-			// ensure we have an interest rate lower than the the left side tranche with a lower index, e.g. lower than 10% at index 1
+			// ensure we have an interest rate lower than the the left side tranche with a
+			// lower index, e.g. lower than 10% at index 1
 			let int_per_sec = Rate::one() / Rate::saturating_from_integer(SECS_PER_YEAR);
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 			let seniority = Some(5);
@@ -2151,18 +2168,21 @@ pub mod test {
 				.is_none());
 		}
 
-		// Replace must not work if new interest rate is greater than tranche w/ lower index ("next").
+		// Replace must not work if new interest rate is greater than tranche w/ lower
+		// index ("next").
 		#[test]
 		fn replace_tranche_more_interest_than_next_throws() {
 			let mut tranches = default_tranches();
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 
-			// ensure we have an interest rate larger than the a tranche with a lower index, e.g. 10%
+			// ensure we have an interest rate larger than the a tranche with a lower index,
+			// e.g. 10%
 			let int_per_sec = Rate::saturating_from_rational(11, 100)
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
 			let input = TrancheInput {
-				// setting to easily testable value for tranche replacement, should not be changed from 0
+				// setting to easily testable value for tranche replacement, should not be changed
+				// from 0
 				seniority: Some(5),
 				tranche_type: TrancheType::NonResidual {
 					interest_rate_per_sec: int_per_sec,
@@ -2185,13 +2205,15 @@ pub mod test {
 			assert_eq!(tranches.tranches[2], default_tranches().tranches[2]);
 		}
 
-		// Replace should work if new interest rate is greater than tranche w/ higher index ("following").
+		// Replace should work if new interest rate is greater than tranche w/ higher
+		// index ("following").
 		#[test]
 		fn replace_tranche_more_interest_than_following_works() {
 			let mut tranches = default_tranches();
 
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
-			// ensure we have an interest rate larger than the the right-side tranche with a greater index, e.g. larger than 5% at index 2
+			// ensure we have an interest rate larger than the the right-side tranche with a
+			// greater index, e.g. larger than 5% at index 2
 			let int_per_sec = Rate::saturating_from_rational(6u64, 100)
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
@@ -2224,13 +2246,15 @@ pub mod test {
 				.is_none());
 		}
 
-		// Replace must not work if new interest rate is lower than tranche w/ greater index ("following").
+		// Replace must not work if new interest rate is lower than tranche w/ greater
+		// index ("following").
 		#[test]
 		fn replace_tranche_less_interest_than_following_throws() {
 			let mut tranches = default_tranches();
 			let min_risk_buffer = Perquintill::from_rational(4u64, 5);
 
-			// ensure we have an interest rate lower than a tranche with a higher index, e.g. 5%
+			// ensure we have an interest rate lower than a tranche with a higher index,
+			// e.g. 5%
 			let int_per_sec = Rate::saturating_from_rational(4, 100)
 				/ Rate::saturating_from_integer(SECS_PER_YEAR)
 				+ One::one();
@@ -2570,7 +2594,8 @@ pub mod test {
 		mod calculate_prices {
 			use super::*;
 
-			/// Implements only `total_issuance` required for `calculate_prices`.
+			/// Implements only `total_issuance` required for
+			/// `calculate_prices`.
 			struct TTokens(u64);
 			impl Inspect<TrancheCurrency> for TTokens {
 				type AssetId = TrancheCurrency;
@@ -2780,7 +2805,8 @@ pub mod test {
 						Rate::saturating_from_rational(103418073, 100000000),
 					])
 				);
-				// reduce new NAV/total_assets by another 200 to have loss in first non-res tranche
+				// reduce new NAV/total_assets by another 200 to have loss in first non-res
+				// tranche
 				assert_eq!(
 					default_tranches_with_issuance()
 						.calculate_prices::<_, TTokens, TrancheCurrency>(
@@ -2808,7 +2834,8 @@ pub mod test {
 				);
 			}
 
-			// Check price evolution over course of multiple years without adjusting total assets.
+			// Check price evolution over course of multiple years without adjusting total
+			// assets.
 			//
 			// Each tranche has a different APR, debt, reserve and total issuance.
 			// The sum of total issuance (initial NAV) for all three tranches is 1000.
@@ -2937,7 +2964,8 @@ pub mod test {
 			const RATIO_NONRES_2: Balance = DEBT_NONRES_2 + RESERVE_NONRES_2;
 			const DEFAULT_NAV: Balance = 1_234_567_890;
 
-			// Compares tranches which were rebalanced with expected outcome for debt and reserve.
+			// Compares tranches which were rebalanced with expected outcome for debt and
+			// reserve.
 			fn assert_rebalancing_eq(
 				rebalance_tranches: TTranches,
 				[(debt_res, reserve_res), (debt_nonres_1, reserve_nonres_1), (debt_nonres2, reserve_nonres_2)]: &[(Balance, Balance); 3],
@@ -2971,7 +2999,8 @@ pub mod test {
 
 			// Assing zero to moment, tranche ratios as well as expected in- and outflows.
 			// As a result, target debt for non-res tranches should be zero.
-			// Thus, expect changes for res tranche debt and reserve, as well as non-res debts.
+			// Thus, expect changes for res tranche debt and reserve, as well as non-res
+			// debts.
 			#[test]
 			fn no_timediff_ratios_amounts_works() {
 				let mut tranches = default_tranches_with_issuance();
@@ -3117,7 +3146,8 @@ pub mod test {
 				));
 			}
 
-			// Compare two setups which differ in their ratios and choose NAV such that rebalanced non-res debts and reserves are equal for same tranche in.
+			// Compare two setups which differ in their ratios and choose NAV such that
+			// rebalanced non-res debts and reserves are equal for same tranche in.
 			#[test]
 			fn ratios_work() {
 				let mut single_rate = default_tranches_with_issuance();
@@ -3274,7 +3304,8 @@ pub mod test {
 				Some(&residual_base(0, 0, 0, 0))
 			);
 
-			// break assumption of existing residual tranche via private API for the sake of the test
+			// break assumption of existing residual tranche via private API for the sake of
+			// the test
 			tranches.tranches.remove(0);
 			assert!(tranches.residual_tranche().is_none());
 		}
@@ -3287,7 +3318,8 @@ pub mod test {
 				Some(&mut residual_base(0, 0, 0, 0))
 			);
 
-			// break assumption of existing residual tranche via private API for the sake of the test
+			// break assumption of existing residual tranche via private API for the sake of
+			// the test
 			tranches.tranches.remove(0);
 			assert!(tranches.residual_tranche_mut().is_none());
 		}
@@ -3695,9 +3727,10 @@ pub mod test {
 
 			// check mutated epoch_execution_tranches
 			// note -- tranches are stored with residual first,
-			// and combine_with_non_residual_top processes residual first -- reverses tranche order
-			// however given that this is mutating existing EpochExecutionTranches we'd expect the
-			// order to still be non-residual->residual
+			// and combine_with_non_residual_top processes residual first -- reverses
+			// tranche order however given that this is mutating existing
+			// EpochExecutionTranches we'd expect the order to still be
+			// non-residual->residual
 			assert_eq!(tranche_invest_vals, [250, 210, 220]);
 
 			// check order processed
@@ -4168,11 +4201,13 @@ pub mod test {
 
 		#[test]
 		fn calculate_risk_buffers_works() {
-			// note: this is basicallly taking the price and supply fields from the epoch tranches in an epoch tranches struct.
-			// we're basically obtaining the pool value from the price and supply of all epoch tranches
-			// then determining how much buffer the tranches have based on the ratio of pool value
-			// remaining after subtracting tranche pool value going from senior to junior tranches
-			// note that we have 0 for the residual tranche, and 80% for the senior tranche in this scenario
+			// note: this is basicallly taking the price and supply fields from the epoch
+			// tranches in an epoch tranches struct. we're basically obtaining the pool
+			// value from the price and supply of all epoch tranches then determining how
+			// much buffer the tranches have based on the ratio of pool value
+			// remaining after subtracting tranche pool value going from senior to junior
+			// tranches note that we have 0 for the residual tranche, and 80% for the senior
+			// tranche in this scenario
 			let b = |x: u128| Balance::from(x);
 			let supplies = [b(5), b(3), b(2)];
 			let prices = [

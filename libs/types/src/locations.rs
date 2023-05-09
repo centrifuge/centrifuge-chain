@@ -27,8 +27,9 @@ pub enum Location {
 	/// Local chain account sending destination.
 	Local(AccountId32),
 	/// XCM MultiLocation sending destinations.
-	/// Using hash value here as Multilocation is large -- v1 is 512 bytes, but next largest is only 40 bytes
-	/// other values aren't hashed as we have blake2 hashing on storage map keys, and we don't want the extra overhead
+	/// Using hash value here as Multilocation is large -- v1 is 512 bytes, but
+	/// next largest is only 40 bytes other values aren't hashed as we have
+	/// blake2 hashing on storage map keys, and we don't want the extra overhead
 	XCM(H256),
 	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
@@ -46,16 +47,16 @@ impl From<AccountId32> for Location {
 
 impl From<MultiLocation> for Location {
 	fn from(ml: MultiLocation) -> Self {
-		// using hash here as multilocation is significantly larger than any other enum type here
-		// -- 592 bytes, vs 40 bytes for domain address (next largest)
+		// using hash here as multilocation is significantly larger than any other enum
+		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&ml.encode()))
 	}
 }
 
 impl From<VersionedMultiLocation> for Location {
 	fn from(vml: VersionedMultiLocation) -> Self {
-		// using hash here as multilocation is significantly larger than any other enum type here
-		// -- 592 bytes, vs 40 bytes for domain address (next largest)
+		// using hash here as multilocation is significantly larger than any other enum
+		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
 		Self::XCM(BlakeTwo256::hash(&vml.encode()))
 	}
 }

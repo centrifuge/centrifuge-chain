@@ -46,8 +46,9 @@ use crate::xcm::kusama::{
 	test_net::{Altair, KusamaNet, Sibling, TestNet},
 };
 
-/// Verify that calls that would allow for Tranche token to be transferred through XCM
-/// fail because the underlying CurrencyIdConvert doesn't handle Tranche tokens.
+/// Verify that calls that would allow for Tranche token to be transferred
+/// through XCM fail because the underlying CurrencyIdConvert doesn't handle
+/// Tranche tokens.
 pub mod blocked {
 	use cfg_utils::vec_to_fixed_array;
 	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
@@ -85,8 +86,8 @@ pub mod blocked {
 		});
 	}
 
-	// Verify that trying to transfer Tranche tokens using their MultiLocation representation
-	// also fails.
+	// Verify that trying to transfer Tranche tokens using their MultiLocation
+	// representation also fails.
 	#[test]
 	fn xtokens_transfer_multiasset() {
 		use codec::Encode;

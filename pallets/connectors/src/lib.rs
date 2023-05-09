@@ -42,7 +42,8 @@ pub use contract::*;
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum ParachainId {
-	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or Moonbase on a testnet.
+	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or
+	/// Moonbase on a testnet.
 	Moonbeam,
 }
 
@@ -94,7 +95,7 @@ pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 pub type MessageOf<T> =
 	Message<Domain, PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
 
-pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
+pub type CurrencyIdOf<T> = <T as Config>::CurrencyId;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -102,7 +103,7 @@ pub mod pallet {
 	use cfg_traits::{Permissions, PoolInspect, TrancheCurrency};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
-		tokens::CustomMetadata,
+		tokens::{CustomMetadata, GeneralCurrencyIndex},
 	};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -133,7 +134,8 @@ pub mod pallet {
 
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
-		/// The origin allowed to make admin-like changes, such calling `set_domain_router`.
+		/// The origin allowed to make admin-like changes, such calling
+		/// `set_domain_router`.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		type PoolInspect: PoolInspect<Self::AccountId, CurrencyIdOf<Self>, Rate = Self::Rate>;
@@ -162,6 +164,24 @@ pub mod pallet {
 			Balance = <Self as Config>::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
+
+		/// The currency type of transferrable token.
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen
+			+ Into<<Self as pallet_xcm_transactor::Config>::CurrencyId>
+			+ TryInto<
+				GeneralCurrencyIndex<u128, <Self as Config>::GeneralCurrencyPrefix>,
+				Error = DispatchError,
+			>;
+
+		/// The prefix for currencies added via Connectors.
+		#[pallet::constant]
+		type GeneralCurrencyPrefix: Get<[u8; 12]>;
 	}
 
 	#[pallet::event]
@@ -189,13 +209,17 @@ pub mod pallet {
 	pub(crate) type DomainRouter<T: Config> =
 		StorageMap<_, Blake2_128Concat, Domain, Router<CurrencyIdOf<T>>>;
 
-	/// The set of known connectors. This set is used as an allow-list when authorizing
-	/// the origin of incoming messages through the `handle` extrinsic.
+	/// The set of known connectors. This set is used as an allow-list when
+	/// authorizing the origin of incoming messages through the `handle`
+	/// extrinsic.
 	#[pallet::storage]
 	pub(crate) type KnownConnectors<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Failed to map the asset to the corresponding Connector's General
+		/// Index representation
+		AssetNotFound,
 		/// A pool could not be found
 		PoolNotFound,
 		/// A tranche could not be found
@@ -218,6 +242,8 @@ pub mod pallet {
 		InvalidIncomingMessageOrigin,
 		/// Failed to decode an incoming message
 		InvalidIncomingMessage,
+		/// A transfer attempt from the local to the local domain
+		InvalidTransferDomain,
 	}
 
 	#[pallet::call]
@@ -238,8 +264,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add an AccountId to the set of known connectors, allowing that origin
-		/// to send incoming messages.
+		/// Add an AccountId to the set of known connectors, allowing that
+		/// origin to send incoming messages.
 		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
 		#[pallet::call_index(1)]
 		pub fn add_connector(origin: OriginFor<T>, connector: T::AccountId) -> DispatchResult {
@@ -276,6 +302,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
+			decimals: u8,
 			domain: Domain,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
@@ -301,6 +328,7 @@ pub mod pallet {
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
+					decimals,
 					token_name,
 					token_symbol,
 					price,
@@ -328,7 +356,7 @@ pub mod pallet {
 
 			Self::do_send_message(
 				who,
-				Message::UpdateTokenPrice {
+				Message::UpdateTrancheTokenPrice {
 					pool_id,
 					tranche_id,
 					price,
@@ -362,8 +390,9 @@ pub mod pallet {
 			);
 
 			// Now add the destination address as a TrancheInvestor of the given tranche if
-			// not already one. This check is necessary shall a user have called `update_member`
-			// already but the call has failed on the EVM side and needs to be retried.
+			// not already one. This check is necessary shall a user have called
+			// `update_member` already but the call has failed on the EVM side and needs to
+			// be retried.
 			if !T::Permission::has(
 				PermissionScope::Pool(pool_id),
 				domain_address.into_account_truncating(),
@@ -382,7 +411,7 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					valid_until,
-					address: domain_address.address(),
+					member: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;
@@ -393,7 +422,7 @@ pub mod pallet {
 		/// Transfer tranche tokens to a given address
 		#[pallet::weight(< T as Config >::WeightInfo::transfer())]
 		#[pallet::call_index(6)]
-		pub fn transfer(
+		pub fn transfer_tranche_tokens(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
@@ -402,6 +431,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 
+			// Check that the destination is not the local domain
+			ensure!(
+				domain_address.domain() != Domain::Centrifuge,
+				Error::<T>::InvalidTransferDomain
+			);
 			// Check that the destination is a member of this tranche token
 			ensure!(
 				T::Permission::has(
@@ -427,13 +461,17 @@ pub mod pallet {
 			)?;
 
 			Self::do_send_message(
-				who,
-				Message::Transfer {
+				who.clone(),
+				Message::TransferTrancheTokens {
 					pool_id,
 					tranche_id,
 					amount,
 					domain: domain_address.domain(),
-					address: domain_address.address(),
+					sender: who
+						.encode()
+						.try_into()
+						.map_err(|_| DispatchError::Other("Conversion to 32 bytes failed"))?,
+					receiver: domain_address.address(),
 				},
 				domain_address.domain(),
 			)?;
@@ -442,9 +480,10 @@ pub mod pallet {
 		}
 
 		/// Handle an incoming message
-		/// TODO(nuno): we probably need a custom origin type for these messages to ensure they have
-		/// come in through XCM. For now, let's have a POC here to test the pipeline
-		/// Ethereum ---> Moonbeam ---> Centrifuge::connectors
+		/// TODO(nuno): we probably need a custom origin type for these messages
+		/// to ensure they have come in through XCM. For now, let's have a POC
+		/// here to test the pipeline Ethereum ---> Moonbeam --->
+		/// Centrifuge::connectors
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::handle())]
 		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
@@ -491,15 +530,15 @@ pub mod pallet {
 				fee_payer,
 				// The currency in which we want to pay fees
 				CurrencyPayment {
-					currency: Currency::AsCurrencyId(xcm_domain.fee_currency),
+					currency: Currency::AsCurrencyId(xcm_domain.fee_currency.into()),
 					fee_amount: None,
 				},
 				// The call to be executed in the destination chain
 				ethereum_xcm_call,
 				OriginKind::SovereignAccount,
 				TransactWeights {
-					// Convert the max gas_limit into a max transact weight following Moonbeam's formula.
-					// todo(nuno): revisit this
+					// Convert the max gas_limit into a max transact weight following Moonbeam's
+					// formula.
 					transact_required_weight_at_most: Weight::from_ref_time(
 						xcm_domain.max_gas_limit * 25_000 + 100_000_000,
 					),
@@ -515,9 +554,11 @@ pub mod pallet {
 		/// Build the encoded `ethereum_xcm::transact(eth_tx)` call that should
 		/// request to execute `evm_call`.
 		///
-		/// * `xcm_domain` - All the necessary info regarding the xcm-based domain
+		/// * `xcm_domain` - All the necessary info regarding the xcm-based
+		///   domain
 		/// where this `ethereum_xcm` call is to be executed
-		/// * `evm_call` - The encoded EVM call calling ConnectorsXcmRouter::handle(msg)
+		/// * `evm_call` - The encoded EVM call calling
+		///   ConnectorsXcmRouter::handle(msg)
 		pub fn encoded_ethereum_xcm_call(
 			xcm_domain: XcmDomain<CurrencyIdOf<T>>,
 			evm_call: Vec<u8>,
@@ -551,6 +592,23 @@ pub mod pallet {
 			);
 
 			encoded
+		}
+
+		/// Returns the `u128` general index of a currency as the concatenation
+		/// of the configured `GeneralCurrencyPrefix` and its local currency
+		/// identifier.
+		///
+		/// Assumes the currency to be registered in the `AssetRegistry`.
+		pub fn try_get_general_index(currency: CurrencyIdOf<T>) -> Result<u128, DispatchError> {
+			ensure!(
+				T::AssetRegistry::metadata(&currency).is_some(),
+				Error::<T>::AssetNotFound
+			);
+
+			let general_index: GeneralCurrencyIndex<u128, T::GeneralCurrencyPrefix> =
+				CurrencyIdOf::<T>::try_into(currency)?;
+
+			Ok(general_index.index)
 		}
 	}
 }

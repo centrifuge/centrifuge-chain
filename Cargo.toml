@@ -55,6 +55,7 @@ members = [
   "pallets/permissions",
   "pallets/pool-system",
   "pallets/pool-registry",
+  "pallets/collection-data-feed",
   "pallets/restricted-tokens",
   "pallets/transfer-allowlist",
   "pallets/rewards",

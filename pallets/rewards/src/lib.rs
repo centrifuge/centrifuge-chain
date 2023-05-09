@@ -14,12 +14,12 @@
 
 //! # Rewards Pallet
 //!
-//! The Rewards pallet provides functionality for distributing rewards to different accounts with
-//! different currencies.
+//! The Rewards pallet provides functionality for distributing rewards to
+//! different accounts with different currencies.
 //!
 //! The user can stake an amount to claim a proportional reward.
-//! The staked amount is reserved/hold from the user account for that currency when is deposited
-//! and unreserved/release when is withdrawed.
+//! The staked amount is reserved/hold from the user account for that currency
+//! when is deposited and unreserved/release when is withdrawed.
 //!
 //! ## Overview
 //!
@@ -32,16 +32,20 @@
 //!
 //! ### Terminology
 //!
-//! - **Currency ID**: Identification of a token used to stake/unstake.
-//!   This ID is associated to a group.
-//! - **Domain ID**: Identification of a domain. A domain acts as a prefix for a currency id.
-//!   It allows to have the same currency in different reward groups.
-//! - **Reward**: The amount given in native tokens to a proportional amount of currency staked.
-//! - **Group**: A shared resource where the reward is distributed. The accounts with a currency
-//!   associated to a group can deposit/withdraw that currency to claim their proportional reward
-//!   in the native token.
-//! - **Stake account**: The account related data used to hold the stake of certain currency.
-//! - **Currency movement**: The action on moving a currency from one group to another.
+//! - **Currency ID**: Identification of a token used to stake/unstake. This ID
+//!   is associated to a group.
+//! - **Domain ID**: Identification of a domain. A domain acts as a prefix for a
+//!   currency id. It allows to have the same currency in different reward
+//!   groups.
+//! - **Reward**: The amount given in native tokens to a proportional amount of
+//!   currency staked.
+//! - **Group**: A shared resource where the reward is distributed. The accounts
+//!   with a currency associated to a group can deposit/withdraw that currency
+//!   to claim their proportional reward in the native token.
+//! - **Stake account**: The account related data used to hold the stake of
+//!   certain currency.
+//! - **Currency movement**: The action on moving a currency from one group to
+//!   another.
 //!
 //! ### Implementations
 //!
@@ -49,14 +53,13 @@
 //!
 //! ### Functionality
 //!
-//! The exact reward functionality of this pallet is given by the mechanism used when it's
-//! configured. Current mechanisms:
+//! The exact reward functionality of this pallet is given by the mechanism used
+//! when it's configured. Current mechanisms:
 //! - [base](https://solmaz.io/2019/02/24/scalable-reward-changing/) mechanism.
 //! currency movement.
 //! - [deferred](https://centrifuge.hackmd.io/@Luis/SkB07jq8o) mechanism.
 //! currency movement.
 //! - [gap](https://centrifuge.hackmd.io/@Luis/rkJXBz08s) mechanism.
-//!
 
 #[cfg(test)]
 mod mock;
@@ -97,8 +100,9 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self, I>>
 			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// Identifier of this pallet used as an account where stores the reward that is not claimed.
-		/// When you distribute reward, the amount distributed goes here.
+		/// Identifier of this pallet used as an account where stores the reward
+		/// that is not claimed. When you distribute reward, the amount
+		/// distributed goes here.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 

@@ -79,7 +79,7 @@ pub mod macros {
 	/// 		RuntimeEvent::Loans(pallet_loans::Event::Created(id, loan, asset))
 	/// 			if [id == 0 && loan == InstanceId(1) && asset == Asset(4294967296, InstanceId(1))], //-> matches only of the clause matches
 	/// 		RuntimeEvent::Loans(pallet_loans::Event::Priced(id, loan)) if [id == 0 && loan == InstanceId(1)],
-	///	);
+	/// 	);
 	/// ```
 	macro_rules! assert_events {
 		($env:expr, $chain:expr, $event:ty, $range:expr, $($pattern:pat_param $(if $extra:tt)? ,)+ ) => {{
@@ -114,7 +114,8 @@ pub mod macros {
 		}};
 	}
 
-	/// DO NOT USE! This macro is solely expected to be used within the macros modules
+	/// DO NOT USE! This macro is solely expected to be used within the macros
+	/// modules
 	macro_rules! extra_counts {
 		($pattern:pat_param) => {
 			1
@@ -130,7 +131,8 @@ pub mod macros {
 		};
 	}
 
-	/// DO NOT USE! This macro is solely expected to be used within the macros modules
+	/// DO NOT USE! This macro is solely expected to be used within the macros
+	/// modules
 	macro_rules! extra_guards {
 		( [count $count:expr] ) => {
 			true
@@ -159,7 +161,7 @@ pub mod macros {
 	/// 		RuntimeEvent::System(frame_system::Event::ExtrinsicFailed{..}) //-> The list of events that should be matched
 	/// 			| RuntimeEvent::PoolSystem(pallet_pool_system::RuntimeEvent::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
 	/// 			| RuntimeEvent::Loans(..)
-	///	);
+	/// 	);
 	/// ```
 	macro_rules! events {
 		($env:expr, $chain:expr, $event:ty, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
@@ -353,8 +355,8 @@ pub type Header = cfg_primitives::Header;
 pub type Block = cfg_primitives::Block;
 pub type UncheckedExtrinsic = centrifuge::UncheckedExtrinsic;
 
-// NOTE: Nonce management is a known issue when interacting with a chain and wanting
-//       to submit a lot of extrinsic. This interface eases this issues.
+// NOTE: Nonce management is a known issue when interacting with a chain and
+// wanting       to submit a lot of extrinsic. This interface eases this issues.
 impl TestEnv {
 	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()>
 	where
@@ -484,13 +486,14 @@ impl TestEnv {
 	///
 	/// General notes on usage of this function:
 	/// * should be used when an extrinsics fails -> nonces are out of sync
-	/// * should be used when a signed extrinsic is dropped -> nonces are out of sync
+	/// * should be used when a signed extrinsic is dropped -> nonces are out of
+	///   sync
 	pub fn clear_nonces(&mut self) {
 		self.nonce_manager = Arc::new(Mutex::new(NonceManager::new()));
 	}
 
-	/// Signs a given call for the given chain. Should only be used if the extrinsic really
-	/// should be submitted afterwards.
+	/// Signs a given call for the given chain. Should only be used if the
+	/// extrinsic really should be submitted afterwards.
 	/// **NOTE: This will increase the stored nonce of an account**
 	pub fn sign(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<Vec<u8>, ()> {
 		let nonce = self.fetch_add_nonce(chain, who);
@@ -515,13 +518,14 @@ impl TestEnv {
 		}
 	}
 
-	/// Submits a previously signed extrinsics to the pool of the respective chain.
+	/// Submits a previously signed extrinsics to the pool of the respective
+	/// chain.
 	pub fn submit(&mut self, chain: Chain, xt: Vec<u8>) -> Result<(), ()> {
 		self.append_extrinsic(chain, xt)
 	}
 
-	/// Signs and submits an extrinsic to the given chain. Will take the nonce for the account
-	/// from the `NonceManager`.
+	/// Signs and submits an extrinsic to the given chain. Will take the nonce
+	/// for the account from the `NonceManager`.
 	pub fn sign_and_submit(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<(), ()> {
 		let nonce = self.nonce(chain, who);
 		let xt = match chain {
@@ -549,8 +553,8 @@ impl TestEnv {
 		Ok(())
 	}
 
-	/// Signs and submits a batch of extrinsic to the given chain. Will take the nonce for the account
-	/// from the `NonceManager`.
+	/// Signs and submits a batch of extrinsic to the given chain. Will take the
+	/// nonce for the account from the `NonceManager`.
 	///
 	/// Returns early of an extrinsic fails to be submitted.
 	pub fn batch_sign_and_submit(

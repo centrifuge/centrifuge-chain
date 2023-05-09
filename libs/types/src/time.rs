@@ -16,7 +16,8 @@ use scale_info::{build::Fields, Path, Type, TypeInfo};
 use sp_std::{cmp::PartialEq, marker::PhantomData};
 
 /// A struct we need as the pallets implementing trait Time
-/// do not implement TypeInfo. This wraps this and implements everything manually.
+/// do not implement TypeInfo. This wraps this and implements everything
+/// manually.
 #[derive(Encode, Decode, Eq, PartialEq, Debug, Clone)]
 pub struct TimeProvider<T>(PhantomData<T>);
 

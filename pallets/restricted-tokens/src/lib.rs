@@ -86,10 +86,12 @@ pub mod pallet {
 		},
 	};
 
-	/// Configure the pallet by specifying the parameters and types on which it depends.
+	/// Configure the pallet by specifying the parameters and types on which it
+	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Because this pallet emits events, it depends on the runtime's definition of an event.
+		/// Because this pallet emits events, it depends on the runtime's
+		/// definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The balance type
@@ -111,7 +113,8 @@ pub mod pallet {
 			+ TypeInfo
 			+ MaxEncodedLen;
 
-		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
+		/// Checks the pre conditions for every transfer via the user api (i.e.
+		/// extrinsics)
 		type PreExtrTransfer: PreConditions<
 			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
 			Result = bool,

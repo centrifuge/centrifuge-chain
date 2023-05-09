@@ -16,7 +16,8 @@ use sp_std::{vec, vec::Vec};
 /// The ConnectorsXcmContract handle function name
 static HANDLE_FUNCTION: &str = "handle";
 
-/// Return the encoded contract call, i.e, ConnectorsXcmRouter::handle(encoded_msg).
+/// Return the encoded contract call, i.e,
+/// ConnectorsXcmRouter::handle(encoded_msg).
 pub fn encoded_contract_call(encoded_msg: Vec<u8>) -> Bytes {
 	let contract = xcm_router_contract();
 	let encoded_contract_call = contract

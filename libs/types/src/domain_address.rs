@@ -26,9 +26,9 @@ type EVMChainId = u64;
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Domain {
-	/// Referring to the Centrifuge Parachain. Will be used for handling incoming messages.
-	/// NOTE: Connectors messages CAN NOT be sent directly from the Centrifuge chain to the
-	/// Centrifuge chain itself.
+	/// Referring to the Centrifuge Parachain. Will be used for handling
+	/// incoming messages. NOTE: Connectors messages CAN NOT be sent directly
+	/// from the Centrifuge chain to the Centrifuge chain itself.
 	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
 	EVM(EVMChainId),

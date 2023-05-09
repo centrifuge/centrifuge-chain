@@ -108,17 +108,18 @@ pub mod fees {
 		}
 	}
 
-	/// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
-	/// node's balance type.
+	/// Handles converting a weight scalar to a fee value, based on the scale
+	/// and granularity of the node's balance type.
 	///
 	/// This should typically create a mapping between the following ranges:
 	///   - [0, frame_system::MaximumBlockWeight]
 	///   - [Balance::min, Balance::max]
 	///
-	/// Yet, it can be used for any other sort of change to weight-fee. Some examples being:
+	/// Yet, it can be used for any other sort of change to weight-fee. Some
+	/// examples being:
 	///   - Setting it to `0` will essentially disable the weight fee.
-	///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
-	///
+	///   - Setting it to `1` will cause the literal `#[weight = x]` values to
+	///     be charged.
 	pub struct WeightToFee;
 	impl WeightToFeePolynomial for WeightToFee {
 		type Balance = Balance;
@@ -223,8 +224,9 @@ pub mod xcm {
 
 	use crate::xcm_fees::default_per_second;
 
-	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
-	/// the asset registry that were not already handled by native Trader rules.
+	/// Our FixedConversionRateProvider, used to charge XCM-related fees for
+	/// tokens registered in the asset registry that were not already handled by
+	/// native Trader rules.
 	pub struct FixedConversionRateProvider<OrmlAssetRegistry>(PhantomData<OrmlAssetRegistry>);
 
 	impl<

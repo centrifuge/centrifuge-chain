@@ -622,7 +622,8 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		verify_next_anchor_after_eviction(2, &anchors);
 
 		const FIRST_ONES: u64 = MAX_LOOP_IN_TX / 5;
-		// do the same as above for next FIRST_ONES - 1 days without child trie root verification
+		// do the same as above for next FIRST_ONES - 1 days without child trie root
+		// verification
 		for i in 3..FIRST_ONES as usize + 2 {
 			<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(i as u64));
 			assert!(Anchors::get_anchor_by_id(anchors[i - 2]).is_some());
@@ -638,8 +639,9 @@ fn anchor_evict_single_anchor_per_day_many_days() {
 		);
 
 		// test out limit on the number of anchors removed at a time
-		// eviction on day 2 + FIRST_ONES * MAX_LOOP_IN_TX, i.e MAX_LOOP_IN_TX + 1 anchors to be removed one anchor
-		// per day from the last eviction on day 2 + FIRST_ONES
+		// eviction on day 2 + FIRST_ONES * MAX_LOOP_IN_TX, i.e MAX_LOOP_IN_TX + 1
+		// anchors to be removed one anchor per day from the last eviction on day 2 +
+		// FIRST_ONES
 		<pallet_timestamp::Pallet<Runtime>>::set_timestamp(day(2 + FIRST_ONES + MAX_LOOP_IN_TX));
 		assert!(
 			Anchors::get_anchor_by_id(anchors[(FIRST_ONES + MAX_LOOP_IN_TX) as usize]).is_some()

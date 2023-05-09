@@ -25,29 +25,30 @@
 //! tokens on the Polkadot/Kusama relay chain for participating in a crowdloan
 //! campaign for a parachain slot acquisition.
 //!
-//! This Pallet is intimately bound to the [`pallet-crowdloan-reward`] pallet, where
-//! the rewarding strategy is implemented.
+//! This Pallet is intimately bound to the [`pallet-crowdloan-reward`] pallet,
+//! where the rewarding strategy is implemented.
 //!
 //! ## Terminology
 //! For information on terms and concepts used in this pallet,
 //! please refer to the pallet' specification document.
 //!
 //! ## Goals
-//! The aim of this pallet is to ensure that a contributor who's claiming a reward
-//! is eligible for it and avoid potential attacks, such as, for instance, Denial of
-//! Service (DoS) or spams by requiring fee payment.
+//! The aim of this pallet is to ensure that a contributor who's claiming a
+//! reward is eligible for it and avoid potential attacks, such as, for
+//! instance, Denial of Service (DoS) or spams by requiring fee payment.
 //!
 //! ## Dependencies
-//! As stated in the overview of this pallet, the latter relies on the [`pallet-crowdloan-reward`]
-//! pallet to implement the specific rewarding strategy of a parachain.
-//! A rewarding pallet must implement the [`pallet-crowdloan-claim::traits::Reward`] trait that is
-//! declared in this pallet.
-//! For this pallet to be able to interact with a reward pallet, it must be loosely coupled to the
-//! former using an associated type which includes the [`pallet-crowdloan-claim::traits::Reward`]
-//! trait.
+//! As stated in the overview of this pallet, the latter relies on the
+//! [`pallet-crowdloan-reward`] pallet to implement the specific rewarding
+//! strategy of a parachain. A rewarding pallet must implement the
+//! [`pallet-crowdloan-claim::traits::Reward`] trait that is declared in this
+//! pallet. For this pallet to be able to interact with a reward pallet, it must
+//! be loosely coupled to the former using an associated type which includes the
+//! [`pallet-crowdloan-claim::traits::Reward`] trait.
 //!
 //! ## References
-//! - [Building a Custom Pallet](https://substrate.dev/docs/en/tutorials/build-a-dapp/pallet). Retrieved April 5th, 2021.
+//! - [Building a Custom Pallet](https://substrate.dev/docs/en/tutorials/build-a-dapp/pallet).
+//!   Retrieved April 5th, 2021.
 //!
 //! ## Credits
 //! The Centrifugians Tribe <tribe@centrifuge.io>
@@ -102,7 +103,8 @@ const PRE_FIX: &[u8] = b"<Bytes>";
 /// See: https://github.com/polkadot-js/common/blob/v7.6.1/packages/util/src/u8a/wrap.ts
 const POST_FIX: &[u8] = b"</Bytes>";
 
-/// A type alias for crowdloan's child trie root hash, from this claim pallet's point of view.
+/// A type alias for crowdloan's child trie root hash, from this claim pallet's
+/// point of view.
 ///
 /// When setting up the pallet via the [`initialize`] transaction, the
 /// child trie root hash containing all contributions, is transfered from
@@ -113,7 +115,8 @@ const POST_FIX: &[u8] = b"</Bytes>";
 /// (in relay chain's native token) to a crowdloan campaign.
 type RootHashOf<T> = <T as frame_system::Config>::Hash;
 
-/// A type alias for the parachain account identifier from this claim pallet's point of view
+/// A type alias for the parachain account identifier from this claim pallet's
+/// point of view
 type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as Reward>::ParachainAccountId;
 
 /// Index of the crowdloan campaign inside the
@@ -121,8 +124,8 @@ type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as Reward>::Parac
 /// on polkadot.
 type TrieIndex = u32;
 
-/// A type that works as an index for which crowdloan the pallet is currently in.
-/// Can also be seen as some kind of counter.
+/// A type that works as an index for which crowdloan the pallet is currently
+/// in. Can also be seen as some kind of counter.
 type Index = u32;
 
 /// Verifier struct, that implements our own traits to verify our proofs
@@ -184,16 +187,19 @@ pub mod pallet {
 	///
 	/// Associated types and constants are declared in this trait. If the pallet
 	/// depends on other super-traits, the latter must be added to this trait,
-	/// such as, in this case, [`frame_system::Config`] and [`pallet_balances::Config`]
-	/// super-traits. Note that [`frame_system::Config`] must always be included.
+	/// such as, in this case, [`frame_system::Config`] and
+	/// [`pallet_balances::Config`] super-traits. Note that
+	/// [`frame_system::Config`] must always be included.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_balances::Config {
 		/// Associated type for Event enum
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// Constant configuration parameter to store the pallet identifier for the pallet.
+		/// Constant configuration parameter to store the pallet identifier for
+		/// the pallet.
 		///
-		/// The pallet identifier may be of the form ```PalletId(*b"cc/claim")```.
+		/// The pallet identifier may be of the form
+		/// ```PalletId(*b"cc/claim")```.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
@@ -207,15 +213,15 @@ pub mod pallet {
 			+ Into<AccountId32>
 			+ MaxEncodedLen;
 
-		/// The maximum length (i.e. depth of the tree) we allow a proof to have.
-		/// This mitigates DDoS attacks solely. We choose 30, which by a base 2 merkle-tree
-		/// should be more than enough.
+		/// The maximum length (i.e. depth of the tree) we allow a proof to
+		/// have. This mitigates DDoS attacks solely. We choose 30, which by a
+		/// base 2 merkle-tree should be more than enough.
 		type MaxProofLength: Get<u32>;
 
 		/// The reward payout mechanism this claim pallet uses.
 		///
-		/// This associated type allows to implement a loosely-coupled regime between
-		/// claiming and rewarding pallets.
+		/// This associated type allows to implement a loosely-coupled regime
+		/// between claiming and rewarding pallets.
 		type RewardMechanism: Reward<
 			ParachainAccountId = Self::AccountId,
 			ContributionAmount = Self::Balance,
@@ -233,12 +239,14 @@ pub mod pallet {
 	// Pallet events
 	// ------------------------------------------------------------------------
 
-	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
+	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and
+	// Codec
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event emitted when the crowdloan claim pallet is properly configured.
+		/// Event emitted when the crowdloan claim pallet is properly
+		/// configured.
 		ClaimPalletInitialized,
 
 		/// Event emitted when a reward has been claimed successfully.
@@ -250,15 +258,16 @@ pub mod pallet {
 		/// Relay-chain Root hash which allows to verify contributions
 		ContributionsRootUpdated(RootHashOf<T>),
 
-		/// Trie index of the crowdloan inside the relay-chains crowdloan child storage
+		/// Trie index of the crowdloan inside the relay-chains crowdloan child
+		/// storage
 		CrowdloanTrieIndexUpdated(TrieIndex),
 
-		/// The lease start of the parachain slot. Used to define when we can initialize the
-		/// next time
+		/// The lease start of the parachain slot. Used to define when we can
+		/// initialize the next time
 		LeaseStartUpdated(T::BlockNumber),
 
-		/// The lease period of the parachain slot. Used to define when we can initialize the
-		/// next time
+		/// The lease period of the parachain slot. Used to define when we can
+		/// initialize the next time
 		LeasePeriodUpdated(T::BlockNumber),
 	}
 
@@ -275,14 +284,16 @@ pub mod pallet {
 	#[pallet::getter(fn locked_at)]
 	pub(super) type LockedAt<T: Config> = StorageValue<_, T::BlockNumber, OptionQuery>;
 
-	/// TrieIndex of the crowdloan campaign inside the relay-chain crowdloan pallet.
+	/// TrieIndex of the crowdloan campaign inside the relay-chain crowdloan
+	/// pallet.
 	///
 	/// This is needed in order to build the correct keys for proof check.
 	#[pallet::storage]
 	#[pallet::getter(fn crowdloan_trie_index)]
 	pub type CrowdloanTrieIndex<T: Config> = StorageValue<_, TrieIndex>;
 
-	/// A map containing the list of claims for reward payouts that were successfuly processed
+	/// A map containing the list of claims for reward payouts that were
+	/// successfuly processed
 	#[pallet::storage]
 	#[pallet::getter(fn processed_claims)]
 	pub(super) type ProcessedClaims<T: Config> =
@@ -321,8 +332,8 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_finalize(n: <T as frame_system::Config>::BlockNumber) {
-			// On the first block after the lease is over, we allow a new initialization of the
-			// pallet and forbid further claims for this lease.
+			// On the first block after the lease is over, we allow a new initialization of
+			// the pallet and forbid further claims for this lease.
 			if n > Self::lease_start().saturating_add(Self::lease_period()) {
 				<PrevIndex<T>>::put(Self::curr_index())
 			}
@@ -350,19 +361,24 @@ pub mod pallet {
 		/// Claimed amount is out of boundaries (too low or too high)
 		ClaimedAmountIsOutOfBoundaries,
 
-		/// Sensitive transactions can only be performed by administrator entity (e.g. Sudo or Democracy pallet)
+		/// Sensitive transactions can only be performed by administrator entity
+		/// (e.g. Sudo or Democracy pallet)
 		MustBeAdministrator,
 
-		/// The reward amount that is claimed does not correspond to the one of the contribution
+		/// The reward amount that is claimed does not correspond to the one of
+		/// the contribution
 		InvalidClaimAmount,
 
-		/// The signature provided by the contributor when registering is not valid.
+		/// The signature provided by the contributor when registering is not
+		/// valid.
 		///
-		/// The consequence is that the relaychain and parachain accounts being not
-		/// associated, the contributor is not elligible for a reward payout.
+		/// The consequence is that the relaychain and parachain accounts being
+		/// not associated, the contributor is not elligible for a reward
+		/// payout.
 		InvalidContributorSignature,
 
-		/// A lease is ongoging and the pallet can henced not be initialized again
+		/// A lease is ongoging and the pallet can henced not be initialized
+		/// again
 		OngoingLease,
 
 		/// Claiming rewards is only possible during a lease
@@ -375,14 +391,13 @@ pub mod pallet {
 
 	// Declare Call struct and implement dispatchable (or callable) functions.
 	//
-	// Dispatchable functions are transactions modifying the state of the chain. They
-	// are also called extrinsics are constitute the pallet's public interface.
+	// Dispatchable functions are transactions modifying the state of the chain.
+	// They are also called extrinsics are constitute the pallet's public interface.
 	// Note that each parameter used in functions must implement `Clone`, `Debug`,
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Claim for a reward payout
-		///
 		#[pallet::weight(<T as Config>::WeightInfo::claim_reward_sr25519()
 			.max(<T as Config>::WeightInfo::claim_reward_ed25519())
 			.max(<T as Config>::WeightInfo::claim_reward_ecdsa())
@@ -440,7 +455,8 @@ pub mod pallet {
 			// Invoke the reward payout mechanism
 			T::RewardMechanism::reward(parachain_account_id.clone(), contribution)?;
 
-			// Store this claim in the list of processed claims (so that to process it only once)
+			// Store this claim in the list of processed claims (so that to process it only
+			// once)
 			<ProcessedClaims<T>>::insert((&relaychain_account_id, curr_index), true);
 
 			Self::deposit_event(Event::RewardClaimed(
@@ -464,15 +480,15 @@ pub mod pallet {
 
 		/// Initialize the claim pallet
 		///
-		/// This administrative function is used to transfer the list of contributors
-		/// and their respective contributions, stored as a child trie root hash in
-		/// the relay chain's [`crowdloan`](https://github.com/paritytech/polkadot/blob/rococo-v1/runtime/common/src/crowdloan.rs)
+		/// This administrative function is used to transfer the list of
+		/// contributors and their respective contributions, stored as a child
+		/// trie root hash in the relay chain's [`crowdloan`](https://github.com/paritytech/polkadot/blob/rococo-v1/runtime/common/src/crowdloan.rs)
 		/// pallet, to `Contributions` storage item.
 		/// This transaction can only be called via a signed transactions.
-		/// The `contributions` parameter contains the hash of the crowdloan pallet's child
-		/// trie root. It is later used for proving that a contributor effectively contributed
-		/// to the crowdloan campaign, and that the amount of the contribution is correct as
-		/// well.
+		/// The `contributions` parameter contains the hash of the crowdloan
+		/// pallet's child trie root. It is later used for proving that a
+		/// contributor effectively contributed to the crowdloan campaign, and
+		/// that the amount of the contribution is correct as well.
 		#[pallet::weight(<T as Config>::WeightInfo::initialize())]
 		#[pallet::call_index(1)]
 		pub fn initialize(
@@ -483,7 +499,8 @@ pub mod pallet {
 			lease_start: T::BlockNumber,
 			lease_period: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
-			// Ensure that only administrator entity can perform this administrative transaction
+			// Ensure that only administrator entity can perform this administrative
+			// transaction
 			let curr_index = Self::curr_index();
 
 			ensure!(
@@ -505,7 +522,8 @@ pub mod pallet {
 				Error::<T>::PalletAlreadyInitialized
 			);
 
-			// Store relay chain's root hash (containing the list of contributors and their contributions)
+			// Store relay chain's root hash (containing the list of contributors and their
+			// contributions)
 			<Contributions<T>>::put(contributions);
 			<CrowdloanTrieIndex<T>>::put(index);
 			<LockedAt<T>>::put(locked_at);
@@ -514,7 +532,8 @@ pub mod pallet {
 
 			<CurrIndex<T>>::put(curr_index.saturating_add(1));
 
-			// Trigger an event so that to inform that the pallet was successfully initialized
+			// Trigger an event so that to inform that the pallet was successfully
+			// initialized
 			Self::deposit_event(Event::ClaimPalletInitialized);
 
 			Ok(().into())
@@ -560,10 +579,12 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Set the root-hash of the relay-chain, we locked the relay-chain contributions at.
+		/// Set the root-hash of the relay-chain, we locked the relay-chain
+		/// contributions at.
 		///
 		/// This root-hash MUST be the root-hash of the relay-chain at the block
-		/// we locked at. This root-hash will be used to verify proofs of contribution.
+		/// we locked at. This root-hash will be used to verify proofs of
+		/// contribution.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_contributions_root())]
 		#[pallet::call_index(4)]
 		pub fn set_contributions_root(
@@ -585,10 +606,10 @@ pub mod pallet {
 
 		/// Set the block of the relay at which we lock the contributions.
 		///
-		/// This means, that all generated proofs MUST generate the proof of their
-		/// contribution at this block, as otherwise the root-hash we store here
-		/// will not be found in the generated proof of the contributor, which will
-		/// lead to a rejection of the proof.
+		/// This means, that all generated proofs MUST generate the proof of
+		/// their contribution at this block, as otherwise the root-hash we
+		/// store here will not be found in the generated proof of the
+		/// contributor, which will lead to a rejection of the proof.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_locked_at())]
 		#[pallet::call_index(5)]
 		pub fn set_locked_at(
@@ -610,9 +631,10 @@ pub mod pallet {
 
 		/// Set the index of the crowdloan.
 		///
-		/// This index comes from the relay-chain crowdloan pallet. More specifically, this index
-		/// is used to derive the internal patricia key inside the child trie. The index is
-		/// stored in the `FundInfo` of the relay chain crowdloan pallet.
+		/// This index comes from the relay-chain crowdloan pallet. More
+		/// specifically, this index is used to derive the internal patricia key
+		/// inside the child trie. The index is stored in the `FundInfo` of the
+		/// relay chain crowdloan pallet.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_crowdloan_trie_index())]
 		#[pallet::call_index(6)]
 		pub fn set_crowdloan_trie_index(
@@ -641,10 +663,11 @@ pub mod pallet {
 // Pallet implementation block.
 //
 // This main implementation block contains two categories of functions, namely:
-// - Public functions: These are functions that are `pub` and generally fall into
-//   inspector functions that do not write to storage and operation functions that do.
-// - Private functions: These are private helpers or utilities that cannot be called
-//   from other pallets.
+// - Public functions: These are functions that are `pub` and generally fall
+//   into inspector functions that do not write to storage and operation
+//   functions that do.
+// - Private functions: These are private helpers or utilities that cannot be
+//   called from other pallets.
 impl<T: Config> Pallet<T> {
 	/// Return the account identifier of the crowdloan claim pallet.
 	///
@@ -678,8 +701,8 @@ impl<T: Config> Pallet<T> {
 		// Now check if the contributor's native identity on the relaychain is valid
 		let payload = parachain_account_id.encode();
 
-		// Due to how the polkadot-js extension handles signing of raw bytes, we must take this into
-		// account.
+		// Due to how the polkadot-js extension handles signing of raw bytes, we must
+		// take this into account.
 		let mut payload_with_pre_post_fix = PRE_FIX.to_vec();
 		parachain_account_id.using_encoded(|id| payload_with_pre_post_fix.extend_from_slice(id));
 		payload_with_pre_post_fix.extend_from_slice(POST_FIX);
@@ -696,13 +719,14 @@ impl<T: Config> Pallet<T> {
 
 	// Verify that the contributor is eligible for a reward payout.
 	//
-	// The [`Contributions`] child trie root hash contains all contributions and their respective
-	// contributors. Given the contributor's relay chain account identifier, the claimed amount
-	// (in relay chain tokens) and the parachain account identifier, this function proves that the
-	// contributor's claim is valid.
+	// The [`Contributions`] child trie root hash contains all contributions and
+	// their respective contributors. Given the contributor's relay chain account
+	// identifier, the claimed amount (in relay chain tokens) and the parachain
+	// account identifier, this function proves that the contributor's claim is
+	// valid.
 	fn verify_contribution_proof(proof: Proof<T::Hash>, leaf_data: &[u8]) -> DispatchResult {
-		// We could unwrap here, as we check in the calling function if pallet is initialized (i.e. if contributions is set)
-		// but better be safe than sorry...
+		// We could unwrap here, as we check in the calling function if pallet is
+		// initialized (i.e. if contributions is set) but better be safe than sorry...
 		let root = Self::contributions().ok_or(Error::<T>::PalletNotInitialized)?;
 
 		// Number of proofs should practically never be > 30. Checking this

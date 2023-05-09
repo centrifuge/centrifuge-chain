@@ -13,7 +13,8 @@ pub trait RewardMechanism {
 	type MaxCurrencyMovements: Get<u32>;
 
 	/// Check if the group is ready to be rewarded.
-	/// Most of the cases it means that the group has stake that should be rewarded.
+	/// Most of the cases it means that the group has stake that should be
+	/// rewarded.
 	fn is_ready(group: &Self::Group) -> bool;
 
 	/// Reward the group mutating the group entity.
@@ -22,7 +23,8 @@ pub trait RewardMechanism {
 		amount: Self::Balance,
 	) -> Result<Self::Balance, DispatchError>;
 
-	/// Add stake to the account and mutates currency and group to archieve that.
+	/// Add stake to the account and mutates currency and group to archieve
+	/// that.
 	fn deposit_stake(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
@@ -30,7 +32,8 @@ pub trait RewardMechanism {
 		amount: Self::Balance,
 	) -> DispatchResult;
 
-	/// Remove stake from the account and mutates currency and group to archieve that.
+	/// Remove stake from the account and mutates currency and group to archieve
+	/// that.
 	fn withdraw_stake(
 		account: &mut Self::Account,
 		currency: &mut Self::Currency,
@@ -46,7 +49,8 @@ pub trait RewardMechanism {
 	) -> Result<Self::Balance, DispatchError>;
 
 	/// Claims the reward, mutating the account to reflect this action.
-	/// Once a reward is claimed, next calls will return 0 until the group will be rewarded again.
+	/// Once a reward is claimed, next calls will return 0 until the group will
+	/// be rewarded again.
 	fn claim_reward(
 		account: &mut Self::Account,
 		currency: &Self::Currency,

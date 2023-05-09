@@ -177,7 +177,8 @@ parameter_types! {
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
-// Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
+// Implement Centrifuge Chain chainbridge pallet configuration trait for the
+// mock runtime
 impl chainbridge::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type ChainId = MockChainId;
@@ -326,10 +327,11 @@ pub(crate) mod helpers {
 		(proof, doc_root, static_proofs)
 	}
 
-	/// Return invalid proofs and hashes used for testing minting functionalities.
+	/// Return invalid proofs and hashes used for testing minting
+	/// functionalities.
 	///
-	/// This function returns a tuple containing invalid proofs and hashes that cannot be used to
-	/// calculate a document root hash.
+	/// This function returns a tuple containing invalid proofs and hashes that
+	/// cannot be used to calculate a document root hash.
 	pub fn get_invalid_proof() -> (Proof<H256>, H256, [H256; 3]) {
 		let proof = Proof {
 			leaf_hash: [
