@@ -289,7 +289,7 @@ type RelayCidp = Box<
 		InherentDataProviders = (
 			FudgeInherentTimestamp,
 			sp_consensus_babe::inherents::InherentDataProvider,
-			sp_authorship::InherentDataProvider<RelayHeader>,
+			// sp_authorship::InherentDataProvider<RelayHeader>,
 			FudgeDummyInherentRelayParachain<RelayHeader>,
 		),
 	>,
@@ -718,9 +718,11 @@ fn test_env(
 					.expect("ESSENTIAL: Relay CIDP must not fail.");
 
 				async move {
-					let uncles = sc_consensus_uncles::create_uncles_inherent_data_provider(
-						&*client, parent,
-					)?;
+					// note(nuno): the latest api doesn't expect uncles anymore. Remove this once
+					// failing tests are fixed and this is ready for review.
+					// let uncles = sc_consensus_uncles::create_uncles_inherent_data_provider(
+					// 	&*client, parent,
+					// )?;
 
 					let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
 						.expect("Instances is initialized");
@@ -732,7 +734,7 @@ fn test_env(
 							);
 
 					let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
-					Ok((timestamp, slot, uncles, relay_para_inherent))
+					Ok((timestamp, slot, relay_para_inherent))
 				}
 			})
 		};
