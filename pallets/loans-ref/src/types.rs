@@ -519,7 +519,7 @@ impl<T: Config> ActiveLoan<T> {
 					))?
 					.0;
 
-				Ok(price.ensure_mul(oracle.quantity)?)
+				Ok(oracle.quantity.ensure_mul(price)?)
 			}
 		}
 	}
@@ -602,8 +602,16 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		// Only repay until the current debt
-		let amount = amount.min(self.calculate_debt()?);
+		let repayment_limit = match &self.info.valuation_method {
+			ValuationMethod::Oracle(oracle) => {
+				let price = T::PriceRegistry::get(&oracle.id)?.0;
+				let total_price = oracle.quantity.ensure_mul(price)?;
+				total_price.saturating_sub(self.total_repaid)
+			}
+			_ => self.calculate_debt()?,
+		};
+
+		let amount = amount.min(repayment_limit);
 
 		match self.info.restrictions.repayments {
 			RepayRestrictions::None => (),
