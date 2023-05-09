@@ -105,7 +105,8 @@ mod test {
 			l,
 			Location::XCM(sp_core::H256(
 				<[u8; 32]>::from_hex(
-					// todo(nuno): failing, expecting "0x5a121beb1148b31fc56f3d26f80800fd9eb4a90435a72d3cc74c42bc72bca9b8"
+					// todo(nuno): failing, expecting
+					// "0x5a121beb1148b31fc56f3d26f80800fd9eb4a90435a72d3cc74c42bc72bca9b8"
 					"5a121beb1148b31fc56f3d26f80800fd9eb4a90435a72d3cc74c42bc72bca9b8"
 				)
 				.unwrap()
