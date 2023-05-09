@@ -91,10 +91,7 @@ fn valid_proof() {
 				MILLISECS_PER_DAY + 1
 			));
 
-			assert_ok!(ChainBridge::whitelist_chain(
-				RuntimeOrigin::root(),
-				dest_id
-			));
+			assert_ok!(ChainBridge::whitelist_chain(RuntimeOrigin::root(), dest_id));
 
 			MockFees::mock_fee_to_burn(|author, fee| {
 				assert_eq!(author, &USER_A);

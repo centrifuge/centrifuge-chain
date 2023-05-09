@@ -119,11 +119,7 @@ fn register_tranche_asset_blocked() {
 		// only allow for tranche tokens to be registered through the pools pallet.
 		let asset_id = CurrencyId::Tranche(42, [42u8; 16]);
 		assert_noop!(
-			OrmlAssetRegistry::register_asset(
-				RuntimeOrigin::root(),
-				meta,
-				Some(asset_id)
-			),
+			OrmlAssetRegistry::register_asset(RuntimeOrigin::root(), meta, Some(asset_id)),
 			BadOrigin
 		);
 	});

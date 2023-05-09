@@ -17,6 +17,7 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 	xcm::XcmMetadata,
 };
+use cfg_utils::vec_to_fixed_array;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
@@ -30,7 +31,6 @@ use xcm::{
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
 };
-use cfg_utils::vec_to_fixed_array;
 
 use crate::{
 	mock,
@@ -2325,7 +2325,10 @@ fn create_tranche_token_metadata() {
 					interior: X3(
 						Parachain(MockParachainId::get()),
 						PalletInstance(PoolPalletIndex::get()),
-						GeneralKey { length: 32, data: vec_to_fixed_array(tranche_currency.encode()) }
+						GeneralKey {
+							length: 32,
+							data: vec_to_fixed_array(tranche_currency.encode())
+						}
 					)
 				})),
 				additional: CustomMetadata {

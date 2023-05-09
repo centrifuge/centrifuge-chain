@@ -98,10 +98,7 @@ fn transfer_air_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(
-			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
-			0
-		);
+		assert_eq!(OrmlTokens::free_balance(air_in_sibling, &BOB.into()), 0);
 
 		// Register AIR as foreign asset in the sibling parachain
 		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {

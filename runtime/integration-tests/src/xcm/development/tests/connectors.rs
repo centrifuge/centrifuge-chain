@@ -217,10 +217,7 @@ fn update_member() {
 		assert!(Permissions::has(
 			PermissionScope::Pool(pool_id),
 			new_member.into_account_truncating(),
-			Role::PoolRole(PoolRole::TrancheInvestor(
-				tranche_id,
-				valid_until
-			)),
+			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
 		));
 
 		// Verify it can be called for another member
@@ -354,10 +351,7 @@ fn transfer_tranche_tokens() {
 		// Verify that the correct amount of the Tranche token was transferred
 		// to the dest domain account on Centrifuge.
 		assert_eq!(
-			OrmlTokens::free_balance(
-				CurrencyId::Tranche(pool_id, tranche_id),
-				&domain_account
-			),
+			OrmlTokens::free_balance(CurrencyId::Tranche(pool_id, tranche_id), &domain_account),
 			amount
 		)
 	});
@@ -479,11 +473,7 @@ mod utils {
 			RuntimeOrigin::root(),
 			Domain::EVM(1284),
 			Router::Xcm(XcmDomain {
-				location: Box::new(
-					moonbeam_location
-						.try_into()
-						.expect("Bad xcm version")
-				),
+				location: Box::new(moonbeam_location.try_into().expect("Bad xcm version")),
 				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 				contract_address: H160::from(
 					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")

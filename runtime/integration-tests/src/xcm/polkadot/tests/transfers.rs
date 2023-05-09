@@ -100,10 +100,7 @@ fn transfer_cfg_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(
-			OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()),
-			0
-		);
+		assert_eq!(OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()), 0);
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),

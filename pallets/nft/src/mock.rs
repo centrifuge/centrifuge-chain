@@ -230,7 +230,6 @@ pub struct TestExternalitiesBuilder {}
 
 // Default trait implementation for test externalities builder
 
-
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {

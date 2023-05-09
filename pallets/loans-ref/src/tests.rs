@@ -153,8 +153,6 @@ mod create_loan {
 
 	fn config_mocks(pool_id: PoolId) {
 		MockPermissions::mock_has(move |scope, who, role| {
-			
-
 			matches!(scope, PermissionScope::Pool(id) if pool_id == id)
 				&& matches!(role, Role::PoolRole(PoolRole::Borrower))
 				&& who == BORROWER
@@ -728,8 +726,6 @@ mod write_off_loan {
 
 	fn config_mocks() {
 		MockPermissions::mock_has(move |scope, who, role| {
-			
-
 			matches!(scope, PermissionScope::Pool(id) if id == POOL_A)
 				&& matches!(role, Role::PoolRole(PoolRole::LoanAdmin))
 				&& who == LOAN_ADMIN
@@ -1222,7 +1218,6 @@ mod write_off_policy {
 
 	fn config_mocks(pool_id: PoolId) {
 		MockPermissions::mock_has(move |scope, who, role| {
-			
 			matches!(scope, PermissionScope::Pool(id) if pool_id == id)
 				&& matches!(role, Role::PoolRole(PoolRole::PoolAdmin))
 				&& who == POOL_ADMIN
