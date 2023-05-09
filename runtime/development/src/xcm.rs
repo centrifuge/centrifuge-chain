@@ -219,7 +219,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 /// into our internal `CurrencyId` type.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
-		match location.clone() {
+		match location {
 			// todo(nuno): verify this will work correctly
 			MultiLocation {
 				parents: 1,
@@ -233,9 +233,9 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				// we don't have any other native token represented as an X3 neither do we plan to.
 				id if id == u32::from(ParachainInfo::get()) => Err(location),
 				// Still support X3-based MultiLocations native to other chains
-				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
+				_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
 			},
-			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
+			_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
 		}
 	}
 }

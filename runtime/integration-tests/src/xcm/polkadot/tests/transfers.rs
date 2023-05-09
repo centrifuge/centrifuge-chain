@@ -101,14 +101,14 @@ fn transfer_cfg_to_sibling() {
 
 	Sibling::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(cfg_in_sibling.clone(), &BOB.into()),
+			OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()),
 			0
 		);
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
-			Some(cfg_in_sibling.clone())
+			Some(cfg_in_sibling)
 		));
 	});
 
@@ -124,7 +124,7 @@ fn transfer_cfg_to_sibling() {
 						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)
@@ -176,7 +176,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 	Sibling::execute_with(|| {
 		assert_eq!(Balances::free_balance(&centrifuge_account()), 0);
 		assert_eq!(
-			OrmlTokens::free_balance(cfg_in_sibling.clone(), &BOB.into()),
+			OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()),
 			bob_initial_balance
 		);
 	});
@@ -184,7 +184,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(BOB.into()),
-			cfg_in_sibling.clone(),
+			cfg_in_sibling,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -193,7 +193,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: ALICE.into(),
+							id: ALICE,
 						}
 					)
 				)
@@ -262,7 +262,7 @@ fn transfer_ausd_to_centrifuge() {
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)
@@ -384,13 +384,13 @@ fn transfer_foreign_sibling_to_centrifuge() {
 	let alice_initial_balance = cfg(10);
 	let sibling_asset_id = CurrencyId::ForeignAsset(1);
 	let asset_location =
-		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), general_key(&vec![0, 1])));
+		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), general_key(&[0, 1])));
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: 18,
 		name: "Sibling Native Token".into(),
 		symbol: "SBLNG".into(),
 		existential_deposit: 1_000_000_000_000,
-		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata {
 			xcm: XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
@@ -432,7 +432,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)
@@ -478,7 +478,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		name: "Wormhole USDC".into(),
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
-		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata::default(),
 	};
 	let transfer_amount = foreign(12, meta.decimals);
@@ -522,7 +522,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)

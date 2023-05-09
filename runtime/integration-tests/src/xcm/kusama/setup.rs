@@ -118,19 +118,19 @@ pub fn foreign(amount: Balance, decimals: u32) -> Balance {
 }
 
 pub fn dollar(decimals: u32) -> Balance {
-	10u128.saturating_pow(decimals.into())
+	10u128.saturating_pow(decimals)
 }
 
 pub fn sibling_account() -> AccountId {
-	parachain_account(PARA_ID_SIBLING.into())
+	parachain_account(PARA_ID_SIBLING)
 }
 
 pub fn karura_account() -> AccountId {
-	parachain_account(parachains::kusama::karura::ID.into())
+	parachain_account(parachains::kusama::karura::ID)
 }
 
 pub fn altair_account() -> AccountId {
-	parachain_account(parachains::kusama::altair::ID.into())
+	parachain_account(parachains::kusama::altair::ID)
 }
 
 fn parachain_account(id: u32) -> AccountId {

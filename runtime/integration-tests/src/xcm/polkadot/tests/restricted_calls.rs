@@ -80,7 +80,7 @@ pub mod blocked {
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
 									network: None,
-									id: BOB.into(),
+									id: BOB,
 								}
 							)
 						)
@@ -130,7 +130,7 @@ pub mod blocked {
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
 									network: None,
-									id: BOB.into(),
+									id: BOB,
 								}
 							)
 						)
@@ -181,7 +181,7 @@ pub mod blocked {
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
 									network: None,
-									id: BOB.into(),
+									id: BOB,
 								}
 							)
 						)

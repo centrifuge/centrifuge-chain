@@ -99,7 +99,7 @@ fn transfer_air_to_sibling() {
 
 	Sibling::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(air_in_sibling.clone(), &BOB.into()),
+			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
 			0
 		);
 
@@ -121,7 +121,7 @@ fn transfer_air_to_sibling() {
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
-			Some(air_in_sibling.clone())
+			Some(air_in_sibling)
 		));
 	});
 
@@ -137,7 +137,7 @@ fn transfer_air_to_sibling() {
 						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)
@@ -189,7 +189,7 @@ fn transfer_air_sibling_to_altair() {
 	Sibling::execute_with(|| {
 		assert_eq!(Balances::free_balance(&altair_account()), 0);
 		assert_eq!(
-			OrmlTokens::free_balance(air_in_sibling.clone(), &BOB.into()),
+			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
 			bob_initial_balance
 		);
 	});
@@ -197,7 +197,7 @@ fn transfer_air_sibling_to_altair() {
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(BOB.into()),
-			air_in_sibling.clone(),
+			air_in_sibling,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -206,7 +206,7 @@ fn transfer_air_sibling_to_altair() {
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: ALICE.into(),
+							id: ALICE,
 						}
 					)
 				)
@@ -275,7 +275,7 @@ fn transfer_ausd_to_altair() {
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)
@@ -323,7 +323,7 @@ fn transfer_ksm_from_relay_chain() {
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta.clone(),
-			Some(currency_id.clone()),
+			Some(currency_id),
 		));
 
 		assert_eq!(OrmlTokens::free_balance(currency_id, &BOB.into()), 0);
@@ -370,13 +370,13 @@ fn transfer_ksm_to_relay_chain() {
 	let currency_id = CurrencyId::ForeignAsset(3001);
 	Altair::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(currency_id.clone(), &BOB.into()),
+			OrmlTokens::free_balance(currency_id, &BOB.into()),
 			1991987200000
 		);
 
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(BOB.into()),
-			currency_id.clone(),
+			currency_id,
 			ksm(1),
 			Box::new(
 				MultiLocation::new(
@@ -413,7 +413,7 @@ fn transfer_foreign_sibling_to_altair() {
 		name: "Sibling Native Token".into(),
 		symbol: "SBLNG".into(),
 		existential_deposit: 1_000_000_000_000,
-		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata {
 			xcm: XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
@@ -454,7 +454,7 @@ fn transfer_foreign_sibling_to_altair() {
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)
@@ -500,7 +500,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 		name: "Wormhole USDC".into(),
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
-		location: Some(VersionedMultiLocation::V3(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata::default(),
 	};
 	let transfer_amount = foreign(12, meta.decimals);
@@ -545,7 +545,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: None,
-							id: BOB.into(),
+							id: BOB,
 						}
 					)
 				)

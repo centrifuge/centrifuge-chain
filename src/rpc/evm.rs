@@ -121,7 +121,7 @@ where
 
 	Arc::new(OverrideHandle {
 		schemas: overrides_map,
-		fallback: Box::new(RuntimeApiStorageOverride::new(client.clone())),
+		fallback: Box::new(RuntimeApiStorageOverride::new(client)),
 	})
 }
 

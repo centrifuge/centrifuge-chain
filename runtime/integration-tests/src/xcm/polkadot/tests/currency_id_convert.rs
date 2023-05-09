@@ -116,7 +116,7 @@ fn convert_tranche() {
 
 	Centrifuge::execute_with(|| {
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation.clone()),
+			<CurrencyIdConvert as C1<_, _>>::convert(tranche_multilocation),
 			Err(tranche_multilocation),
 		);
 	});
@@ -145,7 +145,7 @@ fn convert_ausd() {
 		register_ausd();
 
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
+			<CurrencyIdConvert as C1<_, _>>::convert(ausd_location),
 			Ok(AUSD_ASSET_ID),
 		);
 
@@ -158,13 +158,13 @@ fn convert_ausd() {
 
 #[test]
 fn convert_dot() {
-	let dot_location: MultiLocation = MultiLocation::parent().into();
+	let dot_location: MultiLocation = MultiLocation::parent();
 
 	Centrifuge::execute_with(|| {
 		register_dot();
 
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(dot_location.clone()),
+			<CurrencyIdConvert as C1<_, _>>::convert(dot_location),
 			Ok(DOT_ASSET_ID),
 		);
 
@@ -181,12 +181,12 @@ fn convert_unknown_multilocation() {
 		1,
 		X2(
 			Parachain(parachains::polkadot::centrifuge::ID),
-			general_key(&[42].to_vec()),
+			general_key([42].as_ref()),
 		),
 	);
 
 	Centrifuge::execute_with(|| {
-		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location).is_err());
 	});
 }
 

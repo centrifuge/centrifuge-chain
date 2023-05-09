@@ -119,8 +119,8 @@ fn register_tranche_asset_blocked() {
 		assert_noop!(
 			OrmlAssetRegistry::register_asset(
 				RuntimeOrigin::root(),
-				meta.clone(),
-				Some(asset_id.clone())
+				meta,
+				Some(asset_id)
 			),
 			BadOrigin
 		);

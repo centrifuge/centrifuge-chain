@@ -93,7 +93,7 @@ fn valid_proof() {
 
 			assert_ok!(ChainBridge::whitelist_chain(
 				RuntimeOrigin::root(),
-				dest_id.clone()
+				dest_id
 			));
 
 			MockFees::mock_fee_to_burn(|author, fee| {

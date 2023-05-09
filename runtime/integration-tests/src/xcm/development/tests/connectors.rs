@@ -133,7 +133,7 @@ fn add_tranche() {
 		assert_noop!(
 			Connectors::add_tranche(
 				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
+				pool_id,
 				nonexistent_tranche,
 				decimals,
 				Domain::EVM(1284),
@@ -152,7 +152,7 @@ fn add_tranche() {
 		// when given a valid pool + tranche id pair.
 		assert_ok!(Connectors::add_tranche(
 			RuntimeOrigin::signed(ALICE.into()),
-			pool_id.clone(),
+			pool_id,
 			tranche_id,
 			decimals,
 			Domain::EVM(1284),
@@ -188,9 +188,9 @@ fn update_member() {
 			Connectors::update_member(
 				RuntimeOrigin::signed(ALICE.into()),
 				new_member.clone(),
-				pool_id.clone(),
-				tranche_id.clone(),
-				valid_until.clone(),
+				pool_id,
+				tranche_id,
+				valid_until,
 			),
 			BadOrigin
 		);
@@ -200,7 +200,7 @@ fn update_member() {
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			ALICE.into(),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::MemberListAdmin),
 		));
 
@@ -208,18 +208,18 @@ fn update_member() {
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(ALICE.into()),
 			new_member.clone(),
-			pool_id.clone(),
-			tranche_id.clone(),
-			valid_until.clone(),
+			pool_id,
+			tranche_id,
+			valid_until,
 		));
 
 		// Verify the Investor role was set as expected in Permissions
 		assert!(Permissions::has(
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			new_member.into_account_truncating(),
 			Role::PoolRole(PoolRole::TrancheInvestor(
-				tranche_id.clone(),
-				valid_until.clone()
+				tranche_id,
+				valid_until
 			)),
 		));
 
@@ -227,9 +227,9 @@ fn update_member() {
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(ALICE.into()),
 			DomainAddress::EVM(1284, [9; 20]),
-			pool_id.clone(),
-			tranche_id.clone(),
-			valid_until.clone(),
+			pool_id,
+			tranche_id,
+			valid_until,
 		));
 	});
 }
@@ -256,8 +256,8 @@ fn update_token_price() {
 		// Verify it now works
 		assert_ok!(Connectors::update_token_price(
 			RuntimeOrigin::signed(ALICE.into()),
-			pool_id.clone(),
-			tranche_id.clone(),
+			pool_id,
+			tranche_id,
 			Domain::EVM(1284),
 		));
 	});
@@ -287,8 +287,8 @@ fn transfer_tranche_tokens() {
 		assert_noop!(
 			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
-				tranche_id.clone(),
+				pool_id,
+				tranche_id,
 				dest_address.clone(),
 				42,
 			),
@@ -299,8 +299,8 @@ fn transfer_tranche_tokens() {
 		assert_noop!(
 			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
-				tranche_id.clone(),
+				pool_id,
+				tranche_id,
 				DomainAddress::Centrifuge(BOB),
 				42,
 			),
@@ -312,7 +312,7 @@ fn transfer_tranche_tokens() {
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::MemberListAdmin),
 		));
 
@@ -321,14 +321,14 @@ fn transfer_tranche_tokens() {
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(BOB.into()),
 			dest_address.clone(),
-			pool_id.clone(),
-			tranche_id.clone(),
+			pool_id,
+			tranche_id,
 			u64::MAX,
 		));
 
 		// Give BOB enough Tranche balance to be able to transfer it
 		OrmlTokens::deposit(
-			CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
+			CurrencyId::Tranche(pool_id, tranche_id),
 			&BOB.into(),
 			100_000,
 		);
@@ -338,8 +338,8 @@ fn transfer_tranche_tokens() {
 		let amount = 123;
 		assert_ok!(Connectors::transfer_tranche_tokens(
 			RuntimeOrigin::signed(BOB.into()),
-			pool_id.clone(),
-			tranche_id.clone(),
+			pool_id,
+			tranche_id,
 			dest_address.clone(),
 			amount,
 		));
@@ -347,7 +347,7 @@ fn transfer_tranche_tokens() {
 		// The account to which the tranche should have been transferred
 		// to on Centrifuge for bookkeeping purposes.
 		let domain_account: AccountId = DomainLocator::<Domain> {
-			domain: dest_address.clone().into(),
+			domain: dest_address.into(),
 		}
 		.into_account_truncating();
 
@@ -355,7 +355,7 @@ fn transfer_tranche_tokens() {
 		// to the dest domain account on Centrifuge.
 		assert_eq!(
 			OrmlTokens::free_balance(
-				CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
+				CurrencyId::Tranche(pool_id, tranche_id),
 				&domain_account
 			),
 			amount
@@ -366,7 +366,7 @@ fn transfer_tranche_tokens() {
 #[test]
 fn test_vec_to_fixed_array() {
 	let src = "TrNcH".as_bytes().to_vec();
-	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src.clone());
+	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src);
 
 	assert!(symbol.starts_with("TrNcH".as_bytes()));
 	assert_eq!(
@@ -395,7 +395,7 @@ fn encoded_ethereum_xcm_add_pool() {
 		<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882").expect("Decoding failed"),
 	);
 	let domain_info = XcmDomain {
-		location: Box::new(VersionedMultiLocation::V3(moonbase_location.clone())),
+		location: Box::new(VersionedMultiLocation::V3(moonbase_location)),
 		ethereum_xcm_transact_call_index,
 		contract_address,
 		fee_currency: ForeignAsset(1),
@@ -442,7 +442,7 @@ mod utils {
 		// We need to set the Transact info for Moonbeam in the XcmTransactor pallet
 		assert_ok!(XcmTransactor::set_transact_info(
 			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V3(moonbeam_location.clone())),
+			Box::new(VersionedMultiLocation::V3(moonbeam_location)),
 			1.into(),
 			8_000_000_000_000_000.into(),
 			Some(3.into())
@@ -450,7 +450,7 @@ mod utils {
 
 		assert_ok!(XcmTransactor::set_fee_per_second(
 			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V3(moonbeam_native_token.clone())),
+			Box::new(VersionedMultiLocation::V3(moonbeam_native_token)),
 			default_per_second(18), // default fee_per_second for this token which has 18 decimals
 		));
 
@@ -468,7 +468,7 @@ mod utils {
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
-			Some(glmr_currency_id.clone())
+			Some(glmr_currency_id)
 		));
 
 		// Give Alice and BOB enough glimmer to pay for fees
@@ -481,7 +481,6 @@ mod utils {
 			Router::Xcm(XcmDomain {
 				location: Box::new(
 					moonbeam_location
-						.clone()
 						.try_into()
 						.expect("Bad xcm version")
 				),
@@ -515,7 +514,7 @@ mod utils {
 		assert_ok!(PoolSystem::create(
 			BOB.into(),
 			BOB.into(),
-			pool_id.clone(),
+			pool_id,
 			vec![
 				TrancheInput {
 					tranche_type: TrancheType::Residual,
