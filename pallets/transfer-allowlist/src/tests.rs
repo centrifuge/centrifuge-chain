@@ -36,14 +36,13 @@ fn add_transfer_allowance_works() {
 			})
 		);
 
-		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[0].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 		assert_eq!(
-			System::events()[2].event,
+			System::events()[1].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceCreated {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -133,13 +132,12 @@ fn add_transfer_allowance_multiple_dests_increments_correctly() {
 			})
 		);
 
-		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[0].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[2].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Reserved { who: 1, amount: 10 })
 		);
 	})
@@ -272,9 +270,9 @@ fn remove_transfer_allowance_works() {
 			})
 		);
 
-		// event 0 - reserve for allowance creation, 1, allowance creation itelf
+		// event 1 for allowance creation itelf
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -334,11 +332,10 @@ fn remove_transfer_allowance_with_delay_works() {
 		// ensure only 1 reserve as we've still just got 1 allowance in storage
 		assert_eq!(Balances::reserved_balance(&SENDER), 10);
 
-		// event 0 - reserve for allowance creation,
-		// 1, allowance creation itself
-		// 2, delay creation
+		// 0, allowance creation itself
+		// 1, delay creation
 		assert_eq!(
-			System::events()[4].event,
+			System::events()[3].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceRemoved {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -405,19 +402,18 @@ fn purge_transfer_allowance_works() {
 			})
 		);
 		// verify event sent for removal
-		// note: event 0 is in new_ext_test setup -- fee key setup
-		// event 1 is delay, addition to ensure blocked at set
-		// event 2 is reserve
-		// event 3 is allowance creation
-		// Event 4 is allowance removal to set blocked at
-		// event 5 is unreserve from purge
-		// event 6 is purge
+		// event 0 is delay, addition to ensure blocked at set
+		// event 1 is reserve
+		// event 2 is allowance creation
+		// Event 3 is allowance removal to set blocked at
+		// event 4 is unreserve from purge
+		// event 5 is purge
 		assert_eq!(
-			System::events()[5].event,
+			System::events()[4].event,
 			RuntimeEvent::Balances(pallet_balances::Event::Unreserved { who: 1, amount: 10 })
 		);
 		assert_eq!(
-			System::events()[6].event,
+			System::events()[5].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowancePurged {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -543,9 +539,8 @@ fn add_allowance_delay_works() {
 			})
 		);
 		// verify event deposited
-		// note: event 0 is in new_ext_test setup -- fee key setup
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[0].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayAdd {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -583,10 +578,9 @@ fn cannot_create_conflicint_allowance_delays() {
 				once_modifiable_after: None
 			})
 		);
-		// note: event 0 is in new_ext_test setup -- fee key setup
 		// verify event deposited
 		assert_eq!(
-			System::events()[1].event,
+			System::events()[0].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayAdd {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -625,11 +619,10 @@ fn set_allowance_delay_future_modifiable_works() {
 		);
 
 		// note:
-		// event 0 is in new_ext_test setup -- fee key setup
-		// event 1 is delay creation
+		// event 0 is delay creation
 		// verify event deposited
 		assert_eq!(
-			System::events()[2].event,
+			System::events()[1].event,
 			RuntimeEvent::TransferAllowList(Event::ToggleTransferAllowanceDelayFutureModifiable {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -701,12 +694,11 @@ fn set_allowance_delay_future_modifiable_works_if_modifiable_set_and_reached() {
 		);
 
 		// note:
-		// event 0 is in new_ext_test setup -- fee key setup
-		// event 1 is delay creation
-		// event 2 is initial set modifiable
+		// event 0 is delay creation
+		// event 1 is initial set modifiable
 		// verify event deposited
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(Event::ToggleTransferAllowanceDelayFutureModifiable {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -737,11 +729,10 @@ fn purge_allowance_delay_works() {
 		));
 
 		// note:
-		// event 0 is in new_ext_test setup -- fee key setup
-		// event 1 is delay creation
-		// event 2 is initial set modifiable
+		// event 0 is delay creation
+		// event 1 is initial set modifiable
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayPurge {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),
@@ -913,12 +904,11 @@ fn update_allowance_delay_works() {
 		);
 
 		// note:
-		// event 0 is in new_ext_test setup -- fee key setup
-		// event 1 is delay creation
-		// event 2 is initial set modifiable
+		// event 0 is delay creation
+		// event 1 is initial set modifiable
 		// verify event deposited
 		assert_eq!(
-			System::events()[3].event,
+			System::events()[2].event,
 			RuntimeEvent::TransferAllowList(Event::TransferAllowanceDelayUpdate {
 				sender_account_id: SENDER,
 				currency_id: <Runtime as Config>::CurrencyId::default(),

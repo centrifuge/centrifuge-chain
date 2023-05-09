@@ -22,6 +22,15 @@ use scale_info::TypeInfo;
 use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, One};
 
 use super::*;
+
+#[cfg(test)]
+fn config_mocks() {
+	use crate::mock::Fees;
+
+	Fees::mock_fee_value(|_| 0);
+	Fees::mock_fee_to_author(|_, _| Ok(()));
+}
+
 benchmarks! {
 	where_clause {
 		where
@@ -34,27 +43,37 @@ benchmarks! {
 	}
 
 	add_transfer_allowance_no_existing_metadata {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 	}:add_transfer_allowance(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), receiver.clone().into())
 
 
 	add_transfer_allowance_existing_metadata {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), 200u32.into())?;
 	}:add_transfer_allowance(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), receiver.clone().into())
 
 	add_allowance_delay_existing_metadata {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), receiver.clone().into())?;
 	}:add_allowance_delay(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), 200u32.into())
 
 
 	toggle_allowance_delay_once_future_modifiable {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), 1u32.into())?;
 	}:toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()), T::CurrencyId::default())
 
 	update_allowance_delay {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), 1u32.into())?;
 		Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default())?;
@@ -62,6 +81,8 @@ benchmarks! {
 	}:update_allowance_delay(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), 200u32.into())
 
 	purge_allowance_delay_no_remaining_metadata  {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), 1u32.into())?;
 		Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default())?;
@@ -69,6 +90,8 @@ benchmarks! {
 	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), T::CurrencyId::default())
 
 	remove_transfer_allowance_delay_present {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 		let delay = T::BlockNumber::one();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), delay.clone())?;
@@ -77,6 +100,8 @@ benchmarks! {
 	}:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), receiver.clone().into())
 
 	purge_transfer_allowance_remaining_metadata {
+		#[cfg(test)]
+		config_mocks();
 		let (sender, receiver) = set_up_users::<T>();
 		let receiver_1 = set_up_second_receiver::<T>();
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), receiver.clone().into())?;
@@ -86,6 +111,8 @@ benchmarks! {
 }
 
 fn set_up_users<T: Config>() -> (T::AccountId, T::AccountId) {
+	#[cfg(test)]
+	config_mocks();
 	let sender: T::AccountId = account::<T::AccountId>("Sender", 1, 0);
 	let receiver: T::AccountId = account::<T::AccountId>("Receiver", 2, 0);
 	T::ReserveCurrency::deposit_creating(

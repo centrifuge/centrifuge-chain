@@ -8055,6 +8055,7 @@ dependencies = [
 name = "pallet-transfer-allowlist"
 version = "0.1.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-test-utils",
  "cfg-traits",
  "cfg-types",
