@@ -10,10 +10,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_utils::vec_to_fixed_array;
-use codec::{Decode, Encode, MaxEncodedLen};
+use cfg_traits::connectors::Codec;
+use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
+use codec::{Decode, Encode, Input, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::TypeId;
+use sp_std::{vec, vec::Vec};
 
 use crate::EVMChainId;
 
@@ -30,6 +32,33 @@ pub enum Domain {
 	Centrifuge,
 	/// An EVM domain, identified by its EVM Chain Id
 	EVM(EVMChainId),
+}
+
+impl Codec for Domain {
+	fn serialize(&self) -> Vec<u8> {
+		match self {
+			Self::Centrifuge => vec![0; 9],
+			Self::EVM(chain_id) => {
+				let mut output: Vec<u8> = 1u8.encode();
+				output.append(&mut chain_id.to_be_bytes().to_vec());
+
+				output
+			}
+		}
+	}
+
+	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
+		let variant = input.read_byte()?;
+
+		match variant {
+			0 => Ok(Self::Centrifuge),
+			1 => {
+				let chain_id = decode_be_bytes::<8, _, _>(input)?;
+				Ok(Self::EVM(chain_id))
+			}
+			_ => Err(codec::Error::from("Unknown Domain variant")),
+		}
+	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
