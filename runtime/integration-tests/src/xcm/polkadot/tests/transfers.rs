@@ -351,7 +351,6 @@ fn transfer_dot_to_relay_chain() {
 			dot(1),
 			Box::new(
 				MultiLocation::new(
-					// nuno
 					1,
 					X1(Junction::AccountId32 {
 						id: ALICE,
