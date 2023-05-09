@@ -68,7 +68,7 @@ pub fn execute_call<I, O>(call_id: CallId, input: I) -> Result<O, Error> {
 			));
 		}
 
-		// SAFETY: The existance of this boxed clousure in consequent calls is ensured
+		// SAFETY: The existence of this boxed closure in consequent calls is ensured
 		// by the forget call below.
 		// The type of the transmuted call is ensured in runtime by the above type
 		// signature check.
