@@ -13,10 +13,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::PoolInspect;
+use cfg_traits::{connectors::Codec, PoolInspect};
 use cfg_types::domain_address::{Domain, DomainAddress, DomainLocator};
-use cfg_utils::{decode_be_bytes, vec_to_fixed_array};
-use codec::{Decode, Encode, Input, MaxEncodedLen};
+use cfg_utils::vec_to_fixed_array;
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	OriginTrait,
@@ -48,40 +48,6 @@ pub enum ParachainId {
 	/// Moonbeam - It may be Moonbeam on Polkadot, Moonriver on Kusama, or
 	/// Moonbase on a testnet.
 	Moonbeam,
-}
-
-/// An encoding & decoding trait for the purpose of meeting the
-/// Connectors General Message Passing Format
-pub trait Codec: Sized {
-	fn serialize(&self) -> Vec<u8>;
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
-}
-
-impl Codec for Domain {
-	fn serialize(&self) -> Vec<u8> {
-		match self {
-			Self::Centrifuge => vec![0; 9],
-			Self::EVM(chain_id) => {
-				let mut output: Vec<u8> = 1u8.encode();
-				output.append(&mut chain_id.to_be_bytes().to_vec());
-
-				output
-			}
-		}
-	}
-
-	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error> {
-		let variant = input.read_byte()?;
-
-		match variant {
-			0 => Ok(Self::Centrifuge),
-			1 => {
-				let chain_id = decode_be_bytes::<8, _, _>(input)?;
-				Ok(Self::EVM(chain_id))
-			}
-			_ => Err(codec::Error::from("Unknown Domain variant")),
-		}
-	}
 }
 
 // Type aliases
