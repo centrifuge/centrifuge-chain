@@ -22,8 +22,8 @@ use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
 use sp_core::{storage::StateVersion, Encode};
 use sp_runtime::{
-	traits::{ConstU32, One, Zero},
-	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
+	traits::{One, Zero},
+	FixedPointNumber, Perquintill, TokenError,
 };
 use xcm::{
 	latest::MultiLocation,

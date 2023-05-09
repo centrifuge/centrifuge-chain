@@ -71,7 +71,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Authorship: pallet_authorship::{Pallet, Storage, Inherent},
+		Authorship: pallet_authorship::{Pallet, Storage},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Event<T>},
