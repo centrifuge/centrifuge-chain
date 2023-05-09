@@ -30,6 +30,7 @@ use xcm::{
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
 };
+use cfg_utils::vec_to_fixed_array;
 
 use crate::{
 	mock,
@@ -2311,8 +2312,6 @@ fn create_tranche_token_metadata() {
 
 		let pool = Pool::<Runtime>::get(3).unwrap();
 		let tranche_currency = pool.tranches.tranches[0].currency;
-		let tranche_id =
-			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 
 		assert_eq!(
 			<Runtime as Config>::AssetRegistry::metadata(&tranche_currency.into()).unwrap(),
@@ -2321,13 +2320,13 @@ fn create_tranche_token_metadata() {
 				name: "SuperToken".into(),
 				symbol: "ST".into(),
 				existential_deposit: 0,
-				location: Some(VersionedMultiLocation::V1(MultiLocation {
+				location: Some(VersionedMultiLocation::V3(MultiLocation {
 					parents: 1,
 					interior: X3(
 						Parachain(MockParachainId::get()),
 						PalletInstance(PoolPalletIndex::get()),
-						GeneralKey(tranche_id)
-					),
+						GeneralKey { length: 32, data: vec_to_fixed_array(tranche_currency.encode()) }
+					)
 				})),
 				additional: CustomMetadata {
 					mintable: false,

@@ -99,7 +99,7 @@ mod test {
 
 	#[test]
 	fn from_xcm_versioned_address_works() {
-		let xa = VersionedMultiLocation::V1(MultiLocation::default());
+		let xa = VersionedMultiLocation::V3(MultiLocation::default());
 		let l = Location::from(xa.clone());
 		assert_eq!(
 			l,

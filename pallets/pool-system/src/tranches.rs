@@ -1873,9 +1873,9 @@ pub mod test {
 			assert_eq!(asset_metadata.symbol[..], [71, 76, 77, 82]);
 			assert_eq!(asset_metadata.decimals, decimals);
 			assert!(match asset_metadata.location {
-				Some(VersionedMultiLocation::V1(xcm::latest::MultiLocation {
+				Some(VersionedMultiLocation::V3(MultiLocation {
 					parents: 1,
-					interior: X3(Parachain(42), PalletInstance(42), GeneralKey(_)),
+					interior: X3(Parachain(42), PalletInstance(42), GeneralKey { .. }),
 				})) => true,
 				_ => false,
 			})
