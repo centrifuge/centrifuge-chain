@@ -53,6 +53,14 @@ impl From<MultiLocation> for Location {
 	}
 }
 
+impl From<xcm::v2::MultiLocation> for Location {
+	fn from(ml: xcm::v2::MultiLocation) -> Self {
+		// using hash here as multilocation is significantly larger than any other enum
+		// type here -- 592 bytes, vs 40 bytes for domain address (next largest)
+		Self::XCM(BlakeTwo256::hash(&ml.encode()))
+	}
+}
+
 impl From<VersionedMultiLocation> for Location {
 	fn from(vml: VersionedMultiLocation) -> Self {
 		// using hash here as multilocation is significantly larger than any other enum
@@ -116,8 +124,8 @@ mod test {
 
 	#[test]
 	fn from_xcm_versioned_address_doesnt_change_if_content_stays_same() {
-		let xa = MultiLocation::default();
-		let xb = MultiLocation::default();
+		let xa = xcm::v2::MultiLocation::default();
+		let xb = xcm::v3::MultiLocation::default();
 		let l0 = Location::from(xa.clone());
 		let l1 = Location::from(xb.clone());
 		assert_eq!(l0, l1);
