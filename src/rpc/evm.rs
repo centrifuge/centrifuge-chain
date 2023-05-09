@@ -188,7 +188,6 @@ where
 			fee_history_cache_limit,
 			execute_gas_limit_multiplier,
 		)
-		// todo(nuno): there's some trait bounds not satisfied here
 		.into_rpc(),
 	)?;
 
