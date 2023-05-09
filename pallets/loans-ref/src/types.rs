@@ -519,7 +519,8 @@ impl<T: Config> ActiveLoan<T> {
 					))?
 					.0;
 
-				Ok(oracle.quantity.ensure_mul(price)?)
+				let value = oracle.quantity.ensure_mul(price)?;
+				Ok(self.write_off_status.write_down(value)?)
 			}
 		}
 	}
