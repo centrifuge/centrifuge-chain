@@ -132,9 +132,9 @@ where
 {
 	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
-		debt: Balance,
+		value: Balance,
 	) -> Result<Balance, ArithmeticError> {
-		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
+		value.ensure_sub(self.percentage.ensure_mul_int(value)?)
 	}
 
 	pub fn compose_max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
