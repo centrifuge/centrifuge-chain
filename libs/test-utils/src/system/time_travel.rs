@@ -10,18 +10,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General
 
-use sp_runtime::traits::{CheckedAdd, Header, One};
+use sp_runtime::traits::CheckedAdd;
 
 /// Advances the chain `n` number of blocks
 /// for use with tests where actions would need to take
 /// place a certain number of blocks after another action.
-pub fn advance_n_blocks<T: frame_system::Config>(n: u64) {
-	for _ in 0..n {
-		let h = frame_system::Pallet::<T>::finalize();
-		let b = h
-			.number()
-			.checked_add(&T::BlockNumber::one())
-			.expect("Mock block count increase failed");
-		frame_system::Pallet::<T>::initialize(&b, h.parent_hash(), h.digest());
-	}
+/// Note that this does not do finalization or initialisation of blocks.
+pub fn advance_n_blocks<T: frame_system::Config>(n: <T as frame_system::Config>::BlockNumber) {
+	let b = frame_system::Pallet::<T>::block_number()
+		.checked_add(&n)
+		.expect("Mock block advancement failed.");
+	frame_system::Pallet::<T>::set_block_number(b)
 }
