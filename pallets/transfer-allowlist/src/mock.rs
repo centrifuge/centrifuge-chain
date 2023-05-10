@@ -18,7 +18,7 @@ use frame_support::{
 	Deserialize, Serialize,
 };
 use scale_info::TypeInfo;
-use sp_core::{Get, H256};
+use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -30,7 +30,7 @@ pub(crate) const STARTING_BLOCK: u64 = 50;
 pub(crate) const SENDER: u64 = 0x1;
 pub(crate) const ACCOUNT_RECEIVER: u64 = 0x2;
 pub(crate) const FEE_DEFICIENT_SENDER: u64 = 0x3;
-pub(crate) const ALLOWANCE_FEE_AMMOUNT: u64 = 10u64;
+pub(crate) const ALLOWANCE_FEE_AMOUNT: u64 = 10u64;
 pub(crate) const ALLOWANCE_FEEKEY: u8 = 0u8;
 
 type Balance = u64;
@@ -156,15 +156,13 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
-pub struct TransferAllowlistFeeKey<Runtime>(sp_std::marker::PhantomData<Runtime>);
-impl<Runtime> Get<u8> for TransferAllowlistFeeKey<Runtime> {
-	fn get() -> u8 {
-		ALLOWANCE_FEEKEY
-	}
+
+parameter_types! {
+	pub const TransferAllowlistFeeKey: u8 = ALLOWANCE_FEEKEY;
 }
 
 impl transfer_allowlist::Config for Runtime {
-	type AllowanceFeeKey = TransferAllowlistFeeKey<Runtime>;
+	type AllowanceFeeKey = TransferAllowlistFeeKey;
 	type CurrencyId = CurrencyId;
 	type Fees = Fees;
 	type Location = Location;
@@ -190,7 +188,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::set_block_number(STARTING_BLOCK);
 
 		Fees::mock_fee_value(|key| match key {
-			ALLOWANCE_FEEKEY => ALLOWANCE_FEE_AMMOUNT,
+			ALLOWANCE_FEEKEY => ALLOWANCE_FEE_AMOUNT,
 			_ => panic!("No valid fee key"),
 		});
 	});
