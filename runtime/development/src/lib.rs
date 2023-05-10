@@ -1824,11 +1824,11 @@ construct_runtime!(
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 105,
-		Rewards: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>} = 106,
+		Rewards: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 106,
 		LiquidityRewards: pallet_liquidity_rewards::{Pallet, Call, Storage, Event<T>} = 107,
 		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 108,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
-		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>} = 110,
+		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 
 		// XCM
@@ -1927,6 +1927,12 @@ pub type Executive = frame_executive::Executive<
 
 type UpgradeDev1020 = (
 	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>,
+	pallet_rewards::migrations::FundExistentialDeposit<
+		Runtime,
+		pallet_rewards::Instance2,
+		NativeToken,
+		ExistentialDeposit,
+	>,
 	pallet_loans_ref::migrations::v1::Migration<Runtime>,
 );
 

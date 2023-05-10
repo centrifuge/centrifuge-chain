@@ -94,6 +94,12 @@ pub enum CurrencyId {
 	M,
 }
 
+impl Default for CurrencyId {
+	fn default() -> Self {
+		CurrencyId::Reward
+	}
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 pub enum DomainId {
 	D1,

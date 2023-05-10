@@ -1107,6 +1107,14 @@ fn development_genesis(
 		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
 		ethereum: Default::default(),
 		evm: Default::default(),
+		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: 1 * CFG,
+		},
+		rewards: development_runtime::RewardsConfig {
+			currency_id: CurrencyId::Native,
+			amount: 1 * CFG,
+		},
 	}
 }
 

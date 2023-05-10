@@ -16,6 +16,8 @@ use frame_support::traits::{
 };
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::marker::PhantomData;
+#[cfg(feature = "try-runtime")]
+use {frame_support::inherent::Vec, sp_std::vec};
 
 use crate::{BalanceOf, Config};
 
@@ -28,10 +30,11 @@ where
 	Currency: Get<<T as Config<I>>::CurrencyId>,
 	ED: Get<BalanceOf<T, I>>,
 {
-	<<T as Config<I>>::Currency as Inspect<T::AccountId>>::balance(
+	let balance = <<T as Config<I>>::Currency as Inspect<T::AccountId>>::balance(
 		Currency::get(),
 		&<T as Config<I>>::PalletId::get().into_account_truncating(),
-	) >= ED::get()
+	);
+	balance >= ED::get()
 }
 
 impl<T, I, Currency, ED> OnRuntimeUpgrade for FundExistentialDeposit<T, I, Currency, ED>
@@ -63,8 +66,7 @@ where
 			T::DbWeight::get().reads_writes(1, 1)
 		} else {
 			log::info!(
-				"💶 Rewards: ED funding for sovereign pallet account not required anymore. 
-                This probably should be removed"
+				"💶 Rewards: ED funding for sovereign pallet account not required anymore. This probably should be removed"
 			);
 			T::DbWeight::get().reads_writes(1, 0)
 		}
