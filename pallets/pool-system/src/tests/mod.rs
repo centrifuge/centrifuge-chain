@@ -20,7 +20,7 @@ use cfg_types::{
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
-use sp_core::{storage::StateVersion};
+use sp_core::storage::StateVersion;
 use sp_runtime::{
 	traits::{One, Zero},
 	FixedPointNumber, Perquintill, TokenError,

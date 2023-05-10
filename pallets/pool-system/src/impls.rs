@@ -148,11 +148,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
 			};
 
-			let metadata = tranche.create_asset_metadata(
-				decimals,
-				token_name.to_vec(),
-				token_symbol.to_vec(),
-			);
+			let metadata =
+				tranche.create_asset_metadata(decimals, token_name.to_vec(), token_symbol.to_vec());
 
 			T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;

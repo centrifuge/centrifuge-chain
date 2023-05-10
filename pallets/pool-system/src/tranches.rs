@@ -1836,11 +1836,7 @@ pub mod test {
 			let decimals: u32 = 10;
 			let name: Vec<u8> = "Glimmer".into();
 			let symbol: Vec<u8> = "GLMR".into();
-			let asset_metadata = tranche.create_asset_metadata(
-				decimals,
-				name,
-				symbol,
-			);
+			let asset_metadata = tranche.create_asset_metadata(decimals, name, symbol);
 
 			assert_eq!(asset_metadata.existential_deposit, 0);
 			assert_eq!(asset_metadata.name[..], [71, 108, 105, 109, 109, 101, 114]);
