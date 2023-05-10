@@ -58,6 +58,7 @@ use crate::xcm::polkadot::{
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
 	tests::{register_ausd, register_cfg},
 };
+use crate::xcm::polkadot::tests::register_cfg_v2;
 
 #[test]
 fn convert_cfg() {
@@ -71,6 +72,44 @@ fn convert_cfg() {
 		);
 
 		register_cfg();
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
+			Ok(CurrencyId::Native),
+		);
+
+		// The canonical way CFG is represented out in the wild
+		let cfg_location_canonical: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::polkadot::centrifuge::ID),
+				general_key(parachains::polkadot::centrifuge::CFG_KEY),
+			),
+		);
+
+		assert_eq!(
+			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
+			Some(cfg_location_canonical)
+		)
+	});
+}
+
+
+/// Verify that even with CFG registered in the AssetRegistry with a XCM v2 MultiLocation, that
+/// `CurrencyIdConvert` can look it up given an identical location in XCM v3.
+#[test]
+fn convert_cfg_xcm_v2() {
+	assert_eq!(parachains::polkadot::centrifuge::CFG_KEY, &[0, 1]);
+
+	Centrifuge::execute_with(|| {
+		// Registered as xcm v2
+		register_cfg_v2();
+
+		// The way CFG is represented relative within the Centrifuge runtime in xcm v3
+		let cfg_location_inner: MultiLocation = MultiLocation::new(
+			0,
+			X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
+		);
 
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),

@@ -18,6 +18,8 @@ use cfg_types::{
 };
 use frame_support::assert_ok;
 use orml_traits::asset_registry::AssetMetadata;
+use sp_core::bounded::WeakBoundedVec;
+use sp_core::ConstU32;
 use runtime_common::{xcm::general_key, xcm_fees::ksm_per_second};
 use xcm::{
 	latest::MultiLocation,
@@ -76,7 +78,7 @@ fn register_ausd() {
 	));
 }
 
-/// Register DOT in the asset registry.
+/// Register CFG in the asset registry.
 /// It should be executed within an externalities environment.
 fn register_cfg() {
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
@@ -89,6 +91,31 @@ fn register_cfg() {
 			X2(
 				Parachain(parachains::polkadot::centrifuge::ID),
 				general_key(parachains::polkadot::centrifuge::CFG_KEY),
+			),
+		))),
+		additional: CustomMetadata::default(),
+	};
+
+	assert_ok!(OrmlAssetRegistry::register_asset(
+		RuntimeOrigin::root(),
+		meta,
+		Some(CurrencyId::Native)
+	));
+}
+
+/// Register CFG in the asset registry as XCM v2, just like it is in production.
+/// It should be executed within an externalities environment.
+fn register_cfg_v2() {
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 18,
+		name: "Centrifuge".into(),
+		symbol: "CFG".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: Some(VersionedMultiLocation::V2(xcm::v2::MultiLocation::new(
+			1,
+			xcm::v2::Junctions::X2(
+				xcm::v2::Junction::Parachain(parachains::polkadot::centrifuge::ID),
+				xcm::v2::Junction::GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(parachains::polkadot::centrifuge::CFG_KEY.into(), None)),
 			),
 		))),
 		additional: CustomMetadata::default(),
