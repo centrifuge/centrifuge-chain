@@ -258,6 +258,10 @@ pub mod constants {
 
 	/// Unhashed 36-bytes prefix for currencies managed by Connectors.
 	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 36] = *b"CentrifugeGeneralCurrencyIndexPrefix";
+
+	/// The time period in which a collator needs to author a block in order to
+	/// stay in the set of collators.
+	pub const COLLATOR_KICK_THRESHOLD: BlockNumber = 2 * HOURS;
 }
 
 /// Listing of parachains we integrate with.

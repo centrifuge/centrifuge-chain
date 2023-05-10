@@ -1130,13 +1130,18 @@ parameter_types! {
 	pub const MaxVoters: u32 = 1000;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
 	pub const MaxInvulnerables: u32 = 100;
+	pub KickThreshold: BlockNumber = prod_or_fast!(
+		cfg_primitives::constants::COLLATOR_KICK_THRESHOLD,
+		1 * MINUTES,
+		"CFG_COLLATOR_KICK_THRESHOLD"
+	);
 }
 
 // Implement Collator Selection pallet configuration trait for the runtime
 impl pallet_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	// should be a multiple of session or things will get inconsistent
-	type KickThreshold = Period;
+	type KickThreshold = KickThreshold;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
 	type MinCandidates = MinCandidates;
