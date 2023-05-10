@@ -169,13 +169,6 @@ pub mod v1 {
 
 #[cfg(test)]
 mod test {
-	use cfg_types::{epoch::EpochState, tokens::CurrencyId};
-	use sp_runtime::traits::ConstU32;
-
-	pub use super::pool_types::*;
-	use super::*;
-	use crate::mock::*;
-
 	#[cfg(feature = "try-runtime")]
 	#[test]
 	fn migrate_to_v2() {
