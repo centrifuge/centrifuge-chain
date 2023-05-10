@@ -7815,6 +7815,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "lazy_static",
+ "log",
  "num-traits",
  "orml-tokens",
  "orml-traits",

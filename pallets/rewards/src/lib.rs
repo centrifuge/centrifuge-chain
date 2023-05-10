@@ -69,18 +69,20 @@ mod tests;
 
 pub mod issuance;
 pub mod mechanism;
+pub mod migrations;
 
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards, RewardIssuance};
 use codec::FullCodec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		fungibles::{InspectHold, Mutate, MutateHold, Transfer},
+		fungibles::{Inspect, InspectHold, Mutate, MutateHold, Transfer},
 		tokens::AssetId,
 	},
 	PalletId,
 };
 use mechanism::{MoveCurrencyError, RewardMechanism};
+use num_traits::Zero;
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
 use sp_std::fmt::Debug;
@@ -110,7 +112,7 @@ pub mod pallet {
 		type DomainId: TypeInfo + MaxEncodedLen + FullCodec + Copy + PartialEq + Debug;
 
 		/// Type used to identify currencies.
-		type CurrencyId: AssetId + MaxEncodedLen;
+		type CurrencyId: AssetId + MaxEncodedLen + MaybeSerializeDeserialize + Default;
 
 		/// Identifier for the currency used to give the reward.
 		type RewardCurrency: Get<Self::CurrencyId>;
@@ -120,7 +122,8 @@ pub mod pallet {
 
 		/// Type used to handle currency transfers and reservations.
 		type Currency: MutateHold<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
-			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>;
+			+ Mutate<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>
+			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = BalanceOf<Self, I>>;
 
 		/// Specify the internal reward mechanism used by this pallet.
 		/// Check available mechanisms at [`mechanism`] module.
@@ -137,6 +140,46 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T, I = ()>(_);
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config<I>, I: 'static = ()>
+	where
+		BalanceOf<T, I>: MaybeSerializeDeserialize,
+	{
+		pub currency_id: T::CurrencyId,
+		pub amount: BalanceOf<T, I>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I>
+	where
+		BalanceOf<T, I>: MaybeSerializeDeserialize,
+	{
+		fn default() -> Self {
+			Self {
+				currency_id: Default::default(),
+				amount: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I>
+	where
+		BalanceOf<T, I>: MaybeSerializeDeserialize,
+	{
+		fn build(&self) {
+			if !self.amount.is_zero() {
+				T::Currency::mint_into(
+					self.currency_id,
+					&T::PalletId::get().into_account_truncating(),
+					self.amount,
+				)
+				.map_err(|_| log::error!("Failed to mint ED for sovereign pallet account",))
+				.ok();
+			}
+		}
+	}
 
 	// --------------------------
 	//          Storage
@@ -367,7 +410,7 @@ pub mod pallet {
 					&T::PalletId::get().into_account_truncating(),
 					account_id,
 					reward,
-					true,
+					false,
 				)?;
 
 				Self::deposit_event(Event::RewardClaimed {
