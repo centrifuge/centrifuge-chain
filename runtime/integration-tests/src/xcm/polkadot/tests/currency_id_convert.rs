@@ -56,9 +56,8 @@ use crate::xcm::polkadot::{
 		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
-	tests::{register_ausd, register_cfg},
+	tests::{register_ausd, register_cfg, register_cfg_v2},
 };
-use crate::xcm::polkadot::tests::register_cfg_v2;
 
 #[test]
 fn convert_cfg() {
@@ -94,9 +93,9 @@ fn convert_cfg() {
 	});
 }
 
-
-/// Verify that even with CFG registered in the AssetRegistry with a XCM v2 MultiLocation, that
-/// `CurrencyIdConvert` can look it up given an identical location in XCM v3.
+/// Verify that even with CFG registered in the AssetRegistry with a XCM v2
+/// MultiLocation, that `CurrencyIdConvert` can look it up given an identical
+/// location in XCM v3.
 #[test]
 fn convert_cfg_xcm_v2() {
 	assert_eq!(parachains::polkadot::centrifuge::CFG_KEY, &[0, 1]);

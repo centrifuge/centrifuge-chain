@@ -18,9 +18,8 @@ use cfg_types::{
 };
 use frame_support::assert_ok;
 use orml_traits::asset_registry::AssetMetadata;
-use sp_core::bounded::WeakBoundedVec;
-use sp_core::ConstU32;
 use runtime_common::{xcm::general_key, xcm_fees::ksm_per_second};
+use sp_core::{bounded::WeakBoundedVec, ConstU32};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{Parachain, X2},
@@ -115,7 +114,10 @@ fn register_cfg_v2() {
 			1,
 			xcm::v2::Junctions::X2(
 				xcm::v2::Junction::Parachain(parachains::polkadot::centrifuge::ID),
-				xcm::v2::Junction::GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(parachains::polkadot::centrifuge::CFG_KEY.into(), None)),
+				xcm::v2::Junction::GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
+					parachains::polkadot::centrifuge::CFG_KEY.into(),
+					None,
+				)),
 			),
 		))),
 		additional: CustomMetadata::default(),
