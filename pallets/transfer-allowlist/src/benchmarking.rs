@@ -12,17 +12,15 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use cfg_test_utils::system::time_travel::advance_n_blocks;
 use cfg_traits::fees::Fees;
 use codec::EncodeLike;
 use frame_benchmarking::*;
 use frame_support::traits::{Currency, Get, ReservableCurrency};
 use frame_system::RawOrigin;
 use scale_info::TypeInfo;
-use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, One};
+use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded, CheckedAdd, One};
 
 use super::*;
-
 #[cfg(test)]
 fn config_mocks() {
 	use crate::mock::Fees;
@@ -67,14 +65,20 @@ benchmarks! {
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), 1u32.into())?;
 		Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default())?;
-		advance_n_blocks::<T>(1u32.into());
+		let b = frame_system::Pallet::<T>::block_number()
+				.checked_add(&1u32.into())
+				.expect("Mock block advancement failed.");
+		frame_system::Pallet::<T>::set_block_number(b);
 	}:update_allowance_delay(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), 200u32.into())
 
 	purge_allowance_delay_no_remaining_metadata  {
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), 1u32.into())?;
 		Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default())?;
-		advance_n_blocks::<T>(2u32.into());
+		let b = frame_system::Pallet::<T>::block_number()
+				.checked_add(&2u32.into())
+				.expect("Mock block advancement failed.");
+		frame_system::Pallet::<T>::set_block_number(b);
 	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), T::CurrencyId::default())
 
 	remove_transfer_allowance_delay_present {
@@ -82,7 +86,11 @@ benchmarks! {
 		let delay = T::BlockNumber::one();
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), delay.clone())?;
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), receiver.clone().into())?;
-		advance_n_blocks::<T>(1u32.into());
+
+		let b = frame_system::Pallet::<T>::block_number()
+			.checked_add(&1u32.into())
+			.expect("Mock block advancement failed.");
+		frame_system::Pallet::<T>::set_block_number(b);
 	}:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), receiver.clone().into())
 
 	purge_transfer_allowance_remaining_metadata {

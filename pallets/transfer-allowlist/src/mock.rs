@@ -21,7 +21,7 @@ use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, CheckedAdd, IdentityLookup},
 };
 
 use crate as transfer_allowlist;
@@ -193,4 +193,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		});
 	});
 	e
+}
+
+pub fn advance_n_blocks<T: frame_system::Config>(n: <T as frame_system::Config>::BlockNumber) {
+	let b = frame_system::Pallet::<T>::block_number()
+		.checked_add(&n)
+		.expect("Mock block advancement failed.");
+	frame_system::Pallet::<T>::set_block_number(b)
 }
