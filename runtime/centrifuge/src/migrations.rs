@@ -11,10 +11,7 @@
 // GNU General Public License for more details.
 
 use cfg_types::tokens::CurrencyId;
-use frame_support::{
-	traits::OnRuntimeUpgrade,
-	weights::{Weight},
-};
+use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
 use crate::{OrmlAssetRegistry, Runtime};
 
@@ -23,8 +20,8 @@ pub type Migrations = (
 	TrancheLocationMigration,
 );
 
-/// This migration sets the AssetMetadata.location of all the Tranche tokens registered in the
-/// AssetRegistry to `None`.
+/// This migration sets the AssetMetadata.location of all the Tranche tokens
+/// registered in the AssetRegistry to `None`.
 pub struct TrancheLocationMigration;
 
 impl OnRuntimeUpgrade for TrancheLocationMigration {

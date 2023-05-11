@@ -93,8 +93,8 @@ use xcm_executor::XcmExecutor;
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 pub mod constants;
-mod weights;
 mod migrations;
+mod weights;
 pub mod xcm;
 
 pub use crate::xcm::*;

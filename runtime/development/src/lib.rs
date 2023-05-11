@@ -117,8 +117,8 @@ pub use crate::xcm::*;
 pub mod evm;
 pub use crate::evm::precompile::CentrifugePrecompiles;
 
-mod weights;
 mod migrations;
+mod weights;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -1924,7 +1924,6 @@ pub type Executive = frame_executive::Executive<
 	AllPalletsWithSystem,
 	migrations::Migrations,
 >;
-
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
