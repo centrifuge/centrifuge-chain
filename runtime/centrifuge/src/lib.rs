@@ -38,13 +38,12 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	ensure,
 	pallet_prelude::{DispatchError, DispatchResult},
 	parameter_types,
 	sp_std::marker::PhantomData,
 	traits::{
 		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
-		OnRuntimeUpgrade, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
+		PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -94,6 +93,7 @@ use xcm_executor::XcmExecutor;
 
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
+mod migrations;
 mod weights;
 pub mod xcm;
 
@@ -1666,56 +1666,6 @@ pub type UncheckedExtrinsic =
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-type UpgradeCentrifuge1019 = pallet_loans_ref::migrations::v1::Migration<Runtime>;
-
-/// This updates the policy to the newer version.
-pub struct TrancheLocationMigration;
-
-impl OnRuntimeUpgrade for TrancheLocationMigration {
-	fn on_runtime_upgrade() -> Weight {
-		for (asset_id, metadata) in orml_asset_registry::Metadata::<Runtime>::iter() {
-			if matches!(asset_id, CurrencyId::Tranche(_, _)) && metadata.location.is_some() {
-				OrmlAssetRegistry::do_update_asset(
-					asset_id,
-					// decimals
-					None,
-					// name
-					None,
-					// symbol
-					None,
-					// existential_deposit
-					None,
-					// location: we do set it to `None`
-					Some(None),
-					// additional
-					None,
-				)
-				.expect("TrancheLocationMigration: Failed to update tranche token");
-			}
-		}
-
-		// todo(nuno): pass a correctly built weight value
-		// T::DbWeight::get().reads_writes(1, 1)
-		Weight::from_ref_time(200_000)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-		Ok(vec![])
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
-		for (asset_id, metadata) in orml_asset_registry::Metadata::<Runtime>::iter() {
-			if matches!(asset_id, CurrencyId::Tranche(_, _)) {
-				ensure!(metadata.location.is_none());
-			}
-		}
-
-		Ok(())
-	}
-}
-
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -1723,8 +1673,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	// OnRuntimeUpgrade - where all migrations are listed
-	(UpgradeCentrifuge1019, TrancheLocationMigration),
+	migrations::Migrations,
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]
