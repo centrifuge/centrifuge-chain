@@ -35,18 +35,28 @@ use cfg_types::{
 	tokens::{CustomMetadata, TrancheCurrency},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{construct_runtime, dispatch::DispatchClass, pallet_prelude::{DispatchError, DispatchResult}, parameter_types, sp_std::marker::PhantomData, traits::{
-	AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
-	OnRuntimeUpgrade, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
-}, weights::{
-	constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-	ConstantMultiplier, Weight,
-}, PalletId, RuntimeDebug, ensure};
+use frame_support::{
+	construct_runtime,
+	dispatch::DispatchClass,
+	ensure,
+	pallet_prelude::{DispatchError, DispatchResult},
+	parameter_types,
+	sp_std::marker::PhantomData,
+	traits::{
+		AsEnsureOriginWithArg, ConstU32, EqualPrivilegeOnly, InstanceFilter, LockIdentifier,
+		OnRuntimeUpgrade, PalletInfoAccess, U128CurrencyToVote, UnixTime, WithdrawReasons,
+	},
+	weights::{
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
+		ConstantMultiplier, Weight,
+	},
+	PalletId, RuntimeDebug,
+};
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_traits::{currency::MutationHooks, parameter_type_with_key,};
+use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
@@ -1679,7 +1689,8 @@ impl OnRuntimeUpgrade for TrancheLocationMigration {
 					Some(None),
 					// additional
 					None,
-				).expect("TrancheLocationMigration: Failed to update tranche token");
+				)
+				.expect("TrancheLocationMigration: Failed to update tranche token");
 			}
 		}
 
@@ -1712,7 +1723,8 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	UpgradeCentrifuge1019,
+	// OnRuntimeUpgrade - where all migrations are listed
+	(UpgradeCentrifuge1019, TrancheLocationMigration),
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]
