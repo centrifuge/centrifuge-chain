@@ -94,6 +94,7 @@ use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 pub mod constants;
 mod weights;
+mod migrations;
 pub mod xcm;
 
 pub use crate::xcm::*;
@@ -1488,8 +1489,6 @@ pub type UncheckedExtrinsic =
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-type UpgradeAltair1027 = pallet_loans_ref::migrations::v1::Migration<Runtime>;
-
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -1497,7 +1496,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	UpgradeAltair1027,
+	migrations::Migrations,
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]
