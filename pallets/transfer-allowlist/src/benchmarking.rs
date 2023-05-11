@@ -50,6 +50,10 @@ benchmarks! {
 		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), 200u32.into())?;
 	}:add_transfer_allowance(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), receiver.clone().into())
 
+	add_allowance_delay_no_existing_metadata {
+		let (sender, receiver) = set_up_users::<T>();
+	}:add_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native, 200u32.into())
+
 	add_allowance_delay_existing_metadata {
 		let (sender, receiver) = set_up_users::<T>();
 		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), T::CurrencyId::default(), receiver.clone().into())?;
@@ -92,6 +96,17 @@ benchmarks! {
 			.expect("Mock block advancement failed.");
 		frame_system::Pallet::<T>::set_block_number(b);
 	}:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), T::CurrencyId::default(), receiver.clone().into())
+
+	remove_transfer_allowance_no_delay {
+		let (sender, receiver) = set_up_users::<T>();
+		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+	}:remove_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
+
+	purge_transfer_allowance_no_remaining_metadata {
+		let (sender, receiver) = set_up_users::<T>();
+		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+		Pallet::<T>::remove_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+	}:purge_transfer_allowance(RawOrigin::Signed(sender.clone()), CurrencyId::Native, receiver.clone().into())
 
 	purge_transfer_allowance_remaining_metadata {
 		let (sender, receiver) = set_up_users::<T>();
