@@ -87,7 +87,10 @@ pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::
 pub fn get_centrifuge_session_keys(
 	keys: centrifuge_runtime::AuraId,
 ) -> centrifuge_runtime::SessionKeys {
-	centrifuge_runtime::SessionKeys { aura: keys }
+	centrifuge_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 pub fn get_development_session_keys(
@@ -879,6 +882,19 @@ fn centrifuge_genesis(
 		},
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		block_rewards: centrifuge_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 6_000 * AIR,
+			total_reward: 6_000 * AIR * 100,
+		},
+		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: 1 * AIR,
+		},
 	}
 }
 
