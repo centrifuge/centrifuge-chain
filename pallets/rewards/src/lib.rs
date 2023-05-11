@@ -410,7 +410,7 @@ pub mod pallet {
 					&T::PalletId::get().into_account_truncating(),
 					account_id,
 					reward,
-					false,
+					true,
 				)?;
 
 				Self::deposit_event(Event::RewardClaimed {
