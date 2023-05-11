@@ -21,6 +21,15 @@ pub trait Codec: Sized {
 	fn deserialize<I: Input>(input: &mut I) -> Result<Self, codec::Error>;
 }
 
+/// The trait required for forwarding messages.
+pub trait Router {
+	type Message;
+
+	type Sender;
+
+	fn forward(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult;
+}
+
 /// The trait required for processing outgoing connectors messages.
 pub trait OutboundQueue {
 	/// The sender type of the outgoing message.

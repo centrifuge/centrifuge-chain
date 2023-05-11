@@ -117,6 +117,8 @@ pub use crate::xcm::*;
 pub mod evm;
 pub use crate::evm::precompile::CentrifugePrecompiles;
 
+pub mod connectors;
+
 mod weights;
 
 // Make the WASM binary available.
@@ -1828,6 +1830,7 @@ construct_runtime!(
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
 		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
+		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 112,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

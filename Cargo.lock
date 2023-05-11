@@ -2559,6 +2559,7 @@ dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
+ "ethabi",
  "fp-rpc",
  "fp-self-contained",
  "frame-benchmarking",
@@ -6944,18 +6945,13 @@ version = "0.0.1"
 dependencies = [
  "cfg-traits",
  "cfg-types",
- "ethabi",
  "frame-support",
  "frame-system",
- "pallet-ethereum",
- "pallet-xcm-transactor",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "sp-core",
  "sp-runtime",
  "sp-std",
- "xcm",
- "xcm-primitives",
 ]
 
 [[package]]
