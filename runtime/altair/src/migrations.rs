@@ -54,15 +54,18 @@ impl OnRuntimeUpgrade for TrancheLocationMigration {
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-		Ok(vec![])
+	fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, &'static str> {
+		Ok(Default::default())
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(_: sp_std::vec::Vec<u8>) -> Result<(), &'static str> {
 		for (asset_id, metadata) in orml_asset_registry::Metadata::<Runtime>::iter() {
 			if matches!(asset_id, CurrencyId::Tranche(_, _)) {
-				frame_support::ensure!(metadata.location.is_none());
+				frame_support::ensure!(
+					metadata.location.is_none(),
+					"A tranche token's location is not None"
+				)
 			}
 		}
 
