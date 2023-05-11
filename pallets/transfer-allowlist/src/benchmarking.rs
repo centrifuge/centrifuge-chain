@@ -34,7 +34,7 @@ benchmarks! {
 		where
 		<T as frame_system::Config>::AccountId: Into<<T as pallet::Config>::Location>,
 		<T as pallet::Config>::Location: From<<T as frame_system::Config>::AccountId> + EncodeLike<<T as pallet::Config>::Location>,
-			<T as pallet::Config>::ReserveCurrency: T::Currency<<T as frame_system::Config>::AccountId> + ReservableCurrency<<T as frame_system::Config>::AccountId>,
+			<T as pallet::Config>::ReserveCurrency: Currency<<T as frame_system::Config>::AccountId> + ReservableCurrency<<T as frame_system::Config>::AccountId>,
 		<T as pallet::Config>::CurrencyId: Default,
 		<T as frame_system::Config>::BlockNumber: AtLeast32BitUnsigned + Bounded + TypeInfo
 
