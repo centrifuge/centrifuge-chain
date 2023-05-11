@@ -115,7 +115,7 @@ impl pallet_session::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 0;
+	pub const ExistentialDeposit: Balance = 1;
 }
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
@@ -377,6 +377,13 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut storage)
 		.expect("Session pallet's storage can be assimilated");
+
+		pallet_rewards::GenesisConfig::<Test, pallet_rewards::Instance1> {
+			currency_id: CurrencyId::Native,
+			amount: ExistentialDeposit::get(),
+		}
+		.assimilate_storage(&mut storage)
+		.expect("Rewards pallet's storage can be assimilated");
 
 		let mut ext = sp_io::TestExternalities::new(storage);
 

@@ -287,7 +287,10 @@ fn single_claim_reward() {
 				},
 			));
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 9 * REWARD);
-			assert_eq!(Balances::total_issuance(), 10 * REWARD);
+			assert_eq!(
+				Balances::total_issuance(),
+				10 * REWARD + ExistentialDeposit::get()
+			);
 			assert_eq!(Balances::free_balance(&1), REWARD);
 		});
 }
@@ -314,7 +317,10 @@ fn collator_rewards_greater_than_remainder() {
 				),
 				Ok(REWARD)
 			);
-			assert_eq!(Balances::total_issuance(), 2 * REWARD);
+			assert_eq!(
+				Balances::total_issuance(),
+				2 * REWARD + ExistentialDeposit::get()
+			);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), REWARD);
 
 			// EPOCH 1 -> EPOCH 2
@@ -333,7 +339,10 @@ fn collator_rewards_greater_than_remainder() {
 				Ok(2 * REWARD)
 			);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
-			assert_eq!(Balances::total_issuance(), 4 * REWARD);
+			assert_eq!(
+				Balances::total_issuance(),
+				4 * REWARD + ExistentialDeposit::get()
+			);
 
 			// EPOCH 2 -> EPOCH 3
 			advance_session();
@@ -364,7 +373,10 @@ fn collator_rewards_greater_than_remainder() {
 				);
 			}
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
-			assert_eq!(Balances::total_issuance(), 6 * REWARD);
+			assert_eq!(
+				Balances::total_issuance(),
+				6 * REWARD + ExistentialDeposit::get()
+			);
 
 			// EPOCH 3 -> EPOCH 4
 			advance_session();
@@ -403,7 +415,10 @@ fn collator_rewards_greater_than_remainder() {
 				Ok(2 * REWARD / 3)
 			);
 			assert_eq!(Balances::total_balance(&TREASURY_ADDRESS), 2 * REWARD);
-			assert_eq!(Balances::total_issuance(), 8 * REWARD);
+			assert_eq!(
+				Balances::total_issuance(),
+				8 * REWARD + ExistentialDeposit::get()
+			);
 		});
 }
 
