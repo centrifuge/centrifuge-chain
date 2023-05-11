@@ -98,7 +98,7 @@ pub(crate) fn assert_session_invariants(
 }
 
 /// Verifies that each provided account address is staked for block rewards.
-fn assert_all_staked(v: &[AccountId]) {
+pub(crate) fn assert_all_staked(v: &[AccountId]) {
 	assert!(v.iter().all(|acc| {
 		!<Runtime as pallet_block_rewards::Config>::Rewards::account_stake(
 			(
