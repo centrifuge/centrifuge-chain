@@ -13,7 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolMutate, UpdateState};
+use cfg_traits::{Permissions, PoolMutate, UpdateState,PoolWriteOffPolicyMutate};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
@@ -70,8 +70,17 @@ type TrancheInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
 	<T as Config>::PoolId,
 >>::TrancheInput;
 
+type WriteOffRuleOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
+	<T as Config>::PoolId,
+>>::WriteOffRule;
+
+type MaxWriteOffPolicySizeOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
+	<T as Config>::PoolId,
+>>::MaxWriteOffPolicySize;
+
 #[frame_support::pallet]
 pub mod pallet {
+
 	use super::*;
 
 	#[pallet::config]
@@ -119,6 +128,10 @@ pub mod pallet {
 			Self::PoolId,
 			CurrencyId = Self::CurrencyId,
 			Balance = Self::Balance,
+		>;
+
+		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<
+			Self::PoolId,
 		>;
 
 		type CurrencyId: Parameter + Copy;
@@ -241,6 +254,7 @@ pub mod pallet {
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
+			write_off_policy: BoundedVec<WriteOffRuleOf<T>, MaxWriteOffPolicySizeOf<T>>
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
@@ -279,7 +293,9 @@ pub mod pallet {
 				currency,
 				max_reserve,
 			)
-			.map(|_| Self::deposit_event(Event::Registered { pool_id }))
+			.map(|_| Self::deposit_event(Event::Registered { pool_id }))?
+
+			T::ModifyWriteOffPolicy::update(pool_id, write_off_policy)
 		}
 
 		/// Update per-pool configuration settings.

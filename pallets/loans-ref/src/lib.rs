@@ -617,9 +617,7 @@ pub mod pallet {
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
-
-			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
+			Self::update_write_off_policy(pool_id, policy)?;
 
 			Ok(())
 		}
@@ -730,6 +728,17 @@ pub mod pallet {
 				.collect::<Result<Vec<_>, _>>()? // This exits if error before getting the maximum
 				.into_iter()
 				.max_by(|r1, r2| r1.status.cmp(&r2.status)))
+		}
+
+		fn update_write_off_policy(
+			pool_id: PoolIdOf<T>,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
+		) -> DispatchResult {
+			WriteOffPolicy::<T>::insert(pool_id, policy.clone());
+
+			Self::deposit_event(Event::<T>::WriteOffPolicyUpdated { pool_id, policy });
+
+			Ok(())
 		}
 
 		fn update_portfolio_valuation_with_pv(
@@ -879,4 +888,19 @@ pub mod pallet {
 			Ok(())
 		}
 	}
+
+	impl<T: Config> PoolWriteOffPolicyMutate<PoolIdOf<T>> for Pallet<T> {
+		type Rate = T::Rate;
+		type WriteOffRule = WriteOffRule;
+		type MaxWriteOffPolicySize = T::MaxWriteOffPolicySize;
+
+		pub fn update(
+			pool_id: PoolId,
+			policy: BoundedVec<Self::WriteOffRule<Self::Rate>, Self::MaxWriteOffPolicySize>,
+		) -> DispatchResult {
+			Self::update_write_off_policy(pool_id, policy)
+		}
+	}
 }
+
+

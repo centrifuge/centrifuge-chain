@@ -187,6 +187,18 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
 }
 
+/// A trait that supports modifications of pool write-off policies
+pub trait PoolWriteOffPolicyMutate<PoolId> {
+	type Rate;
+	type WriteOffRule: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
+	type MaxWriteOffPolicySize: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+
+	pub fn update(
+		pool_id: PoolId,
+		policy: BoundedVec<Self::WriteOffRule<Self::Rate>, Self::MaxWriteOffPolicySize>,
+	) -> DispatchResult;
+}
+
 /// Utility to benchmark pools easily
 #[cfg(feature = "runtime-benchmarks")]
 pub trait PoolBenchmarkHelper {
