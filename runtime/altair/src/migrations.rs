@@ -15,6 +15,7 @@ use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
 use crate::{OrmlAssetRegistry, Runtime};
 
+// Migrations to Altair 1027
 pub type Migrations = (
 	pallet_loans_ref::migrations::v1::Migration<Runtime>,
 	TrancheLocationMigration,
