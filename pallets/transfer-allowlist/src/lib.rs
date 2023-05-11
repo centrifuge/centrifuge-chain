@@ -423,7 +423,7 @@ pub mod pallet {
 		/// receiving location Decrements or removes the sending
 		/// account/currency count.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::Weights::purge_transfer_allowance())]
+		#[pallet::weight(T::Weights::purge_transfer_allowance_no_remaining_metadata().max(T::Weights::purge_allowance_delay_remaining_metadata()))]
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -602,7 +602,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::Weights::purge_allowance_delay().max(T::Weights::purge_allowance_delay_no_remaining_metadata()))]
+		#[pallet::weight(T::Weights::purge_allowance_delay_remaining_metadata().max(T::Weights::purge_allowance_delay_no_remaining_metadata()))]
 		/// Removes an existing sending account/currency delay
 		pub fn purge_allowance_delay(
 			origin: OriginFor<T>,

@@ -85,6 +85,15 @@ benchmarks! {
 		frame_system::Pallet::<T>::set_block_number(b);
 	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), T::CurrencyId::default())
 
+	purge_allowance_delay_remaining_metadata {
+		let (sender, receiver) = set_up_users::<T>();
+		Pallet::<T>::add_allowance_delay(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, 1u32.into())?;
+		Pallet::<T>::add_transfer_allowance(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native, receiver.clone().into())?;
+		Pallet::<T>::toggle_allowance_delay_once_future_modifiable(RawOrigin::Signed(sender.clone()).into(), CurrencyId::Native)?;
+		advance_n_blocks::<T>(2u32.into());
+	}:purge_allowance_delay(RawOrigin::Signed(sender.clone()), CurrencyId::Native)
+
+
 	remove_transfer_allowance_delay_present {
 		let (sender, receiver) = set_up_users::<T>();
 		let delay = T::BlockNumber::one();
