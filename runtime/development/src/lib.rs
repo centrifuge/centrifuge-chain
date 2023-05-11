@@ -118,6 +118,7 @@ pub mod evm;
 pub use crate::evm::precompile::CentrifugePrecompiles;
 
 mod weights;
+mod migrations;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -1921,13 +1922,9 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	UpgradeDev1020,
+	migrations::Migrations,
 >;
 
-type UpgradeDev1020 = (
-	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>,
-	pallet_loans_ref::migrations::v1::Migration<Runtime>,
-);
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;

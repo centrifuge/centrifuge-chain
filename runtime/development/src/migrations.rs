@@ -16,9 +16,10 @@ use frame_support::{
 	weights::{Weight},
 };
 
-use crate::{OrmlAssetRegistry, Runtime};
+use crate::{CollatorRewards, OrmlAssetRegistry, Runtime, TotalRewards};
 
 pub type Migrations = (
+	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>,
 	pallet_loans_ref::migrations::v1::Migration<Runtime>,
 	TrancheLocationMigration,
 );

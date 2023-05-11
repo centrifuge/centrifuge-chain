@@ -13,7 +13,7 @@
 use cfg_types::tokens::CurrencyId;
 use frame_support::{
 	traits::OnRuntimeUpgrade,
-	weights::{RuntimeDbWeight, Weight},
+	weights::{Weight},
 };
 
 use crate::{OrmlAssetRegistry, Runtime};
