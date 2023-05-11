@@ -231,37 +231,6 @@ macro_rules! currency_common_tests {
 					);
 				});
 			}
-
-			#[test]
-			fn different_domains() {
-				new_test_ext().execute_with(|| {
-					assert_ok!($pallet::attach_currency(
-						(DomainId::D1, CurrencyId::A),
-						GROUP_1
-					));
-					assert_ok!($pallet::attach_currency(
-						(DomainId::D2, CurrencyId::A),
-						GROUP_1
-					));
-
-					assert_ok!($pallet::deposit_stake(
-						(DomainId::D1, CurrencyId::A),
-						&USER_A,
-						STAKE_A
-					));
-
-					// There is enough reserved CurrencyId::A for USER_A, but in other domain.
-					assert_noop!(
-						$pallet::withdraw_stake((DomainId::D2, CurrencyId::A), &USER_A, STAKE_A),
-						TokenError::NoFunds
-					);
-					assert_ok!($pallet::withdraw_stake(
-						(DomainId::D1, CurrencyId::A),
-						&USER_A,
-						STAKE_A
-					));
-				});
-			}
 		}
 	};
 }

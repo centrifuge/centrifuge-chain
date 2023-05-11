@@ -16,15 +16,14 @@ use sp_std::vec::Vec;
 
 decl_runtime_apis! {
 	/// Runtime API for the rewards pallet.
-	pub trait RewardsApi<AccountId, Balance, DomainId, CurrencyId>
+	pub trait RewardsApi<AccountId, Balance, CurrencyId>
 	where
 		AccountId: Codec,
 		Balance: Codec,
-		DomainId: Codec,
 		CurrencyId: Codec,
 	{
-		fn list_currencies(account_id: AccountId) -> Vec<(DomainId, CurrencyId)>;
+		fn list_currencies(account_id: AccountId) -> Vec<CurrencyId>;
 
-		fn compute_reward(currency_id: (DomainId, CurrencyId), account_id: AccountId) -> Option<Balance>;
+		fn compute_reward(currency_id: CurrencyId, account_id: AccountId) -> Option<Balance>;
 	}
 }

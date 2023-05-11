@@ -268,10 +268,7 @@ fn single_claim_reward() {
 			);
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&1
 				),
 				Ok(REWARD)
@@ -280,7 +277,6 @@ fn single_claim_reward() {
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
 					group_id: <Test as Config>::StakeGroupId::get(),
-					domain_id: <Test as Config>::Domain::get(),
 					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 1,
 					amount: REWARD,
@@ -309,10 +305,7 @@ fn collator_rewards_greater_than_remainder() {
 			// Thus, equal distribution of total_reward to collator and Treasury.
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&1
 				),
 				Ok(REWARD)
@@ -330,10 +323,7 @@ fn collator_rewards_greater_than_remainder() {
 			// Thus, equal distribution of total_reward to collator and Treasury.
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&1
 				),
 				Ok(2 * REWARD)
@@ -352,10 +342,7 @@ fn collator_rewards_greater_than_remainder() {
 			// Additionally, 1 should not have higher claimable reward.
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&1
 				),
 				Ok(2 * REWARD)
@@ -363,10 +350,7 @@ fn collator_rewards_greater_than_remainder() {
 			for collator in [2, 3].iter() {
 				assert_eq!(
 					<Test as Config>::Rewards::compute_reward(
-						(
-							<Test as Config>::Domain::get(),
-							<Test as Config>::StakeCurrencyId::get()
-						),
+						<Test as Config>::StakeCurrencyId::get(),
 						collator
 					),
 					Ok(REWARD)
@@ -386,30 +370,21 @@ fn collator_rewards_greater_than_remainder() {
 			// and reseive less than collator_reward each.
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&3
 				),
 				Ok(REWARD + 2 * REWARD / 3)
 			);
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&4
 				),
 				Ok(2 * REWARD / 3)
 			);
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&5
 				),
 				Ok(2 * REWARD / 3)
@@ -432,10 +407,7 @@ fn late_claiming_works() {
 		.execute_with(|| {
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&2
 				),
 				Ok(REWARD)
@@ -444,7 +416,6 @@ fn late_claiming_works() {
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
 					group_id: <Test as Config>::StakeGroupId::get(),
-					domain_id: <Test as Config>::Domain::get(),
 					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 2,
 					amount: REWARD,
@@ -463,10 +434,7 @@ fn duplicate_claiming_works_but_ineffective() {
 		.execute_with(|| {
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&2
 				),
 				Ok(REWARD)
@@ -475,7 +443,6 @@ fn duplicate_claiming_works_but_ineffective() {
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
 					group_id: <Test as Config>::StakeGroupId::get(),
-					domain_id: <Test as Config>::Domain::get(),
 					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 2,
 					amount: REWARD,
@@ -484,10 +451,7 @@ fn duplicate_claiming_works_but_ineffective() {
 
 			assert_eq!(
 				<Test as Config>::Rewards::compute_reward(
-					(
-						<Test as Config>::Domain::get(),
-						<Test as Config>::StakeCurrencyId::get()
-					),
+					<Test as Config>::StakeCurrencyId::get(),
 					&2
 				),
 				Ok(0)
@@ -496,7 +460,6 @@ fn duplicate_claiming_works_but_ineffective() {
 			System::assert_last_event(mock::RuntimeEvent::Rewards(
 				pallet_rewards::Event::RewardClaimed {
 					group_id: <Test as Config>::StakeGroupId::get(),
-					domain_id: <Test as Config>::Domain::get(),
 					currency_id: <Test as Config>::StakeCurrencyId::get(),
 					account_id: 2,
 					amount: 0,

@@ -182,14 +182,6 @@ impl pallet_restricted_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
-#[derive(
-	scale_info::TypeInfo, Debug, Copy, codec::Encode, codec::Decode, PartialEq, Clone, MaxEncodedLen,
-)]
-pub enum RewardDomain {
-	Liquidity,
-	Block,
-}
-
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
@@ -201,7 +193,6 @@ frame_support::parameter_types! {
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = NativeToken;
@@ -227,7 +218,6 @@ frame_support::parameter_types! {
 	pub const MaxChangesPerSession: u32 = 50;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCollators: u32 = MAX_COLLATORS;
-	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -240,7 +230,6 @@ impl pallet_block_rewards::Config for Test {
 	type Beneficiary = RewardRemainderMock;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type Domain = BlockRewardsDomain;
 	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
 	type Rewards = Rewards;
@@ -265,10 +254,7 @@ pub(crate) fn assert_staked(who: &AccountId) {
 
 pub(crate) fn assert_not_staked(who: &AccountId) {
 	assert!(<Test as Config>::Rewards::account_stake(
-		(
-			<Test as Config>::Domain::get(),
-			<Test as Config>::StakeCurrencyId::get()
-		),
+		<Test as Config>::StakeCurrencyId::get(),
 		who
 	)
 	.is_zero());

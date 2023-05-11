@@ -1151,16 +1151,6 @@ impl pallet_collator_selection::Config for Runtime {
 
 // Block Rewards
 
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(
-	feature = "std",
-	derive(frame_support::Serialize, frame_support::Deserialize)
-)]
-pub enum RewardDomain {
-	Liquidity,
-	Block,
-}
-
 frame_support::parameter_types! {
 	// BlockRewards have exactly one group and currency
 	#[derive(scale_info::TypeInfo)]
@@ -1174,7 +1164,6 @@ frame_support::parameter_types! {
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
@@ -1191,7 +1180,6 @@ impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 }
 
 frame_support::parameter_types! {
-	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(StakingCurrency::BlockRewards);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -1205,7 +1193,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type Beneficiary = Treasury;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type Domain = BlockRewardsDomain;
 	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxAuthorities;
 	type Rewards = BlockRewardsBase;
@@ -1934,12 +1921,12 @@ impl_runtime_apis! {
 	}
 
 	// RewardsApi
-	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
-		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
+	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
+		fn list_currencies(account_id: AccountId) -> Vec<CurrencyId> {
 			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id)
 		}
 
-		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
+		fn compute_reward(currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
 			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId> >::compute_reward(currency_id, &account_id).ok()
 		}
 	}

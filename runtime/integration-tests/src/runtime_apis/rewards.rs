@@ -25,10 +25,7 @@ use super::ApiEnv;
 async fn test() {
 	ApiEnv::new(Handle::current())
 		.startup(|| {
-			let currencies = vec![(
-				(development_runtime::RewardDomain::Block, CurrencyId::Native),
-				1,
-			)];
+			let currencies = vec![(CurrencyId::Native, 1)];
 			let stake_accounts = vec![(
 				sp_runtime::AccountId32::from(
 					<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
@@ -36,22 +33,22 @@ async fn test() {
 						.public()
 						.into_account(),
 				),
-				(development_runtime::RewardDomain::Block, CurrencyId::Native),
+				CurrencyId::Native,
 				100 * CFG,
 			)];
 			let rewards = vec![(1, 200 * CFG)];
 
-			for ((domain_id, currency_id), group_id) in currencies {
+			for (currency_id, group_id) in currencies {
 				<development_runtime::Rewards as CurrencyGroupChange>::attach_currency(
-					(domain_id, currency_id),
+					currency_id,
 					group_id,
 				)
 				.unwrap();
 			}
 
-			for (account_id, (domain_id, currency_id), amount) in stake_accounts {
+			for (account_id, currency_id, amount) in stake_accounts {
 				<development_runtime::Rewards as AccountRewards<AccountId>>::deposit_stake(
-					(domain_id, currency_id),
+					currency_id,
 					&account_id,
 					amount,
 				)

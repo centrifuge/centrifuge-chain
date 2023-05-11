@@ -11,10 +11,10 @@ const GROUP_1: u32 = 1;
 const GROUP_2: u32 = 2;
 const GROUP_3: u32 = 3;
 
-const DOM_1_CURRENCY_X: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
-const DOM_1_CURRENCY_Y: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
-const DOM_1_CURRENCY_Z: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
-const DOM_1_CURRENCY_M: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::M);
+const DOM_1_CURRENCY_X: CurrencyId = CurrencyId::A;
+const DOM_1_CURRENCY_Y: CurrencyId = CurrencyId::B;
+const DOM_1_CURRENCY_Z: CurrencyId = CurrencyId::C;
+const DOM_1_CURRENCY_M: CurrencyId = CurrencyId::M;
 
 const STAKE_A: u64 = 100;
 const STAKE_B: u64 = 200;

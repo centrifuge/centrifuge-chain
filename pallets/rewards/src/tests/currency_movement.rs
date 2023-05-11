@@ -20,24 +20,24 @@ macro_rules! currency_movement_tests {
 
 			fn check_last_claim<
 				Reward: DistributedRewards<GroupId = u32, Balance = u64>
-					+ AccountRewards<u64, Balance = u64, CurrencyId = (DomainId, CurrencyId)>,
+					+ AccountRewards<u64, Balance = u64, CurrencyId = CurrencyId>,
 			>(
 				kind: MechanismKind,
 				group_id: u32,
-				domain_currency_id: (DomainId, CurrencyId),
+				currency_id: CurrencyId,
 				base_expected: u64,
 				deferred_expected: u64,
 				gap_expected: u64,
 			) {
 				assert_ok!(
-					Reward::claim_reward(domain_currency_id, &USER_A),
+					Reward::claim_reward(currency_id, &USER_A),
 					choose_balance(kind, base_expected, 0, 0),
 				);
 
 				if kind != MechanismKind::Base {
 					assert_ok!(Reward::distribute_reward(REWARD, [group_id]));
 					assert_ok!(
-						Reward::claim_reward(domain_currency_id, &USER_A),
+						Reward::claim_reward(currency_id, &USER_A),
 						match kind {
 							MechanismKind::Base => unreachable!(),
 							MechanismKind::Deferred => deferred_expected,
@@ -245,10 +245,10 @@ macro_rules! currency_movement_tests {
 			fn associate_different_currencies() {
 				new_test_ext().execute_with(|| {
 					let expected_currency_ids = vec![
-						&(DomainId::D1, CurrencyId::A),
-						&(DomainId::D1, CurrencyId::B),
-						&(DomainId::D1, CurrencyId::C),
-						&(DomainId::D1, CurrencyId::M),
+						&CurrencyId::A,
+						&CurrencyId::B,
+						&CurrencyId::C,
+						&CurrencyId::M,
 					];
 
 					assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_X, GROUP_1));

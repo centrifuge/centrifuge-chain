@@ -11,10 +11,10 @@ type Group = u32;
 
 #[derive(Clone)]
 enum Command {
-	AttachCurrency((DomainId, CurrencyId), Group),
-	Stake((DomainId, CurrencyId), Account, Balance),
-	Unstake((DomainId, CurrencyId), Account, Balance),
-	Claim((DomainId, CurrencyId), Account),
+	AttachCurrency(CurrencyId, Group),
+	Stake(CurrencyId, Account, Balance),
+	Unstake(CurrencyId, Account, Balance),
+	Claim(CurrencyId, Account),
 	Distribute(Vec<Group>, Balance),
 }
 
@@ -37,7 +37,7 @@ impl<Rewards> Default for TestState<Rewards> {
 impl<Rewards> TestState<Rewards>
 where
 	Rewards: DistributedRewards<GroupId = u32, Balance = Balance>
-		+ AccountRewards<Account, Balance = Balance, CurrencyId = (DomainId, CurrencyId)>,
+		+ AccountRewards<Account, Balance = Balance, CurrencyId = CurrencyId>,
 {
 	fn apply_command(&mut self, command: Command) -> DispatchResult {
 		match command {
@@ -80,7 +80,7 @@ where
 fn evaluate_sample<Rewards>(commands: impl IntoIterator<Item = Command>)
 where
 	Rewards: DistributedRewards<GroupId = u32, Balance = Balance>
-		+ AccountRewards<Account, Balance = Balance, CurrencyId = (DomainId, CurrencyId)>,
+		+ AccountRewards<Account, Balance = Balance, CurrencyId = CurrencyId>,
 {
 	new_test_ext().execute_with(|| {
 		let mut state = TestState::<Rewards>::default();
@@ -105,11 +105,11 @@ where
 /// | claim      | A, B         | 2      | 4      |
 /// | distribute |  -           | 2      | 2      |
 ///
-/// It uses 1 group, 1 domain and 1 currency.
+/// It uses 1 group and 1 currency.
 /// It uses the `base` mechanism.
 #[test]
 fn silly_sample_for_fuzzer() {
-	const DOM_CURR: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
+	const DOM_CURR: CurrencyId = CurrencyId::A;
 	const AMOUNT_A1: u64 = 100;
 	const AMOUNT_B1: u64 = 200;
 	const AMOUNT_A2: u64 = 300;
