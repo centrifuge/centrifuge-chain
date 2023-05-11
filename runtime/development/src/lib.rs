@@ -83,7 +83,7 @@ use pallet_restricted_tokens::{
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
 use scale_info::TypeInfo;
@@ -348,7 +348,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub Period: u32 = prod_or_fast!(6 * HOURS, 1 * MINUTES, "DEV_SESSION_PERIOD");
+	pub Period: u32 = polkadot_runtime_common::prod_or_fast!(6 * HOURS, 1 * MINUTES, "DEV_SESSION_PERIOD");
 	pub const Offset: u32 = 0;
 }
 
@@ -1228,11 +1228,6 @@ parameter_types! {
 	pub const MaxVoters: u32 = 10 * 1000;
 	pub const SessionLength: BlockNumber = 6 * HOURS;
 	pub const MaxInvulnerables: u32 = 100;
-	pub KickThreshold: BlockNumber = prod_or_fast!(
-		cfg_primitives::constants::COLLATOR_KICK_THRESHOLD,
-		1 * MINUTES,
-		"CFG_COLLATOR_KICK_THRESHOLD"
-	);
 }
 
 type CollatorSelectionUpdateOrigin = EitherOfDiverse<
@@ -1244,7 +1239,7 @@ type CollatorSelectionUpdateOrigin = EitherOfDiverse<
 impl pallet_collator_selection::Config for Runtime {
 	type Currency = Tokens;
 	// should be a multiple of session or things will get inconsistent
-	type KickThreshold = KickThreshold;
+	type KickThreshold = Period;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
 	type MinCandidates = MinCandidates;
