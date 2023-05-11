@@ -78,7 +78,10 @@ impl Extensions {
 }
 
 pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::SessionKeys {
-	altair_runtime::SessionKeys { aura: keys }
+	altair_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 pub fn get_centrifuge_session_keys(
@@ -940,6 +943,19 @@ fn altair_genesis(
 				.collect(),
 			candidacy_bond: 1 * AIR,
 			..Default::default()
+		},
+		block_rewards: altair_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 6_000 * AIR,
+			total_reward: 6_000 * AIR * 100,
+		},
+		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: 1 * AIR,
 		},
 		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
