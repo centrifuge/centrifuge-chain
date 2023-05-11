@@ -101,8 +101,7 @@ where
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			for collator in collators.iter() {
-				// TODO: Benching preferred to be precise.
-				// However, not necessarily needed as num of collators <= 10.
+				// NOTE: Benching not required as num of collators <= 10.
 				Pallet::<T>::do_init_collator(collator)
 					.map_err(|e| {
 						log::error!("Failed to init genesis collators for rewards: {:?}", e);
