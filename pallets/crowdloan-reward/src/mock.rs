@@ -204,7 +204,8 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		//pallet_crowdloan_reward::GenesisConfig::default().assimilate_storage(&mut storage).unwrap();
+		//pallet_crowdloan_reward::GenesisConfig::default().assimilate_storage(&mut
+		// storage).unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(storage);
 		ext.execute_with(|| {

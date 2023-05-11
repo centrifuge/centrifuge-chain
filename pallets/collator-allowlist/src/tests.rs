@@ -18,10 +18,11 @@ use sp_runtime::traits::BadOrigin;
 
 use crate::mock::*;
 
-/// Verify that calling `ValidatorRegistration.is_registered` on the Collator Allowlist
-/// pallet returns true for a collator that is both registered in the mock session and
-/// that is part of the allowlist. Finally, verify that we can remove said collator
-/// and confirm that it is, therefore, no longer considered registered.
+/// Verify that calling `ValidatorRegistration.is_registered` on the Collator
+/// Allowlist pallet returns true for a collator that is both registered in the
+/// mock session and that is part of the allowlist. Finally, verify that we can
+/// remove said collator and confirm that it is, therefore, no longer considered
+/// registered.
 #[test]
 fn happy_path() {
 	new_test_ext().execute_with(|| {

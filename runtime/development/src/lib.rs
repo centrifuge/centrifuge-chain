@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! The Substrate runtime. This can be compiled with `#[no_std]`, ready for Wasm.
+//! The Substrate runtime. This can be compiled with `#[no_std]`, ready for
+//! Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
@@ -183,13 +184,14 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	/// Data to be associated with an account (other than nonce/transaction counter, which this
-	/// module does regardless).
+	/// Data to be associated with an account (other than nonce/transaction
+	/// counter, which this module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
 	type BaseCallFilter = BaseCallFilter;
-	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
+	/// Maximum number of block number to block hash mappings to keep (oldest
+	/// pruned first).
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = RuntimeBlockLength;
 	/// The index type for blocks.
@@ -204,11 +206,13 @@ impl frame_system::Config for Runtime {
 	type Header = Header;
 	/// The index type for storing how many extrinsics an account has signed.
 	type Index = Index;
-	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
+	/// The lookup mechanism to get account ID from whatever is passed in
+	/// dispatchers.
 	type Lookup = sp_runtime::traits::AccountIdLookup<AccountId, ()>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	/// A function that is invoked when an account has been determined to be dead.
-	/// All resources should be cleaned up associated with the given account.
+	/// A function that is invoked when an account has been determined to be
+	/// dead. All resources should be cleaned up associated with the given
+	/// account.
 	type OnKilledAccount = ();
 	/// Handler for when a new account has just been created.
 	type OnNewAccount = ();
@@ -668,7 +672,8 @@ parameter_types! {
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
-// Make sure that there are no more than `MAX_MEMBERS` members elected via elections-phragmen.
+// Make sure that there are no more than `MAX_MEMBERS` members elected via
+// elections-phragmen.
 const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 
 impl pallet_elections_phragmen::Config for Runtime {
@@ -688,9 +693,9 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type MaxVoters = MaxVoters;
 	type PalletId = ElectionsPhragmenModuleId;
 	type RuntimeEvent = RuntimeEvent;
-	/// How long each seat is kept. This defines the next block number at which an election
-	/// round will happen. If set to zero, no elections are ever triggered and the module will
-	/// be in passive mode.
+	/// How long each seat is kept. This defines the next block number at which
+	/// an election round will happen. If set to zero, no elections are ever
+	/// triggered and the module will be in passive mode.
 	type TermDuration = TermDuration;
 	/// Base deposit associated with voting
 	type VotingBondBase = VotingBondBase;
@@ -715,26 +720,30 @@ impl pallet_democracy::Config for Runtime {
 	type BlacklistOrigin = EnsureRoot<AccountId>;
 	// To cancel a proposal before it has been passed, must be root.
 	type CancelProposalOrigin = EnsureRoot<AccountId>;
-	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
+	// To cancel a proposal which has been passed, 2/3 of the council must agree to
+	// it.
 	type CancellationOrigin = EnsureRootOr<TwoThirdOfCouncil>;
-	/// Period in blocks where an external proposal may not be re-submitted after being vetoed.
+	/// Period in blocks where an external proposal may not be re-submitted
+	/// after being vetoed.
 	type CooloffPeriod = CooloffPeriod;
 	type Currency = Tokens;
-	/// The minimum period of locking and the period between a proposal being approved and enacted.
+	/// The minimum period of locking and the period between a proposal being
+	/// approved and enacted.
 	///
-	/// It should generally be a little more than the unstake period to ensure that
-	/// voting stakers have an opportunity to remove themselves from the system in the case where
-	/// they are on the losing side of a vote.
+	/// It should generally be a little more than the unstake period to ensure
+	/// that voting stakers have an opportunity to remove themselves from the
+	/// system in the case where they are on the losing side of a vote.
 	type EnactmentPeriod = EnactmentPeriod;
-	/// A unanimous council can have the next scheduled referendum be a straight default-carries
-	/// (NTB) vote.
+	/// A unanimous council can have the next scheduled referendum be a straight
+	/// default-carries (NTB) vote.
 	type ExternalDefaultOrigin = AllOfCouncil;
-	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
+	/// A super-majority can have the next scheduled referendum be a straight
+	/// majority-carries vote.
 	type ExternalMajorityOrigin = TwoThirdOfCouncil;
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = HalfOfCouncil;
-	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
-	/// be tabled immediately and with a shorter voting/enactment period.
+	/// Two thirds of the council can have an ExternalMajority/ExternalDefault
+	/// vote be tabled immediately and with a shorter voting/enactment period.
 	type FastTrackOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 	type InstantAllowed = InstantAllowed;
@@ -746,7 +755,8 @@ impl pallet_democracy::Config for Runtime {
 	type MaxDeposits = ConstU32<100>;
 	type MaxProposals = MaxProposals;
 	type MaxVotes = MaxVotes;
-	/// The minimum amount to be used as a deposit for a public referendum proposal.
+	/// The minimum amount to be used as a deposit for a public referendum
+	/// proposal.
 	type MinimumDeposit = MinimumDeposit;
 	type PalletsOrigin = OriginCaller;
 	type Preimages = Preimage;
@@ -754,8 +764,8 @@ impl pallet_democracy::Config for Runtime {
 	type Scheduler = Scheduler;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
 	type Slash = ();
-	// Any single council member may veto a coming council proposal, however they can
-	// only do it once and it lasts only for the cooloff period.
+	// Any single council member may veto a coming council proposal, however they
+	// can only do it once and it lasts only for the cooloff period.
 	type VetoOrigin = EnsureMember<AccountId, CouncilCollective>;
 	type VoteLockingPeriod = EnactmentPeriod;
 	/// How often (in blocks) to check for new votes.
@@ -1093,11 +1103,10 @@ impl PoolUpdateGuard for UpdateGuard {
 		update: &Self::ScheduledUpdateDetails,
 		_now: Self::Moment,
 	) -> bool {
-		// - We check whether between the submission of the
-		//   update this call there has been an epoch close
-		//   event.
-		// - We check for greater equal in order to forbid batching
-		//   those two in one block
+		// - We check whether between the submission of the update this call there has
+		//   been an epoch close event.
+		// - We check for greater equal in order to forbid batching those two in one
+		//   block
 		if !cfg!(feature = "runtime-benchmarks") && update.submitted_at >= pool.epoch.last_closed {
 			return false;
 		}
@@ -1108,8 +1117,8 @@ impl PoolUpdateGuard for UpdateGuard {
 		//
 		// This is needed as:
 		// - investment side starts new order round with zero orders at epoch_closing
-		// - the pool might only fulfill x < 100% of redemptions
-		//         -> not all redemptions would be fulfilled after epoch_execution
+		// - the pool might only fulfill x < 100% of redemptions -> not all redemptions
+		//   would be fulfilled after epoch_execution
 		if PoolSystem::epoch_targets(pool_id).is_some() {
 			return false;
 		}
@@ -1168,7 +1177,8 @@ parameter_types! {
 }
 
 // Implement the migration manager pallet
-// The actual associated type, which executes the migration can be found in the migration folder
+// The actual associated type, which executes the migration can be found in the
+// migration folder
 impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxAccounts = MigrationMaxAccounts;
 	type MigrationMaxProxies = MigrationMaxProxies;
@@ -1484,7 +1494,8 @@ impl orml_asset_registry::Config for Runtime {
 impl pallet_interest_accrual::Config for Runtime {
 	type Balance = Balance;
 	type InterestRate = Rate;
-	// TODO: This is a stopgap value until we can calculate it correctly with updated benchmarks. See #1024
+	// TODO: This is a stopgap value until we can calculate it correctly with
+	// updated benchmarks. See #1024
 	type MaxRateCount = MaxActiveLoansPerPool;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1495,6 +1506,8 @@ impl pallet_connectors::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AssetRegistry = OrmlAssetRegistry;
 	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type GeneralCurrencyPrefix = cfg_primitives::connectors::GeneralCurrencyPrefix;
 	type Permission = Permissions;
 	type PoolInspect = PoolSystem;
 	type Rate = Rate;
@@ -1631,8 +1644,9 @@ impl<
 		if is_tranche_investor {
 			Ok(())
 		} else {
-			// TODO: We should adapt the permissions pallets interface to return an error instead of a boolen. This makes the redundant has not role error
-			//       that downstream pallets always need to generate not needed anymore.
+			// TODO: We should adapt the permissions pallets interface to return an error
+			// instead of a boolen. This makes the redundant has not role error       that
+			// downstream pallets always need to generate not needed anymore.
 			Err(DispatchError::Other(
 				"Account does not have the TrancheInvestor permission.",
 			))
@@ -1843,8 +1857,8 @@ construct_runtime!(
 	}
 );
 
-/// The config for the Downward Message Passing Queue, i.e., how messages coming from the
-/// relay-chain are handled.
+/// The config for the Downward Message Passing Queue, i.e., how messages coming
+/// from the relay-chain are handled.
 impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
@@ -1856,7 +1870,8 @@ parameter_types! {
 	pub const MaxInstructions: u32 = 100;
 }
 
-/// XCMP Queue is responsible to handle XCM messages coming directly from sibling parachains.
+/// XCMP Queue is responsible to handle XCM messages coming directly from
+/// sibling parachains.
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
 	type ControllerOrigin = EnsureRoot<AccountId>;

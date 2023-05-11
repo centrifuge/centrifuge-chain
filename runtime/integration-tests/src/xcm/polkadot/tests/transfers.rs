@@ -150,9 +150,9 @@ fn transfer_cfg_to_sibling() {
 fn transfer_cfg_sibling_to_centrifuge() {
 	TestNet::reset();
 
-	// In order to be able to transfer CFG from Sibling to Centrifuge, we need to first send
-	// CFG from Centrifuge to Sibling, or else it fails since it'd be like Sibling had minted
-	// CFG on their side.
+	// In order to be able to transfer CFG from Sibling to Centrifuge, we need to
+	// first send CFG from Centrifuge to Sibling, or else it fails since it'd be
+	// like Sibling had minted CFG on their side.
 	transfer_cfg_to_sibling();
 
 	let alice_initial_balance = cfg(5);
@@ -275,7 +275,8 @@ fn transfer_ausd_to_centrifuge() {
 			alice_initial_balance - transfer_amount
 		);
 
-		// Verify that the amount transferred is now part of the centrifuge parachain account here
+		// Verify that the amount transferred is now part of the centrifuge parachain
+		// account here
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::AUSD, &centrifuge_account()),
 			transfer_amount
@@ -551,8 +552,9 @@ fn dot_fee() -> Balance {
 }
 
 fn calc_fee(fee_per_second: Balance) -> Balance {
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the tests take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
+	// We divide the fee to align its unit and multiply by 4 as that seems to be the
+	// unit of time the tests take.
+	// NOTE: it is possible that in different machines this value may differ. We
+	// shall see.
 	fee_per_second.div_euclid(10_000) * 8
 }

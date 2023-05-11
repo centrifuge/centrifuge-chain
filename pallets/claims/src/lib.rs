@@ -36,12 +36,15 @@
 //!
 //! ### Dispatchable Functions
 //!
-//! Callable functions (or extrinsics), also considered as transactions, materialize the
-//! pallet contract. Here's the callable functions implemented in this module:
+//! Callable functions (or extrinsics), also considered as transactions,
+//! materialize the pallet contract. Here's the callable functions implemented
+//! in this module:
 //!
 //! - `claim` - Claims tokens awarded through tinlake investments.
-//! - `set_upload_account` - Admin function that sets the allowed upload account to add root hashes.
-//! - `store_root_hash` - Stores root hash for correspondent claim merkle tree run.
+//! - `set_upload_account` - Admin function that sets the allowed upload account
+//!   to add root hashes.
+//! - `store_root_hash` - Stores root hash for correspondent claim merkle tree
+//!   run.
 //!
 //! ### Public Functions
 //! - `sorted_hash_of` - Build a sorted hash of two given hash values.
@@ -126,8 +129,9 @@ pub mod pallet {
 	///
 	/// Associated types and constants are declared in this trait. If the pallet
 	/// depends on other super-traits, the latter must be added to this trait,
-	/// such as, in this case, [`frame_system::Config`] and [`pallet_balances::Config`]
-	/// super-traits. Note that [`frame_system::Config`] must always be included.
+	/// such as, in this case, [`frame_system::Config`] and
+	/// [`pallet_balances::Config`] super-traits. Note that
+	/// [`frame_system::Config`] must always be included.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_balances::Config {
 		/// Ensure that origin of a transaction is an administrator.
@@ -146,10 +150,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type MinimalPayoutAmount: Get<Self::Balance>;
 
-		/// Constant configuration parameter to store the module identifier for the pallet.
+		/// Constant configuration parameter to store the module identifier for
+		/// the pallet.
 		///
-		/// The module identifier may be of the form ```PalletId(*b"rd/claim")``` and set
-		/// using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
+		/// The module identifier may be of the form
+		/// ```PalletId(*b"rd/claim")``` and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		// macro in the [`runtime/lib.rs`] file.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -162,7 +167,8 @@ pub mod pallet {
 	// Pallet events
 	// ------------------------------------------------------------------------
 
-	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
+	// The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and
+	// Codec
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -208,13 +214,15 @@ pub mod pallet {
 		/// Amount being claimed is less than the available amount stored.
 		InsufficientBalance,
 
-		/// The combination of account id, amount, and proofs vector in a claim was invalid.
+		/// The combination of account id, amount, and proofs vector in a claim
+		/// was invalid.
 		InvalidProofs,
 
 		/// Protected operation, must be performed by admin
 		MustBeAdmin,
 
-		/// The payout amount attempting to be claimed is less than the minimum allowed by [`Config::MinimalPayoutAmount`].
+		/// The payout amount attempting to be claimed is less than the minimum
+		/// allowed by [`Config::MinimalPayoutAmount`].
 		UnderMinPayout,
 	}
 
@@ -224,8 +232,8 @@ pub mod pallet {
 
 	// Declare Call struct and implement dispatchable (or callable) functions.
 	//
-	// Dispatchable functions are transactions modifying the state of the chain. They
-	// are also called extrinsics are constitute the pallet's public interface.
+	// Dispatchable functions are transactions modifying the state of the chain.
+	// They are also called extrinsics are constitute the pallet's public interface.
 	// Note that each parameter used in functions must implement `Clone`, `Debug`,
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
@@ -281,8 +289,8 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Admin function that sets the allowed upload account to add root hashes
-		/// Controlled by custom origin or root
+		/// Admin function that sets the allowed upload account to add root
+		/// hashes Controlled by custom origin or root
 		///
 		/// # <weight>
 		/// - Based on origin check and write op
@@ -334,10 +342,11 @@ pub mod pallet {
 // Claims pallet implementation block.
 //
 // This main implementation block contains two categories of functions, namely:
-// - Public functions: These are functions that are `pub` and generally fall into
-//   inspector functions that do not write to storage and operation functions that do.
-// - Private functions: These are private helpers or utilities that cannot be called
-//   from other pallets.
+// - Public functions: These are functions that are `pub` and generally fall
+//   into inspector functions that do not write to storage and operation
+//   functions that do.
+// - Private functions: These are private helpers or utilities that cannot be
+//   called from other pallets.
 impl<T: Config> Pallet<T> {
 	/// Return the account identifier of the claims pallet.
 	///
@@ -375,13 +384,15 @@ impl<T: Config> Pallet<T> {
 	// Verifies lexicographically-sorted proofs.
 	//
 	// This function essentially proceeds as follows, in order to verify proofs:
-	// 1. A leaf hash is first built, namely `Hash(account_id + amount)`, with the account and the amount
-	// 2. The leaf is then passed to iterator as the first accumulative value to the 'sorted_hash_of' function
-	// 3. Then 'sorted_hash_of' function hashes both 'hash1' and 'hash2' together, and the order depends on
+	// 1. A leaf hash is first built, namely `Hash(account_id + amount)`, with the
+	// account and the amount 2. The leaf is then passed to iterator as the first
+	// accumulative value to the 'sorted_hash_of' function 3. Then 'sorted_hash_of'
+	// function hashes both 'hash1' and 'hash2' together, and the order depends on
 	//    which one is "bigger".
-	//    This approach avoids having an extra byte that tells if the hash is left or right so they can
-	//    be concatenated accordingly before hashing
-	// 4. And finally, it checks that the resulting root hash matches with the one stored
+	//    This approach avoids having an extra byte that tells if the hash is left
+	// or right so they can    be concatenated accordingly before hashing
+	// 4. And finally, it checks that the resulting root hash matches with the one
+	// stored
 	fn verify_proofs(
 		account_id: &T::AccountId,
 		amount: &T::Balance,

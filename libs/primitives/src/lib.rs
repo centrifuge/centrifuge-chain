@@ -66,15 +66,16 @@ pub mod types {
 	/// An index to a block.
 	pub type BlockNumber = u32;
 
-	/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
+	/// Alias to 512-bit hash when used in the context of a transaction
+	/// signature on the chain.
 	pub type Signature = sp_runtime::MultiSignature;
 
-	/// Some way of identifying an account on the chain. We intentionally make it equivalent
-	/// to the public key of our transaction signing scheme.
+	/// Some way of identifying an account on the chain. We intentionally make
+	/// it equivalent to the public key of our transaction signing scheme.
 	pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-	/// The type for looking up accounts. We don't expect more than 4 billion of them, but you
-	/// never know...
+	/// The type for looking up accounts. We don't expect more than 4 billion of
+	/// them, but you never know...
 	pub type AccountIndex = u32;
 
 	/// The address format for describing accounts.
@@ -128,15 +129,17 @@ pub mod types {
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RegistryId(pub H160);
 
-	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
-	// A registry id is needed as well to uniquely identify an asset on-chain.
+	// The id of an asset as it corresponds to the "token id" of a Centrifuge
+	// document. A registry id is needed as well to uniquely identify an asset
+	// on-chain.
 	#[derive(Encode, Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct TokenId(pub U256);
 
-	/// A generic representation of a local address. A resource id points to this. It may be a
-	/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
-	/// as an upper bound to store efficiently.
+	/// A generic representation of a local address. A resource id points to
+	/// this. It may be a registry id (20 bytes) or a fungible asset type (in
+	/// the future). Constrained to 32 bytes just as an upper bound to store
+	/// efficiently.
 	#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct EthAddress(pub Bytes32);
@@ -182,9 +185,10 @@ pub mod constants {
 
 	use super::types::{Balance, BlockNumber};
 
-	/// This determines the average expected block time that we are targeting. Blocks will be
-	/// produced at a minimum duration defined by `SLOT_DURATION`. `SLOT_DURATION` is picked up by
-	/// `pallet_timestamp` which is in turn picked up by `pallet_aura` to implement `fn
+	/// This determines the average expected block time that we are targeting.
+	/// Blocks will be produced at a minimum duration defined by
+	/// `SLOT_DURATION`. `SLOT_DURATION` is picked up by `pallet_timestamp`
+	/// which is in turn picked up by `pallet_aura` to implement `fn
 	/// slot_duration()`.
 	///
 	/// Change this to adjust the block time.
@@ -205,11 +209,12 @@ pub mod constants {
 	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
 	pub const SECONDS_PER_YEAR: u64 = SECONDS_PER_DAY * 365;
 
-	/// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
-	/// used to limit the maximal weight of a single extrinsic.
+	/// We assume that ~5% of the block weight is consumed by `on_initialize`
+	/// handlers. This is used to limit the maximal weight of a single
+	/// extrinsic.
 	pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(5);
-	/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used by
-	/// Operational  extrinsics.
+	/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest
+	/// can be used by Operational  extrinsics.
 	pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
@@ -237,7 +242,8 @@ pub mod constants {
 	/// Value for a not specified fee key.
 	pub const DEFAULT_FEE_VALUE: Balance = 1 * CFG;
 
-	/// % of fee addressed to the Treasury. The reminder % will be for the block author.
+	/// % of fee addressed to the Treasury. The reminder % will be for the block
+	/// author.
 	pub const TREASURY_FEE_RATIO: Perbill = Perbill::from_percent(80);
 
 	/// The max length allowed for a tranche token name
@@ -249,6 +255,9 @@ pub mod constants {
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
+
+	/// Unhashed 36-bytes prefix for currencies managed by Connectors.
+	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 36] = *b"CentrifugeGeneralCurrencyIndexPrefix";
 }
 
 /// Listing of parachains we integrate with.
@@ -295,6 +304,24 @@ pub mod parachains {
 		pub mod acala {
 			pub const ID: u32 = 2000;
 			pub const AUSD_KEY: &[u8] = &[0, 129];
+		}
+	}
+}
+
+pub mod connectors {
+	/// The hashed prefix for currencies managed by Connectors.
+	pub struct GeneralCurrencyPrefix;
+
+	impl sp_core::Get<[u8; 12]> for GeneralCurrencyPrefix {
+		fn get() -> [u8; 12] {
+			let hash: [u8; 16] = frame_support::sp_io::hashing::blake2_128(
+				&crate::constants::GENERAL_CURRENCY_INDEX_PREFIX,
+			);
+			let (trimmed, _) = hash.split_at(12);
+
+			trimmed
+				.try_into()
+				.expect("Should not fail to trim 16-length byte array to length 12")
 		}
 	}
 }

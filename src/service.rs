@@ -71,7 +71,8 @@ type ParachainBlockImport<RuntimeApi> =
 pub struct AltairRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to benchmark.
+	/// Only enable the benchmarking host functions when we actually want to
+	/// benchmark.
 	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
 	/// Otherwise we only use the default Substrate host functions.
@@ -91,7 +92,8 @@ impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
 pub struct CentrifugeRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to benchmark.
+	/// Only enable the benchmarking host functions when we actually want to
+	/// benchmark.
 	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
 	/// Otherwise we only use the default Substrate host functions.
@@ -111,7 +113,8 @@ impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
 pub struct DevelopmentRuntimeExecutor;
 
 impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
-	/// Only enable the benchmarking host functions when we actually want to benchmark.
+	/// Only enable the benchmarking host functions when we actually want to
+	/// benchmark.
 	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
 	/// Otherwise we only use the default Substrate host functions.
@@ -129,8 +132,8 @@ impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
-/// Use this macro if you don't actually need the full service, but just the builder in order to
-/// be able to perform chain operations.
+/// Use this macro if you don't actually need the full service, but just the
+/// builder in order to be able to perform chain operations.
 #[allow(clippy::type_complexity)]
 pub fn new_partial<RuntimeApi, BIQ>(
 	config: &Configuration,
@@ -238,9 +241,11 @@ where
 	Ok(params)
 }
 
-/// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
+/// Start a node with the given parachain `Configuration` and relay chain
+/// `Configuration`.
 ///
-/// This is the actual implementation that is abstract over the executor and the runtime api.
+/// This is the actual implementation that is abstract over the executor and the
+/// runtime api.
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl<RuntimeApi, RB, BIQ, BIC>(
 	parachain_config: Configuration,

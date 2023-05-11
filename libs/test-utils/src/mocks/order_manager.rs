@@ -171,7 +171,8 @@ pub mod pallet {
 	{
 		/// **Test Method**
 		///
-		/// Moves funds from the `T::FundsAccount` to the local `OrderManagerAccount`
+		/// Moves funds from the `T::FundsAccount` to the local
+		/// `OrderManagerAccount`
 		pub fn update_invest_order(
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
@@ -194,9 +195,9 @@ pub mod pallet {
 
 		/// **Test Method**
 		///
-		/// DOES NOT move funds. We assume that all received `TrancheTokens` stay in the
-		/// given `OrderManagerAccount` while testing. Hence, if redeemptions should be
-		/// locked we do not need to move them.
+		/// DOES NOT move funds. We assume that all received `TrancheTokens`
+		/// stay in the given `OrderManagerAccount` while testing. Hence, if
+		/// redeemptions should be locked we do not need to move them.
 		pub fn update_redeem_order(
 			investment_id: T::InvestmentId,
 			amount: BalanceOf<T>,
@@ -205,8 +206,8 @@ pub mod pallet {
 			orders.amount += amount;
 			RedeemOrders::<T>::insert(investment_id, orders);
 
-			// NOTE: TrancheTokens NEVER leave the TEST_PALLET_ID account and hence we can keep them here and
-			//       need no transfer.
+			// NOTE: TrancheTokens NEVER leave the TEST_PALLET_ID account and hence we can
+			// keep them here and need no transfer.
 
 			Ok(())
 		}

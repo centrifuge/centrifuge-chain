@@ -136,7 +136,8 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// Required as a tight dependency from pallet_fees, but not used for it in the bridge pallet.
+// Required as a tight dependency from pallet_fees, but not used for it in the
+// bridge pallet.
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
 	type FilterUncle = ();
@@ -167,7 +168,8 @@ parameter_types! {
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
-// Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
+// Implement Centrifuge Chain chainbridge pallet configuration trait for the
+// mock runtime
 impl chainbridge::Config for Runtime {
 	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
 	type ChainId = MockChainId;
@@ -185,7 +187,8 @@ parameter_types! {
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 }
 
-// Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
+// Implement Centrifuge Chain bridge pallet configuration trait for the mock
+// runtime
 impl BridgePalletConfig for Runtime {
 	type BridgeOrigin = EnsureBridge<Runtime>;
 	type BridgePalletId = BridgePalletId;
@@ -279,8 +282,8 @@ pub(crate) mod helpers {
 
 	// Checks events against the latest.
 	//
-	// A contiguous set of events must be provided. They must include the most recent
-	// event, but do not have to include every past event.
+	// A contiguous set of events must be provided. They must include the most
+	// recent event, but do not have to include every past event.
 	pub fn assert_events(mut expected: Vec<RuntimeEvent>) {
 		let mut actual: Vec<RuntimeEvent> = frame_system::Pallet::<Runtime>::events()
 			.iter()

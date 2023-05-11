@@ -10,23 +10,24 @@ mod ensure {
 		ArithmeticError, FixedPointNumber, FixedPointOperand,
 	};
 
-	/// Performs addition that returns [`ArithmeticError`] instead of wrapping around on overflow.
+	/// Performs addition that returns [`ArithmeticError`] instead of wrapping
+	/// around on overflow.
 	pub trait EnsureAdd: CheckedAdd + PartialOrd + Zero + Copy {
 		fn ensure_add(self, v: Self) -> Result<Self, ArithmeticError> {
 			self.checked_add(&v).ok_or_else(|| error::equivalent(v))
 		}
 	}
 
-	/// Performs subtraction that returns [`ArithmeticError`] instead of wrapping around on
-	/// underflow.
+	/// Performs subtraction that returns [`ArithmeticError`] instead of
+	/// wrapping around on underflow.
 	pub trait EnsureSub: CheckedSub + PartialOrd + Zero + Copy {
 		fn ensure_sub(self, v: Self) -> Result<Self, ArithmeticError> {
 			self.checked_sub(&v).ok_or_else(|| error::inverse(v))
 		}
 	}
 
-	/// Performs multiplication that returns [`ArithmeticError`] instead of wrapping around on
-	/// overflow.
+	/// Performs multiplication that returns [`ArithmeticError`] instead of
+	/// wrapping around on overflow.
 	pub trait EnsureMul: CheckedMul + PartialOrd + Zero + Copy {
 		fn ensure_mul(self, v: Self) -> Result<Self, ArithmeticError> {
 			self.checked_mul(&v)
@@ -34,7 +35,8 @@ mod ensure {
 		}
 	}
 
-	/// Performs division that returns [`ArithmeticError`] instead of wrapping around on overflow.
+	/// Performs division that returns [`ArithmeticError`] instead of wrapping
+	/// around on overflow.
 	pub trait EnsureDiv: CheckedDiv + PartialOrd + Zero + Copy {
 		fn ensure_div(self, v: Self) -> Result<Self, ArithmeticError> {
 			self.checked_div(&v).ok_or_else(|| error::division(self, v))
@@ -50,8 +52,8 @@ mod ensure {
 	pub trait EnsureOp: EnsureAdd + EnsureSub + EnsureMul + EnsureDiv {}
 	impl<T: EnsureAdd + EnsureSub + EnsureMul + EnsureDiv> EnsureOp for T {}
 
-	/// Performs self addition that returns [`ArithmeticError`] instead of wrapping around on
-	/// overflow.
+	/// Performs self addition that returns [`ArithmeticError`] instead of
+	/// wrapping around on overflow.
 	pub trait EnsureAddAssign: EnsureAdd {
 		fn ensure_add_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_add(v)?;
@@ -59,8 +61,8 @@ mod ensure {
 		}
 	}
 
-	/// Performs self subtraction that returns [`ArithmeticError`] instead of wrapping around on
-	/// underflow.
+	/// Performs self subtraction that returns [`ArithmeticError`] instead of
+	/// wrapping around on underflow.
 	pub trait EnsureSubAssign: EnsureSub {
 		fn ensure_sub_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_sub(v)?;
@@ -68,8 +70,8 @@ mod ensure {
 		}
 	}
 
-	/// Performs self multiplication that returns [`ArithmeticError`] instead of wrapping around on
-	/// overflow.
+	/// Performs self multiplication that returns [`ArithmeticError`] instead of
+	/// wrapping around on overflow.
 	pub trait EnsureMulAssign: EnsureMul {
 		fn ensure_mul_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_mul(v)?;
@@ -77,8 +79,8 @@ mod ensure {
 		}
 	}
 
-	/// Performs self division that returns [`ArithmeticError`] instead of wrapping around on
-	/// overflow.
+	/// Performs self division that returns [`ArithmeticError`] instead of
+	/// wrapping around on overflow.
 	pub trait EnsureDivAssign: EnsureDiv {
 		fn ensure_div_assign(&mut self, v: Self) -> Result<(), ArithmeticError> {
 			*self = self.ensure_div(v)?;

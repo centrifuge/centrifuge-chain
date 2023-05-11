@@ -30,7 +30,8 @@ pub mod pools {
 pub mod rewards {
 	use cfg_primitives::{Balance, CFG};
 
-	/// The default amount of stake for CurrencyId::Staking(StakingCurrency::BlockRewards) which is inherently
+	/// The default amount of stake for
+	/// CurrencyId::Staking(StakingCurrency::BlockRewards) which is inherently
 	/// assigned to any member of the only group in block rewards.
 	pub const DEFAULT_COLLATOR_STAKE: Balance = CFG;
 }

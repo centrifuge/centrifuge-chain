@@ -34,7 +34,8 @@ pub struct DiscountedCashFlow<Rate> {
 	/// The share of an asset that is lost if a borrower defaults.
 	pub loss_given_default: Rate,
 
-	/// Rate per year of return used to discount future cash flows back to their present value.
+	/// Rate per year of return used to discount future cash flows back to their
+	/// present value.
 	pub discount_rate: Rate,
 }
 
@@ -79,8 +80,8 @@ impl<Rate: FixedPointNumber> DiscountedCashFlow<Rate> {
 		// Calculate the risk-adjusted expected cash flows
 		let exp = maturity_date.ensure_sub(when)?.ensure_into()?;
 
-		// TODO: Simplify this once #1231 is merged allowing to extract only the acc_rate from
-		// InterestAccrual
+		// TODO: Simplify this once #1231 is merged allowing to extract only the
+		// acc_rate from InterestAccrual
 		let interest_rate_per_sec = interest_rate
 			.ensure_div(Rate::saturating_from_integer(SECONDS_PER_YEAR))?
 			.ensure_add(One::one())?;

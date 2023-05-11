@@ -44,8 +44,8 @@ use crate::{
 
 /// Generates an signed-extrinisc for centrifuge-chain.
 ///
-/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
-///         the same `who` as the sender**
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is
+/// also used with         the same `who` as the sender**
 pub fn xt_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
@@ -71,8 +71,8 @@ pub fn xt_centrifuge(
 
 /// Generates an signed-extrinisc for relay-chain.
 ///
-/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
-///         the same `who` as the sender**
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is
+/// also used with         the same `who` as the sender**
 pub fn xt_relay(
 	env: &TestEnv,
 	who: Keyring,
@@ -186,8 +186,8 @@ fn sign_relay(
 
 /// Retrieves the latest centrifuge nonce for a given account.
 ///
-/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
-///         the same `who` as the sender**
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is
+/// also used with         the same `who` as the sender**
 pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 	env.centrifuge
 		.with_state(|| {
@@ -200,8 +200,8 @@ pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> cfg_primitives::Index {
 
 /// Retrieves the latest relay nonce for a given account.
 ///
-/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
-///         the same `who` as the sender**
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is
+/// also used with         the same `who` as the sender**
 pub fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
 	env.relay
 		.with_state(|| {

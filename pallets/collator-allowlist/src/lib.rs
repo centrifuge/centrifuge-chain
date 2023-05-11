@@ -103,7 +103,8 @@ pub mod pallet {
 		/// The collator has already been added to the allowlist.
 		CollatorAlreadyAllowed,
 
-		/// The collator is not ready yet following to the underlying `T::ValidatorRegistration`
+		/// The collator is not ready yet following to the underlying
+		/// `T::ValidatorRegistration`
 		CollatorNotReady,
 
 		/// The provided collator was not found in the storage.
@@ -115,7 +116,8 @@ pub mod pallet {
 		/// Add the given `collator_id` to the allowlist.
 		/// Fails if
 		///   - `origin` fails the `ensure_root` check
-		///   - `collator_id` did not yet load their keys into the session pallet
+		///   - `collator_id` did not yet load their keys into the session
+		///     pallet
 		///   - `collator_id` is already part of the allowlist
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add())]
 		#[pallet::call_index(0)]
@@ -172,7 +174,8 @@ impl<T: Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
 	/// Check whether a validator is registered according to the pallet.
 	/// True iff
 	///   - the validator id is present in the allowlist and
-	///   - the validator id is registered in the underlying validator registration center
+	///   - the validator id is registered in the underlying validator
+	///     registration center
 	#[cfg(not(test))]
 	fn is_registered(id: &T::ValidatorId) -> bool {
 		let contains_key = if cfg!(feature = "runtime-benchmarks") {
@@ -188,8 +191,8 @@ impl<T: Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
 	}
 
 	// NOTE: Running test with `feature = "runtime-benchmarks"` breaks the test
-	//       with the above solution for fixing `pallet-collator-selection` benchmarks
-	//       hence, we have a "non-benchmarking implementation" here
+	//       with the above solution for fixing `pallet-collator-selection`
+	// benchmarks       hence, we have a "non-benchmarking implementation" here
 	#[cfg(test)]
 	fn is_registered(id: &T::ValidatorId) -> bool {
 		<Allowlist<T>>::contains_key(id) && T::ValidatorRegistration::is_registered(id)

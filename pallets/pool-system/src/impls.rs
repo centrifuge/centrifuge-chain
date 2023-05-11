@@ -45,7 +45,8 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 		let now = Self::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
-		// Get cached nav as calculating current nav would be too computationally expensive
+		// Get cached nav as calculating current nav would be too computationally
+		// expensive
 		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
 		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
 

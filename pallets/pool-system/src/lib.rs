@@ -687,7 +687,8 @@ pub mod pallet {
 					))
 					.into())
 				} else {
-					// Any new submission needs to improve on the existing state (which is defined as a total fulfilment of 0%)
+					// Any new submission needs to improve on the existing state (which is defined
+					// as a total fulfilment of 0%)
 					let no_execution_solution = pool.tranches.combine_residual_top(|_| {
 						Ok(TrancheSolution {
 							invest_fulfillment: Perquintill::zero(),
@@ -770,11 +771,10 @@ pub mod pallet {
 		/// Execute an epoch for which a valid solution has been
 		/// submitted.
 		///
-		/// * Mints or burns tranche tokens based on investments
-		///   and redemptions
-		/// * Updates the portion of the reserve and loan balance
-		///   assigned to each tranche, based on the investments
-		///   and redemptions to those tranches.
+		/// * Mints or burns tranche tokens based on investments and redemptions
+		/// * Updates the portion of the reserve and loan balance assigned to
+		///   each tranche, based on the investments and redemptions to those
+		///   tranches.
 		#[pallet::weight(T::WeightInfo::execute_epoch(T::MaxTranches::get()))]
 		#[pallet::call_index(3)]
 		pub fn execute_epoch(
@@ -809,7 +809,8 @@ pub mod pallet {
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
-				// TODO: Write a test for the `expect` in case we allow the removal of pools at some point
+				// TODO: Write a test for the `expect` in case we allow the removal of pools at
+				// some point
 				Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 					let pool = pool
 						.as_mut()
@@ -866,8 +867,8 @@ pub mod pallet {
 				acc_invest_orders.ensure_add_assign(invest_order.amount)?;
 				invest_orders.push(invest_order.amount);
 
-				// Redeem order is denominated in the `TrancheCurrency`. Hence, we need to convert them into `PoolCurrency`
-				// denomination
+				// Redeem order is denominated in the `TrancheCurrency`. Hence, we need to
+				// convert them into `PoolCurrency` denomination
 				let redeem_order = T::Investments::process_redeem_orders(tranche.currency)?;
 				let redeem_amount_in_pool_currency = price.ensure_mul_int(redeem_order.amount)?;
 				acc_redeem_orders.ensure_add_assign(redeem_amount_in_pool_currency)?;
@@ -886,8 +887,9 @@ pub mod pallet {
 
 		/// Scores a solution.
 		///
-		/// This function checks the state a pool would be in when applying a solution
-		/// to an epoch. Depending on the state, the correct scoring function is chosen.
+		/// This function checks the state a pool would be in when applying a
+		/// solution to an epoch. Depending on the state, the correct scoring
+		/// function is chosen.
 		pub fn score_solution(
 			pool_id: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
@@ -1008,7 +1010,8 @@ pub mod pallet {
 					pool.tranches.combine_with_mut_residual_top(
 						tranches.iter(),
 						|tranche, tranche_update| {
-							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
+							// Update debt of the tranche such that the interest is accrued until
+							// now with the previous interest rate
 							tranche.accrue(now)?;
 
 							tranche.tranche_type = tranche_update.tranche_type;
@@ -1093,11 +1096,13 @@ pub mod pallet {
 				prev_tranche = tranche_input;
 			}
 
-			// In case we are not setting up a new pool (i.e. a tranche setup already exists) we check
-			// whether the changes are valid with respect to the existing setup.
+			// In case we are not setting up a new pool (i.e. a tranche setup already
+			// exists) we check whether the changes are valid with respect to the existing
+			// setup.
 			if let Some(old_tranches) = old_tranches {
-				// For now, adding or removing tranches is not allowed, unless it's on pool creation.
-				// TODO: allow adding tranches as most senior, and removing most senior and empty (debt+reserve=0) tranches
+				// For now, adding or removing tranches is not allowed, unless it's on pool
+				// creation. TODO: allow adding tranches as most senior, and removing most
+				// senior and empty (debt+reserve=0) tranches
 				ensure!(
 					new_tranches.len() == old_tranches.num_tranches(),
 					Error::<T>::CannotAddOrRemoveTranches
@@ -1182,8 +1187,8 @@ pub mod pallet {
 					};
 
 					// NOTE: This CAN be overflowing for Residual tranches, as we can not anticipate
-					//       the "debt" of a residual tranche. More correctly they do NOT have a debt
-					//       but are rather entitled to the "left-overs".
+					//       the "debt" of a residual tranche. More correctly they do NOT have a
+					// debt       but are rather entitled to the "left-overs".
 					tranche.debt = tranche.debt.saturating_sub(tranche_amount);
 					tranche.reserve.ensure_add_assign(tranche_amount)?;
 
@@ -1192,7 +1197,8 @@ pub mod pallet {
 					remaining_amount.ensure_sub_assign(tranche_amount)?;
 				}
 
-				// TODO: Add a debug log here and/or a debut_assert maybe even an error if remaining_amount != 0 at this point!
+				// TODO: Add a debug log here and/or a debut_assert maybe even an error if
+				// remaining_amount != 0 at this point!
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
 				Self::deposit_event(Event::Rebalanced { pool_id });

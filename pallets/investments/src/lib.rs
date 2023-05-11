@@ -176,21 +176,23 @@ pub mod pallet {
 
 	use super::*;
 
-	/// Configure the pallet by specifying the parameters and types on which it depends.
+	/// Configure the pallet by specifying the parameters and types on which it
+	/// depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config
 	where
 		<Self::Accountant as InvestmentAccountant<Self::AccountId>>::InvestmentInfo:
 			InvestmentProperties<Self::AccountId, Currency = CurrencyOf<Self>>,
 	{
-		/// Because this pallet emits events, it depends on the runtime's definition of an event.
+		/// Because this pallet emits events, it depends on the runtime's
+		/// definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The underlying investments one can invest into
 		type InvestmentId: Member + Parameter + Copy + MaxEncodedLen;
 
-		/// Something that knows how to handle accounting for the given investments
-		/// and provides metadata about them
+		/// Something that knows how to handle accounting for the given
+		/// investments and provides metadata about them
 		type Accountant: InvestmentAccountant<
 			Self::AccountId,
 			Error = DispatchError,
@@ -231,8 +233,8 @@ pub mod pallet {
 			+ Inspect<Self::AccountId, Balance = Self::Amount>
 			+ Transfer<Self::AccountId>;
 
-		/// A possible check if investors fulfill every condition to invest into a
-		/// given investment
+		/// A possible check if investors fulfill every condition to invest into
+		/// a given investment
 		type PreConditions: PreConditions<
 			OrderType<Self::AccountId, Self::InvestmentId, Self::Amount>,
 			Result = DispatchResult,
@@ -364,25 +366,29 @@ pub mod pallet {
 			who: T::AccountId,
 			amount: T::Amount,
 		},
-		/// TotalOrders of investments were fulfilled [investment_id, order_id, FulfillmentWithPrice]
+		/// TotalOrders of investments were fulfilled [investment_id, order_id,
+		/// FulfillmentWithPrice]
 		InvestOrdersCleared {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
 		},
-		/// TotalOrders of redemptions were fulfilled [investment_id, order_id, FulfillmentWithPrice]
+		/// TotalOrders of redemptions were fulfilled [investment_id, order_id,
+		/// FulfillmentWithPrice]
 		RedeemOrdersCleared {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			fulfillment: FulfillmentWithPrice<T::BalanceRatio>,
 		},
-		/// TotalOrders of investments are in processing state [investment_id, order_id, TotalOrder]
+		/// TotalOrders of investments are in processing state [investment_id,
+		/// order_id, TotalOrder]
 		InvestOrdersInProcessing {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
 			total_order: TotalOrder<T::Amount>,
 		},
-		/// TotalOrders of redemptions in processing state [investment_id, order_id, TotalOrder]
+		/// TotalOrders of redemptions in processing state [investment_id,
+		/// order_id, TotalOrder]
 		RedeemOrdersInProcessing {
 			investment_id: T::InvestmentId,
 			order_id: OrderId,
@@ -491,9 +497,9 @@ pub mod pallet {
 			Pallet::<T>::do_update_redemption(who, investment_id, amount)
 		}
 
-		/// Collect the results of a users invest orders for the given investment.
-		/// If any amounts are not fulfilled they are directly appended to the next active
-		/// order for this investment.
+		/// Collect the results of a users invest orders for the given
+		/// investment. If any amounts are not fulfilled they are directly
+		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
 		#[pallet::call_index(2)]
 		pub fn collect_investments(
@@ -505,9 +511,9 @@ pub mod pallet {
 			Self::do_collect_invest(who, investment_id)
 		}
 
-		/// Collect the results of a users redeem orders for the given investment.
-		/// If any amounts are not fulfilled they are directly appended to the next active
-		/// order for this investment.
+		/// Collect the results of a users redeem orders for the given
+		/// investment. If any amounts are not fulfilled they are directly
+		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
 		#[pallet::call_index(3)]
 		pub fn collect_redemptions(
@@ -519,9 +525,9 @@ pub mod pallet {
 			Self::do_collect_redeem(who, investment_id)
 		}
 
-		/// Collect the results of another users invest orders for the given investment.
-		/// If any amounts are not fulfilled they are directly appended to the next active
-		/// order for this investment.
+		/// Collect the results of another users invest orders for the given
+		/// investment. If any amounts are not fulfilled they are directly
+		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
 		#[pallet::call_index(4)]
 		pub fn collect_investments_for(
@@ -534,9 +540,9 @@ pub mod pallet {
 			Self::do_collect_invest(who, investment_id)
 		}
 
-		/// Collect the results of another users redeem orders for the given investment.
-		/// If any amounts are not fulfilled they are directly appended to the next active
-		/// order for this investment.
+		/// Collect the results of another users redeem orders for the given
+		/// investment. If any amounts are not fulfilled they are directly
+		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
 		#[pallet::call_index(5)]
 		pub fn collect_redemptions_for(
@@ -963,17 +969,17 @@ where
 		fulfillment: &FulfillmentWithPrice<T::BalanceRatio>,
 	) -> DispatchResult {
 		let remaining = collection.remaining_investment_invest;
-		// NOTE: The checked_mul_int_floor and reciprocal_floor here ensure that for a given price
-		//       the system side (i.e. the pallet-investments) will always have
-		//       enough balance to satisfy all claims on payouts.
+		// NOTE: The checked_mul_int_floor and reciprocal_floor here ensure that for a
+		// given price       the system side (i.e. the pallet-investments) will always
+		// have       enough balance to satisfy all claims on payouts.
 		//
-		//       Importantly, the Accountant side (i.e. the pool and therefore an issuer)
-		//       will still drain its reserve by the amount without rounding. So we neither favor
-		//       issuer or investor but always the system.
+		//       Importantly, the Accountant side (i.e. the pool and therefore an
+		// issuer)       will still drain its reserve by the amount without rounding. So
+		// we neither favor       issuer or investor but always the system.
 		//
-		//       TODO: Rounding always means, we might have issuance on tranche-tokens left, that are
-		//             rounding leftovers. This will be of importance, once we remove tranches at some
-		//             point.
+		//       TODO: Rounding always means, we might have issuance on tranche-tokens
+		// left, that are             rounding leftovers. This will be of importance,
+		// once we remove tranches at some             point.
 		collection.payout_investment_invest = collection
 			.payout_investment_invest
 			.checked_add(
@@ -998,13 +1004,13 @@ where
 		//       the system side (i.e. the pallet-investments) will always have
 		//       enough balance to satisfy all claims on payouts.
 		//
-		//       Importantly, the Accountant side (i.e. the pool and therefore an issuer)
-		//       will still drain its reserve by the amount without rounding. So we neither favor
-		//       issuer or investor but always the system.
+		//       Importantly, the Accountant side (i.e. the pool and therefore an
+		// issuer)       will still drain its reserve by the amount without rounding. So
+		// we neither favor       issuer or investor but always the system.
 		//
-		//       TODO: Rounding always means, we might have issuance on tranche-tokens left, that are
-		//             rounding leftovers. This will be of importance, once we remove tranches at some
-		//             point.
+		//       TODO: Rounding always means, we might have issuance on tranche-tokens
+		// left, that are             rounding leftovers. This will be of importance,
+		// once we remove tranches at some             point.
 		collection.payout_investment_redeem = collection
 			.payout_investment_redeem
 			.checked_add(
@@ -1292,7 +1298,8 @@ where
 
 				ClearedInvestOrders::<T>::insert(investment_id, order_id, fulfillment);
 
-				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
+				// Append the outstanding, i.e. unfulfilled orders to the current active order
+				// amount.
 				ActiveInvestOrders::<T>::try_mutate(
 					investment_id,
 					|total_orders| -> DispatchResult {
@@ -1305,8 +1312,8 @@ where
 					},
 				)?;
 
-				// Removing the order from its processing state. We actually do not need it anymore as from now forward
-				// we only need the per-user orders.
+				// Removing the order from its processing state. We actually do not need it
+				// anymore as from now forward we only need the per-user orders.
 				*maybe_orders = None;
 				Ok(order_id)
 			},
@@ -1373,7 +1380,8 @@ where
 
 				ClearedRedeemOrders::<T>::insert(investment_id, order_id, fulfillment);
 
-				// Append the outstanding, i.e. unfulfilled orders to the current active order amount.
+				// Append the outstanding, i.e. unfulfilled orders to the current active order
+				// amount.
 				ActiveRedeemOrders::<T>::try_mutate(
 					investment_id,
 					|total_orders| -> DispatchResult {
@@ -1386,8 +1394,8 @@ where
 					},
 				)?;
 
-				// Removing the order from its processing state. We actually do not need it anymore as from now forward
-				// we only need the per-user orders.
+				// Removing the order from its processing state. We actually do not need it
+				// anymore as from now forward we only need the per-user orders.
 				*maybe_orders = None;
 				Ok(order_id)
 			},

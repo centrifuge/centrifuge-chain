@@ -304,7 +304,8 @@ pub mod pallet {
 				&mut to_group.base,
 			)?;
 
-			// Only if there was a distribution from last move, we update the previous related data.
+			// Only if there was a distribution from last move, we update the previous
+			// related data.
 			if currency.next_distribution_id != from_group.distribution_id {
 				currency.prev_distribution_id = from_group.distribution_id;
 				currency.prev_last_rate = from_group.last_rate;
