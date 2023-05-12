@@ -137,7 +137,6 @@ pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
 pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
 xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
-ethabi = { version = "16.0", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
