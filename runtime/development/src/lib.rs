@@ -1924,13 +1924,6 @@ pub type UncheckedExtrinsic =
 pub type CheckedExtrinsic =
 	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
 
-parameter_types! {
-	// = 16.65 CFG per epoch (12h)
-	pub const CollatorRewards: Balance = 8_325 * MILLI_CFG;
-	// = 20,096 CFG per epoch (12h)
-	pub const TotalRewards: Balance = 10_048 * CFG;
-}
-
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -1941,16 +1934,7 @@ pub type Executive = frame_executive::Executive<
 	UpgradeDev1020,
 >;
 
-type UpgradeDev1020 = (
-	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>,
-	pallet_rewards::migrations::FundExistentialDeposit<
-		Runtime,
-		pallet_rewards::Instance2,
-		NativeToken,
-		ExistentialDeposit,
-	>,
-	pallet_loans_ref::migrations::v1::Migration<Runtime>,
-);
+type UpgradeDev1020 = ();
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
