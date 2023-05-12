@@ -888,8 +888,8 @@ fn centrifuge_genesis(
 				.cloned()
 				.map(|(acc, _)| acc)
 				.collect(),
-			collator_reward: 98_630 * MILLI_AIR,
-			total_reward: 98_630 * MILLI_AIR * 100,
+			collator_reward: 8_325 * MILLI_CFG,
+			total_reward: 10_048 * CFG,
 		},
 		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
@@ -966,8 +966,8 @@ fn altair_genesis(
 				.cloned()
 				.map(|(acc, _)| acc)
 				.collect(),
-			collator_reward: 8_325 * MILLI_CFG,
-			total_reward: 10_048 * CFG,
+			collator_reward: 98_630 * MILLI_AIR,
+			total_reward: 98_630 * MILLI_AIR * 100,
 		},
 		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
