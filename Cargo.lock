@@ -2569,6 +2569,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
+ "gateway-routers",
  "hex",
  "hex-literal 0.3.4",
  "moonbeam-relay-encoder",
@@ -4046,6 +4047,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
+]
+
+[[package]]
+name = "gateway-routers"
+version = "0.0.1"
+dependencies = [
+ "cfg-traits",
+ "cfg-types",
+ "ethabi",
+ "frame-support",
+ "frame-system",
+ "pallet-connectors-gateway",
+ "pallet-ethereum",
+ "pallet-xcm-transactor",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-std",
+ "xcm",
+ "xcm-primitives",
 ]
 
 [[package]]
