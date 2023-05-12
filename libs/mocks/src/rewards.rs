@@ -101,27 +101,22 @@ pub mod pallet {
 		type CurrencyId = T::CurrencyId;
 
 		fn deposit_stake(a: T::CurrencyId, b: &T::AccountId, c: T::Balance) -> DispatchResult {
-			let b = unsafe { std::mem::transmute::<_, &'static T::AccountId>(b) };
 			execute_call!((a, b, c))
 		}
 
 		fn withdraw_stake(a: T::CurrencyId, b: &T::AccountId, c: T::Balance) -> DispatchResult {
-			let b = unsafe { std::mem::transmute::<_, &'static T::AccountId>(b) };
 			execute_call!((a, b, c))
 		}
 
 		fn compute_reward(a: T::CurrencyId, b: &T::AccountId) -> Result<T::Balance, DispatchError> {
-			let b = unsafe { std::mem::transmute::<_, &'static T::AccountId>(b) };
 			execute_call!((a, b))
 		}
 
 		fn claim_reward(a: T::CurrencyId, b: &T::AccountId) -> Result<T::Balance, DispatchError> {
-			let b = unsafe { std::mem::transmute::<_, &'static T::AccountId>(b) };
 			execute_call!((a, b))
 		}
 
 		fn account_stake(a: T::CurrencyId, b: &T::AccountId) -> T::Balance {
-			let b = unsafe { std::mem::transmute::<_, &'static T::AccountId>(b) };
 			execute_call!((a, b))
 		}
 	}
