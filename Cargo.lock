@@ -7663,7 +7663,6 @@ dependencies = [
  "frame-system",
  "lazy_static",
  "log",
- "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -7673,7 +7672,6 @@ dependencies = [
  "pallet-timestamp",
  "parachain-info",
  "parity-scale-codec 3.4.0",
- "polkadot-parachain",
  "rand 0.8.5",
  "rev_slice",
  "scale-info",
@@ -7683,7 +7681,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xcm",
 ]
 
 [[package]]
