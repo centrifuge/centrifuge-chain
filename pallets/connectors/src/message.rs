@@ -579,6 +579,28 @@ mod tests {
 	}
 
 	#[test]
+	fn add_currency_zero() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddCurrency {
+				currency: 0,
+				evm_address: default_address_20(),
+			},
+			"01000000000000000000000000000000001231231231231231231231231231231231231231",
+		)
+	}
+
+	#[test]
+	fn add_currency() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddCurrency {
+				currency: TOKEN_ID,
+				evm_address: default_address_20(),
+			},
+			"010000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
+		)
+	}
+
+	#[test]
 	fn add_pool_zero() {
 		test_encode_decode_identity(
 			ConnectorMessage::AddPool { pool_id: 0 },
@@ -591,28 +613,6 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::AddPool { pool_id: POOL_ID },
 			"020000000000bce1a4",
-		)
-	}
-
-	#[test]
-	fn add_currency_zero() {
-		test_encode_decode_identity(
-			ConnectorMessage::AddCurrency {
-				currency: 0,
-				evm_address: default_address_20(),
-			},
-
-			"01000000000000000000000000000000001231231231231231231231231231231231231231",
-		)
-	}
-	#[test]
-	fn add_currency() {
-		test_encode_decode_identity(
-			ConnectorMessage::AddCurrency {
-				currency: TOKEN_ID,
-				evm_address: default_address_20(),
-			},
-			"010000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
 		)
 	}
 
