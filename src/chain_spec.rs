@@ -22,8 +22,8 @@
 // module level.
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use altair_runtime::constants::currency::AIR;
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
+use altair_runtime::constants::currency::{AIR, MICRO_AIR, MILLI_AIR};
+use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MICRO_CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
@@ -888,12 +888,12 @@ fn centrifuge_genesis(
 				.cloned()
 				.map(|(acc, _)| acc)
 				.collect(),
-			collator_reward: 6_000 * AIR,
-			total_reward: 6_000 * AIR * 100,
+			collator_reward: 98_630 * MILLI_AIR,
+			total_reward: 98_630 * MILLI_AIR * 100,
 		},
 		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * AIR,
+			amount: 1 * MICRO_AIR,
 		},
 	}
 }
@@ -966,12 +966,12 @@ fn altair_genesis(
 				.cloned()
 				.map(|(acc, _)| acc)
 				.collect(),
-			collator_reward: 6_000 * AIR,
-			total_reward: 6_000 * AIR * 100,
+			collator_reward: 8_325 * MILLI_CFG,
+			total_reward: 10_048 * CFG,
 		},
 		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * AIR,
+			amount: 1 * MICRO_AIR,
 		},
 		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
@@ -1141,11 +1141,11 @@ fn development_genesis(
 		evm: Default::default(),
 		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * CFG,
+			amount: 1 * MICRO_CFG,
 		},
 		rewards: development_runtime::RewardsConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * CFG,
+			amount: 1 * MICRO_CFG,
 		},
 	}
 }
