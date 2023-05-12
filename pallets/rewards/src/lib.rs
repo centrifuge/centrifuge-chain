@@ -69,7 +69,9 @@ mod tests;
 
 pub mod issuance;
 pub mod mechanism;
-pub mod migrations;
+pub mod migrations {
+	pub mod new_instance;
+}
 
 use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, GroupRewards, RewardIssuance};
 use codec::FullCodec;
@@ -82,7 +84,6 @@ use frame_support::{
 	PalletId,
 };
 use mechanism::{MoveCurrencyError, RewardMechanism};
-use num_traits::Zero;
 pub use pallet::*;
 use sp_runtime::{traits::AccountIdConversion, TokenError};
 use sp_std::fmt::Debug;
@@ -169,15 +170,13 @@ pub mod pallet {
 		BalanceOf<T, I>: MaybeSerializeDeserialize,
 	{
 		fn build(&self) {
-			if !self.amount.is_zero() {
-				T::Currency::mint_into(
-					self.currency_id,
-					&T::PalletId::get().into_account_truncating(),
-					self.amount,
-				)
-				.map_err(|_| log::error!("Failed to mint ED for sovereign pallet account",))
-				.ok();
-			}
+			T::Currency::mint_into(
+				self.currency_id,
+				&T::PalletId::get().into_account_truncating(),
+				self.amount,
+			)
+			.map_err(|_| log::error!("Failed to mint ED for sovereign pallet account",))
+			.ok();
 		}
 	}
 
