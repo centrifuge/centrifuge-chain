@@ -32,6 +32,7 @@ use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
 	fixed_point::Rate,
+	locations::Location,
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
@@ -1765,6 +1766,20 @@ impl pallet_block_rewards::Config for Runtime {
 	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+	pub const TransferAllowlistFeeKey: FeeKey = FeeKey::AllowanceCreation;
+}
+
+impl pallet_transfer_allowlist::Config for Runtime {
+	type AllowanceFeeKey = TransferAllowlistFeeKey;
+	type CurrencyId = CurrencyId;
+	type Fees = Fees;
+	type Location = Location;
+	type ReserveCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type Weights = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1830,6 +1845,7 @@ construct_runtime!(
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 109,
 		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
+		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2403,6 +2419,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
+			add_benchmark!(params, batches, pallet_transfer_allowlist, TransferAllowList);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -2440,6 +2457,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
+			list_benchmark!(list, extra, pallet_transfer_allowlist, TransferAllowList);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

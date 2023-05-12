@@ -2622,6 +2622,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transfer-allowlist",
  "pallet-treasury",
  "pallet-uniques",
  "pallet-utility",
@@ -8054,15 +8055,13 @@ dependencies = [
 name = "pallet-transfer-allowlist"
 version = "0.1.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
- "pallet-treasury",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
@@ -8070,7 +8069,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xcm",
 ]
 
 [[package]]
