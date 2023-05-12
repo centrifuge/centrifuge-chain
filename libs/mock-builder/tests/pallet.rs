@@ -5,8 +5,9 @@ pub trait TraitA {
 
 pub trait TraitB {
 	fn qux(p1: String) -> bool;
-	fn generic_input<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize;
-	fn generic_output<A: Into<i32> + 'static>() -> A;
+	fn generic_input<A: Into<i32>>(a: A, b: impl Into<u32>) -> usize;
+	fn generic_output<A: Into<i32>>() -> A;
+	fn reference(a: &i32) -> &i32;
 }
 
 #[frame_support::pallet]
@@ -42,14 +43,16 @@ pub mod pallet_mock_ab {
 			register_call!(f);
 		}
 
-		pub fn mock_generic_input<A: Into<i32> + 'static, B: Into<u32> + 'static>(
-			f: impl Fn(A, B) -> usize + 'static,
-		) {
+		pub fn mock_generic_input<A: Into<i32>, B: Into<u32>>(f: impl Fn(A, B) -> usize + 'static) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_generic_output<A: Into<i32> + 'static>(f: impl Fn() -> A + 'static) {
+		pub fn mock_generic_output<A: Into<i32>>(f: impl Fn() -> A + 'static) {
 			register_call!(move |()| f());
+		}
+
+		pub fn mock_reference(f: impl Fn(&i32) -> &i32 + 'static) {
+			register_call!(f);
 		}
 	}
 
@@ -68,12 +71,16 @@ pub mod pallet_mock_ab {
 			execute_call!(a)
 		}
 
-		fn generic_input<A: Into<i32> + 'static>(a: A, b: impl Into<u32> + 'static) -> usize {
+		fn generic_input<A: Into<i32>>(a: A, b: impl Into<u32>) -> usize {
 			execute_call!((a, b))
 		}
 
-		fn generic_output<A: Into<i32> + 'static>() -> A {
+		fn generic_output<A: Into<i32>>() -> A {
 			execute_call!(())
+		}
+
+		fn reference(a: &i32) -> &i32 {
+			execute_call!(a)
 		}
 	}
 }
@@ -252,6 +259,15 @@ mod test {
 
 			assert_eq!(MockAB::generic_output::<i8>(), 8);
 			assert_eq!(MockAB::generic_output::<i16>(), 16);
+		});
+	}
+
+	#[test]
+	fn reference() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_reference(|a| a);
+
+			assert_eq!(MockAB::reference(&42), &42);
 		});
 	}
 }

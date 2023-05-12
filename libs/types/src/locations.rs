@@ -33,10 +33,6 @@ pub enum Location {
 	XCM(H256),
 	/// DomainAddress sending location from connectors
 	Address(DomainAddress),
-	/// Test--only build on std/native for tests, not runtime Wasm
-	#[cfg(feature = "std")]
-	#[codec(index = 255)]
-	TestLocal(u64),
 }
 
 impl From<AccountId32> for Location {
@@ -64,14 +60,6 @@ impl From<VersionedMultiLocation> for Location {
 impl From<DomainAddress> for Location {
 	fn from(da: DomainAddress) -> Self {
 		Self::Address(da)
-	}
-}
-
-// only for tests
-#[cfg(feature = "std")]
-impl From<u64> for Location {
-	fn from(a: u64) -> Self {
-		Self::TestLocal(a)
 	}
 }
 
@@ -130,11 +118,5 @@ mod test {
 		let l = Location::from(da.clone());
 
 		assert_eq!(l, Location::Address(da))
-	}
-
-	#[test]
-	fn from_test_account_works() {
-		let l: Location = Location::from(1u64);
-		assert_eq!(l, Location::TestLocal(1u64))
 	}
 }
