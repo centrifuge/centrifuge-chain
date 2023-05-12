@@ -22,13 +22,19 @@
 //! - the block range specified in the allowance
 
 #[cfg(test)]
-mod mock;
+pub(crate) mod mock;
 
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+pub mod weights;
+
 pub use cfg_traits::TransferAllowance;
 pub use pallet::*;
+pub use weights::Weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -75,6 +81,7 @@ pub mod pallet {
 		type CurrencyId: AssetId
 			+ Parameter
 			+ Debug
+			+ Default
 			+ Member
 			+ Copy
 			+ MaybeSerializeDeserialize
@@ -107,6 +114,9 @@ pub mod pallet {
 			+ EncodeLike
 			+ Decode
 			+ MaxEncodedLen;
+
+		/// Type for pallet weights
+		type Weights: Weights;
 	}
 
 	//
@@ -314,7 +324,7 @@ pub mod pallet {
 		/// Running this for an existing allowance generates a new allowance
 		/// based on the current delay, or lack thereof
 		#[pallet::call_index(0)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		#[pallet::weight(T::Weights::add_transfer_allowance_no_existing_metadata().max(T::Weights::add_transfer_allowance_existing_metadata()))]
 		pub fn add_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -367,7 +377,7 @@ pub mod pallet {
 		/// - either the current block + delay if a delay is set
 		/// - or the current block if no delay is set
 		#[pallet::call_index(1)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2, 2).ref_time())]
+		#[pallet::weight(T::Weights::remove_transfer_allowance_missing_allowance().max(T::Weights::remove_transfer_allowance_delay_present()))]
 		pub fn remove_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -413,7 +423,7 @@ pub mod pallet {
 		/// receiving location Decrements or removes the sending
 		/// account/currency count.
 		#[pallet::call_index(2)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1, 2).ref_time())]
+		#[pallet::weight(T::Weights::purge_transfer_allowance_no_remaining_metadata().max(T::Weights::purge_allowance_delay_remaining_metadata()))]
 		pub fn purge_transfer_allowance(
 			origin: OriginFor<T>,
 			currency_id: T::CurrencyId,
@@ -447,7 +457,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		#[pallet::weight(T::Weights::add_allowance_delay_existing_metadata().max(T::Weights::add_allowance_delay_no_existing_metadata()))]
 		/// Adds an account/currency delay
 		/// Calling on an account/currency with an existing delay will fail.
 		/// To update a delay the delay has to be set to future modifiable.
@@ -492,7 +502,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(4)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		#[pallet::weight(T::Weights::update_allowance_delay())]
 		/// Updates an allowance delay, only callable if the delay has been set
 		/// to allow future modifications and the delay modifiable_at block has
 		/// been passed.
@@ -540,7 +550,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(5)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		#[pallet::weight(T::Weights::toggle_allowance_delay_once_future_modifiable())]
 		/// This allows the delay value to be modified after the current delay
 		/// has passed since the current block Or sets the delay value to be not
 		/// modifiable iff modifiable at has already passed
@@ -592,7 +602,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(0, 1).ref_time())]
+		#[pallet::weight(T::Weights::purge_allowance_delay_remaining_metadata().max(T::Weights::purge_allowance_delay_no_remaining_metadata()))]
 		/// Removes an existing sending account/currency delay
 		pub fn purge_allowance_delay(
 			origin: OriginFor<T>,
