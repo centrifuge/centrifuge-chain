@@ -41,8 +41,11 @@ benchmarks! {
 
 	}: _(RawOrigin::Signed(caller), beneficiary.clone())
 	verify {
+		let num_collators: u128 = BlockRewards::<T>::next_session_changes().collator_count.unwrap_or(
+			BlockRewards::<T>::active_session_data().collator_count
+		).into();
 		// Does not get entire reward since another collator is auto-staked via genesis config
-		assert_eq!(<T as Config>::Currency::balance(CurrencyId::Native.into(), &beneficiary).saturating_sub(before), (REWARD / 2).into());
+		assert_eq!(<T as Config>::Currency::balance(CurrencyId::Native.into(), &beneficiary).saturating_sub(before), (REWARD / (num_collators + 1)).into());
 	}
 
 	set_collator_reward {
