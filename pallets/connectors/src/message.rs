@@ -736,7 +736,6 @@ mod tests {
 		)
 	}
 
-
 	#[test]
 	fn increase_invest_order() {
 		test_encode_decode_identity(
