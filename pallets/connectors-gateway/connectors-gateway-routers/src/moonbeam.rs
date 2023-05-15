@@ -40,7 +40,7 @@ impl<T> MoonbeamRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
 {
-	pub fn do_forward(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
+	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let contract_call = self
 			.get_encoded_contract_call(msg.serialize())
 			.map_err(|_| DispatchError::Other("encoded contract call retrieval"))?;
@@ -75,8 +75,6 @@ where
 		Ok(())
 	}
 
-	/// COPIED FROM CONNECTORS
-	///
 	/// Build the encoded `ethereum_xcm::transact(eth_tx)` call that should
 	/// request to execute `evm_call`.
 	///

@@ -1,9 +1,9 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = "Centrifuge Gateway Routers"
+description = "Centrifuge Connectors Gateway Routers"
 edition = "2018"
 license = "LGPL-3.0"
-name = "gateway-routers"
+name = "connectors-gateway-routers"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "0.0.1"
 

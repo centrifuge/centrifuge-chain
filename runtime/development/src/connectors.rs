@@ -30,10 +30,10 @@ impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type Connectors = DummyInboundQueue;
 	type LocalOrigin = pallet_connectors_gateway::EnsureLocal;
-	type MaxEthMsg = MaxEthMsg;
+	type MaxEthMsgSize = MaxEthMsg;
 	type MaxSubmittersPerDomain = MaxSubmittersPerDomain;
 	type Message = ConnectorsMessage;
-	type Router = gateway_routers::DomainRouter<Runtime>;
+	type Router = connectors_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type WeightInfo = ();

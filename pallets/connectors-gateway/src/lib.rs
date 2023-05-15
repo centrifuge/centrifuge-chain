@@ -83,7 +83,7 @@ pub mod pallet {
 
 		/// Maximum size of an Ethereum message.
 		#[pallet::constant]
-		type MaxEthMsg: Get<u32>;
+		type MaxEthMsgSize: Get<u32>;
 
 		/// Maximum number of submitter for a domain.
 		#[pallet::constant]
@@ -162,9 +162,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
-			if let Domain::Centrifuge = domain {
-				return Err(Error::<T>::DomainNotSupported.into());
-			}
+			ensure!(domain != Domain::Centrifuge, Error::<T>::DomainNotSupported);
 
 			<DomainRouters<T>>::insert(domain.clone(), router.clone());
 
@@ -179,9 +177,10 @@ pub mod pallet {
 		pub fn add_submitter(origin: OriginFor<T>, submitter: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
-			if let Domain::Centrifuge = submitter.domain() {
-				return Err(Error::<T>::DomainNotSupported.into());
-			}
+			ensure!(
+				submitter.domain() != Domain::Centrifuge,
+				Error::<T>::DomainNotSupported
+			);
 
 			<DomainSubmitters<T>>::try_mutate(submitter.domain(), |submitters| {
 				if submitters.iter().find(|s| s.eq(&&submitter)).is_some() {
@@ -223,7 +222,7 @@ pub mod pallet {
 		#[pallet::call_index(3)]
 		pub fn process_msg(
 			origin: OriginFor<T>,
-			msg: BoundedVec<u8, T::MaxEthMsg>,
+			msg: BoundedVec<u8, T::MaxEthMsgSize>,
 		) -> DispatchResult {
 			let domain_address = T::LocalOrigin::ensure_origin(origin)?;
 
@@ -254,13 +253,14 @@ pub mod pallet {
 			sender: Self::Sender,
 			msg: Self::Message,
 		) -> DispatchResult {
-			if let Domain::Centrifuge = destination {
-				return Err("invalid outbound destination".into());
-			}
+			ensure!(
+				destination != Domain::Centrifuge,
+				"cannot send message to local domain"
+			);
 
 			let router = DomainRouters::<T>::get(destination).ok_or(Error::<T>::RouterNotFound)?;
 
-			router.forward(sender, msg)
+			router.send(sender, msg)
 		}
 	}
 }

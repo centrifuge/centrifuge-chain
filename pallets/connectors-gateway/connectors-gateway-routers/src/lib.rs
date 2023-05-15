@@ -38,9 +38,9 @@ where
 	type Message = MessageOf<T>;
 	type Sender = AccountIdOf<T>;
 
-	fn forward(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
+	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
 		match self {
-			DomainRouter::MoonbeamXCM(r) => r.do_forward(sender, message),
+			DomainRouter::MoonbeamXCM(r) => r.do_send(sender, message),
 		}
 	}
 }
