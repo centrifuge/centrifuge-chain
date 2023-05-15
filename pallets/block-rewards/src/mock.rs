@@ -191,7 +191,7 @@ pub enum RewardDomain {
 }
 
 frame_support::parameter_types! {
-	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
+	pub const RewardsPalletId: PalletId = PalletId(*b"cfg/blrw");
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 
 	#[derive(scale_info::TypeInfo)]

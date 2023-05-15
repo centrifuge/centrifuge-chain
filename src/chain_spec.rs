@@ -893,7 +893,7 @@ fn centrifuge_genesis(
 		},
 		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * MICRO_AIR,
+			amount: 1 * MICRO_CFG,
 		},
 	}
 }

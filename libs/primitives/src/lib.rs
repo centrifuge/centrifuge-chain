@@ -258,6 +258,8 @@ pub mod constants {
 
 	/// Unhashed 36-bytes prefix for currencies managed by Connectors.
 	pub const GENERAL_CURRENCY_INDEX_PREFIX: [u8; 36] = *b"CentrifugeGeneralCurrencyIndexPrefix";
+
+	pub const PALLET_ID_BLOCK_REWARDS: [u8; 8] = *b"cfg/blrw";
 }
 
 /// Listing of parachains we integrate with.
