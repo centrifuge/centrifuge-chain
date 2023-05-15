@@ -41,19 +41,19 @@ where
 {
 	fn apply_command(&mut self, command: Command) -> DispatchResult {
 		match command {
-			Command::AttachCurrency(dom_curr, group) => {
-				Rewards1::attach_currency(dom_curr, group)?;
+			Command::AttachCurrency(currency, group) => {
+				Rewards1::attach_currency(currency, group)?;
 			}
-			Command::Stake(dom_curr, account, amount) => {
-				Rewards::deposit_stake(dom_curr, &account, amount)?;
+			Command::Stake(currency, account, amount) => {
+				Rewards::deposit_stake(currency, &account, amount)?;
 				self.accounts_used.insert(account);
 			}
-			Command::Unstake(dom_curr, account, amount) => {
-				Rewards::withdraw_stake(dom_curr, &account, amount)?;
+			Command::Unstake(currency, account, amount) => {
+				Rewards::withdraw_stake(currency, &account, amount)?;
 				self.accounts_used.insert(account);
 			}
-			Command::Claim(dom_curr, account) => {
-				Rewards::claim_reward(dom_curr, &account)?;
+			Command::Claim(currency, account) => {
+				Rewards::claim_reward(currency, &account)?;
 				self.accounts_used.insert(account);
 			}
 			Command::Distribute(groups, reward) => {
@@ -109,27 +109,27 @@ where
 /// It uses the `base` mechanism.
 #[test]
 fn silly_sample_for_fuzzer() {
-	const DOM_CURR: CurrencyId = CurrencyId::A;
+	const CURR: CurrencyId = CurrencyId::A;
 	const AMOUNT_A1: u64 = 100;
 	const AMOUNT_B1: u64 = 200;
 	const AMOUNT_A2: u64 = 300;
 	const AMOUNT_B2: u64 = 400;
 
 	let commands = [
-		Command::AttachCurrency(DOM_CURR, GROUP_1),
-		Command::Stake(DOM_CURR, USER_A, AMOUNT_A1),
-		Command::Stake(DOM_CURR, USER_A, AMOUNT_A2),
-		Command::Stake(DOM_CURR, USER_B, AMOUNT_B1),
-		Command::Stake(DOM_CURR, USER_B, AMOUNT_B2),
+		Command::AttachCurrency(CURR, GROUP_1),
+		Command::Stake(CURR, USER_A, AMOUNT_A1),
+		Command::Stake(CURR, USER_A, AMOUNT_A2),
+		Command::Stake(CURR, USER_B, AMOUNT_B1),
+		Command::Stake(CURR, USER_B, AMOUNT_B2),
 		Command::Distribute(vec![GROUP_1], REWARD),
-		Command::Claim(DOM_CURR, USER_A),
-		Command::Claim(DOM_CURR, USER_B),
-		Command::Unstake(DOM_CURR, USER_A, AMOUNT_A1),
-		Command::Unstake(DOM_CURR, USER_A, AMOUNT_A2),
-		Command::Unstake(DOM_CURR, USER_B, AMOUNT_B1),
-		Command::Unstake(DOM_CURR, USER_B, AMOUNT_B2),
-		Command::Claim(DOM_CURR, USER_A),
-		Command::Claim(DOM_CURR, USER_B),
+		Command::Claim(CURR, USER_A),
+		Command::Claim(CURR, USER_B),
+		Command::Unstake(CURR, USER_A, AMOUNT_A1),
+		Command::Unstake(CURR, USER_A, AMOUNT_A2),
+		Command::Unstake(CURR, USER_B, AMOUNT_B1),
+		Command::Unstake(CURR, USER_B, AMOUNT_B2),
+		Command::Claim(CURR, USER_A),
+		Command::Claim(CURR, USER_B),
 		Command::Distribute(vec![GROUP_1], REWARD),
 	];
 
