@@ -28,7 +28,7 @@ pub enum DomainRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
 {
-	MoonbeamXCM(MoonbeamRouter<T>),
+	EthereumXCM(EthereumXCMRouter<T>),
 }
 
 impl<T> Router for DomainRouter<T>
@@ -40,7 +40,7 @@ where
 
 	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
 		match self {
-			DomainRouter::MoonbeamXCM(r) => r.do_send(sender, message),
+			DomainRouter::EthereumXCM(r) => r.do_send(sender, message),
 		}
 	}
 }

@@ -25,7 +25,7 @@ use xcm::{v0::OriginKind, VersionedMultiLocation};
 use crate::{AccountIdOf, CurrencyIdOf, MessageOf};
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
-pub struct MoonbeamRouter<T>
+pub struct EthereumXCMRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
 {
@@ -36,7 +36,7 @@ where
 /// The ConnectorsXcmContract handle function name
 const HANDLE_FUNCTION: &str = "handle";
 
-impl<T> MoonbeamRouter<T>
+impl<T> EthereumXCMRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
 {

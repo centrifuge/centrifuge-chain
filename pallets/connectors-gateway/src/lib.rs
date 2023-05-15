@@ -226,7 +226,7 @@ pub mod pallet {
 					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
 						.map_err(|_| Error::<T>::EthereumMessageDecode)?;
 
-					T::Connectors::handle(domain_address.domain(), incoming_msg)
+					T::Connectors::submit(domain_address.domain(), incoming_msg)
 				}
 				DomainAddress::Centrifuge(_) => Err(Error::<T>::InvalidMessageOrigin.into()),
 			}
@@ -238,7 +238,7 @@ pub mod pallet {
 		type Message = T::Message;
 		type Sender = T::AccountId;
 
-		fn handle(
+		fn submit(
 			destination: Self::Destination,
 			sender: Self::Sender,
 			msg: Self::Message,
