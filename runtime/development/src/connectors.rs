@@ -46,7 +46,7 @@ impl InboundQueue for DummyInboundQueue {
 	type Message = ConnectorsMessage;
 	type Sender = Domain;
 
-	fn submit(_sender: Self::Sender, _msg: Self::Message) -> DispatchResult {
+	fn handle(_sender: Self::Sender, _msg: Self::Message) -> DispatchResult {
 		Ok(())
 	}
 }

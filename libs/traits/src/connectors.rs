@@ -45,7 +45,7 @@ pub trait OutboundQueue {
 	type Destination;
 
 	/// Submit a message to the outbound queue.
-	fn submit(
+	fn handle(
 		destination: Self::Destination,
 		sender: Self::Sender,
 		msg: Self::Message,
@@ -61,5 +61,5 @@ pub trait InboundQueue {
 	type Message;
 
 	/// Submit a message to the inbound queue.
-	fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
+	fn handle(sender: Self::Sender, msg: Self::Message) -> DispatchResult;
 }
