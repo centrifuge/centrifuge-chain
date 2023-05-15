@@ -15,8 +15,7 @@ use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 
 use crate::{CollatorRewards, OrmlAssetRegistry, Runtime, TotalRewards};
 
-// Migrations to Development 1020
-pub type Migrations = (
+pub type UpgradeDev1020 = (
 	pallet_block_rewards::migrations::InitBlockRewards<Runtime, CollatorRewards, TotalRewards>,
 	pallet_loans_ref::migrations::v1::Migration<Runtime>,
 	TrancheLocationMigration,

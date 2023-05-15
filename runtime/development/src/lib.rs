@@ -1938,7 +1938,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::Migrations,
+	migrations::UpgradeDev1020,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
