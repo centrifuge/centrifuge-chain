@@ -9,6 +9,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 smallvec = "1.6.1"
+serde = { version = "1.0.119" }
 
 # Substrate dependencies
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
@@ -63,6 +64,7 @@ std = [
   "cfg-types/std",
   "orml-traits/std",
   "pallet-pool-system/std",
+  "serde/std",
   "scale-info/std",
   "xcm/std",
 ]

@@ -2,7 +2,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use codec::Codec;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use runtime_common::apis::RewardsApi as RewardsRuntimeApi;
+use runtime_common::apis::{RewardDomain, RewardsApi as RewardsRuntimeApi};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
@@ -14,6 +14,7 @@ pub trait RewardsApi<AccountId, Balance, CurrencyId, BlockHash> {
 	#[method(name = "rewards_listCurrencies")]
 	fn list_currencies(
 		&self,
+		domain: RewardDomain,
 		account_id: AccountId,
 		at: Option<BlockHash>,
 	) -> RpcResult<Vec<CurrencyId>>;
@@ -21,6 +22,7 @@ pub trait RewardsApi<AccountId, Balance, CurrencyId, BlockHash> {
 	#[method(name = "rewards_computeReward")]
 	fn compute_reward(
 		&self,
+		domain: RewardDomain,
 		currency_id: CurrencyId,
 		account_id: AccountId,
 		at: Option<BlockHash>,
@@ -53,6 +55,7 @@ where
 {
 	fn list_currencies(
 		&self,
+		domain: RewardDomain,
 		account_id: AccountId,
 		at: Option<Block::Hash>,
 	) -> RpcResult<Vec<CurrencyId>> {
@@ -64,12 +67,13 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.list_currencies(&at, account_id)
+		api.list_currencies(&at, domain, account_id)
 			.map_err(|e| runtime_error("Unable to list currencies", e))
 	}
 
 	fn compute_reward(
 		&self,
+		domain: RewardDomain,
 		currency_id: CurrencyId,
 		account_id: AccountId,
 		at: Option<Block::Hash>,
@@ -82,7 +86,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.compute_reward(&at, currency_id, account_id)
+		api.compute_reward(&at, domain, currency_id, account_id)
 			.map_err(|e| runtime_error("Unable to compute reward", e))?
 			.ok_or_else(|| invalid_params_error("Reward not found"))
 	}

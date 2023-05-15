@@ -1922,12 +1922,18 @@ impl_runtime_apis! {
 
 	// RewardsApi
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
-		fn list_currencies(account_id: AccountId) -> Vec<CurrencyId> {
-			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id)
+		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+				_ => vec![],
+			}
 		}
 
-		fn compute_reward(currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
-			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId> >::compute_reward(currency_id, &account_id).ok()
+		fn compute_reward(domain: runtime_common::apis::RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				_ => None,
+			}
 		}
 	}
 

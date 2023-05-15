@@ -25,8 +25,8 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	rewards::AccountRewards, CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect,
-	PoolNAV, PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
+	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolNAV,
+	PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -2156,19 +2156,18 @@ impl_runtime_apis! {
 
 	// RewardsApi
 	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
-		fn list_currencies(account_id: AccountId) -> Vec<CurrencyId> {
-			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id)
-			.into_iter().chain(
-				pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id).into_iter()
-			).collect()
+		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id),
+				runtime_common::apis::RewardDomain::Liquidity => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+			}
 		}
 
-		fn compute_reward(currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
-			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
-			.or_else(|_|
-				<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
-			)
-			.ok()
+		fn compute_reward(domain: runtime_common::apis::RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				runtime_common::apis::RewardDomain::Liquidity => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+			}
 		}
 	}
 
