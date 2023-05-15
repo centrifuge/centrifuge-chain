@@ -1168,7 +1168,7 @@ frame_support::parameter_types! {
 	pub const SingleCurrencyMovement: u32 = 1;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
-	pub const RewardsPalletId: PalletId = PalletId(cfg_primitives::constants::PALLET_ID_BLOCK_REWARDS);
+	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
 }
 
