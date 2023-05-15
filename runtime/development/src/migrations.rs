@@ -29,7 +29,7 @@ impl OnRuntimeUpgrade for TrancheLocationMigration {
 	fn on_runtime_upgrade() -> Weight {
 		for (asset_id, metadata) in orml_asset_registry::Metadata::<Runtime>::iter() {
 			if matches!(asset_id, CurrencyId::Tranche(_, _)) && metadata.location.is_some() {
-				OrmlAssetRegistry::do_update_asset(
+				match OrmlAssetRegistry::do_update_asset(
 					asset_id,
 					// decimals
 					None,
@@ -43,8 +43,10 @@ impl OnRuntimeUpgrade for TrancheLocationMigration {
 					Some(None),
 					// additional
 					None,
-				)
-				.expect("TrancheLocationMigration: Failed to update tranche token");
+				) {
+					Err(e) => log::error!("TrancheLocationMigration: Failed to update asset with underlying error: {:?}", e),
+					_ => continue,
+				}
 			}
 		}
 
