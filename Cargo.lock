@@ -7664,6 +7664,7 @@ dependencies = [
  "frame-system",
  "lazy_static",
  "log",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
@@ -7682,6 +7683,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
