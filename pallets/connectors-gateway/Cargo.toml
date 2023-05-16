@@ -1,7 +1,7 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge Connectors Gateway Pallet"
-edition = "2018"
+edition = "2021"
 license = "LGPL-3.0"
 name = "pallet-connectors-gateway"
 repository = "https://github.com/centrifuge/centrifuge-chain"
