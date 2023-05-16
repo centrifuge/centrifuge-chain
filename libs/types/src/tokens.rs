@@ -23,6 +23,13 @@ use sp_runtime::{traits::Get, DispatchError, TokenError};
 
 use crate::xcm::XcmMetadata;
 
+/// The type for all Currency ids that our chains handle.
+/// Foreign assets gather all the tokens that are native to other chains, such
+/// as DOT, AUSD, UDST, etc. NOTE: We MUST never change the `#[codec(index =
+/// _)]`  below as doing so results in corrupted storage keys; if changing the
+/// index value of a variant is mandatory, a storage migration must take place
+/// to ensure that the values under an old codec-encoded key are moved to the
+/// new key.
 #[derive(
 	Clone,
 	Copy,
@@ -41,23 +48,19 @@ use crate::xcm::XcmMetadata;
 pub enum CurrencyId {
 	// The Native token, representing AIR in Altair and CFG in Centrifuge.
 	#[default]
+	#[codec(index = 0)]
 	Native,
 
-	// A Tranche token
+	/// A Tranche token
+	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
 
-	/// Karura KSM
-	KSM,
-
-	/// Acala Dollar
-	/// In Altair, it represents AUSD in Kusama;
-	/// In Centrifuge, it represents AUSD in Polkadot;
-	AUSD,
-
 	/// A foreign asset
+	#[codec(index = 4)]
 	ForeignAsset(ForeignAssetId),
 
-	/// A staking token
+	/// A staking currency
+	#[codec(index = 5)]
 	Staking(StakingCurrency),
 }
 

@@ -15,10 +15,9 @@ pub type UpgradeCentrifuge1020 = ();
 #[cfg(test)]
 mod tests {
 	use cfg_primitives::TrancheId;
-	use cfg_types::tokens as before;
+	use cfg_types::{tokens as before, tokens::StakingCurrency};
 	use codec::Encode;
 	use hex::FromHex;
-	use cfg_types::tokens::StakingCurrency;
 
 	mod after {
 		use cfg_primitives::{PoolId, TrancheId};
@@ -40,7 +39,8 @@ mod tests {
 			MaxEncodedLen,
 		)]
 		pub enum CurrencyId {
-			/// The Native token, representing AIR in Altair and CFG in Centrifuge.
+			/// The Native token, representing AIR in Altair and CFG in
+			/// Centrifuge.
 			#[codec(index = 0)]
 			Native,
 
@@ -84,9 +84,7 @@ mod tests {
 		);
 		assert_eq!(
 			after::CurrencyId::ForeignAsset(91).encode(),
-			vec![
-				4, 91, 0, 0, 0
-			]
+			vec![4, 91, 0, 0, 0]
 		);
 
 		assert_eq!(
@@ -95,9 +93,7 @@ mod tests {
 		);
 		assert_eq!(
 			after::CurrencyId::Staking(StakingCurrency::BlockRewards).encode(),
-			vec![
-				5, 0
-			]
+			vec![5, 0]
 		);
 	}
 
