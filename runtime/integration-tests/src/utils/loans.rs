@@ -26,7 +26,10 @@ use pallet_loans::{
 use pallet_uniques::Call as UniquesCall;
 use sp_runtime::{traits::One, FixedPointNumber};
 
-use crate::{chain::centrifuge::RuntimeCall, utils::tokens::rate_from_percent};
+use crate::{
+	chain::centrifuge::{Runtime, RuntimeCall},
+	utils::tokens::rate_from_percent,
+};
 
 type Asset = (CollectionId, ItemId);
 
@@ -134,7 +137,7 @@ pub fn issue_default_loan(
 pub fn issue_loan(
 	owner: AccountId,
 	pool_id: PoolId,
-	loan_info: LoanInfo<Asset, Balance, Rate>,
+	loan_info: LoanInfo<Runtime>,
 	manager: &mut NftManager,
 ) -> Vec<RuntimeCall> {
 	let mut calls = Vec::new();
@@ -147,7 +150,7 @@ pub fn issue_loan(
 	calls
 }
 
-pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Asset, Balance, Rate>) -> RuntimeCall {
+pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Runtime>) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::create { pool_id, info })
 }
 
