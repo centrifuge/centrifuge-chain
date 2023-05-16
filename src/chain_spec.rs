@@ -1143,7 +1143,7 @@ fn development_genesis(
 			currency_id: CurrencyId::Native,
 			amount: 1 * MICRO_CFG,
 		},
-		rewards: development_runtime::LiquidityRewardsBaseConfig {
+		liquidity_rewards_base: development_runtime::LiquidityRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
 			amount: 1 * MICRO_CFG,
 		},
