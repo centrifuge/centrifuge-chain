@@ -22,8 +22,8 @@
 // module level.
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use altair_runtime::constants::currency::{AIR, MICRO_AIR, MILLI_AIR};
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MICRO_CFG, MILLI_CFG};
+use altair_runtime::constants::currency::{AIR, MILLI_AIR};
+use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
@@ -893,7 +893,7 @@ fn centrifuge_genesis(
 		},
 		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * MICRO_CFG,
+			amount: centrifuge_runtime::ExistentialDeposit::get(),
 		},
 	}
 }
@@ -971,7 +971,7 @@ fn altair_genesis(
 		},
 		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * MICRO_AIR,
+			amount: altair_runtime::ExistentialDeposit::get(),
 		},
 		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
@@ -1141,11 +1141,11 @@ fn development_genesis(
 		evm: Default::default(),
 		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * MICRO_CFG,
+			amount: development_runtime::ExistentialDeposit::get(),
 		},
 		liquidity_rewards_base: development_runtime::LiquidityRewardsBaseConfig {
 			currency_id: CurrencyId::Native,
-			amount: 1 * MICRO_CFG,
+			amount: development_runtime::ExistentialDeposit::get(),
 		},
 	}
 }

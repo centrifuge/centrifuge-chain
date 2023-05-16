@@ -251,9 +251,9 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			T::Rewards::attach_currency(T::StakeCurrencyId::get(), T::StakeGroupId::get())
-				.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
-				.ok();
+			T::Rewards::attach_currency(T::StakeCurrencyId::get(), T::StakeGroupId::get()).expect(
+				"Should be able to attach default block rewards staking currency to collator group",
+			);
 
 			ActiveSessionData::<T>::mutate(|session_data| {
 				session_data.collator_count = self.collators.len().saturated_into();
@@ -264,10 +264,7 @@ pub mod pallet {
 			// Enables rewards already in genesis session.
 			for collator in &self.collators {
 				Pallet::<T>::do_init_collator(collator)
-					.map_err(|e| {
-						log::error!("Failed to init genesis collators for rewards: {:?}", e);
-					})
-					.ok();
+					.expect("Should not panic when initiating genesis collators for block rewards");
 			}
 		}
 	}

@@ -175,8 +175,7 @@ pub mod pallet {
 				&T::PalletId::get().into_account_truncating(),
 				self.amount,
 			)
-			.map_err(|_| log::error!("💶 Rewards: Failed to mint ED for sovereign pallet account",))
-			.ok();
+			.expect("Should not fail to mint ED for rewards sovereign pallet account");
 		}
 	}
 
