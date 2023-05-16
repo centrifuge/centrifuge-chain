@@ -14,7 +14,7 @@
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
 	data::{DataCollection, DataRegistry},
-	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
+	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul},
 	InterestAccrual, PoolInspect, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
@@ -525,18 +525,6 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	/// Returns a penalized version of the interest rate in an absolute way.
-	/// This method first unpenalized the rate based on the current write off
-	/// status before penalize it with the input parameter.
-	/// `interest_rate_with(0)` with returns the original interest_rate without
-	/// any penalization
-	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
-		self.info
-			.interest_rate
-			.ensure_sub(self.write_off_status.penalty)?
-			.ensure_add(penalty)
-	}
-
 	fn update_interest_rate(&mut self, new_interest_rate: T::Rate) -> DispatchResult {
 		let old_interest_rate = self.info.interest_rate;
 
@@ -639,13 +627,13 @@ impl<T: Config> ActiveLoan<T> {
 		&self,
 		limit: &WriteOffStatus<T::Rate>,
 		new_status: &WriteOffStatus<T::Rate>,
-	) -> Result<T::Rate, DispatchError> {
+	) -> DispatchResult {
 		ensure!(
 			new_status.percentage >= limit.percentage && new_status.penalty >= limit.penalty,
 			Error::<T>::from(WrittenOffError::LessThanPolicy)
 		);
 
-		Ok(self.interest_rate_with(new_status.penalty)?)
+		Ok(())
 	}
 
 	pub fn write_off(
@@ -653,7 +641,10 @@ impl<T: Config> ActiveLoan<T> {
 		limit: &WriteOffStatus<T::Rate>,
 		new_status: &WriteOffStatus<T::Rate>,
 	) -> DispatchResult {
-		let new_interest_rate = self.ensure_can_write_off(limit, new_status)?;
+		self.ensure_can_write_off(limit, new_status)?;
+
+		let original_rate = self.write_off_status.unpenalize(self.info.interest_rate)?;
+		let new_interest_rate = new_status.penalize(original_rate)?;
 
 		self.update_interest_rate(new_interest_rate)?;
 		self.write_off_status = new_status.clone();
