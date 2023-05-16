@@ -25,8 +25,8 @@ pub use cfg_primitives::{
 	types::{PoolId, *},
 };
 use cfg_traits::{
-	rewards::AccountRewards, CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect,
-	PoolNAV, PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
+	CurrencyPrice, OrderManager, Permissions as PermissionsT, PoolInspect, PoolNAV,
+	PoolUpdateGuard, PreConditions, PriceValue, TrancheCurrency as _,
 };
 use cfg_types::{
 	consts::pools::*,
@@ -88,8 +88,6 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_api::impl_runtime_apis;
 use sp_core::{OpaqueMetadata, H160, H256, U256};
 use sp_inherents::{CheckInherentsResult, InherentData};
@@ -1656,13 +1654,6 @@ impl<
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum RewardDomain {
-	Liquidity,
-	Block,
-}
-
 frame_support::parameter_types! {
 	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
@@ -1674,7 +1665,6 @@ frame_support::parameter_types! {
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
@@ -1698,7 +1688,6 @@ frame_support::parameter_types! {
 impl pallet_rewards::Config<pallet_rewards::Instance2> for Runtime {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = RewardCurrency;
@@ -1721,15 +1710,12 @@ frame_support::parameter_types! {
 	pub const MaxChangesPerEpoch: u32 = 50;
 
 	pub const InitialEpochDuration: BlockNumber = 1 * MINUTES;
-
-	pub const LiquidityDomain: RewardDomain = RewardDomain::Liquidity;
 }
 
 impl pallet_liquidity_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type Domain = LiquidityDomain;
 	type GroupId = u32;
 	type InitialEpochDuration = InitialEpochDuration;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;
@@ -1741,7 +1727,6 @@ impl pallet_liquidity_rewards::Config for Runtime {
 }
 
 frame_support::parameter_types! {
-	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -1754,7 +1739,6 @@ impl pallet_block_rewards::Config for Runtime {
 	type Beneficiary = Treasury;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type Domain = BlockRewardsDomain;
 	type MaxChangesPerSession = MaxChangesPerEpoch;
 	type MaxCollators = MaxAuthorities;
 	type Rewards = BlockRewardsBase;
@@ -2187,20 +2171,19 @@ impl_runtime_apis! {
 	}
 
 	// RewardsApi
-	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, RewardDomain, CurrencyId> for Runtime {
-		fn list_currencies(account_id: AccountId) -> Vec<(RewardDomain, CurrencyId)> {
-			pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id)
-			.into_iter().chain(
-				pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id).into_iter()
-			).collect()
+	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
+		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2>::list_currencies(&account_id),
+				runtime_common::apis::RewardDomain::Liquidity => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+			}
 		}
 
-		fn compute_reward(currency_id: (RewardDomain, CurrencyId), account_id: AccountId) -> Option<Balance> {
-			<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
-			.or_else(|_|
-				<pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as AccountRewards<AccountId>>::compute_reward(currency_id, &account_id)
-			)
-			.ok()
+		fn compute_reward(domain: runtime_common::apis::RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance2> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				runtime_common::apis::RewardDomain::Liquidity => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+			}
 		}
 	}
 

@@ -10578,6 +10578,7 @@ dependencies = [
  "pallet-treasury",
  "parity-scale-codec 3.4.0",
  "scale-info",
+ "serde",
  "smallvec",
  "sp-api",
  "sp-arithmetic",

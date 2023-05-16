@@ -33,10 +33,7 @@ benchmarks! {
 		assert!(T::Rewards::is_ready(T::StakeGroupId::get()));
 		assert!(
 			!T::Rewards::compute_reward(
-				(
-					T::Domain::get(),
-					T::StakeCurrencyId::get(),
-				),
+				T::StakeCurrencyId::get(),
 				&beneficiary,
 			).unwrap().is_zero()
 		);

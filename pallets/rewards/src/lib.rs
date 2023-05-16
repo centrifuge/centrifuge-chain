@@ -34,9 +34,6 @@
 //!
 //! - **Currency ID**: Identification of a token used to stake/unstake. This ID
 //!   is associated to a group.
-//! - **Domain ID**: Identification of a domain. A domain acts as a prefix for a
-//!   currency id. It allows to have the same currency in different reward
-//!   groups.
 //! - **Reward**: The amount given in native tokens to a proportional amount of
 //!   currency staked.
 //! - **Group**: A shared resource where the reward is distributed. The accounts
@@ -50,6 +47,12 @@
 //! ### Implementations
 //!
 //! The Rewards pallet provides implementations for the Rewards trait.
+//!
+//! ### Assumptions
+//!
+//! Each consuming reward system must have its unique instance of this pallet
+//! independent of the underlying reward mechanism. E.g., one instance for Block
+//! Rewards and another for Liquidity Rewards.
 //!
 //! ### Functionality
 //!
@@ -108,9 +111,6 @@ pub mod pallet {
 		/// distributed goes here.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-
-		/// Type used to identify domains.
-		type DomainId: TypeInfo + MaxEncodedLen + FullCodec + Copy + PartialEq + Debug;
 
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen + MaybeSerializeDeserialize + Default;
@@ -191,7 +191,7 @@ pub mod pallet {
 	= StorageMap<
 		_,
 		Blake2_128Concat,
-		(T::DomainId, T::CurrencyId),
+		T::CurrencyId,
 		(Option<T::GroupId>, RewardCurrencyOf<T, I>),
 		ValueQuery,
 	>;
@@ -211,7 +211,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::AccountId,
 		Blake2_128Concat,
-		(T::DomainId, T::CurrencyId),
+		T::CurrencyId,
 		RewardAccountOf<T, I>,
 		ValueQuery,
 	>;
@@ -227,27 +227,23 @@ pub mod pallet {
 		},
 		StakeDeposited {
 			group_id: T::GroupId,
-			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
 			amount: BalanceOf<T, I>,
 		},
 		StakeWithdrawn {
 			group_id: T::GroupId,
-			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
 			amount: BalanceOf<T, I>,
 		},
 		RewardClaimed {
 			group_id: T::GroupId,
-			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			account_id: T::AccountId,
 			amount: BalanceOf<T, I>,
 		},
 		CurrencyAttached {
-			domain_id: T::DomainId,
 			currency_id: T::CurrencyId,
 			from: Option<T::GroupId>,
 			to: T::GroupId,
@@ -312,7 +308,7 @@ pub mod pallet {
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
 		type Balance = BalanceOf<T, I>;
-		type CurrencyId = (T::DomainId, T::CurrencyId);
+		type CurrencyId = T::CurrencyId;
 
 		fn deposit_stake(
 			currency_id: Self::CurrencyId,
@@ -324,18 +320,17 @@ pub mod pallet {
 
 				Group::<T, I>::try_mutate(group_id, |group| {
 					StakeAccount::<T, I>::try_mutate(account_id, currency_id, |account| {
-						if !T::Currency::can_hold(currency_id.1, account_id, amount) {
+						if !T::Currency::can_hold(currency_id, account_id, amount) {
 							Err(TokenError::NoFunds)?;
 						}
 
 						T::RewardMechanism::deposit_stake(account, currency, group, amount)?;
 
-						T::Currency::hold(currency_id.1, account_id, amount)?;
+						T::Currency::hold(currency_id, account_id, amount)?;
 
 						Self::deposit_event(Event::StakeDeposited {
 							group_id,
-							domain_id: currency_id.0,
-							currency_id: currency_id.1,
+							currency_id,
 							account_id: account_id.clone(),
 							amount,
 						});
@@ -362,12 +357,11 @@ pub mod pallet {
 
 						T::RewardMechanism::withdraw_stake(account, currency, group, amount)?;
 
-						T::Currency::release(currency_id.1, account_id, amount, false)?;
+						T::Currency::release(currency_id, account_id, amount, false)?;
 
 						Self::deposit_event(Event::StakeWithdrawn {
 							group_id,
-							domain_id: currency_id.0,
-							currency_id: currency_id.1,
+							currency_id,
 							account_id: account_id.clone(),
 							amount,
 						});
@@ -414,8 +408,7 @@ pub mod pallet {
 
 				Self::deposit_event(Event::RewardClaimed {
 					group_id,
-					domain_id: currency_id.0,
-					currency_id: currency_id.1,
+					currency_id,
 					account_id: account_id.clone(),
 					amount: reward,
 				});
@@ -438,7 +431,7 @@ pub mod pallet {
 		RewardGroupOf<T, I>: FullCodec + Default,
 		RewardCurrencyOf<T, I>: FullCodec + Default,
 	{
-		type CurrencyId = (T::DomainId, T::CurrencyId);
+		type CurrencyId = T::CurrencyId;
 		type GroupId = T::GroupId;
 
 		fn attach_currency(
@@ -465,8 +458,7 @@ pub mod pallet {
 				}
 
 				Self::deposit_event(Event::CurrencyAttached {
-					domain_id: currency_id.0,
-					currency_id: currency_id.1,
+					currency_id,
 					from: *group_id,
 					to: next_group_id,
 				});
@@ -486,9 +478,7 @@ pub mod pallet {
 	where
 		RewardAccountOf<T, I>: FullCodec + Default,
 	{
-		pub fn list_currencies(
-			account_id: &T::AccountId,
-		) -> sp_std::vec::Vec<(T::DomainId, T::CurrencyId)> {
+		pub fn list_currencies(account_id: &T::AccountId) -> sp_std::vec::Vec<T::CurrencyId> {
 			StakeAccount::<T, I>::iter_prefix(account_id)
 				.map(|(currency_id, _)| currency_id)
 				.collect()
