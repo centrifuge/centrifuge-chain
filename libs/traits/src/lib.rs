@@ -23,8 +23,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
-	Parameter, RuntimeDebug,
-	BoundedVec
+	BoundedVec, Parameter, RuntimeDebug,
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{

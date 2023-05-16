@@ -13,7 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_primitives::Moment;
-use cfg_traits::{Permissions, PoolMutate, UpdateState,PoolWriteOffPolicyMutate};
+use cfg_traits::{Permissions, PoolMutate, PoolWriteOffPolicyMutate, UpdateState};
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use codec::{HasCompact, MaxEncodedLen};
 use frame_support::{pallet_prelude::*, scale_info::TypeInfo, transactional, BoundedVec};
@@ -70,13 +70,15 @@ type TrancheInputOf<T> = <<T as Config>::ModifyPool as cfg_traits::PoolMutate<
 	<T as Config>::PoolId,
 >>::TrancheInput;
 
-type WriteOffRuleOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
-	<T as Config>::PoolId,
->>::WriteOffRule;
+type WriteOffRuleOf<T> =
+	<<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
+		<T as Config>::PoolId,
+	>>::WriteOffRule;
 
-type MaxWriteOffPolicySizeOf<T> = <<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
-	<T as Config>::PoolId,
->>::MaxWriteOffPolicySize;
+type MaxWriteOffPolicySizeOf<T> =
+	<<T as Config>::ModifyWriteOffPolicy as cfg_traits::PoolWriteOffPolicyMutate<
+		<T as Config>::PoolId,
+	>>::MaxWriteOffPolicySize;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -130,9 +132,7 @@ pub mod pallet {
 			Balance = Self::Balance,
 		>;
 
-		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<
-			Self::PoolId,
-		>;
+		type ModifyWriteOffPolicy: PoolWriteOffPolicyMutate<Self::PoolId>;
 
 		type CurrencyId: Parameter + Copy;
 
@@ -254,7 +254,7 @@ pub mod pallet {
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 			metadata: Option<Vec<u8>>,
-			write_off_policy: BoundedVec<WriteOffRuleOf<T>, MaxWriteOffPolicySizeOf<T>>
+			write_off_policy: BoundedVec<WriteOffRuleOf<T>, MaxWriteOffPolicySizeOf<T>>,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 

@@ -65,8 +65,7 @@ pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
-		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
-		PoolWriteOffPolicyMutate,
+		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve, PoolWriteOffPolicyMutate,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -891,9 +890,9 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PoolWriteOffPolicyMutate<PoolIdOf<T>> for Pallet<T> {
+		type MaxWriteOffPolicySize = T::MaxWriteOffPolicySize;
 		type Rate = T::Rate;
 		type WriteOffRule = WriteOffRule<T::Rate>;
-		type MaxWriteOffPolicySize = T::MaxWriteOffPolicySize;
 
 		fn update(
 			pool_id: PoolIdOf<T>,
@@ -903,5 +902,3 @@ pub mod pallet {
 		}
 	}
 }
-
-
