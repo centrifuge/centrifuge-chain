@@ -51,24 +51,18 @@ pub mod pallet {
 		type Data = T::Data;
 
 		fn get(a: &T::DataId) -> T::Data {
-			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
 			execute_call!(a)
 		}
 
 		fn collection(a: &T::CollectionId) -> T::Collection {
-			let a = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(a) };
 			execute_call!(a)
 		}
 
 		fn register_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
-			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
-			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
 		}
 
 		fn unregister_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
-			let a = unsafe { std::mem::transmute::<_, &'static T::DataId>(a) };
-			let b = unsafe { std::mem::transmute::<_, &'static T::CollectionId>(b) };
 			execute_call!((a, b))
 		}
 	}
