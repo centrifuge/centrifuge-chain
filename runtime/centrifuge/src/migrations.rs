@@ -10,10 +10,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{AccountId, BlockRewards, ExistentialDeposit, NativeToken, OrmlAssetRegistry, Runtime};
-
 use cfg_types::tokens::CurrencyId;
 use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+
+use crate::{AccountId, BlockRewards, ExistentialDeposit, NativeToken, OrmlAssetRegistry, Runtime};
 
 pub type UpgradeCentrifuge1019 = (
 	pallet_loans_ref::migrations::v1::Migration<Runtime>,
@@ -194,9 +194,9 @@ mod asset_registry {
 			for (asset_id, metadata) in orml_asset_registry::Metadata::<Runtime>::iter() {
 				if matches!(asset_id, CurrencyId::Tranche(_, _)) {
 					frame_support::ensure!(
-					metadata.location.is_none(),
-					"A tranche token's location is not None"
-				);
+						metadata.location.is_none(),
+						"A tranche token's location is not None"
+					);
 				}
 			}
 
