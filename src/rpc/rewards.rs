@@ -2,7 +2,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use codec::Codec;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use runtime_common::apis::RewardsApi as RewardsRuntimeApi;
+use runtime_common::apis::{RewardDomain, RewardsApi as RewardsRuntimeApi};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
@@ -10,18 +10,20 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use crate::rpc::{invalid_params_error, runtime_error};
 
 #[rpc(client, server)]
-pub trait RewardsApi<AccountId, Balance, RewardDomain, CurrencyId, BlockHash> {
+pub trait RewardsApi<AccountId, Balance, CurrencyId, BlockHash> {
 	#[method(name = "rewards_listCurrencies")]
 	fn list_currencies(
 		&self,
+		domain: RewardDomain,
 		account_id: AccountId,
 		at: Option<BlockHash>,
-	) -> RpcResult<Vec<(RewardDomain, CurrencyId)>>;
+	) -> RpcResult<Vec<CurrencyId>>;
 
 	#[method(name = "rewards_computeReward")]
 	fn compute_reward(
 		&self,
-		currency_id: (RewardDomain, CurrencyId),
+		domain: RewardDomain,
+		currency_id: CurrencyId,
 		account_id: AccountId,
 		at: Option<BlockHash>,
 	) -> RpcResult<Balance>;
@@ -41,22 +43,22 @@ impl<C, P> Rewards<C, P> {
 	}
 }
 
-impl<C, Block, AccountId, Balance, RewardDomain, CurrencyId>
-	RewardsApiServer<AccountId, Balance, RewardDomain, CurrencyId, Block::Hash> for Rewards<C, Block>
+impl<C, Block, AccountId, Balance, CurrencyId>
+	RewardsApiServer<AccountId, Balance, CurrencyId, Block::Hash> for Rewards<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: RewardsRuntimeApi<Block, AccountId, Balance, RewardDomain, CurrencyId>,
+	C::Api: RewardsRuntimeApi<Block, AccountId, Balance, CurrencyId>,
 	AccountId: Codec,
 	Balance: Codec + Copy,
-	RewardDomain: Codec + Copy + Debug,
 	CurrencyId: Codec + Copy + Debug,
 {
 	fn list_currencies(
 		&self,
+		domain: RewardDomain,
 		account_id: AccountId,
 		at: Option<Block::Hash>,
-	) -> RpcResult<Vec<(RewardDomain, CurrencyId)>> {
+	) -> RpcResult<Vec<CurrencyId>> {
 		let api = self.client.runtime_api();
 
 		let at = if let Some(hash) = at {
@@ -65,13 +67,14 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.list_currencies(&at, account_id)
+		api.list_currencies(&at, domain, account_id)
 			.map_err(|e| runtime_error("Unable to list currencies", e))
 	}
 
 	fn compute_reward(
 		&self,
-		currency_id: (RewardDomain, CurrencyId),
+		domain: RewardDomain,
+		currency_id: CurrencyId,
 		account_id: AccountId,
 		at: Option<Block::Hash>,
 	) -> RpcResult<Balance> {
@@ -83,7 +86,7 @@ where
 			BlockId::hash(self.client.info().best_hash)
 		};
 
-		api.compute_reward(&at, currency_id, account_id)
+		api.compute_reward(&at, domain, currency_id, account_id)
 			.map_err(|e| runtime_error("Unable to compute reward", e))?
 			.ok_or_else(|| invalid_params_error("Reward not found"))
 	}

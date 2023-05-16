@@ -8,6 +8,7 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
+serde = { version = "1.0.119" }
 smallvec = "1.6.1"
 
 # Substrate dependencies
@@ -63,6 +64,7 @@ std = [
   "cfg-types/std",
   "orml-traits/std",
   "pallet-pool-system/std",
+  "serde/std",
   "scale-info/std",
   "xcm/std",
 ]

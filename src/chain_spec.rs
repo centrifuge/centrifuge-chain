@@ -22,7 +22,7 @@
 // module level.
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use altair_runtime::constants::currency::AIR;
+use altair_runtime::constants::currency::{AIR, MILLI_AIR};
 use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
@@ -78,13 +78,19 @@ impl Extensions {
 }
 
 pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::SessionKeys {
-	altair_runtime::SessionKeys { aura: keys }
+	altair_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 pub fn get_centrifuge_session_keys(
 	keys: centrifuge_runtime::AuraId,
 ) -> centrifuge_runtime::SessionKeys {
-	centrifuge_runtime::SessionKeys { aura: keys }
+	centrifuge_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 pub fn get_development_session_keys(
@@ -876,6 +882,19 @@ fn centrifuge_genesis(
 		},
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		block_rewards: centrifuge_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 8_325 * MILLI_CFG,
+			total_reward: 10_048 * CFG,
+		},
+		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: centrifuge_runtime::ExistentialDeposit::get(),
+		},
 	}
 }
 
@@ -940,6 +959,19 @@ fn altair_genesis(
 				.collect(),
 			candidacy_bond: 1 * AIR,
 			..Default::default()
+		},
+		block_rewards: altair_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 98_630 * MILLI_AIR,
+			total_reward: 98_630 * MILLI_AIR * 100,
+		},
+		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: altair_runtime::ExistentialDeposit::get(),
 		},
 		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
@@ -1107,6 +1139,14 @@ fn development_genesis(
 		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
 		ethereum: Default::default(),
 		evm: Default::default(),
+		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: development_runtime::ExistentialDeposit::get(),
+		},
+		liquidity_rewards_base: development_runtime::LiquidityRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: development_runtime::ExistentialDeposit::get(),
+		},
 	}
 }
 
