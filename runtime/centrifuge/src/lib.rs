@@ -1190,7 +1190,7 @@ impl pallet_block_rewards::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type AuthorityId = AuraId;
 	type Balance = Balance;
-	// Must not set change this as long as we want to mint rewards into the treasury
+	// Must not change this as long as we want to mint rewards into the treasury
 	type Beneficiary = Treasury;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
