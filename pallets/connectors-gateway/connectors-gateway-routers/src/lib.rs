@@ -16,8 +16,9 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::DispatchResult;
 use scale_info::TypeInfo;
 
+use crate::moonbeam::EthereumXCMRouter;
+
 pub mod moonbeam;
-pub use crate::moonbeam::*;
 
 type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_connectors_gateway::Config>::Message;
