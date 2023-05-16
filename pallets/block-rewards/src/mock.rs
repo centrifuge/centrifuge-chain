@@ -1,6 +1,5 @@
 use cfg_traits::rewards::AccountRewards;
 use cfg_types::tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency};
-use codec::MaxEncodedLen;
 use frame_support::{
 	parameter_types,
 	traits::{
