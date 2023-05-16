@@ -12,7 +12,7 @@
 use std::marker::PhantomData;
 
 use cfg_primitives::{BlockNumber, CollectionId, Moment, PoolEpochId, TrancheWeight};
-use cfg_traits::{OrderManager, PoolMutate, PoolUpdateGuard, PreConditions, UpdateState};
+use cfg_traits::{OrderManager, PoolMutate, PoolWriteOffPolicyMutate, PoolUpdateGuard, PreConditions, UpdateState};
 use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionScope, Role},
@@ -31,6 +31,7 @@ use pallet_pool_system::{
 	pool_types::{PoolChanges, PoolDetails, ScheduledUpdateDetails},
 	tranches::TrancheInput,
 };
+use pallet_loans_ref::write_off::WriteOffRule;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -237,6 +238,32 @@ impl<
 	}
 }
 
+pub struct PoolWriteOffPolicyMutateMock<T> {
+	phantom: PhantomData<T>,
+}
+
+parameter_types! {
+	pub const MaxWriteOffPolicySize: u32 = 10;
+}
+
+impl<
+		T: Config
+			+ pallet_pool_registry::Config
+			+ pallet_pool_system::Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>,
+	> PoolWriteOffPolicyMutate<<T as pallet_pool_system::Config>::PoolId> for PoolWriteOffPolicyMutateMock<T>
+{
+	type Rate = <T as pallet_pool_registry::Config>::Rate;
+	type WriteOffRule = WriteOffRule<Self::Rate>;
+	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
+
+	fn update(
+		pool_id: PoolId,
+		policy: BoundedVec<Self::WriteOffRule, Self::MaxWriteOffPolicySize>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
 pub struct Always;
 impl<T> PreConditions<T> for Always {
 	type Result = DispatchResult;
@@ -255,6 +282,7 @@ impl Config for Test {
 	type MaxTokenSymbolLength = MaxTokenSymbolLength;
 	type MaxTranches = MaxTranches;
 	type ModifyPool = ModifyPoolMock<Self>;
+	type ModifyWriteOffPolicy = PoolWriteOffPolicyMutateMock<Self>;
 	type Permission = PermissionsMock;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolId = u64;

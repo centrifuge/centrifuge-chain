@@ -75,6 +75,7 @@ fn register_pool_and_set_metadata() {
 				currency,
 				max_reserve,
 				metadata.clone(),
+				BoundedVec::default()
 			));
 
 			let registered_metadata = PoolRegistry::get_pool_metadata(pool_id);

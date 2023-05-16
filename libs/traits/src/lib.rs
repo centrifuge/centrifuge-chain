@@ -24,6 +24,7 @@ use frame_support::{
 	dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo},
 	scale_info::TypeInfo,
 	Parameter, RuntimeDebug,
+	BoundedVec
 };
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::{
@@ -190,12 +191,12 @@ pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId>
 /// A trait that supports modifications of pool write-off policies
 pub trait PoolWriteOffPolicyMutate<PoolId> {
 	type Rate;
-	type WriteOffRule: Encode + Decode + Clone + TypeInfo + Debug + PartialEq + MaxEncodedLen;
-	type MaxWriteOffPolicySize: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type WriteOffRule: Encode + Decode + Clone + TypeInfo + Debug + PartialEq;
+	type MaxWriteOffPolicySize: Get<u32>;
 
-	pub fn update(
+	fn update(
 		pool_id: PoolId,
-		policy: BoundedVec<Self::WriteOffRule<Self::Rate>, Self::MaxWriteOffPolicySize>,
+		policy: BoundedVec<Self::WriteOffRule, Self::MaxWriteOffPolicySize>,
 	) -> DispatchResult;
 }
 

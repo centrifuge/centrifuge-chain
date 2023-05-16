@@ -293,7 +293,7 @@ pub mod pallet {
 				currency,
 				max_reserve,
 			)
-			.map(|_| Self::deposit_event(Event::Registered { pool_id }))?
+			.map(|_| Self::deposit_event(Event::Registered { pool_id }))?;
 
 			T::ModifyWriteOffPolicy::update(pool_id, write_off_policy)
 		}

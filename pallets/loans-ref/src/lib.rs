@@ -66,6 +66,7 @@ pub mod pallet {
 	use cfg_traits::{
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
+		PoolWriteOffPolicyMutate,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
@@ -617,7 +618,7 @@ pub mod pallet {
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			Self::update_write_off_policy(pool_id, policy)?;
+			Self::update_policy(pool_id, policy)?;
 
 			Ok(())
 		}
@@ -730,7 +731,7 @@ pub mod pallet {
 				.max_by(|r1, r2| r1.status.cmp(&r2.status)))
 		}
 
-		fn update_write_off_policy(
+		fn update_policy(
 			pool_id: PoolIdOf<T>,
 			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
@@ -891,14 +892,14 @@ pub mod pallet {
 
 	impl<T: Config> PoolWriteOffPolicyMutate<PoolIdOf<T>> for Pallet<T> {
 		type Rate = T::Rate;
-		type WriteOffRule = WriteOffRule;
+		type WriteOffRule = WriteOffRule<T::Rate>;
 		type MaxWriteOffPolicySize = T::MaxWriteOffPolicySize;
 
-		pub fn update(
-			pool_id: PoolId,
-			policy: BoundedVec<Self::WriteOffRule<Self::Rate>, Self::MaxWriteOffPolicySize>,
+		fn update(
+			pool_id: PoolIdOf<T>,
+			policy: BoundedVec<Self::WriteOffRule, Self::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
-			Self::update_write_off_policy(pool_id, policy)
+			Self::update_policy(pool_id, policy)
 		}
 	}
 }
