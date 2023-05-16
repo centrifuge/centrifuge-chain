@@ -17,23 +17,23 @@ use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
-pub enum RawOrigin {
+pub enum GatewayOrigin {
 	Local(DomainAddress),
 }
 
 pub struct EnsureLocal;
 
-impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for EnsureLocal {
+impl<O: Into<Result<GatewayOrigin, O>> + From<GatewayOrigin>> EnsureOrigin<O> for EnsureLocal {
 	type Success = DomainAddress;
 
 	fn try_origin(o: O) -> Result<Self::Success, O> {
 		o.into().map(|o| match o {
-			RawOrigin::Local(domain_address) => domain_address,
+			GatewayOrigin::Local(domain_address) => domain_address,
 		})
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn successful_origin() -> O {
-		O::from(RawOrigin::Local(Default::default()))
+		O::from(GatewayOrigin::Local(Default::default()))
 	}
 }

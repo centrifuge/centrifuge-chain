@@ -1,7 +1,7 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge Connectors Gateway Pallet"
-edition = "2018"
+edition = "2021"
 license = "LGPL-3.0"
 name = "pallet-connectors-gateway"
 repository = "https://github.com/centrifuge/centrifuge-chain"
@@ -18,6 +18,9 @@ scale-info = { version = "2.3.0", default-features = false, features = ["derive"
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 
+# Benchmarking
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.37" }
+
 # Substrate crates
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 
@@ -25,9 +28,29 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
-# XCM-related deps
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
-xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
-ethabi = { version = "16.0", default-features = false }
-pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
-pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+[features]
+default = ["std"]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "cfg-traits/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
+]
+std = [
+    "codec/std",
+    "cfg-types/std",
+    "cfg-traits/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-std/std",
+    "sp-runtime/std",
+    "scale-info/std",
+]
+try-runtime = [
+    "cfg-traits/try-runtime",
+    "cfg-types/try-runtime",
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+]

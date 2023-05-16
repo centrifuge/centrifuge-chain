@@ -119,7 +119,9 @@ use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 pub mod evm;
 mod weights;
 pub mod xcm;
-pub use crate::xcm::*;
+pub use crate::{evm::precompile::CentrifugePrecompiles, xcm::*};
+
+pub mod connectors;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -1889,6 +1891,7 @@ construct_runtime!(
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
 		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
+		ConnectorsGateway: pallet_connectors_gateway::{Pallet, Call, Storage, Event<T>, Origin } = 114,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
