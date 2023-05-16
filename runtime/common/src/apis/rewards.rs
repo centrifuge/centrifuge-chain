@@ -16,7 +16,7 @@ use sp_api::decl_runtime_apis;
 use sp_core::RuntimeDebug;
 use sp_std::vec::Vec;
 
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum RewardDomain {
 	Block,
