@@ -1,0 +1,69 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = "Centrifuge Connectors Gateway Routers"
+edition = "2021"
+license = "LGPL-3.0"
+name = "connectors-gateway-routers"
+repository = "https://github.com/centrifuge/centrifuge-chain"
+version = "0.0.1"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
+
+# Substrate
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+
+# XCM
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
+xcm-primitives = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
+ethabi = { version = "16.0", default-features = false }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+
+# Custom crates
+cfg-traits = { path = "../../../libs/traits", default-features = false }
+cfg-types = { path = "../../../libs/types", default-features = false }
+
+# Local pallets
+pallet-connectors-gateway = { path = "../.", default-features = false }
+
+[features]
+default = ["std"]
+runtime-benchmarks = [
+    "cfg-traits/runtime-benchmarks",
+    "cfg-types/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "pallet-ethereum/runtime-benchmarks",
+    "pallet-xcm-transactor/runtime-benchmarks",
+    "xcm/runtime-benchmarks",
+    "xcm-primitives/runtime-benchmarks",
+]
+std = [
+    "codec/std",
+    "cfg-types/std",
+    "cfg-traits/std",
+    "frame-support/std",
+    "sp-std/std",
+    "xcm/std",
+    "pallet-xcm-transactor/std",
+    "pallet-ethereum/std",
+    "xcm-primitives/std",
+    "ethabi/std",
+    "scale-info/std",
+]
+try-runtime = [
+    "cfg-traits/try-runtime",
+    "frame-support/try-runtime",
+    "cfg-traits/try-runtime",
+    "cfg-types/try-runtime",
+    "pallet-ethereum/try-runtime",
+    "pallet-xcm-transactor/try-runtime",
+]
