@@ -78,9 +78,9 @@ pub mod pallet {
 
 		type WeightInfo: WeightInfo;
 
-		/// Maximum number of submitter for a domain.
+		/// Maximum number of connectors for a domain.
 		#[pallet::constant]
-		type MaxSubmittersPerDomain: Get<u32>;
+		type MaxConnectorsPerDomain: Get<u32>;
 	}
 
 	#[pallet::event]
@@ -89,11 +89,11 @@ pub mod pallet {
 		/// The router for a given domain was set.
 		DomainRouterSet { domain: Domain, router: T::Router },
 
-		/// A submitter was added to a domain.
-		SubmitterAdded(DomainAddress),
+		/// A connector was added to a domain.
+		ConnectorAdded(DomainAddress),
 
-		/// A submitter was removed from a domain.
-		SubmitterRemoved(DomainAddress),
+		/// A connector was removed from a domain.
+		ConnectorRemoved(DomainAddress),
 	}
 
 	/// Storage for domain routers.
@@ -102,17 +102,16 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type DomainRouters<T: Config> = StorageMap<_, Blake2_128Concat, Domain, T::Router>;
 
-	/// Storage for domain submitters.
-	///
-	/// There is a limited number of submitters for each domain.
+	/// Storage that contains a limited number of whitelisted connectors for a
+	/// particular domain.
 	///
 	/// This can only be modified by an admin.
 	#[pallet::storage]
-	pub(crate) type DomainSubmitters<T: Config> = StorageMap<
+	pub(crate) type ConnectorsAllowlist<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
 		Domain,
-		BoundedVec<DomainAddress, T::MaxSubmittersPerDomain>,
+		BoundedVec<DomainAddress, T::MaxConnectorsPerDomain>,
 		ValueQuery,
 	>;
 
@@ -124,20 +123,20 @@ pub mod pallet {
 		/// The domain is not supported.
 		DomainNotSupported,
 
-		/// Ethereum message decoding error.
-		EthereumMessageDecode,
+		/// Message decoding error.
+		MessageDecode,
 
-		/// Submitter was already added to the domain.
-		SubmitterAlreadyAdded,
+		/// Connector was already added to the domain.
+		ConnectorAlreadyAdded,
 
-		/// Maximum number of submitters for a domain was reached.
-		MaxSubmittersReached,
+		/// Maximum number of connectors for a domain was reached.
+		MaxConnectorsReached,
 
-		/// Submitter was not found.
-		SubmitterNotFound,
+		/// Connector was not found.
+		ConnectorNotFound,
 
-		/// Unknown submitter.
-		UnknownSubmitter,
+		/// Unknown connector.
+		UnknownConnector,
 
 		/// Router not found.
 		RouterNotFound,
@@ -164,7 +163,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a submitter for a specific domain.
+		/// Add a connector for a specific domain.
 		#[pallet::weight(< T as Config >::WeightInfo::add_submitter())]
 		#[pallet::call_index(1)]
 		pub fn add_submitter(origin: OriginFor<T>, submitter: DomainAddress) -> DispatchResult {
@@ -175,36 +174,36 @@ pub mod pallet {
 				Error::<T>::DomainNotSupported
 			);
 
-			<DomainSubmitters<T>>::try_mutate(submitter.domain(), |submitters| {
+			<ConnectorsAllowlist<T>>::try_mutate(submitter.domain(), |submitters| {
 				if submitters.iter().find(|s| s.eq(&&submitter)).is_some() {
-					return Err(Error::<T>::SubmitterAlreadyAdded.into());
+					return Err(Error::<T>::ConnectorAlreadyAdded.into());
 				}
 
 				submitters
 					.try_push(submitter.clone())
-					.map_err(|_| Error::<T>::MaxSubmittersReached)?;
+					.map_err(|_| Error::<T>::MaxConnectorsReached)?;
 
-				Self::deposit_event(Event::SubmitterAdded(submitter));
+				Self::deposit_event(Event::ConnectorAdded(submitter));
 
 				Ok(())
 			})
 		}
 
-		/// Remove a submitter from a specific domain.
+		/// Remove a connector from a specific domain.
 		#[pallet::weight(< T as Config >::WeightInfo::remove_submitter())]
 		#[pallet::call_index(2)]
 		pub fn remove_submitter(origin: OriginFor<T>, submitter: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
-			<DomainSubmitters<T>>::try_mutate(submitter.domain(), |submitters| {
+			<ConnectorsAllowlist<T>>::try_mutate(submitter.domain(), |submitters| {
 				let index = submitters
 					.iter()
 					.position(|s| s.eq(&submitter))
-					.ok_or(Error::<T>::SubmitterNotFound)?;
+					.ok_or(Error::<T>::ConnectorNotFound)?;
 
 				submitters.remove(index);
 
-				Self::deposit_event(Event::SubmitterRemoved(submitter));
+				Self::deposit_event(Event::ConnectorRemoved(submitter));
 
 				Ok(())
 			})
@@ -218,13 +217,13 @@ pub mod pallet {
 
 			match domain_address {
 				DomainAddress::EVM(_, _) => {
-					DomainSubmitters::<T>::get(domain_address.domain())
+					ConnectorsAllowlist::<T>::get(domain_address.domain())
 						.iter()
 						.find(|s| s.eq(&&domain_address))
-						.ok_or(Error::<T>::UnknownSubmitter)?;
+						.ok_or(Error::<T>::UnknownConnector)?;
 
 					let incoming_msg = T::Message::deserialize(&mut msg.as_slice())
-						.map_err(|_| Error::<T>::EthereumMessageDecode)?;
+						.map_err(|_| Error::<T>::MessageDecode)?;
 
 					T::Connectors::submit(domain_address.domain(), incoming_msg)
 				}
