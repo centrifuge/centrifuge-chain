@@ -1914,6 +1914,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
+	// We don't run migrations on the development runtime
 	(),
 >;
 
