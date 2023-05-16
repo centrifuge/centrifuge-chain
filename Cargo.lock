@@ -2574,7 +2574,6 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal 0.3.4",
- "log",
  "moonbeam-relay-encoder",
  "orml-asset-registry",
  "orml-tokens",
