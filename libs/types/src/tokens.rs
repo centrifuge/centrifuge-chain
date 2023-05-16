@@ -66,7 +66,7 @@ pub enum CurrencyId {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum StakingCurrency {
-	/// An emulated internal, non-transferrable currency
+	/// An emulated internal, non-transferable currency
 	/// Its issuance and holding is handled inherently
 	BlockRewards,
 }
