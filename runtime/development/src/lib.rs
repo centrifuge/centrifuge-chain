@@ -110,13 +110,10 @@ use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
+pub mod evm;
+mod weights;
 pub mod xcm;
 pub use crate::xcm::*;
-
-pub mod evm;
-pub use crate::evm::precompile::CentrifugePrecompiles;
-
-mod weights;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]

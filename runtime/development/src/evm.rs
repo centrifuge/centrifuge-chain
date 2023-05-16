@@ -11,16 +11,21 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
-use codec::{Decode, Encode};
-use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
-use pallet_evm::{AddressMapping, EnsureAddressTruncated};
+use frame_support::{
+	parameter_types,
+	traits::FindAuthor,
+	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight},
+	ConsensusEngineId,
+};
+use pallet_evm::EnsureAddressTruncated;
+use runtime_common::evm::{
+	precompile::CentrifugePrecompiles, BaseFeeThreshold, ExpandedAddressMapping,
+};
 use sp_core::{crypto::ByteArray, H160, U256};
-use sp_runtime::{traits::AccountIdConversion, Permill};
+use sp_runtime::Permill;
 use sp_std::marker::PhantomData;
 
-use crate::{AccountId, Aura};
-
-pub mod precompile;
+use crate::Aura;
 
 // To create valid Ethereum-compatible blocks, we need a 20-byte
 // "author" for the block. Since that author is purely informational,
@@ -39,48 +44,24 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	}
 }
 
-#[derive(Encode, Decode, Default)]
-struct Account(H160);
+// From Moonbeam:
+//
+// Current approximation of the gas/s consumption considering
+// EVM execution over compiled WASM (on 4.4Ghz CPU).
+// Given the 500ms Weight, from which 75% only are used for transactions,
+// the total EVM execution gas limit is: GAS_PER_SECOND * 0.500 * 0.75 ~=
+// 15_000_000.
+pub const GAS_PER_SECOND: u64 = 40_000_000;
 
-impl sp_runtime::TypeId for Account {
-	const TYPE_ID: [u8; 4] = *b"ETH\0";
-}
-
-pub struct ExpandedAddressMapping;
-
-// Ethereum chain interactions are done with a 20-byte account ID. But
-// Substrate uses a 32-byte account ID. This implementation stretches
-// a 20-byte account into a 32-byte account by adding a tag and a few
-// zero bytes.
-impl AddressMapping<AccountId> for ExpandedAddressMapping {
-	fn into_account_id(address: H160) -> AccountId {
-		Account(address).into_account_truncating()
-	}
-}
-
-pub struct BaseFeeThreshold;
-
-// TODO: These values are corrently copypasta from the Frontier
-// template. They must be understood and dialed in for our chain
-// before we consider this production-ready.
-impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
-	fn lower() -> Permill {
-		Permill::zero()
-	}
-
-	fn ideal() -> Permill {
-		Permill::from_parts(500_000)
-	}
-
-	fn upper() -> Permill {
-		Permill::from_parts(1_000_000)
-	}
-}
-
-const WEIGHT_PER_GAS: u64 = 20_000;
+// Also from Moonbeam:
+//
+// Approximate ratio of the amount of Weight per Gas.
+// u64 works for approximations because Weight is a very small unit compared to
+// gas.
+pub const WEIGHT_PER_GAS: u64 = WEIGHT_REF_TIME_PER_SECOND / GAS_PER_SECOND;
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
-	pub PrecompilesValue: precompile::CentrifugePrecompiles<crate::Runtime> = precompile::CentrifugePrecompiles::<_>::new();
+	pub PrecompilesValue: CentrifugePrecompiles<crate::Runtime> = CentrifugePrecompiles::<_>::new();
 	pub WeightPerGas: Weight = Weight::from_ref_time(WEIGHT_PER_GAS);
 }
 
@@ -95,7 +76,7 @@ impl pallet_evm::Config for crate::Runtime {
 	type FindAuthor = FindAuthorTruncated<Aura>;
 	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
-	type PrecompilesType = precompile::CentrifugePrecompiles<Self>;
+	type PrecompilesType = CentrifugePrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type Runner = pallet_evm::runner::stack::Runner<Self>;
 	type RuntimeEvent = crate::RuntimeEvent;

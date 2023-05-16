@@ -32,6 +32,11 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 # ORML dependencies
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 
+# Frontier dependencies
+pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
