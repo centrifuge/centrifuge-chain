@@ -891,7 +891,6 @@ pub mod pallet {
 
 	impl<T: Config> PoolWriteOffPolicyMutate<PoolIdOf<T>> for Pallet<T> {
 		type MaxWriteOffPolicySize = T::MaxWriteOffPolicySize;
-		type Rate = T::Rate;
 		type WriteOffRule = WriteOffRule<T::Rate>;
 
 		fn update(

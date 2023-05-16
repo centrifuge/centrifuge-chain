@@ -256,7 +256,6 @@ impl<
 	for PoolWriteOffPolicyMutateMock<T>
 {
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
-	type Rate = <T as pallet_pool_registry::Config>::Rate;
 	type WriteOffRule = WriteOffRule<Self::Rate>;
 
 	fn update(
