@@ -55,6 +55,19 @@ pub enum CurrencyId {
 	#[codec(index = 1)]
 	Tranche(PoolId, TrancheId),
 
+
+	/// Karura KSM
+	#[deprecated(note="please use the corresponding ForeignAsset entry in the AssetRegistry")]
+	#[codec(index = 2)]
+	KSM,
+
+	/// Acala Dollar
+	/// In Altair, it represents AUSD in Kusama;
+	/// In Centrifuge, it represents AUSD in Polkadot;
+	#[deprecated(note="please use the corresponding ForeignAsset entry in the AssetRegistry")]
+	#[codec(index = 3)]
+	AUSD,
+
 	/// A foreign asset
 	#[codec(index = 4)]
 	ForeignAsset(ForeignAssetId),

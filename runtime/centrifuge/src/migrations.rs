@@ -60,12 +60,14 @@ mod tests {
 
 	#[test]
 	fn encode_equality() {
+		// Native
 		assert_eq!(
 			before::CurrencyId::Native.encode(),
 			after::CurrencyId::Native.encode()
 		);
 		assert_eq!(after::CurrencyId::Native.encode(), vec![0]);
 
+		// Tranche
 		assert_eq!(
 			before::CurrencyId::Tranche(33, default_tranche_id()).encode(),
 			after::CurrencyId::Tranche(33, default_tranche_id()).encode()
@@ -78,6 +80,13 @@ mod tests {
 			]
 		);
 
+		// KSM - deprecated
+		assert_eq!(before::CurrencyId::KSM.encode(), vec![2]);
+
+		// AUSD - deprecated
+		assert_eq!(before::CurrencyId::AUSD.encode(), vec![3]);
+
+		// ForeignAsset
 		assert_eq!(
 			before::CurrencyId::ForeignAsset(91).encode(),
 			after::CurrencyId::ForeignAsset(91).encode()
@@ -87,6 +96,7 @@ mod tests {
 			vec![4, 91, 0, 0, 0]
 		);
 
+		// Staking
 		assert_eq!(
 			before::CurrencyId::Staking(StakingCurrency::BlockRewards).encode(),
 			after::CurrencyId::Staking(StakingCurrency::BlockRewards).encode()
