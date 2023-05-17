@@ -94,8 +94,9 @@ pub mod pallet {
 		/// The used data ID is not in the collection.
 		DataIdNotInCollection,
 
-		/// Max collection number exceeded
-		DataIdWithoutValue,
+		/// The data ID doesn't have data associated to it.
+		/// The data was never set for the Id.
+		DataIdWithoutData,
 
 		/// Max collection size exceeded
 		MaxCollectionSize,
@@ -109,7 +110,7 @@ pub mod pallet {
 		type Data = Result<DataValueOf<T>, DispatchError>;
 
 		fn get(data_id: &T::DataId) -> Self::Data {
-			T::DataProvider::get_no_op(data_id).ok_or(Error::<T>::DataIdWithoutValue.into())
+			T::DataProvider::get_no_op(data_id).ok_or(Error::<T>::DataIdWithoutData.into())
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {

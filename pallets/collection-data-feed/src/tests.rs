@@ -34,7 +34,7 @@ fn get_no_fed_data() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
 			CollectionDataFeed::get(&DATA_ID),
-			Error::<Runtime>::DataIdWithoutValue
+			Error::<Runtime>::DataIdWithoutData
 		);
 	});
 }
@@ -80,7 +80,7 @@ fn register_without_feed() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
 			CollectionDataFeed::register_id(&DATA_ID, &COLLECTION_ID),
-			Error::<Runtime>::DataIdWithoutValue
+			Error::<Runtime>::DataIdWithoutData
 		);
 	});
 }
