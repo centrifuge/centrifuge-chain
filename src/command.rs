@@ -230,7 +230,7 @@ macro_rules! construct_async_run {
             match runner.config().chain_spec.identify() {
                 ChainIdentity::Altair => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<altair_runtime::RuntimeApi, _>(
+				let $components = crate::service::evm::new_partial::<altair_runtime::RuntimeApi, _>(
 					&$config,
 					crate::service::build_altair_import_queue,
 				)?;
@@ -240,7 +240,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Centrifuge => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<centrifuge_runtime::RuntimeApi, _>(
+				let $components = crate::service::evm::new_partial::<centrifuge_runtime::RuntimeApi, _>(
 					&$config,
 					crate::service::build_centrifuge_import_queue,
 				)?;

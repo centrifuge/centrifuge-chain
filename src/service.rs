@@ -426,11 +426,13 @@ pub fn build_altair_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
+	frontier_backend: Arc<FrontierBackend<Block>>,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<altair_runtime::RuntimeApi>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+	let block_import = evm::BlockImport::new(block_import, client.clone(), frontier_backend);
 
 	cumulus_client_consensus_aura::import_queue::<
 		sp_consensus_aura::sr25519::AuthorityPair,
@@ -467,19 +469,47 @@ pub async fn start_altair_node(
 	collator_options: CollatorOptions,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<altair_runtime::RuntimeApi>>)> {
-	start_node_impl::<altair_runtime::RuntimeApi, _, _, _>(
+	let is_authority = parachain_config.role.is_authority();
+	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
 		id,
-		|client, pool, deny_unsafe| {
-			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
+		move |client,
+		      pool,
+		      deny_unsafe,
+		      subscription_task_executor,
+		      network,
+		      frontier_backend,
+		      filter_pool,
+		      fee_history_cache,
+		      overrides,
+		      block_data_cache| {
+			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client).into_rpc())
+				.merge(Pools::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			let eth_deps = rpc::evm::Deps {
+				client,
+				pool: pool.clone(),
+				graph: pool.pool().clone(),
+				converter: Some(development_runtime::TransactionConverter),
+				is_authority,
+				enable_dev_signer: false, // eth_config.enable_dev_signer,
+				network,
+				frontier_backend,
+				overrides,
+				block_data_cache,
+				filter_pool,
+				max_past_logs: 10000, // eth_config.max_past_logs,
+				fee_history_cache,
+				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
+				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
+			};
+			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
 		},
 		build_altair_import_queue,
@@ -566,11 +596,13 @@ pub fn build_centrifuge_import_queue(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
+	frontier_backend: Arc<FrontierBackend<Block>>,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<Block, FullClient<centrifuge_runtime::RuntimeApi>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+	let block_import = evm::BlockImport::new(block_import, client.clone(), frontier_backend);
 
 	cumulus_client_consensus_aura::import_queue::<
 		sp_consensus_aura::sr25519::AuthorityPair,
@@ -607,19 +639,47 @@ pub async fn start_centrifuge_node(
 	collator_options: CollatorOptions,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<centrifuge_runtime::RuntimeApi>>)> {
-	start_node_impl::<centrifuge_runtime::RuntimeApi, _, _, _>(
+	let is_authority = parachain_config.role.is_authority();
+	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		collator_options,
 		id,
-		|client, pool, deny_unsafe| {
-			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
+		move |client,
+		      pool,
+		      deny_unsafe,
+		      subscription_task_executor,
+		      network,
+		      frontier_backend,
+		      filter_pool,
+		      fee_history_cache,
+		      overrides,
+		      block_data_cache| {
+			let mut module = rpc::create_full(client.clone(), pool.clone(), deny_unsafe)?;
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			module
-				.merge(Pools::new(client).into_rpc())
+				.merge(Pools::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			let eth_deps = rpc::evm::Deps {
+				client,
+				pool: pool.clone(),
+				graph: pool.pool().clone(),
+				converter: Some(development_runtime::TransactionConverter),
+				is_authority,
+				enable_dev_signer: false, // eth_config.enable_dev_signer,
+				network,
+				frontier_backend,
+				overrides,
+				block_data_cache,
+				filter_pool,
+				max_past_logs: 10000, // eth_config.max_past_logs,
+				fee_history_cache,
+				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
+				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
+			};
+			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
 		},
 		build_centrifuge_import_queue,
@@ -712,7 +772,6 @@ pub fn build_development_import_queue(
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-
 	let block_import = evm::BlockImport::new(block_import, client.clone(), frontier_backend);
 
 	cumulus_client_consensus_aura::import_queue::<
