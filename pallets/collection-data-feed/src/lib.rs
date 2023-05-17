@@ -1,4 +1,4 @@
-// Copyright 2021 Centrifuge GmbH (centrifuge.io).
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
 // Centrifuge is free software: you can redistribute it and/or modify
@@ -13,6 +13,9 @@
 
 //! Collects data from a feeder entity into collections to fastly read data in
 //! one memory access.
+
+#![cfg_attr(not(feature = "std"), no_std)]
+
 pub use pallet::*;
 
 #[cfg(test)]
@@ -31,7 +34,7 @@ pub mod pallet {
 		DispatchError,
 	};
 
-	type DataValueOf<T> = Option<(<T as Config>::Data, <T as Config>::Moment)>;
+	type DataValueOf<T> = (<T as Config>::Data, <T as Config>::Moment);
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -91,6 +94,10 @@ pub mod pallet {
 		/// The used data ID is not in the collection.
 		DataIdNotInCollection,
 
+		/// The data ID doesn't have data associated to it.
+		/// The data was never set for the Id.
+		DataIdWithoutData,
+
 		/// Max collection size exceeded
 		MaxCollectionSize,
 
@@ -100,10 +107,10 @@ pub mod pallet {
 
 	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
 		type Collection = CachedCollection<T>;
-		type Data = DataValueOf<T>;
+		type Data = Result<DataValueOf<T>, DispatchError>;
 
-		fn get(data_id: &T::DataId) -> DataValueOf<T> {
-			T::DataProvider::get_no_op(data_id)
+		fn get(data_id: &T::DataId) -> Self::Data {
+			T::DataProvider::get_no_op(data_id).ok_or_else(|| Error::<T>::DataIdWithoutData.into())
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
@@ -120,7 +127,7 @@ pub mod pallet {
 
 					Collection::<T>::try_mutate(collection_id, |collection| {
 						collection
-							.try_insert(data_id.clone(), Self::get(data_id))
+							.try_insert(data_id.clone(), Self::get(data_id)?)
 							.map(|_| ())
 							.map_err(|_| Error::<T>::MaxCollectionSize.into())
 					})
@@ -152,9 +159,11 @@ pub mod pallet {
 			// for Data values.
 			for collection_id in Listening::<T>::get(data_id).keys() {
 				Collection::<T>::mutate(collection_id, |collection| {
-					collection
-						.get_mut(data_id)
-						.map(|value| *value = Self::get(data_id))
+					if let Some(value) = collection.get_mut(data_id) {
+						if let Ok(new_value) = Self::get(data_id) {
+							*value = new_value;
+						}
+					}
 				});
 			}
 		}
