@@ -87,6 +87,15 @@ orml-xcm = { git = "https://github.com/open-web3-stack/open-runtime-module-libra
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 
+# frontier pallets
+fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+fp-self-contained = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+
 # our custom pallets
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -141,6 +150,7 @@ std = [
   "pallet-aura/std",
   "pallet-authorship/std",
   "pallet-balances/std",
+  "pallet-base-fee/std",
   "pallet-block-rewards/std",
   "pallet-collator-allowlist/std",
   "pallet-collator-selection/std",
@@ -149,6 +159,10 @@ std = [
   "pallet-crowdloan-reward/std",
   "pallet-democracy/std",
   "pallet-elections-phragmen/std",
+  "pallet-ethereum/std",
+  "pallet-evm/std",
+  "pallet-evm-precompile-dispatch/std",
+  "pallet-evm-chain-id/std",
   "pallet-fees/std",
   "pallet-identity/std",
   "pallet-interest-accrual/std",
@@ -219,6 +233,8 @@ runtime-benchmarks = [
   "pallet-crowdloan-reward/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-elections-phragmen/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
@@ -253,6 +269,7 @@ runtime-benchmarks = [
   "polkadot-runtime-common/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -267,6 +284,7 @@ try-runtime = [
   "cumulus-pallet-parachain-system/try-runtime",
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",
+  "fp-self-contained/try-runtime",
   "frame-executive/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
@@ -279,6 +297,7 @@ try-runtime = [
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
+  "pallet-base-fee/try-runtime",
   "pallet-block-rewards/try-runtime",
   "pallet-collator-allowlist/try-runtime",
   "pallet-collator-selection/try-runtime",
@@ -287,6 +306,9 @@ try-runtime = [
   "pallet-crowdloan-reward/try-runtime",
   "pallet-democracy/try-runtime",
   "pallet-elections-phragmen/try-runtime",
+  "pallet-ethereum/try-runtime",
+  "pallet-evm/try-runtime",
+  "pallet-evm-chain-id/try-runtime",
   "pallet-fees/try-runtime",
   "pallet-identity/try-runtime",
   "pallet-interest-accrual/try-runtime",

@@ -54,6 +54,9 @@ std = [
   "frame-system/std",
   "pallet-authorship/std",
   "pallet-balances/std",
+  "pallet-base-fee/std",
+  "pallet-evm/std",
+  "pallet-evm-precompile-dispatch/std",
   "pallet-treasury/std",
   "sp-core/std",
   "sp-api/std",
@@ -84,6 +87,7 @@ runtime-benchmarks = [
   "pallet-treasury/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -100,4 +104,6 @@ try-runtime = [
   "pallet-pool-system/try-runtime",
   "pallet-treasury/try-runtime",
   "cfg-primitives/try-runtime",
+  "pallet-evm/try-runtime",
+  "pallet-base-fee/try-runtime",
 ]

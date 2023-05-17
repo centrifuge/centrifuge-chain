@@ -895,6 +895,10 @@ fn centrifuge_genesis(
 			currency_id: CurrencyId::Native,
 			amount: centrifuge_runtime::ExistentialDeposit::get(),
 		},
+		base_fee: Default::default(),
+		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
+		ethereum: Default::default(),
+		evm: Default::default(),
 	}
 }
 
@@ -993,6 +997,10 @@ fn altair_genesis(
 		parachain_system: Default::default(),
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		base_fee: Default::default(),
+		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
+		ethereum: Default::default(),
+		evm: Default::default(),
 	}
 }
 
