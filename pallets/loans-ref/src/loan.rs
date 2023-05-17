@@ -2,7 +2,7 @@ use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
 	data::DataCollection,
 	ops::{EnsureAdd, EnsureAddAssign, EnsureInto, EnsureMul},
-	InterestAccrual, RateCollection,
+	RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -54,16 +54,11 @@ impl<T: Config> LoanInfo<T> {
 		self.collateral
 	}
 
-	/// Validates the loan information againts to a T configuration.
+	/// Validates the loan information.
 	pub fn validate(&self, now: Moment) -> DispatchResult {
-		if let Pricing::Internal(internal) = &self.pricing {
-			//TODO: validate
-			ensure!(
-				internal.valuation_method.is_valid(),
-				Error::<T>::from(CreateLoanError::InvalidValuationMethod)
-			);
-
-			T::InterestAccrual::validate_rate(internal.interest_rate)?;
+		match &self.pricing {
+			Pricing::Internal(pricing) => pricing.validate()?,
+			Pricing::External(pricing) => pricing.validate()?,
 		}
 
 		ensure!(
@@ -250,7 +245,6 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	// TODO: Unify this
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
 		let value = match &self.pricing {
 			ActivePricing::Internal(pricing) => {
@@ -273,8 +267,8 @@ impl<T: Config> ActiveLoan<T> {
 	/// it get the values from caches previously fetched.
 	pub fn present_value_by<Rates, Prices>(
 		&self,
-		rate_cache: &Rates,
-		price_cache: &Prices,
+		rates: &Rates,
+		prices: &Prices,
 	) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
@@ -282,13 +276,12 @@ impl<T: Config> ActiveLoan<T> {
 	{
 		let value = match &self.pricing {
 			ActivePricing::Internal(pricing) => {
-				let interest_rate = pricing.info.interest_rate;
-				let debt = rate_cache.current_debt(interest_rate, pricing.normalized_debt)?;
+				let debt = pricing.calculate_debt_by(rates)?;
 				let maturity_date = self.schedule.maturity.date();
 				pricing.compute_present_value(debt, self.origination_date, maturity_date)?
 			}
 			ActivePricing::External(pricing) => {
-				let price = price_cache.get(&pricing.info.price_id)?.0;
+				let price = pricing.calculate_price_by(prices)?;
 				pricing.compute_present_value(price)?
 			}
 		};

@@ -28,16 +28,16 @@ pub enum ActivePricing<T: Config> {
 
 pub mod internal {
 	use cfg_primitives::Moment;
-	use cfg_traits::{ops::EnsureFixedPointNumber, InterestAccrual};
+	use cfg_traits::{ops::EnsureFixedPointNumber, InterestAccrual, RateCollection};
 	use cfg_types::adjustments::Adjustment;
-	use frame_support::{pallet_prelude::DispatchResult, traits::UnixTime};
+	use frame_support::{ensure, pallet_prelude::DispatchResult, traits::UnixTime};
 	use sp_arithmetic::traits::Saturating;
 	use sp_runtime::{traits::Zero, DispatchError};
 
 	use super::*;
 	use crate::{
-		pallet::Config,
-		types::{valuation::ValuationMethod, write_off::WriteOffPenalty},
+		pallet::{Config, Error},
+		types::{valuation::ValuationMethod, write_off::WriteOffPenalty, CreateLoanError},
 	};
 
 	/// Diferents methods of how to compute the amount can be borrowed
@@ -67,6 +67,17 @@ pub mod internal {
 
 		/// How much can be borrowed
 		pub max_borrow_amount: MaxBorrowAmount<T::Rate>,
+	}
+
+	impl<T: Config> InternalPricing<T> {
+		pub fn validate(&self) -> DispatchResult {
+			ensure!(
+				self.valuation_method.is_valid(),
+				Error::<T>::from(CreateLoanError::InvalidValuationMethod)
+			);
+
+			T::InterestAccrual::validate_rate(self.interest_rate)
+		}
 	}
 
 	/// Internal pricing method with extra attributes for active loans
@@ -124,6 +135,13 @@ pub mod internal {
 			T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, now)
 		}
 
+		pub fn calculate_debt_by<Rates>(&self, rates: &Rates) -> Result<T::Balance, DispatchError>
+		where
+			Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
+		{
+			rates.current_debt(self.info.interest_rate, self.normalized_debt)
+		}
+
 		pub fn max_borrow_amount(
 			&self,
 			total_borrowed: T::Balance,
@@ -174,14 +192,17 @@ pub mod internal {
 
 pub mod external {
 	use cfg_primitives::Moment;
-	use cfg_traits::{data::DataRegistry, ops::EnsureMul};
+	use cfg_traits::{
+		data::{DataCollection, DataRegistry},
+		ops::EnsureMul,
+	};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::{self, RuntimeDebug, RuntimeDebugNoBound};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::Saturating;
-	use sp_runtime::DispatchError;
+	use sp_runtime::{DispatchError, DispatchResult};
 
-	use crate::pallet::{Config, PoolIdOf};
+	use crate::pallet::{Config, PoolIdOf, PriceOf};
 
 	/// External pricing method
 	#[derive(
@@ -194,6 +215,12 @@ pub mod external {
 
 		/// Number of items associated to the price id
 		pub quantity: T::Balance,
+	}
+
+	impl<T: Config> ExternalPricing<T> {
+		pub fn validate(&self) -> DispatchResult {
+			T::PriceRegistry::get(&self.price_id).map(|_| ())
+		}
 	}
 
 	/// External pricing method with extra attributes for active loans
@@ -217,6 +244,16 @@ pub mod external {
 
 		pub fn calculate_price(&self) -> Result<T::Balance, DispatchError> {
 			Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
+		}
+
+		pub fn calculate_price_by<Prices>(
+			&self,
+			prices: &Prices,
+		) -> Result<T::Balance, DispatchError>
+		where
+			Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
+		{
+			Ok(prices.get(&self.info.price_id)?.0)
 		}
 
 		pub fn last_updated(&self) -> Result<Moment, DispatchError> {
