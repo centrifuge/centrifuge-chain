@@ -134,6 +134,8 @@ std = [
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
   "cumulus-primitives-timestamp/std",
+  "fp-rpc/std",
+  "fp-self-contained/std",
   "frame-executive/std",
   "frame-support/std",
   "frame-system-rpc-runtime-api/std",
@@ -337,6 +339,7 @@ try-runtime = [
   "pallet-xcm/try-runtime",
   "parachain-info/try-runtime",
   "runtime-common/try-runtime",
+  "sp-runtime/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

@@ -1000,7 +1000,6 @@ dependencies = [
  "fc-rpc",
  "fc-rpc-core",
  "fp-consensus",
- "fp-dynamic-fee",
  "fp-rpc",
  "fp-storage",
  "frame-benchmarking",
@@ -3473,16 +3472,6 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "fp-dynamic-fee"
-version = "1.0.0"
-source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.37#4e080c6ace4de90226f4923b196bf3089cb6712f"
-dependencies = [
- "async-trait",
- "sp-core",
- "sp-inherents",
 ]
 
 [[package]]

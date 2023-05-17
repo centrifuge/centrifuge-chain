@@ -145,6 +145,8 @@ std = [
   "cumulus-primitives-core/std",
   "cumulus-primitives-timestamp/std",
   "cumulus-primitives-utility/std",
+  "fp-rpc/std",
+  "fp-self-contained/std",
   "frame-benchmarking/std",
   "frame-executive/std",
   "frame-support/std",
@@ -352,6 +354,7 @@ try-runtime = [
   "parachain-info/try-runtime",
   "polkadot-runtime-common/try-runtime",
   "runtime-common/try-runtime",
+  "sp-runtime/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

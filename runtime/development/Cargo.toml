@@ -155,6 +155,8 @@ std = [
   "cumulus-pallet-xcmp-queue/std",
   "cumulus-pallet-session-benchmarking?/std",
   "cumulus-primitives-timestamp/std",
+  "fp-rpc/std",
+  "fp-self-contained/std",
   "frame-executive/std",
   "frame-support/std",
   "frame-system-rpc-runtime-api/std",
@@ -162,6 +164,7 @@ std = [
   "frame-system-benchmarking?/std",
   "frame-try-runtime/std",
   "hex/std",
+  "moonbeam-relay-encoder/std",
   "orml-asset-registry/std",
   "orml-tokens/std",
   "orml-xtokens/std",
@@ -265,6 +268,8 @@ runtime-benchmarks = [
   "pallet-collective/runtime-benchmarks",
   "pallet-crowdloan-claim/runtime-benchmarks",
   "pallet-crowdloan-reward/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
   "pallet-fees/runtime-benchmarks",
   "pallet-interest-accrual/runtime-benchmarks",
   "pallet-investments/runtime-benchmarks",
@@ -308,7 +313,6 @@ runtime-benchmarks = [
   "sp-runtime/runtime-benchmarks",
   "xcm-executor/runtime-benchmarks",
   "xcm-primitives/runtime-benchmarks",
-  "pallet-evm/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -338,6 +342,7 @@ try-runtime = [
   "cumulus-pallet-parachain-system/try-runtime",
   "cumulus-pallet-xcm/try-runtime",
   "cumulus-pallet-xcmp-queue/try-runtime",
+  "fp-self-contained/try-runtime",
   "frame-executive/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
@@ -378,12 +383,13 @@ try-runtime = [
   "pallet-vesting/try-runtime",
   "pallet-xcm/try-runtime",
   "parachain-info/try-runtime",
-  "runtime-common/try-runtime",
   "pallet-block-rewards/try-runtime",
   "pallet-evm/try-runtime",
   "pallet-evm-chain-id/try-runtime",
   "pallet-base-fee/try-runtime",
   "pallet-ethereum/try-runtime",
+  "runtime-common/try-runtime",
+  "sp-runtime/try-runtime",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

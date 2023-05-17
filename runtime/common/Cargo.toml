@@ -95,15 +95,15 @@ on-chain-release-build = [
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
-  "frame-support/try-runtime",
   "cfg-types/try-runtime",
+  "frame-support/try-runtime",
   "frame-system/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-treasury/try-runtime",
-  "cfg-primitives/try-runtime",
   "pallet-evm/try-runtime",
   "pallet-base-fee/try-runtime",
+  "sp-runtime/try-runtime",
 ]
