@@ -25,7 +25,6 @@ use fc_db::Backend as FrontierBackend;
 use sc_executor::WasmExecutor;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::TelemetryHandle;
-use sp_core::U256;
 
 use crate::rpc::{
 	self,
