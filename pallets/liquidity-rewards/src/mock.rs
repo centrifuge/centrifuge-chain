@@ -8,7 +8,6 @@ use sp_runtime::{
 
 use crate as pallet_liquidity_rewards;
 
-pub const DOMAIN: u8 = 23;
 pub const INITIAL_EPOCH_DURATION: u64 = 23;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -59,13 +58,11 @@ frame_support::parameter_types! {
 
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxChangesPerEpoch: u32 = 50;
-
-	pub const LiquidityDomain: u8 = DOMAIN;
 }
 
 impl cfg_mocks::pallet_mock_rewards::Config for Test {
 	type Balance = u64;
-	type CurrencyId = (u8, u32);
+	type CurrencyId = u32;
 	type GroupId = u32;
 }
 
@@ -73,7 +70,6 @@ impl pallet_liquidity_rewards::Config for Test {
 	type AdminOrigin = EnsureRoot<u64>;
 	type Balance = u64;
 	type CurrencyId = u32;
-	type Domain = LiquidityDomain;
 	type GroupId = u32;
 	type InitialEpochDuration = ConstU64<INITIAL_EPOCH_DURATION>;
 	type MaxChangesPerEpoch = MaxChangesPerEpoch;

@@ -130,6 +130,7 @@ pallet-pool-registry = { path = "../../pallets/pool-registry", default-features 
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-rewards = { path = "../../pallets/rewards", default-features = false }
+pallet-transfer-allowlist = { path = "../../pallets/transfer-allowlist", default-features = false }
 
 # Connectors 3rd-party dependencies
 moonbeam-relay-encoder = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "00b3e3d97806e889b02e1bcb4b69e65433dd805d" }
@@ -208,6 +209,7 @@ std = [
   "pallet-timestamp/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
+  "pallet-transfer-allowlist/std",
   "pallet-treasury/std",
   "pallet-uniques/std",
   "pallet-utility/std",
@@ -278,6 +280,7 @@ runtime-benchmarks = [
   "pallet-pool-system/runtime-benchmarks",
   "pallet-pool-registry/runtime-benchmarks",
   "pallet-restricted-tokens/runtime-benchmarks",
+  "pallet-transfer-allowlist/runtime-benchmarks",
   "pallet-uniques/runtime-benchmarks",
   "pallet-xcm/runtime-benchmarks",
   "runtime-common/runtime-benchmarks",
@@ -330,6 +333,7 @@ try-runtime = [
   "pallet-pool-system/try-runtime",
   "pallet-rewards/try-runtime",
   "pallet-sudo/try-runtime",
+  "pallet-transfer-allowlist/try-runtime",
   "pallet-uniques/try-runtime",
   "pallet-xcm-transactor/try-runtime",
   "polkadot-runtime-common/try-runtime",

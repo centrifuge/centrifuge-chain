@@ -579,6 +579,28 @@ mod tests {
 	}
 
 	#[test]
+	fn add_currency_zero() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddCurrency {
+				currency: 0,
+				evm_address: default_address_20(),
+			},
+			"01000000000000000000000000000000001231231231231231231231231231231231231231",
+		)
+	}
+
+	#[test]
+	fn add_currency() {
+		test_encode_decode_identity(
+			ConnectorMessage::AddCurrency {
+				currency: TOKEN_ID,
+				evm_address: default_address_20(),
+			},
+			"010000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
+		)
+	}
+
+	#[test]
 	fn add_pool_zero() {
 		test_encode_decode_identity(
 			ConnectorMessage::AddPool { pool_id: 0 },
@@ -591,27 +613,6 @@ mod tests {
 		test_encode_decode_identity(
 			ConnectorMessage::AddPool { pool_id: POOL_ID },
 			"020000000000bce1a4",
-		)
-	}
-
-	#[test]
-	fn add_currency_zero() {
-		test_encode_decode_identity(
-			ConnectorMessage::AddCurrency {
-				currency: 0,
-				evm_address: default_address_20(),
-			},
-			"01000000000000000000000000000000001231231231231231231231231231231231231231",
-		)
-	}
-	#[test]
-	fn add_currency() {
-		test_encode_decode_identity(
-			ConnectorMessage::AddCurrency {
-				currency: TOKEN_ID,
-				evm_address: default_address_20(),
-			},
-			"010000000000000000000000000eb5ec7b1231231231231231231231231231231231231231",
 		)
 	}
 
@@ -678,38 +679,6 @@ mod tests {
 	}
 
 	#[test]
-	fn transfer_tranche_tokens_to_moonbeam() {
-		let domain_address = DomainAddress::EVM(1284, default_address_20());
-
-		test_encode_decode_identity(
-				ConnectorMessage::TransferTrancheTokens {
-					pool_id: 1,
-					tranche_id: default_tranche_id(),
-					sender: default_address_32(),
-					domain: domain_address.clone().into(),
-					receiver: domain_address.address(),
-					amount: AMOUNT,
-				},
-				"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
-			);
-	}
-
-	#[test]
-	fn transfer_tranch_tokens_to_centrifuge() {
-		test_encode_decode_identity(
-				ConnectorMessage::TransferTrancheTokens {
-					pool_id: 1,
-					tranche_id: default_tranche_id(),
-					sender: vec_to_fixed_array(default_address_20().to_vec()),
-					domain: Domain::Centrifuge,
-					receiver: default_address_32(),
-					amount: AMOUNT,
-				},
-				"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
-			)
-	}
-
-	#[test]
 	fn transfer_to_evm_address() {
 		test_encode_decode_identity(
 				ConnectorMessage::Transfer {
@@ -733,6 +702,38 @@ mod tests {
 				},
 				"070000000000000000000000000eb5ec7b12312312312312312312312312312312312312310000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
 			);
+	}
+
+	#[test]
+	fn transfer_tranche_tokens_to_moonbeam() {
+		let domain_address = DomainAddress::EVM(1284, default_address_20());
+
+		test_encode_decode_identity(
+			ConnectorMessage::TransferTrancheTokens {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				sender: default_address_32(),
+				domain: domain_address.clone().into(),
+				receiver: domain_address.address(),
+				amount: AMOUNT,
+			},
+			"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b45645645645645645645645645645645645645645645645645645645645645640100000000000005041231231231231231231231231231231231231231000000000000000000000000000000000052b7d2dcc80cd2e4000000"
+		);
+	}
+
+	#[test]
+	fn transfer_tranche_tokens_to_centrifuge() {
+		test_encode_decode_identity(
+			ConnectorMessage::TransferTrancheTokens {
+				pool_id: 1,
+				tranche_id: default_tranche_id(),
+				sender: vec_to_fixed_array(default_address_20().to_vec()),
+				domain: Domain::Centrifuge,
+				receiver: default_address_32(),
+				amount: AMOUNT,
+			},
+			"080000000000000001811acd5b3f17c06841c7e41e9e04cb1b12312312312312312312312312312312312312310000000000000000000000000000000000000000004564564564564564564564564564564564564564564564564564564564564564000000000052b7d2dcc80cd2e4000000"
+		)
 	}
 
 	#[test]

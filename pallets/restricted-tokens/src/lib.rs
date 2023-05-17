@@ -296,65 +296,10 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(
-			T::WeightInfo::transfer_keep_alive_native().max(
-			T::WeightInfo::transfer_keep_alive_other()
-		))]
-		#[pallet::call_index(1)]
-		pub fn transfer_keep_alive(
-			origin: OriginFor<T>,
-			dest: <T::Lookup as StaticLookup>::Source,
-			currency_id: T::CurrencyId,
-			#[pallet::compact] amount: T::Balance,
-		) -> DispatchResultWithPostInfo {
-			let from = ensure_signed(origin)?;
-			let to = T::Lookup::lookup(dest)?;
-
-			ensure!(
-				T::PreExtrTransfer::check(TransferDetails::new(
-					from.clone(),
-					to.clone(),
-					currency_id,
-					amount
-				)),
-				Error::<T>::PreConditionsNotMet
-			);
-
-			let token = if T::NativeToken::get() == currency_id {
-				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
-					&from, &to, amount, true,
-				)?;
-
-				TokenType::Native
-			} else {
-				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
-					currency_id,
-					&from,
-					&to,
-					amount,
-					true,
-				)?;
-
-				TokenType::Other
-			};
-
-			Self::deposit_event(Event::Transfer {
-				currency_id,
-				from,
-				to,
-				amount,
-			});
-
-			match token {
-				TokenType::Native => Ok(Some(T::WeightInfo::transfer_keep_alive_native()).into()),
-				TokenType::Other => Ok(Some(T::WeightInfo::transfer_keep_alive_other()).into()),
-			}
-		}
-
-		#[pallet::weight(
-			T::WeightInfo::transfer_all_native().max(
-			T::WeightInfo::transfer_all_other())
+		T::WeightInfo::transfer_all_native().max(
+		T::WeightInfo::transfer_all_other())
 		)]
-		#[pallet::call_index(2)]
+		#[pallet::call_index(1)]
 		pub fn transfer_all(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -417,6 +362,61 @@ pub mod pallet {
 			match token {
 				TokenType::Native => Ok(Some(T::WeightInfo::transfer_all_native()).into()),
 				TokenType::Other => Ok(Some(T::WeightInfo::transfer_all_other()).into()),
+			}
+		}
+
+		#[pallet::weight(
+			T::WeightInfo::transfer_keep_alive_native().max(
+			T::WeightInfo::transfer_keep_alive_other()
+		))]
+		#[pallet::call_index(2)]
+		pub fn transfer_keep_alive(
+			origin: OriginFor<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+			currency_id: T::CurrencyId,
+			#[pallet::compact] amount: T::Balance,
+		) -> DispatchResultWithPostInfo {
+			let from = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(dest)?;
+
+			ensure!(
+				T::PreExtrTransfer::check(TransferDetails::new(
+					from.clone(),
+					to.clone(),
+					currency_id,
+					amount
+				)),
+				Error::<T>::PreConditionsNotMet
+			);
+
+			let token = if T::NativeToken::get() == currency_id {
+				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
+					&from, &to, amount, true,
+				)?;
+
+				TokenType::Native
+			} else {
+				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+					currency_id,
+					&from,
+					&to,
+					amount,
+					true,
+				)?;
+
+				TokenType::Other
+			};
+
+			Self::deposit_event(Event::Transfer {
+				currency_id,
+				from,
+				to,
+				amount,
+			});
+
+			match token {
+				TokenType::Native => Ok(Some(T::WeightInfo::transfer_keep_alive_native()).into()),
+				TokenType::Other => Ok(Some(T::WeightInfo::transfer_keep_alive_other()).into()),
 			}
 		}
 

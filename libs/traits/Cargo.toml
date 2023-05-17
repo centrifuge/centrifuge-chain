@@ -25,12 +25,6 @@ cfg-mocks = { path = "../mocks" }
 cfg-types = { path = "../types", default-features = true }
 mock-builder = { path = "../../libs/mock-builder" }
 
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
-
 [features]
 default = ["std"]
 runtime-benchmarks = [
@@ -50,5 +44,4 @@ std = [
 try-runtime = [
   "frame-support/try-runtime",
   "cfg-primitives/try-runtime",
-  "sp-runtime/try-runtime",
 ]

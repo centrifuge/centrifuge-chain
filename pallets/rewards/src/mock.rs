@@ -94,10 +94,10 @@ pub enum CurrencyId {
 	M,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, RuntimeDebug)]
-pub enum DomainId {
-	D1,
-	D2,
+impl Default for CurrencyId {
+	fn default() -> Self {
+		CurrencyId::Reward
+	}
 }
 
 orml_traits::parameter_type_with_key! {
@@ -148,7 +148,6 @@ macro_rules! pallet_rewards_config {
 		impl pallet_rewards::Config<pallet_rewards::$instance> for Runtime {
 			type Currency = Tokens;
 			type CurrencyId = CurrencyId;
-			type DomainId = DomainId;
 			type GroupId = u32;
 			type PalletId = RewardsPalletId;
 			type RewardCurrency = RewardCurrency;

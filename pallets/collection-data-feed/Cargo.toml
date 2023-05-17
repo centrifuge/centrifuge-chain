@@ -20,7 +20,7 @@ sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-featu
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.38" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 cfg-traits = { path = "../../libs/traits", default-features = false }
 
@@ -43,15 +43,4 @@ std = [
   "sp-std/std",
   "cfg-traits/std",
   "orml-traits/std",
-]
-runtime-benchmarks = [
-  "frame-support/runtime-benchmarks",
-  "frame-system/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
-]
-try-runtime = [
-  "frame-support/try-runtime",
-  "frame-system/try-runtime",
-  "cfg-traits/try-runtime",
 ]

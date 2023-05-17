@@ -21,15 +21,18 @@ use cfg_utils::vec_to_fixed_array;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
-use sp_core::{storage::StateVersion, Encode};
+use sp_core::storage::StateVersion;
 use sp_runtime::{
 	traits::{One, Zero},
 	FixedPointNumber, Perquintill, TokenError,
+<<<<<<< HEAD
 };
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralKey, PalletInstance, Parachain, X3},
 	VersionedMultiLocation,
+=======
+>>>>>>> origin/main
 };
 
 use crate::{
@@ -2320,6 +2323,7 @@ fn create_tranche_token_metadata() {
 				name: "SuperToken".into(),
 				symbol: "ST".into(),
 				existential_deposit: 0,
+<<<<<<< HEAD
 				location: Some(VersionedMultiLocation::V3(MultiLocation {
 					parents: 1,
 					interior: X3(
@@ -2331,6 +2335,9 @@ fn create_tranche_token_metadata() {
 						}
 					)
 				})),
+=======
+				location: None,
+>>>>>>> origin/main
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,

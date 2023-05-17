@@ -20,7 +20,6 @@ use cfg_traits::{
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
 use cfg_types::{tokens::CustomMetadata, xcm::XcmMetadata};
-use cfg_utils::vec_to_fixed_array;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -30,7 +29,6 @@ use frame_support::{
 	Blake2_128, BoundedVec, Parameter, RuntimeDebug, StorageHasher,
 };
 use orml_traits::asset_registry::AssetMetadata;
-use polkadot_parachain::primitives::Id as ParachainId;
 use rev_slice::{RevSlice, SliceExt};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -41,11 +39,6 @@ use sp_runtime::{
 	DispatchError, FixedPointNumber, FixedPointOperand, Perquintill,
 };
 use sp_std::{marker::PhantomData, ops::Deref, vec::Vec};
-use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, PalletInstance, Parachain, X3},
-	VersionedMultiLocation,
-};
 
 /// Type that indicates the seniority of a tranche
 pub type Seniority = u32;
@@ -237,8 +230,6 @@ where
 	pub fn create_asset_metadata(
 		&self,
 		decimals: u32,
-		parachain_id: ParachainId,
-		pallet_index: u8,
 		token_name: Vec<u8>,
 		token_symbol: Vec<u8>,
 	) -> AssetMetadata<Balance, CustomMetadata>
@@ -247,25 +238,12 @@ where
 		Currency: Encode,
 		CustomMetadata: Parameter + Member + TypeInfo,
 	{
-		let tranche_id: Vec<u8> = self.currency.encode();
-
 		AssetMetadata {
 			decimals,
 			name: token_name,
 			symbol: token_symbol,
 			existential_deposit: Zero::zero(),
-			location: Some(VersionedMultiLocation::V3(MultiLocation {
-				parents: 1,
-				interior: X3(
-					Parachain(parachain_id.into()),
-					PalletInstance(pallet_index),
-					// todo(nuno): revisit this
-					GeneralKey {
-						length: 16u8,
-						data: vec_to_fixed_array(tranche_id),
-					},
-				),
-			})),
+			location: None,
 			additional: CustomMetadata {
 				mintable: false,
 				permissioned: true,
@@ -1858,27 +1836,13 @@ pub mod test {
 			let decimals: u32 = 10;
 			let name: Vec<u8> = "Glimmer".into();
 			let symbol: Vec<u8> = "GLMR".into();
-			let asset_metadata = tranche.create_asset_metadata(
-				decimals,
-				// fake parachain id
-				ParachainId::from(42),
-				// fake pallet index
-				42u8,
-				name,
-				symbol,
-			);
+			let asset_metadata = tranche.create_asset_metadata(decimals, name, symbol);
 
 			assert_eq!(asset_metadata.existential_deposit, 0);
 			assert_eq!(asset_metadata.name[..], [71, 108, 105, 109, 109, 101, 114]);
 			assert_eq!(asset_metadata.symbol[..], [71, 76, 77, 82]);
 			assert_eq!(asset_metadata.decimals, decimals);
-			assert!(match asset_metadata.location {
-				Some(VersionedMultiLocation::V3(MultiLocation {
-					parents: 1,
-					interior: X3(Parachain(42), PalletInstance(42), GeneralKey { .. }),
-				})) => true,
-				_ => false,
-			})
+			assert_eq!(asset_metadata.location, None);
 		}
 	}
 

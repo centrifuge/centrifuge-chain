@@ -40,7 +40,6 @@ use orml_traits::{
 	Change,
 };
 pub use pallet::*;
-use polkadot_parachain::primitives::Id as ParachainId;
 use pool_types::{
 	PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator, ScheduledUpdateDetails,
 };
@@ -274,9 +273,6 @@ pub mod pallet {
 			Balance = Self::Balance,
 			CustomMetadata = CustomMetadata,
 		>;
-
-		#[pallet::constant]
-		type ParachainId: Get<ParachainId>;
 
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
 

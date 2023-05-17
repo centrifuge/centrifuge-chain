@@ -1,6 +1,5 @@
 use cfg_traits::rewards::AccountRewards;
 use cfg_types::tokens::{CurrencyId, StakingCurrency::BlockRewards as BlockRewardsCurrency};
-use codec::MaxEncodedLen;
 use frame_support::{
 	parameter_types,
 	traits::{
@@ -115,7 +114,7 @@ impl pallet_session::Config for Test {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 0;
+	pub const ExistentialDeposit: Balance = 1;
 }
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
@@ -182,16 +181,8 @@ impl pallet_restricted_tokens::Config for Test {
 	type WeightInfo = ();
 }
 
-#[derive(
-	scale_info::TypeInfo, Debug, Copy, codec::Encode, codec::Decode, PartialEq, Clone, MaxEncodedLen,
-)]
-pub enum RewardDomain {
-	Liquidity,
-	Block,
-}
-
 frame_support::parameter_types! {
-	pub const RewardsPalletId: PalletId = PalletId(*b"d/reward");
+	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 
 	#[derive(scale_info::TypeInfo)]
@@ -201,7 +192,6 @@ frame_support::parameter_types! {
 impl pallet_rewards::Config<pallet_rewards::Instance1> for Test {
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type DomainId = RewardDomain;
 	type GroupId = u32;
 	type PalletId = RewardsPalletId;
 	type RewardCurrency = NativeToken;
@@ -227,7 +217,6 @@ frame_support::parameter_types! {
 	pub const MaxChangesPerSession: u32 = 50;
 	#[derive(scale_info::TypeInfo, Debug, PartialEq, Clone)]
 	pub const MaxCollators: u32 = MAX_COLLATORS;
-	pub const BlockRewardsDomain: RewardDomain = RewardDomain::Block;
 	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(BlockRewardsCurrency);
 	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
 	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
@@ -240,7 +229,6 @@ impl pallet_block_rewards::Config for Test {
 	type Beneficiary = RewardRemainderMock;
 	type Currency = Tokens;
 	type CurrencyId = CurrencyId;
-	type Domain = BlockRewardsDomain;
 	type MaxChangesPerSession = MaxChangesPerSession;
 	type MaxCollators = MaxCollators;
 	type Rewards = Rewards;
@@ -265,10 +253,7 @@ pub(crate) fn assert_staked(who: &AccountId) {
 
 pub(crate) fn assert_not_staked(who: &AccountId) {
 	assert!(<Test as Config>::Rewards::account_stake(
-		(
-			<Test as Config>::Domain::get(),
-			<Test as Config>::StakeCurrencyId::get()
-		),
+		<Test as Config>::StakeCurrencyId::get(),
 		who
 	)
 	.is_zero());
@@ -377,6 +362,13 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut storage)
 		.expect("Session pallet's storage can be assimilated");
+
+		pallet_rewards::GenesisConfig::<Test, pallet_rewards::Instance1> {
+			currency_id: CurrencyId::Native,
+			amount: ExistentialDeposit::get(),
+		}
+		.assimilate_storage(&mut storage)
+		.expect("Rewards pallet's storage can be assimilated");
 
 		let mut ext = sp_io::TestExternalities::new(storage);
 

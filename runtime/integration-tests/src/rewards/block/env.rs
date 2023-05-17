@@ -17,6 +17,7 @@ use tokio::runtime::Handle;
 
 use crate::{
 	chain::centrifuge::{CollatorSelection, Runtime, PARA_ID},
+	rewards::block::invariants::assert_all_staked,
 	utils::{
 		accounts::Keyring,
 		env::test_env_with_centrifuge_storage,
@@ -64,5 +65,17 @@ async fn env_works() {
 			.iter()
 			.all(|j| !candidates.iter().any(|candidate| &candidate.who == j)
 				&& !invulnerables.iter().any(|invulnerable| invulnerable == j)));
+	});
+}
+
+#[tokio::test]
+async fn genesis_collators_are_staked() {
+	let mut genesis = Storage::default();
+	default_genesis_block_rewards(&mut genesis);
+	let mut env = test_env_with_centrifuge_storage(Handle::current(), genesis);
+
+	// Ensure default collators are neither candidates nor invulnerables
+	env.with_state(Chain::Para(PARA_ID), || {
+		assert_all_staked(&[Keyring::Admin.to_account_id()]);
 	});
 }

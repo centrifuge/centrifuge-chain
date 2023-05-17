@@ -10,21 +10,29 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use codec::Codec;
+use codec::{Codec, Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
 use sp_api::decl_runtime_apis;
+use sp_core::RuntimeDebug;
 use sp_std::vec::Vec;
+
+#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub enum RewardDomain {
+	Block,
+	Liquidity,
+}
 
 decl_runtime_apis! {
 	/// Runtime API for the rewards pallet.
-	pub trait RewardsApi<AccountId, Balance, DomainId, CurrencyId>
+	pub trait RewardsApi<AccountId, Balance, CurrencyId>
 	where
 		AccountId: Codec,
 		Balance: Codec,
-		DomainId: Codec,
 		CurrencyId: Codec,
 	{
-		fn list_currencies(account_id: AccountId) -> Vec<(DomainId, CurrencyId)>;
+		fn list_currencies(domain: RewardDomain, account_id: AccountId) -> Vec<CurrencyId>;
 
-		fn compute_reward(currency_id: (DomainId, CurrencyId), account_id: AccountId) -> Option<Balance>;
+		fn compute_reward(domain: RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance>;
 	}
 }
