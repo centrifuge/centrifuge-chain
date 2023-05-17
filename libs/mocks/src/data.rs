@@ -29,7 +29,7 @@ pub mod pallet {
 			register_call!(f);
 		}
 
-		pub fn mock_cache(f: impl Fn(&T::CollectionId) -> T::Collection + 'static) {
+		pub fn mock_collection(f: impl Fn(&T::CollectionId) -> T::Collection + 'static) {
 			register_call!(f);
 		}
 
@@ -69,25 +69,21 @@ pub mod pallet {
 
 	#[cfg(feature = "std")]
 	pub mod util {
-		use std::collections::HashMap;
-
 		use super::*;
 
-		pub struct MockDataCollection<T: Config>(pub HashMap<T::DataId, T::Data>);
+		pub struct MockDataCollection<DataId, Data>(Box<dyn Fn(&DataId) -> Data>);
 
-		impl<T: Config> DataCollection<T::DataId> for MockDataCollection<T>
-		where
-			T::DataId: std::hash::Hash + Eq,
-			T::Data: Clone,
-		{
-			type Data = Result<T::Data, DispatchError>;
+		impl<DataId, Data> MockDataCollection<DataId, Data> {
+			pub fn new(f: impl Fn(&DataId) -> Data + 'static) -> Self {
+				Self(Box::new(f))
+			}
+		}
 
-			fn get(&self, data_id: &T::DataId) -> Self::Data {
-				Ok(self
-					.0
-					.get(data_id)
-					.ok_or(DispatchError::CannotLookup)?
-					.clone())
+		impl<DataId, Data> DataCollection<DataId> for MockDataCollection<DataId, Data> {
+			type Data = Data;
+
+			fn get(&self, data_id: &DataId) -> Self::Data {
+				(self.0)(data_id)
 			}
 		}
 	}
