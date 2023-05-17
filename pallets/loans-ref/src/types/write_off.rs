@@ -166,6 +166,7 @@ impl<Rate: FixedPointNumber> WriteOffPercentage<Rate> {
 #[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub struct WriteOffPenalty<Rate>(pub Rate);
 
+// TODO: Remove?
 impl<Rate: EnsureAdd + EnsureSub> WriteOffPenalty<Rate> {
 	pub fn penalize(&self, interest_rate: Rate) -> Result<Rate, ArithmeticError> {
 		interest_rate.ensure_add(self.0)

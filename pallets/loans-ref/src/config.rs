@@ -15,10 +15,7 @@ use cfg_traits::data::{DataCollection, DataRegistry};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::{
-	pallet::Config,
-	types::{PoolIdOf, PriceResultOf},
-};
+use crate::pallet::{Config, PoolIdOf, PriceResultOf};
 
 const DEFAULT_ERR: DispatchError = DispatchError::Other("No price registry for pallet-loans");
 

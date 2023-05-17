@@ -43,9 +43,9 @@ pub mod migrations {
 }
 
 pub mod config;
+pub mod loan;
+pub mod pricing;
 pub mod types;
-pub mod valuation;
-pub mod write_off;
 
 #[cfg(test)]
 mod mock;
@@ -59,7 +59,6 @@ mod weights;
 mod benchmarking;
 
 pub use pallet::*;
-pub use types::PoolIdOf;
 pub use weights::WeightInfo;
 
 #[frame_support::pallet]
@@ -85,6 +84,7 @@ pub mod pallet {
 		},
 	};
 	use frame_system::pallet_prelude::*;
+	use loan::{ActiveLoan, LoanInfo};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
@@ -93,12 +93,27 @@ pub mod pallet {
 	};
 	use sp_std::vec::Vec;
 	use types::{
-		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfo,
-		PoolIdOf, PortfolioValuationUpdateType, PriceCollectionOf, PriceResultOf, WrittenOffError,
+		self,
+		write_off::{WriteOffRule, WriteOffStatus},
+		BorrowLoanError, CloseLoanError, CreateLoanError, PortfolioValuationUpdateType,
+		WrittenOffError,
 	};
-	use write_off::{WriteOffRule, WriteOffStatus};
 
 	use super::*;
+
+	pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
+		<T as Config>::PriceId,
+		PoolIdOf<T>,
+	>>::Collection;
+
+	pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
+		<T as frame_system::Config>::AccountId,
+		<T as Config>::CurrencyId,
+	>>::PoolId;
+
+	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
+	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
+	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -217,7 +232,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		types::CreatedLoan<T>,
+		loan::CreatedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -246,7 +261,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		types::ClosedLoan<T>,
+		loan::ClosedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -396,7 +411,7 @@ pub mod pallet {
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
 			let loan_id = Self::generate_loan_id(pool_id)?;
-			CreatedLoan::<T>::insert(pool_id, loan_id, types::CreatedLoan::new(info.clone(), who));
+			CreatedLoan::<T>::insert(pool_id, loan_id, loan::CreatedLoan::new(info.clone(), who));
 
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
