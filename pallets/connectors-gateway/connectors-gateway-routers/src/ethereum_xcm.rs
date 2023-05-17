@@ -33,8 +33,11 @@ where
 	_phantom: PhantomData<T>,
 }
 
-/// The ConnectorsXcmContract handle function name
+/// The ConnectorsXcmContract handle function name.
 const HANDLE_FUNCTION: &str = "handle";
+
+/// The ConnectorsXcmContract message param name.
+const MESSAGE_PARAM: &str = "message";
 
 impl<T> EthereumXCMRouter<T>
 where
@@ -141,11 +144,11 @@ where
 		let mut functions = BTreeMap::new();
 		#[allow(deprecated)]
 		functions.insert(
-			"handle".into(),
+			HANDLE_FUNCTION.into(),
 			vec![ethabi::Function {
 				name: HANDLE_FUNCTION.into(),
 				inputs: vec![ethabi::Param {
-					name: "message".into(),
+					name: MESSAGE_PARAM.into(),
 					kind: ethabi::ParamType::Bytes,
 					internal_type: None,
 				}],
