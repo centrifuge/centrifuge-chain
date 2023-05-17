@@ -14,11 +14,7 @@
 use cfg_primitives::Moment;
 use cfg_traits::ops::{EnsureAdd, EnsureFixedPointNumber, EnsureSub};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	storage::bounded_btree_set::BoundedBTreeSet,
-	traits::tokens::{self},
-	RuntimeDebug,
-};
+use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Get, ArithmeticError, FixedPointNumber, FixedPointOperand};
 use sp_std::collections::btree_set::BTreeSet;
@@ -43,7 +39,7 @@ pub enum WriteOffTrigger {
 	PrincipalOverdueDays(u32),
 
 	/// Seconds since the oracle valuation was last updated
-	OracleValuationOutdated(Moment),
+	PriceOutdated(Moment),
 }
 
 /// Wrapper type to identify equality berween kinds of triggers,
@@ -57,8 +53,8 @@ impl PartialEq for UniqueWriteOffTrigger {
 			WriteOffTrigger::PrincipalOverdueDays(_) => {
 				matches!(other.0, WriteOffTrigger::PrincipalOverdueDays(_))
 			}
-			WriteOffTrigger::OracleValuationOutdated(_) => {
-				matches!(other.0, WriteOffTrigger::OracleValuationOutdated(_))
+			WriteOffTrigger::PriceOutdated(_) => {
+				matches!(other.0, WriteOffTrigger::PriceOutdated(_))
 			}
 		}
 	}
@@ -143,13 +139,6 @@ impl<Rate> WriteOffStatus<Rate>
 where
 	Rate: FixedPointNumber + EnsureAdd + EnsureSub,
 {
-	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		value: Balance,
-	) -> Result<Balance, ArithmeticError> {
-		value.ensure_sub(self.percentage.ensure_mul_int(value)?)
-	}
-
 	pub fn compose_max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
 		Self {
 			percentage: self.percentage.max(other.percentage),
@@ -157,16 +146,33 @@ where
 		}
 	}
 
+	pub fn is_none(&self) -> bool {
+		self.percentage.is_zero() && self.penalty.is_zero()
+	}
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct WriteOffPercentage<Rate>(pub Rate);
+
+impl<Rate: FixedPointNumber> WriteOffPercentage<Rate> {
+	pub fn write_down<Balance: FixedPointOperand + EnsureSub>(
+		&self,
+		value: Balance,
+	) -> Result<Balance, ArithmeticError> {
+		value.ensure_sub(self.0.ensure_mul_int(value)?)
+	}
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct WriteOffPenalty<Rate>(pub Rate);
+
+impl<Rate: EnsureAdd + EnsureSub> WriteOffPenalty<Rate> {
 	pub fn penalize(&self, interest_rate: Rate) -> Result<Rate, ArithmeticError> {
-		interest_rate.ensure_add(self.penalty)
+		interest_rate.ensure_add(self.0)
 	}
 
 	pub fn unpenalize(&self, interest_rate: Rate) -> Result<Rate, ArithmeticError> {
-		interest_rate.ensure_sub(self.penalty)
-	}
-
-	pub fn is_none(&self) -> bool {
-		self.percentage.is_zero() && self.penalty.is_zero()
+		interest_rate.ensure_sub(self.0)
 	}
 }
 
@@ -191,7 +197,7 @@ mod tests {
 	fn different_trigger_kinds() {
 		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
 			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
-			UniqueWriteOffTrigger(WriteOffTrigger::OracleValuationOutdated(1)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PriceOutdated(1)),
 		])
 		.try_into()
 		.unwrap();

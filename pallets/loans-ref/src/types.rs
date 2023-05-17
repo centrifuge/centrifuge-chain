@@ -39,7 +39,7 @@ use sp_std::cmp::Ordering;
 use super::pallet::{Config, Error};
 use crate::{
 	valuation::ValuationMethod,
-	write_off::{WriteOffStatus, WriteOffTrigger},
+	write_off::{WriteOffPenalty, WriteOffPercentage, WriteOffStatus, WriteOffTrigger},
 };
 
 /// Error related to loan creation
@@ -216,15 +216,38 @@ pub enum RepayRestrictions {
 
 /// Define the loan restrictions
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct LoanRestrictions<Rate> {
-	/// How much can be borrowed
-	pub max_borrow_amount: MaxBorrowAmount<Rate>,
-
+pub struct LoanRestrictions {
 	/// How offen can be borrowed
 	pub borrows: BorrowRestrictions,
 
 	/// How offen can be repaid
 	pub repayments: RepayRestrictions,
+}
+
+/// Internal pricing method
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct InternalPricing<Balance, Rate> {
+	/// Value of the collateral used for this loan
+	pub collateral_value: Balance,
+
+	/// Valuation method of this loan
+	pub valuation_method: ValuationMethod<Rate>,
+
+	/// Interest rate per year with any penalty applied
+	pub interest_rate: Rate,
+
+	/// How much can be borrowed
+	pub max_borrow_amount: MaxBorrowAmount<Rate>,
+}
+
+/// External pricing method
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct ExternalPricing<PriceId, Balance> {
+	/// Id of an external price
+	pub price_id: PriceId,
+
+	/// Number of items associated to the price id
+	pub quantity: Balance,
 }
 
 // =================================================================
@@ -242,6 +265,17 @@ pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 
+/// Loan pricing method
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub enum Pricing<T: Config> {
+	/// Calculated internally
+	Internal(InternalPricing<T::Balance, T::Rate>),
+
+	/// Calculated externally
+	External(ExternalPricing<T::PriceId, T::Balance>),
+}
+
 /// Loan information.
 /// It contemplates the loan proposal by the borrower and the pricing properties
 /// by the issuer.
@@ -254,17 +288,11 @@ pub struct LoanInfo<T: Config> {
 	/// Collateral used for this loan
 	collateral: AssetOf<T>,
 
-	/// Value of the collateral used for this loan
-	collateral_value: T::Balance,
-
-	/// Valuation method of this loan
-	valuation_method: ValuationMethod<T::Balance, T::Rate, T::PriceId>,
+	/// Pricing properties for this loan
+	pricing: Pricing<T>,
 
 	/// Restrictions of this loan
-	restrictions: LoanRestrictions<T::Rate>,
-
-	/// Interest rate per year with any penalty applied
-	interest_rate: T::Rate,
+	restrictions: LoanRestrictions,
 }
 
 impl<T: Config> LoanInfo<T> {
@@ -274,17 +302,22 @@ impl<T: Config> LoanInfo<T> {
 
 	/// Validates the loan information againts to a T configuration.
 	pub fn validate(&self, now: Moment) -> DispatchResult {
-		ensure!(
-			self.valuation_method.is_valid(),
-			Error::<T>::from(CreateLoanError::InvalidValuationMethod)
-		);
+		if let Pricing::Internal(internal) = &self.pricing {
+			//TODO: validate
+			ensure!(
+				internal.valuation_method.is_valid(),
+				Error::<T>::from(CreateLoanError::InvalidValuationMethod)
+			);
+
+			T::InterestAccrual::validate_rate(internal.interest_rate)?;
+		}
 
 		ensure!(
 			self.schedule.is_valid(now),
 			Error::<T>::from(CreateLoanError::InvalidRepaymentSchedule)
 		);
 
-		T::InterestAccrual::validate_rate(self.interest_rate)
+		Ok(())
 	}
 }
 
@@ -357,6 +390,158 @@ impl<T: Config> ClosedLoan<T> {
 	}
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct InternalActivePricing<T: Config> {
+	/// Basic internal pricing info
+	info: InternalPricing<T::Balance, T::Rate>,
+
+	/// Normalized debt used to calculate the outstanding debt.
+	normalized_debt: T::Balance,
+
+	/// Additional interest that accrues on the written down loan as penalty
+	write_off_penalty: WriteOffPenalty<T::Rate>,
+}
+
+impl<T: Config> InternalActivePricing<T> {
+	fn new(info: InternalPricing<T::Balance, T::Rate>) -> Result<Self, DispatchError> {
+		T::InterestAccrual::reference_rate(info.interest_rate)?;
+		Ok(Self {
+			info,
+			normalized_debt: T::Balance::zero(),
+			write_off_penalty: WriteOffPenalty::default(),
+		})
+	}
+
+	fn close(self) -> Result<InternalPricing<T::Balance, T::Rate>, DispatchError> {
+		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
+		Ok(self.info)
+	}
+
+	fn compute_present_value(
+		&self,
+		debt: T::Balance,
+		origination_date: Moment,
+		maturity_date: Moment,
+	) -> Result<T::Balance, DispatchError> {
+		match &self.info.valuation_method {
+			ValuationMethod::DiscountedCashFlow(dcf) => {
+				let now = T::Time::now().as_secs();
+				Ok(dcf.compute_present_value(
+					debt,
+					now,
+					self.info.interest_rate,
+					maturity_date,
+					origination_date,
+				)?)
+			}
+			ValuationMethod::OutstandingDebt => Ok(debt),
+		}
+	}
+
+	fn calculate_debt(&self) -> Result<T::Balance, DispatchError> {
+		let now = T::Time::now().as_secs();
+		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, now)
+	}
+
+	fn max_borrow_amount(&self, total_borrowed: T::Balance) -> Result<T::Balance, DispatchError> {
+		Ok(match self.info.max_borrow_amount {
+			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
+				.ensure_mul_int(self.info.collateral_value)?
+				.saturating_sub(total_borrowed),
+			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
+				.ensure_mul_int(self.info.collateral_value)?
+				.saturating_sub(self.calculate_debt()?),
+		})
+	}
+
+	fn adjust_interest(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
+		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+			self.info.interest_rate,
+			self.normalized_debt,
+			adjustment,
+		)?;
+
+		Ok(())
+	}
+
+	fn update_penalty(&mut self, penalty: WriteOffPenalty<T::Rate>) -> DispatchResult {
+		let original_rate = self.write_off_penalty.unpenalize(self.info.interest_rate)?;
+		let new_interest_rate = penalty.penalize(original_rate)?;
+
+		self.set_interest_rate(new_interest_rate)
+	}
+
+	fn set_interest_rate(&mut self, new_interest_rate: T::Rate) -> DispatchResult {
+		let old_interest_rate = self.info.interest_rate;
+
+		T::InterestAccrual::reference_rate(new_interest_rate)?;
+
+		self.normalized_debt = T::InterestAccrual::renormalize_debt(
+			old_interest_rate,
+			new_interest_rate,
+			self.normalized_debt,
+		)?;
+		self.info.interest_rate = new_interest_rate;
+
+		T::InterestAccrual::unreference_rate(old_interest_rate)
+	}
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct ExternalActivePricing<T: Config> {
+	/// Basic external pricing info
+	info: ExternalPricing<T::PriceId, T::Balance>,
+}
+
+impl<T: Config> ExternalActivePricing<T> {
+	fn new(
+		info: ExternalPricing<T::PriceId, T::Balance>,
+		pool_id: PoolIdOf<T>,
+	) -> Result<Self, DispatchError> {
+		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
+		Ok(Self { info })
+	}
+
+	fn close(
+		self,
+		pool_id: PoolIdOf<T>,
+	) -> Result<ExternalPricing<T::PriceId, T::Balance>, DispatchError> {
+		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
+		Ok(self.info)
+	}
+
+	fn calculate_price(&self) -> Result<T::Balance, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id)?.0)
+	}
+
+	fn last_updated(&self) -> Result<Moment, DispatchError> {
+		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
+	}
+
+	fn compute_present_value(&self, price: T::Balance) -> Result<T::Balance, DispatchError> {
+		Ok(self.info.quantity.ensure_mul(price)?)
+	}
+
+	fn remaining_from(&self, current: T::Balance) -> Result<T::Balance, DispatchError> {
+		let price = self.calculate_price()?;
+		let total_price = self.info.quantity.ensure_mul(price)?;
+		Ok(total_price.saturating_sub(current))
+	}
+}
+
+/// Pricing atributes for active loans
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub enum ActivePricing<T: Config> {
+	/// External attributes
+	Internal(InternalActivePricing<T>),
+
+	/// Internal attributes
+	External(ExternalActivePricing<T>),
+}
+
 /// Data containing an active loan.
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
@@ -364,20 +549,26 @@ pub struct ActiveLoan<T: Config> {
 	/// Id of this loan
 	loan_id: T::LoanId,
 
-	/// Loan information
-	info: LoanInfo<T>,
+	/// Specify the repayments schedule of the loan
+	schedule: RepaymentSchedule,
+
+	/// Collateral used for this loan
+	collateral: AssetOf<T>,
+
+	/// Restrictions of this loan
+	restrictions: LoanRestrictions,
 
 	/// Borrower account that created this loan
 	borrower: T::AccountId,
 
-	/// Specify whether the loan has been writen off
-	write_off_status: WriteOffStatus<T::Rate>,
+	/// Write off percentage of this loan
+	write_off_percentage: WriteOffPercentage<T::Rate>,
 
 	/// Date when the loans becomes active
 	origination_date: Moment,
 
-	/// Normalized debt used to calculate the outstanding debt.
-	normalized_debt: T::Balance,
+	/// Pricing properties
+	pricing: ActivePricing<T>,
 
 	/// Total borrowed amount of this loan
 	total_borrowed: T::Balance,
@@ -394,18 +585,22 @@ impl<T: Config> ActiveLoan<T> {
 		borrower: T::AccountId,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
-		T::InterestAccrual::reference_rate(info.interest_rate)?;
-		if let ValuationMethod::Oracle(oracle) = &info.valuation_method {
-			T::PriceRegistry::register_id(&oracle.id, &pool_id)?;
-		}
-
 		Ok(ActiveLoan {
 			loan_id,
-			info,
+			schedule: info.schedule,
+			collateral: info.collateral,
+			restrictions: info.restrictions,
 			borrower,
-			write_off_status: WriteOffStatus::default(),
+			write_off_percentage: WriteOffPercentage::default(),
 			origination_date: now,
-			normalized_debt: T::Balance::zero(),
+			pricing: match info.pricing {
+				Pricing::Internal(info) => {
+					ActivePricing::Internal(InternalActivePricing::new(info)?)
+				}
+				Pricing::External(info) => {
+					ActivePricing::External(ExternalActivePricing::new(info, pool_id)?)
+				}
+			},
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
 		})
@@ -420,17 +615,16 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	pub fn maturity_date(&self) -> Moment {
-		self.info.schedule.maturity.date()
+		self.schedule.maturity.date()
 	}
 
-	pub fn write_off_status(&self) -> &WriteOffStatus<T::Rate> {
-		&self.write_off_status
-	}
-
-	pub fn oracle_id(&self) -> Option<T::PriceId> {
-		match &self.info.valuation_method {
-			ValuationMethod::Oracle(oracle) => Some(oracle.id),
-			_ => None,
+	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
+		WriteOffStatus {
+			percentage: self.write_off_percentage.0,
+			penalty: match &self.pricing {
+				ActivePricing::Internal(pricing) => pricing.write_off_penalty.0,
+				ActivePricing::External(_) => T::Rate::zero(),
+			},
 		}
 	}
 
@@ -445,29 +639,30 @@ impl<T: Config> ActiveLoan<T> {
 				let overdue_secs = SECONDS_PER_DAY.ensure_mul(days.ensure_into()?)?;
 				Ok(now >= self.maturity_date().ensure_add(overdue_secs)?)
 			}
-			WriteOffTrigger::OracleValuationOutdated(secs) => match self.oracle_id() {
-				Some(id) => {
-					let (_, last_updated) = T::PriceRegistry::get(&id)?;
-					Ok(now >= last_updated.ensure_add(*secs)?)
+			WriteOffTrigger::PriceOutdated(secs) => match &self.pricing {
+				ActivePricing::External(pricing) => {
+					Ok(now >= pricing.last_updated()?.ensure_add(*secs)?)
 				}
-				None => Ok(false),
+				ActivePricing::Internal(_) => Ok(false),
 			},
 		}
 	}
 
-	pub fn calculate_debt(&self) -> Result<T::Balance, DispatchError> {
-		let now = T::Time::now().as_secs();
-		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, now)
-	}
-
+	// TODO: Unify this
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
-		let debt = self.calculate_debt()?;
-		let price = self
-			.oracle_id()
-			.map(|id| T::PriceRegistry::get(&id))
-			.transpose()?;
+		let value = match &self.pricing {
+			ActivePricing::Internal(pricing) => {
+				let debt = pricing.calculate_debt()?;
+				let maturity_date = self.schedule.maturity.date();
+				pricing.compute_present_value(debt, self.origination_date, maturity_date)?
+			}
+			ActivePricing::External(pricing) => {
+				let price = pricing.calculate_price()?;
+				pricing.compute_present_value(price)?
+			}
+		};
 
-		self.compute_present_value(debt, price)
+		Ok(self.write_off_percentage.write_down(value)?)
 	}
 
 	/// An optimized version of `ActiveLoan::present_value()` when some input
@@ -483,93 +678,46 @@ impl<T: Config> ActiveLoan<T> {
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
 	{
-		let debt = rate_cache.current_debt(self.info.interest_rate, self.normalized_debt)?;
-		let price = self
-			.oracle_id()
-			.map(|id| price_cache.get(&id))
-			.transpose()?;
-
-		self.compute_present_value(debt, price)
-	}
-
-	fn compute_present_value(
-		&self,
-		debt: T::Balance,
-		oracle_price: Option<PriceOf<T>>,
-	) -> Result<T::Balance, DispatchError> {
-		let debt = self.write_off_status.write_down(debt)?;
-
-		match &self.info.valuation_method {
-			ValuationMethod::DiscountedCashFlow(dcf) => {
-				let now = T::Time::now().as_secs();
-				let maturity_date = self.info.schedule.maturity.date();
-				Ok(dcf.compute_present_value(
-					debt,
-					now,
-					self.info.interest_rate,
-					maturity_date,
-					self.origination_date,
-				)?)
+		let value = match &self.pricing {
+			ActivePricing::Internal(pricing) => {
+				let interest_rate = pricing.info.interest_rate;
+				let debt = rate_cache.current_debt(interest_rate, pricing.normalized_debt)?;
+				let maturity_date = self.schedule.maturity.date();
+				pricing.compute_present_value(debt, self.origination_date, maturity_date)?
 			}
-			ValuationMethod::OutstandingDebt => Ok(debt),
-			ValuationMethod::Oracle(oracle) => {
-				let price = oracle_price
-					.ok_or(DispatchError::Other(
-						"If a loan has oracle valuation, it should be priced",
-					))?
-					.0;
-
-				let value = oracle.quantity.ensure_mul(price)?;
-				Ok(self.write_off_status.write_down(value)?)
+			ActivePricing::External(pricing) => {
+				let price = price_cache.get(&pricing.info.price_id)?.0;
+				pricing.compute_present_value(price)?
 			}
-		}
-	}
+		};
 
-	fn update_interest_rate(&mut self, new_interest_rate: T::Rate) -> DispatchResult {
-		let old_interest_rate = self.info.interest_rate;
-
-		T::InterestAccrual::reference_rate(new_interest_rate)?;
-
-		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			old_interest_rate,
-			new_interest_rate,
-			self.normalized_debt,
-		)?;
-		self.info.interest_rate = new_interest_rate;
-
-		T::InterestAccrual::unreference_rate(old_interest_rate)
-	}
-
-	fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
-		Ok(match self.info.restrictions.max_borrow_amount {
-			MaxBorrowAmount::UpToTotalBorrowed { advance_rate } => advance_rate
-				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.total_borrowed),
-			MaxBorrowAmount::UpToOutstandingDebt { advance_rate } => advance_rate
-				.ensure_mul_int(self.info.collateral_value)?
-				.saturating_sub(self.calculate_debt()?),
-		})
+		Ok(self.write_off_percentage.write_down(value)?)
 	}
 
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
 		let now = T::Time::now().as_secs();
 
-		match self.info.restrictions.borrows {
+		match self.restrictions.borrows {
 			BorrowRestrictions::WrittenOff => {
 				ensure!(
-					self.write_off_status.is_none(),
+					self.write_off_status().is_none(),
 					Error::<T>::from(BorrowLoanError::WrittenOffRestriction)
 				)
 			}
 		}
 
 		ensure!(
-			self.info.schedule.maturity.is_valid(now),
+			self.schedule.maturity.is_valid(now),
 			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
+		let max_borrow_amount = match &self.pricing {
+			ActivePricing::Internal(pricing) => pricing.max_borrow_amount(self.total_borrowed)?,
+			ActivePricing::External(pricing) => pricing.remaining_from(self.total_borrowed)?,
+		};
+
 		ensure!(
-			amount <= self.max_borrow_amount()?,
+			amount <= max_borrow_amount,
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 
@@ -581,28 +729,22 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_borrowed.ensure_add_assign(amount)?;
 
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate,
-			self.normalized_debt,
-			Adjustment::Increase(amount),
-		)?;
+		if let ActivePricing::Internal(pricing) = &mut self.pricing {
+			pricing.adjust_interest(Adjustment::Increase(amount))?;
+		}
 
 		Ok(())
 	}
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
-		let repayment_limit = match &self.info.valuation_method {
-			ValuationMethod::Oracle(oracle) => {
-				let price = T::PriceRegistry::get(&oracle.id)?.0;
-				let total_price = oracle.quantity.ensure_mul(price)?;
-				total_price.saturating_sub(self.total_repaid)
-			}
-			_ => self.calculate_debt()?,
+		let max_repay_amount = match &self.pricing {
+			ActivePricing::Internal(pricing) => pricing.calculate_debt()?,
+			ActivePricing::External(pricing) => pricing.remaining_from(self.total_repaid)?,
 		};
 
-		let amount = amount.min(repayment_limit);
+		let amount = amount.min(max_repay_amount);
 
-		match self.info.restrictions.repayments {
+		match self.restrictions.repayments {
 			RepayRestrictions::None => (),
 		};
 
@@ -614,49 +756,32 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_repaid.ensure_add_assign(amount)?;
 
-		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate,
-			self.normalized_debt,
-			Adjustment::Decrease(amount),
-		)?;
+		if let ActivePricing::Internal(pricing) = &mut self.pricing {
+			pricing.adjust_interest(Adjustment::Decrease(amount))?;
+		}
 
 		Ok(amount)
 	}
 
-	fn ensure_can_write_off(
-		&self,
-		limit: &WriteOffStatus<T::Rate>,
-		new_status: &WriteOffStatus<T::Rate>,
-	) -> DispatchResult {
-		ensure!(
-			new_status.percentage >= limit.percentage && new_status.penalty >= limit.penalty,
-			Error::<T>::from(WrittenOffError::LessThanPolicy)
-		);
+	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
+		if let ActivePricing::Internal(pricing) = &mut self.pricing {
+			pricing.update_penalty(WriteOffPenalty(new_status.penalty))?;
+		}
 
-		Ok(())
-	}
-
-	pub fn write_off(
-		&mut self,
-		limit: &WriteOffStatus<T::Rate>,
-		new_status: &WriteOffStatus<T::Rate>,
-	) -> DispatchResult {
-		self.ensure_can_write_off(limit, new_status)?;
-
-		let original_rate = self.write_off_status.unpenalize(self.info.interest_rate)?;
-		let new_interest_rate = new_status.penalize(original_rate)?;
-
-		self.update_interest_rate(new_interest_rate)?;
-		self.write_off_status = new_status.clone();
+		self.write_off_percentage = WriteOffPercentage(new_status.percentage);
 
 		Ok(())
 	}
 
 	fn ensure_can_close(&self) -> DispatchResult {
-		ensure!(
-			self.normalized_debt.is_zero(),
-			Error::<T>::from(CloseLoanError::NotFullyRepaid)
-		);
+		let can_close = match &self.pricing {
+			ActivePricing::Internal(pricing) => pricing.normalized_debt.is_zero(),
+			ActivePricing::External(pricing) => {
+				pricing.remaining_from(self.total_repaid)?.is_zero()
+			}
+		};
+
+		ensure!(can_close, Error::<T>::from(CloseLoanError::NotFullyRepaid));
 
 		Ok(())
 	}
@@ -667,15 +792,17 @@ impl<T: Config> ActiveLoan<T> {
 	) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
 		self.ensure_can_close()?;
 
-		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
-
-		if let ValuationMethod::Oracle(oracle) = &self.info.valuation_method {
-			T::PriceRegistry::unregister_id(&oracle.id, &pool_id)?;
-		}
-
 		let loan = ClosedLoan {
 			closed_at: frame_system::Pallet::<T>::current_block_number(),
-			info: self.info,
+			info: LoanInfo {
+				pricing: match self.pricing {
+					ActivePricing::Internal(pricing) => Pricing::Internal(pricing.close()?),
+					ActivePricing::External(pricing) => Pricing::External(pricing.close(pool_id)?),
+				},
+				collateral: self.collateral,
+				schedule: self.schedule,
+				restrictions: self.restrictions,
+			},
 			total_borrowed: self.total_borrowed,
 			total_repaid: self.total_repaid,
 		};
@@ -699,16 +826,18 @@ mod test_utils {
 					pay_down_schedule: PayDownSchedule::None,
 				},
 				collateral,
-				collateral_value: T::Balance::default(),
-				valuation_method: ValuationMethod::OutstandingDebt,
-				restrictions: LoanRestrictions {
+				pricing: Pricing::Internal(InternalPricing {
+					collateral_value: T::Balance::default(),
+					valuation_method: ValuationMethod::OutstandingDebt,
 					max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
 						advance_rate: T::Rate::default(),
 					},
+					interest_rate: T::Rate::default(),
+				}),
+				restrictions: LoanRestrictions {
 					borrows: BorrowRestrictions::WrittenOff,
 					repayments: RepayRestrictions::None,
 				},
-				interest_rate: T::Rate::default(),
 			}
 		}
 
@@ -722,6 +851,7 @@ mod test_utils {
 			self
 		}
 
+		/*
 		pub fn max_borrow_amount(mut self, input: MaxBorrowAmount<T::Rate>) -> Self {
 			self.restrictions.max_borrow_amount = input;
 			self
@@ -732,16 +862,8 @@ mod test_utils {
 			self
 		}
 
-		pub fn valuation_method(
-			mut self,
-			input: ValuationMethod<T::Balance, T::Rate, T::PriceId>,
-		) -> Self {
+		pub fn valuation_method(mut self, input: ValuationMethod<T::Rate>) -> Self {
 			self.valuation_method = input;
-			self
-		}
-
-		pub fn restrictions(mut self, input: LoanRestrictions<T::Rate>) -> Self {
-			self.restrictions = input;
 			self
 		}
 
@@ -749,11 +871,17 @@ mod test_utils {
 			self.interest_rate = input;
 			self
 		}
+		*/
+
+		pub fn restrictions(mut self, input: LoanRestrictions) -> Self {
+			self.restrictions = input;
+			self
+		}
 	}
 
 	impl<T: Config> ActiveLoan<T> {
 		pub fn set_maturity(&mut self, duration: Duration) {
-			self.info.schedule.maturity = Maturity::Fixed(duration.as_secs());
+			self.schedule.maturity = Maturity::Fixed(duration.as_secs());
 		}
 	}
 }

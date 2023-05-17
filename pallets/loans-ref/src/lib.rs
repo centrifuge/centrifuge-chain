@@ -517,11 +517,10 @@ pub mod pallet {
 			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				let rule = Self::find_write_off_rule(pool_id, loan)?
 					.ok_or(Error::<T>::NoValidWriteOffRule)?;
-				let limit = rule.status.compose_max(loan.write_off_status());
+				let status = rule.status.compose_max(&loan.write_off_status());
 
-				loan.write_off(&limit, &limit)?;
-
-				Ok(limit)
+				loan.write_off(&status)?;
+				Ok(status)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -536,7 +535,7 @@ pub mod pallet {
 		/// Writes off a loan from admin origin.
 		///
 		/// Forces a writing off of a loan if the `percentage` and `penalty`
-		/// parameters respecting the policy values as the minimum.
+		/// parameters respecting the policy values as the maximum.
 		/// This action can write down/up the current write off status of the
 		/// loan. If there is no active policy, an admin write off action can
 		/// write up the write off status. But if there is a policy applied, the
@@ -560,12 +559,12 @@ pub mod pallet {
 				penalty,
 			};
 
-			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
+			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				let rule = Self::find_write_off_rule(pool_id, loan)?;
-				let limit = rule.map(|r| r.status).unwrap_or_else(|| status.clone());
+				Self::ensure_admin_write_off(&status, rule)?;
 
-				loan.write_off(&limit, &status)?;
-				Ok(limit)
+				loan.write_off(&status)?;
+				Ok(())
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -703,6 +702,19 @@ pub mod pallet {
 
 		fn ensure_pool_exists(pool_id: PoolIdOf<T>) -> DispatchResult {
 			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolNotFound);
+			Ok(())
+		}
+
+		fn ensure_admin_write_off(
+			status: &WriteOffStatus<T::Rate>,
+			rule: Option<WriteOffRule<T::Rate>>,
+		) -> DispatchResult {
+			let limit = rule.map(|r| r.status).unwrap_or_else(|| status.clone());
+			ensure!(
+				status.percentage >= limit.percentage && status.penalty >= limit.penalty,
+				Error::<T>::from(WrittenOffError::LessThanPolicy)
+			);
+
 			Ok(())
 		}
 
