@@ -1379,7 +1379,6 @@ impl pallet_pool_system::Config for Runtime {
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
-	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
@@ -1734,7 +1733,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	crate::migrations::UpgradeCentrifuge1019,
+	migrations::UpgradeCentrifuge1019,
 >;
 
 #[cfg(not(feature = "disable-runtime-api"))]
