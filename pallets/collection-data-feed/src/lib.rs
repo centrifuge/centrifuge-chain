@@ -110,7 +110,7 @@ pub mod pallet {
 		type Data = Result<DataValueOf<T>, DispatchError>;
 
 		fn get(data_id: &T::DataId) -> Self::Data {
-			T::DataProvider::get_no_op(data_id).ok_or(Error::<T>::DataIdWithoutData.into())
+			T::DataProvider::get_no_op(data_id).ok_or_else(|| Error::<T>::DataIdWithoutData.into())
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
