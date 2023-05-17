@@ -489,9 +489,8 @@ pub fn build_development_import_queue(
 					*time,
 					slot_duration,
 				);
-			let dynamic_fee = fp_dynamic_fee::InherentDataProvider(U256::from(1)); // TODO: cli.target_gas_price
 
-			Ok((slot, time, dynamic_fee))
+			Ok((slot, time))
 		},
 		registry: config.prometheus_registry(),
 		spawner: &task_manager.spawn_essential_handle(),
