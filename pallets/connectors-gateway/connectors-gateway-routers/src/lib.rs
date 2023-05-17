@@ -16,8 +16,9 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::DispatchResult;
 use scale_info::TypeInfo;
 
-use crate::ethereum_xcm::EthereumXCMRouter;
+use crate::{axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter};
 
+pub mod axelar_evm;
 pub mod ethereum_xcm;
 
 type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
@@ -27,14 +28,23 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub enum DomainRouter<T>
 where
-	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
+	T: frame_system::Config
+		+ pallet_xcm_transactor::Config
+		+ pallet_connectors_gateway::Config
+		+ pallet_evm::Config,
+	T::AccountId: AsRef<[u8; 32]>,
 {
 	EthereumXCM(EthereumXCMRouter<T>),
+	AxelarEVM(AxelarEVMRouter<T>),
 }
 
 impl<T> Router for DomainRouter<T>
 where
-	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
+	T: frame_system::Config
+		+ pallet_xcm_transactor::Config
+		+ pallet_connectors_gateway::Config
+		+ pallet_evm::Config,
+	T::AccountId: AsRef<[u8; 32]>,
 {
 	type Message = MessageOf<T>;
 	type Sender = AccountIdOf<T>;
@@ -42,6 +52,7 @@ where
 	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
 		match self {
 			DomainRouter::EthereumXCM(r) => r.do_send(sender, message),
+			DomainRouter::AxelarEVM(r) => r.do_send(sender, message),
 		}
 	}
 }
