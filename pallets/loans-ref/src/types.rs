@@ -225,29 +225,31 @@ pub struct LoanRestrictions {
 }
 
 /// Internal pricing method
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct InternalPricing<Balance, Rate> {
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct InternalPricing<T: Config> {
 	/// Value of the collateral used for this loan
-	pub collateral_value: Balance,
+	pub collateral_value: T::Balance,
 
 	/// Valuation method of this loan
-	pub valuation_method: ValuationMethod<Rate>,
+	pub valuation_method: ValuationMethod<T::Rate>,
 
 	/// Interest rate per year with any penalty applied
-	pub interest_rate: Rate,
+	pub interest_rate: T::Rate,
 
 	/// How much can be borrowed
-	pub max_borrow_amount: MaxBorrowAmount<Rate>,
+	pub max_borrow_amount: MaxBorrowAmount<T::Rate>,
 }
 
 /// External pricing method
-#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct ExternalPricing<PriceId, Balance> {
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct ExternalPricing<T: Config> {
 	/// Id of an external price
-	pub price_id: PriceId,
+	pub price_id: T::PriceId,
 
 	/// Number of items associated to the price id
-	pub quantity: Balance,
+	pub quantity: T::Balance,
 }
 
 // =================================================================
@@ -270,16 +272,16 @@ pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 #[scale_info(skip_type_params(T))]
 pub enum Pricing<T: Config> {
 	/// Calculated internally
-	Internal(InternalPricing<T::Balance, T::Rate>),
+	Internal(InternalPricing<T>),
 
 	/// Calculated externally
-	External(ExternalPricing<T::PriceId, T::Balance>),
+	External(ExternalPricing<T>),
 }
 
 /// Loan information.
 /// It contemplates the loan proposal by the borrower and the pricing properties
 /// by the issuer.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct LoanInfo<T: Config> {
 	/// Specify the repayments schedule of the loan
@@ -394,7 +396,7 @@ impl<T: Config> ClosedLoan<T> {
 #[scale_info(skip_type_params(T))]
 pub struct InternalActivePricing<T: Config> {
 	/// Basic internal pricing info
-	info: InternalPricing<T::Balance, T::Rate>,
+	info: InternalPricing<T>,
 
 	/// Normalized debt used to calculate the outstanding debt.
 	normalized_debt: T::Balance,
@@ -404,7 +406,7 @@ pub struct InternalActivePricing<T: Config> {
 }
 
 impl<T: Config> InternalActivePricing<T> {
-	fn new(info: InternalPricing<T::Balance, T::Rate>) -> Result<Self, DispatchError> {
+	fn new(info: InternalPricing<T>) -> Result<Self, DispatchError> {
 		T::InterestAccrual::reference_rate(info.interest_rate)?;
 		Ok(Self {
 			info,
@@ -413,7 +415,7 @@ impl<T: Config> InternalActivePricing<T> {
 		})
 	}
 
-	fn close(self) -> Result<InternalPricing<T::Balance, T::Rate>, DispatchError> {
+	fn close(self) -> Result<InternalPricing<T>, DispatchError> {
 		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
 		Ok(self.info)
 	}
@@ -492,22 +494,16 @@ impl<T: Config> InternalActivePricing<T> {
 #[scale_info(skip_type_params(T))]
 pub struct ExternalActivePricing<T: Config> {
 	/// Basic external pricing info
-	info: ExternalPricing<T::PriceId, T::Balance>,
+	info: ExternalPricing<T>,
 }
 
 impl<T: Config> ExternalActivePricing<T> {
-	fn new(
-		info: ExternalPricing<T::PriceId, T::Balance>,
-		pool_id: PoolIdOf<T>,
-	) -> Result<Self, DispatchError> {
+	fn new(info: ExternalPricing<T>, pool_id: PoolIdOf<T>) -> Result<Self, DispatchError> {
 		T::PriceRegistry::register_id(&info.price_id, &pool_id)?;
 		Ok(Self { info })
 	}
 
-	fn close(
-		self,
-		pool_id: PoolIdOf<T>,
-	) -> Result<ExternalPricing<T::PriceId, T::Balance>, DispatchError> {
+	fn close(self, pool_id: PoolIdOf<T>) -> Result<ExternalPricing<T>, DispatchError> {
 		T::PriceRegistry::unregister_id(&self.info.price_id, &pool_id)?;
 		Ok(self.info)
 	}
