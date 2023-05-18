@@ -267,10 +267,10 @@ pub mod external {
 			Ok(self.info.quantity.ensure_mul(price)?)
 		}
 
-		pub fn remaining_from(&self, current: T::Balance) -> Result<T::Balance, DispatchError> {
+		pub fn remaining_from(&self, from: T::Balance) -> Result<T::Balance, DispatchError> {
 			let price = self.calculate_price()?;
 			let total_price = self.info.quantity.ensure_mul(price)?;
-			Ok(total_price.saturating_sub(current))
+			Ok(total_price.saturating_sub(from))
 		}
 	}
 }
