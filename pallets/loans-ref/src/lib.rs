@@ -96,7 +96,7 @@ pub mod pallet {
 		self,
 		write_off::{WriteOffRule, WriteOffStatus},
 		BorrowLoanError, CloseLoanError, CreateLoanError, PortfolioValuationUpdateType,
-		WrittenOffError,
+		RepayLoanError, WrittenOffError,
 	};
 
 	use super::*;
@@ -354,6 +354,8 @@ pub mod pallet {
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
 		BorrowLoanError(BorrowLoanError),
+		/// Emits when the loan can not be repaid from
+		RepayLoanError(RepayLoanError),
 		/// Emits when the loan can not be written off
 		WrittenOffError(WrittenOffError),
 		/// Emits when the loan can not be closed
@@ -369,6 +371,12 @@ pub mod pallet {
 	impl<T> From<BorrowLoanError> for Error<T> {
 		fn from(error: BorrowLoanError) -> Self {
 			Error::<T>::BorrowLoanError(error)
+		}
+	}
+
+	impl<T> From<RepayLoanError> for Error<T> {
+		fn from(error: RepayLoanError) -> Self {
+			Error::<T>::RepayLoanError(error)
 		}
 	}
 

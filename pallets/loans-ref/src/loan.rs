@@ -26,7 +26,7 @@ use crate::{
 		valuation::ValuationMethod,
 		write_off::{WriteOffPenalty, WriteOffPercentage, WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
-		RepayRestrictions, RepaymentSchedule,
+		RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -58,7 +58,17 @@ impl<T: Config> LoanInfo<T> {
 	pub fn validate(&self, now: Moment) -> DispatchResult {
 		match &self.pricing {
 			Pricing::Internal(pricing) => pricing.validate()?,
-			Pricing::External(pricing) => pricing.validate()?,
+			Pricing::External(pricing) => {
+				pricing.validate()?;
+				ensure!(
+					self.restrictions.borrows == BorrowRestrictions::FullOnce,
+					Error::<T>::from(CreateLoanError::InvalidBorrowRestriction)
+				);
+				ensure!(
+					self.restrictions.repayments == RepayRestrictions::FullOnce,
+					Error::<T>::from(CreateLoanError::InvalidRepayRestriction)
+				)
+			}
 		}
 
 		ensure!(
@@ -290,22 +300,6 @@ impl<T: Config> ActiveLoan<T> {
 	}
 
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
-		let now = T::Time::now().as_secs();
-
-		match self.restrictions.borrows {
-			BorrowRestrictions::WrittenOff => {
-				ensure!(
-					self.write_off_status().is_none(),
-					Error::<T>::from(BorrowLoanError::WrittenOffRestriction)
-				)
-			}
-		}
-
-		ensure!(
-			self.schedule.maturity.is_valid(now),
-			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
-		);
-
 		let max_borrow_amount = match &self.pricing {
 			ActivePricing::Internal(pricing) => pricing.max_borrow_amount(self.total_borrowed)?,
 			ActivePricing::External(pricing) => pricing.remaining_from(self.total_borrowed)?,
@@ -314,6 +308,24 @@ impl<T: Config> ActiveLoan<T> {
 		ensure!(
 			amount <= max_borrow_amount,
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
+		);
+
+		let no_restriction = match self.restrictions.borrows {
+			BorrowRestrictions::NoWrittenOff => self.write_off_status().is_none(),
+			BorrowRestrictions::FullOnce => {
+				self.total_borrowed.is_zero() && amount == max_borrow_amount
+			}
+		};
+
+		ensure!(
+			no_restriction,
+			Error::<T>::from(BorrowLoanError::Restriction)
+		);
+
+		let now = T::Time::now().as_secs();
+		ensure!(
+			self.schedule.maturity.is_valid(now),
+			Error::<T>::from(BorrowLoanError::MaturityDatePassed)
 		);
 
 		Ok(())
@@ -339,9 +351,17 @@ impl<T: Config> ActiveLoan<T> {
 
 		let amount = amount.min(max_repay_amount);
 
-		match self.restrictions.repayments {
-			RepayRestrictions::None => (),
+		let no_restriction = match self.restrictions.repayments {
+			RepayRestrictions::None => true,
+			RepayRestrictions::FullOnce => {
+				self.total_repaid.is_zero() && amount == max_repay_amount
+			}
 		};
+
+		ensure!(
+			no_restriction,
+			Error::<T>::from(RepayLoanError::Restriction)
+		);
 
 		Ok(amount)
 	}
@@ -434,7 +454,7 @@ mod test_utils {
 					interest_rate: T::Rate::default(),
 				}),
 				restrictions: LoanRestrictions {
-					borrows: BorrowRestrictions::WrittenOff,
+					borrows: BorrowRestrictions::NoWrittenOff,
 					repayments: RepayRestrictions::None,
 				},
 			}

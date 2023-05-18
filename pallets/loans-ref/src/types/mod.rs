@@ -33,6 +33,10 @@ pub enum CreateLoanError {
 	InvalidValuationMethod,
 	/// Emits when repayment schedule is incorrectly specified
 	InvalidRepaymentSchedule,
+	/// Emits when a borrow restriction is incorrect
+	InvalidBorrowRestriction,
+	/// Emits when a repay restriction is incorrect
+	InvalidRepayRestriction,
 }
 
 /// Error related to loan borrowing
@@ -40,10 +44,18 @@ pub enum CreateLoanError {
 pub enum BorrowLoanError {
 	/// Emits when the borrowed amount is more than the allowed amount
 	MaxAmountExceeded,
-	/// Emits when the loan can not be borrowed because the loan is written off
-	WrittenOffRestriction,
+	/// Emits when the loan can not be borrowed because of a restriction
+	Restriction,
 	/// Emits when maturity has passed and borrower tried to borrow more
 	MaturityDatePassed,
+}
+
+/// Error related to loan borrowing
+#[derive(Encode, Decode, TypeInfo, PalletError)]
+pub enum RepayLoanError {
+	/// Emits when the loan can not be repaid more than once because of a
+	/// restriction
+	Restriction,
 }
 
 /// Error related to loan borrowing
@@ -178,7 +190,10 @@ impl RepaymentSchedule {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum BorrowRestrictions {
 	/// The loan can not be borrowed if it has been written off.
-	WrittenOff,
+	NoWrittenOff,
+
+	/// You only can borrow the full loan value once.
+	FullOnce,
 }
 
 /// Specify how offer a loan can be repaid
@@ -186,6 +201,9 @@ pub enum BorrowRestrictions {
 pub enum RepayRestrictions {
 	/// No restrictions
 	None,
+
+	/// You only can repay the entire value of the loan once.
+	FullOnce,
 }
 
 /// Define the loan restrictions
