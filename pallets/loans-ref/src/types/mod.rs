@@ -53,8 +53,7 @@ pub enum BorrowLoanError {
 /// Error related to loan borrowing
 #[derive(Encode, Decode, TypeInfo, PalletError)]
 pub enum RepayLoanError {
-	/// Emits when the loan can not be repaid more than once because of a
-	/// restriction
+	/// Emits when the loan can not be borrowed because of a restriction
 	Restriction,
 }
 
