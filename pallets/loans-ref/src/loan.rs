@@ -1,7 +1,7 @@
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
 	data::DataCollection,
-	ops::{EnsureAdd, EnsureAddAssign, EnsureInto, EnsureMul},
+	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
 	RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
@@ -24,7 +24,7 @@ use crate::{
 	},
 	types::{
 		valuation::ValuationMethod,
-		write_off::{WriteOffPenalty, WriteOffPercentage, WriteOffStatus, WriteOffTrigger},
+		write_off::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
 		RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
@@ -169,7 +169,7 @@ pub struct ActiveLoan<T: Config> {
 	borrower: T::AccountId,
 
 	/// Write off percentage of this loan
-	write_off_percentage: WriteOffPercentage<T::Rate>,
+	write_off_percentage: T::Rate,
 
 	/// Date when the loans becomes active
 	origination_date: Moment,
@@ -198,7 +198,7 @@ impl<T: Config> ActiveLoan<T> {
 			collateral: info.collateral,
 			restrictions: info.restrictions,
 			borrower,
-			write_off_percentage: WriteOffPercentage::default(),
+			write_off_percentage: T::Rate::zero(),
 			origination_date: now,
 			pricing: match info.pricing {
 				Pricing::Internal(info) => {
@@ -227,12 +227,16 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
 		WriteOffStatus {
-			percentage: self.write_off_percentage.0,
+			percentage: self.write_off_percentage,
 			penalty: match &self.pricing {
-				ActivePricing::Internal(pricing) => pricing.write_off_penalty.0,
+				ActivePricing::Internal(pricing) => pricing.write_off_penalty(),
 				ActivePricing::External(_) => T::Rate::zero(),
 			},
 		}
+	}
+
+	fn write_down(&self, value: T::Balance) -> Result<T::Balance, DispatchError> {
+		Ok(value.ensure_sub(self.write_off_percentage.ensure_mul_int(value)?)?)
 	}
 
 	/// Check if a write off rule is applicable for this loan
@@ -268,7 +272,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 		};
 
-		Ok(self.write_off_percentage.write_down(value)?)
+		self.write_down(value)
 	}
 
 	/// An optimized version of `ActiveLoan::present_value()` when some input
@@ -296,7 +300,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 		};
 
-		Ok(self.write_off_percentage.write_down(value)?)
+		self.write_down(value)
 	}
 
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
@@ -380,17 +384,17 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
 		if let ActivePricing::Internal(pricing) = &mut self.pricing {
-			pricing.update_penalty(WriteOffPenalty(new_status.penalty))?;
+			pricing.update_penalty(new_status.penalty)?;
 		}
 
-		self.write_off_percentage = WriteOffPercentage(new_status.percentage);
+		self.write_off_percentage = new_status.percentage;
 
 		Ok(())
 	}
 
 	fn ensure_can_close(&self) -> DispatchResult {
 		let can_close = match &self.pricing {
-			ActivePricing::Internal(pricing) => pricing.normalized_debt.is_zero(),
+			ActivePricing::Internal(pricing) => pricing.has_debt(),
 			ActivePricing::External(pricing) => {
 				pricing.remaining_from(self.total_repaid)?.is_zero()
 			}
@@ -469,6 +473,13 @@ mod test_utils {
 			self.schedule.maturity = Maturity::Fixed(duration.as_secs());
 			self
 		}
+
+		/*
+		pub fn pricing(mut self, pricing: Pricing<T>) -> Self {
+			self.schedule.maturity = Maturity::Fixed(duration.as_secs());
+			self
+		}
+		*/
 
 		/*
 		pub fn max_borrow_amount(mut self, input: MaxBorrowAmount<T::Rate>) -> Self {

@@ -12,11 +12,11 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use cfg_traits::ops::{EnsureAdd, EnsureFixedPointNumber, EnsureSub};
+use cfg_traits::ops::{EnsureAdd, EnsureSub};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Get, ArithmeticError, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{traits::Get, FixedPointNumber};
 use sp_std::collections::btree_set::BTreeSet;
 use strum::EnumCount;
 
@@ -148,33 +148,6 @@ where
 
 	pub fn is_none(&self) -> bool {
 		self.percentage.is_zero() && self.penalty.is_zero()
-	}
-}
-
-/// Rate wrapper with operations to write down balances
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffPercentage<Rate>(pub Rate);
-
-impl<Rate: FixedPointNumber> WriteOffPercentage<Rate> {
-	pub fn write_down<Balance: FixedPointOperand + EnsureSub>(
-		&self,
-		value: Balance,
-	) -> Result<Balance, ArithmeticError> {
-		value.ensure_sub(self.0.ensure_mul_int(value)?)
-	}
-}
-
-/// Rate wrapper with operations to penalize other rates
-#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub struct WriteOffPenalty<Rate>(pub Rate);
-
-impl<Rate: EnsureAdd + EnsureSub> WriteOffPenalty<Rate> {
-	pub fn penalize(&self, interest_rate: Rate) -> Result<Rate, ArithmeticError> {
-		interest_rate.ensure_add(self.0)
-	}
-
-	pub fn unpenalize(&self, interest_rate: Rate) -> Result<Rate, ArithmeticError> {
-		interest_rate.ensure_sub(self.0)
 	}
 }
 

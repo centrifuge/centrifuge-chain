@@ -28,7 +28,10 @@ pub enum ActivePricing<T: Config> {
 
 pub mod internal {
 	use cfg_primitives::Moment;
-	use cfg_traits::{ops::EnsureFixedPointNumber, InterestAccrual, RateCollection};
+	use cfg_traits::{
+		ops::{EnsureAdd, EnsureFixedPointNumber, EnsureSub},
+		InterestAccrual, RateCollection,
+	};
 	use cfg_types::adjustments::Adjustment;
 	use frame_support::{ensure, pallet_prelude::DispatchResult, traits::UnixTime};
 	use sp_arithmetic::traits::Saturating;
@@ -37,7 +40,7 @@ pub mod internal {
 	use super::*;
 	use crate::{
 		pallet::{Config, Error},
-		types::{valuation::ValuationMethod, write_off::WriteOffPenalty, CreateLoanError},
+		types::{valuation::ValuationMethod, CreateLoanError},
 	};
 
 	/// Diferents methods of how to compute the amount can be borrowed
@@ -81,17 +84,19 @@ pub mod internal {
 	}
 
 	/// Internal pricing method with extra attributes for active loans
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+	#[derive(
+		Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen,
+	)]
 	#[scale_info(skip_type_params(T))]
 	pub struct InternalActivePricing<T: Config> {
 		/// Basic internal pricing info
-		pub info: InternalPricing<T>,
+		info: InternalPricing<T>,
 
 		/// Normalized debt used to calculate the outstanding debt.
-		pub normalized_debt: T::Balance,
+		normalized_debt: T::Balance,
 
 		/// Additional interest that accrues on the written down loan as penalty
-		pub write_off_penalty: WriteOffPenalty<T::Rate>,
+		write_off_penalty: T::Rate,
 	}
 
 	impl<T: Config> InternalActivePricing<T> {
@@ -100,13 +105,21 @@ pub mod internal {
 			Ok(Self {
 				info,
 				normalized_debt: T::Balance::zero(),
-				write_off_penalty: WriteOffPenalty::default(),
+				write_off_penalty: T::Rate::zero(),
 			})
 		}
 
 		pub fn end(self) -> Result<InternalPricing<T>, DispatchError> {
 			T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
 			Ok(self.info)
+		}
+
+		pub fn write_off_penalty(&self) -> T::Rate {
+			self.write_off_penalty
+		}
+
+		pub fn has_debt(&self) -> bool {
+			!self.normalized_debt.is_zero()
 		}
 
 		pub fn compute_present_value(
@@ -166,9 +179,11 @@ pub mod internal {
 			Ok(())
 		}
 
-		pub fn update_penalty(&mut self, penalty: WriteOffPenalty<T::Rate>) -> DispatchResult {
-			let original_rate = self.write_off_penalty.unpenalize(self.info.interest_rate)?;
-			let new_interest_rate = penalty.penalize(original_rate)?;
+		pub fn update_penalty(&mut self, new_penalty: T::Rate) -> DispatchResult {
+			let base_interest_rate = self.info.interest_rate.ensure_sub(self.write_off_penalty)?;
+
+			self.write_off_penalty = new_penalty;
+			let new_interest_rate = base_interest_rate.ensure_add(self.write_off_penalty)?;
 
 			self.set_interest_rate(new_interest_rate)
 		}
@@ -197,7 +212,7 @@ pub mod external {
 		ops::EnsureMul,
 	};
 	use codec::{Decode, Encode, MaxEncodedLen};
-	use frame_support::{self, RuntimeDebug, RuntimeDebugNoBound};
+	use frame_support::{self, RuntimeDebugNoBound};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::traits::Saturating;
 	use sp_runtime::{DispatchError, DispatchResult};
@@ -224,7 +239,9 @@ pub mod external {
 	}
 
 	/// External pricing method with extra attributes for active loans
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+	#[derive(
+		Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebugNoBound, MaxEncodedLen,
+	)]
 	#[scale_info(skip_type_params(T))]
 	pub struct ExternalActivePricing<T: Config> {
 		/// Basic external pricing info
