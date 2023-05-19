@@ -18,13 +18,10 @@ use sp_runtime::{
 use crate::{
 	pallet::{AssetOf, Config, Error, PoolIdOf, PriceOf},
 	pricing::{
-		external::ExternalActivePricing,
-		internal::{InternalActivePricing, InternalPricing},
-		ActivePricing, Pricing,
+		external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
 	},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
-		valuation::ValuationMethod,
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
 		RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
@@ -37,16 +34,16 @@ use crate::{
 #[scale_info(skip_type_params(T))]
 pub struct LoanInfo<T: Config> {
 	/// Specify the repayments schedule of the loan
-	schedule: RepaymentSchedule,
+	pub schedule: RepaymentSchedule,
 
 	/// Collateral used for this loan
-	collateral: AssetOf<T>,
+	pub collateral: AssetOf<T>,
 
 	/// Pricing properties for this loan
-	pricing: Pricing<T>,
+	pub pricing: Pricing<T>,
 
 	/// Restrictions of this loan
-	restrictions: LoanRestrictions,
+	pub restrictions: LoanRestrictions,
 }
 
 impl<T: Config> LoanInfo<T> {
@@ -225,6 +222,10 @@ impl<T: Config> ActiveLoan<T> {
 		self.schedule.maturity.date()
 	}
 
+	pub fn pricing(&self) -> &ActivePricing<T> {
+		&self.pricing
+	}
+
 	pub fn write_off_status(&self) -> WriteOffStatus<T::Rate> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
@@ -314,15 +315,13 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(BorrowLoanError::MaxAmountExceeded)
 		);
 
-		let no_restriction = match self.restrictions.borrows {
-			BorrowRestrictions::NoWrittenOff => self.write_off_status().is_none(),
-			BorrowRestrictions::FullOnce => {
-				self.total_borrowed.is_zero() && amount == max_borrow_amount
-			}
-		};
-
 		ensure!(
-			no_restriction,
+			match self.restrictions.borrows {
+				BorrowRestrictions::NoWrittenOff => self.write_off_status().is_none(),
+				BorrowRestrictions::FullOnce => {
+					self.total_borrowed.is_zero() && amount == max_borrow_amount
+				}
+			},
 			Error::<T>::from(BorrowLoanError::Restriction)
 		);
 
@@ -355,15 +354,13 @@ impl<T: Config> ActiveLoan<T> {
 
 		let amount = amount.min(max_repay_amount);
 
-		let no_restriction = match self.restrictions.repayments {
-			RepayRestrictions::None => true,
-			RepayRestrictions::FullOnce => {
-				self.total_repaid.is_zero() && amount == max_repay_amount
-			}
-		};
-
 		ensure!(
-			no_restriction,
+			match self.restrictions.repayments {
+				RepayRestrictions::None => true,
+				RepayRestrictions::FullOnce => {
+					self.total_repaid.is_zero() && amount == max_repay_amount
+				}
+			},
 			Error::<T>::from(RepayLoanError::Restriction)
 		);
 
@@ -394,7 +391,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	fn ensure_can_close(&self) -> DispatchResult {
 		let can_close = match &self.pricing {
-			ActivePricing::Internal(pricing) => pricing.has_debt(),
+			ActivePricing::Internal(pricing) => !pricing.has_debt(),
 			ActivePricing::External(pricing) => {
 				pricing.remaining_from(self.total_repaid)?.is_zero()
 			}
@@ -428,90 +425,9 @@ impl<T: Config> ActiveLoan<T> {
 
 		Ok((loan, self.borrower))
 	}
-}
 
-#[cfg(any(feature = "std", feature = "runtime-benchmarks"))]
-mod test_utils {
-	use sp_std::time::Duration;
-
-	use super::*;
-	use crate::{
-		pricing::internal::MaxBorrowAmount,
-		types::{InterestPayments, Maturity, PayDownSchedule},
-	};
-
-	impl<T: Config> LoanInfo<T> {
-		pub fn new(collateral: AssetOf<T>) -> Self {
-			Self {
-				schedule: RepaymentSchedule {
-					maturity: Maturity::Fixed(0),
-					interest_payments: InterestPayments::None,
-					pay_down_schedule: PayDownSchedule::None,
-				},
-				collateral,
-				pricing: Pricing::Internal(InternalPricing {
-					collateral_value: T::Balance::default(),
-					valuation_method: ValuationMethod::OutstandingDebt,
-					max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
-						advance_rate: T::Rate::default(),
-					},
-					interest_rate: T::Rate::default(),
-				}),
-				restrictions: LoanRestrictions {
-					borrows: BorrowRestrictions::NoWrittenOff,
-					repayments: RepayRestrictions::None,
-				},
-			}
-		}
-
-		pub fn schedule(mut self, input: RepaymentSchedule) -> Self {
-			self.schedule = input;
-			self
-		}
-
-		pub fn maturity(mut self, duration: Duration) -> Self {
-			self.schedule.maturity = Maturity::Fixed(duration.as_secs());
-			self
-		}
-
-		/*
-		pub fn pricing(mut self, pricing: Pricing<T>) -> Self {
-			self.schedule.maturity = Maturity::Fixed(duration.as_secs());
-			self
-		}
-		*/
-
-		/*
-		pub fn max_borrow_amount(mut self, input: MaxBorrowAmount<T::Rate>) -> Self {
-			self.restrictions.max_borrow_amount = input;
-			self
-		}
-
-		pub fn collateral_value(mut self, input: T::Balance) -> Self {
-			self.collateral_value = input;
-			self
-		}
-
-		pub fn valuation_method(mut self, input: ValuationMethod<T::Rate>) -> Self {
-			self.valuation_method = input;
-			self
-		}
-
-		pub fn interest_rate(mut self, input: T::Rate) -> Self {
-			self.interest_rate = input;
-			self
-		}
-		*/
-
-		pub fn restrictions(mut self, input: LoanRestrictions) -> Self {
-			self.restrictions = input;
-			self
-		}
-	}
-
-	impl<T: Config> ActiveLoan<T> {
-		pub fn set_maturity(&mut self, duration: Duration) {
-			self.schedule.maturity = Maturity::Fixed(duration.as_secs());
-		}
+	#[cfg(any(feature = "std", feature = "runtime-benchmarks"))]
+	pub fn set_maturity(&mut self, duration: Moment) {
+		self.schedule.maturity = crate::types::Maturity::Fixed(duration);
 	}
 }
