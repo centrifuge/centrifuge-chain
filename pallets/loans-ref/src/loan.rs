@@ -426,7 +426,7 @@ impl<T: Config> ActiveLoan<T> {
 		Ok((loan, self.borrower))
 	}
 
-	#[cfg(any(feature = "std", feature = "runtime-benchmarks"))]
+	#[cfg(feature = "runtime-benchmarks")]
 	pub fn set_maturity(&mut self, duration: Moment) {
 		self.schedule.maturity = crate::types::Maturity::Fixed(duration);
 	}

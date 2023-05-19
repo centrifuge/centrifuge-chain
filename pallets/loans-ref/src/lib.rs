@@ -893,7 +893,7 @@ pub mod pallet {
 		/// Set the maturity date of the loan to this instant.
 		pub fn expire(pool_id: PoolIdOf<T>, loan_id: T::LoanId) -> DispatchResult {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
-				loan.set_maturity(T::Time::now());
+				loan.set_maturity(T::Time::now().as_secs());
 				Ok(())
 			})?;
 			Ok(())

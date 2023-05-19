@@ -201,7 +201,7 @@ pub enum RepayRestrictions {
 	/// No restrictions
 	None,
 
-	/// You only can repay the entire value of the loan once.
+	/// You only can repay the full loan value once.
 	FullOnce,
 }
 
