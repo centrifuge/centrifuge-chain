@@ -17,7 +17,8 @@ use sp_std::marker::PhantomData;
 
 use crate::pallet::{Config, PoolIdOf, PriceResultOf};
 
-const DEFAULT_ERR: DispatchError = DispatchError::Other("No price registry for pallet-loans");
+const DEFAULT_ERR: DispatchError =
+	DispatchError::Other("No configured price registry for pallet-loans");
 
 pub struct NoPriceRegistry<T>(PhantomData<T>);
 
