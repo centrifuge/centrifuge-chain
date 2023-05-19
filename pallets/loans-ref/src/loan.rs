@@ -23,8 +23,8 @@ use crate::{
 		ActivePricing, Pricing,
 	},
 	types::{
+		policy::{WriteOffStatus, WriteOffTrigger},
 		valuation::ValuationMethod,
-		write_off::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
 		RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},

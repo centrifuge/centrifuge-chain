@@ -23,8 +23,8 @@ use scale_info::TypeInfo;
 use sp_runtime::ArithmeticError;
 use sp_std::cmp::Ordering;
 
+pub mod policy;
 pub mod valuation;
-pub mod write_off;
 
 /// Error related to loan creation
 #[derive(Encode, Decode, TypeInfo, PalletError)]

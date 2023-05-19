@@ -94,7 +94,7 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 	use types::{
 		self,
-		write_off::{WriteOffRule, WriteOffStatus},
+		policy::{WriteOffRule, WriteOffStatus},
 		BorrowLoanError, CloseLoanError, CreateLoanError, PortfolioValuationUpdateType,
 		RepayLoanError, WrittenOffError,
 	};
