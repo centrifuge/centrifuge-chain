@@ -159,9 +159,10 @@ pub mod pallet {
 			// for Data values.
 			for collection_id in Listening::<T>::get(data_id).keys() {
 				Collection::<T>::mutate(collection_id, |collection| {
-					match (collection.get_mut(data_id), Self::get(data_id)) {
-						(Some(value), Ok(new_value)) => *value = new_value,
-						_ => (),
+					if let (Some(value), Ok(new_value)) =
+						(collection.get_mut(data_id), Self::get(data_id))
+					{
+						*value = new_value;
 					}
 				});
 			}
