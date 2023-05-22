@@ -167,7 +167,7 @@ pub fn find_rule<Rate: Ord>(
 				})
 				.map(|result| result.map(|_| rule))
 		})
-		.collect::<Result<Vec<_>, _>>()?; // Exits if error before getting the maximum
+		.collect::<Result<sp_std::vec::Vec<_>, _>>()?; // Exits if error before getting the maximum
 
 	// Get the rule with max percentage. If percentage are equals, max penaly.
 	Ok(active_rules
