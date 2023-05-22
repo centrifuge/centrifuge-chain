@@ -91,10 +91,9 @@ pub mod pallet {
 		traits::{BadOrigin, One, Zero},
 		ArithmeticError, FixedPointOperand,
 	};
-	use sp_std::vec::Vec;
 	use types::{
 		self,
-		policy::{WriteOffRule, WriteOffStatus},
+		policy::{self, WriteOffRule, WriteOffStatus},
 		BorrowLoanError, CloseLoanError, CreateLoanError, PortfolioValuationUpdateType,
 		RepayLoanError, WrittenOffError,
 	};
@@ -766,21 +765,8 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan: &ActiveLoan<T>,
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
-			Ok(WriteOffPolicy::<T>::get(pool_id)
-				.into_iter()
-				.filter_map(|rule| {
-					rule.triggers
-						.iter()
-						.map(|trigger| loan.check_write_off_trigger(&trigger.0))
-						.find(|e| match e {
-							Ok(value) => *value,
-							Err(_) => true,
-						})
-						.map(|result| result.map(|_| rule))
-				})
-				.collect::<Result<Vec<_>, _>>()? // This exits if error before getting the maximum
-				.into_iter()
-				.max_by(|r1, r2| r1.status.cmp(&r2.status)))
+			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
+			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
 		}
 
 		fn update_portfolio_valuation_with_pv(

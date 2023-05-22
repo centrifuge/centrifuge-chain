@@ -16,7 +16,7 @@ use cfg_traits::ops::{EnsureAdd, EnsureSub};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Get, FixedPointNumber};
+use sp_runtime::{traits::Get, DispatchError};
 use sp_std::collections::btree_set::BTreeSet;
 use strum::EnumCount;
 
@@ -137,7 +137,7 @@ pub struct WriteOffStatus<Rate> {
 
 impl<Rate> WriteOffStatus<Rate>
 where
-	Rate: FixedPointNumber + EnsureAdd + EnsureSub,
+	Rate: Ord + EnsureAdd + EnsureSub,
 {
 	pub fn compose_max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
 		Self {
@@ -151,8 +151,33 @@ where
 	}
 }
 
+pub fn find_rule<Rate: Ord>(
+	rules: impl Iterator<Item = WriteOffRule<Rate>>,
+	has_effect: impl Fn(&WriteOffTrigger) -> Result<bool, DispatchError>,
+) -> Result<Option<WriteOffRule<Rate>>, DispatchError> {
+	// Get the triggered rules.
+	let active_rules = rules
+		.filter_map(|rule| {
+			rule.triggers
+				.iter()
+				.map(|trigger| has_effect(&trigger.0))
+				.find(|e| match e {
+					Ok(value) => *value,
+					Err(_) => true,
+				})
+				.map(|result| result.map(|_| rule))
+		})
+		.collect::<Result<Vec<_>, _>>()?; // Exits if error before getting the maximum
+
+	// Get the rule with max percentage. If percentage are equals, max penaly.
+	Ok(active_rules
+		.into_iter()
+		.max_by(|r1, r2| r1.status.cmp(&r2.status)))
+}
+
 #[cfg(test)]
 mod tests {
+	use frame_support::{assert_err, assert_ok};
 
 	use super::*;
 
@@ -178,5 +203,50 @@ mod tests {
 		.unwrap();
 
 		assert_eq!(triggers.len(), 2);
+	}
+
+	#[test]
+	fn find_correct_rule() {
+		let rules = [
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(1)], 7, 1),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(2)], 7, 2), // <=
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(3)], 3, 4),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(4)], 9, 1),
+		];
+
+		let expected = rules[2].clone();
+
+		assert_ok!(
+			find_rule(rules.into_iter(), |trigger| match trigger {
+				WriteOffTrigger::PriceOutdated(secs) => Ok(*secs <= 3),
+				_ => unreachable!(),
+			}),
+			Some(expected)
+		);
+	}
+
+	#[test]
+	fn find_err_rule() {
+		let rules = [WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1)];
+
+		assert_err!(
+			find_rule(rules.into_iter(), |trigger| match trigger {
+				_ => Err(DispatchError::Other("")),
+			}),
+			DispatchError::Other("")
+		);
+	}
+
+	#[test]
+	fn find_none_rule() {
+		let rules = [WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1)];
+
+		assert_ok!(
+			find_rule(rules.into_iter(), |trigger| match trigger {
+				_ => Ok(false),
+			}),
+			None
+		);
 	}
 }

@@ -1725,6 +1725,8 @@ mod write_off_policy {
 				loan_id
 			));
 
+			// It returns the third rule because is the overdue rule with higher write off
+			// percentage.
 			assert_eq!(
 				util::get_loan(loan_id).write_off_status(),
 				WriteOffStatus {
