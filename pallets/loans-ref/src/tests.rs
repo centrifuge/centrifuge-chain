@@ -100,8 +100,8 @@ mod util {
 		)
 		.expect("successful policy");
 
-		MockPermissions::mock_has(|_, _, _| panic!("no mock"));
-		MockPools::mock_pool_exists(|_| panic!("no mock"));
+		MockPermissions::mock_has(|_, _, _| panic!("no has() mock"));
+		MockPools::mock_pool_exists(|_| panic!("no pool_exists() mock"));
 	}
 
 	pub fn base_internal_pricing() -> InternalPricing<Runtime> {
@@ -152,21 +152,21 @@ mod util {
 		MockPermissions::mock_has(|_, _, _| true);
 		MockPools::mock_pool_exists(|_| true);
 		MockPools::mock_account_for(|_| POOL_A_ACCOUNT);
-		MockPrices::mock_get(|_| Ok((PRICE_VALUE, now().as_secs())));
+		MockPrices::mock_get(|_| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 
 		Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan).expect("successful creation");
 
-		MockPermissions::mock_has(|_, _, _| panic!("no mock"));
-		MockPools::mock_pool_exists(|_| panic!("no mock"));
-		MockPools::mock_account_for(|_| panic!("no mock"));
-		MockPrices::mock_get(|_| panic!("no mock"));
+		MockPermissions::mock_has(|_, _, _| panic!("no has() mock"));
+		MockPools::mock_pool_exists(|_| panic!("no pool_exists() mock"));
+		MockPools::mock_account_for(|_| panic!("no account_for() mock"));
+		MockPrices::mock_get(|_| panic!("no get() mock"));
 
 		LastLoanId::<Runtime>::get(POOL_A)
 	}
 
 	pub fn borrow_loan(loan_id: LoanId, borrow_amount: Balance) {
 		MockPools::mock_withdraw(|_, _, _| Ok(()));
-		MockPrices::mock_get(|_| Ok((PRICE_VALUE, now().as_secs())));
+		MockPrices::mock_get(|_| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 		MockPrices::mock_register_id(|_, _| Ok(()));
 
 		Loans::borrow(
@@ -177,9 +177,9 @@ mod util {
 		)
 		.expect("successful borrowing");
 
-		MockPools::mock_withdraw(|_, _, _| panic!("no mock"));
-		MockPrices::mock_get(|_| panic!("no mock"));
-		MockPrices::mock_register_id(|_, _| panic!("no mock"));
+		MockPools::mock_withdraw(|_, _, _| panic!("no withdraw() mock"));
+		MockPrices::mock_get(|_| panic!("no get() mock"));
+		MockPrices::mock_register_id(|_, _| panic!("no register_id() mock"));
 	}
 
 	pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
@@ -193,7 +193,7 @@ mod util {
 		)
 		.expect("successful repaying");
 
-		MockPools::mock_deposit(|_, _, _| panic!("no mock"));
+		MockPools::mock_deposit(|_, _, _| panic!("no deposit() mock"));
 	}
 
 	pub fn write_off_loan(loan_id: LoanId) {
@@ -229,7 +229,7 @@ mod create_loan {
 			}
 		});
 		MockPrices::mock_get(|id| match *id {
-			REGISTER_PRICE_ID => Ok((PRICE_VALUE, now().as_secs())),
+			REGISTER_PRICE_ID => Ok((PRICE_VALUE, BLOCK_TIME.as_secs())),
 			_ => Err(DEPENDENCY_ERROR),
 		});
 	}
@@ -455,7 +455,7 @@ mod borrow_loan {
 		});
 		MockPrices::mock_get(|id| {
 			assert_eq!(*id, REGISTER_PRICE_ID);
-			Ok((PRICE_VALUE, now().as_secs()))
+			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
 		});
 		MockPrices::mock_register_id(|id, pool_id| {
 			assert_eq!(*id, REGISTER_PRICE_ID);
@@ -771,7 +771,7 @@ mod repay_loan {
 		});
 		MockPrices::mock_get(|id| {
 			assert_eq!(*id, REGISTER_PRICE_ID);
-			Ok((PRICE_VALUE, now().as_secs()))
+			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
 		});
 	}
 
@@ -1420,7 +1420,7 @@ mod write_off_loan {
 	}
 
 	#[test]
-	fn with_percentage_applied() {
+	fn with_percentage_applied_internal() {
 		new_test_ext().execute_with(|| {
 			util::set_up_policy(POLICY_PERCENTAGE, 0.0);
 
@@ -1429,6 +1429,36 @@ mod write_off_loan {
 
 			advance_time(YEAR + DAY);
 
+			let pv = util::current_loan_pv(loan_id);
+
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ANY),
+				POOL_A,
+				loan_id
+			));
+
+			// Because we are using ValuationMethod::OutstandingDebt:
+			assert_eq!(
+				(pv as f64 * POLICY_PERCENTAGE) as Balance,
+				util::current_loan_pv(loan_id)
+			);
+		});
+	}
+
+	#[test]
+	fn with_percentage_applied_external() {
+		new_test_ext().execute_with(|| {
+			util::set_up_policy(POLICY_PERCENTAGE, 0.0);
+
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			advance_time(YEAR + DAY);
+
+			MockPrices::mock_get(|id| {
+				assert_eq!(*id, REGISTER_PRICE_ID);
+				Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+			});
 			let pv = util::current_loan_pv(loan_id);
 
 			assert_ok!(Loans::write_off(
@@ -1605,6 +1635,10 @@ mod write_off_policy {
 			valid
 		});
 		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
+		MockPrices::mock_get(|id| {
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		});
 	}
 
 	#[test]
@@ -1677,10 +1711,54 @@ mod write_off_policy {
 	}
 
 	#[test]
+	fn with_price_outdated() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			config_mocks(POOL_A);
+			assert_ok!(Loans::update_write_off_policy(
+				RuntimeOrigin::signed(POOL_ADMIN),
+				POOL_A,
+				vec![WriteOffRule::new(
+					[WriteOffTrigger::PriceOutdated(10)],
+					Rate::from_float(POLICY_PERCENTAGE),
+					Rate::from_float(POLICY_PENALTY)
+				),]
+				.try_into()
+				.unwrap(),
+			));
+
+			advance_time(Duration::from_secs(9));
+			assert_noop!(
+				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
+				Error::<Runtime>::NoValidWriteOffRule
+			);
+
+			advance_time(Duration::from_secs(1));
+			assert_ok!(Loans::write_off(
+				RuntimeOrigin::signed(ANY),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(
+				util::get_loan(loan_id).write_off_status(),
+				WriteOffStatus {
+					percentage: Rate::from_float(POLICY_PERCENTAGE),
+					penalty: Rate::from_float(0.0),
+				}
+			);
+		});
+	}
+
+	#[test]
 	fn with_success() {
 		new_test_ext().execute_with(|| {
-			config_mocks(POOL_A);
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 
+			config_mocks(POOL_A);
 			assert_ok!(Loans::update_write_off_policy(
 				RuntimeOrigin::signed(POOL_ADMIN),
 				POOL_A,
@@ -1714,11 +1792,7 @@ mod write_off_policy {
 			));
 
 			// Check if a loan is correctly writen off
-			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, COLLATERAL_VALUE);
-
 			advance_time(YEAR + DAY * 10);
-
 			assert_ok!(Loans::write_off(
 				RuntimeOrigin::signed(ANY),
 				POOL_A,
