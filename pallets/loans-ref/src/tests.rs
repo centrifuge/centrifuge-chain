@@ -18,8 +18,8 @@ use super::{
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, InterestPayments,
-		LoanRestrictions, Maturity, PayDownSchedule, RepayRestrictions, RepaymentSchedule,
-		WrittenOffError,
+		LoanRestrictions, Maturity, PayDownSchedule, RepayLoanError, RepayRestrictions,
+		RepaymentSchedule, WrittenOffError,
 	},
 };
 
@@ -65,7 +65,9 @@ mod util {
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
 		match get_loan(loan_id).pricing() {
 			ActivePricing::Internal(pricing) => pricing.calculate_debt().unwrap(),
-			ActivePricing::External(_) => panic!("No debt for external pricing"),
+			ActivePricing::External(pricing) => pricing
+				.remaining_from(get_loan(loan_id).totals().1)
+				.unwrap(),
 		}
 	}
 
@@ -164,6 +166,8 @@ mod util {
 
 	pub fn borrow_loan(loan_id: LoanId, borrow_amount: Balance) {
 		MockPools::mock_withdraw(|_, _, _| Ok(()));
+		MockPrices::mock_get(|_| Ok((PRICE_VALUE, now().as_secs())));
+		MockPrices::mock_register_id(|_, _| Ok(()));
 
 		Loans::borrow(
 			RuntimeOrigin::signed(BORROWER),
@@ -174,6 +178,8 @@ mod util {
 		.expect("successful borrowing");
 
 		MockPools::mock_withdraw(|_, _, _| panic!("no mock"));
+		MockPrices::mock_get(|_| panic!("no mock"));
+		MockPrices::mock_register_id(|_, _| panic!("no mock"));
 	}
 
 	pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
@@ -756,14 +762,16 @@ mod borrow_loan {
 mod repay_loan {
 	use super::*;
 
-	const COLLATERAL_VALUE: Balance = 100;
-
 	pub fn config_mocks(deposit_amount: Balance) {
 		MockPools::mock_deposit(move |pool_id, to, amount| {
 			assert_eq!(to, BORROWER);
 			assert_eq!(pool_id, POOL_A);
 			assert_eq!(deposit_amount, amount);
 			Ok(())
+		});
+		MockPrices::mock_get(|id| {
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok((PRICE_VALUE, now().as_secs()))
 		});
 	}
 
@@ -836,7 +844,24 @@ mod repay_loan {
 	}
 
 	#[test]
-	fn with_success() {
+	fn with_success_partial() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, COLLATERAL_VALUE / 2);
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE / 2
+			));
+			assert_eq!(0, util::current_loan_debt(loan_id));
+		});
+	}
+
+	#[test]
+	fn with_success_total() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -865,6 +890,46 @@ mod repay_loan {
 				loan_id,
 				COLLATERAL_VALUE * 2
 			));
+		});
+	}
+
+	#[test]
+	fn with_restriction_full_once() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(LoanInfo {
+				restrictions: LoanRestrictions {
+					borrows: BorrowRestrictions::FullOnce,
+					repayments: RepayRestrictions::FullOnce,
+				},
+				..util::base_internal_loan()
+			});
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			config_mocks(COLLATERAL_VALUE / 2);
+			assert_noop!(
+				Loans::repay(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					COLLATERAL_VALUE / 2
+				),
+				Error::<Runtime>::from(RepayLoanError::Restriction) // Full amount
+			);
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				COLLATERAL_VALUE
+			));
+
+			let extra = 1;
+			config_mocks(0);
+			assert_noop!(
+				Loans::repay(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
+				Error::<Runtime>::from(RepayLoanError::Restriction) // Only once
+			);
 		});
 	}
 
@@ -971,6 +1036,64 @@ mod repay_loan {
 			));
 
 			advance_time(YEAR);
+
+			assert_eq!(0, util::current_loan_debt(loan_id));
+		});
+	}
+
+	#[test]
+	fn external_pricing_same() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			config_mocks(PRICE_VALUE * QUANTITY);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PRICE_VALUE * QUANTITY
+			));
+
+			assert_eq!(0, util::current_loan_debt(loan_id));
+		});
+	}
+
+	#[test]
+	fn external_pricing_goes_up() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			config_mocks((PRICE_VALUE * 2) * QUANTITY);
+			MockPrices::mock_get(|_| Ok((PRICE_VALUE * 2, now().as_secs())));
+
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				(PRICE_VALUE * 2) * QUANTITY
+			));
+
+			assert_eq!(0, util::current_loan_debt(loan_id));
+		});
+	}
+
+	#[test]
+	fn external_pricing_goes_down() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			config_mocks(PRICE_VALUE / 2 * QUANTITY);
+			MockPrices::mock_get(|_| Ok((PRICE_VALUE / 2, now().as_secs())));
+
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				PRICE_VALUE * QUANTITY
+			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
 		});

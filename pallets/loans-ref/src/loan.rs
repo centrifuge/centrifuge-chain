@@ -222,6 +222,10 @@ impl<T: Config> ActiveLoan<T> {
 		self.schedule.maturity.date()
 	}
 
+	pub fn totals(&self) -> (T::Balance, T::Balance) {
+		(self.total_borrowed, self.total_repaid)
+	}
+
 	pub fn pricing(&self) -> &ActivePricing<T> {
 		&self.pricing
 	}
