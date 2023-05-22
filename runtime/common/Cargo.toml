@@ -34,6 +34,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 # Frontier dependencies
 pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
 
@@ -55,6 +56,7 @@ std = [
   "pallet-authorship/std",
   "pallet-balances/std",
   "pallet-base-fee/std",
+  "pallet-ethereum/std",
   "pallet-evm/std",
   "pallet-evm-precompile-dispatch/std",
   "pallet-treasury/std",

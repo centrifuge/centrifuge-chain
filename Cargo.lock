@@ -10574,6 +10574,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-precompile-dispatch",
  "pallet-pool-system",

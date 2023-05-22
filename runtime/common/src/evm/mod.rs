@@ -12,6 +12,7 @@
 
 use cfg_primitives::AccountId;
 use codec::{Decode, Encode};
+use pallet_ethereum::{Transaction, TransactionAction};
 use pallet_evm::AddressMapping;
 use sp_core::H160;
 use sp_runtime::{traits::AccountIdConversion, Permill};
@@ -52,5 +53,19 @@ impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
 
 	fn upper() -> Permill {
 		Permill::from_parts(1_000_000)
+	}
+}
+
+pub trait GetTransactionAction {
+	fn action(&self) -> TransactionAction;
+}
+
+impl GetTransactionAction for Transaction {
+	fn action(&self) -> TransactionAction {
+		match self {
+			Transaction::Legacy(transaction) => transaction.action,
+			Transaction::EIP2930(transaction) => transaction.action,
+			Transaction::EIP1559(transaction) => transaction.action,
+		}
 	}
 }

@@ -60,7 +60,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
-use pallet_ethereum::{Call::transact, Transaction as EthereumTransaction};
+use pallet_ethereum::{Transaction as EthereumTransaction, TransactionAction};
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -87,7 +87,9 @@ use sp_runtime::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
 		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
-	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
+	transaction_validity::{
+		InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
+	},
 	ApplyExtrinsicResult, FixedI128, Perbill, Permill,
 };
 use sp_std::prelude::*;
@@ -104,9 +106,12 @@ mod migrations;
 mod weights;
 pub mod xcm;
 
-use runtime_common::fees::{DealWithFees, WeightToFee};
 /// common types for the runtime.
 pub use runtime_common::*;
+use runtime_common::{
+	evm::GetTransactionAction,
+	fees::{DealWithFees, WeightToFee},
+};
 
 pub use crate::xcm::*;
 
@@ -1764,7 +1769,16 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 
 	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
 		match self {
-			RuntimeCall::Ethereum(call) => call.check_self_contained(),
+			RuntimeCall::Ethereum(call) => match call {
+				pallet_ethereum::Call::transact { transaction }
+					if transaction.action() == TransactionAction::Create =>
+				{
+					Some(Err(TransactionValidityError::Invalid(
+						InvalidTransaction::Call,
+					)))
+				}
+				_ => call.check_self_contained(),
+			},
 			_ => None,
 		}
 	}
@@ -2121,7 +2135,7 @@ impl_runtime_apis! {
 			xts: Vec<<Block as BlockT>::Extrinsic>,
 		) -> Vec<EthereumTransaction> {
 			xts.into_iter().filter_map(|xt| match xt.0.function {
-				RuntimeCall::Ethereum(transact { transaction }) => Some(transaction),
+				RuntimeCall::Ethereum(pallet_ethereum::Call::transact { transaction }) => Some(transaction),
 				_ => None
 			}).collect::<Vec<EthereumTransaction>>()
 		}
