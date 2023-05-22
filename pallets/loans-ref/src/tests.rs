@@ -184,6 +184,7 @@ mod util {
 
 	pub fn repay_loan(loan_id: LoanId, repay_amount: Balance) {
 		MockPools::mock_deposit(|_, _, _| Ok(()));
+		MockPrices::mock_get(|_| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 
 		Loans::repay(
 			RuntimeOrigin::signed(BORROWER),
@@ -194,6 +195,7 @@ mod util {
 		.expect("successful repaying");
 
 		MockPools::mock_deposit(|_, _, _| panic!("no deposit() mock"));
+		MockPrices::mock_get(|_| panic!("no get() mock"));
 	}
 
 	pub fn write_off_loan(loan_id: LoanId) {
@@ -1546,6 +1548,14 @@ mod write_off_loan {
 mod close_loan {
 	use super::*;
 
+	fn config_mocks(current_price: Balance) {
+		MockPrices::mock_get(move |id| {
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok((current_price, BLOCK_TIME.as_secs()))
+		});
+		MockPrices::mock_unregister_id(|_, _| Ok(()));
+	}
+
 	#[test]
 	fn with_wrong_loan_id() {
 		new_test_ext().execute_with(|| {
@@ -1578,7 +1588,7 @@ mod close_loan {
 	}
 
 	#[test]
-	fn without_fully_repaid() {
+	fn without_fully_repaid_internal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
@@ -1592,12 +1602,45 @@ mod close_loan {
 	}
 
 	#[test]
-	fn with_fully_repaid() {
+	fn with_fully_repaid_internal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
 			util::borrow_loan(loan_id, COLLATERAL_VALUE);
 			util::repay_loan(loan_id, COLLATERAL_VALUE);
 
+			assert_ok!(Loans::close(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(Uniques::owner(ASSET_AA.0, ASSET_AA.1).unwrap(), BORROWER);
+		});
+	}
+
+	#[test]
+	fn without_fully_repaid_external() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			util::repay_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			config_mocks(PRICE_VALUE * 2);
+			assert_noop!(
+				Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::from(CloseLoanError::NotFullyRepaid)
+			);
+		});
+	}
+
+	#[test]
+	fn with_fully_repaid_external() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			util::repay_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			config_mocks(PRICE_VALUE / 2);
 			assert_ok!(Loans::close(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
@@ -1624,7 +1667,7 @@ mod close_loan {
 	}
 }
 
-mod write_off_policy {
+mod policy {
 	use super::*;
 
 	fn config_mocks(pool_id: PoolId) {
