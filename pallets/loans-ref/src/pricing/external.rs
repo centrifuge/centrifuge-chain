@@ -7,7 +7,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{self, RuntimeDebugNoBound};
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
 
 use crate::pallet::{Config, PoolIdOf, PriceOf};
 
@@ -62,8 +62,16 @@ impl<T: Config> ExternalActivePricing<T> {
 		Ok(T::PriceRegistry::get(&self.info.price_id)?.1)
 	}
 
-	pub fn compute_present_value(&self, price: T::Balance) -> Result<T::Balance, DispatchError> {
-		Ok(self.info.quantity.ensure_mul(price)?)
+	pub fn compute_present_value(
+		&self,
+		price: T::Balance,
+		total_repaid: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
+		if total_repaid.is_zero() {
+			Ok(self.info.quantity.ensure_mul(price)?)
+		} else {
+			Ok(T::Balance::zero())
+		}
 	}
 
 	pub fn remaining_from(&self, from: T::Balance) -> Result<T::Balance, DispatchError> {

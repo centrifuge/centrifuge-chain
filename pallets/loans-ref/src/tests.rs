@@ -58,10 +58,6 @@ mod util {
 			.0
 	}
 
-	pub fn portfolio_valuation() -> Balance {
-		PortfolioValuation::<Runtime>::get(POOL_A).value()
-	}
-
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
 		match get_loan(loan_id).pricing() {
 			ActivePricing::Internal(pricing) => pricing.calculate_debt().unwrap(),
@@ -200,14 +196,21 @@ mod util {
 
 	pub fn write_off_loan(loan_id: LoanId) {
 		set_up_policy(POLICY_PERCENTAGE, POLICY_PENALTY);
+		MockPrices::mock_get(|_| Ok((PRICE_VALUE, BLOCK_TIME.as_secs())));
 
 		Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id)
 			.expect("successful write off");
+
+		MockPrices::mock_get(|_| panic!("no get() mock"));
 	}
 
 	pub fn close_loan(loan_id: LoanId) {
+		MockPrices::mock_unregister_id(|_, _| Ok(()));
+
 		Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id)
 			.expect("successful clossing");
+
+		MockPrices::mock_get(|_| panic!("no unregister_id() mock"));
 	}
 }
 
@@ -464,15 +467,6 @@ mod borrow_loan {
 			assert_eq!(*pool_id, POOL_A);
 			Ok(())
 		});
-		/* //TODO: remove
-		MockPrices::mock_collection(|pool_id| {
-			assert_eq!(*pool_id, POOL_A);
-			MockDataCollection::new(|id| {
-				assert_eq!(*id, REGISTER_PRICE_ID);
-				Ok((PRICE_VALUE, now().as_secs()))
-			})
-		});
-		*/
 	}
 
 	#[test]
@@ -1602,6 +1596,41 @@ mod close_loan {
 	}
 
 	#[test]
+	fn with_time_after_fully_repaid_internal() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::repay_loan(loan_id, COLLATERAL_VALUE);
+
+			advance_time(YEAR);
+
+			assert_ok!(Loans::close(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id
+			));
+
+			assert_eq!(Uniques::owner(ASSET_AA.0, ASSET_AA.1).unwrap(), BORROWER);
+		});
+	}
+
+	#[test]
+	fn with_price_up_after_fully_repaid_internal() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			util::repay_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			config_mocks(PRICE_VALUE * 2);
+			assert_ok!(Loans::close(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id
+			));
+		});
+	}
+
+	#[test]
 	fn with_fully_repaid_internal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
@@ -1615,21 +1644,6 @@ mod close_loan {
 			));
 
 			assert_eq!(Uniques::owner(ASSET_AA.0, ASSET_AA.1).unwrap(), BORROWER);
-		});
-	}
-
-	#[test]
-	fn without_fully_repaid_external() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
-			util::repay_loan(loan_id, PRICE_VALUE * QUANTITY);
-
-			config_mocks(PRICE_VALUE * 2);
-			assert_noop!(
-				Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
-				Error::<Runtime>::from(CloseLoanError::NotFullyRepaid)
-			);
 		});
 	}
 
@@ -1859,10 +1873,18 @@ mod portfolio_valuation {
 	use super::*;
 
 	fn config_mocks() {
-		MockPrices::mock_collection(|_| {
-			MockDataCollection::new(|_| unimplemented!("never called"))
-		});
 		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
+		MockPrices::mock_get(|id| {
+			assert_eq!(*id, REGISTER_PRICE_ID);
+			Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+		});
+		MockPrices::mock_collection(|pool_id| {
+			assert_eq!(*pool_id, POOL_A);
+			MockDataCollection::new(|id| {
+				assert_eq!(*id, REGISTER_PRICE_ID);
+				Ok((PRICE_VALUE, BLOCK_TIME.as_secs()))
+			})
+		});
 	}
 
 	fn update_portfolio() {
@@ -1874,7 +1896,10 @@ mod portfolio_valuation {
 	}
 
 	fn expected_portfolio(valuation: Balance) {
-		assert_eq!(valuation, util::portfolio_valuation());
+		assert_eq!(
+			valuation,
+			PortfolioValuation::<Runtime>::get(POOL_A).value()
+		);
 	}
 
 	#[test]
@@ -1898,7 +1923,11 @@ mod portfolio_valuation {
 	#[test]
 	fn with_no_active_loans() {
 		new_test_ext().execute_with(|| {
-			util::create_loan(util::base_internal_loan());
+			util::create_loan(util::base_external_loan());
+			util::create_loan(LoanInfo {
+				collateral: ASSET_BA,
+				..util::base_internal_loan()
+			});
 
 			advance_time(YEAR / 2);
 
@@ -1910,8 +1939,8 @@ mod portfolio_valuation {
 	#[test]
 	fn with_active_loans() {
 		new_test_ext().execute_with(|| {
-			let loan_1 = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_1, COLLATERAL_VALUE / 2);
+			let loan_1 = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_1, PRICE_VALUE * QUANTITY);
 
 			let loan_2 = util::create_loan(LoanInfo {
 				collateral: ASSET_BA,
@@ -1920,7 +1949,8 @@ mod portfolio_valuation {
 			util::borrow_loan(loan_2, COLLATERAL_VALUE);
 			util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
 
-			let valuation = COLLATERAL_VALUE / 2 + COLLATERAL_VALUE - COLLATERAL_VALUE / 4;
+			let valuation = PRICE_VALUE * QUANTITY + COLLATERAL_VALUE - COLLATERAL_VALUE / 4;
+
 			expected_portfolio(valuation);
 			update_portfolio();
 			expected_portfolio(valuation);
@@ -1935,8 +1965,8 @@ mod portfolio_valuation {
 	#[test]
 	fn with_active_written_off_loans() {
 		new_test_ext().execute_with(|| {
-			let loan_1 = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_1, COLLATERAL_VALUE / 2);
+			let loan_1 = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_1, PRICE_VALUE * QUANTITY);
 
 			let loan_2 = util::create_loan(LoanInfo {
 				collateral: ASSET_BA,
@@ -1948,6 +1978,7 @@ mod portfolio_valuation {
 			advance_time(YEAR + DAY);
 
 			util::write_off_loan(loan_1);
+			util::write_off_loan(loan_2);
 
 			update_portfolio();
 			expected_portfolio(util::current_loan_pv(loan_1) + util::current_loan_pv(loan_2));
@@ -1957,8 +1988,8 @@ mod portfolio_valuation {
 	#[test]
 	fn filled_and_cleaned() {
 		new_test_ext().execute_with(|| {
-			let loan_1 = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_1, COLLATERAL_VALUE / 2);
+			let loan_1 = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_1, PRICE_VALUE * QUANTITY);
 
 			let loan_2 = util::create_loan(LoanInfo {
 				collateral: ASSET_BA,
@@ -1973,7 +2004,7 @@ mod portfolio_valuation {
 
 			advance_time(YEAR / 2);
 
-			util::repay_loan(loan_1, COLLATERAL_VALUE * 2);
+			util::repay_loan(loan_1, PRICE_VALUE * QUANTITY);
 			util::repay_loan(loan_2, COLLATERAL_VALUE * 2);
 
 			advance_time(YEAR / 2);

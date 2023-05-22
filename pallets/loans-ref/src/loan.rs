@@ -273,7 +273,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(pricing) => {
 				let price = pricing.calculate_price()?;
-				pricing.compute_present_value(price)?
+				pricing.compute_present_value(price, self.total_repaid)?
 			}
 		};
 
@@ -301,7 +301,7 @@ impl<T: Config> ActiveLoan<T> {
 			}
 			ActivePricing::External(pricing) => {
 				let price = pricing.calculate_price_by(prices)?;
-				pricing.compute_present_value(price)?
+				pricing.compute_present_value(price, self.total_repaid)?
 			}
 		};
 
@@ -396,9 +396,7 @@ impl<T: Config> ActiveLoan<T> {
 	fn ensure_can_close(&self) -> DispatchResult {
 		let can_close = match &self.pricing {
 			ActivePricing::Internal(pricing) => !pricing.has_debt(),
-			ActivePricing::External(pricing) => {
-				pricing.remaining_from(self.total_repaid)?.is_zero()
-			}
+			ActivePricing::External(_) => !self.total_repaid.is_zero(),
 		};
 
 		ensure!(can_close, Error::<T>::from(CloseLoanError::NotFullyRepaid));
