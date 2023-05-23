@@ -25,14 +25,6 @@ use sp_core::storage::StateVersion;
 use sp_runtime::{
 	traits::{One, Zero},
 	FixedPointNumber, Perquintill, TokenError,
-<<<<<<< HEAD
-};
-use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, PalletInstance, Parachain, X3},
-	VersionedMultiLocation,
-=======
->>>>>>> origin/main
 };
 
 use crate::{
@@ -2323,21 +2315,7 @@ fn create_tranche_token_metadata() {
 				name: "SuperToken".into(),
 				symbol: "ST".into(),
 				existential_deposit: 0,
-<<<<<<< HEAD
-				location: Some(VersionedMultiLocation::V3(MultiLocation {
-					parents: 1,
-					interior: X3(
-						Parachain(MockParachainId::get()),
-						PalletInstance(PoolPalletIndex::get()),
-						GeneralKey {
-							length: 32,
-							data: vec_to_fixed_array(tranche_currency.encode())
-						}
-					)
-				})),
-=======
 				location: None,
->>>>>>> origin/main
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,
