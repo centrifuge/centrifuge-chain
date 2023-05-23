@@ -91,6 +91,7 @@ pub mod pallet {
 		traits::{BadOrigin, One, Zero},
 		ArithmeticError, FixedPointOperand,
 	};
+	use sp_std::vec::Vec;
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
@@ -246,7 +247,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<(ActiveLoan<T>, T::Balance), T::MaxActiveLoansPerPool>,
+		BoundedVec<ActiveLoan<T>, T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -281,7 +282,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		types::PortfolioValuation<T::Balance>,
+		types::PortfolioValuation<T::Balance, T::LoanId, T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -672,18 +673,7 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			let (value, count) = Self::portfolio_valuation_for_pool(pool_id)?;
-
-			PortfolioValuation::<T>::insert(
-				pool_id,
-				types::PortfolioValuation::new(value, Self::now()),
-			);
-
-			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
-				pool_id,
-				valuation: value,
-				update_type: PortfolioValuationUpdateType::Exact,
-			});
+			let (_, count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
@@ -771,42 +761,45 @@ pub mod pallet {
 			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
 		}
 
-		fn update_portfolio_valuation_with_pv(
+		fn find_mut_active_loan(
 			pool_id: PoolIdOf<T>,
-			portfolio: &mut types::PortfolioValuation<T::Balance>,
-			old_pv: T::Balance,
-			new_pv: T::Balance,
-		) -> DispatchResult {
-			let prev_value = portfolio.value();
-
-			portfolio.update_with_pv_diff(old_pv, new_pv)?;
-
-			if prev_value != portfolio.value() {
-				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
-					pool_id,
-					valuation: portfolio.value(),
-					update_type: PortfolioValuationUpdateType::Inexact,
-				});
-			}
-
-			Ok(())
+			loan_id: T::LoanId,
+			active_loans: &mut BoundedVec<ActiveLoan<T>, T::MaxActiveLoansPerPool>,
+		) -> Result<&mut ActiveLoan<T>, DispatchError> {
+			Ok(active_loans
+				.iter_mut()
+				.find(|loan| loan.loan_id() == loan_id)
+				.ok_or_else(|| {
+					if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
+						Error::<T>::LoanNotActive
+					} else {
+						Error::<T>::LoanNotFound
+					}
+				})?)
 		}
 
-		fn portfolio_valuation_for_pool(
+		fn update_portfolio_valuation_for_pool(
 			pool_id: PoolIdOf<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
 			let rates = T::InterestAccrual::rates();
 			let prices = T::PriceRegistry::collection(&pool_id);
 			let loans = ActiveLoans::<T>::get(pool_id);
-			let count = loans.len().ensure_into()?;
-			let value = loans.into_iter().try_fold(
-				T::Balance::zero(),
-				|sum, (loan, _)| -> Result<T::Balance, DispatchError> {
-					Ok(sum.ensure_add(loan.present_value_by(&rates, &prices)?)?)
-				},
-			)?;
+			let values = loans
+				.iter()
+				.map(|loan| Ok((loan.loan_id(), loan.present_value_by(&rates, &prices)?)))
+				.collect::<Result<Vec<_>, DispatchError>>()?;
 
-			Ok((value, count))
+			let value = PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
+				portfolio.update(values, Self::now())
+			})?;
+
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+				pool_id,
+				valuation: value,
+				update_type: PortfolioValuationUpdateType::Exact,
+			});
+
+			Ok((value, loans.len() as u32))
 		}
 
 		fn insert_active_loan(
@@ -814,13 +807,17 @@ pub mod pallet {
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				let new_pv = loan.present_value()?;
+				portfolio.insert_elem(loan.loan_id(), loan.present_value()?)?;
 
-				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, Zero::zero(), new_pv)?;
+				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+					pool_id,
+					valuation: portfolio.value(),
+					update_type: PortfolioValuationUpdateType::Inexact,
+				});
 
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					active_loans
-						.try_push((loan, new_pv))
+						.try_push(loan)
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					Ok(active_loans.len().ensure_into()?)
@@ -838,22 +835,16 @@ pub mod pallet {
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let (loan, old_pv) = active_loans
-						.iter_mut()
-						.find(|(loan, _)| loan.loan_id() == loan_id)
-						.ok_or_else(|| {
-							if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
-								Error::<T>::LoanNotActive
-							} else {
-								Error::<T>::LoanNotFound
-							}
-						})?;
-
+					let loan = Self::find_mut_active_loan(pool_id, loan_id, active_loans)?;
 					let result = f(loan)?;
 
-					let new_pv = loan.present_value()?;
-					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, *old_pv, new_pv)?;
-					*old_pv = new_pv;
+					portfolio.update_elem(loan_id, loan.present_value()?)?;
+
+					Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+						pool_id,
+						valuation: portfolio.value(),
+						update_type: PortfolioValuationUpdateType::Inexact,
+					});
 
 					Ok((result, active_loans.len().ensure_into()?))
 				})
@@ -867,11 +858,11 @@ pub mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
-					.position(|(loan, _)| loan.loan_id() == loan_id)
+					.position(|loan| loan.loan_id() == loan_id)
 					.ok_or(Error::<T>::LoanNotFound)?;
 
 				Ok((
-					active_loans.swap_remove(index).0,
+					active_loans.swap_remove(index),
 					active_loans.len().ensure_into()?,
 				))
 			})
@@ -897,19 +888,12 @@ pub mod pallet {
 		type RuntimeOrigin = T::RuntimeOrigin;
 
 		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
-			let valuation = PortfolioValuation::<T>::get(pool_id);
-			Some((valuation.value(), valuation.last_updated()))
+			let portfolio = PortfolioValuation::<T>::get(pool_id);
+			Some((portfolio.value(), portfolio.last_updated()?))
 		}
 
 		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
-			let (value, _) = Self::portfolio_valuation_for_pool(pool_id)?;
-
-			PortfolioValuation::<T>::insert(
-				pool_id,
-				types::PortfolioValuation::new(value, Self::now()),
-			);
-
-			Ok(value)
+			Ok(Self::update_portfolio_valuation_for_pool(pool_id)?.0)
 		}
 
 		fn initialise(_: OriginFor<T>, _: PoolIdOf<T>, _: T::ItemId) -> DispatchResult {

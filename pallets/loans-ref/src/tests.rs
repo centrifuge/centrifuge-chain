@@ -53,9 +53,8 @@ mod util {
 	pub fn get_loan(loan_id: LoanId) -> ActiveLoan<Runtime> {
 		ActiveLoans::<Runtime>::get(POOL_A)
 			.into_iter()
-			.find(|(loan, _)| loan.loan_id() == loan_id)
+			.find(|loan| loan.loan_id() == loan_id)
 			.unwrap()
-			.0
 	}
 
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
@@ -2011,6 +2010,22 @@ mod portfolio_valuation {
 			util::close_loan(loan_2);
 
 			expected_portfolio(0);
+		});
+	}
+
+	#[test]
+	fn exact_and_inexact_matches() {
+		new_test_ext().execute_with(|| {
+			let loan_1 = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_1, COLLATERAL_VALUE);
+
+			advance_time(YEAR / 2);
+			update_portfolio();
+
+			// repay_loan() should affect to the portfolio valuation with the same value as
+			// the absolute valuation of the loan
+			util::repay_loan(loan_1, COLLATERAL_VALUE / 2);
+			expected_portfolio(util::current_loan_pv(loan_1));
 		});
 	}
 }
