@@ -1023,7 +1023,6 @@ impl pallet_pool_system::Config for Runtime {
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
-	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type PoolCurrency = PoolCurrency;
@@ -1912,10 +1911,9 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	UpgradeDev1020,
+	// We don't run migrations on the development runtime
+	(),
 >;
-
-type UpgradeDev1020 = ();
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = H160;
