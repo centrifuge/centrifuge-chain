@@ -44,7 +44,6 @@ pub mod migrations {
 
 pub mod config;
 pub mod loan;
-pub mod portfolio;
 pub mod pricing;
 pub mod types;
 
@@ -86,7 +85,6 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use loan::{ActiveLoan, LoanInfo};
-	use portfolio::{self, PortfolioValuationUpdateType};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
@@ -97,6 +95,7 @@ pub mod pallet {
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
+		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
 		BorrowLoanError, CloseLoanError, CreateLoanError, RepayLoanError, WrittenOffError,
 	};
 
@@ -285,6 +284,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		portfolio::PortfolioValuation<T::Balance, T::LoanId, T::MaxActiveLoansPerPool>,
 		ValueQuery,
+		InitialPortfolioValuation<T::Time>,
 	>;
 
 	#[pallet::event]
@@ -876,7 +876,7 @@ pub mod pallet {
 
 		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
 			let portfolio = PortfolioValuation::<T>::get(pool_id);
-			Some((portfolio.value(), portfolio.last_updated()?))
+			Some((portfolio.value(), portfolio.last_updated()))
 		}
 
 		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {

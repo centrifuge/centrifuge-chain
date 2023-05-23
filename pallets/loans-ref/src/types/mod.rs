@@ -19,6 +19,7 @@ use frame_support::{PalletError, RuntimeDebug};
 use scale_info::TypeInfo;
 
 pub mod policy;
+pub mod portfolio;
 pub mod valuation;
 
 /// Error related to loan creation

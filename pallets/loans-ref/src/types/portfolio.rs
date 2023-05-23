@@ -1,10 +1,13 @@
 use cfg_primitives::Moment;
 use cfg_traits::ops::{EnsureAdd, EnsureAddAssign, EnsureSub, EnsureSubAssign};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::Get, BoundedVec, RuntimeDebug};
+use frame_support::{
+	traits::{Get, UnixTime},
+	BoundedVec, RuntimeDebug,
+};
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Zero, DispatchError, DispatchResult};
-use sp_std::{cmp::Ordering, vec::Vec};
+use sp_std::{cmp::Ordering, marker::PhantomData, vec::Vec};
 
 // Portfolio valuation information.
 // It will be updated on these scenarios:
@@ -20,26 +23,12 @@ pub struct PortfolioValuation<Balance, ElemId, MaxElems: Get<u32>> {
 	value: Balance,
 
 	/// Last time when the portfolio valuation was calculated for the entire
-	/// pool. None if never has been computed entirely.
-	last_updated: Option<Moment>,
+	/// pool.
+	last_updated: Moment,
 
 	/// Individual valuation of each element that compose the value of the
 	/// portfolio
 	values: BoundedVec<(ElemId, Balance), MaxElems>,
-}
-
-impl<Balance, ElemId, MaxElems> Default for PortfolioValuation<Balance, ElemId, MaxElems>
-where
-	Balance: Zero,
-	MaxElems: Get<u32>,
-{
-	fn default() -> Self {
-		Self {
-			value: Balance::zero(),
-			last_updated: None,
-			values: BoundedVec::default(),
-		}
-	}
 }
 
 impl<Balance, ElemId, MaxElems> PortfolioValuation<Balance, ElemId, MaxElems>
@@ -48,11 +37,19 @@ where
 	ElemId: Eq,
 	MaxElems: Get<u32>,
 {
+	pub fn new(when: Moment) -> Self {
+		Self {
+			value: Balance::zero(),
+			last_updated: when,
+			values: BoundedVec::default(),
+		}
+	}
+
 	pub fn value(&self) -> Balance {
 		self.value
 	}
 
-	pub fn last_updated(&self) -> Option<Moment> {
+	pub fn last_updated(&self) -> Moment {
 		self.last_updated
 	}
 
@@ -70,14 +67,14 @@ where
 	) -> Result<Balance, DispatchError> {
 		self.values = pv_list
 			.try_into()
-			.map_err(|_| DispatchError::Other("TODO"))?;
+			.map_err(|_| DispatchError::Other("Max portfilio value reached"))?;
 
 		self.value = self.values.iter().try_fold(
 			Balance::zero(),
 			|sum, (_, value)| -> Result<Balance, DispatchError> { Ok(sum.ensure_add(*value)?) },
 		)?;
 
-		self.last_updated = Some(when);
+		self.last_updated = when;
 
 		Ok(self.value)
 	}
@@ -90,7 +87,7 @@ where
 		Ok(self.value.ensure_add_assign(pv)?)
 	}
 
-	pub fn update_elem(&mut self, id: ElemId, new_pv: Balance) -> Result<bool, DispatchError> {
+	pub fn update_elem(&mut self, id: ElemId, new_pv: Balance) -> DispatchResult {
 		let old_pv = self
 			.values
 			.iter_mut()
@@ -102,19 +99,33 @@ where
 			Ordering::Greater => {
 				let diff = new_pv.ensure_sub(*old_pv)?;
 				self.value.ensure_add_assign(diff)?;
-				true
 			}
 			Ordering::Less => {
 				let diff = old_pv.ensure_sub(new_pv)?;
 				self.value.ensure_sub_assign(diff)?;
-				true
 			}
-			Ordering::Equal => false,
+			Ordering::Equal => (),
 		};
 
 		*old_pv = new_pv;
 
 		Ok(changed)
+	}
+}
+
+/// Type that builds a PortfolioValuation with the current instant.
+pub struct InitialPortfolioValuation<Timer>(PhantomData<Timer>);
+
+impl<Balance, ElemId, MaxElems, Timer> Get<PortfolioValuation<Balance, ElemId, MaxElems>>
+	for InitialPortfolioValuation<Timer>
+where
+	Balance: Zero + EnsureAdd + EnsureSub + Ord + Copy,
+	MaxElems: Get<u32>,
+	Timer: UnixTime,
+	ElemId: Eq,
+{
+	fn get() -> PortfolioValuation<Balance, ElemId, MaxElems> {
+		PortfolioValuation::new(Timer::now().as_secs())
 	}
 }
 
