@@ -31,7 +31,7 @@ use fc_consensus::FrontierBlockImport;
 use fc_db::Backend as FrontierBackend;
 use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthBlockDataCacheTask, EthTask, OverrideHandle};
-use fc_rpc_core::types::{FeeHistoryCache, FilterPool};
+use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_rpc::{ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 use futures::{future, StreamExt};
 use polkadot_cli::Cli;
@@ -54,6 +54,34 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 use substrate_prometheus_endpoint::Registry;
 
 use super::{rpc, FullBackend, FullClient, HostFunctions, ParachainBlockImport};
+
+/// The ethereum-compatibility configuration used to run a node.
+#[derive(Clone, Copy, Debug, clap::Parser)]
+pub struct EthConfiguration {
+	/// Maximum number of logs in a query.
+	#[clap(long, default_value = "10000")]
+	pub max_past_logs: u32,
+
+	/// Maximum fee history cache size.
+	#[clap(long, default_value = "2048")]
+	pub fee_history_limit: u64,
+
+	#[clap(long)]
+	pub enable_dev_signer: bool,
+
+	/// Maximum allowed gas limit will be `block.gas_limit *
+	/// execute_gas_limit_multiplier` when using eth_call/eth_estimateGas.
+	#[clap(long, default_value = "10")]
+	pub execute_gas_limit_multiplier: u64,
+
+	/// Size in bytes of the LRU cache for block data.
+	#[clap(long, default_value = "50")]
+	pub eth_log_block_cache: usize,
+
+	/// Size in bytes of the LRU cache for transactions statuses data.
+	#[clap(long, default_value = "50")]
+	pub eth_statuses_cache: usize,
+}
 
 #[derive(Clone)]
 pub struct BlockImport<B: BlockT, I: BlockImportT<B>, C>(FrontierBlockImport<B, I, C>);
@@ -207,7 +235,6 @@ where
 
 	let block_import = ParachainBlockImport::new(client.clone(), backend.clone());
 
-	// TODO: is it bad if we create these when we're not in a runtime that uses EVM?
 	let frontier_backend = Arc::new(FrontierBackend::open(
 		Arc::clone(&client),
 		&config.database,
@@ -257,6 +284,7 @@ where
 pub(crate) async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
+	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 	rpc_ext_builder: RB,
@@ -369,8 +397,8 @@ where
 	let block_data_cache = Arc::new(fc_rpc::EthBlockDataCacheTask::new(
 		task_manager.spawn_handle(),
 		overrides.clone(),
-		50, // eth_config.eth_log_block_cache,
-		50, // eth_config.eth_statuses_cache,
+		eth_config.eth_log_block_cache,
+		eth_config.eth_statuses_cache,
 		prometheus_registry.clone(),
 	));
 
@@ -418,6 +446,7 @@ where
 		filter_pool.clone(),
 		overrides,
 		fee_history_cache.clone(),
+		eth_config.fee_history_limit,
 	);
 
 	let announce_block = {
@@ -491,6 +520,7 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	filter_pool: FilterPool,
 	overrides: Arc<OverrideHandle<Block>>,
 	fee_history_cache: FeeHistoryCache,
+	fee_history_cache_limit: FeeHistoryCacheLimit,
 ) where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
@@ -538,7 +568,7 @@ fn spawn_frontier_tasks<RuntimeApi, Executor>(
 			client,
 			overrides,
 			fee_history_cache,
-			2048, // TODO: fee_history_cache_limit
+			fee_history_cache_limit,
 		),
 	);
 }

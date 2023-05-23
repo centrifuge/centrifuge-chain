@@ -485,7 +485,7 @@ pub fn run() -> Result<()> {
 
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, collator_options, id)
+						crate::service::start_altair_node(config, polkadot_config, cli.eth, collator_options, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
@@ -493,6 +493,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
 						config,
 						polkadot_config,
+                        cli.eth,
 						collator_options,
 						id,
 					)
@@ -502,6 +503,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Development => crate::service::start_development_node(
 						config,
 						polkadot_config,
+                        cli.eth,
 						collator_options,
 						id,
 					)

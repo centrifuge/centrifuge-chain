@@ -34,6 +34,7 @@ use crate::rpc::{
 };
 
 pub(crate) mod evm;
+use evm::EthConfiguration;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = sp_io::SubstrateHostFunctions;
@@ -162,6 +163,7 @@ pub fn build_altair_import_queue(
 pub async fn start_altair_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
+	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<altair_runtime::RuntimeApi>>)> {
@@ -169,6 +171,7 @@ pub async fn start_altair_node(
 	evm::start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
+		eth_config,
 		collator_options,
 		id,
 		move |client,
@@ -194,16 +197,16 @@ pub async fn start_altair_node(
 				graph: pool.pool().clone(),
 				converter: Some(development_runtime::TransactionConverter),
 				is_authority,
-				enable_dev_signer: false, // eth_config.enable_dev_signer,
+				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
 				frontier_backend,
 				overrides,
 				block_data_cache,
 				filter_pool,
-				max_past_logs: 10000, // eth_config.max_past_logs,
+				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
-				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
-				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
+				fee_history_cache_limit: eth_config.fee_history_limit,
+				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 			};
 			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
@@ -332,6 +335,7 @@ pub fn build_centrifuge_import_queue(
 pub async fn start_centrifuge_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
+	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient<centrifuge_runtime::RuntimeApi>>)> {
@@ -339,6 +343,7 @@ pub async fn start_centrifuge_node(
 	evm::start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
+		eth_config,
 		collator_options,
 		id,
 		move |client,
@@ -364,16 +369,16 @@ pub async fn start_centrifuge_node(
 				graph: pool.pool().clone(),
 				converter: Some(development_runtime::TransactionConverter),
 				is_authority,
-				enable_dev_signer: false, // eth_config.enable_dev_signer,
+				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
 				frontier_backend,
 				overrides,
 				block_data_cache,
 				filter_pool,
-				max_past_logs: 10000, // eth_config.max_past_logs,
+				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
-				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
-				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
+				fee_history_cache_limit: eth_config.fee_history_limit,
+				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 			};
 			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
@@ -502,6 +507,7 @@ pub fn build_development_import_queue(
 pub async fn start_development_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
+	eth_config: EthConfiguration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 ) -> sc_service::error::Result<(
@@ -512,6 +518,7 @@ pub async fn start_development_node(
 	evm::start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
+		eth_config,
 		collator_options,
 		id,
 		move |client,
@@ -540,16 +547,16 @@ pub async fn start_development_node(
 				graph: pool.pool().clone(),
 				converter: Some(development_runtime::TransactionConverter),
 				is_authority,
-				enable_dev_signer: false, // eth_config.enable_dev_signer,
+				enable_dev_signer: eth_config.enable_dev_signer,
 				network,
 				frontier_backend,
 				overrides,
 				block_data_cache,
 				filter_pool,
-				max_past_logs: 10000, // eth_config.max_past_logs,
+				max_past_logs: eth_config.max_past_logs,
 				fee_history_cache,
-				fee_history_cache_limit: 2048,    // eth_config.fee_history_limit,
-				execute_gas_limit_multiplier: 10, // eth_config.execute_gas_limit_multiplier,
+				fee_history_cache_limit: eth_config.fee_history_limit,
+				execute_gas_limit_multiplier: eth_config.execute_gas_limit_multiplier,
 			};
 			let module = rpc::evm::create(module, eth_deps, subscription_task_executor)?;
 			Ok(module)
