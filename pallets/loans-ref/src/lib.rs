@@ -44,6 +44,7 @@ pub mod migrations {
 
 pub mod config;
 pub mod loan;
+pub mod portfolio;
 pub mod pricing;
 pub mod types;
 
@@ -85,6 +86,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use loan::{ActiveLoan, LoanInfo};
+	use portfolio::{self, PortfolioValuationUpdateType};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
@@ -95,8 +97,7 @@ pub mod pallet {
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
-		BorrowLoanError, CloseLoanError, CreateLoanError, PortfolioValuationUpdateType,
-		RepayLoanError, WrittenOffError,
+		BorrowLoanError, CloseLoanError, CreateLoanError, RepayLoanError, WrittenOffError,
 	};
 
 	use super::*;
@@ -282,7 +283,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		types::PortfolioValuation<T::Balance, T::LoanId, T::MaxActiveLoansPerPool>,
+		portfolio::PortfolioValuation<T::Balance, T::LoanId, T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
