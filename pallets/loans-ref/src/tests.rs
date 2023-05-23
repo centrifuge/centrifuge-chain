@@ -630,6 +630,22 @@ mod borrow_loan {
 	}
 
 	#[test]
+	fn with_wrong_quantity_amount_external_pricing() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+
+			// It's not multiple of PRICE_VALUE
+			let amount = PRICE_VALUE * QUANTITY - 1;
+			config_mocks(amount);
+
+			assert_noop!(
+				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, amount),
+				Error::<Runtime>::AmountNotMultipleOfPrice
+			);
+		});
+	}
+
+	#[test]
 	fn with_correct_amount_external_pricing() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
@@ -1057,6 +1073,26 @@ mod repay_loan {
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
+		});
+	}
+
+	#[test]
+	fn external_pricing_with_wrong_quantity() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+
+			// It's not multiple of PRICE_VALUE
+			config_mocks(PRICE_VALUE * QUANTITY - 1);
+			assert_noop!(
+				Loans::repay(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					loan_id,
+					PRICE_VALUE * QUANTITY - 1
+				),
+				Error::<Runtime>::AmountNotMultipleOfPrice
+			);
 		});
 	}
 }
