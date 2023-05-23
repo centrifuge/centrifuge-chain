@@ -512,6 +512,7 @@ where
 	Ok((task_manager, client))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn spawn_frontier_tasks<RuntimeApi, Executor>(
 	task_manager: &TaskManager,
 	client: Arc<FullClient<RuntimeApi>>,
