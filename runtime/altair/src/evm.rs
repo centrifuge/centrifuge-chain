@@ -11,15 +11,10 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
-use frame_support::{
-	parameter_types,
-	traits::FindAuthor,
-	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight},
-	ConsensusEngineId,
-};
+use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::evm::{
-	precompile::CentrifugePrecompiles, BaseFeeThreshold, ExpandedAddressMapping,
+	precompile::CentrifugePrecompiles, BaseFeeThreshold, ExpandedAddressMapping, WEIGHT_PER_GAS,
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
@@ -44,21 +39,6 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	}
 }
 
-// From Moonbeam:
-//
-// Current approximation of the gas/s consumption considering
-// EVM execution over compiled WASM (on 4.4Ghz CPU).
-// Given the 500ms Weight, from which 75% only are used for transactions,
-// the total EVM execution gas limit is: GAS_PER_SECOND * 0.500 * 0.75 ~=
-// 15_000_000.
-pub const GAS_PER_SECOND: u64 = 40_000_000;
-
-// Also from Moonbeam:
-//
-// Approximate ratio of the amount of Weight per Gas.
-// u64 works for approximations because Weight is a very small unit compared to
-// gas.
-pub const WEIGHT_PER_GAS: u64 = WEIGHT_REF_TIME_PER_SECOND / GAS_PER_SECOND;
 parameter_types! {
 	pub BlockGasLimit: U256 = U256::from(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT.ref_time() / WEIGHT_PER_GAS);
 	pub PrecompilesValue: CentrifugePrecompiles<crate::Runtime> = CentrifugePrecompiles::<_>::new();
