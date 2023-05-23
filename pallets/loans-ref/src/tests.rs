@@ -1891,8 +1891,8 @@ mod portfolio_valuation {
 
 	fn expected_portfolio(valuation: Balance) {
 		assert_eq!(
-			valuation,
-			PortfolioValuation::<Runtime>::get(POOL_A).value()
+			PortfolioValuation::<Runtime>::get(POOL_A).value(),
+			valuation
 		);
 	}
 
@@ -2026,6 +2026,16 @@ mod portfolio_valuation {
 			// the absolute valuation of the loan
 			util::repay_loan(loan_1, COLLATERAL_VALUE / 2);
 			expected_portfolio(util::current_loan_pv(loan_1));
+		});
+	}
+
+	#[test]
+	fn empty_portfolio_with_current_timestamp() {
+		new_test_ext().execute_with(|| {
+			assert_eq!(
+				PortfolioValuation::<Runtime>::get(POOL_A).last_updated(),
+				now().as_secs()
+			);
 		});
 	}
 }
