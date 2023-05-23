@@ -13,19 +13,16 @@
 
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
+	ops::{
+		EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub,
+		EnsureSubAssign,
+	},
 	InterestAccrual, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	ensure,
-	pallet_prelude::DispatchResult,
-	traits::{
-		tokens::{self},
-		UnixTime,
-	},
-	PalletError, RuntimeDebug,
+	ensure, pallet_prelude::DispatchResult, traits::UnixTime, PalletError, RuntimeDebug,
 };
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Saturating;
@@ -83,27 +80,35 @@ pub enum CloseLoanError {
 // So the portfolio valuation could be:
 // 	 - Approximate when current time != last_updated
 // 	 - Exact when current time == last_updated
-#[derive(Encode, Decode, Clone, Default, TypeInfo, MaxEncodedLen)]
-pub struct PortfolioValuation<Balance> {
+#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct PortfolioValuation<T: Config> {
 	// Computed portfolio valuation for the given pool
-	value: Balance,
+	value: T::Balance,
 
 	// Last time when the portfolio valuation was calculated for the entire pool
+	// In case never be calculated, it contains the creation time.
 	last_updated: Moment,
 }
 
-impl<Balance> PortfolioValuation<Balance>
-where
-	Balance: tokens::Balance,
-{
-	pub fn new(value: Balance, when: Moment) -> Self {
+impl<T: Config> Default for PortfolioValuation<T> {
+	fn default() -> Self {
+		Self {
+			value: T::Balance::zero(),
+			last_updated: T::Time::now().as_secs(),
+		}
+	}
+}
+
+impl<T: Config> PortfolioValuation<T> {
+	pub fn new(value: T::Balance, when: Moment) -> Self {
 		Self {
 			value,
 			last_updated: when,
 		}
 	}
 
-	pub fn value(&self) -> Balance {
+	pub fn value(&self) -> T::Balance {
 		self.value
 	}
 
@@ -113,8 +118,8 @@ where
 
 	pub fn update_with_pv_diff(
 		&mut self,
-		old_pv: Balance,
-		new_pv: Balance,
+		old_pv: T::Balance,
+		new_pv: T::Balance,
 	) -> Result<(), ArithmeticError> {
 		match new_pv.cmp(&old_pv) {
 			Ordering::Greater => self.value.ensure_add_assign(new_pv.ensure_sub(old_pv)?),

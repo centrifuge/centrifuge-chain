@@ -253,13 +253,8 @@ pub mod pallet {
 	/// Stores the portfolio valuation associated to each pool
 	#[pallet::storage]
 	#[pallet::getter(fn portfolio_valuation)]
-	pub(crate) type PortfolioValuation<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		PoolIdOf<T>,
-		types::PortfolioValuation<T::Balance>,
-		ValueQuery,
-	>;
+	pub(crate) type PortfolioValuation<T: Config> =
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, types::PortfolioValuation<T>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -734,7 +729,7 @@ pub mod pallet {
 
 		fn update_portfolio_valuation_with_pv(
 			pool_id: PoolIdOf<T>,
-			portfolio: &mut types::PortfolioValuation<T::Balance>,
+			portfolio: &mut types::PortfolioValuation<T>,
 			old_pv: T::Balance,
 			new_pv: T::Balance,
 		) -> DispatchResult {
