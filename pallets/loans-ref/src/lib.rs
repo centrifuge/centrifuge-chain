@@ -739,20 +739,6 @@ pub mod pallet {
 			})
 		}
 
-		/// From all overdue write off rules, it returns the one with the
-		/// highest percentage (or highest penalty, if same percentage) that can
-		/// be applied.
-		///
-		/// Suppose a policy with the following rules:
-		/// - overdue_days: 5,   percentage 10%
-		/// - overdue_days: 10,  percentage 30%
-		/// - overdue_days: 15,  percentage 20%
-		///
-		/// If the loan is not overdue, it will not return any rule.
-		/// If the loan is overdue by 4 days, it will not return any rule.
-		/// If the loan is overdue by 9 days, it will return the first rule.
-		/// If the loan is overdue by 60 days, it will return the second rule
-		/// (because it has a higher percetage).
 		fn find_write_off_rule(
 			pool_id: PoolIdOf<T>,
 			loan: &ActiveLoan<T>,
