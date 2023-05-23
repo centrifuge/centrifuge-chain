@@ -803,6 +803,7 @@ fn centrifuge_genesis(
 		}
 		None => vec![],
 	};
+	let chain_id: u32 = id.into();
 
 	centrifuge_runtime::GenesisConfig {
 		system: centrifuge_runtime::SystemConfig {
@@ -896,7 +897,9 @@ fn centrifuge_genesis(
 			amount: centrifuge_runtime::ExistentialDeposit::get(),
 		},
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
+		evm_chain_id: development_runtime::EVMChainIdConfig {
+			chain_id: chain_id.into(),
+		},
 		ethereum: Default::default(),
 		evm: Default::default(),
 	}
@@ -923,6 +926,7 @@ fn altair_genesis(
 		}
 		None => vec![],
 	};
+	let chain_id: u32 = id.into();
 
 	altair_runtime::GenesisConfig {
 		system: altair_runtime::SystemConfig {
@@ -998,7 +1002,9 @@ fn altair_genesis(
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
+		evm_chain_id: development_runtime::EVMChainIdConfig {
+			chain_id: chain_id.into(),
+		},
 		ethereum: Default::default(),
 		evm: Default::default(),
 	}
@@ -1047,6 +1053,7 @@ fn development_genesis(
 		}
 		None => (vec![], vec![]),
 	};
+	let chain_id: u32 = id.into();
 
 	development_runtime::GenesisConfig {
 		system: development_runtime::SystemConfig {
@@ -1144,7 +1151,9 @@ fn development_genesis(
 			total_reward: 10_048 * CFG,
 		},
 		base_fee: Default::default(),
-		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
+		evm_chain_id: development_runtime::EVMChainIdConfig {
+			chain_id: chain_id.into(),
+		},
 		ethereum: Default::default(),
 		evm: Default::default(),
 		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
