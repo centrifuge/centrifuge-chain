@@ -139,7 +139,7 @@ impl<T: Config> InternalActivePricing<T> {
 		})
 	}
 
-	pub fn adjust_interest(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
+	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
 		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
 			self.info.interest_rate,
 			self.normalized_debt,

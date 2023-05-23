@@ -61,9 +61,7 @@ mod util {
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
 		match get_loan(loan_id).pricing() {
 			ActivePricing::Internal(pricing) => pricing.calculate_debt().unwrap(),
-			ActivePricing::External(pricing) => pricing
-				.remaining_from(get_loan(loan_id).totals().1)
-				.unwrap(),
+			ActivePricing::External(pricing) => pricing.calculate_debt().unwrap(),
 		}
 	}
 
@@ -138,8 +136,8 @@ mod util {
 				quantity: QUANTITY,
 			}),
 			restrictions: LoanRestrictions {
-				borrows: BorrowRestrictions::FullOnce,
-				repayments: RepayRestrictions::FullOnce,
+				borrows: BorrowRestrictions::NoWrittenOff,
+				repayments: RepayRestrictions::None,
 			},
 		}
 	}
@@ -380,39 +378,6 @@ mod create_loan {
 			assert_noop!(
 				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
 				DEPENDENCY_ERROR
-			);
-		});
-	}
-
-	#[test]
-	fn with_wrong_restrictions() {
-		new_test_ext().execute_with(|| {
-			config_mocks(POOL_A);
-
-			let loan = LoanInfo {
-				restrictions: LoanRestrictions {
-					borrows: BorrowRestrictions::NoWrittenOff, // Requires FullOnce
-					repayments: RepayRestrictions::FullOnce,
-				},
-				..util::base_external_loan()
-			};
-
-			assert_noop!(
-				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
-				Error::<Runtime>::from(CreateLoanError::InvalidBorrowRestriction)
-			);
-
-			let loan = LoanInfo {
-				restrictions: LoanRestrictions {
-					borrows: BorrowRestrictions::FullOnce,
-					repayments: RepayRestrictions::None, // Requires FullOnce
-				},
-				..util::base_external_loan()
-			};
-
-			assert_noop!(
-				Loans::create(RuntimeOrigin::signed(BORROWER), POOL_A, loan),
-				Error::<Runtime>::from(CreateLoanError::InvalidRepayRestriction)
 			);
 		});
 	}
@@ -1542,11 +1507,7 @@ mod write_off_loan {
 mod close_loan {
 	use super::*;
 
-	fn config_mocks(current_price: Balance) {
-		MockPrices::mock_get(move |id| {
-			assert_eq!(*id, REGISTER_PRICE_ID);
-			Ok((current_price, BLOCK_TIME.as_secs()))
-		});
+	fn config_mocks() {
 		MockPrices::mock_unregister_id(|_, _| Ok(()));
 	}
 
@@ -1596,6 +1557,20 @@ mod close_loan {
 	}
 
 	#[test]
+	fn without_fully_repaid_external() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_external_loan());
+			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			util::repay_loan(loan_id, (PRICE_VALUE / 2) * QUANTITY);
+
+			assert_noop!(
+				Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
+				Error::<Runtime>::from(CloseLoanError::NotFullyRepaid)
+			);
+		});
+	}
+
+	#[test]
 	fn with_time_after_fully_repaid_internal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
@@ -1611,22 +1586,6 @@ mod close_loan {
 			));
 
 			assert_eq!(Uniques::owner(ASSET_AA.0, ASSET_AA.1).unwrap(), BORROWER);
-		});
-	}
-
-	#[test]
-	fn with_price_up_after_fully_repaid_internal() {
-		new_test_ext().execute_with(|| {
-			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
-			util::repay_loan(loan_id, PRICE_VALUE * QUANTITY);
-
-			config_mocks(PRICE_VALUE * 2);
-			assert_ok!(Loans::close(
-				RuntimeOrigin::signed(BORROWER),
-				POOL_A,
-				loan_id
-			));
 		});
 	}
 
@@ -1654,7 +1613,7 @@ mod close_loan {
 			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
 			util::repay_loan(loan_id, PRICE_VALUE * QUANTITY);
 
-			config_mocks(PRICE_VALUE / 2);
+			config_mocks();
 			assert_ok!(Loans::close(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,

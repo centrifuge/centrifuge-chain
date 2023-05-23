@@ -349,6 +349,8 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
+		/// Emits when an amount used is not multiple of the current price
+		AmountNotMultipleOfPrice,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from

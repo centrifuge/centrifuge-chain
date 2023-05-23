@@ -55,17 +55,7 @@ impl<T: Config> LoanInfo<T> {
 	pub fn validate(&self, now: Moment) -> DispatchResult {
 		match &self.pricing {
 			Pricing::Internal(pricing) => pricing.validate()?,
-			Pricing::External(pricing) => {
-				pricing.validate()?;
-				ensure!(
-					self.restrictions.borrows == BorrowRestrictions::FullOnce,
-					Error::<T>::from(CreateLoanError::InvalidBorrowRestriction)
-				);
-				ensure!(
-					self.restrictions.repayments == RepayRestrictions::FullOnce,
-					Error::<T>::from(CreateLoanError::InvalidRepayRestriction)
-				)
-			}
+			Pricing::External(pricing) => pricing.validate()?,
 		}
 
 		ensure!(
@@ -234,7 +224,7 @@ impl<T: Config> ActiveLoan<T> {
 		WriteOffStatus {
 			percentage: self.write_off_percentage,
 			penalty: match &self.pricing {
-				ActivePricing::Internal(pricing) => pricing.write_off_penalty(),
+				ActivePricing::Internal(inner) => inner.write_off_penalty(),
 				ActivePricing::External(_) => T::Rate::zero(),
 			},
 		}
@@ -266,14 +256,14 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn present_value(&self) -> Result<T::Balance, DispatchError> {
 		let value = match &self.pricing {
-			ActivePricing::Internal(pricing) => {
-				let debt = pricing.calculate_debt()?;
+			ActivePricing::Internal(inner) => {
+				let debt = inner.calculate_debt()?;
 				let maturity_date = self.schedule.maturity.date();
-				pricing.compute_present_value(debt, self.origination_date, maturity_date)?
+				inner.compute_present_value(debt, self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(pricing) => {
-				let price = pricing.calculate_price()?;
-				pricing.compute_present_value(price, self.total_repaid)?
+			ActivePricing::External(inner) => {
+				let price = inner.calculate_price()?;
+				inner.compute_present_value(price)?
 			}
 		};
 
@@ -294,14 +284,14 @@ impl<T: Config> ActiveLoan<T> {
 		Prices: DataCollection<T::PriceId, Data = Result<PriceOf<T>, DispatchError>>,
 	{
 		let value = match &self.pricing {
-			ActivePricing::Internal(pricing) => {
-				let debt = pricing.calculate_debt_by(rates)?;
+			ActivePricing::Internal(inner) => {
+				let debt = inner.calculate_debt_by(rates)?;
 				let maturity_date = self.schedule.maturity.date();
-				pricing.compute_present_value(debt, self.origination_date, maturity_date)?
+				inner.compute_present_value(debt, self.origination_date, maturity_date)?
 			}
-			ActivePricing::External(pricing) => {
-				let price = pricing.calculate_price_by(prices)?;
-				pricing.compute_present_value(price, self.total_repaid)?
+			ActivePricing::External(inner) => {
+				let price = inner.calculate_price_by(prices)?;
+				inner.compute_present_value(price)?
 			}
 		};
 
@@ -310,8 +300,8 @@ impl<T: Config> ActiveLoan<T> {
 
 	fn ensure_can_borrow(&self, amount: T::Balance) -> DispatchResult {
 		let max_borrow_amount = match &self.pricing {
-			ActivePricing::Internal(pricing) => pricing.max_borrow_amount(self.total_borrowed)?,
-			ActivePricing::External(pricing) => pricing.remaining_from(self.total_borrowed)?,
+			ActivePricing::Internal(inner) => inner.max_borrow_amount(self.total_borrowed)?,
+			ActivePricing::External(inner) => inner.max_borrow_amount()?,
 		};
 
 		ensure!(
@@ -343,8 +333,9 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_borrowed.ensure_add_assign(amount)?;
 
-		if let ActivePricing::Internal(pricing) = &mut self.pricing {
-			pricing.adjust_interest(Adjustment::Increase(amount))?;
+		match &mut self.pricing {
+			ActivePricing::Internal(inner) => inner.adjust_debt(Adjustment::Increase(amount))?,
+			ActivePricing::External(inner) => inner.adjust_debt(Adjustment::Increase(amount))?,
 		}
 
 		Ok(())
@@ -352,8 +343,8 @@ impl<T: Config> ActiveLoan<T> {
 
 	fn ensure_can_repay(&self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
 		let max_repay_amount = match &self.pricing {
-			ActivePricing::Internal(pricing) => pricing.calculate_debt()?,
-			ActivePricing::External(pricing) => pricing.remaining_from(self.total_repaid)?,
+			ActivePricing::Internal(inner) => inner.calculate_debt()?,
+			ActivePricing::External(inner) => inner.calculate_debt()?,
 		};
 
 		let amount = amount.min(max_repay_amount);
@@ -376,16 +367,17 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.total_repaid.ensure_add_assign(amount)?;
 
-		if let ActivePricing::Internal(pricing) = &mut self.pricing {
-			pricing.adjust_interest(Adjustment::Decrease(amount))?;
+		match &mut self.pricing {
+			ActivePricing::Internal(inner) => inner.adjust_debt(Adjustment::Decrease(amount))?,
+			ActivePricing::External(inner) => inner.adjust_debt(Adjustment::Decrease(amount))?,
 		}
 
 		Ok(amount)
 	}
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
-		if let ActivePricing::Internal(pricing) = &mut self.pricing {
-			pricing.update_penalty(new_status.penalty)?;
+		if let ActivePricing::Internal(inner) = &mut self.pricing {
+			inner.update_penalty(new_status.penalty)?;
 		}
 
 		self.write_off_percentage = new_status.percentage;
@@ -395,8 +387,8 @@ impl<T: Config> ActiveLoan<T> {
 
 	fn ensure_can_close(&self) -> DispatchResult {
 		let can_close = match &self.pricing {
-			ActivePricing::Internal(pricing) => !pricing.has_debt(),
-			ActivePricing::External(_) => !self.total_repaid.is_zero(),
+			ActivePricing::Internal(inner) => !inner.has_debt(),
+			ActivePricing::External(inner) => !inner.has_debt(),
 		};
 
 		ensure!(can_close, Error::<T>::from(CloseLoanError::NotFullyRepaid));
@@ -414,8 +406,8 @@ impl<T: Config> ActiveLoan<T> {
 			closed_at: frame_system::Pallet::<T>::current_block_number(),
 			info: LoanInfo {
 				pricing: match self.pricing {
-					ActivePricing::Internal(pricing) => Pricing::Internal(pricing.end()?),
-					ActivePricing::External(pricing) => Pricing::External(pricing.end(pool_id)?),
+					ActivePricing::Internal(inner) => Pricing::Internal(inner.end()?),
+					ActivePricing::External(inner) => Pricing::External(inner.end(pool_id)?),
 				},
 				collateral: self.collateral,
 				schedule: self.schedule,
