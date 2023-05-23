@@ -22,9 +22,9 @@ use sp_std::marker::PhantomData;
 
 use crate::Aura;
 
-// To create valid Ethereum-compatible blocks, we need a 20-byte
-// "author" for the block. Since that author is purely informational,
-// we do a simple truncation of the 32-byte Substrate author
+/// To create valid Ethereum-compatible blocks, we need a 20-byte
+/// "author" for the block. Since that author is purely informational,
+/// we do a simple truncation of the 32-byte Substrate author
 pub struct FindAuthorTruncated<F>(PhantomData<F>);
 impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	fn find_author<'a, I>(digests: I) -> Option<H160>
