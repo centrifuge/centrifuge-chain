@@ -311,7 +311,7 @@ impl<T: Config> ActiveLoan<T> {
 
 		ensure!(
 			match self.restrictions.borrows {
-				BorrowRestrictions::NoWrittenOff => self.write_off_status().is_none(),
+				BorrowRestrictions::NotWrittenOff => self.write_off_status().is_none(),
 				BorrowRestrictions::FullOnce => {
 					self.total_borrowed.is_zero() && amount == max_borrow_amount
 				}

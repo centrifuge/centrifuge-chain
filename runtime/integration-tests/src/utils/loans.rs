@@ -135,7 +135,7 @@ pub fn issue_default_loan(
 			}),
 		}),
 		restrictions: LoanRestrictions {
-			borrows: BorrowRestrictions::NoWrittenOff,
+			borrows: BorrowRestrictions::NotWrittenOff,
 			repayments: RepayRestrictions::None,
 		},
 	};

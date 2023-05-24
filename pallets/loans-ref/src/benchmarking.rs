@@ -135,7 +135,7 @@ where
 				}),
 			}),
 			restrictions: LoanRestrictions {
-				borrows: BorrowRestrictions::NoWrittenOff,
+				borrows: BorrowRestrictions::NotWrittenOff,
 				repayments: RepayRestrictions::None,
 			},
 		}

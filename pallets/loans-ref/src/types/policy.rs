@@ -164,7 +164,7 @@ where
 /// If the loan is overdue by 4 days, it will not return any rule.
 /// If the loan is overdue by 9 days, it will return the first rule.
 /// If the loan is overdue by 60 days, it will return the second rule
-/// (because it has a higher percetage).
+/// (because it has a higher percentage).
 pub fn find_rule<Rate: Ord>(
 	rules: impl Iterator<Item = WriteOffRule<Rate>>,
 	has_effect: impl Fn(&WriteOffTrigger) -> Result<bool, DispatchError>,

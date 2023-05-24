@@ -128,7 +128,7 @@ impl RepaymentSchedule {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum BorrowRestrictions {
 	/// The loan can not be borrowed if it has been written off.
-	NoWrittenOff,
+	NotWrittenOff,
 
 	/// You only can borrow the full loan value once.
 	FullOnce,

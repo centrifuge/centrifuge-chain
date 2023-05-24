@@ -116,7 +116,7 @@ mod util {
 			collateral: ASSET_AA,
 			pricing: Pricing::Internal(base_internal_pricing()),
 			restrictions: LoanRestrictions {
-				borrows: BorrowRestrictions::NoWrittenOff,
+				borrows: BorrowRestrictions::NotWrittenOff,
 				repayments: RepayRestrictions::None,
 			},
 		}
@@ -135,7 +135,7 @@ mod util {
 				max_borrow_quantity: QUANTITY,
 			}),
 			restrictions: LoanRestrictions {
-				borrows: BorrowRestrictions::NoWrittenOff,
+				borrows: BorrowRestrictions::NotWrittenOff,
 				repayments: RepayRestrictions::None,
 			},
 		}
