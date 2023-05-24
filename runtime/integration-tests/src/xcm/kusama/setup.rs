@@ -26,6 +26,8 @@ pub const PARA_ID_SIBLING: u32 = 3000;
 
 /// The test asset id attributed to AUSD
 pub const AUSD_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(42);
+/// The test asset id attributed to KSM
+pub const KSM_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(1000);
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
