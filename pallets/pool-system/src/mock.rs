@@ -322,7 +322,6 @@ impl Config for Runtime {
 	type NAV = FakeNav;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
-	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type PoolCurrency = PoolCurrency;

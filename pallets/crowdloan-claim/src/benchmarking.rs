@@ -141,7 +141,8 @@ fn get_balance<T: Config>(amount: u128) -> T::Balance {
 	}
 }
 
-// In order to detangle from sp-core/fullCrypto which seems to be missing some trait implementations
+// In order to detangle from sp-core/fullCrypto which seems to be missing some
+// trait implementations
 #[derive(codec::Encode, codec::Decode)]
 struct Signature(pub [u8; 64]);
 
@@ -160,7 +161,8 @@ enum MultiSignature {
 
 // All accounts in the following are derived from this Mnemonic
 //
-// "flight client wild replace umbrella april addict below deer inch mix surface"
+// "flight client wild replace umbrella april addict below deer inch mix
+// surface"
 //
 
 fn get_account_para_ed25519<T: Config>() -> ParachainAccountIdOf<T> {

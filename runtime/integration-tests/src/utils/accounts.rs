@@ -42,8 +42,9 @@ impl NonceManager {
 	}
 
 	/// Retrieves the latest nonce of an account.
-	/// If the nonce is not already in the map for a given chain-account combination
-	/// it ensures to fetch the latest nonce and store it in the map.
+	/// If the nonce is not already in the map for a given chain-account
+	/// combination it ensures to fetch the latest nonce and store it in the
+	/// map.
 	///
 	/// MUST be executed in an externalites provided env.
 	pub fn nonce(&mut self, chain: Chain, who: Keyring) -> Index {
@@ -71,8 +72,9 @@ impl NonceManager {
 
 	/// Retrieves the latest nonce of an account. Returns latest and increases
 	/// the nonce by 1.
-	/// If the nonce is not already in the map for a given chain-account combination
-	/// it ensures to fetch the latest nonce and store it in the map.
+	/// If the nonce is not already in the map for a given chain-account
+	/// combination it ensures to fetch the latest nonce and store it in the
+	/// map.
 	///
 	/// MUST be executed in an externalites provided env.
 	pub fn fetch_add(&mut self, chain: Chain, who: Keyring) -> Index {

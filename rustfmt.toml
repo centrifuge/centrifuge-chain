@@ -4,3 +4,4 @@ reorder_impl_items = true
 reorder_imports = true
 group_imports = "StdExternalCrate"
 reorder_modules = true 
+wrap_comments = true

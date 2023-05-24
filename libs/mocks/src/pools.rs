@@ -123,12 +123,10 @@ pub mod pallet {
 		type PoolId = T::PoolId;
 
 		fn benchmark_create_pool(a: Self::PoolId, b: &Self::AccountId) {
-			let b = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(b) };
 			execute_call!((a, b))
 		}
 
 		fn benchmark_give_ausd(a: &Self::AccountId, b: Self::Balance) {
-			let a = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(a) };
 			execute_call!((a, b))
 		}
 	}

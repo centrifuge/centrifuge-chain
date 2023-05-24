@@ -186,6 +186,7 @@ dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
@@ -199,6 +200,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.4",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -209,6 +211,7 @@ dependencies = [
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-block-rewards",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
@@ -231,6 +234,7 @@ dependencies = [
  "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-restricted-tokens",
+ "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
  "pallet-timestamp",
@@ -978,6 +982,7 @@ dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
  "cumulus-client-service",
+ "cumulus-pallet-session-benchmarking",
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
  "cumulus-relay-chain-inprocess-interface",
@@ -1062,6 +1067,7 @@ dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
@@ -1075,6 +1081,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.4",
+ "log",
  "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
@@ -1085,6 +1092,7 @@ dependencies = [
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-block-rewards",
  "pallet-bridge",
  "pallet-claims",
  "pallet-collator-allowlist",
@@ -1110,6 +1118,7 @@ dependencies = [
  "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-restricted-tokens",
+ "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
  "pallet-timestamp",
@@ -1230,15 +1239,11 @@ dependencies = [
  "cfg-primitives",
  "cfg-types",
  "frame-support",
- "frame-system",
  "impl-trait-for-tuples",
  "mock-builder",
- "orml-traits",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "sp-arithmetic",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -2060,6 +2065,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-pallet-session-benchmarking"
+version = "3.0.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.37#09418fc04c2608b123f36ca80f16df3d2096753b"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-session",
+ "parity-scale-codec 3.4.0",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "cumulus-pallet-xcm"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=09418fc04c2608b123f36ca80f16df3d2096753b#09418fc04c2608b123f36ca80f16df3d2096753b"
@@ -2538,6 +2557,7 @@ dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-session-benchmarking",
  "cumulus-pallet-xcm",
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
@@ -2566,6 +2586,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-block-rewards",
  "pallet-bridge",
  "pallet-claims",
  "pallet-collator-allowlist",
@@ -2605,6 +2626,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transfer-allowlist",
  "pallet-treasury",
  "pallet-uniques",
  "pallet-utility",
@@ -6381,6 +6403,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-oracle"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.37#16b6c1149a15674d21c87244b7988a667e2c14d9"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "serde",
+ "sp-application-crypto",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.37#16b6c1149a15674d21c87244b7988a667e2c14d9"
@@ -6694,6 +6734,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-block-rewards"
+version = "0.1.0"
+dependencies = [
+ "cfg-primitives",
+ "cfg-traits",
+ "cfg-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "num-traits",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-collator-selection",
+ "pallet-restricted-tokens",
+ "pallet-rewards",
+ "pallet-session",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-bounties"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29#f38bd6671d460293c93062cc1e4fe9e9e490cb29"
@@ -6802,6 +6870,25 @@ dependencies = [
  "scale-info",
  "sp-runtime",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-collection-data-feed"
+version = "1.0.0"
+dependencies = [
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "orml-oracle",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -7300,6 +7387,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "strum",
 ]
 
 [[package]]
@@ -7590,7 +7678,6 @@ dependencies = [
  "pallet-timestamp",
  "parachain-info",
  "parity-scale-codec 3.4.0",
- "polkadot-parachain",
  "rand 0.8.5",
  "rev_slice",
  "scale-info",
@@ -7728,9 +7815,11 @@ name = "pallet-rewards"
 version = "0.1.0"
 dependencies = [
  "cfg-traits",
+ "cfg-types",
  "frame-support",
  "frame-system",
  "lazy_static",
+ "log",
  "num-traits",
  "orml-tokens",
  "orml-traits",
@@ -7970,15 +8059,13 @@ dependencies = [
 name = "pallet-transfer-allowlist"
 version = "0.1.0"
 dependencies = [
+ "cfg-mocks",
  "cfg-traits",
  "cfg-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
- "pallet-treasury",
  "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
@@ -7986,7 +8073,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xcm",
 ]
 
 [[package]]
@@ -10489,6 +10575,7 @@ dependencies = [
  "pallet-treasury",
  "parity-scale-codec 3.4.0",
  "scale-info",
+ "serde",
  "smallvec",
  "sp-api",
  "sp-arithmetic",
@@ -10525,12 +10612,15 @@ dependencies = [
  "orml-xtokens",
  "pallet-aura",
  "pallet-balances",
+ "pallet-block-rewards",
+ "pallet-collator-selection",
  "pallet-connectors",
  "pallet-loans-ref",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
  "pallet-rewards",
+ "pallet-session",
  "pallet-transaction-payment",
  "pallet-uniques",
  "pallet-xcm",

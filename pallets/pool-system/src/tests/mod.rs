@@ -20,15 +20,10 @@ use cfg_types::{
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
-use sp_core::{storage::StateVersion, Encode};
+use sp_core::storage::StateVersion;
 use sp_runtime::{
-	traits::{ConstU32, One, Zero},
-	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
-};
-use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, PalletInstance, Parachain, X3},
-	VersionedMultiLocation,
+	traits::{One, Zero},
+	FixedPointNumber, Perquintill, TokenError,
 };
 
 use crate::{
@@ -729,7 +724,8 @@ fn submission_period() {
 		));
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), 0));
 
-		// Not allowed as it breaks the min risk buffer, and the current state isn't broken
+		// Not allowed as it breaks the min risk buffer, and the current state isn't
+		// broken
 		let epoch = <pallet::EpochExecution<mock::Runtime>>::try_get(0).unwrap();
 		let existing_state_score = PoolSystem::score_solution(
 			&crate::Pool::<Runtime>::try_get(0).unwrap(),
@@ -1017,7 +1013,8 @@ fn pool_updates_should_be_constrained() {
 			}
 		));
 
-		// Since there's a redemption order, the above update should not have been executed yet
+		// Since there's a redemption order, the above update should not have been
+		// executed yet
 		let pool = crate::Pool::<Runtime>::try_get(pool_id).unwrap();
 		assert_eq!(
 			pool.parameters.min_epoch_time,
@@ -1033,7 +1030,8 @@ fn pool_updates_should_be_constrained() {
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
 		assert_ok!(PoolSystem::close_epoch(pool_owner_origin.clone(), pool_id));
 
-		// Now it works since the epoch was executed and the redemption order was fulfilled
+		// Now it works since the epoch was executed and the redemption order was
+		// fulfilled
 		assert_ok!(PoolSystem::execute_update(pool_id));
 
 		// And the parameter should be updated now
@@ -2308,8 +2306,6 @@ fn create_tranche_token_metadata() {
 
 		let pool = Pool::<Runtime>::get(3).unwrap();
 		let tranche_currency = pool.tranches.tranches[0].currency;
-		let tranche_id =
-			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 
 		assert_eq!(
 			<Runtime as Config>::AssetRegistry::metadata(&tranche_currency.into()).unwrap(),
@@ -2318,14 +2314,7 @@ fn create_tranche_token_metadata() {
 				name: "SuperToken".into(),
 				symbol: "ST".into(),
 				existential_deposit: 0,
-				location: Some(VersionedMultiLocation::V1(MultiLocation {
-					parents: 1,
-					interior: X3(
-						Parachain(MockParachainId::get()),
-						PalletInstance(PoolPalletIndex::get()),
-						GeneralKey(tranche_id)
-					),
-				})),
+				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,

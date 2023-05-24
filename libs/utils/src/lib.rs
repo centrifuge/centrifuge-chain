@@ -16,9 +16,9 @@
 use codec::{Decode, Encode, Input};
 use sp_std::{cmp::min, vec::Vec};
 
-/// Build a fixed-size array using as many elements from `src` as possible without
-/// overflowing and ensuring that the array is 0 padded in the case where
-/// `src.len()` is smaller than S.
+/// Build a fixed-size array using as many elements from `src` as possible
+/// without overflowing and ensuring that the array is 0 padded in the case
+/// where `src.len()` is smaller than S.
 pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
 	let mut dest = [0; S];
 	let len = min(src.len(), S);
@@ -27,17 +27,18 @@ pub fn vec_to_fixed_array<const S: usize>(src: Vec<u8>) -> [u8; S] {
 	dest
 }
 
-/// Encode a value in its big-endian representation of which all we know is that it
-/// implements Encode. We use this for number types to make sure they are encoded
-/// the way they are expected to be decoded on the Solidity side.
+/// Encode a value in its big-endian representation of which all we know is that
+/// it implements Encode. We use this for number types to make sure they are
+/// encoded the way they are expected to be decoded on the Solidity side.
 pub fn encode_be(x: impl Encode) -> Vec<u8> {
 	let mut output = x.encode();
 	output.reverse();
 	output
 }
 
-/// Decode a type O by reading S bytes from I. Those bytes are expected to be encoded
-/// as big-endian and thus needs reversing to little-endian before decoding to O.
+/// Decode a type O by reading S bytes from I. Those bytes are expected to be
+/// encoded as big-endian and thus needs reversing to little-endian before
+/// decoding to O.
 pub fn decode_be_bytes<const S: usize, O: Decode, I: Input>(
 	input: &mut I,
 ) -> Result<O, codec::Error> {
@@ -56,7 +57,8 @@ pub fn decode<const S: usize, O: Decode, I: Input>(input: &mut I) -> Result<O, c
 	O::decode(&mut bytes.as_slice())
 }
 
-/// Function that initializes the frame system & Aura, so a timestamp can be set and pass validation
+/// Function that initializes the frame system & Aura, so a timestamp can be set
+/// and pass validation
 #[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 pub fn set_block_number_timestamp<T>(block_number: T::BlockNumber, timestamp: T::Moment)
 where
@@ -102,7 +104,8 @@ mod tests {
 		}
 
 		// Verify that `vec_to_fixed_array` converts a source Vec that's exactly as big
-		// the desired output fixed-array by copying all elements of source to said array.
+		// the desired output fixed-array by copying all elements of source to said
+		// array.
 		#[test]
 		fn max_source() {
 			let src: Vec<u8> = (0..32).collect();
@@ -118,7 +121,8 @@ mod tests {
 		}
 
 		// Verify that `vec_to_fixed_array` converts a source Vec that's longer than the
-		// desired output fixed-array by copying all elements of source until said array is full.
+		// desired output fixed-array by copying all elements of source until said array
+		// is full.
 		#[test]
 		fn exceeding_source() {
 			let src: Vec<u8> = (0..64).collect();

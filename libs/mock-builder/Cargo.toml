@@ -10,9 +10,11 @@ version = "0.0.1"
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
+[dependencies]
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+
 [dev-dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 scale-info = { version = "2.3.0", features = ["derive"] }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }

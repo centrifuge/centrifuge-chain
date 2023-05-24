@@ -113,8 +113,8 @@ fn register_tranche_asset_blocked() {
 			additional: CustomMetadata::default(),
 		};
 
-		// It fails with `BadOrigin` even when submitted with `Origin::root` since we only
-		// allow for tranche tokens to be registered through the pools pallet.
+		// It fails with `BadOrigin` even when submitted with `Origin::root` since we
+		// only allow for tranche tokens to be registered through the pools pallet.
 		let asset_id = CurrencyId::Tranche(42, [42u8; 16]);
 		assert_noop!(
 			OrmlAssetRegistry::register_asset(

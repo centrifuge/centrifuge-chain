@@ -149,9 +149,9 @@ fn transfer_air_to_sibling() {
 fn transfer_air_sibling_to_altair() {
 	TestNet::reset();
 
-	// In order to be able to transfer AIR from Sibling to Altair, we need to first send
-	// AIR from Altair to Sibling, or else it fails since it'd be like Sibling had minted
-	// AIR on their side.
+	// In order to be able to transfer AIR from Sibling to Altair, we need to first
+	// send AIR from Altair to Sibling, or else it fails since it'd be like Sibling
+	// had minted AIR on their side.
 	transfer_air_to_sibling();
 
 	let alice_initial_balance = air(5);
@@ -274,7 +274,8 @@ fn transfer_ausd_to_altair() {
 			alice_initial_balance - transfer_amount
 		);
 
-		// Verify that the amount transferred is now part of the altair parachain account here
+		// Verify that the amount transferred is now part of the altair parachain
+		// account here
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::AUSD, &altair_account()),
 			transfer_amount
@@ -544,8 +545,9 @@ fn ksm_fee() -> Balance {
 }
 
 fn calc_fee(fee_per_second: Balance) -> Balance {
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the tests take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
+	// We divide the fee to align its unit and multiply by 4 as that seems to be the
+	// unit of time the tests take.
+	// NOTE: it is possible that in different machines this value may differ. We
+	// shall see.
 	fee_per_second.div_euclid(10_000) * 8
 }

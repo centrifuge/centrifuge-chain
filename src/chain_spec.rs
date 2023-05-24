@@ -22,8 +22,8 @@
 // module level.
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use altair_runtime::constants::currency::AIR;
-use cfg_primitives::{currency_decimals, parachains, Balance, CFG};
+use altair_runtime::constants::currency::{AIR, MILLI_AIR};
+use cfg_primitives::{currency_decimals, parachains, Balance, CFG, MILLI_CFG};
 use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
@@ -78,19 +78,28 @@ impl Extensions {
 }
 
 pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::SessionKeys {
-	altair_runtime::SessionKeys { aura: keys }
+	altair_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 pub fn get_centrifuge_session_keys(
 	keys: centrifuge_runtime::AuraId,
 ) -> centrifuge_runtime::SessionKeys {
-	centrifuge_runtime::SessionKeys { aura: keys }
+	centrifuge_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 pub fn get_development_session_keys(
 	keys: development_runtime::AuraId,
 ) -> development_runtime::SessionKeys {
-	development_runtime::SessionKeys { aura: keys }
+	development_runtime::SessionKeys {
+		aura: keys.clone(),
+		block_rewards: keys,
+	}
 }
 
 type AccountPublic = <cfg_primitives::Signature as Verify>::Signer;
@@ -815,9 +824,10 @@ fn centrifuge_genesis(
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
 				FeeKey::AnchorsCommit,
-				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
-				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
-				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
+				// Daily state rent, defined such that it will amount to 0.00259.. RAD
+				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
+				// duration. The other fee components for anchors amount to about 0.00041.. RAD
+				// (410_000_000_000_000), such that the total anchor price for 3 years will be
 				// 0.003.. RAD
 				2_365_296_803_653,
 			)],
@@ -872,6 +882,19 @@ fn centrifuge_genesis(
 		},
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		block_rewards: centrifuge_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 8_325 * MILLI_CFG,
+			total_reward: 10_048 * CFG,
+		},
+		block_rewards_base: centrifuge_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: centrifuge_runtime::ExistentialDeposit::get(),
+		},
 	}
 }
 
@@ -918,9 +941,10 @@ fn altair_genesis(
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
 				FeeKey::AnchorsCommit,
-				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
-				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
-				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
+				// Daily state rent, defined such that it will amount to 0.00259.. RAD
+				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
+				// duration. The other fee components for anchors amount to about 0.00041.. RAD
+				// (410_000_000_000_000), such that the total anchor price for 3 years will be
 				// 0.003.. RAD
 				2_365_296_803_653,
 			)],
@@ -935,6 +959,19 @@ fn altair_genesis(
 				.collect(),
 			candidacy_bond: 1 * AIR,
 			..Default::default()
+		},
+		block_rewards: altair_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 98_630 * MILLI_AIR,
+			total_reward: 98_630 * MILLI_AIR * 100,
+		},
+		block_rewards_base: altair_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: altair_runtime::ExistentialDeposit::get(),
 		},
 		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
@@ -1028,9 +1065,10 @@ fn development_genesis(
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
 				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
 				FeeKey::AnchorsCommit,
-				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
-				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
-				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
+				// Daily state rent, defined such that it will amount to 0.00259.. RAD
+				// (2_590_000_000_000_040) over 3 years, which is the expected average anchor
+				// duration. The other fee components for anchors amount to about 0.00041.. RAD
+				// (410_000_000_000_000), such that the total anchor price for 3 years will be
 				// 0.003.. RAD
 				2_365_296_803_653,
 			)],
@@ -1088,10 +1126,27 @@ fn development_genesis(
 		parachain_system: Default::default(),
 		treasury: Default::default(),
 		interest_accrual: Default::default(),
+		block_rewards: development_runtime::BlockRewardsConfig {
+			collators: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			collator_reward: 8_325 * MILLI_CFG,
+			total_reward: 10_048 * CFG,
+		},
 		base_fee: Default::default(),
 		evm_chain_id: development_runtime::EVMChainIdConfig { chain_id: 999_999 },
 		ethereum: Default::default(),
 		evm: Default::default(),
+		block_rewards_base: development_runtime::BlockRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: development_runtime::ExistentialDeposit::get(),
+		},
+		liquidity_rewards_base: development_runtime::LiquidityRewardsBaseConfig {
+			currency_id: CurrencyId::Native,
+			amount: development_runtime::ExistentialDeposit::get(),
+		},
 	}
 }
 

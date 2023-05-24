@@ -33,13 +33,15 @@ use super::*;
 // Type alias and definitions
 // ----------------------------------------------------------------------------
 
-/// Type alias as a shortcut for a pallet refering to a FRAME system hash (associated type).
+/// Type alias as a shortcut for a pallet refering to a FRAME system hash
+/// (associated type).
 pub(crate) type SystemHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// Type alias as a shortcut for a proof verifier implementing a [Hasher] trait.
 pub(crate) type HasherHashOf<H> = <H as Hasher>::Hash;
 
-/// A global identifier for an nft/asset on-chain. Composed of a registry and token id.
+/// A global identifier for an nft/asset on-chain. Composed of a registry and
+/// token id.
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
 pub struct AssetId<RegistryId, TokenId>(pub RegistryId, pub TokenId);
 
@@ -51,10 +53,12 @@ impl<RegistryId, TokenId> AssetId<RegistryId, TokenId> {
 
 /// Proof verifier data structure.
 pub(crate) struct ProofVerifier {
-	/// Array containing static root hashes passed when minting a non-fungible token.
+	/// Array containing static root hashes passed when minting a non-fungible
+	/// token.
 	///
-	/// See [ProofVerifier::new] for information on how to pass those hashes. Those
-	/// root hashes are passed when invoking [mint] transaction (or extrinsic).
+	/// See [ProofVerifier::new] for information on how to pass those hashes.
+	/// Those root hashes are passed when invoking [mint] transaction (or
+	/// extrinsic).
 	static_proofs: FixedArray<HasherHashOf<Self>, 3>,
 }
 

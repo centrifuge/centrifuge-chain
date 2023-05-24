@@ -25,10 +25,11 @@ use sp_std::{
 	marker::PhantomData,
 };
 
-/// PoolRole can hold any type of role specific functions a user can do on a given pool.
-// NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
-//       In case the Role we provide does not match what we expect. I.e. if we change the Moment
-//       type in our actual runtimes, then the compiler complains about it anyways.
+/// PoolRole can hold any type of role specific functions a user can do on a
+/// given pool.
+// NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a
+// default.       In case the Role we provide does not match what we expect. I.e. if we change the
+// Moment       type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
@@ -190,9 +191,10 @@ where
 	}
 }
 
-/// The implementation of trait Properties for our PermissionsRoles does not care which Moment
-/// is passed to the PoolRole::TrancheInvestor(TrancheId, Moment) variant.
-/// This UNION shall reflect that and explain to the reader why it is passed here.
+/// The implementation of trait Properties for our PermissionsRoles does not
+/// care which Moment is passed to the PoolRole::TrancheInvestor(TrancheId,
+/// Moment) variant. This UNION shall reflect that and explain to the reader why
+/// it is passed here.
 pub const UNION: u64 = 0;
 
 impl<Now, MinDelay, TrancheId, MaxTranches, Moment> Properties
@@ -471,6 +473,7 @@ mod tests {
 
 	///! Tests for some types in the common section for our runtimes
 	use super::*;
+	use crate::tokens::StakingCurrency;
 
 	parameter_types! {
 		pub const MinDelay: u64 = 4;
@@ -500,9 +503,11 @@ mod tests {
 		}
 	}
 
-	/// The exists call does not care what is passed as moment. This type shall reflect that
+	/// The exists call does not care what is passed as moment. This type shall
+	/// reflect that
 	const UNION: u64 = 0u64;
-	/// The tranceh id type we use in our runtime-common. But we don't want a dependency here.
+	/// The tranceh id type we use in our runtime-common. But we don't want a
+	/// dependency here.
 	type TrancheId = [u8; 16];
 
 	fn into_tranche_id(val: u8) -> TrancheId {
@@ -575,7 +580,8 @@ mod tests {
 		))));
 		Now::set(0);
 
-		// Removing after MinDelay works (i.e. this is after min_delay the account will be invalid)
+		// Removing after MinDelay works (i.e. this is after min_delay the account will
+		// be invalid)
 		assert!(roles
 			.rm(Role::PoolRole(PoolRole::TrancheInvestor(
 				into_tranche_id(0),
@@ -682,7 +688,8 @@ mod tests {
 			});
 
 		/// Return the expected encoding.
-		/// This is useful to force at compile time that we handle all existing variants.
+		/// This is useful to force at compile time that we handle all existing
+		/// variants.
 		fn expected_encoding_value(id: crate::tokens::CurrencyId) -> Vec<u64> {
 			match id {
 				Native => vec![0],
@@ -694,6 +701,7 @@ mod tests {
 				KSM => vec![2],
 				AUSD => vec![3],
 				ForeignAsset(id) => vec![4, id as u64, 0, 0, 0],
+				Staking(StakingCurrency::BlockRewards) => vec![5, 1, 0, 0, 0],
 			}
 		}
 	}

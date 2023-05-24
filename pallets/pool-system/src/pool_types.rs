@@ -51,7 +51,8 @@ impl<Balance> ReserveDetails<Balance>
 where
 	Balance: AtLeast32BitUnsigned + Copy + From<u64>,
 {
-	/// Update the total balance of the reserve based on the provided solution for in- and outflows of this epoc.
+	/// Update the total balance of the reserve based on the provided solution
+	/// for in- and outflows of this epoc.
 	pub fn deposit_from_epoch<BalanceRatio, Weight, TrancheCurrency, MaxExecutionTranches>(
 		&mut self,
 		epoch_tranches: &EpochExecutionTranches<
@@ -97,7 +98,8 @@ where
 	pub submitted_at: Moment,
 }
 
-/// A representation of a pool identifier that can be converted to an account address
+/// A representation of a pool identifier that can be converted to an account
+/// address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolLocator<PoolId> {
 	pub pool_id: PoolId,
@@ -259,7 +261,8 @@ impl<
 		self.epoch.current.ensure_add_assign(One::one())?;
 		self.epoch.last_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
-		// Set available reserve to 0 to disable originations while the epoch is closed but not executed
+		// Set available reserve to 0 to disable originations while the epoch is closed
+		// but not executed
 		self.reserve.available = Zero::zero();
 
 		Ok(())

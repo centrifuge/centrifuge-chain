@@ -12,6 +12,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 hex-literal = { version = "0.3.4", optional = true }
+log = { version = "0.4.17", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119", optional = true }
 static_assertions = "1.1.0"
@@ -20,6 +21,7 @@ static_assertions = "1.1.0"
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.37" }
 cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.37" }
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.37" }
+cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.37", optional = true }
 cumulus-pallet-xcm = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.37" }
 cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.37" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.37" }
@@ -92,6 +94,7 @@ cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
+pallet-block-rewards = { path = "../../pallets/block-rewards", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
@@ -108,6 +111,7 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 pallet-pool-registry = { path = "../../pallets/pool-registry", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
+pallet-rewards = { path = "../../pallets/rewards", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 # bridge pallets
@@ -127,6 +131,7 @@ std = [
   "cumulus-pallet-aura-ext/std",
   "cumulus-pallet-dmp-queue/std",
   "cumulus-pallet-parachain-system/std",
+  "cumulus-pallet-session-benchmarking?/std",
   "cumulus-pallet-xcm/std",
   "cumulus-pallet-xcmp-queue/std",
   "cumulus-primitives-core/std",
@@ -149,6 +154,7 @@ std = [
   "pallet-aura/std",
   "pallet-authorship/std",
   "pallet-balances/std",
+  "pallet-block-rewards/std",
   "pallet-bridge/std",
   "pallet-claims/std",
   "pallet-collator-allowlist/std",
@@ -174,6 +180,7 @@ std = [
   "pallet-proxy/std",
   "pallet-randomness-collective-flip/std",
   "pallet-restricted-tokens/std",
+  "pallet-rewards/std",
   "pallet-scheduler/std",
   "pallet-session/std",
   "pallet-timestamp/std",
@@ -213,6 +220,7 @@ runtime-benchmarks = [
   "cfg-types/runtime-benchmarks",
   "chainbridge/runtime-benchmarks",
   "cumulus-pallet-parachain-system/runtime-benchmarks",
+  "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "cumulus-pallet-xcmp-queue/runtime-benchmarks",
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
@@ -224,6 +232,7 @@ runtime-benchmarks = [
   "orml-xtokens/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
+  "pallet-block-rewards/runtime-benchmarks",
   "pallet-bridge/runtime-benchmarks",
   "pallet-collator-allowlist/runtime-benchmarks",
   "pallet-collator-selection/runtime-benchmarks",
@@ -284,6 +293,7 @@ try-runtime = [
   "pallet-aura/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
+  "pallet-block-rewards/try-runtime",
   "pallet-bridge/try-runtime",
   "pallet-claims/try-runtime",
   "pallet-collator-allowlist/try-runtime",
@@ -309,6 +319,7 @@ try-runtime = [
   "pallet-proxy/try-runtime",
   "pallet-randomness-collective-flip/try-runtime",
   "pallet-restricted-tokens/try-runtime",
+  "pallet-rewards/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",
   "pallet-timestamp/try-runtime",

@@ -5,6 +5,9 @@ pub trait TraitA {
 
 pub trait TraitB {
 	fn qux(p1: String) -> bool;
+	fn generic_input<A: Into<i32>>(a: A, b: impl Into<u32>) -> usize;
+	fn generic_output<A: Into<i32>>() -> A;
+	fn reference(a: &i32) -> &i32;
 }
 
 #[frame_support::pallet]
@@ -39,6 +42,18 @@ pub mod pallet_mock_ab {
 		pub fn mock_qux(f: impl Fn(String) -> bool + 'static) {
 			register_call!(f);
 		}
+
+		pub fn mock_generic_input<A: Into<i32>, B: Into<u32>>(f: impl Fn(A, B) -> usize + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
+
+		pub fn mock_generic_output<A: Into<i32>>(f: impl Fn() -> A + 'static) {
+			register_call!(move |()| f());
+		}
+
+		pub fn mock_reference(f: impl Fn(&i32) -> &i32 + 'static) {
+			register_call!(f);
+		}
 	}
 
 	impl<T: Config> super::TraitA for Pallet<T> {
@@ -53,6 +68,18 @@ pub mod pallet_mock_ab {
 
 	impl<T: Config> super::TraitB for Pallet<T> {
 		fn qux(a: String) -> bool {
+			execute_call!(a)
+		}
+
+		fn generic_input<A: Into<i32>>(a: A, b: impl Into<u32>) -> usize {
+			execute_call!((a, b))
+		}
+
+		fn generic_output<A: Into<i32>>() -> A {
+			execute_call!(())
+		}
+
+		fn reference(a: &i32) -> &i32 {
 			execute_call!(a)
 		}
 	}
@@ -149,7 +176,7 @@ mod mock {
 mod test {
 	use frame_support::assert_ok;
 
-	use super::mock::*;
+	use super::{mock::*, TraitB};
 
 	#[test]
 	fn correct() {
@@ -189,5 +216,58 @@ mod test {
 		correct();
 		// The storage is dropped at this time. Mocks no longer found from here.
 		mock_not_configured();
+	}
+
+	#[test]
+	fn generic_input() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_generic_input(|p1: i8, p2: u8| {
+				assert_eq!(p1, 1);
+				assert_eq!(p2, 2);
+				8
+			});
+			MockAB::mock_generic_input(|p1: i16, p2: u16| {
+				assert_eq!(p1, 3);
+				assert_eq!(p2, 4);
+				16
+			});
+
+			assert_eq!(MockAB::generic_input(1i8, 2u8), 8);
+			assert_eq!(MockAB::generic_input(3i16, 4u16), 16);
+		});
+	}
+
+	#[test]
+	#[should_panic]
+	fn generic_input_not_found() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_generic_input(|p1: i8, p2: u8| {
+				assert_eq!(p1, 3);
+				assert_eq!(p2, 4);
+				8
+			});
+
+			MockAB::generic_input(3i16, 4u16);
+		});
+	}
+
+	#[test]
+	fn generic_output() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_generic_output(|| 8i8);
+			MockAB::mock_generic_output(|| 16i16);
+
+			assert_eq!(MockAB::generic_output::<i8>(), 8);
+			assert_eq!(MockAB::generic_output::<i16>(), 16);
+		});
+	}
+
+	#[test]
+	fn reference() {
+		new_test_ext().execute_with(|| {
+			MockAB::mock_reference(|a| a);
+
+			assert_eq!(MockAB::reference(&42), &42);
+		});
 	}
 }

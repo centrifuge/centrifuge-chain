@@ -17,8 +17,9 @@ use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, traits::fun
 
 use crate::{mock::*, NftsBySeller, Price};
 
-/// Verify that calling `NftSales::add` specifiying an nft that is not present in the
-/// underlying `pallet_uniques` fails with `nft_sales::Error::<T>::NotFound`.
+/// Verify that calling `NftSales::add` specifiying an nft that is not present
+/// in the underlying `pallet_uniques` fails with
+/// `nft_sales::Error::<T>::NotFound`.
 #[test]
 fn add_nft_not_found() {
 	new_test_ext().execute_with(|| {
@@ -88,8 +89,8 @@ fn add_nft_works() {
 			price.clone(),
 		));
 
-		// Verify that if the seller tries to put it for sale again, that it fails with `NotOwner`
-		// given that the NFT is not owned by the nft-sales pallet.
+		// Verify that if the seller tries to put it for sale again, that it fails with
+		// `NotOwner` given that the NFT is not owned by the nft-sales pallet.
 		assert_noop!(
 			NftSales::add(seller, collection_id, item_id, price.clone()),
 			DispatchError::from(nft_sales::Error::<Runtime>::NotOwner)
@@ -320,8 +321,8 @@ fn buy_nft_works() {
 	});
 }
 
-// Verify that the max offer amount of the buyer is respected. If it's lower than the asking price,
-// it should fail with `InvalidOffer`
+// Verify that the max offer amount of the buyer is respected. If it's lower
+// than the asking price, it should fail with `InvalidOffer`
 #[test]
 fn buy_nft_respects_max_offer_amount() {
 	new_test_ext().execute_with(|| {
@@ -352,8 +353,8 @@ fn buy_nft_respects_max_offer_amount() {
 	});
 }
 
-// Verify that the max offer amount of the buyer is respected. If it's lower than the asking price,
-// it should fail with `InvalidOffer`
+// Verify that the max offer amount of the buyer is respected. If it's lower
+// than the asking price, it should fail with `InvalidOffer`
 #[test]
 fn buy_nft_respects_max_offer_currency() {
 	new_test_ext().execute_with(|| {

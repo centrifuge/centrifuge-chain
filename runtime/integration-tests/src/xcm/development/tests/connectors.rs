@@ -68,15 +68,18 @@ use crate::{
 	*,
 };
 
-/// NOTE: We can't actually verify that the Connectors messages hits the ConnectorsXcmRouter
-/// contract on Moonbeam since that would require a rather heavy e2e setup to emulate, involving
-/// depending on Moonbeam's runtime, having said contract deployed to their evm environment, and
-/// be able to query the evm side. Instead, these tests verify that - given all pre-requirements
-/// are set up correctly - we succeed to send the Connectors message from the Centrifuge chain pov.
-/// We have other unit tests verifying the Connectors' messages encoding and the encoding of the
-/// remote EVM call to be executed on Moonbeam.
+/// NOTE: We can't actually verify that the Connectors messages hits the
+/// ConnectorsXcmRouter contract on Moonbeam since that would require a rather
+/// heavy e2e setup to emulate, involving depending on Moonbeam's runtime,
+/// having said contract deployed to their evm environment, and be able to query
+/// the evm side. Instead, these tests verify that - given all pre-requirements
+/// are set up correctly - we succeed to send the Connectors message from the
+/// Centrifuge chain pov. We have other unit tests verifying the Connectors'
+/// messages encoding and the encoding of the remote EVM call to be executed on
+/// Moonbeam.
 
-/// Verify that `Connectors::add_pool` succeeds when called with all the necessary requirements.
+/// Verify that `Connectors::add_pool` succeeds when called with all the
+/// necessary requirements.
 #[test]
 fn add_pool() {
 	TestNet::reset();
@@ -107,10 +110,11 @@ fn add_pool() {
 	});
 }
 
-/// Verify that `Connectors::add_tranche` succeeds when called with all the necessary requirements.
-/// We can't actually verify that the call hits the ConnectorsXcmRouter contract on Moonbeam
-/// since that would require a very heavy e2e setup to emulate. Instead, here we test that we
-/// can send the extrinsic and we have other unit tests verifying the encoding of the remote
+/// Verify that `Connectors::add_tranche` succeeds when called with all the
+/// necessary requirements. We can't actually verify that the call hits the
+/// ConnectorsXcmRouter contract on Moonbeam since that would require a very
+/// heavy e2e setup to emulate. Instead, here we test that we can send the
+/// extrinsic and we have other unit tests verifying the encoding of the remote
 /// EVM call to be executed on Moonbeam.
 #[test]
 fn add_tranche() {
@@ -118,6 +122,7 @@ fn add_tranche() {
 
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
+		let decimals: u8 = 15;
 
 		// Now create the pool
 		let pool_id: u64 = 42;
@@ -130,6 +135,7 @@ fn add_tranche() {
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id.clone(),
 				nonexistent_tranche,
+				decimals,
 				Domain::EVM(1284),
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::TrancheNotFound
@@ -148,6 +154,7 @@ fn add_tranche() {
 			RuntimeOrigin::signed(ALICE.into()),
 			pool_id.clone(),
 			tranche_id,
+			decimals,
 			Domain::EVM(1284),
 		));
 	});
@@ -233,6 +240,7 @@ fn update_token_price() {
 
 	Development::execute_with(|| {
 		utils::setup_pre_requirements();
+		let decimals: u8 = 15;
 
 		// Now create the pool
 		let pool_id: u64 = 42;
@@ -256,7 +264,7 @@ fn update_token_price() {
 }
 
 #[test]
-fn transfer() {
+fn transfer_tranche_tokens() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
@@ -277,7 +285,7 @@ fn transfer() {
 
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
-			Connectors::transfer(
+			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
 				pool_id.clone(),
 				tranche_id.clone(),
@@ -285,6 +293,18 @@ fn transfer() {
 				42,
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::UnauthorizedTransfer
+		);
+
+		// Verify that we cannot transfer to the local domain
+		assert_noop!(
+			Connectors::transfer_tranche_tokens(
+				RuntimeOrigin::signed(ALICE.into()),
+				pool_id.clone(),
+				tranche_id.clone(),
+				DomainAddress::Centrifuge(BOB),
+				42,
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::InvalidTransferDomain
 		);
 
 		// Make BOB the MembersListAdmin of this Pool
@@ -296,7 +316,8 @@ fn transfer() {
 			Role::PoolRole(PoolRole::MemberListAdmin),
 		));
 
-		// Call the Connectors::update_member which ensures the destination address is whitelisted.
+		// Call the Connectors::update_member which ensures the destination address is
+		// whitelisted.
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(BOB.into()),
 			dest_address.clone(),
@@ -312,9 +333,10 @@ fn transfer() {
 			100_000,
 		);
 
-		// Finally, verify that we can now transfer the tranche to the destination address
+		// Finally, verify that we can now transfer the tranche to the destination
+		// address
 		let amount = 123;
-		assert_ok!(Connectors::transfer(
+		assert_ok!(Connectors::transfer_tranche_tokens(
 			RuntimeOrigin::signed(BOB.into()),
 			pool_id.clone(),
 			tranche_id.clone(),
@@ -358,9 +380,10 @@ fn test_vec_to_fixed_array() {
 
 #[test]
 fn encoded_ethereum_xcm_add_pool() {
-	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was our first
-	// successfully ethereum_xcm encoded call tested in Moonbase.
-	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009010000000000bce1a4000000000000000000000000000000000000000000000000";
+	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was
+	// our first successfully ethereum_xcm encoded call tested in Moonbase.
+	// TODO: Verify on EVM side before merging
+	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009020000000000bce1a4000000000000000000000000000000000000000000000000";
 
 	let moonbase_location = MultiLocation {
 		parents: 1,
@@ -389,7 +412,8 @@ fn encoded_ethereum_xcm_add_pool() {
 	assert_eq!(encoded_call_hex, expected_encoded_hex);
 }
 
-// Verify that the max tranche token symbol and name lengths are what the Connectors pallet expects.
+// Verify that the max tranche token symbol and name lengths are what the
+// Connectors pallet expects.
 #[test]
 fn verify_tranche_fields_sizes() {
 	assert_eq!(
@@ -498,8 +522,8 @@ mod utils {
 					seniority: None,
 					metadata: TrancheMetadata {
 						// NOTE: For now, we have to set these metadata fields of the first tranche
-						// to be convertible to the 32-byte size expected by the connectors AddTranche
-						// message.
+						// to be convertible to the 32-byte size expected by the connectors
+						// AddTranche message.
 						token_name: BoundedVec::<
 							u8,
 							cfg_types::consts::pools::MaxTrancheNameLengthBytes,

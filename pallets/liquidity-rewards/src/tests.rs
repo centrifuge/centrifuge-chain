@@ -147,8 +147,7 @@ fn currency_changes() {
 			Some(&GROUP_A)
 		);
 
-		MockRewards::mock_attach_currency(|(domain, currency_id), group_id| {
-			assert_eq!(domain, DOMAIN);
+		MockRewards::mock_attach_currency(|currency_id, group_id| {
 			assert_eq!(currency_id, CURRENCY_ID_A);
 			assert_eq!(group_id, GROUP_A);
 			Ok(())

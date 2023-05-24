@@ -25,37 +25,44 @@ pub enum CurrencyEffects<AccountId, Balance> {
 	/// Interpretation of tuple `(AccountId, Balance, bool)`:
 	/// * tuple.0 = `who`. The person who should be slashed.
 	/// * tuple.1 = `value`. The to be slashed amount.
-	/// * tuple.2 = `<T::NativeFungible as Currency>::can_slash()`. The result of the call to the
-	///   not-filtered trait `Currency` implementation.
+	/// * tuple.2 = `<T::NativeFungible as Currency>::can_slash()`. The result
+	///   of the call to the not-filtered trait `Currency` implementation.
 	CanSlash(AccountId, Balance, bool),
 
 	/// A call to the `Currency::can_withdraw()`.
 	///
-	/// Interpretation of tuple `(AccountId, Balance, WitdrawReasons, Balance, DispatchResult)`:
+	/// Interpretation of tuple `(AccountId, Balance, WitdrawReasons, Balance,
+	/// DispatchResult)`:
 	/// * tuple.0 = `who`. The person who's balance should be altered.
 	/// * tuple.1 = `_amount`. The amount that should be withdrawn.
 	/// * tuple.2 = `reasons`. The reasons for the withdraw.
-	/// * tuple.3 = `new_balance`. The balance the account has after the withdraw.
-	/// * tuple.4 = `<T::NativeFungible as Currency>::can_withdraw()`. The result of the call to the
-	///   not-filtered trait `Currency` implementation.
+	/// * tuple.3 = `new_balance`. The balance the account has after the
+	///   withdraw.
+	/// * tuple.4 = `<T::NativeFungible as Currency>::can_withdraw()`. The
+	///   result of the call to the not-filtered trait `Currency`
+	///   implementation.
 	EnsureCanWithdraw(AccountId, Balance, WithdrawReasons, Balance, DispatchResult),
 
 	/// A call to the `Currency::transfer()`.
 	///
-	/// Interpretation of tuple `(AccountId, AccountId, Balance, ExistenceRequirement)`:
+	/// Interpretation of tuple `(AccountId, AccountId, Balance,
+	/// ExistenceRequirement)`:
 	/// * tuple.0 = `sender`. The person who should be taken from.
 	/// * tuple.1 = `receiver`. The person who should receive.
 	/// * tuple.2 = `amount`. The amount that should be transfered.
-	/// * tuple.3 = `existence`. The requirements the accounts must have after the transfer.
+	/// * tuple.3 = `existence`. The requirements the accounts must have after
+	///   the transfer.
 	Transfer(AccountId, AccountId, Balance, ExistenceRequirement),
 
 	/// A call to the `Currency::withdraw()`.
 	///
-	/// Interpretation of tuple `(AccountId, Balance, WitdrawReasons, ExistenceRequirement)`:
+	/// Interpretation of tuple `(AccountId, Balance, WitdrawReasons,
+	/// ExistenceRequirement)`:
 	/// * tuple.0 = `who`. The person who's balance should be altered.
 	/// * tuple.1 = `amount`. The amount that should be withdrawn.
 	/// * tuple.2 = `reasons`. The reasons for the withdraw.
-	/// * tuple.3 = `existence`. The requirements the accounts must have after the transfer.
+	/// * tuple.3 = `existence`. The requirements the accounts must have after
+	///   the transfer.
 	Withdraw(AccountId, Balance, WithdrawReasons, ExistenceRequirement),
 
 	/// A call to the `Currency::deposit_into_existing()`.
@@ -207,8 +214,9 @@ pub enum ReservableCurrencyEffects<AccountId, Balance> {
 	/// Interpretation of tuple `(AccountId, Balance, bool)`:
 	/// * tuple.0 = `who`. The person who's balance should be reserved.
 	/// * tuple.1 = `amount`. The amount that should be reserved.
-	/// * tuple.2 = `<T::NativeFungible as ReservableCurrency>::can_reserve()`. The result of the call to the
-	///   not-filtered trait `ReservableCurrency` implementation.
+	/// * tuple.2 = `<T::NativeFungible as ReservableCurrency>::can_reserve()`.
+	///   The result of the call to the not-filtered trait `ReservableCurrency`
+	///   implementation.
 	CanReserve(AccountId, Balance, bool),
 
 	/// A call to the `ReservableCurrency::reserve()`.

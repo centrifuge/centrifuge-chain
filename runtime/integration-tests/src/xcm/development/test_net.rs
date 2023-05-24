@@ -14,8 +14,8 @@
 //! Relay chain and parachains emulation.
 
 use cfg_primitives::{parachains, AccountId};
+use cfg_types::tokens::CurrencyId;
 use cumulus_primitives_core::ParaId;
-use development_runtime::CurrencyId;
 use frame_support::{traits::GenesisBuild, weights::Weight};
 use polkadot_primitives::v2::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
 use polkadot_runtime_parachains::configuration::HostConfiguration;

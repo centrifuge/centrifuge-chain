@@ -1,8 +1,10 @@
+mod data;
 mod fees;
 mod permissions;
 mod pools;
 mod rewards;
 
+pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
 pub use permissions::pallet as pallet_mock_permissions;
 pub use pools::pallet as pallet_mock_pools;
@@ -12,28 +14,32 @@ pub use rewards::pallet as pallet_mock_rewards;
 #[allow(unused)]
 mod template;
 
-/// To use this macro, the following dependencies are needed:
-/// - codec
-/// - frame-support
-/// - frame-system
-/// - scale-info
-/// - sp-core
-/// - sp-io
-/// - sp-runtime
+#[cfg(feature = "std")]
+pub mod reexport {
+	pub use frame_support;
+	pub use frame_system;
+	pub use sp_core;
+	pub use sp_io;
+	pub use sp_runtime;
+}
+
+/// Creates a runtime with a pallet mock to make isolated tests
+/// See tests below of this same file
 #[macro_export]
 macro_rules! make_runtime_for_mock {
 	($runtime_name:ident, $mock_name:ident, $pallet:ident, $externalities:ident) => {
-        use frame_support::traits::{ConstU16, ConstU32, ConstU64};
-        use sp_core::H256;
-        use sp_runtime::{
+        use $crate::reexport::frame_support::traits::{ConstU16, ConstU32, ConstU64, Everything};
+        use $crate::reexport::sp_core::H256;
+        use $crate::reexport::sp_runtime::{
             testing::Header,
             traits::{BlakeTwo256, IdentityLookup},
         };
+        use $crate::reexport::frame_system;
 
         type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
         type Block = frame_system::mocking::MockBlock<Runtime>;
 
-        frame_support::construct_runtime!(
+        $crate::reexport::frame_support::construct_runtime!(
             pub enum $runtime_name where
                 Block = Block,
                 NodeBlock = Block,
@@ -47,7 +53,7 @@ macro_rules! make_runtime_for_mock {
         impl frame_system::Config for Runtime {
             type AccountData = ();
             type AccountId = u64;
-            type BaseCallFilter = frame_support::traits::Everything;
+            type BaseCallFilter = Everything;
             type BlockHashCount = ConstU64<250>;
             type BlockLength = ();
             type BlockNumber = u64;
@@ -71,7 +77,7 @@ macro_rules! make_runtime_for_mock {
             type Version = ();
         }
 
-        pub fn $externalities() -> sp_io::TestExternalities {
+        pub fn $externalities() -> $crate::reexport::sp_io::TestExternalities {
             frame_system::GenesisConfig::default()
                 .build_storage::<Runtime>()
                 .unwrap()

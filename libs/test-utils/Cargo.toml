@@ -53,4 +53,10 @@ runtime-benchmarks = [
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
 ]
-try-runtime = ["frame-support/try-runtime", "frame-system/try-runtime", "cfg-types/try-runtime"]
+try-runtime = [
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "cfg-types/try-runtime",
+  "cfg-primitives/try-runtime",
+  "cfg-traits/try-runtime",
+]

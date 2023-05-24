@@ -166,7 +166,8 @@ mod dummy {
 
 		use crate::Permissions;
 
-		/// Configure the pallet by specifying the parameters and types on which it depends.
+		/// Configure the pallet by specifying the parameters and types on which
+		/// it depends.
 		#[pallet::config]
 		pub trait Config: frame_system::Config {
 			type Scope: Member + Parameter;

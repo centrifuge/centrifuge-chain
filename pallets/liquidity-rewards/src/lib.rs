@@ -18,15 +18,14 @@
 //! The distribution happens when an epoch (a constant time interval) finalizes.
 //! The user can stake an amount during one of more epochs to claim the reward.
 //!
-//! Rewards pallet can be configured with any implementation of [`cfg_traits::rewards`] traits
-//! which gives the reward behavior.
+//! Rewards pallet can be configured with any implementation of
+//! [`cfg_traits::rewards`] traits which gives the reward behavior.
 //!
 //! The Rewards pallet provides functions for:
 //!
 //! - Stake/Unstake a currency amount.
 //! - Claim the reward given to a staked currency.
 //! - Admin methods to configure epochs, currencies and reward groups.
-//!
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -91,8 +90,6 @@ pub struct EpochChanges<T: Config> {
 	currencies: BoundedBTreeMap<T::CurrencyId, T::GroupId, T::MaxChangesPerEpoch>,
 }
 
-pub type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -101,14 +98,12 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		/// Required origin for admin purposes for configuring groups and currencies.
+		/// Required origin for admin purposes for configuring groups and
+		/// currencies.
 		type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
 		/// Type used to handle balances.
 		type Balance: Balance + MaxEncodedLen + FixedPointOperand;
-
-		/// Domain identification used by this pallet
-		type Domain: TypedGet;
 
 		/// Type used to identify currencies.
 		type CurrencyId: AssetId + MaxEncodedLen + Clone + Ord;
@@ -121,28 +116,25 @@ pub mod pallet {
 
 		/// The reward system used.
 		type Rewards: GroupRewards<Balance = Self::Balance, GroupId = Self::GroupId>
-			+ AccountRewards<
-				Self::AccountId,
-				Balance = Self::Balance,
-				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
-			> + CurrencyGroupChange<
-				GroupId = Self::GroupId,
-				CurrencyId = (DomainIdOf<Self>, Self::CurrencyId),
-			> + DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
+			+ AccountRewards<Self::AccountId, Balance = Self::Balance, CurrencyId = Self::CurrencyId>
+			+ CurrencyGroupChange<GroupId = Self::GroupId, CurrencyId = Self::CurrencyId>
+			+ DistributedRewards<Balance = Self::Balance, GroupId = Self::GroupId>;
 
 		/// Max groups used by this pallet.
-		/// If this limit is reached, the exceeded groups are either not computed and not stored.
+		/// If this limit is reached, the exceeded groups are either not
+		/// computed and not stored.
 		#[pallet::constant]
 		type MaxGroups: Get<u32> + TypeInfo;
 
-		/// Max number of changes of the same type enqueued to apply in the next epoch.
-		/// Max calls to [`Pallet::set_group_weight()`] or to [`Pallet::set_currency_group()`] with
-		/// the same id.
+		/// Max number of changes of the same type enqueued to apply in the next
+		/// epoch. Max calls to [`Pallet::set_group_weight()`] or to
+		/// [`Pallet::set_currency_group()`] with the same id.
 		#[pallet::constant]
 		type MaxChangesPerEpoch: Get<u32> + TypeInfo + sp_std::fmt::Debug + Clone + PartialEq;
 
 		/// Initial epoch duration.
-		/// This value can be updated later using [`Pallet::set_epoch_duration()`]`.
+		/// This value can be updated later using
+		/// [`Pallet::set_epoch_duration()`]`.
 		#[pallet::constant]
 		type InitialEpochDuration: Get<Self::BlockNumber>;
 
@@ -157,10 +149,10 @@ pub mod pallet {
 	/// Contains the timestamp in blocks when the current epoch is finalized.
 	//
 	// Although this value could be stored inside `EpochData`,
-	// we maintain it separately to avoid deserializing the whole EpochData struct each `on_initialize()` call.
-	// EpochData could be relatively big if there many groups.
-	// We dont have to deserialize the whole struct 99% of the time (assuming a duration of 100 blocks),
-	// we only need to perform that action when the epoch finalized, 1% of the time.
+	// we maintain it separately to avoid deserializing the whole EpochData struct each
+	// `on_initialize()` call. EpochData could be relatively big if there many groups.
+	// We dont have to deserialize the whole struct 99% of the time (assuming a duration of 100
+	// blocks), we only need to perform that action when the epoch finalized, 1% of the time.
 	#[pallet::storage]
 	pub(super) type EndOfEpoch<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
@@ -218,7 +210,7 @@ pub mod pallet {
 						}
 
 						for (&currency_id, &group_id) in &changes.currencies {
-							T::Rewards::attach_currency((T::Domain::get(), currency_id), group_id)?;
+							T::Rewards::attach_currency(currency_id, group_id)?;
 							currency_changes += 1;
 						}
 
@@ -247,8 +239,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Deposit a stake amount associated to a currency for the origin's account.
-		/// The account must have enough currency to make the deposit,
+		/// Deposit a stake amount associated to a currency for the origin's
+		/// account. The account must have enough currency to make the deposit,
 		/// if not, an Err will be returned.
 		#[pallet::weight(T::WeightInfo::stake())]
 		#[transactional]
@@ -260,12 +252,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			T::Rewards::deposit_stake((T::Domain::get(), currency_id), &account_id, amount)
+			T::Rewards::deposit_stake(currency_id, &account_id, amount)
 		}
 
-		/// Withdraw a stake amount associated to a currency for the origin's account.
-		/// The account must have enough currency staked to make the withdraw,
-		/// if not, an Err will be returned.
+		/// Withdraw a stake amount associated to a currency for the origin's
+		/// account. The account must have enough currency staked to make the
+		/// withdraw, if not, an Err will be returned.
 		#[pallet::weight(T::WeightInfo::unstake())]
 		#[transactional]
 		#[pallet::call_index(1)]
@@ -276,7 +268,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			T::Rewards::withdraw_stake((T::Domain::get(), currency_id), &account_id, amount)
+			T::Rewards::withdraw_stake(currency_id, &account_id, amount)
 		}
 
 		/// Claims the reward the associated to a currency.
@@ -287,7 +279,7 @@ pub mod pallet {
 		pub fn claim_reward(origin: OriginFor<T>, currency_id: T::CurrencyId) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			T::Rewards::claim_reward((T::Domain::get(), currency_id), &account_id).map(|_| ())
+			T::Rewards::claim_reward(currency_id, &account_id).map(|_| ())
 		}
 
 		/// Admin method to set the reward amount used for the next epochs.
@@ -335,10 +327,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Admin method to set the group used for a currency in the next epochs.
-		/// Current epoch is not affected by this call.
+		/// Admin method to set the group used for a currency in the next
+		/// epochs. Current epoch is not affected by this call.
 		///
-		/// This method will do the currency available for using it in stake/unstake/claim calls.
+		/// This method will do the currency available for using it in
+		/// stake/unstake/claim calls.
 		#[pallet::weight(T::WeightInfo::set_currency_group())]
 		#[pallet::call_index(6)]
 		pub fn set_currency_group(

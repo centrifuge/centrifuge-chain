@@ -45,7 +45,8 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 		let now = Self::now();
 		let mut pool = Pool::<T>::get(pool_id)?;
 
-		// Get cached nav as calculating current nav would be too computationally expensive
+		// Get cached nav as calculating current nav would be too computationally
+		// expensive
 		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
 		let total_assets = pool.reserve.total.ensure_add(nav).ok()?;
 
@@ -148,15 +149,8 @@ impl<T: Config> PoolMutate<T::AccountId, T::PoolId> for Pallet<T> {
 				None => return Err(Error::<T>::MetadataForCurrencyNotFound.into()),
 			};
 
-			let parachain_id = T::ParachainId::get();
-
-			let metadata = tranche.create_asset_metadata(
-				decimals,
-				parachain_id,
-				T::PalletIndex::get(),
-				token_name.to_vec(),
-				token_symbol.to_vec(),
-			);
+			let metadata =
+				tranche.create_asset_metadata(decimals, token_name.to_vec(), token_symbol.to_vec());
 
 			T::AssetRegistry::register_asset(Some(tranche.currency.into()), metadata)
 				.map_err(|_| Error::<T>::FailedToRegisterTrancheMetadata)?;

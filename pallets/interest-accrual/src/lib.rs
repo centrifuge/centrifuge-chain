@@ -114,11 +114,11 @@
 //! ```
 //!
 //! Two things to note here:
-//! * If `old_interest_rate` and `new_interest_rate` are identical,
-//!   this is a no-op.
-//! * If `new_interest_rate` is newly created (and thus its age is `0`),
-//!   the correction factor is `1` just as for any other rate.  See the
-//!   note above regarding zero-age rates.
+//! * If `old_interest_rate` and `new_interest_rate` are identical, this is a
+//!   no-op.
+//! * If `new_interest_rate` is newly created (and thus its age is `0`), the
+//!   correction factor is `1` just as for any other rate.  See the note above
+//!   regarding zero-age rates.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use cfg_primitives::{Moment, SECONDS_PER_YEAR};
@@ -333,9 +333,9 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Calculate fastly the current debt using normalized debt * cumulative rate if
-		/// `when` is exactly `now` (same block). If when is in the past it recomputes
-		/// the previous cumulative rate.
+		/// Calculate fastly the current debt using normalized debt * cumulative
+		/// rate if `when` is exactly `now` (same block). If when is in the past
+		/// it recomputes the previous cumulative rate.
 		///
 		/// If `when` is further in the past than the last time the
 		/// normalized debt was adjusted, this will return nonsense

@@ -37,6 +37,7 @@ members = [
   "libs/utils",
   "pallets/anchors",
   "pallets/bridge",
+  "pallets/block-rewards",
   "pallets/connectors",
   "pallets/claims",
   "pallets/collator-allowlist",
@@ -54,6 +55,7 @@ members = [
   "pallets/permissions",
   "pallets/pool-system",
   "pallets/pool-registry",
+  "pallets/collection-data-feed",
   "pallets/restricted-tokens",
   "pallets/transfer-allowlist",
   "pallets/rewards",
@@ -124,6 +126,7 @@ cumulus-client-consensus-aura = { git = "https://github.com/paritytech/cumulus",
 cumulus-client-consensus-common = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
 cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
+cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.37" }
@@ -207,6 +210,7 @@ std = [
   "sp-timestamp/std",
   "sp-transaction-pool/std",
   "xcm/std",
+  "cumulus-pallet-session-benchmarking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -218,6 +222,7 @@ runtime-benchmarks = [
   "polkadot-cli/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "cumulus-pallet-session-benchmarking/runtime-benchmarks",
   "frame-benchmarking-cli/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
@@ -249,6 +254,8 @@ try-runtime = [
 fast-runtime = [
   "altair-runtime/fast-runtime",
   "centrifuge-runtime/fast-runtime",
+  "development-runtime/fast-runtime",
+  "runtime-integration-tests/fast-runtime",
 ]
 
 #

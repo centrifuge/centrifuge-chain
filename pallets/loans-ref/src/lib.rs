@@ -34,11 +34,17 @@
 //! | [`Pallet::update_portfolio_valuation()`] | Any       |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
-//! [`Pallet::update_portfolio_valuation()`] that should go through all active loans.
+//! [`Pallet::update_portfolio_valuation()`] that should go through all active
+//! loans.
 
-pub mod migrations;
+pub mod migrations {
+	pub mod nuke;
+	pub mod v1;
+}
+
 pub mod types;
 pub mod valuation;
+pub mod write_off;
 
 #[cfg(test)]
 mod mock;
@@ -82,10 +88,12 @@ pub mod pallet {
 		traits::{BadOrigin, One, Zero},
 		ArithmeticError, FixedPointOperand,
 	};
+	use sp_std::vec::Vec;
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuationUpdateType, WriteOffState, WriteOffStatus, WrittenOffError,
+		PortfolioValuationUpdateType, WrittenOffError,
 	};
+	use write_off::{WriteOffRule, WriteOffStatus};
 
 	use super::*;
 
@@ -94,7 +102,7 @@ pub mod pallet {
 		<T as Config>::CurrencyId,
 	>>::PoolId;
 
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -204,10 +212,11 @@ pub mod pallet {
 	>;
 
 	/// Storage for active loans.
-	/// The indexation of this storage differs from `CreatedLoan` or `ClosedLoan`
-	/// because here we try to minimize the iteration speed over all active loans in a pool.
-	/// `Moment` value along with the `ActiveLoan` correspond to the last moment the active loan was
-	/// used to compute the portfolio valuation in an inexact way.
+	/// The indexation of this storage differs from `CreatedLoan` or
+	/// `ClosedLoan` because here we try to minimize the iteration speed over
+	/// all active loans in a pool. `Moment` value along with the `ActiveLoan`
+	/// correspond to the last moment the active loan was used to compute the
+	/// portfolio valuation in an inexact way.
 	#[pallet::storage]
 	pub(crate) type ActiveLoans<T: Config> = StorageMap<
 		_,
@@ -237,7 +246,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
+		BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		ValueQuery,
 	>;
 
@@ -293,7 +302,7 @@ pub mod pallet {
 		},
 		WriteOffPolicyUpdated {
 			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		},
 	}
 
@@ -305,9 +314,9 @@ pub mod pallet {
 		LoanNotFound,
 		/// Emits when a loan exist but it's not active
 		LoanNotActive,
-		/// Emits when a write-off state is not found in a policy for a specific loan.
-		/// It happens when there is no policy or the loan is not overdue.
-		NoValidWriteOffState,
+		/// Emits when a write-off rule is not found in a policy for a specific
+		/// loan. It happens when there is no policy or the loan is not overdue.
+		NoValidWriteOffRule,
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
 		/// Emits when NFT owner doesn't match the expected owner
@@ -388,9 +397,10 @@ pub mod pallet {
 		/// Transfers borrow amount to the borrower.
 		///
 		/// The origin must be the borrower of the loan.
-		/// The borrow action should fulfill the borrow restrictions configured at [`types::LoanRestrictions`].
-		/// The `amount` will be transferred from pool reserve to borrower.
-		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
+		/// The borrow action should fulfill the borrow restrictions configured
+		/// at [`types::LoanRestrictions`]. The `amount` will be transferred
+		/// from pool reserve to borrower. The portfolio valuation of the pool
+		/// is updated to reflect the new present value of the loan.
 		/// Rate accumulation will start after the first borrow.
 		#[pallet::weight(T::WeightInfo::borrow(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(1)]
@@ -434,10 +444,12 @@ pub mod pallet {
 		/// Transfers amount borrowed to the pool reserve.
 		///
 		/// The origin must be the borrower of the loan.
-		/// If the repaying amount is more than current debt, only current debt is transferred.
-		/// The borrow action should fulfill the borrow restrictions configured at [`types::LoanRestrictions`].
-		/// The `amount` will be transferred from borrower to pool reserve.
-		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
+		/// If the repaying amount is more than current debt, only current debt
+		/// is transferred. The borrow action should fulfill the borrow
+		/// restrictions configured at [`types::LoanRestrictions`]. The `amount`
+		/// will be transferred from borrower to pool reserve. The portfolio
+		/// valuation of the pool is updated to reflect the new present value of
+		/// the loan.
 		#[pallet::weight(T::WeightInfo::repay(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(2)]
 		pub fn repay(
@@ -466,18 +478,20 @@ pub mod pallet {
 
 		/// Writes off an overdue loan.
 		///
-		/// This action will write off based on the write off policy configured by
-		/// [`Pallet::update_write_off_policy()`].
-		/// The write off action will only take effect if it writes down more (percentage or penalty)
-		/// than the current write off status of the loan. This action will never writes up. i.e:
+		/// This action will write off based on the write off policy configured
+		/// by [`Pallet::update_write_off_policy()`].
+		/// The write off action will only take effect if it writes down more
+		/// (percentage or penalty) than the current write off status of the
+		/// loan. This action will never writes up. i.e:
 		/// - Write off by admin with percentage 0.5 and penalty 0.2
 		/// - Time passes and the policy can be applied.
 		/// - Write of with a policy that says: percentage 0.3, penaly 0.4
-		/// - The loan is written off with the maximum between the policy and the current state:
-		///   percentage 0.5, penaly 0.4
+		/// - The loan is written off with the maximum between the policy and
+		///   the current rule: percentage 0.5, penalty 0.4
 		///
 		/// No special permisions are required to this call.
-		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
+		/// The portfolio valuation of the pool is updated to reflect the new
+		/// present value of the loan.
 		#[pallet::weight(T::WeightInfo::write_off(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(3)]
 		pub fn write_off(
@@ -488,8 +502,9 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let state = Self::find_write_off_state(pool_id, loan.maturity_date())?;
-				let limit = state.status().max(loan.write_off_status());
+				let rule = Self::find_write_off_rule(pool_id, loan)?
+					.ok_or(Error::<T>::NoValidWriteOffRule)?;
+				let limit = rule.status.compose_max(loan.write_off_status());
 
 				loan.write_off(&limit, &limit)?;
 
@@ -507,13 +522,14 @@ pub mod pallet {
 
 		/// Writes off a loan from admin origin.
 		///
-		/// Forces a writing off of a loan if the `percentage` and `penalty` parameters
-		/// respecting the policy values as the minimum.
-		/// This action can write down/up the current write off status of the loan.
-		/// If there is no active policy, an admin write off action can write up the write off
-		/// status. But if there is a policy applied, the admin can only write up until the policy.
-		/// Write down more than the policy is always allowed.
-		/// The portfolio valuation of the pool is updated to reflect the new present value of the loan.
+		/// Forces a writing off of a loan if the `percentage` and `penalty`
+		/// parameters respecting the policy values as the minimum.
+		/// This action can write down/up the current write off status of the
+		/// loan. If there is no active policy, an admin write off action can
+		/// write up the write off status. But if there is a policy applied, the
+		/// admin can only write up until the policy. Write down more than the
+		/// policy is always allowed. The portfolio valuation of the pool is
+		/// updated to reflect the new present value of the loan.
 		#[pallet::weight(T::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(4)]
 		pub fn admin_write_off(
@@ -532,10 +548,11 @@ pub mod pallet {
 			};
 
 			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
-				let state = Self::find_write_off_state(pool_id, loan.maturity_date());
-				let limit = state.map(|s| s.status()).unwrap_or_else(|_| status.clone());
+				let rule = Self::find_write_off_rule(pool_id, loan)?;
+				let limit = rule.map(|r| r.status).unwrap_or_else(|| status.clone());
 
-				loan.write_off(&limit, &status)
+				loan.write_off(&limit, &status)?;
+				Ok(limit)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -550,7 +567,8 @@ pub mod pallet {
 		/// Closes a given loan
 		///
 		/// A loan only can be closed if it's fully repaid by the loan borrower.
-		/// Closing a loan gives back the collateral used for the loan to the borrower .
+		/// Closing a loan gives back the collateral used for the loan to the
+		/// borrower .
 		#[pallet::weight(T::WeightInfo::close(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(5)]
 		pub fn close(
@@ -584,16 +602,16 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Updates the write off policy.
+		/// Updates the write off policy with write off rules.
 		///
-		/// The write off policy is used to automatically set a write off minimum value to the
-		/// loan.
+		/// The write off policy is used to automatically set a write off
+		/// minimum value to the loan.
 		#[pallet::weight(T::WeightInfo::update_write_off_policy())]
 		#[pallet::call_index(6)]
 		pub fn update_write_off_policy(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			policy: BoundedVec<WriteOffState<T::Rate>, T::MaxWriteOffPolicySize>,
+			policy: BoundedVec<WriteOffRule<T::Rate>, T::MaxWriteOffPolicySize>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::PoolAdmin)?;
@@ -679,16 +697,39 @@ pub mod pallet {
 			})
 		}
 
-		fn find_write_off_state(
+		/// From all overdue write off rules, it returns the one with the
+		/// highest percentage (or highest penalty, if same percentage) that can
+		/// be applied.
+		///
+		/// Suppose a policy with the following rules:
+		/// - overdue_days: 5,   percentage 10%
+		/// - overdue_days: 10,  percentage 30%
+		/// - overdue_days: 15,  percentage 20%
+		///
+		/// If the loan is not overdue, it will not return any rule.
+		/// If the loan is overdue by 4 days, it will not return any rule.
+		/// If the loan is overdue by 9 days, it will return the first rule.
+		/// If the loan is overdue by 60 days, it will return the second rule
+		/// (because it has a higher percetage).
+		fn find_write_off_rule(
 			pool_id: PoolIdOf<T>,
-			maturity_date: Moment,
-		) -> Result<WriteOffState<T::Rate>, DispatchError> {
-			WriteOffState::find_best(
-				WriteOffPolicy::<T>::get(pool_id).into_iter(),
-				maturity_date,
-				T::Time::now().as_secs(),
-			)
-			.ok_or_else(|| Error::<T>::NoValidWriteOffState.into())
+			loan: &ActiveLoan<T>,
+		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
+			Ok(WriteOffPolicy::<T>::get(pool_id)
+				.into_iter()
+				.filter_map(|rule| {
+					rule.triggers
+						.iter()
+						.map(|trigger| loan.check_write_off_trigger(&trigger.0))
+						.find(|e| match e {
+							Ok(value) => *value,
+							Err(_) => true,
+						})
+						.map(|result| result.map(|_| rule))
+				})
+				.collect::<Result<Vec<_>, _>>()? // This exits if error before getting the maximum
+				.into_iter()
+				.max_by(|r1, r2| r1.status.cmp(&r2.status)))
 		}
 
 		fn update_portfolio_valuation_with_pv(

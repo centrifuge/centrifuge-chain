@@ -59,12 +59,10 @@ pub mod pallet {
 			a: &Self::AccountId,
 			b: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult {
-			let a = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(a) };
 			execute_call!((a, b))
 		}
 
 		fn fee_to_burn(a: &Self::AccountId, b: Fee<Self::Balance, Self::FeeKey>) -> DispatchResult {
-			let a = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(a) };
 			execute_call!((a, b))
 		}
 
@@ -72,7 +70,6 @@ pub mod pallet {
 			a: &Self::AccountId,
 			b: Fee<Self::Balance, Self::FeeKey>,
 		) -> DispatchResult {
-			let a = unsafe { std::mem::transmute::<_, &'static Self::AccountId>(a) };
 			execute_call!((a, b))
 		}
 	}

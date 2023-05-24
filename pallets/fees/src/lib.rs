@@ -1,10 +1,11 @@
 //! # Fees pallet for runtime
 //!
-//! This pallet provides a storing functionality for setting and getting fees associated with an Hash key.
-//! Fees can only be set by FeeOrigin or RootOrigin
+//! This pallet provides a storing functionality for setting and getting fees
+//! associated with an Hash key. Fees can only be set by FeeOrigin or RootOrigin
 //!
 //! Also, for its internal usage from the runtime or other pallets,
-//! it offers some utilities to transfer the fees to the author, the treasury or burn it.
+//! it offers some utilities to transfer the fees to the author, the treasury or
+//! burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use cfg_traits::fees::{self, Fee, FeeKey};
@@ -42,8 +43,8 @@ pub mod pallet {
 
 	use super::*;
 
-	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
-	// method.
+	// Simple declaration of the `Pallet` type. It is placeholder we use to
+	// implement traits and method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
 	pub struct Pallet<T>(_);

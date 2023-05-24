@@ -11,10 +11,10 @@ const GROUP_1: u32 = 1;
 const GROUP_2: u32 = 2;
 const GROUP_3: u32 = 3;
 
-const DOM_1_CURRENCY_X: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::A);
-const DOM_1_CURRENCY_Y: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::B);
-const DOM_1_CURRENCY_Z: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::C);
-const DOM_1_CURRENCY_M: (DomainId, CurrencyId) = (DomainId::D1, CurrencyId::M);
+const CURRENCY_X: CurrencyId = CurrencyId::A;
+const CURRENCY_Y: CurrencyId = CurrencyId::B;
+const CURRENCY_Z: CurrencyId = CurrencyId::C;
+const CURRENCY_M: CurrencyId = CurrencyId::M;
 
 const STAKE_A: u64 = 100;
 const STAKE_B: u64 = 200;
@@ -112,7 +112,8 @@ mod mechanism {
 			($pallet:ident) => {
 				// The all_in test follows the next order, making claims for each distribution:
 				//
-				//        D0     |     D1    |          D2           |     D3    |    D4    |  D5
+				//        D0     |     D1    |          D2           |     D3    |    D4    |
+				// D5
 				// G1 -----------------------------------------------------------------------------
 				//     Stake X A | Stake Z A | MOVE Z ·              | Stake M A | MOVE X · |
 				//               |           |        ·              |           |        · |
@@ -123,15 +124,15 @@ mod mechanism {
 				#[test]
 				fn all_in() {
 					new_test_ext().execute_with(|| {
-						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_X, GROUP_1));
-						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_Y, GROUP_2));
-						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_Z, GROUP_1));
+						assert_ok!($pallet::attach_currency(CURRENCY_X, GROUP_1));
+						assert_ok!($pallet::attach_currency(CURRENCY_Y, GROUP_2));
+						assert_ok!($pallet::attach_currency(CURRENCY_Z, GROUP_1));
 
-						assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_X, &USER_A, STAKE_A));
-						assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_Y, &USER_B, STAKE_B));
+						assert_ok!($pallet::deposit_stake(CURRENCY_X, &USER_A, STAKE_A));
+						assert_ok!($pallet::deposit_stake(CURRENCY_Y, &USER_B, STAKE_B));
 
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_X, &USER_A), 0);
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_Y, &USER_B), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_X, &USER_A), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_Y, &USER_B), 0);
 
 						// DISTRIBUTION 1
 						assert_ok!($pallet::distribute_reward(
@@ -139,11 +140,11 @@ mod mechanism {
 							[GROUP_1, GROUP_2, GROUP_3]
 						));
 
-						assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_Z, &USER_A, STAKE_A));
+						assert_ok!($pallet::deposit_stake(CURRENCY_Z, &USER_A, STAKE_A));
 
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_X, &USER_A), 0);
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_Y, &USER_B), 0);
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_Z, &USER_A), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_X, &USER_A), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_Y, &USER_B), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_Z, &USER_A), 0);
 
 						// DISTRIBUTION 2
 						assert_ok!($pallet::distribute_reward(
@@ -152,19 +153,15 @@ mod mechanism {
 						));
 
 						// MOVEMENT Z
-						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_Z, GROUP_2));
+						assert_ok!($pallet::attach_currency(CURRENCY_Z, GROUP_2));
 
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_X, &USER_A), REWARD / 2);
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_Y, &USER_B), REWARD / 2);
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_Z, &USER_A), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_X, &USER_A), REWARD / 2);
+						assert_ok!($pallet::claim_reward(CURRENCY_Y, &USER_B), REWARD / 2);
+						assert_ok!($pallet::claim_reward(CURRENCY_Z, &USER_A), 0);
 
-						assert_ok!($pallet::withdraw_stake(
-							DOM_1_CURRENCY_Z,
-							&USER_A,
-							STAKE_A / 2
-						));
+						assert_ok!($pallet::withdraw_stake(CURRENCY_Z, &USER_A, STAKE_A / 2));
 
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_Z, &USER_A), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_Z, &USER_A), 0);
 
 						// DISTRIBUTION 3
 						assert_ok!($pallet::distribute_reward(
@@ -172,21 +169,21 @@ mod mechanism {
 							[GROUP_1, GROUP_2, GROUP_3]
 						));
 
-						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_M, GROUP_1));
+						assert_ok!($pallet::attach_currency(CURRENCY_M, GROUP_1));
 
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_X, &USER_A), REWARD / 2);
+						assert_ok!($pallet::claim_reward(CURRENCY_X, &USER_A), REWARD / 2);
 						assert_ok!(
-							$pallet::claim_reward(DOM_1_CURRENCY_Y, &USER_B),
+							$pallet::claim_reward(CURRENCY_Y, &USER_B),
 							(REWARD / 2) * STAKE_B / (STAKE_A / 2 + STAKE_B)
 						);
 						assert_ok!(
-							$pallet::claim_reward(DOM_1_CURRENCY_Z, &USER_A),
+							$pallet::claim_reward(CURRENCY_Z, &USER_A),
 							(REWARD / 2) * (STAKE_A / 2) / (STAKE_A / 2 + STAKE_B)
 						);
 
-						assert_ok!($pallet::deposit_stake(DOM_1_CURRENCY_M, &USER_A, STAKE_A));
+						assert_ok!($pallet::deposit_stake(CURRENCY_M, &USER_A, STAKE_A));
 
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_M, &USER_A), 0);
 
 						// DISTRIBUTION 4
 						assert_ok!($pallet::distribute_reward(
@@ -195,18 +192,18 @@ mod mechanism {
 						));
 
 						// MOVEMENT X
-						assert_ok!($pallet::attach_currency(DOM_1_CURRENCY_X, GROUP_2));
+						assert_ok!($pallet::attach_currency(CURRENCY_X, GROUP_2));
 
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_X, &USER_A), REWARD / 2);
+						assert_ok!($pallet::claim_reward(CURRENCY_X, &USER_A), REWARD / 2);
 						assert_ok!(
-							$pallet::claim_reward(DOM_1_CURRENCY_Y, &USER_B),
+							$pallet::claim_reward(CURRENCY_Y, &USER_B),
 							(REWARD / 2) * STAKE_B / (STAKE_A / 2 + STAKE_B)
 						);
 						assert_ok!(
-							$pallet::claim_reward(DOM_1_CURRENCY_Z, &USER_A),
+							$pallet::claim_reward(CURRENCY_Z, &USER_A),
 							(REWARD / 2) * (STAKE_A / 2) / (STAKE_A / 2 + STAKE_B)
 						);
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), 0);
+						assert_ok!($pallet::claim_reward(CURRENCY_M, &USER_A), 0);
 
 						// DISTRIBUTION 5
 						assert_ok!($pallet::distribute_reward(
@@ -215,18 +212,18 @@ mod mechanism {
 						));
 
 						assert_ok!(
-							$pallet::claim_reward(DOM_1_CURRENCY_X, &USER_A),
+							$pallet::claim_reward(CURRENCY_X, &USER_A),
 							(REWARD / 2) * STAKE_A / (STAKE_A + STAKE_B + STAKE_A / 2)
 						);
 						assert_ok!(
-							$pallet::claim_reward(DOM_1_CURRENCY_Y, &USER_B),
+							$pallet::claim_reward(CURRENCY_Y, &USER_B),
 							(REWARD / 2) * STAKE_B / (STAKE_A + STAKE_B + STAKE_A / 2)
 						);
 						assert_ok!(
-							$pallet::claim_reward(DOM_1_CURRENCY_Z, &USER_A),
+							$pallet::claim_reward(CURRENCY_Z, &USER_A),
 							(REWARD / 2) * (STAKE_A / 2) / (STAKE_A + STAKE_B + STAKE_A / 2)
 						);
-						assert_ok!($pallet::claim_reward(DOM_1_CURRENCY_M, &USER_A), REWARD / 2);
+						assert_ok!($pallet::claim_reward(CURRENCY_M, &USER_A), REWARD / 2);
 					});
 				}
 			};
