@@ -23,19 +23,19 @@
 // GNU General Public License for more details.
 
 use altair_runtime::{
-	Balances, CurrencyIdConvert, OrmlAssetRegistry, OrmlTokens, PoolPalletIndex,
-RuntimeOrigin, 	XTokens,
+	Balances, CurrencyIdConvert, OrmlAssetRegistry, OrmlTokens, PoolPalletIndex, RuntimeOrigin,
+	XTokens,
 };
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
+use cfg_utils::vec_to_fixed_array;
 use codec::Encode;
-use frame_support::assert_ok;
-use frame_support::traits::Len;
-use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider,
-MultiCurrency}; use runtime_common::{
+use frame_support::{assert_ok, traits::Len};
+use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use runtime_common::{
 	xcm::general_key,
 	xcm_fees::{default_per_second, ksm_per_second},
 };
@@ -44,22 +44,20 @@ use sp_runtime::{
 	WeakBoundedVec,
 };
 use xcm::{
-	latest::{Error::BadOrigin, Junction, Junction::*, Junctions::*,
-MultiLocation, NetworkId}, 	VersionedMultiLocation,
+	latest::{Error::BadOrigin, Junction, Junction::*, Junctions::*, MultiLocation, NetworkId},
+	VersionedMultiLocation,
 };
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
-use cfg_utils::vec_to_fixed_array;
 
 use crate::xcm::kusama::{
 	setup::{
-		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account,
-ALICE, BOB, 		PARA_ID_SIBLING,
+		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
+		AUSD_ASSET_ID, BOB, KSM_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+	tests::{register_air, register_ausd, register_ksm},
 };
-use crate::xcm::kusama::setup::{AUSD_ASSET_ID, KSM_ASSET_ID};
-use crate::xcm::kusama::tests::{register_air, register_ausd, register_ksm};
 
 #[test]
 fn convert_air() {
@@ -86,7 +84,6 @@ fn convert_air() {
 				general_key(parachains::kusama::altair::AIR_KEY),
 			),
 		);
-
 
 		assert_eq!(
 			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
@@ -135,14 +132,17 @@ fn convert_air() {
 fn convert_tranche() {
 	let tranche_currency = CurrencyId::Tranche(401, [0; 16]);
 	let tranche_id =
-		WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(),
-None); 	let tranche_multilocation = MultiLocation {
+		WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
+	let tranche_multilocation = MultiLocation {
 		parents: 1,
 		interior: X3(
 			Parachain(parachains::kusama::altair::ID),
 			PalletInstance(PoolPalletIndex::get()),
-			GeneralKey { length: tranche_id.len() as u8, data:
-vec_to_fixed_array(tranche_id.to_vec()) }, 		),
+			GeneralKey {
+				length: tranche_id.len() as u8,
+				data: vec_to_fixed_array(tranche_id.to_vec()),
+			},
+		),
 	};
 
 	Altair::execute_with(|| {
@@ -217,8 +217,8 @@ fn convert_unkown_multilocation() {
 	);
 
 	Altair::execute_with(|| {
-		assert!(<CurrencyIdConvert as C1<_,
-_>>::convert(unknown_location.clone()).is_err()); 	});
+		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+	});
 }
 
 #[test]

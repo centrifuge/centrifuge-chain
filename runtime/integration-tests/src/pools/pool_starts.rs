@@ -29,7 +29,7 @@ use crate::{
 };
 
 #[tokio::test]
-#[ignore="Test being fixed by Cosmin/Frederik"]
+#[ignore = "Test being fixed by Cosmin/Frederik"]
 async fn create_loan() {
 	let mut env = {
 		let mut genesis = Storage::default();

@@ -9,7 +9,7 @@ use orml_traits::asset_registry::AssetMetadata;
 use runtime_common::{xcm::general_key, xcm_fees::ksm_per_second};
 use xcm::{
 	latest::MultiLocation,
-	prelude::{Parachain, X2, Here},
+	prelude::{Here, Parachain, X2},
 	VersionedMultiLocation,
 };
 
@@ -77,10 +77,7 @@ fn register_ksm() {
 		name: "Kusama".into(),
 		symbol: "KSM".into(),
 		existential_deposit: 1_000_000_000,
-		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
-			1,
-			Here,
-		))),
+		location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
 		additional: CustomMetadata::default(),
 	};
 
