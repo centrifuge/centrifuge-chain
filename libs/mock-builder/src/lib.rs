@@ -71,7 +71,7 @@
 //! }
 //! ```
 //!
-//! We have a real huge pallet that implements a specific behavior for those
+//! We have a really huge pallet that implements a specific behavior for those
 //! traits, but we want to get rid of such dependency so we [generate a *mock
 //! pallet*](#mock-pallet-creation), we'll call it `pallet_mock_dep`.
 //!
@@ -199,10 +199,10 @@
 //!
 //!     #[pallet::storage]
 //!     pub(super) type CallIds<T: Config> = StorageMap<
-//!     	_,
-//!     	Blake2_128Concat,
-//!     	<Blake2_128 as frame_support::StorageHasher>::Output,
-//!     	mock_builder::CallId,
+//!         _,
+//!         Blake2_128Concat,
+//!         <Blake2_128 as frame_support::StorageHasher>::Output,
+//!         mock_builder::CallId,
 //!     >;
 //!
 //!     impl<T: Config> Pallet<T> {
