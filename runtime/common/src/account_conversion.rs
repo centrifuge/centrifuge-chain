@@ -34,7 +34,7 @@ impl<R> AccountConverter<R> {
 		let mut bytes = [0; 32];
 		bytes[0..20].copy_from_slice(&address);
 		bytes[20..28].copy_from_slice(&chain_id.to_be_bytes());
-		bytes[28..32].copy_from_slice(tag);
+		bytes[28..31].copy_from_slice(tag);
 		AccountId::new(bytes)
 	}
 }
@@ -58,4 +58,37 @@ impl<R> Convert<DomainAddress, AccountId> for AccountConverter<R> {
 			DomainAddress::EVM(chain_id, addr) => Self::convert_evm_address(chain_id, addr),
 		}
 	}
+}
+
+#[cfg(test)]
+mod tests {
+	use hex_literal::hex;
+
+	use super::*;
+
+	#[test]
+	fn domain_evm_conversion() {
+		let address = [0x42; 20];
+		let chain_id = 0xDADB0D;
+		let domain_address = DomainAddress::EVM(chain_id, address);
+		let account: AccountId = AccountConverter::<()>::convert(domain_address);
+		let expected = AccountId::new(hex![
+			"42424242424242424242424242424242424242420000000000DADB0D45564d00"
+		]);
+		assert_eq!(account, expected);
+	}
+
+	#[test]
+	fn domain_native_conversion() {
+		// Native conversion is an identity function
+		let address = [0x42; 32];
+		let expected = AccountId::new(address);
+		let domain_address = DomainAddress::Centrifuge(address);
+		let account: AccountId = AccountConverter::<()>::convert(domain_address);
+		assert_eq!(account, expected);
+	}
+
+	// Note: We don't test the EVM pallet conversion here since it
+	// requires storage to be set up etc. It shares conversion with
+	// domain EVM conversion which is tested above.
 }

@@ -10570,6 +10570,7 @@ dependencies = [
  "cfg-types",
  "frame-support",
  "frame-system",
+ "hex-literal 0.2.2",
  "orml-traits",
  "pallet-anchors",
  "pallet-authorship",

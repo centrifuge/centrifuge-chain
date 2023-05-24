@@ -47,6 +47,7 @@ pallet-pool-system = { path = "../../pallets/pool-system", default-features = fa
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
+hex-literal = "0.2.1"
 
 [features]
 default = ["std"]
