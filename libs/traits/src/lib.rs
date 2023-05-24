@@ -142,6 +142,9 @@ pub trait PoolInspect<AccountId, CurrencyId> {
 
 	/// Get the account used for the given `pool_id`.
 	fn account_for(pool_id: Self::PoolId) -> AccountId;
+
+	// Get the currency used for the given `pool_id`.
+	fn currency_for(pool_id: Self::PoolId) -> Option<CurrencyId>;
 }
 
 /// Variants for valid Pool updates to send out as events
@@ -414,6 +417,44 @@ pub trait Investment<AccountId> {
 		who: &AccountId,
 		investment_id: Self::InvestmentId,
 	) -> Result<Self::Amount, Self::Error>;
+}
+
+/// A trait which allows to collect existing investments and redemptions.
+pub trait InvestmentCollector<AccountId> {
+	type Error: Debug;
+	type InvestmentId;
+	type Result: Debug;
+
+	/// Collect the results of a user's invest orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
+	fn collect_investment(
+		who: AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error>;
+
+	/// Collect the results of a users redeem orders for the given
+	/// investment. If any amounts are not fulfilled they are directly
+	/// appended to the next active order for this investment.
+	fn collect_redemption(
+		who: AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error>;
+}
+
+/// A trait which exposes investment information required for foreign
+/// investments.
+pub trait ForeignInvestments<CurrencyId> {
+	type AssetRegistry;
+	type Error: Debug;
+	type PoolId;
+
+	/// Checks whether the currency can be used for investing into the given
+	/// pool.
+	fn can_invest_currency_into_pool(
+		invest_id: Self::PoolId,
+		currency: CurrencyId,
+	) -> Result<(), Self::Error>;
 }
 
 /// A trait, when implemented must take care of
