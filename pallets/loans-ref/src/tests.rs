@@ -440,7 +440,7 @@ mod borrow_loan {
 
 			assert_noop!(
 				Loans::borrow(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
-				Error::<Runtime>::LoanNotFound
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 		});
 	}
@@ -764,7 +764,7 @@ mod repay_loan {
 					loan_id,
 					COLLATERAL_VALUE
 				),
-				Error::<Runtime>::LoanNotActive
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 		});
 	}
@@ -776,7 +776,7 @@ mod repay_loan {
 
 			assert_noop!(
 				Loans::repay(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
-				Error::<Runtime>::LoanNotFound
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 		});
 	}
@@ -1174,7 +1174,7 @@ mod write_off_loan {
 
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, 0),
-				Error::<Runtime>::LoanNotFound
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 
 			config_mocks();
@@ -1183,10 +1183,10 @@ mod write_off_loan {
 					RuntimeOrigin::signed(LOAN_ADMIN),
 					POOL_A,
 					0,
-					Rate::from_float(POLICY_PERCENTAGE + 0.1),
-					Rate::from_float(POLICY_PENALTY + 0.1)
+					Rate::from_float(POLICY_PERCENTAGE),
+					Rate::from_float(POLICY_PENALTY)
 				),
-				Error::<Runtime>::LoanNotFound
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 		});
 	}
@@ -1201,17 +1201,17 @@ mod write_off_loan {
 			config_mocks();
 			assert_noop!(
 				Loans::write_off(RuntimeOrigin::signed(ANY), POOL_A, loan_id),
-				Error::<Runtime>::LoanNotActive
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 			assert_noop!(
 				Loans::admin_write_off(
 					RuntimeOrigin::signed(LOAN_ADMIN),
 					POOL_A,
 					loan_id,
-					Rate::from_float(POLICY_PERCENTAGE + 0.1),
-					Rate::from_float(POLICY_PENALTY + 0.1)
+					Rate::from_float(POLICY_PERCENTAGE),
+					Rate::from_float(POLICY_PENALTY)
 				),
-				Error::<Runtime>::LoanNotActive
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 		});
 	}
@@ -1551,7 +1551,7 @@ mod close_loan {
 		new_test_ext().execute_with(|| {
 			assert_noop!(
 				Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, 0),
-				Error::<Runtime>::LoanNotFound
+				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 		});
 	}

@@ -336,10 +336,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when pool doesn't exist
 		PoolNotFound,
-		/// Emits when loan doesn't exist
-		LoanNotFound,
-		/// Emits when a loan exist but it's not active
-		LoanNotActive,
+		/// Emits when loan doesn't exist or it's not active yet.
+		LoanNotActiveOrNotFound,
 		/// Emits when a write-off rule is not found in a policy for a specific
 		/// loan. It happens when there is no policy or the loan is not overdue.
 		NoValidWriteOffRule,
@@ -748,23 +746,6 @@ pub mod pallet {
 			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
 		}
 
-		fn find_mut_active_loan(
-			pool_id: PoolIdOf<T>,
-			loan_id: T::LoanId,
-			active_loans: &mut BoundedVec<ActiveLoan<T>, T::MaxActiveLoansPerPool>,
-		) -> Result<&mut ActiveLoan<T>, DispatchError> {
-			Ok(active_loans
-				.iter_mut()
-				.find(|loan| loan.loan_id() == loan_id)
-				.ok_or_else(|| {
-					if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
-						Error::<T>::LoanNotActive
-					} else {
-						Error::<T>::LoanNotFound
-					}
-				})?)
-		}
-
 		fn update_portfolio_valuation_for_pool(
 			pool_id: PoolIdOf<T>,
 		) -> Result<(T::Balance, u32), DispatchError> {
@@ -822,7 +803,11 @@ pub mod pallet {
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let loan = Self::find_mut_active_loan(pool_id, loan_id, active_loans)?;
+					let loan = active_loans
+						.iter_mut()
+						.find(|loan| loan.loan_id() == loan_id)
+						.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
+
 					let result = f(loan)?;
 
 					portfolio.update_elem(loan_id, loan.present_value()?)?;
@@ -846,7 +831,7 @@ pub mod pallet {
 				let index = active_loans
 					.iter()
 					.position(|loan| loan.loan_id() == loan_id)
-					.ok_or(Error::<T>::LoanNotFound)?;
+					.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 				Ok((
 					active_loans.swap_remove(index),
