@@ -50,6 +50,9 @@ impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
 	}
 }
 
+/// Retrieve the "action" of an ethereum transaction
+///
+/// The action is somethinglike "call" or "create".
 pub trait GetTransactionAction {
 	fn action(&self) -> TransactionAction;
 }

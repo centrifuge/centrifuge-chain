@@ -1766,6 +1766,10 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 		}
 	}
 
+	// This is the only method here which is not a simple passthrough
+	// to `pallet_ethereum`. We additionally unpack the included
+	// Ethereum transaction in order to filter out contract creation
+	// calls.
 	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
 		match self {
 			RuntimeCall::Ethereum(call) => match call {

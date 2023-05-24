@@ -23,7 +23,14 @@ pub struct AccountConverter<R>(core::marker::PhantomData<R>);
 impl<R> AccountConverter<R> {
 	/// Converts an EVM address from a given chain into a local AccountId
 	fn convert_evm_address(chain_id: u64, address: [u8; 20]) -> AccountId {
-		let tag = b"EVM\0";
+		// We use a custom encoding here rather than relying on
+		// `AccountIdConversion` for a couple of reasons:
+		// 1. We have very few bytes to spare, so choosing our own
+		//    fields is nice
+		// 2. AccountIdConversion puts the tag first, which can
+		//    unbalance the storage trees if users create many
+		//    H160-derived accounts. We put the tag last here.
+		let tag = b"EVM";
 		let mut bytes = [0; 32];
 		bytes[0..20].copy_from_slice(&address);
 		bytes[20..28].copy_from_slice(&chain_id.to_be_bytes());
