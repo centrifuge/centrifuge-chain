@@ -22,7 +22,7 @@ pub struct AccountConverter<R>(core::marker::PhantomData<R>);
 
 impl<R> AccountConverter<R> {
 	/// Converts an EVM address from a given chain into a local AccountId
-	fn convert_evm_address(chain_id: u64, address: [u8; 20]) -> AccountId {
+	pub fn convert_evm_address(chain_id: u64, address: [u8; 20]) -> AccountId {
 		// We use a custom encoding here rather than relying on
 		// `AccountIdConversion` for a couple of reasons:
 		// 1. We have very few bytes to spare, so choosing our own
