@@ -17,7 +17,6 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata, TrancheCurrency},
 	xcm::XcmMetadata,
 };
-use cfg_utils::vec_to_fixed_array;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
