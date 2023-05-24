@@ -34,8 +34,6 @@ where
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct EVMDomain {
 	chain: EVMChain,
-	// TODO(cdamian): This should be registered on the EVM pallet, do we need it here or can we
-	// retrieve it somehow?
 	axelar_contract_address: H160,
 	connectors_contract_address: H160,
 	fee_values: FeeValues,
@@ -72,25 +70,44 @@ where
 	pub fn do_send(&self, sender: AccountIdOf<T>, msg: MessageOf<T>) -> DispatchResult {
 		let eth_msg = self.get_eth_msg(msg).map_err(|e| DispatchError::Other(e))?;
 
+		// Use the same conversion as the one used in `EnsureAddressTruncated`.
+		let sender_evm_address = H160::from_slice(&sender.as_ref()[0..20]);
+
+		// TODO(cdamian): Do we need extra account related logic, prior to calling this
+		// router, given the following?
+		//
+		// `pallet_evm::runner::stack::Runner::validate` will convert
+		// `sender_evm_address` into a `T::AccountID` and then attempt to return the
+		// nonce and balance for this account, the account mutation flow being:
+		//
+		// AxelarEVMRouter:
+		//
+		// Sender T::AccountId -> Sender H160
+		//
+		// pallet_evm::Pallet::account_basic:
+		//
+		// Sender H160 -> Unknown T::AccountId
+		//
+		// This will most likely mean that the information for
+		// the unknown account will be empty i.e. 0 nonce and 0 balance.
 		pallet_evm::Pallet::<T>::call(
 			// The `call` method uses `EnsureAddressTruncated` to check this `origin`, this ensures
 			// that `origin` is the same as `source`.
 			RawOrigin::Signed(sender.clone()).into(),
-			// TODO(cdamian): Triple-check if truncating is OK:
-			// 	 - who is this sender in a real use case and how is it handled in the Connectors
-			//     contract?
-			// 	 - do we need to map a substrate address to an ethereum one for extra validation?
-			//     (Paranoid by Black Sabbath playing in the background)
-			H160::from_slice(&sender.as_ref()[0..20]),
+			sender_evm_address,
 			self.domain.axelar_contract_address.clone(),
 			eth_msg,
 			self.domain.fee_values.value.clone(),
 			self.domain.fee_values.gas_limit.clone(),
 			self.domain.fee_values.max_fee_per_gas.clone(),
 			self.domain.fee_values.max_priority_fee_per_gas.clone(),
-			// TODO(cdamian): No nonce, is this OK?
+			// The nonce will be retrieved during call validation in
+			// `pallet_evm::runner::stack::Runner::validate` and then increased by the
+			// `evm::executor::stack::StackExecutor` during `transact_call`.
+			//
+			// In order to avoid any potential errors caused by an outdated nonce that we can
+			// retrieve prior to this call, we set this here to None.
 			None,
-			// TODO(cdamian): No access list, is this required?
 			Vec::new(),
 		)
 		.map_err(|e| e.error)?;
@@ -98,22 +115,11 @@ where
 		Ok(())
 	}
 
-	// - Connectors pallet should encode this to a single byte string, basically the
-	//   Connectors encoded message.
-	// - The Axelar EVM router should ABI encode a call to call `callContract` on
-	//   the Axelar router with as destination contract the `Router` of connectors
-	//   on the target chain, and as payload the Connectors encoded message.
-	// - This ABI encoded call should be submitted into the Axelar Solidity router
-	//   on our EVM.
-	// - Axelar then handles bridging & routing this, it eventually ends up as a
-	//   transaction on the destination chain, calling `execute` of the Axelar
-	//   router I pointed to above. This will then forward it to the gateway
-	//   contract which will decode the Connectors encoded message.
 	fn get_eth_msg(&self, msg: MessageOf<T>) -> Result<Vec<u8>, &'static str> {
-		// AxelarEVMRouter -> calls `callContract` on the Axelar Gateway contract
-		// deployed in the EVM pallet.
+		// `AxelarEVMRouter` -> `callContract` on the Axelar Gateway contract
+		// deployed in the Centrifuge EVM pallet.
 		//
-		// Axelar Gateway contract -> calls `handle` on the Connectors gateway contract
+		// Axelar Gateway contract -> `handle` on the Connectors gateway contract
 		// deployed on Ethereum.
 
 		// Connectors Call:
