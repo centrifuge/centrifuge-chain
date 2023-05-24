@@ -18,6 +18,7 @@
 #[cfg(test)]
 mod tests;
 
+pub mod account_conversion;
 pub mod apis;
 pub mod evm;
 

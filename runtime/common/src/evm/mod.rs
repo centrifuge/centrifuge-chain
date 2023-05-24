@@ -10,13 +10,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::AccountId;
-use codec::{Decode, Encode};
 use frame_support::weights::constants::WEIGHT_REF_TIME_PER_SECOND;
 use pallet_ethereum::{Transaction, TransactionAction};
-use pallet_evm::AddressMapping;
-use sp_core::H160;
-use sp_runtime::{traits::AccountIdConversion, Permill};
+use sp_runtime::Permill;
 
 pub mod precompile;
 
@@ -35,25 +31,6 @@ pub const GAS_PER_SECOND: u64 = 40_000_000;
 // u64 works for approximations because Weight is a very small unit compared to
 // gas.
 pub const WEIGHT_PER_GAS: u64 = WEIGHT_REF_TIME_PER_SECOND / GAS_PER_SECOND;
-
-#[derive(Encode, Decode, Default)]
-struct Account(H160);
-
-impl sp_runtime::TypeId for Account {
-	const TYPE_ID: [u8; 4] = *b"ETH\0";
-}
-
-pub struct ExpandedAddressMapping;
-
-// Ethereum chain interactions are done with a 20-byte account ID. But
-// Substrate uses a 32-byte account ID. This implementation stretches
-// a 20-byte account into a 32-byte account by adding a tag and a few
-// zero bytes.
-impl AddressMapping<AccountId> for ExpandedAddressMapping {
-	fn into_account_id(address: H160) -> AccountId {
-		Account(address).into_account_truncating()
-	}
-}
 
 pub struct BaseFeeThreshold;
 

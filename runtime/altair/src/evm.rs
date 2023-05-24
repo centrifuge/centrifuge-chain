@@ -13,8 +13,9 @@
 use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
 use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
-use runtime_common::evm::{
-	precompile::CentrifugePrecompiles, BaseFeeThreshold, ExpandedAddressMapping, WEIGHT_PER_GAS,
+use runtime_common::{
+	account_conversion::AccountConverter,
+	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;
@@ -46,7 +47,7 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for crate::Runtime {
-	type AddressMapping = ExpandedAddressMapping;
+	type AddressMapping = AccountConverter<crate::Runtime>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressRoot<crate::AccountId>;
