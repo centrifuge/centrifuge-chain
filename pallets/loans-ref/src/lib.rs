@@ -42,10 +42,10 @@ pub mod migrations {
 	pub mod v1;
 }
 
-pub mod config;
 pub mod loan;
 pub mod pricing;
 pub mod types;
+pub mod util;
 
 #[cfg(test)]
 mod mock;

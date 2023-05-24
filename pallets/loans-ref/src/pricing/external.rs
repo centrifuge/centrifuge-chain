@@ -18,7 +18,7 @@ pub struct ExternalPricing<T: Config> {
 	/// Id of an external price
 	pub price_id: T::PriceId,
 
-	/// Maximum number of items associated to the price id
+	/// Maximum number of items associated with the loan of the pricing.
 	pub max_borrow_quantity: T::Balance,
 }
 
