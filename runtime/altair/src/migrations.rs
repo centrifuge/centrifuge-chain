@@ -30,6 +30,7 @@ pub type UpgradeAltair1027 = (
 		ExistentialDeposit,
 	>,
 	asset_registry::TrancheLocationMigration,
+	evm_chain_id::SetEvmChainId,
 );
 
 mod init_block_rewards {
@@ -203,6 +204,36 @@ mod asset_registry {
 				}
 			}
 
+			Ok(())
+		}
+	}
+}
+
+mod evm_chain_id {
+	use pallet_evm_chain_id::ChainId;
+
+	use super::*;
+	use crate::{ParachainInfo, Runtime};
+
+	/// This migration sets the EVM chain ID based on the parachain ID.
+	pub struct SetEvmChainId;
+
+	impl OnRuntimeUpgrade for SetEvmChainId {
+		fn on_runtime_upgrade() -> Weight {
+			let para_id: u32 = ParachainInfo::parachain_id().into();
+			let evm_id: u64 = para_id.into();
+			ChainId::<Runtime>::put(evm_id);
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, &'static str> {
+			Ok(Default::default())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_: sp_std::vec::Vec<u8>) -> Result<(), &'static str> {
+			// Migratino is infallible
 			Ok(())
 		}
 	}

@@ -32,6 +32,13 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 # ORML dependencies
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.37" }
 
+# Frontier dependencies
+pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-ethereum = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm-chain-id = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.37" }
+
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
@@ -39,6 +46,7 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
 [dev-dependencies]
+hex-literal = "0.2.1"
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.37" }
 
 [features]
@@ -49,6 +57,11 @@ std = [
   "frame-system/std",
   "pallet-authorship/std",
   "pallet-balances/std",
+  "pallet-base-fee/std",
+  "pallet-ethereum/std",
+  "pallet-evm/std",
+  "pallet-evm-chain-id/std",
+  "pallet-evm-precompile-dispatch/std",
   "pallet-treasury/std",
   "sp-core/std",
   "sp-api/std",
@@ -79,6 +92,7 @@ runtime-benchmarks = [
   "pallet-treasury/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "xcm/runtime-benchmarks",
+  "pallet-evm/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -86,13 +100,15 @@ on-chain-release-build = [
 ]
 try-runtime = [
   "cfg-primitives/try-runtime",
-  "frame-support/try-runtime",
   "cfg-types/try-runtime",
+  "frame-support/try-runtime",
   "frame-system/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-treasury/try-runtime",
-  "cfg-primitives/try-runtime",
+  "pallet-evm/try-runtime",
+  "pallet-base-fee/try-runtime",
+  "sp-runtime/try-runtime",
 ]
