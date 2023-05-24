@@ -11,30 +11,23 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// #[cfg(test)]
-// pub(crate) mod mock;
-
-// #[cfg(test)]
-// mod tests;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
-use frame_support::{
-	pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
-	traits::{tokens::AssetId, Currency, ReservableCurrency},
-	Twox64Concat,
-};
-use orml_traits::{MultiCurrency, MultiReservableCurrency};
 pub use pallet::*;
-
-// will def have to update for dealing with multiple foreign asset types
-pub type BalanceOf<T> =
-	<<T as Config>::ReserveCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::{
+		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
+		traits::{tokens::AssetId, BlakeTwo256, Currency, ReservableCurrency},
+		Blake2_128Concat, Identity, Twox64Concat,
+	};
+	use orml_traits::{MultiCurrency, MultiReservableCurrency};
+
 	use super::*;
+
+	// will def have to update for dealing with multiple foreign asset types
+	pub type BalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -96,5 +89,31 @@ pub mod pallet {
 		pub asset_in: CurrencyId,
 		pub amount_out: BalanceOf<T>,
 		pub minimum_sell_ratio: BalanceOf<T>,
+	}
+
+	// alternatively we can store by nmap with account/currencies
+	// route
+	#[pallet::storage]
+	pub type AccountCurrencyTransferCountDelay<T: Config> = StorageMap<
+		// (
+		// 	NMapKey<Twox64Concat, T::AccountId>,
+		// 	NMapKey<Twox64Concat, T::CurrencyId>,
+		// 	NMapKey<Twox64Concat, T::CurrencyId>,
+		// ),
+		_,
+		Identity,
+		T::Hash,
+		SwapOrder<T>,
+		OptionQuery,
+	>;
+
+	impl<T: Config> Pallet<T> {
+		pub fn gen_hash(
+			account_id: T::AccountId,
+			currency_in: T::CurrencyId,
+			currency_out: T::CurrencyId,
+		) -> T::Hash {
+			(account_id, currency_in, currency_out).using_encoded(T::Hashing::hash)
+		}
 	}
 }

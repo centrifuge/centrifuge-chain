@@ -59,6 +59,7 @@ members = [
   "pallets/restricted-tokens",
   "pallets/transfer-allowlist",
   "pallets/rewards",
+  "pallets/order-book",
   "runtime/altair",
   "runtime/centrifuge",
   "runtime/common",

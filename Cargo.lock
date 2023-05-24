@@ -7610,6 +7610,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-order-book"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-permissions"
 version = "0.1.0"
 dependencies = [
