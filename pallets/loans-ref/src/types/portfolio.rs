@@ -95,7 +95,7 @@ where
 			.map(|(_, value)| value)
 			.ok_or(DispatchError::CannotLookup)?;
 
-		let changed = match new_pv.cmp(old_pv) {
+		match new_pv.cmp(old_pv) {
 			Ordering::Greater => {
 				let diff = new_pv.ensure_sub(*old_pv)?;
 				self.value.ensure_add_assign(diff)?;
@@ -109,7 +109,7 @@ where
 
 		*old_pv = new_pv;
 
-		Ok(changed)
+		Ok(())
 	}
 }
 
