@@ -18,8 +18,8 @@ pub struct ExternalPricing<T: Config> {
 	/// Id of an external price
 	pub price_id: T::PriceId,
 
-	/// Number of items associated to the price id
-	pub quantity: T::Balance,
+	/// Maximum number of items associated to the price id
+	pub max_borrow_quantity: T::Balance,
 }
 
 impl<T: Config> ExternalPricing<T> {
@@ -75,7 +75,10 @@ impl<T: Config> ExternalActivePricing<T> {
 
 	pub fn max_borrow_amount(&self) -> Result<T::Balance, DispatchError> {
 		let price = self.calculate_price()?;
-		let available = self.info.quantity.ensure_sub(self.outstanding_quantity)?;
+		let available = self
+			.info
+			.max_borrow_quantity
+			.ensure_sub(self.outstanding_quantity)?;
 		Ok(available.ensure_mul(price)?)
 	}
 

@@ -132,7 +132,7 @@ mod util {
 			collateral: ASSET_AA,
 			pricing: Pricing::External(ExternalPricing {
 				price_id: REGISTER_PRICE_ID,
-				quantity: QUANTITY,
+				max_borrow_quantity: QUANTITY,
 			}),
 			restrictions: LoanRestrictions {
 				borrows: BorrowRestrictions::NoWrittenOff,
@@ -369,7 +369,7 @@ mod create_loan {
 			let loan = LoanInfo {
 				pricing: Pricing::External(ExternalPricing {
 					price_id: UNREGISTER_PRICE_ID,
-					quantity: QUANTITY,
+					max_borrow_quantity: QUANTITY,
 				}),
 				..util::base_external_loan()
 			};
