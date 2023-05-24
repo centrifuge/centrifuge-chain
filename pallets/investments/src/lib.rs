@@ -15,7 +15,8 @@
 
 use cfg_primitives::OrderId;
 use cfg_traits::{
-	Investment, InvestmentAccountant, InvestmentProperties, OrderManager, PreConditions,
+	Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties, OrderManager,
+	PreConditions,
 };
 use cfg_types::{
 	fixed_point::FixedPointNumberExtension,
@@ -430,7 +431,7 @@ pub mod pallet {
 		/// needs to be put in processing and then be cleared before
 		/// a collect is possible
 		OrderStillActive,
-		/// IvestmentManager does not now given investment
+		/// InvestmentManager does not know the given investment
 		UnknownInvestment,
 		/// The user has to many uncollected orders. Before
 		/// submitting new orders, a collect of those is required.
@@ -497,7 +498,7 @@ pub mod pallet {
 			Pallet::<T>::do_update_redemption(who, investment_id, amount)
 		}
 
-		/// Collect the results of a users invest orders for the given
+		/// Collect the results of a user's invest orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
@@ -511,7 +512,7 @@ pub mod pallet {
 			Self::do_collect_invest(who, investment_id)
 		}
 
-		/// Collect the results of a users redeem orders for the given
+		/// Collect the results of a user's redeem orders for the given
 		/// investment. If any amounts are not fulfilled they are directly
 		/// appended to the next active order for this investment.
 		#[pallet::weight(5_000_000_000)]
@@ -1408,5 +1409,33 @@ where
 		});
 
 		Ok(())
+	}
+}
+
+impl<T: Config> InvestmentCollector<T::AccountId> for Pallet<T>
+where
+	<T::Accountant as InvestmentAccountant<T::AccountId>>::InvestmentInfo:
+		InvestmentProperties<T::AccountId, Currency = CurrencyOf<T>>,
+{
+	type Error = DispatchError;
+	type InvestmentId = T::InvestmentId;
+	type Result = ();
+
+	fn collect_investment(
+		who: T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error> {
+		Pallet::<T>::do_collect_invest(who, investment_id)
+			.map_err(|e| e.error)
+			.map(|_| ())
+	}
+
+	fn collect_redemption(
+		who: T::AccountId,
+		investment_id: Self::InvestmentId,
+	) -> Result<Self::Result, Self::Error> {
+		Pallet::<T>::do_collect_redeem(who, investment_id)
+			.map_err(|e| e.error)
+			.map(|_| ())
 	}
 }
