@@ -212,37 +212,24 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	}
 }
 
-/// Convert an incoming `MultiLocation` into a `CurrencyId` if possible.
-/// Here we need to know the canonical representation of all the tokens we
-/// handle in order to correctly convert their `MultiLocation` representation
-/// into our internal `CurrencyId` type.
+/// Convert an incoming `MultiLocation` into a `CurrencyId` through a
+/// revert-lookup using the OrmlAssetRegistry. In the registry, we register CFG
+/// using its absolute, non-anchored MultliLocation so we need to unanchor the
+/// input location for Centrifuge-native assets for that to work.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
-		match location {
-			MultiLocation {
-				parents: 1,
-				interior: X3(Parachain(para_id), PalletInstance(_), GeneralKey { .. }),
-			} => match para_id {
-				// Note: Until we have pools on Centrifuge, we don't know the pools pallet index
-				// and can't therefore match specifically on the Tranche tokens' multilocation;
-				// However, we can preemptively assume that any Centrifuge X3-based asset refers
-				// to a Tranche token and explicitly fail its conversion to avoid Tranche tokens
-				// from being transferred through XCM without permission checks. This is fine since
-				// we don't have any other native token represented as an X3 neither do we plan to.
-				id if id == u32::from(ParachainInfo::get()) => Err(location),
-				// Still support X3-based MultiLocations native to other chains
-				_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
-			},
+		let unanchored_location = match location {
 			MultiLocation {
 				parents: 0,
 				interior: X1(x),
-			} => OrmlAssetRegistry::location_to_asset_id(MultiLocation {
+			} => MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(u32::from(ParachainInfo::get())), x),
-			})
-			.ok_or(location),
-			_ => OrmlAssetRegistry::location_to_asset_id(location).ok_or(location),
-		}
+			},
+			x => x,
+		};
+
+		OrmlAssetRegistry::location_to_asset_id(unanchored_location).ok_or(location)
 	}
 }
 
