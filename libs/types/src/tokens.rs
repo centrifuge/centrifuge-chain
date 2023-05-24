@@ -132,6 +132,19 @@ where
 	}
 }
 
+impl<Index, Prefix> From<u128> for GeneralCurrencyIndex<Index, Prefix>
+where
+	Index: From<u128>,
+	Prefix: Get<[u8; 12]>,
+{
+	fn from(value: u128) -> Self {
+		GeneralCurrencyIndex {
+			index: value.into(),
+			_phantom: Default::default(),
+		}
+	}
+}
+
 /// A Currency that is solely used by tranches.
 ///
 /// We distinguish here between the enum variant CurrencyId::Tranche(PoolId,
