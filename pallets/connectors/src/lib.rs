@@ -13,11 +13,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use core::convert::TryFrom;
 
-use cfg_traits::{
-	connectors::Codec,
-	ops::{EnsureAdd, EnsureSub},
-	PoolInspect,
-};
+use cfg_traits::{connectors::Codec, ForeignInvestments, PoolInspect};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress, DomainLocator},
 	tokens::GeneralCurrencyIndex,
@@ -44,6 +40,8 @@ pub use routers::*;
 
 mod contract;
 pub use contract::*;
+
+mod inbound;
 
 /// The Parachains that Centrifuge Connectors support.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -79,8 +77,8 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		Investment, InvestmentAccountant, InvestmentProperties, Permissions, PoolInspect,
-		TrancheCurrency,
+		Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties, Permissions,
+		PoolInspect, TrancheCurrency,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -142,40 +140,29 @@ pub mod pallet {
 			+ Clone;
 
 		type ForeignInvestment: Investment<
-			Self::AccountId,
-			Error = DispatchError,
-			InvestmentId = <Self as Config>::TrancheCurrency,
-			Amount = <Self as Config>::Balance,
-		>;
+				Self::AccountId,
+				Error = DispatchError,
+				InvestmentId = <Self as Config>::TrancheCurrency,
+				Amount = <Self as Config>::Balance,
+			> + InvestmentCollector<
+				Self::AccountId,
+				Error = DispatchError,
+				InvestmentId = <Self as Config>::TrancheCurrency,
+				Result = (),
+			>;
+		// + ForeignInvestments<
+		// 	CurrencyIdOf<Self>,
+		// 	AssetRegistry = <Self as Config>::AssetRegistry,
+		// 	Error = DispatchError,
+		// 	InvestmentId = <Self as Config>::TrancheCurrency,
+		// >;
 
 		type ForeignInvestmentAccountant: InvestmentAccountant<
 			Self::AccountId,
 			Amount = <Self as Config>::Balance,
 			Error = DispatchError,
 			InvestmentId = <Self as Config>::TrancheCurrency,
-			// InvestmentInfo = cfg_types::investments::InvestmentInfo<
-			// 	Self::AccountId,
-			// 	CurrencyIdOf<Self>,
-			// 	<Self as Config>::TrancheCurrency,
-			// >,
 		>;
-		// type ForeignInvestmentAccountant: InvestmentProperties<
-		// 	Self::AccountId,
-		// 	Currency = CurrencyIdOf<Self>,
-		// 	Id = <Self as pallet::Config>::TrancheCurrency,
-		// >;
-
-		// InvestmentAccountant<
-		// 	Self::AccountId,
-		// 	Error = DispatchError,
-		// 	InvestmentId = <Self as Config>::TrancheCurrency,
-		// 	InvestmentInfo = cfg_traits::InvestmentProperties<
-		// 		Self::AccountId,
-		// 		Currency = CurrencyIdOf<Self>,
-		// 		Id = <Self as Config>::TrancheCurrency,
-		// 	>,
-		// 	Amount = <Self as Config>::Balance,
-		// >;
 
 		type AssetRegistry: asset_registry::Inspect<
 			AssetId = CurrencyIdOf<Self>,
@@ -239,41 +226,52 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Failed to map the asset to the corresponding Connector's General
-		/// Index representation
+		/// Index representation and thus cannot be used as an
+		/// ivnestment currency.
 		AssetNotFound,
-		/// A pool could not be found
+		/// The metadata of the given asset does not declare it as a pool
+		/// currency and thus it cannot be used as an investment currency.
+		AssetMetadataNotPoolCurrency,
+		/// The given asset does not match the currency of the pool.
+		AssetNotPoolCurrency,
+		/// A pool could not be found.
 		PoolNotFound,
-		/// A tranche could not be found
+		/// A tranche could not be found.
 		TrancheNotFound,
-		/// Could not find the metadata of a tranche token
+		/// Could not find the metadata of a tranche token.
 		TrancheMetadataNotFound,
 		/// Failed to fetch a tranche token price.
 		/// This can occur if `TrancheNotFound` or if effectively
 		/// the price for this tranche has not yet been set.
 		MissingTranchePrice,
-		/// Router not set for a given domain
+		/// Router not set for a given domain.
 		MissingRouter,
-		/// Transfer amount must be non-zero
+		/// Transfer amount must be non-zero.
 		InvalidTransferAmount,
-		/// A transfer to a non-whitelisted destination was attempted
+		/// A transfer to a non-whitelisted destination was attempted.
 		UnauthorizedTransfer,
-		/// Failed to build Ethereum_Xcm call
+		/// Failed to build Ethereum_Xcm call.
 		FailedToBuildEthereumXcmCall,
-		/// The origin of an incoming message is not in the allow-list
+		/// The origin of an incoming message is not in the allow-list.
 		InvalidIncomingMessageOrigin,
-		/// Failed to decode an incoming message
+		/// Failed to decode an incoming message.
 		InvalidIncomingMessage,
-		/// The destination domain is invialid
+		/// The destination domain is invalid.
 		InvalidDomain,
 		/// The validity is in the past.
 		InvalidValidity,
 		/// Failed to match the provided GeneralCurrencyIndex against the
-		/// investment currency of the pool
+		/// investment currency of the pool.
 		InvalidInvestCurrency,
+		/// The domain has not been whitelisted as a TrancheInvestor.
+		DomainNotWhitelisted,
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
+	{
 		/// Set a Domain's router
 		#[pallet::weight(< T as Config >::WeightInfo::set_domain_router())]
 		#[pallet::call_index(0)]
@@ -416,33 +414,16 @@ pub mod pallet {
 			);
 			ensure!(valid_until > Self::now(), Error::<T>::InvalidValidity);
 
-			// Check that the origin is allowed to add other members
+			// Ensure that the destination address has been whitelisted as a TrancheInvestor
+			// beforehand.
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::MemberListAdmin)
-				),
-				BadOrigin
-			);
-
-			// Now add the destination address as a TrancheInvestor of the given tranche if
-			// not already one. This check is necessary shall a user have called
-			// `update_member` already but the call has failed on the EVM side and needs to
-			// be retried.
-			// TODO: TBD if this should be reverted to requiring the permissions to already
-			// exist
-			if !T::Permission::has(
-				PermissionScope::Pool(pool_id),
-				domain_address.into_account_truncating(),
-				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
-			) {
-				T::Permission::add(
-					PermissionScope::Pool(pool_id),
 					domain_address.into_account_truncating(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
-				)?;
-			}
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until))
+				),
+				Error::<T>::DomainNotWhitelisted
+			);
 
 			Self::do_send_message(
 				who,
@@ -475,17 +456,6 @@ pub mod pallet {
 				domain_address.domain() != Domain::Centrifuge,
 				Error::<T>::InvalidDomain
 			);
-			// Check that the destination is a member of this tranche token
-			// TODO: Add check to integration tests
-			ensure!(
-				T::PoolInspect::pool_exists(pool_id),
-				Error::<T>::PoolNotFound
-			);
-			// TODO: Add check to integration tests
-			ensure!(
-				T::PoolInspect::tranche_exists(pool_id, tranche_id),
-				Error::<T>::TrancheNotFound
-			);
 			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
 			ensure!(
 				T::Permission::has(
@@ -496,9 +466,13 @@ pub mod pallet {
 				Error::<T>::UnauthorizedTransfer
 			);
 
+			// TODO: Add check to integration tests
+			// Ensure pool and tranche exist and derive invest id
+			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
+
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
-				T::TrancheCurrency::generate(pool_id, tranche_id).into(),
+				invest_id.into(),
 				&who,
 				&DomainLocator::<Domain> {
 					domain: domain_address.domain(),
@@ -547,7 +521,7 @@ pub mod pallet {
 			let currency = Self::try_get_general_index(currency_id)?;
 
 			// TODO: Ensure we never transfer tokens from DomainA to DomainB
-			// 		 Potentiallyrelated to asset metadata update
+			// 		 Potentially related to asset metadata update
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -578,9 +552,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add a currency to the set of known currencies on a given Domain.
-		// TODO: Replace weight after benchmarking
-		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
+		/// Add a currency to the set of known currencies on the domain derived
+		/// from the given currency.
+		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
 		#[pallet::call_index(8)]
 		pub fn add_currency(origin: OriginFor<T>, currency_id: CurrencyIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -604,43 +578,45 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Allow a currency to be used as a pool currency and to invest in a
+		/// pool on the domain derived from the given currency.
 		#[pallet::call_index(90)]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		pub fn add_pool_currency(
+		pub fn allow_pool_currency(
 			origin: OriginFor<T>,
-			pool: PoolIdOf<T>,
-			currency: CurrencyIdOf<T>,
+			pool_id: PoolIdOf<T>,
+			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
-			todo!("https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency")
+			// TODO: In the future, should be permissioned by trait which does not exist yet
+			// TODO: How to handle fee payment if we use AdminOrigin?
+			// let who = T::AdminOrigin::ensure_origin(origin)?;
+			let who = ensure_signed(origin)?;
+
+			// Ensure currency matches the currency of the pool
+			Self::can_invest_currency_into_pool(pool_id, currency_id)?;
+
+			// Derive GeneralIndex for currency
+			let currency = Self::try_get_general_index(currency_id)?;
+
+			// FIXME: @NunoAlexandre Blocked by asset metadata PR
+			let domain = Domain::Centrifuge;
+
+			Self::do_send_message(
+				who.into(),
+				Message::AllowPoolCurrency { pool_id, currency },
+				domain,
+			)?;
+
+			Ok(())
 		}
-
-		// #[pallet::call_index(97)]
-		// #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		// pub fn collect_invest(
-		// 	origin: OriginFor<T>,
-		// 	pool_id: PoolIdOf<T>,
-		// 	tranche_id: TrancheIdOf<T>,
-		// 	investor: DomainAddress,
-		// ) -> DispatchResult {
-		// 	todo!("https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#pallet-connectors")
-		// }
-
-		// #[pallet::call_index(98)]
-		// #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-		// pub fn collect_redeem(
-		// 	origin: OriginFor<T>,
-		// 	pool_id: PoolIdOf<T>,
-		// 	tranche_id: TrancheIdOf<T>,
-		// 	investor: DomainAddress,
-		// ) -> DispatchResult {
-		// 	todo!("https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#pallet-connectors")
-		// }
 
 		/// Handle an incoming message
 		/// TODO(nuno): we probably need a custom origin type for these messages
 		/// to ensure they have come in through XCM. For now, let's have a POC
 		/// here to test the pipeline Ethereum ---> Moonbeam --->
 		/// Centrifuge::connectors
+		/// TODO(william): Should be removed as extrinsic before adding to prod
+		/// runtimes. Should be handled automatically via Gateway.
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::handle())]
 		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
@@ -655,8 +631,94 @@ pub mod pallet {
 				message: bytes.clone(),
 			});
 			// todo: do someting with the decoded message later on
-			let _: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
+			let msg: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
 				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
+
+			match msg {
+				Message::Transfer {
+					currency,
+					sender,
+					receiver,
+					amount,
+				} => Self::do_transfer(currency.into(), sender.into(), receiver.into(), amount),
+				Message::TransferTrancheTokens {
+					pool_id,
+					tranche_id,
+					sender,
+					receiver,
+					amount,
+					..
+				} => Self::do_transfer_tranche_tokens(
+					pool_id,
+					tranche_id,
+					sender.into(),
+					receiver.into(),
+					amount,
+				),
+				Message::IncreaseInvestOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::do_increase_invest_order(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::DecreaseInvestOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::do_decrease_invest_order(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::IncreaseRedeemOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::do_increase_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::DecreaseRedeemOrder {
+					pool_id,
+					tranche_id,
+					investor,
+					currency,
+					amount,
+				} => Self::do_decrease_redemption(
+					pool_id,
+					tranche_id,
+					investor.into(),
+					currency.into(),
+					amount,
+				),
+				Message::CollectInvest {
+					pool_id,
+					tranche_id,
+					investor,
+				} => Self::do_collect_investment(pool_id, tranche_id, investor.into()),
+				Message::CollectRedeem {
+					pool_id,
+					tranche_id,
+					investor,
+				} => Self::do_collect_redemption(pool_id, tranche_id, investor.into()),
+				_ => Err(Error::<T>::InvalidIncomingMessage.into()),
+			}?;
 
 			Ok(())
 		}
@@ -782,153 +844,34 @@ pub mod pallet {
 
 			Ok(currency)
 		}
+	}
 
-		pub(crate) fn try_get_invest_details(
+	impl<T: Config> cfg_traits::ForeignInvestments<CurrencyIdOf<T>> for Pallet<T> {
+		type AssetRegistry = T::AssetRegistry;
+		type Error = DispatchError;
+		type PoolId = PoolIdOf<T>;
+
+		fn can_invest_currency_into_pool(
 			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
-			currency_index: GeneralCurrencyIndexOf<T>,
-		) -> Result<(<T as pallet::Config>::TrancheCurrency, CurrencyIdOf<T>), DispatchError> {
-			// TODO: Depending on the gateway impl, this handler might be missing access
-			// control. E.g., right now it just assumes the calling source is valid.
+			currency: CurrencyIdOf<T>,
+		) -> DispatchResult {
 			ensure!(
 				T::PoolInspect::pool_exists(pool_id),
 				Error::<T>::PoolNotFound
 			);
+
+			// Ensure metadata pool currency flag is enabled
+			let metadata =
+				T::AssetRegistry::metadata(&currency).ok_or(Error::<T>::AssetNotFound)?;
 			ensure!(
-				T::PoolInspect::tranche_exists(pool_id, tranche_id),
-				Error::<T>::TrancheNotFound
+				metadata.additional.pool_currency,
+				Error::<T>::AssetMetadataNotPoolCurrency
 			);
 
-			// retrieve currency id from general index
-			let currency = Self::try_get_currency_id(currency_index)?;
-
-			// get investment info
-			let invest_id: <T as pallet::Config>::TrancheCurrency =
-				TrancheCurrency::generate(pool_id, tranche_id);
-			let payment_currency: CurrencyIdOf<T> =
-				<T as pallet::Config>::ForeignInvestmentAccountant::info(invest_id.clone())?
-					.payment_currency()
-					.into();
-			ensure!(
-				payment_currency == currency,
-				Error::<T>::InvalidInvestCurrency
-			);
-
-			Ok((invest_id, currency))
-		}
-
-		// TODO: Docs + maybe move to a new ForeignInvestment trait
-		pub fn do_increase_invest_order(
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
-			investor: T::AccountId,
-			currency_index: GeneralCurrencyIndexOf<T>,
-			amount: <T as pallet::Config>::Balance,
-		) -> DispatchResult {
-			// Retrieve details from existing investment
-			let (invest_id, currency) =
-				Self::try_get_invest_details(pool_id, tranche_id, currency_index)?;
-			let invested_amount =
-				<T as pallet::Config>::ForeignInvestment::investment(&investor, invest_id.clone())?;
-			let invest_amount = invested_amount.ensure_add(amount)?;
-
-			// Mint additional amount
-			<T as pallet::Config>::Tokens::mint_into(currency, &investor, amount)?;
-
-			<T as pallet::Config>::ForeignInvestment::update_investment(
-				&investor,
-				invest_id,
-				invest_amount,
-			)?;
-
-			Ok(())
-		}
-
-		// TODO: Docs + maybe move to a new ForeignInvestment trait
-		pub fn do_decrease_invest_order(
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
-			investor: T::AccountId,
-			currency_index: GeneralCurrencyIndexOf<T>,
-			amount: <T as pallet::Config>::Balance,
-		) -> DispatchResult {
-			// Retrieve details from existing investment
-			let (invest_id, currency) =
-				Self::try_get_invest_details(pool_id, tranche_id, currency_index)?;
-			let invested_amount =
-				<T as pallet::Config>::ForeignInvestment::investment(&investor, invest_id.clone())?;
-			let invest_amount = invested_amount.ensure_sub(amount)?;
-
-			// TODO: Reviewers: Do we actually want to burn here?
-			<T as pallet::Config>::Tokens::burn_from(currency, &investor, amount)?;
-
-			// TODO: Handle response message to source destination which should refund the
-			// decreased amount.
-
-			<T as pallet::Config>::ForeignInvestment::update_investment(
-				&investor,
-				invest_id,
-				invest_amount,
-			)?;
-
-			Ok(())
-		}
-
-		// TODO: Docs + maybe move to a new ForeignInvestment trait
-		pub fn do_increase_redemption(
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
-			investor: T::AccountId,
-			currency_index: GeneralCurrencyIndexOf<T>,
-			amount: <T as pallet::Config>::Balance,
-		) -> DispatchResult {
-			// Retrieve details from existing investment
-			let (invest_id, currency) =
-				Self::try_get_invest_details(pool_id, tranche_id, currency_index)?;
-			let pre_amount =
-				<T as pallet::Config>::ForeignInvestment::redemption(&investor, invest_id.clone())?;
-			let post_amount = pre_amount.ensure_add(amount)?;
-
-			// Mint additional amount
-			<T as pallet::Config>::Tokens::mint_into(currency, &investor, amount)?;
-
-			<T as pallet::Config>::ForeignInvestment::update_redemption(
-				&investor,
-				invest_id,
-				post_amount,
-			)?;
-
-			Ok(())
-		}
-
-		// TODO: Docs + maybe move to a new ForeignInvestment trait
-		pub fn do_decrease_redemption(
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
-			investor: T::AccountId,
-			currency_index: GeneralCurrencyIndexOf<T>,
-			amount: <T as pallet::Config>::Balance,
-		) -> DispatchResult {
-			// Retrieve details from existing investment
-			let (invest_id, currency) =
-				Self::try_get_invest_details(pool_id, tranche_id, currency_index)?;
-			let pre_amount =
-				<T as pallet::Config>::ForeignInvestment::redemption(&investor, invest_id.clone())?;
-			let post_amount = pre_amount.ensure_sub(amount)?;
-
-			// TODO: Reviewers: Do we actually want to burn here?
-			<T as pallet::Config>::Tokens::burn_from(currency, &investor, amount)?;
-
-			// TODO: Handle response message to source destination which should refund the
-			// decreased amount.
-
-			<T as pallet::Config>::ForeignInvestment::update_redemption(
-				&investor,
-				invest_id,
-				post_amount,
-			)?;
-
-			Ok(())
+			T::PoolInspect::currency_for(pool_id)
+				.filter(|c| c == &currency)
+				.map(|_| ())
+				.ok_or(Error::<T>::AssetNotPoolCurrency.into())
 		}
 	}
 }
