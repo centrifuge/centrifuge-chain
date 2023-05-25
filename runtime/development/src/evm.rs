@@ -47,23 +47,23 @@ parameter_types! {
 }
 
 impl pallet_evm::Config for crate::Runtime {
-	type FeeCalculator = crate::BaseFee;
-	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
-	type WeightPerGas = WeightPerGas;
+	type AddressMapping = AccountConverter<crate::Runtime>;
+	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
 	type CallOrigin = EnsureAddressTruncated;
-	type WithdrawOrigin = EnsureAddressTruncated;
-	type AddressMapping = AccountConverter<crate::Runtime>;
-	type Currency = crate::Balances;
-	type RuntimeEvent = crate::RuntimeEvent;
-	type PrecompilesType = CentrifugePrecompiles<Self>;
-	type PrecompilesValue = PrecompilesValue;
 	type ChainId = crate::EVMChainId;
-	type BlockGasLimit = BlockGasLimit;
-	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type Currency = crate::Balances;
+	type FeeCalculator = crate::BaseFee;
+	type FindAuthor = FindAuthorTruncated<Aura>;
+	type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
 	type OnChargeTransaction = ();
 	type OnCreate = ();
-	type FindAuthor = FindAuthorTruncated<Aura>;
+	type PrecompilesType = CentrifugePrecompiles<Self>;
+	type PrecompilesValue = PrecompilesValue;
+	type Runner = pallet_evm::runner::stack::Runner<Self>;
+	type RuntimeEvent = crate::RuntimeEvent;
+	type WeightPerGas = WeightPerGas;
+	type WithdrawOrigin = EnsureAddressTruncated;
 }
 
 impl pallet_evm_chain_id::Config for crate::Runtime {}
