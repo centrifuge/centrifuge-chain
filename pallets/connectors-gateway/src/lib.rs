@@ -19,6 +19,12 @@ pub use origin::*;
 
 pub mod weights;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use core::fmt::Debug;
@@ -164,35 +170,35 @@ pub mod pallet {
 		}
 
 		/// Add a connector for a specific domain.
-		#[pallet::weight(< T as Config >::WeightInfo::add_submitter())]
+		#[pallet::weight(< T as Config >::WeightInfo::add_connector())]
 		#[pallet::call_index(1)]
-		pub fn add_submitter(origin: OriginFor<T>, submitter: DomainAddress) -> DispatchResult {
+		pub fn add_connector(origin: OriginFor<T>, connector: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
 			ensure!(
-				submitter.domain() != Domain::Centrifuge,
+				connector.domain() != Domain::Centrifuge,
 				Error::<T>::DomainNotSupported
 			);
 
-			<ConnectorsAllowlist<T>>::try_mutate(submitter.domain(), |submitters| {
-				if submitters.iter().find(|s| s.eq(&&submitter)).is_some() {
+			<ConnectorsAllowlist<T>>::try_mutate(connector.domain(), |submitters| {
+				if submitters.iter().find(|s| s.eq(&&connector)).is_some() {
 					return Err(Error::<T>::ConnectorAlreadyAdded.into());
 				}
 
 				submitters
-					.try_push(submitter.clone())
+					.try_push(connector.clone())
 					.map_err(|_| Error::<T>::MaxConnectorsReached)?;
 
-				Self::deposit_event(Event::ConnectorAdded(submitter));
+				Self::deposit_event(Event::ConnectorAdded(connector));
 
 				Ok(())
 			})
 		}
 
 		/// Remove a connector from a specific domain.
-		#[pallet::weight(< T as Config >::WeightInfo::remove_submitter())]
+		#[pallet::weight(< T as Config >::WeightInfo::remove_connector())]
 		#[pallet::call_index(2)]
-		pub fn remove_submitter(origin: OriginFor<T>, submitter: DomainAddress) -> DispatchResult {
+		pub fn remove_connector(origin: OriginFor<T>, submitter: DomainAddress) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin.clone())?;
 
 			<ConnectorsAllowlist<T>>::try_mutate(submitter.domain(), |submitters| {
@@ -226,6 +232,8 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::MessageDecode)?;
 
 					T::Connectors::submit(domain_address.domain(), incoming_msg)
+
+					// TODO(cdamian): Should we emit an event here?
 				}
 				DomainAddress::Centrifuge(_) => Err(Error::<T>::InvalidMessageOrigin.into()),
 			}
@@ -244,7 +252,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure!(
 				destination != Domain::Centrifuge,
-				"cannot send message to local domain"
+				Error::<T>::DomainNotSupported
 			);
 
 			let router = DomainRouters::<T>::get(destination).ok_or(Error::<T>::RouterNotFound)?;

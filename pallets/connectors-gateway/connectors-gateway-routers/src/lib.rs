@@ -18,8 +18,17 @@ use scale_info::TypeInfo;
 
 use crate::{axelar_evm::AxelarEVMRouter, ethereum_xcm::EthereumXCMRouter};
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 pub mod axelar_evm;
 pub mod ethereum_xcm;
+
+pub use axelar_evm::*;
+pub use ethereum_xcm::*;
 
 type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 type MessageOf<T> = <T as pallet_connectors_gateway::Config>::Message;
