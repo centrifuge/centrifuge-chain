@@ -1184,7 +1184,6 @@ impl pallet_block_rewards::Config for Runtime {
 // PoolSystem & Loans
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
 	pub const MaxWriteOffPolicySize: u32 = 100;
 }
@@ -1201,6 +1200,8 @@ impl pallet_loans_ref::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
+	type PriceId = PriceId;
+	type PriceRegistry = pallet_loans_ref::util::NoPriceRegistry<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;

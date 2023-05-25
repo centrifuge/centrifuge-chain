@@ -7,7 +7,7 @@ use scale_info::TypeInfo;
 use sp_std::vec::Vec;
 
 use crate::{
-	write_off::{WriteOffRule, WriteOffTrigger},
+	types::policy::{WriteOffRule, WriteOffTrigger},
 	*,
 };
 
