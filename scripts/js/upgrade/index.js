@@ -4,16 +4,33 @@ const fs = require('fs')
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
+// Needs to be >= 34
+// 32 bytes from the encoding of the H256 hashed WASM blob
+// 2 for pallet and extrinsic indices
+const AUTHORIZE_UPGRADE_PREIMAGE_BYTES = 34;
+// Needs to be >= 84
+// 39 from democracy.externalProposeMajority(Lookup(H256, 34)))
+// 42 from democracy.fastTrack(H256, ...)
+// 1 from utility.batchAll
+// 2 for pallet and extrinsic indices
+const COUNCIL_PROPOSAL_BYTES = 90;
+// arbitrary numbers
+const FAST_TRACK_VOTE_BLOCKS = 15;
+const FAST_TRACK_DELAY_BLOCKS = 0;
+const MAX_COUNT_DOWN_BLOCKS = 30;
+const POST_UPGRADE_WAITING_SESSIONS = 3;
+
 const run = async () => {
   let exitCode = 0;
   try {
-    console.log("Parsing Args ...")
-    // 0 & 1 are command context
     const endpoint = "ws://0.0.0.0:9946";
     const endpointRelay = "ws://0.0.0.0:9944";
-    const ALICE = "//Alice"
-    const BOB = "//Bob"
-    const CHARLIE = "//Charlie"
+    const ALICE = "//Alice";
+    const BOB = "//Bob";
+    const CHARLIE = "//Charlie";
+
+    // input args: 0 & 1 are command context
+    console.log("Parsing Args ...")
     const wasmFile = process.argv[2];
     const targetDockerTag = process.argv[3];
     const chainSpec = process.argv[4] !== undefined ? process.argv[4] : 'centrifuge-local';
@@ -49,7 +66,7 @@ const run = async () => {
 
     // Wait one extra session due to facing random errors when starting to send txs too close to the onboarding step
     // await waitUntilEventFound(api, "NewSession")
-    await waitUntilEventFound(api, "EmptyTerm") //TODO: Change to "NewSession" once we have built a runtime upgrade with a version increment
+    await waitUntilEventFound(api, "NewSession") //TODO: Change to "NewSession" once we have built a runtime upgrade with a version increment
 
     const keyring = new Keyring({ type: "sr25519" });
     const alice = keyring.addFromUri(ALICE);
@@ -93,11 +110,11 @@ const run = async () => {
     console.log("Waiting for ValidationFunctionApplied event")
     await waitUntilEventFound(api, "ValidationFunctionApplied")
 
-    console.log("Waiting for 3 NewSession events")
+    console.log(`Waiting for ${POST_UPGRADE_WAITING_SESSIONS} NewSession events`)
     let foundInBlock = 0;
-    for (let i = 0; i < 3; i++) {
-      foundInBlock = await waitUntilEventFound(api, "NewSession", foundInBlock+1)
-      console.log(`Session ${i+1}/3`)
+    for (let i = 0; i < POST_UPGRADE_WAITING_SESSIONS; i++) {
+      foundInBlock = await waitUntilEventFound(api, "NewSession", foundInBlock + 1)
+      console.log(`Session ${i + 1}/${POST_UPGRADE_WAITING_SESSIONS}`)
     }
 
     console.log("Runtime Upgrade succeeded")
@@ -129,7 +146,7 @@ async function execCommand(strCommand) {
 
 async function waitUntilEventFound(api, eventName, fromBlock = 0) {
   return new Promise(async (resolve, reject) => {
-    let maxCountDownBlocks = 30;
+    let maxCountDownBlocks = MAX_COUNT_DOWN_BLOCKS;
     const unsubscribe = await api.rpc.chain.subscribeNewHeads(async (header) => {
       maxCountDownBlocks--
       if (maxCountDownBlocks === 0) {
@@ -156,162 +173,167 @@ async function notePreimageAuth(api, alice, wasmFileHash, nonce) {
 
     let preimageNoted = "";
     console.log(
-        `--- Submitting extrinsic to notePreimage ${wasmFileHash}. (nonce: ${nonce}) ---`
+      `--- Submitting extrinsic to notePreimage ${wasmFileHash}. (nonce: ${nonce}) ---`
     );
-    api.tx.democracy.notePreimage(authorizeUpgradeCall.method.toHex())
-        .signAndSend(alice, {nonce: nonce, era: 0}, (result) => {
-          console.log(`Current status is ${result.status}`);
-          if (result.status.isInBlock) {
-            console.log(
-                `Transaction included at blockHash ${result.status.asInBlock}`
-            );
-            result.events.forEach((er) => {
-              if (er.event.method === "PreimageNoted") {
-                preimageNoted = er.event.data[0].toHex()
-              }
-            })
-            console.log("PreimageNoted", preimageNoted);
-            resolve(preimageNoted)
-          } else if (result.dispatchError) {
-            if (result.dispatchError.isModule) {
-              // for module errors, we have the section indexed, lookup
-              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-              const { docs, name, section } = decoded;
-              reject(`${section}.${name}: ${docs.join(' ')}`);
-            } else {
-              // Other, CannotLookup, BadOrigin, no extra info
-              reject(result.dispatchError.toString());
+    api.tx.preimage.notePreimage(authorizeUpgradeCall.method.toHex())
+      .signAndSend(alice, { nonce: nonce, era: 0 }, (result) => {
+        console.log(`Current status is ${result.status}`);
+        if (result.status.isInBlock) {
+          console.log(
+            `Transaction included at blockHash ${result.status.asInBlock}`
+          );
+          result.events.forEach((er) => {
+            if (er.event.method === "Noted") {
+              preimageNoted = er.event.data[0].toHex()
             }
-          } else if (result.isError) {
-            reject(result)
+          })
+          console.log("Noted", preimageNoted);
+          resolve(preimageNoted)
+        } else if (result.dispatchError) {
+          if (result.dispatchError.isModule) {
+            // for module errors, we have the section indexed, lookup
+            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            reject(`${section}.${name}: ${docs.join(' ')}`);
+          } else {
+            // Other, CannotLookup, BadOrigin, no extra info
+            reject(result.dispatchError.toString());
           }
-        });
+        } else if (result.isError) {
+          reject(result)
+        }
+      });
   });
 }
 
 async function councilProposeDemocracy(api, alice, preimageHash, nonce) {
   return new Promise((resolve, reject) => {
     const txs = [
-      api.tx.democracy.externalProposeMajority(preimageHash),
-      api.tx.democracy.fastTrack(preimageHash, 10, 0)
+      api.tx.democracy.externalProposeMajority({
+        Lookup: {
+          hash: preimageHash,
+          len: AUTHORIZE_UPGRADE_PREIMAGE_BYTES
+        }
+      }),
+      api.tx.democracy.fastTrack(preimageHash, FAST_TRACK_VOTE_BLOCKS, FAST_TRACK_DELAY_BLOCKS)
     ];
 
     let batchAllDemocracy = api.tx.utility.batchAll(txs)
 
     console.log(
-        `--- Submitting extrinsic to propose preimage to council. (nonce: ${nonce}) ---`
+      `--- Submitting extrinsic to propose preimage to council. (nonce: ${nonce}) ---`
     );
-    api.tx.council.propose(3, batchAllDemocracy, 82)
-        .signAndSend(alice, {nonce: nonce, era: 0}, (result) => {
-          console.log(`Current status is ${result.status}`);
-          if (result.status.isInBlock) {
-            console.log(
-                `Transaction included at blockHash ${result.status.asInBlock}`
-            );
-            let councilProposalHash = "";
-            let councilProposalIndex = "";
-            result.events.forEach((er) => {
-              if (er.event.method === "Proposed") {
-                councilProposalIndex = er.event.data[1]
-                councilProposalHash = er.event.data[2].toHex()
-              }
-            })
-            console.log("CouncilProposalHashAndIndex", councilProposalHash, councilProposalIndex);
-            resolve([councilProposalHash, councilProposalIndex])
-          } else if (result.dispatchError) {
-            if (result.dispatchError.isModule) {
-              // for module errors, we have the section indexed, lookup
-              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-              const { docs, name, section } = decoded;
-              reject(`${section}.${name}: ${docs.join(' ')}`);
-            } else {
-              // Other, CannotLookup, BadOrigin, no extra info
-              reject(result.dispatchError.toString());
+    api.tx.council.propose(3, batchAllDemocracy, COUNCIL_PROPOSAL_BYTES)
+      .signAndSend(alice, { nonce: nonce, era: 0 }, (result) => {
+        console.log(`Current status is ${result.status}`);
+        if (result.status.isInBlock) {
+          console.log(
+            `Transaction included at blockHash ${result.status.asInBlock}`
+          );
+          let councilProposalHash = "";
+          let councilProposalIndex = "";
+          result.events.forEach((er) => {
+            if (er.event.method === "Proposed") {
+              councilProposalIndex = er.event.data[1]
+              councilProposalHash = er.event.data[2].toHex()
             }
-          } else if (result.isError) {
-            reject(result)
+          })
+          console.log("CouncilProposalHashAndIndex", councilProposalHash, councilProposalIndex);
+          resolve([councilProposalHash, councilProposalIndex])
+        } else if (result.dispatchError) {
+          if (result.dispatchError.isModule) {
+            // for module errors, we have the section indexed, lookup
+            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            reject(`${section}.${name}: ${docs.join(' ')}`);
+          } else {
+            // Other, CannotLookup, BadOrigin, no extra info
+            reject(result.dispatchError.toString());
           }
-        });
+        } else if (result.isError) {
+          reject(result)
+        }
+      });
   });
 }
 
 async function councilVoteProposal(api, account, proposalHash, proposalIndex, nonce, wait) {
   return new Promise((resolve, reject) => {
     console.log(
-        `--- Submitting extrinsic to vote on council motion. (nonce: ${nonce}) ---`
+      `--- Submitting extrinsic to vote on council motion. (nonce: ${nonce}) ---`
     );
     api.tx.council.vote(proposalHash, proposalIndex, true)
-        .signAndSend(account, {nonce: nonce, era: 0}, (result) => {
-          console.log(`Current status is ${result.status}`);
-          if (!wait) {
-            resolve()
+      .signAndSend(account, { nonce: nonce, era: 0 }, (result) => {
+        console.log(`Current status is ${result.status}`);
+        if (!wait) {
+          resolve()
+        }
+        if (result.status.isInBlock) {
+          console.log(
+            `Transaction included at blockHash ${result.status.asInBlock}`
+          );
+          resolve()
+        } else if (result.dispatchError) {
+          if (result.dispatchError.isModule) {
+            // for module errors, we have the section indexed, lookup
+            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            reject(`${section}.${name}: ${docs.join(' ')}`);
+          } else {
+            // Other, CannotLookup, BadOrigin, no extra info
+            reject(result.dispatchError.toString());
           }
-          if (result.status.isInBlock) {
-            console.log(
-                `Transaction included at blockHash ${result.status.asInBlock}`
-            );
-            resolve()
-          } else if (result.dispatchError) {
-            if (result.dispatchError.isModule) {
-              // for module errors, we have the section indexed, lookup
-              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-              const { docs, name, section } = decoded;
-              reject(`${section}.${name}: ${docs.join(' ')}`);
-            } else {
-              // Other, CannotLookup, BadOrigin, no extra info
-              reject(result.dispatchError.toString());
-            }
-          } else if (result.isError) {
-            reject(result)
-          }
-        });
+        } else if (result.isError) {
+          reject(result)
+        }
+      });
   });
 }
 
 async function councilCloseProposal(api, account, proposalHash, proposalIndex, nonce) {
   return new Promise((resolve, reject) => {
     console.log(
-        `--- Submitting extrinsic to close council motion. (nonce: ${nonce}) ---`
+      `--- Submitting extrinsic to close council motion. (nonce: ${nonce}) ---`
     );
 
-    api.tx.council.close(proposalHash, proposalIndex, 52865600000, 82)
-        .signAndSend(account, {nonce: nonce, era: 0}, (result) => {
-          console.log(`Current status is ${result.status}`);
-          if (result.status.isInBlock) {
+    api.tx.council.close(proposalHash, proposalIndex, { refTime: 52865600000, proofSize: 0 }, COUNCIL_PROPOSAL_BYTES)
+      .signAndSend(account, { nonce: nonce, era: 0 }, (result) => {
+        console.log(`Current status is ${result.status}`);
+        if (result.status.isInBlock) {
 
-            console.log(
-                `Transaction included at blockHash ${result.status.asInBlock}`
-            );
+          console.log(
+            `Transaction included at blockHash ${result.status.asInBlock}`
+          );
 
-            let democracyIndex;
-            result.events.forEach((er) => {
-              if (er.event.method === "Started") {
-                democracyIndex = er.event.data[0]
-              }
-            })
-
-            resolve(democracyIndex)
-          } else if (result.dispatchError) {
-            if (result.dispatchError.isModule) {
-              // for module errors, we have the section indexed, lookup
-              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-              const { docs, name, section } = decoded;
-              reject(`${section}.${name}: ${docs.join(' ')}`);
-            } else {
-              // Other, CannotLookup, BadOrigin, no extra info
-              reject(result.dispatchError.toString());
+          let democracyIndex;
+          result.events.forEach((er) => {
+            if (er.event.method === "Started") {
+              democracyIndex = er.event.data[0]
             }
-          } else if (result.isError) {
-            reject(result)
+          })
+
+          resolve(democracyIndex)
+        } else if (result.dispatchError) {
+          if (result.dispatchError.isModule) {
+            // for module errors, we have the section indexed, lookup
+            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            reject(`${section}.${name}: ${docs.join(' ')}`);
+          } else {
+            // Other, CannotLookup, BadOrigin, no extra info
+            reject(result.dispatchError.toString());
           }
-        });
+        } else if (result.isError) {
+          reject(result)
+        }
+      });
   });
 }
 
 async function voteReferenda(api, account, refIndex, nonce) {
   return new Promise((resolve, reject) => {
     console.log(
-        `--- Submitting extrinsic to vote on referenda. (nonce: ${nonce}) ---`
+      `--- Submitting extrinsic to vote on referenda. (nonce: ${nonce}) ---`
     );
 
     let vote = {
@@ -325,58 +347,58 @@ async function voteReferenda(api, account, refIndex, nonce) {
     }
 
     api.tx.democracy.vote(refIndex, vote)
-        .signAndSend(account, {nonce: nonce, era: 0}, (result) => {
-          console.log(`Current status is ${result.status}`);
-          if (result.status.isInBlock) {
-            console.log(
-                `Transaction included at blockHash ${result.status.asInBlock}`
-            );
-            resolve()
-          } else if (result.dispatchError) {
-            if (result.dispatchError.isModule) {
-              // for module errors, we have the section indexed, lookup
-              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-              const { docs, name, section } = decoded;
-              reject(`${section}.${name}: ${docs.join(' ')}`);
-            } else {
-              // Other, CannotLookup, BadOrigin, no extra info
-              reject(result.dispatchError.toString());
-            }
-          } else if (result.isError) {
-            reject(result)
+      .signAndSend(account, { nonce: nonce, era: 0 }, (result) => {
+        console.log(`Current status is ${result.status}`);
+        if (result.status.isInBlock) {
+          console.log(
+            `Transaction included at blockHash ${result.status.asInBlock}`
+          );
+          resolve()
+        } else if (result.dispatchError) {
+          if (result.dispatchError.isModule) {
+            // for module errors, we have the section indexed, lookup
+            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            reject(`${section}.${name}: ${docs.join(' ')}`);
+          } else {
+            // Other, CannotLookup, BadOrigin, no extra info
+            reject(result.dispatchError.toString());
           }
-        });
+        } else if (result.isError) {
+          reject(result)
+        }
+      });
   });
 }
 
 async function enactUpgrade(api, account, wasmCode, nonce) {
   return new Promise((resolve, reject) => {
     console.log(
-        `--- Submitting extrinsic to enact upgrade. (nonce: ${nonce}) ---`
+      `--- Submitting extrinsic to enact upgrade. (nonce: ${nonce}) ---`
     );
 
     api.tx.parachainSystem.enactAuthorizedUpgrade(wasmCode)
-        .signAndSend(account, {nonce: nonce, era: 0}, (result) => {
-          console.log(`Current status is ${result.status}`);
-          if (result.status.isInBlock) {
-            console.log(
-                `Transaction included at blockHash ${result.status.asInBlock}`
-            );
-            resolve()
-          } else if (result.dispatchError) {
-            if (result.dispatchError.isModule) {
-              // for module errors, we have the section indexed, lookup
-              const decoded = api.registry.findMetaError(result.dispatchError.asModule);
-              const { docs, name, section } = decoded;
-              reject(`${section}.${name}: ${docs.join(' ')}`);
-            } else {
-              // Other, CannotLookup, BadOrigin, no extra info
-              reject(result.dispatchError.toString());
-            }
-          } else if (result.isError) {
-            reject(result)
+      .signAndSend(account, { nonce: nonce, era: 0 }, (result) => {
+        console.log(`Current status is ${result.status}`);
+        if (result.status.isInBlock) {
+          console.log(
+            `Transaction included at blockHash ${result.status.asInBlock}`
+          );
+          resolve()
+        } else if (result.dispatchError) {
+          if (result.dispatchError.isModule) {
+            // for module errors, we have the section indexed, lookup
+            const decoded = api.registry.findMetaError(result.dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            reject(`${section}.${name}: ${docs.join(' ')}`);
+          } else {
+            // Other, CannotLookup, BadOrigin, no extra info
+            reject(result.dispatchError.toString());
           }
-        });
+        } else if (result.isError) {
+          reject(result)
+        }
+      });
   });
 }
 
