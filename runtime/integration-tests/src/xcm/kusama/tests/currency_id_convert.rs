@@ -92,40 +92,6 @@ fn convert_air() {
 	});
 }
 
-// #[test]
-// fn convert_cfg() {
-// 	assert_eq!(parachains::polkadot::centrifuge::CFG_KEY, &[0, 1]);
-//
-// 	Centrifuge::execute_with(|| {
-// 		// The way CFG is represented relative within the Centrifuge runtime
-// 		let cfg_location_inner: MultiLocation = MultiLocation::new(
-// 			0,
-// 			X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
-// 		);
-//
-// 		register_cfg();
-//
-// 		assert_eq!(
-// 			<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
-// 			Ok(CurrencyId::Native),
-// 		);
-//
-// 		// The canonical way CFG is represented out in the wild
-// 		let cfg_location_canonical: MultiLocation = MultiLocation::new(
-// 			1,
-// 			X2(
-// 				Parachain(parachains::polkadot::centrifuge::ID),
-// 				general_key(parachains::polkadot::centrifuge::CFG_KEY),
-// 			),
-// 		);
-//
-// 		assert_eq!(
-// 			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
-// 			Some(cfg_location_canonical)
-// 		)
-// 	});
-// }
-
 /// Verify that Tranche tokens are not handled by the CurrencyIdConvert
 /// since we don't allow Tranche tokens to be transferable through XCM.
 #[test]

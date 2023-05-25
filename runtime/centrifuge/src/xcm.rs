@@ -156,7 +156,6 @@ pub type Barrier = (
 );
 
 /// Means for transacting the fungibles assets of this parachain.
-/// todo(nuno): consider using `MultiCurrencyAdapter` instead
 pub type FungiblesTransactor = FungiblesAdapter<
 	// Use this fungibles implementation
 	Tokens,
@@ -206,13 +205,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			CurrencyId::Tranche(_, _) => None,
 			_ => OrmlAssetRegistry::multilocation(&id).ok()?,
-			// todo(nuno): verify this will work correctly
 		}
 	}
 }
 
 /// Convert an incoming `MultiLocation` into a `CurrencyId` through a
-/// revert-lookup using the OrmlAssetRegistry. In the registry, we register CFG
+/// reverse-lookup using the OrmlAssetRegistry. In the registry, we register CFG
 /// using its absolute, non-anchored MultliLocation so we need to unanchor the
 /// input location for Centrifuge-native assets for that to work.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {

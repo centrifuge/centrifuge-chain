@@ -250,7 +250,6 @@ pub mod xcm {
 	}
 
 	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
-		// todo(nuno): revisit this
 		GeneralKey {
 			length: data.len().min(32) as u8,
 			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
