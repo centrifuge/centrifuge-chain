@@ -34,7 +34,8 @@ use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
 	service::{
-		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
+		evm::new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor,
+		DevelopmentRuntimeExecutor,
 	},
 };
 
@@ -250,7 +251,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Development => {
 		    runner.async_run(|$config| {
-				let $components = crate::service::evm::new_partial::<development_runtime::RuntimeApi, _>(
+				let $components = new_partial::<development_runtime::RuntimeApi, _>(
 					&$config,
 					crate::service::build_development_import_queue,
 				)?;
@@ -484,7 +485,7 @@ pub fn run() -> Result<()> {
 
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, collator_options, id)
+						crate::service::start_altair_node(config, polkadot_config, cli.eth, collator_options, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
@@ -492,6 +493,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
 						config,
 						polkadot_config,
+                        cli.eth,
 						collator_options,
 						id,
 					)
@@ -501,6 +503,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Development => crate::service::start_development_node(
 						config,
 						polkadot_config,
+                        cli.eth,
 						collator_options,
 						id,
 					)

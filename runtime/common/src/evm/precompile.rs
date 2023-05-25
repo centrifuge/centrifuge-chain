@@ -1,3 +1,15 @@
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
+//
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use core::marker::PhantomData;
 
 use codec::Decode;
@@ -14,7 +26,11 @@ impl<R> CentrifugePrecompiles<R> {
 	}
 }
 
-// 1025 is chosen for compatibility with Moonbeam
+// This value is chosen to be identical to what Moonbeam, for best
+// interoperability. See
+// https://docs.moonbeam.network/builders/pallets-precompiles/precompiles/overview/#precompiled-contract-addresses
+// for details on how Moonbeam organizes precompile addresses. We will
+// follow the same namespacing.
 const DISPATCH_ADDR: H160 = addr(1025);
 
 impl<R> PrecompileSet for CentrifugePrecompiles<R>
@@ -38,6 +54,10 @@ where
 	}
 }
 
+// This is a reimplementation of the upstream u64->H160 conversion
+// function, made `const` to make our precompile address `const`s a
+// bit cleaner. It can be removed when upstream has a const conversion
+// function.
 const fn addr(a: u64) -> H160 {
 	let b = a.to_be_bytes();
 	H160([

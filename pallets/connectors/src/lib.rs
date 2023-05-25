@@ -25,7 +25,10 @@ use orml_traits::asset_registry::{self, Inspect as _};
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::U256;
-use sp_runtime::{traits::AtLeast32BitUnsigned, FixedPointNumber};
+use sp_runtime::{
+	traits::{AtLeast32BitUnsigned, Convert},
+	FixedPointNumber,
+};
 use sp_std::{convert::TryInto, vec, vec::Vec};
 pub mod weights;
 
@@ -178,6 +181,9 @@ pub mod pallet {
 				GeneralCurrencyIndex<u128, <Self as Config>::GeneralCurrencyPrefix>,
 				Error = DispatchError,
 			>;
+
+		/// The converter from a DomainAddress to a Substrate AccountId
+		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
 
 		/// The prefix for currencies added via Connectors.
 		#[pallet::constant]
@@ -395,12 +401,12 @@ pub mod pallet {
 			// be retried.
 			if !T::Permission::has(
 				PermissionScope::Pool(pool_id),
-				domain_address.into_account_truncating(),
+				T::AccountConverter::convert(domain_address.clone()),
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
 			) {
 				T::Permission::add(
 					PermissionScope::Pool(pool_id),
-					domain_address.into_account_truncating(),
+					T::AccountConverter::convert(domain_address.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
 				)?;
 			}
@@ -436,11 +442,12 @@ pub mod pallet {
 				domain_address.domain() != Domain::Centrifuge,
 				Error::<T>::InvalidTransferDomain
 			);
+
 			// Check that the destination is a member of this tranche token
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
-					domain_address.into_account_truncating(),
+					T::AccountConverter::convert(domain_address.clone()),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 				),
 				Error::<T>::UnauthorizedTransfer
@@ -614,11 +621,8 @@ pub mod pallet {
 
 #[cfg(test)]
 mod tests {
-	use cfg_primitives::AccountId;
 	use codec::{Decode, Encode};
-	use sp_runtime::traits::AccountIdConversion;
 
-	use super::DomainAddress;
 	use crate::Domain;
 
 	#[test]
@@ -634,27 +638,5 @@ mod tests {
 		let decoded: Domain = Domain::decode(&mut encoded.as_slice()).expect("");
 
 		assert_eq!(domain, decoded);
-	}
-
-	#[test]
-	fn domain_address_account_derivation() {
-		assert_eq!(
-			account_from(DomainAddress::EVM(1284, [9; 20])),
-			account_from(DomainAddress::EVM(1284, [9; 20])),
-		);
-
-		assert_ne!(
-			account_from(DomainAddress::EVM(1284, [42; 20])),
-			account_from(DomainAddress::EVM(1284, [24; 20])),
-		);
-
-		assert_ne!(
-			account_from(DomainAddress::EVM(1284, [9; 20])),
-			account_from(DomainAddress::EVM(1285, [9; 20])),
-		);
-	}
-
-	fn account_from(domain_address: DomainAddress) -> AccountId {
-		domain_address.into_account_truncating()
 	}
 }

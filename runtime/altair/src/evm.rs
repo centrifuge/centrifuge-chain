@@ -12,7 +12,7 @@
 
 use cfg_primitives::{MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO};
 use frame_support::{parameter_types, traits::FindAuthor, weights::Weight, ConsensusEngineId};
-use pallet_evm::EnsureAddressTruncated;
+use pallet_evm::{EnsureAddressRoot, EnsureAddressTruncated};
 use runtime_common::{
 	account_conversion::AccountConverter,
 	evm::{precompile::CentrifugePrecompiles, BaseFeeThreshold, WEIGHT_PER_GAS},
@@ -23,9 +23,9 @@ use sp_std::marker::PhantomData;
 
 use crate::Aura;
 
-// To create valid Ethereum-compatible blocks, we need a 20-byte
-// "author" for the block. Since that author is purely informational,
-// we do a simple truncation of the 32-byte Substrate author
+/// To create valid Ethereum-compatible blocks, we need a 20-byte
+/// "author" for the block. Since that author is purely informational,
+/// we do a simple truncation of the 32-byte Substrate author
 pub struct FindAuthorTruncated<F>(PhantomData<F>);
 impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
 	fn find_author<'a, I>(digests: I) -> Option<H160>
@@ -50,7 +50,7 @@ impl pallet_evm::Config for crate::Runtime {
 	type AddressMapping = AccountConverter<crate::Runtime>;
 	type BlockGasLimit = BlockGasLimit;
 	type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
-	type CallOrigin = EnsureAddressTruncated;
+	type CallOrigin = EnsureAddressRoot<crate::AccountId>;
 	type ChainId = crate::EVMChainId;
 	type Currency = crate::Balances;
 	type FeeCalculator = crate::BaseFee;

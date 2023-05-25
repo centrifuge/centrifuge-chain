@@ -75,7 +75,3 @@ impl DomainAddress {
 		self.clone().into()
 	}
 }
-
-impl TypeId for DomainAddress {
-	const TYPE_ID: [u8; 4] = *b"dadr";
-}

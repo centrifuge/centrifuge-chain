@@ -34,10 +34,10 @@ pallets/pool-registry/* @mustermeiszer
 pallets/pool-system/* @mustermeiszer @branan @offerijns
 
 ## Pallet Pool-System
-pallets/loans/* @mustermeiszer @branan @offerijns
+pallets/loans-ref/* @mustermeiszer @branan @offerijns @lemunozm
 
 ## Pallet Interest-Accrual
-pallets/interest-accrual/* @branan
+pallets/interest-accrual/* @branan @lemunozm
 
 ## Pallet Investments
 pallets/investments/* @mustermeiszer
@@ -48,6 +48,9 @@ pallets/permissions/* @mustermeiszer
 ## Pallet Restricted-Tokens
 pallets/restricted-tokens/* @mustermeiszer
 
+## Pallet Collection-Data-Feed
+pallets/collection-data-feed/* @lemunozm
+
 # Changes to libs
 ## Changes to specific libraries
 
@@ -57,6 +60,9 @@ libs/mock-builder/* @lemunozm
 ### cfg-traits crate
 #### rewards module
 libs/traits/src/rewards.rs @lemunozm
+
+#### rewards module
+libs/traits/src/data.rs @lemunozm
 
 #### ensure module
 libs/traits/src/ops.rs @lemunozm
