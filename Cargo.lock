@@ -6877,25 +6877,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-collection-data-feed"
-version = "1.0.0"
-dependencies = [
- "cfg-traits",
- "frame-support",
- "frame-system",
- "orml-oracle",
- "orml-traits",
- "pallet-timestamp",
- "parity-scale-codec 3.4.0",
- "scale-info",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-collective"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=f38bd6671d460293c93062cc1e4fe9e9e490cb29#f38bd6671d460293c93062cc1e4fe9e9e490cb29"
@@ -7000,6 +6981,25 @@ dependencies = [
  "parity-scale-codec 3.4.0",
  "scale-info",
  "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-data-collector"
+version = "1.0.0"
+dependencies = [
+ "cfg-traits",
+ "frame-support",
+ "frame-system",
+ "orml-oracle",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
