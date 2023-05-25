@@ -1,13 +1,22 @@
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use cfg_primitives::Moment;
-use cfg_traits::ops::EnsureFixedPointNumber;
+use cfg_traits::ops::{EnsureAdd, EnsureSub};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	storage::bounded_btree_set::BoundedBTreeSet,
-	traits::tokens::{self},
-	RuntimeDebug,
-};
+use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Get, ArithmeticError, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{traits::Get, DispatchError};
 use sp_std::collections::btree_set::BTreeSet;
 use strum::EnumCount;
 
@@ -30,7 +39,7 @@ pub enum WriteOffTrigger {
 	PrincipalOverdueDays(u32),
 
 	/// Seconds since the oracle valuation was last updated
-	OracleValuationOutdated(Moment),
+	PriceOutdated(Moment),
 }
 
 /// Wrapper type to identify equality berween kinds of triggers,
@@ -44,8 +53,8 @@ impl PartialEq for UniqueWriteOffTrigger {
 			WriteOffTrigger::PrincipalOverdueDays(_) => {
 				matches!(other.0, WriteOffTrigger::PrincipalOverdueDays(_))
 			}
-			WriteOffTrigger::OracleValuationOutdated(_) => {
-				matches!(other.0, WriteOffTrigger::OracleValuationOutdated(_))
+			WriteOffTrigger::PriceOutdated(_) => {
+				matches!(other.0, WriteOffTrigger::PriceOutdated(_))
 			}
 		}
 	}
@@ -128,15 +137,8 @@ pub struct WriteOffStatus<Rate> {
 
 impl<Rate> WriteOffStatus<Rate>
 where
-	Rate: FixedPointNumber,
+	Rate: Ord + EnsureAdd + EnsureSub,
 {
-	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
-		&self,
-		debt: Balance,
-	) -> Result<Balance, ArithmeticError> {
-		debt.ensure_sub(self.percentage.ensure_mul_int(debt)?)
-	}
-
 	pub fn compose_max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
 		Self {
 			percentage: self.percentage.max(other.percentage),
@@ -149,8 +151,47 @@ where
 	}
 }
 
+/// From all overdue write off rules, it returns the one with the
+/// highest percentage (or highest penalty, if same percentage) that can
+/// be applied.
+///
+/// Suppose a policy with the following rules:
+/// - overdue_days: 5,   percentage 10%
+/// - overdue_days: 10,  percentage 30%
+/// - overdue_days: 15,  percentage 20%
+///
+/// If the loan is not overdue, it will not return any rule.
+/// If the loan is overdue by 4 days, it will not return any rule.
+/// If the loan is overdue by 9 days, it will return the first rule.
+/// If the loan is overdue by 60 days, it will return the second rule
+/// (because it has a higher percentage).
+pub fn find_rule<Rate: Ord>(
+	rules: impl Iterator<Item = WriteOffRule<Rate>>,
+	has_effect: impl Fn(&WriteOffTrigger) -> Result<bool, DispatchError>,
+) -> Result<Option<WriteOffRule<Rate>>, DispatchError> {
+	// Get the triggered rules.
+	let active_rules = rules
+		.filter_map(|rule| {
+			rule.triggers
+				.iter()
+				.map(|trigger| has_effect(&trigger.0))
+				.find(|e| match e {
+					Ok(value) => *value,
+					Err(_) => true,
+				})
+				.map(|result| result.map(|_| rule))
+		})
+		.collect::<Result<sp_std::vec::Vec<_>, _>>()?; // Exits if error before getting the maximum
+
+	// Get the rule with max percentage. If percentage are equals, max penaly.
+	Ok(active_rules
+		.into_iter()
+		.max_by(|r1, r2| r1.status.cmp(&r2.status)))
+}
+
 #[cfg(test)]
 mod tests {
+	use frame_support::{assert_err, assert_ok};
 
 	use super::*;
 
@@ -170,11 +211,56 @@ mod tests {
 	fn different_trigger_kinds() {
 		let triggers: BoundedBTreeSet<UniqueWriteOffTrigger, TriggerSize> = BTreeSet::from_iter([
 			UniqueWriteOffTrigger(WriteOffTrigger::PrincipalOverdueDays(1)),
-			UniqueWriteOffTrigger(WriteOffTrigger::OracleValuationOutdated(1)),
+			UniqueWriteOffTrigger(WriteOffTrigger::PriceOutdated(1)),
 		])
 		.try_into()
 		.unwrap();
 
 		assert_eq!(triggers.len(), 2);
+	}
+
+	#[test]
+	fn find_correct_rule() {
+		let rules = [
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(1)], 7, 1),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(2)], 7, 2), // <=
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(3)], 3, 4),
+			WriteOffRule::new([WriteOffTrigger::PriceOutdated(4)], 9, 1),
+		];
+
+		let expected = rules[2].clone();
+
+		assert_ok!(
+			find_rule(rules.into_iter(), |trigger| match trigger {
+				WriteOffTrigger::PriceOutdated(secs) => Ok(*secs <= 3),
+				_ => unreachable!(),
+			}),
+			Some(expected)
+		);
+	}
+
+	#[test]
+	fn find_err_rule() {
+		let rules = [WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1)];
+
+		assert_err!(
+			find_rule(rules.into_iter(), |trigger| match trigger {
+				_ => Err(DispatchError::Other("")),
+			}),
+			DispatchError::Other("")
+		);
+	}
+
+	#[test]
+	fn find_none_rule() {
+		let rules = [WriteOffRule::new([WriteOffTrigger::PriceOutdated(0)], 5, 1)];
+
+		assert_ok!(
+			find_rule(rules.into_iter(), |trigger| match trigger {
+				_ => Ok(false),
+			}),
+			None
+		);
 	}
 }

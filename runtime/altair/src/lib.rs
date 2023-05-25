@@ -31,11 +31,12 @@ use cfg_types::{
 	fixed_point::Rate,
 	permissions::{PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role},
 	time::TimeProvider,
-	tokens::{CustomMetadata, TrancheCurrency},
+	tokens::{CustomMetadata, StakingCurrency, TrancheCurrency},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 /// Constant values used within the runtime.
 use constants::currency::*;
+use fp_rpc::TransactionStatus;
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
@@ -58,6 +59,8 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
+use pallet_ethereum::{Transaction as EthereumTransaction, TransactionAction};
+use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
 	pool_types::{PoolDetails, ScheduledUpdateDetails},
@@ -69,19 +72,27 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
-use runtime_common::fees::{DealWithFees, WeightToFee};
 pub use runtime_common::*;
+use runtime_common::{
+	evm::GetTransactionAction,
+	fees::{DealWithFees, WeightToFee},
+};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::OpaqueMetadata;
+use sp_core::{OpaqueMetadata, H160, H256, U256};
 use sp_inherents::{CheckInherentsResult, InherentData};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, Zero},
-	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, DispatchResult, Perbill, Permill,
+	traits::{
+		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
+		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
+	},
+	transaction_validity::{
+		InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
+	},
+	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
@@ -93,6 +104,8 @@ use xcm_executor::XcmExecutor;
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 pub mod constants;
+pub mod evm;
+mod migrations;
 mod weights;
 pub mod xcm;
 
@@ -105,6 +118,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub aura: Aura,
+		pub block_rewards: BlockRewards,
 	}
 }
 
@@ -230,6 +244,7 @@ impl Contains<RuntimeCall> for BaseCallFilter {
 				| pallet_xcm::Call::force_subscribe_version_notify { .. }
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => true,
 			},
+			RuntimeCall::EVM(_) => false, // Disable all non-root EVM access
 			_ => true,
 		}
 	}
@@ -339,10 +354,11 @@ impl pallet_session::Config for Runtime {
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type WeightInfo = pallet_session::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_session::WeightInfo<Self>;
 }
 
 parameter_types! {
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxAuthorities: u32 = 32;
 }
 
@@ -471,7 +487,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					// Specifically omitting ChainBridge
 					// Specifically omitting Migration
 					// Specifically omitting PoolRegistry `register`, `update`, `set_metadata`
-					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..})
+					RuntimeCall::PoolRegistry(pallet_pool_registry::Call::execute_update {..}) |
+					RuntimeCall::BlockRewards(..)
 				)
 			}
 			ProxyType::Governance => matches!(
@@ -900,6 +917,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 // Parameterize collator selection pallet
 parameter_types! {
 	pub const PotId: PalletId = cfg_types::ids::STAKE_POT_PALLET_ID;
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
 	pub const MaxCandidates: u32 = 100;
 	pub const MinCandidates: u32 = 5;
 	pub const MaxVoters: u32 = 1000;
@@ -921,7 +939,7 @@ impl pallet_collator_selection::Config for Runtime {
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ValidatorRegistration = CollatorAllowlist;
-	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1106,10 +1124,66 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+// Block Rewards
+
+frame_support::parameter_types! {
+	// BlockRewards have exactly one group and currency
+	#[derive(scale_info::TypeInfo)]
+	pub const SingleCurrencyMovement: u32 = 1;
+	#[derive(scale_info::TypeInfo, Debug, PartialEq, Eq, Clone)]
+	pub const MaxChangesPerEpoch: u32 = 50;
+	pub const RewardsPalletId: PalletId = cfg_types::ids::BLOCK_REWARDS_PALLET_ID;
+	pub const RewardCurrency: CurrencyId = CurrencyId::Native;
+}
+
+impl pallet_rewards::Config<pallet_rewards::Instance1> for Runtime {
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type GroupId = u32;
+	type PalletId = RewardsPalletId;
+	type RewardCurrency = RewardCurrency;
+	// Must not change this to ensure block rewards are minted
+	type RewardIssuance =
+		pallet_rewards::issuance::MintReward<AccountId, Balance, CurrencyId, Tokens>;
+	type RewardMechanism = pallet_rewards::mechanism::base::Mechanism<
+		Balance,
+		IBalance,
+		FixedI128,
+		SingleCurrencyMovement,
+	>;
+	type RuntimeEvent = RuntimeEvent;
+}
+
+frame_support::parameter_types! {
+	pub const BlockRewardCurrency: CurrencyId = CurrencyId::Staking(StakingCurrency::BlockRewards);
+	pub const StakeAmount: Balance = cfg_types::consts::rewards::DEFAULT_COLLATOR_STAKE;
+	pub const CollatorGroupId: u32 = cfg_types::ids::COLLATOR_GROUP_ID;
+}
+
+impl pallet_block_rewards::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type AuthorityId = AuraId;
+	type Balance = Balance;
+	// Must not set this as long as we don't want to mint the rewards.
+	// By setting this to (), the remainder of TotalRewards - CollatorRewards
+	// will be dropped. Else it would be transferred to the configured Beneficiary.
+	type Beneficiary = ();
+	type Currency = Tokens;
+	type CurrencyId = CurrencyId;
+	type MaxChangesPerSession = MaxChangesPerEpoch;
+	type MaxCollators = MaxAuthorities;
+	type Rewards = BlockRewardsBase;
+	type RuntimeEvent = RuntimeEvent;
+	type StakeAmount = StakeAmount;
+	type StakeCurrencyId = BlockRewardCurrency;
+	type StakeGroupId = CollatorGroupId;
+	type Weight = u64;
+	type WeightInfo = weights::pallet_block_rewards::WeightInfo<Runtime>;
+}
+
 // PoolSystem & Loans
 
 parameter_types! {
-	pub const LoansPalletId: PalletId = cfg_types::ids::LOANS_PALLET_ID;
 	pub const MaxActiveLoansPerPool: u32 = 300;
 	pub const MaxWriteOffPolicySize: u32 = 100;
 }
@@ -1126,6 +1200,8 @@ impl pallet_loans_ref::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
+	type PriceId = PriceId;
+	type PriceRegistry = pallet_loans_ref::util::NoPriceRegistry<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1198,7 +1274,6 @@ impl pallet_pool_system::Config for Runtime {
 	type NAV = Loans;
 	type PalletId = PoolPalletId;
 	type PalletIndex = PoolPalletIndex;
-	type ParachainId = ParachainInfo;
 	type Permission = Permissions;
 	type PoolCreateOrigin = EnsureRoot<AccountId>;
 	type PoolCurrency = PoolCurrency;
@@ -1448,6 +1523,8 @@ construct_runtime!(
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 102,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
+		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 104,
+		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 105,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1460,6 +1537,12 @@ construct_runtime!(
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 151,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 152,
+
+		// EVM pallets
+		EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 160,
+		EVMChainId: pallet_evm_chain_id::{Pallet, Config, Storage} = 161,
+		BaseFee: pallet_base_fee::{Pallet, Call, Config<T>, Storage, Event} = 162,
+		Ethereum: pallet_ethereum::{Pallet, Config, Call, Storage, Event, Origin} = 163,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
@@ -1484,13 +1567,13 @@ pub type SignedExtra = (
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
+
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-
-type UpgradeAltair1027 = pallet_loans_ref::migrations::v1::Migration<Runtime>;
+pub type CheckedExtrinsic =
+	fp_self_contained::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra, H160>;
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1499,8 +1582,99 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	UpgradeAltair1027,
+	migrations::UpgradeAltair1027,
 >;
+
+impl fp_self_contained::SelfContainedCall for RuntimeCall {
+	type SignedInfo = H160;
+
+	fn is_self_contained(&self) -> bool {
+		match self {
+			RuntimeCall::Ethereum(call) => call.is_self_contained(),
+			_ => false,
+		}
+	}
+
+	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
+		match self {
+			RuntimeCall::Ethereum(call) => match call {
+				pallet_ethereum::Call::transact { transaction }
+					if transaction.action() == TransactionAction::Create =>
+				{
+					Some(Err(TransactionValidityError::Invalid(
+						InvalidTransaction::Call,
+					)))
+				}
+				_ => call.check_self_contained(),
+			},
+			_ => None,
+		}
+	}
+
+	fn validate_self_contained(
+		&self,
+		info: &Self::SignedInfo,
+		dispatch_info: &DispatchInfoOf<RuntimeCall>,
+		len: usize,
+	) -> Option<TransactionValidity> {
+		match self {
+			RuntimeCall::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
+			_ => None,
+		}
+	}
+
+	fn pre_dispatch_self_contained(
+		&self,
+		info: &Self::SignedInfo,
+		dispatch_info: &DispatchInfoOf<RuntimeCall>,
+		len: usize,
+	) -> Option<Result<(), TransactionValidityError>> {
+		match self {
+			RuntimeCall::Ethereum(call) => {
+				call.pre_dispatch_self_contained(info, dispatch_info, len)
+			}
+			_ => None,
+		}
+	}
+
+	fn apply_self_contained(
+		self,
+		info: Self::SignedInfo,
+	) -> Option<sp_runtime::DispatchResultWithInfo<PostDispatchInfoOf<Self>>> {
+		match self {
+			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => {
+				Some(call.dispatch(RuntimeOrigin::from(
+					pallet_ethereum::RawOrigin::EthereumTransaction(info),
+				)))
+			}
+			_ => None,
+		}
+	}
+}
+
+pub struct TransactionConverter;
+
+impl fp_rpc::ConvertTransaction<UncheckedExtrinsic> for TransactionConverter {
+	fn convert_transaction(&self, transaction: pallet_ethereum::Transaction) -> UncheckedExtrinsic {
+		UncheckedExtrinsic::new_unsigned(
+			pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+		)
+	}
+}
+
+impl fp_rpc::ConvertTransaction<sp_runtime::OpaqueExtrinsic> for TransactionConverter {
+	fn convert_transaction(
+		&self,
+		transaction: pallet_ethereum::Transaction,
+	) -> sp_runtime::OpaqueExtrinsic {
+		let extrinsic = UncheckedExtrinsic::new_unsigned(
+			pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+		);
+		let encoded = extrinsic.encode();
+		sp_runtime::OpaqueExtrinsic::decode(&mut &encoded[..])
+			.expect("Encoded extrinsic is always valid")
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -1666,6 +1840,148 @@ impl_runtime_apis! {
 		}
 	}
 
+	// RewardsApi
+	impl runtime_common::apis::RewardsApi<Block, AccountId, Balance, CurrencyId> for Runtime {
+		fn list_currencies(domain: runtime_common::apis::RewardDomain, account_id: AccountId) -> Vec<CurrencyId> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1>::list_currencies(&account_id),
+				_ => vec![],
+			}
+		}
+
+		fn compute_reward(domain: runtime_common::apis::RewardDomain, currency_id: CurrencyId, account_id: AccountId) -> Option<Balance> {
+			match domain {
+				runtime_common::apis::RewardDomain::Block => <pallet_rewards::Pallet::<Runtime, pallet_rewards::Instance1> as cfg_traits::rewards::AccountRewards<AccountId>>::compute_reward(currency_id, &account_id).ok(),
+				_ => None,
+			}
+		}
+	}
+
+	// Frontier APIs
+	impl fp_rpc::EthereumRuntimeRPCApi<Block> for Runtime {
+		fn chain_id() -> u64 {
+			<Runtime as pallet_evm::Config>::ChainId::get()
+		}
+
+		fn account_basic(address: H160) -> EVMAccount {
+			let (account, _) = EVM::account_basic(&address);
+			account
+		}
+
+		fn gas_price() -> U256 {
+			let (gas_price, _) = <Runtime as pallet_evm::Config>::FeeCalculator::min_gas_price();
+			gas_price
+		}
+
+		fn account_code_at(address: H160) -> Vec<u8> {
+			EVM::account_codes(address)
+		}
+
+		fn author() -> H160 {
+			<pallet_evm::Pallet<Runtime>>::find_author()
+		}
+
+		fn storage_at(address: H160, index: U256) -> H256 {
+			let mut tmp = [0u8; 32];
+			index.to_big_endian(&mut tmp);
+			EVM::account_storages(address, H256::from_slice(&tmp[..]))
+		}
+
+		fn call(
+			from: H160,
+			to: H160,
+			data: Vec<u8>,
+			value: U256,
+			gas_limit: U256,
+			max_fee_per_gas: Option<U256>,
+			max_priority_fee_per_gas: Option<U256>,
+			nonce: Option<U256>,
+			estimate: bool,
+			access_list: Option<Vec<(H160, Vec<H256>)>>,
+		) -> Result<pallet_evm::CallInfo, sp_runtime::DispatchError> {
+			let mut config = <Runtime as pallet_evm::Config>::config().clone();
+			config.estimate = estimate;
+
+			let is_transactional = false;
+			let validate = true;
+			<Runtime as pallet_evm::Config>::Runner::call(
+				from,
+				to,
+				data,
+				value,
+				gas_limit.unique_saturated_into(),
+				max_fee_per_gas,
+				max_priority_fee_per_gas,
+				nonce,
+				access_list.unwrap_or_default(),
+				is_transactional,
+				validate,
+				&config,
+			).map_err(|err| err.error.into())
+		}
+
+		fn create(
+			_from: H160,
+			_data: Vec<u8>,
+			_value: U256,
+			_gas_limit: U256,
+			_max_fee_per_gas: Option<U256>,
+			_max_priority_fee_per_gas: Option<U256>,
+			_nonce: Option<U256>,
+			_estimate: bool,
+			_access_list: Option<Vec<(H160, Vec<H256>)>>,
+		) -> Result<pallet_evm::CreateInfo, sp_runtime::DispatchError> {
+			Err(sp_runtime::DispatchError::Other("Creating contracts is not currently supported"))
+		}
+
+		fn current_transaction_statuses() -> Option<Vec<TransactionStatus>> {
+			Ethereum::current_transaction_statuses()
+		}
+
+		fn current_block() -> Option<pallet_ethereum::Block> {
+			Ethereum::current_block()
+		}
+
+		fn current_receipts() -> Option<Vec<pallet_ethereum::Receipt>> {
+			Ethereum::current_receipts()
+		}
+
+		fn current_all() -> (
+			Option<pallet_ethereum::Block>,
+			Option<Vec<pallet_ethereum::Receipt>>,
+			Option<Vec<TransactionStatus>>
+		) {
+			(
+				Ethereum::current_block(),
+				Ethereum::current_receipts(),
+				Ethereum::current_transaction_statuses()
+			)
+		}
+
+		fn extrinsic_filter(
+			xts: Vec<<Block as BlockT>::Extrinsic>,
+		) -> Vec<EthereumTransaction> {
+			xts.into_iter().filter_map(|xt| match xt.0.function {
+				RuntimeCall::Ethereum(pallet_ethereum::Call::transact { transaction }) => Some(transaction),
+				_ => None
+			}).collect::<Vec<EthereumTransaction>>()
+		}
+
+		fn elasticity() -> Option<Permill> {
+			Some(BaseFee::elasticity())
+		}
+
+		fn gas_limit_multiplier_support() {}
+	}
+
+	impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
+		fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
+			UncheckedExtrinsic::new_unsigned(
+				pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
+			)
+		}
+	}
+
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 
@@ -1676,6 +1992,7 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1705,9 +2022,11 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_uniques, Uniques);
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_anchors, Anchor);
+			list_benchmark!(list, extra, pallet_block_rewards, BlockRewards);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
+			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
@@ -1715,6 +2034,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
 			list_benchmark!(list, extra, pallet_loans_ref, Loans);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
+			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
@@ -1727,8 +2047,10 @@ impl_runtime_apis! {
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 
 			impl frame_system_benchmarking::Config for Runtime {}
+			impl cumulus_pallet_session_benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1769,9 +2091,11 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_uniques, Uniques);
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_anchors, Anchors);
+			add_benchmark!(params, batches, pallet_block_rewards, BlockRewards);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
+			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
@@ -1779,6 +2103,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
 			add_benchmark!(params, batches, pallet_loans_ref, Loans);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
+			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }

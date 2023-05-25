@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::chain_spec;
+use crate::{chain_spec, service::evm::EthConfiguration};
 
 #[derive(Debug, Parser)]
 #[allow(clippy::large_enum_variant)]
@@ -111,6 +111,9 @@ pub struct Cli {
 
 	#[clap(flatten)]
 	pub run: cumulus_client_cli::RunCmd,
+
+	#[clap(flatten)]
+	pub eth: EthConfiguration,
 
 	/// Relaychain arguments
 	#[clap(raw = true)]
