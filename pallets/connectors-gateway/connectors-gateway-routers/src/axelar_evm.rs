@@ -27,24 +27,24 @@ pub struct AxelarEVMRouter<T>
 where
 	T: frame_system::Config + pallet_connectors_gateway::Config + pallet_evm::Config,
 {
-	domain: EVMDomain,
-	_phantom: PhantomData<T>,
+	pub domain: EVMDomain,
+	pub _phantom: PhantomData<T>,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct EVMDomain {
-	chain: EVMChain,
-	axelar_contract_address: H160,
-	connectors_contract_address: H160,
-	fee_values: FeeValues,
+	pub chain: EVMChain,
+	pub axelar_contract_address: H160,
+	pub connectors_contract_address: H160,
+	pub fee_values: FeeValues,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 pub struct FeeValues {
-	value: U256,
-	gas_limit: u64,
-	max_fee_per_gas: U256,
-	max_priority_fee_per_gas: Option<U256>,
+	pub value: U256,
+	pub gas_limit: u64,
+	pub max_fee_per_gas: U256,
+	pub max_priority_fee_per_gas: Option<U256>,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]

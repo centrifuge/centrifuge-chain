@@ -22,14 +22,14 @@ type ConnectorsMessage = pallet_connectors::Message<Domain, PoolId, TrancheId, B
 
 parameter_types! {
 	// TODO(cdamian): Double-check these.
-	pub const MaxSubmittersPerDomain: u32 = 10;
+	pub const MaxConnectorsPerDomain: u32 = 10;
 }
 
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type Connectors = DummyInboundQueue;
 	type LocalOrigin = pallet_connectors_gateway::EnsureLocal;
-	type MaxConnectorsPerDomain = MaxSubmittersPerDomain;
+	type MaxConnectorsPerDomain = MaxConnectorsPerDomain;
 	type Message = ConnectorsMessage;
 	type Router = connectors_gateway_routers::DomainRouter<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
