@@ -1,24 +1,25 @@
 name: docker
 on:
   push:
-    branches: [main, 'release-v**']
+    branches: [main, "release-v**"]
   pull_request:
     paths:
       - ".github/workflows/docker.yml"
   workflow_dispatch:
     inputs:
       docker_tag:
-        description: 'Docker Image tag'
+        description: "Docker Image tag"
         required: true
-        default: ''
+        default: ""
 env:
   RUST_TOOLCHAIN: "nightly-2022-11-14"
 jobs:
   docker:
+    if: "! github.event.pull_request.draft"
     strategy:
       matrix:
-        os: [ ubuntu-latest-4-cores ]
-        target: [ release, test ]
+        os: [ubuntu-latest-4-cores]
+        target: [release, test]
     runs-on: ${{ matrix.os }}
     env:
       WORKFLOW_TAG: ${{ github.event.inputs.docker_tag }}
@@ -27,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Free space
-      # https://github.com/actions/runner-images/issues/2840#issuecomment-1284059930
+        # https://github.com/actions/runner-images/issues/2840#issuecomment-1284059930
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"

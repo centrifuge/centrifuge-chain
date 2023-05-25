@@ -1,12 +1,13 @@
 on:
   push:
-    branches: [main, 'release-v**']
+    branches: [main, "release-v**"]
   pull_request:
 name: Build
 jobs:
   matrix_prep:
+    if: "! github.event.pull_request.draft"
     name: matrix-prep
-    runs-on: 'ubuntu-latest'
+    runs-on: "ubuntu-latest"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -15,10 +16,11 @@ jobs:
       - id: set-matrix
         uses: JoshuaTheMiller/conditional-build-matrix@77cdf28e0eb41dd691280520b0bddddbc4654318
         with:
-          inputFile: '.github/workflows/build-matrix.json'
+          inputFile: ".github/workflows/build-matrix.json"
           # we run build-node on every workflow but build-runtime only on pushes to branches
-          filter: '[?run_on_event==`any` || run_on_event==`${{ github.event_name }}`]'
+          filter: "[?run_on_event==`any` || run_on_event==`${{ github.event_name }}`]"
   build:
+    if: "! github.event.pull_request.draft"
     needs: matrix_prep
     strategy:
       matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
@@ -47,8 +49,8 @@ jobs:
       - if: startsWith(matrix.target, 'build-runtime')
         uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
         with: # cache the runtime target instead of root target for build-runtime
-          working-directory: './runtime'
-          target-dir: './target/srtool'
+          working-directory: "./runtime"
+          target-dir: "./target/srtool"
       - if: matrix.target == 'build-node'
         uses: Swatinem/rust-cache@cb2cf0cc7c5198d3364b9630e2c3d457f160790c
       - name: ${{ matrix.target }}
