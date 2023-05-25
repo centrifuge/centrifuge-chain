@@ -27,6 +27,14 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 mock-builder = { path = "../../libs/mock-builder" }
 
+pallet-xcm-transactor = { git = "https://github.com/PureStake/moonbeam", default-features = false, rev = "4c22f7c010573513076b618c09d2824ece6c51eb" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+
 [features]
 default = ["std"]
 std = [
