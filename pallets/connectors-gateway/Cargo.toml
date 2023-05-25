@@ -28,6 +28,14 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+cfg-mocks = { path = "../../libs/mocks" }
+rand = "0.8.5"
+
 [features]
 default = ["std"]
 runtime-benchmarks = [

@@ -14,8 +14,8 @@ use frame_support::weights::Weight;
 
 pub trait WeightInfo {
 	fn set_domain_router() -> Weight;
-	fn add_submitter() -> Weight;
-	fn remove_submitter() -> Weight;
+	fn add_connector() -> Weight;
+	fn remove_connector() -> Weight;
 	fn process_msg() -> Weight;
 }
 
@@ -24,11 +24,11 @@ impl WeightInfo for () {
 		Weight::zero()
 	}
 
-	fn add_submitter() -> Weight {
+	fn add_connector() -> Weight {
 		Weight::zero()
 	}
 
-	fn remove_submitter() -> Weight {
+	fn remove_connector() -> Weight {
 		Weight::zero()
 	}
 
