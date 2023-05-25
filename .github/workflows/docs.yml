@@ -31,19 +31,19 @@ jobs:
         with:
           command: doc
           args: --all --no-deps
-      
+
       - name: Build Documentation failed
         if: always() && steps.build_docs.outcome == 'failure'
         run: echo ":::error::cargo doc --all --no-deps failed"
         # Job will stop here and the check will be red if Build documentation failed
 
       - name: Create Index file
-        if: github.ref == 'ref/head/main'
+        if: github.ref == 'refs/heads/main'
         run: ./ci/create_index_for_rust_docs.sh
 
       - name: Deploy Docs
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'ref/head/main'
+        if: github.ref == 'refs/heads/main'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
