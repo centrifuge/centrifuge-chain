@@ -19,14 +19,25 @@ use cfg_primitives::{
 use cfg_traits::ops::{EnsureAdd, EnsureDiv};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
-	types::{LoanInfo, MaxBorrowAmount},
-	valuation::{DiscountedCashFlow, ValuationMethod},
+	loan::LoanInfo,
+	pricing::{
+		internal::{InternalPricing, MaxBorrowAmount},
+		Pricing,
+	},
+	types::{
+		valuation::{DiscountedCashFlow, ValuationMethod},
+		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
+		RepayRestrictions, RepaymentSchedule,
+	},
 	Call as LoansCall,
 };
 use pallet_uniques::Call as UniquesCall;
 use sp_runtime::{traits::One, FixedPointNumber};
 
-use crate::{chain::centrifuge::RuntimeCall, utils::tokens::rate_from_percent};
+use crate::{
+	chain::centrifuge::{Runtime, RuntimeCall},
+	utils::tokens::rate_from_percent,
+};
 
 type Asset = (CollectionId, ItemId);
 
@@ -101,21 +112,33 @@ pub fn issue_default_loan(
 	maturity: u64,
 	manager: &mut NftManager,
 ) -> Vec<RuntimeCall> {
-	let loan_info = LoanInfo::new((
-		manager.collateral_class_id(pool_id),
-		manager.next_collateral_id(pool_id),
-	))
-	.maturity(Duration::from_secs(maturity))
-	.interest_rate(rate_from_percent(15))
-	.collateral_value(amount)
-	.max_borrow_amount(MaxBorrowAmount::UpToTotalBorrowed {
-		advance_rate: rate_from_percent(90),
-	})
-	.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
-		probability_of_default: rate_from_percent(5),
-		loss_given_default: rate_from_percent(50),
-		discount_rate: rate_from_percent(4),
-	}));
+	let loan_info = LoanInfo {
+		schedule: RepaymentSchedule {
+			maturity: Maturity::Fixed(maturity),
+			interest_payments: InterestPayments::None,
+			pay_down_schedule: PayDownSchedule::None,
+		},
+		collateral: (
+			manager.collateral_class_id(pool_id),
+			manager.next_collateral_id(pool_id),
+		),
+		pricing: Pricing::Internal(InternalPricing {
+			collateral_value: amount,
+			interest_rate: rate_from_percent(15),
+			max_borrow_amount: MaxBorrowAmount::UpToTotalBorrowed {
+				advance_rate: rate_from_percent(90),
+			},
+			valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
+				probability_of_default: rate_from_percent(5),
+				loss_given_default: rate_from_percent(50),
+				discount_rate: rate_from_percent(4),
+			}),
+		}),
+		restrictions: LoanRestrictions {
+			borrows: BorrowRestrictions::NotWrittenOff,
+			repayments: RepayRestrictions::None,
+		},
+	};
 
 	issue_loan(owner, pool_id, loan_info, manager)
 }
@@ -134,7 +157,7 @@ pub fn issue_default_loan(
 pub fn issue_loan(
 	owner: AccountId,
 	pool_id: PoolId,
-	loan_info: LoanInfo<Asset, Balance, Rate>,
+	loan_info: LoanInfo<Runtime>,
 	manager: &mut NftManager,
 ) -> Vec<RuntimeCall> {
 	let mut calls = Vec::new();
@@ -147,7 +170,7 @@ pub fn issue_loan(
 	calls
 }
 
-pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Asset, Balance, Rate>) -> RuntimeCall {
+pub fn create_loan_call(pool_id: PoolId, info: LoanInfo<Runtime>) -> RuntimeCall {
 	RuntimeCall::Loans(LoansCall::create { pool_id, info })
 }
 

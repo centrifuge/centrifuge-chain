@@ -39,7 +39,7 @@ use cfg_types::{
 use codec::Encode;
 use development_runtime::{
 	Balances, Connectors, Loans, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem,
-	RuntimeOrigin, XTokens, XcmTransactor,
+	Runtime as DevelopmentRuntime, RuntimeOrigin, XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
@@ -52,10 +52,12 @@ use pallet_pool_system::{
 	pool_types::PoolDetails,
 	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
 };
-use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
+use runtime_common::{
+	account_conversion::AccountConverter, xcm::general_key, xcm_fees::default_per_second,
+};
 use sp_core::H160;
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, One},
+	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, One},
 	BoundedVec, DispatchError, Perquintill, WeakBoundedVec,
 };
 use xcm_emulator::TestExt;
@@ -95,7 +97,7 @@ fn add_pool() {
 				pool_id,
 				Domain::EVM(1284),
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::PoolNotFound
+			pallet_connectors::Error::<DevelopmentRuntime>::PoolNotFound
 		);
 
 		// Now create the pool
@@ -138,7 +140,7 @@ fn add_tranche() {
 				decimals,
 				Domain::EVM(1284),
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::TrancheNotFound
+			pallet_connectors::Error::<DevelopmentRuntime>::TrancheNotFound
 		);
 
 		// Find the right tranche id
@@ -215,9 +217,12 @@ fn update_member() {
 
 		// Verify the Investor role was set as expected in Permissions
 		assert!(Permissions::has(
-			PermissionScope::Pool(pool_id),
-			new_member.into_account_truncating(),
-			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
+			PermissionScope::Pool(pool_id.clone()),
+			AccountConverter::<DevelopmentRuntime>::convert(new_member),
+			Role::PoolRole(PoolRole::TrancheInvestor(
+				tranche_id.clone(),
+				valid_until.clone()
+			)),
 		));
 
 		// Verify it can be called for another member
@@ -289,7 +294,7 @@ fn transfer_tranche_tokens() {
 				dest_address.clone(),
 				42,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::UnauthorizedTransfer
+			pallet_connectors::Error::<DevelopmentRuntime>::UnauthorizedTransfer
 		);
 
 		// Verify that we cannot transfer to the local domain
@@ -301,7 +306,7 @@ fn transfer_tranche_tokens() {
 				DomainAddress::Centrifuge(BOB),
 				42,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::InvalidTransferDomain
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferDomain
 		);
 
 		// Make BOB the MembersListAdmin of this Pool

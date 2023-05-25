@@ -66,6 +66,6 @@ async fn create_loan() {
 		RuntimeEvent::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
 		RuntimeEvent::PoolRegistry(pallet_pool_registry::Event::Registered { pool_id, .. }) if [*pool_id == 0],
 		RuntimeEvent::Loans(pallet_loans::Event::Created{ pool_id, loan_id, loan_info })
-			if [*pool_id == 0 && *loan_id == 1 && *loan_info.collateral() == (4294967296, ItemId(1))],
+			if [*pool_id == 0 && *loan_id == 1 && loan_info.collateral() == (4294967296, ItemId(1))],
 	);
 }

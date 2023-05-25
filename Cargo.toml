@@ -161,7 +161,6 @@ fc-mapping-sync = { git = "https://github.com/PureStake/frontier", default-featu
 fc-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fc-rpc-core = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fp-consensus = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
-fp-dynamic-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fp-rpc = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 fp-storage = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
 
@@ -192,7 +191,10 @@ std = [
   "cumulus-primitives-core/std",
   "cumulus-primitives-parachain-inherent/std",
   "development-runtime/std",
-  "fp-dynamic-fee/std",
+  "fp-consensus/std",
+  "fp-rpc/std",
+  "fp-storage/std",
+  "futures/std",
   "frame-benchmarking/std",
   "log/std",
   "pallet-anchors/std",
@@ -206,6 +208,7 @@ std = [
   "sp-block-builder/std",
   "sp-consensus-aura/std",
   "sp-core/std",
+  "sp-io/std",
   "sp-keystore/std",
   "sp-offchain/std",
   "sp-runtime/std",

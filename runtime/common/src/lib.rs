@@ -18,7 +18,9 @@
 #[cfg(test)]
 mod tests;
 
+pub mod account_conversion;
 pub mod apis;
+pub mod evm;
 
 pub mod xcm_fees {
 	use cfg_primitives::{constants::currency_decimals, types::Balance};
