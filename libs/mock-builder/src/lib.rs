@@ -29,19 +29,19 @@
 //! the associated types of your pallet `Config`.
 //!
 //! Then, you are mostly forced to use other pallet configurations
-//! geting a [tight coupling](https://docs.substrate.io/build/pallet-coupling/)
+//! getting a [tight coupling](https://docs.substrate.io/build/pallet-coupling/)
 //! with them. It has some downsides:
 //! - You need to learn how to configure other pallets.
 //! - You need to know how those pallets work, because they affect directly the
 //!   behavior of the pallet you're testing.
 //! - The way they work can give you non-completed tests. It means that some
-//!   paths of your pallet can no be tested because some dependency works in a
+//!   paths of your pallet can not be tested because some dependency works in a
 //!   specific way.
 //! - You need a lot of effort maintaining your tests because each time one
 //!   dependency changes, it can easily break your tests.
 //!
 //! This doesn't scale well. Frequently some pallet dependencies need in turn to
-//! configure their own dependent pallets, making this problem even worst.
+//! configure their own dependent pallets, making this problem even worse.
 //!
 //! This is why mocking is so important. It lets you get rid of all these
 //! dependencies and related issues, obtaining **loose coupling tests**.
@@ -54,8 +54,8 @@
 //! ## *Mock pallet* usage
 //!
 //! Suppose that in our pallet, which we'll call it `my_pallet`, we have an
-//! associated type in our `Config`, which implements a `TraitA` and `TraitB`
-//! traits. Those traits are defined as follows:
+//! associated type in our `Config`, which implements traits `TraitA` and
+//! `TraitB`. Those traits are defined as follows:
 //!
 //! ```no_run
 //! trait TraitA {
@@ -136,8 +136,8 @@
 //! that allow you to build a *mock pallet*.
 //!
 //! - [`register_call!()`] registers a closure where you can define the
-//! mock behavior for that method. The method who register the closure must have
-//! the name of the trait method you want to mock with the prefix `mock_`.
+//! mock behavior for that method. The method which registers the closure must
+//! have the name of the trait method you want to mock prefixed with `mock_`.
 //!
 //! - [`execute_call!()`] is placed in the trait method implementation and will
 //!   call the closure previously registered by [`register_call!()`]
@@ -233,7 +233,7 @@
 //! }
 //! ```
 //!
-//! If types for the closure of `mock_*` method and trait method doesn't match,
+//! If types for the closure of `mock_*` method and trait method don't match,
 //! you will obtain a runtime error in your tests.
 
 /// Provide functions for register/execute calls
