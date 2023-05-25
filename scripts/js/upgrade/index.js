@@ -7,18 +7,18 @@ const exec = util.promisify(require('child_process').exec);
 // Needs to be >= 34
 // 32 bytes from the encoding of the H256 hashed WASM blob
 // 2 for extra stuff
-const AUTHORIZE_UPGRADE_PREIMAGE_LENGTH_BOUND = 34;
+const AUTHORIZE_UPGRADE_PREIMAGE_BYTES = 34;
 // Needs to be >= 84
-// 39 from edemocracy.xternalProposeMajority(Lookup(H256, 34)))
+// 39 from democracy.externalProposeMajority(Lookup(H256, 34)))
 // 42 from democracy.fastTrack(H256, ...)
 // 1 from utility.batchAll
 // 2 extra
-const COUNCIL_PROPOSAL_LENGTH_BOUND = 90;
+const COUNCIL_PROPOSAL_BYTES = 90;
 // arbitrary numbers
-const FAST_TRACK_BLOCKS = 15;
-const FAST_TRACK_DELAY = 0;
+const FAST_TRACK_VOTE_BLOCKS = 15;
+const FAST_TRACK_DELAY_BLOCKS = 0;
 const MAX_COUNT_DOWN_BLOCKS = 30;
-const WAITING_SESSIONS_AFTER_UPGRADE = 3;
+const POST_UPGRADE_WAITING_SESSIONS = 3;
 
 const run = async () => {
   let exitCode = 0;
@@ -110,11 +110,11 @@ const run = async () => {
     console.log("Waiting for ValidationFunctionApplied event")
     await waitUntilEventFound(api, "ValidationFunctionApplied")
 
-    console.log(`Waiting for ${WAITING_SESSIONS_AFTER_UPGRADE} NewSession events`)
+    console.log(`Waiting for ${POST_UPGRADE_WAITING_SESSIONS} NewSession events`)
     let foundInBlock = 0;
-    for (let i = 0; i < WAITING_SESSIONS_AFTER_UPGRADE; i++) {
+    for (let i = 0; i < POST_UPGRADE_WAITING_SESSIONS; i++) {
       foundInBlock = await waitUntilEventFound(api, "NewSession", foundInBlock + 1)
-      console.log(`Session ${i + 1}/${WAITING_SESSIONS_AFTER_UPGRADE}`)
+      console.log(`Session ${i + 1}/${POST_UPGRADE_WAITING_SESSIONS}`)
     }
 
     console.log("Runtime Upgrade succeeded")
@@ -212,10 +212,10 @@ async function councilProposeDemocracy(api, alice, preimageHash, nonce) {
       api.tx.democracy.externalProposeMajority({
         Lookup: {
           hash: preimageHash,
-          len: AUTHORIZE_UPGRADE_PREIMAGE_LENGTH_BOUND
+          len: AUTHORIZE_UPGRADE_PREIMAGE_BYTES
         }
       }),
-      api.tx.democracy.fastTrack(preimageHash, FAST_TRACK_BLOCKS, FAST_TRACK_DELAY)
+      api.tx.democracy.fastTrack(preimageHash, FAST_TRACK_VOTE_BLOCKS, FAST_TRACK_DELAY_BLOCKS)
     ];
 
     let batchAllDemocracy = api.tx.utility.batchAll(txs)
@@ -223,7 +223,7 @@ async function councilProposeDemocracy(api, alice, preimageHash, nonce) {
     console.log(
       `--- Submitting extrinsic to propose preimage to council. (nonce: ${nonce}) ---`
     );
-    api.tx.council.propose(3, batchAllDemocracy, COUNCIL_PROPOSAL_LENGTH_BOUND)
+    api.tx.council.propose(3, batchAllDemocracy, COUNCIL_PROPOSAL_BYTES)
       .signAndSend(alice, { nonce: nonce, era: 0 }, (result) => {
         console.log(`Current status is ${result.status}`);
         if (result.status.isInBlock) {
@@ -296,7 +296,7 @@ async function councilCloseProposal(api, account, proposalHash, proposalIndex, n
       `--- Submitting extrinsic to close council motion. (nonce: ${nonce}) ---`
     );
 
-    api.tx.council.close(proposalHash, proposalIndex, { refTime: 52865600000, proofSize: 0 }, COUNCIL_PROPOSAL_LENGTH_BOUND)
+    api.tx.council.close(proposalHash, proposalIndex, { refTime: 52865600000, proofSize: 0 }, COUNCIL_PROPOSAL_BYTES)
       .signAndSend(account, { nonce: nonce, era: 0 }, (result) => {
         console.log(`Current status is ${result.status}`);
         if (result.status.isInBlock) {
