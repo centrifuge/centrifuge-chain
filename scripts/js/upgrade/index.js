@@ -6,13 +6,13 @@ const exec = util.promisify(require('child_process').exec);
 
 // Needs to be >= 34
 // 32 bytes from the encoding of the H256 hashed WASM blob
-// 2 for extra stuff
+// 2 for pallet and extrinsic indices
 const AUTHORIZE_UPGRADE_PREIMAGE_BYTES = 34;
 // Needs to be >= 84
 // 39 from democracy.externalProposeMajority(Lookup(H256, 34)))
 // 42 from democracy.fastTrack(H256, ...)
 // 1 from utility.batchAll
-// 2 extra
+// 2 for pallet and extrinsic indices
 const COUNCIL_PROPOSAL_BYTES = 90;
 // arbitrary numbers
 const FAST_TRACK_VOTE_BLOCKS = 15;
