@@ -182,18 +182,6 @@ fn update_member() {
 		let new_member = DomainAddress::EVM(1284, [3; 20]);
 		let valid_until = 2555583502;
 
-		// Verify it fails if the origin is not a MemberListAdmin
-		assert_noop!(
-			Connectors::update_member(
-				RuntimeOrigin::signed(ALICE.into()),
-				new_member.clone(),
-				pool_id.clone(),
-				tranche_id.clone(),
-				valid_until.clone(),
-			),
-			BadOrigin
-		);
-
 		// Make ALICE the MembersListAdmin of this Pool
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::root(),
@@ -203,13 +191,25 @@ fn update_member() {
 			Role::PoolRole(PoolRole::MemberListAdmin),
 		));
 
-		// Verify it now works
-		assert_ok!(Connectors::update_member(
+		// Verify it fails if the destination is not whitelisted yet
+		assert_noop!(
+			Connectors::update_member(
+				RuntimeOrigin::signed(ALICE.into()),
+				new_member.clone(),
+				pool_id.clone(),
+				tranche_id.clone(),
+				valid_until.clone(),
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
+		);
+
+		// Whitelist destination as TrancheInvestor of this Pool
+		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(ALICE.into()),
-			new_member.clone(),
-			pool_id.clone(),
-			tranche_id.clone(),
-			valid_until.clone(),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+			new_member.into_account_truncating(),
+			PermissionScope::Pool(pool_id.clone()),
+			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), valid_until)),
 		));
 
 		// Verify the Investor role was set as expected in Permissions
@@ -222,14 +222,27 @@ fn update_member() {
 			)),
 		));
 
-		// Verify it can be called for another member
+		// Verify it now works
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(ALICE.into()),
-			DomainAddress::EVM(1284, [9; 20]),
+			new_member.clone(),
 			pool_id.clone(),
 			tranche_id.clone(),
 			valid_until.clone(),
 		));
+
+		// Verify it cannot be called for another member without whitelisting the domain
+		// beforehand
+		assert_noop!(
+			Connectors::update_member(
+				RuntimeOrigin::signed(ALICE.into()),
+				DomainAddress::EVM(1284, [9; 20]),
+				pool_id.clone(),
+				tranche_id.clone(),
+				valid_until.clone(),
+			),
+			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
+		);
 	});
 }
 
@@ -315,6 +328,16 @@ fn transfer_tranche_tokens() {
 			Role::PoolRole(PoolRole::MemberListAdmin),
 		));
 
+		// Whitelist destination as TrancheInvestor of this Pool
+		let valid_until = u64::MAX;
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::signed(BOB.into()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+			dest_address.into_account_truncating(),
+			PermissionScope::Pool(pool_id.clone()),
+			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), valid_until)),
+		));
+
 		// Call the Connectors::update_member which ensures the destination address is
 		// whitelisted.
 		assert_ok!(Connectors::update_member(
@@ -322,7 +345,7 @@ fn transfer_tranche_tokens() {
 			dest_address.clone(),
 			pool_id.clone(),
 			tranche_id.clone(),
-			u64::MAX,
+			valid_until,
 		));
 
 		// Give BOB enough Tranche balance to be able to transfer it

@@ -84,7 +84,7 @@ pub mod pallet {
 		permissions::{PermissionScope, PoolRole, Role},
 		tokens::CustomMetadata,
 	};
-	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
+	use frame_support::{pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 	use sp_runtime::traits::{AccountIdConversion, Zero};
@@ -150,12 +150,6 @@ pub mod pallet {
 				InvestmentId = <Self as Config>::TrancheCurrency,
 				Result = (),
 			>;
-		// + ForeignInvestments<
-		// 	CurrencyIdOf<Self>,
-		// 	AssetRegistry = <Self as Config>::AssetRegistry,
-		// 	Error = DispatchError,
-		// 	InvestmentId = <Self as Config>::TrancheCurrency,
-		// >;
 
 		type ForeignInvestmentAccountant: InvestmentAccountant<
 			Self::AccountId,
