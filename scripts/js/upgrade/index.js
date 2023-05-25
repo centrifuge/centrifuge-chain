@@ -4,8 +4,17 @@ const fs = require('fs')
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
-const PREIMAGE_LENGTH_BOUND = 34;
-const PROPOSAL_LENGTH_BOUND = 90;
+// Needs to be >= 34
+// 32 bytes from the encoding of the H256 hashed WASM blob
+// 2 for extra stuff
+const AUTHORIZE_UPGRADE_PREIMAGE_LENGTH_BOUND = 34;
+// Needs to be >= 84
+// 39 from edemocracy.xternalProposeMajority(Lookup(H256, 34)))
+// 42 from democracy.fastTrack(H256, ...)
+// 1 from utility.batchAll
+// 2 extra
+const COUNCIL_PROPOSAL_LENGTH_BOUND = 90;
+// arbitrary numbers
 const FAST_TRACK_BLOCKS = 15;
 const FAST_TRACK_DELAY = 0;
 const MAX_COUNT_DOWN_BLOCKS = 30;
@@ -203,7 +212,7 @@ async function councilProposeDemocracy(api, alice, preimageHash, nonce) {
       api.tx.democracy.externalProposeMajority({
         Lookup: {
           hash: preimageHash,
-          len: PREIMAGE_LENGTH_BOUND
+          len: AUTHORIZE_UPGRADE_PREIMAGE_LENGTH_BOUND
         }
       }),
       api.tx.democracy.fastTrack(preimageHash, FAST_TRACK_BLOCKS, FAST_TRACK_DELAY)
@@ -214,7 +223,7 @@ async function councilProposeDemocracy(api, alice, preimageHash, nonce) {
     console.log(
       `--- Submitting extrinsic to propose preimage to council. (nonce: ${nonce}) ---`
     );
-    api.tx.council.propose(3, batchAllDemocracy, PROPOSAL_LENGTH_BOUND)
+    api.tx.council.propose(3, batchAllDemocracy, COUNCIL_PROPOSAL_LENGTH_BOUND)
       .signAndSend(alice, { nonce: nonce, era: 0 }, (result) => {
         console.log(`Current status is ${result.status}`);
         if (result.status.isInBlock) {
@@ -287,7 +296,7 @@ async function councilCloseProposal(api, account, proposalHash, proposalIndex, n
       `--- Submitting extrinsic to close council motion. (nonce: ${nonce}) ---`
     );
 
-    api.tx.council.close(proposalHash, proposalIndex, { refTime: 52865600000, proofSize: 0 }, PROPOSAL_LENGTH_BOUND)
+    api.tx.council.close(proposalHash, proposalIndex, { refTime: 52865600000, proofSize: 0 }, COUNCIL_PROPOSAL_LENGTH_BOUND)
       .signAndSend(account, { nonce: nonce, era: 0 }, (result) => {
         console.log(`Current status is ${result.status}`);
         if (result.status.isInBlock) {
