@@ -567,6 +567,10 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
+pub fn algol_config() -> AltairChainSpec {
+	AltairChainSpec::from_json_bytes(&include_bytes!("../res/algol-spec.json")[..]).unwrap()
+}
+
 pub fn charcoal_config() -> AltairChainSpec {
 	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
