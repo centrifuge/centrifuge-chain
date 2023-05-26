@@ -169,6 +169,9 @@ pub struct ActiveLoan<T: Config> {
 
 	/// Total repaid amount of this loan
 	total_repaid: T::Balance,
+
+	/// Total repaid amount unchecked of this loan
+	total_repaid_unchecked: T::Balance,
 }
 
 impl<T: Config> ActiveLoan<T> {
@@ -197,6 +200,7 @@ impl<T: Config> ActiveLoan<T> {
 			},
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
+			total_repaid_unchecked: T::Balance::zero(),
 		})
 	}
 
@@ -362,17 +366,23 @@ impl<T: Config> ActiveLoan<T> {
 		Ok(amount)
 	}
 
-	pub fn repay(&mut self, amount: T::Balance) -> Result<T::Balance, DispatchError> {
+	pub fn repay(
+		&mut self,
+		amount: T::Balance,
+		unchecked_amount: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
 		let amount = self.ensure_can_repay(amount)?;
 
 		self.total_repaid.ensure_add_assign(amount)?;
+		self.total_repaid_unchecked
+			.ensure_add_assign(unchecked_amount)?;
 
 		match &mut self.pricing {
 			ActivePricing::Internal(inner) => inner.adjust_debt(Adjustment::Decrease(amount))?,
 			ActivePricing::External(inner) => inner.adjust_debt(Adjustment::Decrease(amount))?,
 		}
 
-		Ok(amount)
+		Ok(amount.ensure_add(unchecked_amount)?)
 	}
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {

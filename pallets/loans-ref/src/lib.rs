@@ -494,12 +494,13 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
+			unchecked_amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount)
+				loan.repay(amount, unchecked_amount)
 			})?;
 
 			T::Pool::deposit(pool_id, who, amount)?;
