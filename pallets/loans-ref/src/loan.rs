@@ -87,18 +87,8 @@ impl<T: Config> CreatedLoan<T> {
 		&self.borrower
 	}
 
-	pub fn activate(
-		self,
-		pool_id: PoolIdOf<T>,
-		loan_id: T::LoanId,
-	) -> Result<ActiveLoan<T>, DispatchError> {
-		ActiveLoan::new(
-			pool_id,
-			loan_id,
-			self.info,
-			self.borrower,
-			T::Time::now().as_secs(),
-		)
+	pub fn activate(self, pool_id: PoolIdOf<T>) -> Result<ActiveLoan<T>, DispatchError> {
+		ActiveLoan::new(pool_id, self.info, self.borrower, T::Time::now().as_secs())
 	}
 
 	pub fn close(self) -> Result<(ClosedLoan<T>, T::AccountId), DispatchError> {
@@ -140,9 +130,6 @@ impl<T: Config> ClosedLoan<T> {
 #[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ActiveLoan<T: Config> {
-	/// Id of this loan
-	loan_id: T::LoanId,
-
 	/// Specify the repayments schedule of the loan
 	schedule: RepaymentSchedule,
 
@@ -174,13 +161,11 @@ pub struct ActiveLoan<T: Config> {
 impl<T: Config> ActiveLoan<T> {
 	pub fn new(
 		pool_id: PoolIdOf<T>,
-		loan_id: T::LoanId,
 		info: LoanInfo<T>,
 		borrower: T::AccountId,
 		now: Moment,
 	) -> Result<Self, DispatchError> {
 		Ok(ActiveLoan {
-			loan_id,
 			schedule: info.schedule,
 			collateral: info.collateral,
 			restrictions: info.restrictions,
@@ -198,10 +183,6 @@ impl<T: Config> ActiveLoan<T> {
 			total_borrowed: T::Balance::zero(),
 			total_repaid: T::Balance::zero(),
 		})
-	}
-
-	pub fn loan_id(&self) -> T::LoanId {
-		self.loan_id
 	}
 
 	pub fn borrower(&self) -> &T::AccountId {
