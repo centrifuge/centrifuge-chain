@@ -33,7 +33,7 @@ fn feed(data_id: DataId, data: Data) {
 fn get_no_fed_data() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			CollectionDataFeed::get(&DATA_ID),
+			DataCollector::get(&DATA_ID),
 			Error::<Runtime>::DataIdWithoutData
 		);
 	});
@@ -44,12 +44,12 @@ fn get_feed_data() {
 	new_test_ext().execute_with(|| {
 		feed(DATA_ID, 100);
 
-		assert_eq!(CollectionDataFeed::get(&DATA_ID), Ok((100, Timer::now())));
+		assert_eq!(DataCollector::get(&DATA_ID), Ok((100, Timer::now())));
 
 		advance_time(BLOCK_TIME_MS);
 		feed(DATA_ID, 200);
 
-		assert_eq!(CollectionDataFeed::get(&DATA_ID), Ok((200, Timer::now())));
+		assert_eq!(DataCollector::get(&DATA_ID), Ok((200, Timer::now())));
 	});
 }
 
@@ -58,10 +58,10 @@ fn feed_and_then_register() {
 	new_test_ext().execute_with(|| {
 		feed(DATA_ID, 100);
 
-		assert_ok!(CollectionDataFeed::register_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::register_id(&DATA_ID, &COLLECTION_ID));
 
 		assert_ok!(
-			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
+			DataCollector::collection(&COLLECTION_ID).get(&DATA_ID),
 			(100, Timer::now())
 		);
 
@@ -69,7 +69,7 @@ fn feed_and_then_register() {
 		feed(DATA_ID, 200);
 
 		assert_ok!(
-			CollectionDataFeed::collection(&COLLECTION_ID).get(&DATA_ID),
+			DataCollector::collection(&COLLECTION_ID).get(&DATA_ID),
 			(200, Timer::now())
 		);
 	});
@@ -79,7 +79,7 @@ fn feed_and_then_register() {
 fn register_without_feed() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			CollectionDataFeed::register_id(&DATA_ID, &COLLECTION_ID),
+			DataCollector::register_id(&DATA_ID, &COLLECTION_ID),
 			Error::<Runtime>::DataIdWithoutData
 		);
 	});
@@ -91,9 +91,9 @@ fn data_not_registered_in_collection() {
 		feed(DATA_ID, 100);
 		feed(DATA_ID + 1, 100);
 
-		assert_ok!(CollectionDataFeed::register_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::register_id(&DATA_ID, &COLLECTION_ID));
 
-		let collection = CollectionDataFeed::collection(&COLLECTION_ID);
+		let collection = DataCollector::collection(&COLLECTION_ID);
 		assert_noop!(
 			collection.get(&(DATA_ID + 1)),
 			Error::<Runtime>::DataIdNotInCollection
@@ -106,11 +106,11 @@ fn data_not_registered_after_unregister() {
 	new_test_ext().execute_with(|| {
 		feed(DATA_ID, 100);
 
-		assert_ok!(CollectionDataFeed::register_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::register_id(&DATA_ID, &COLLECTION_ID));
 
-		assert_ok!(CollectionDataFeed::unregister_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::unregister_id(&DATA_ID, &COLLECTION_ID));
 
-		let collection = CollectionDataFeed::collection(&COLLECTION_ID);
+		let collection = DataCollector::collection(&COLLECTION_ID);
 		assert_noop!(
 			collection.get(&DATA_ID),
 			Error::<Runtime>::DataIdNotInCollection
@@ -122,7 +122,7 @@ fn data_not_registered_after_unregister() {
 fn unregister_without_register() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			CollectionDataFeed::unregister_id(&DATA_ID, &COLLECTION_ID),
+			DataCollector::unregister_id(&DATA_ID, &COLLECTION_ID),
 			Error::<Runtime>::DataIdNotInCollection
 		);
 	});
@@ -133,16 +133,16 @@ fn register_twice() {
 	new_test_ext().execute_with(|| {
 		feed(DATA_ID, 100);
 
-		assert_ok!(CollectionDataFeed::register_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::register_id(&DATA_ID, &COLLECTION_ID));
 
-		assert_ok!(CollectionDataFeed::register_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::register_id(&DATA_ID, &COLLECTION_ID));
 
-		assert_ok!(CollectionDataFeed::unregister_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::unregister_id(&DATA_ID, &COLLECTION_ID));
 
-		assert_ok!(CollectionDataFeed::unregister_id(&DATA_ID, &COLLECTION_ID));
+		assert_ok!(DataCollector::unregister_id(&DATA_ID, &COLLECTION_ID));
 
 		assert_noop!(
-			CollectionDataFeed::unregister_id(&DATA_ID, &COLLECTION_ID),
+			DataCollector::unregister_id(&DATA_ID, &COLLECTION_ID),
 			Error::<Runtime>::DataIdNotInCollection
 		);
 	});
@@ -155,14 +155,11 @@ fn max_collection_number() {
 
 		let max = MaxCollections::get() as CollectionId;
 		for i in 0..max {
-			assert_ok!(CollectionDataFeed::register_id(
-				&DATA_ID,
-				&(COLLECTION_ID + i)
-			));
+			assert_ok!(DataCollector::register_id(&DATA_ID, &(COLLECTION_ID + i)));
 		}
 
 		assert_noop!(
-			CollectionDataFeed::register_id(&DATA_ID, &(COLLECTION_ID + max)),
+			DataCollector::register_id(&DATA_ID, &(COLLECTION_ID + max)),
 			Error::<Runtime>::MaxCollectionNumber
 		);
 	});
@@ -174,22 +171,16 @@ fn max_collection_size() {
 		let max = MaxCollectionSize::get();
 		for i in 0..max {
 			feed(DATA_ID + i, 100);
-			assert_ok!(CollectionDataFeed::register_id(
-				&(DATA_ID + i),
-				&COLLECTION_ID
-			));
+			assert_ok!(DataCollector::register_id(&(DATA_ID + i), &COLLECTION_ID));
 		}
 
 		feed(DATA_ID + max, 100);
 		assert_noop!(
-			CollectionDataFeed::register_id(&(DATA_ID + max), &COLLECTION_ID),
+			DataCollector::register_id(&(DATA_ID + max), &COLLECTION_ID),
 			Error::<Runtime>::MaxCollectionSize
 		);
 
 		// Other collections can still be registered
-		assert_ok!(CollectionDataFeed::register_id(
-			&DATA_ID,
-			&(COLLECTION_ID + 1)
-		));
+		assert_ok!(DataCollector::register_id(&DATA_ID, &(COLLECTION_ID + 1)));
 	});
 }

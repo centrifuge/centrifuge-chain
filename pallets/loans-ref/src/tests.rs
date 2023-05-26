@@ -53,8 +53,9 @@ mod util {
 	pub fn get_loan(loan_id: LoanId) -> ActiveLoan<Runtime> {
 		ActiveLoans::<Runtime>::get(POOL_A)
 			.into_iter()
-			.find(|loan| loan.loan_id() == loan_id)
+			.find(|(id, _)| *id == loan_id)
 			.unwrap()
+			.1
 	}
 
 	pub fn current_loan_debt(loan_id: LoanId) -> Balance {
