@@ -125,6 +125,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 [features]
 default = ["std"]
 std = [
+  "log/std",
   "serde/std",
   "cfg-primitives/std",
   "cfg-types/std",

@@ -65,6 +65,7 @@ runtime-benchmarks = [
   "orml-asset-registry/runtime-benchmarks",
 ]
 std = [
+  "log/std",
   "codec/std",
   "scale-info/std",
   "rev_slice/std",
@@ -91,4 +92,5 @@ try-runtime = [
   "frame-system/try-runtime",
   "pallet-permissions/try-runtime",
   "pallet-timestamp/try-runtime",
+  "sp-runtime/try-runtime",
 ]

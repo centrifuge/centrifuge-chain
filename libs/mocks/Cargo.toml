@@ -36,6 +36,9 @@ std = [
   "cfg-primitives/std",
   "cfg-traits/std",
   "cfg-types/std",
+  "sp-core/std",
+  "sp-io/std",
+  "sp-runtime/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
@@ -43,6 +46,7 @@ runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-support/try-runtime",
@@ -50,4 +54,5 @@ try-runtime = [
   "cfg-types/try-runtime",
   "cfg-primitives/try-runtime",
   "cfg-traits/try-runtime",
+  "sp-runtime/try-runtime",
 ]

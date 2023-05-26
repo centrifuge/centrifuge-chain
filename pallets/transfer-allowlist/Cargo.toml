@@ -53,11 +53,14 @@ std = [
   'sp-std/std',
   'cfg-types/std',
   'cfg-traits/std',
+  'serde/std',
+  'sp-core/std',
 ]
-
 try-runtime = [
   'frame-support/try-runtime',
   'frame-support/try-runtime',
   'cfg-types/try-runtime',
   'cfg-traits/try-runtime',
+  'sp-runtime/try-runtime',
+  'frame-system/try-runtime',
 ]

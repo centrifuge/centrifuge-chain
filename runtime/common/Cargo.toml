@@ -94,6 +94,7 @@ runtime-benchmarks = [
   "pallet-treasury/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
+  "pallet-ethereum/runtime-benchmarks",
 ]
 
 on-chain-release-build = [
@@ -114,4 +115,6 @@ try-runtime = [
   "pallet-evm/try-runtime",
   "pallet-base-fee/try-runtime",
   "sp-runtime/try-runtime",
+  "pallet-ethereum/try-runtime",
+  "pallet-evm-chain-id/try-runtime",
 ]
