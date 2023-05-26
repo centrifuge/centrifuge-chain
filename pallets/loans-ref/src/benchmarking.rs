@@ -174,6 +174,7 @@ where
 			pool_id,
 			loan_id,
 			COLLATERAL_VALUE.into(),
+			0.into(),
 		)
 		.unwrap();
 	}
@@ -264,7 +265,7 @@ benchmarks! {
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
 
-	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into())
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into(), 0.into())
 
 	write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get() - 1;

@@ -185,6 +185,7 @@ mod util {
 			POOL_A,
 			loan_id,
 			repay_amount,
+			0,
 		)
 		.expect("successful repaying");
 
@@ -763,7 +764,8 @@ mod repay_loan {
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
 					loan_id,
-					COLLATERAL_VALUE
+					COLLATERAL_VALUE,
+					0,
 				),
 				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
@@ -776,7 +778,13 @@ mod repay_loan {
 			config_mocks(COLLATERAL_VALUE);
 
 			assert_noop!(
-				Loans::repay(RuntimeOrigin::signed(BORROWER), POOL_A, 0, COLLATERAL_VALUE),
+				Loans::repay(
+					RuntimeOrigin::signed(BORROWER),
+					POOL_A,
+					0,
+					COLLATERAL_VALUE,
+					0
+				),
 				Error::<Runtime>::LoanNotActiveOrNotFound
 			);
 		});
@@ -794,7 +802,8 @@ mod repay_loan {
 					RuntimeOrigin::signed(OTHER_BORROWER),
 					POOL_A,
 					loan_id,
-					COLLATERAL_VALUE
+					COLLATERAL_VALUE,
+					0
 				),
 				Error::<Runtime>::NotLoanBorrower
 			);
@@ -815,7 +824,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE
+				COLLATERAL_VALUE,
+				0
 			));
 		});
 	}
@@ -831,7 +841,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE / 2
+				COLLATERAL_VALUE / 2,
+				0
 			));
 			assert_eq!(0, util::current_loan_debt(loan_id));
 		});
@@ -848,7 +859,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE
+				COLLATERAL_VALUE,
+				0
 			));
 			assert_eq!(0, util::current_loan_debt(loan_id));
 		});
@@ -865,7 +877,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE * 2
+				COLLATERAL_VALUE * 2,
+				0
 			));
 		});
 	}
@@ -888,7 +901,8 @@ mod repay_loan {
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
 					loan_id,
-					COLLATERAL_VALUE / 2
+					COLLATERAL_VALUE / 2,
+					0
 				),
 				Error::<Runtime>::from(RepayLoanError::Restriction) // Full amount
 			);
@@ -898,13 +912,14 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE
+				COLLATERAL_VALUE,
+				0
 			));
 
 			let extra = 1;
 			config_mocks(0);
 			assert_noop!(
-				Loans::repay(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra),
+				Loans::repay(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id, extra, 0),
 				Error::<Runtime>::from(RepayLoanError::Restriction) // Only once
 			);
 		});
@@ -921,7 +936,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE / 2
+				COLLATERAL_VALUE / 2,
+				0
 			));
 			assert_eq!(COLLATERAL_VALUE / 2, util::current_loan_debt(loan_id));
 
@@ -929,7 +945,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE / 2
+				COLLATERAL_VALUE / 2,
+				0
 			));
 			assert_eq!(0, util::current_loan_debt(loan_id));
 
@@ -940,7 +957,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				extra
+				extra,
+				0
 			));
 		});
 	}
@@ -956,7 +974,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE / 2
+				COLLATERAL_VALUE / 2,
+				0
 			));
 
 			advance_time(YEAR / 2);
@@ -973,7 +992,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE / 2
+				COLLATERAL_VALUE / 2,
+				0
 			));
 
 			// Because of the interest, it has no fully repaid, we need an extra payment.
@@ -985,7 +1005,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				still_to_pay
+				still_to_pay,
+				0
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
@@ -1009,7 +1030,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				COLLATERAL_VALUE
+				COLLATERAL_VALUE,
+				0
 			));
 
 			advance_time(YEAR);
@@ -1029,7 +1051,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PRICE_VALUE * QUANTITY
+				PRICE_VALUE * QUANTITY,
+				0
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
@@ -1049,7 +1072,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				(PRICE_VALUE * 2) * QUANTITY
+				(PRICE_VALUE * 2) * QUANTITY,
+				0
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
@@ -1069,7 +1093,8 @@ mod repay_loan {
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PRICE_VALUE * QUANTITY
+				PRICE_VALUE * QUANTITY,
+				0
 			));
 
 			assert_eq!(0, util::current_loan_debt(loan_id));
@@ -1089,10 +1114,32 @@ mod repay_loan {
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
 					loan_id,
-					PRICE_VALUE * QUANTITY - 1
+					PRICE_VALUE * QUANTITY - 1,
+					0
 				),
 				Error::<Runtime>::AmountNotMultipleOfPrice
 			);
+		});
+	}
+
+	#[test]
+	fn with_unchecked_repayment() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			config_mocks(COLLATERAL_VALUE);
+			assert_ok!(Loans::repay(
+				RuntimeOrigin::signed(BORROWER),
+				POOL_A,
+				loan_id,
+				0,
+				COLLATERAL_VALUE,
+			),);
+
+			// Nothing repaid with unchecked amount,
+			// so I still have the whole amount as debt
+			assert_eq!(COLLATERAL_VALUE, util::current_loan_debt(loan_id));
 		});
 	}
 }
