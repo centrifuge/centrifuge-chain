@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-chain"
-version = "0.10.26"
+version = "0.10.27"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Centrifuge chain implementation in Rust."
 build = "build.rs"
