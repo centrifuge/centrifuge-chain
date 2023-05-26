@@ -187,6 +187,7 @@ pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: Balance) -> RuntimeC
 		pool_id,
 		loan_id,
 		amount,
+        0,
 	})
 }
 
