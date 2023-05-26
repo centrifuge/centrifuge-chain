@@ -247,7 +247,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<ActiveLoan<T>, T::MaxActiveLoansPerPool>,
+		BoundedVec<(T::LoanId, ActiveLoan<T>), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -454,10 +454,10 @@ pub mod pallet {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
-					let mut active_loan = created_loan.activate(pool_id, loan_id)?;
+					let mut active_loan = created_loan.activate(pool_id)?;
 					active_loan.borrow(amount)?;
 
-					Self::insert_active_loan(pool_id, active_loan)?
+					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
@@ -759,7 +759,7 @@ pub mod pallet {
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let values = loans
 				.iter()
-				.map(|loan| Ok((loan.loan_id(), loan.present_value_by(&rates, &prices)?)))
+				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
 				.collect::<Result<Vec<_>, DispatchError>>()?;
 
 			let value = PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
@@ -777,10 +777,11 @@ pub mod pallet {
 
 		fn insert_active_loan(
 			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.insert_elem(loan.loan_id(), loan.present_value()?)?;
+				portfolio.insert_elem(loan_id, loan.present_value()?)?;
 
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
@@ -790,7 +791,7 @@ pub mod pallet {
 
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					active_loans
-						.try_push(loan)
+						.try_push((loan_id, loan))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					Ok(active_loans.len().ensure_into()?)
@@ -808,9 +809,9 @@ pub mod pallet {
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let loan = active_loans
+					let (_, loan) = active_loans
 						.iter_mut()
-						.find(|loan| loan.loan_id() == loan_id)
+						.find(|(id, _)| *id == loan_id)
 						.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 					let result = f(loan)?;
@@ -835,11 +836,11 @@ pub mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
-					.position(|loan| loan.loan_id() == loan_id)
+					.position(|(id, _)| *id == loan_id)
 					.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 				Ok((
-					active_loans.swap_remove(index),
+					active_loans.swap_remove(index).1,
 					active_loans.len().ensure_into()?,
 				))
 			})
