@@ -372,7 +372,9 @@ impl TestEnv {
 					EventRange::Latest => self.events_relay(latest),
 					EventRange::All => {
 						let mut events = Vec::new();
-						for block in 0..latest + 1 {
+						// We MUST NOT query events at genesis block, as this triggers
+						// a panic. Hence, start at 1.
+						for block in 1..latest + 1 {
 							events.extend(self.events_relay(block)?)
 						}
 
@@ -400,7 +402,9 @@ impl TestEnv {
 						EventRange::Latest => self.events_centrifuge(latest),
 						EventRange::All => {
 							let mut events = Vec::new();
-							for block in 0..latest + 1 {
+							// We MUST NOT query events at genesis block, as this triggers
+							// a panic. Hence, start at 1.
+							for block in 1..latest + 1 {
 								events.extend(self.events_centrifuge(block)?)
 							}
 
