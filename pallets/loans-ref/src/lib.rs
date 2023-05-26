@@ -307,6 +307,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
+			unchecked_amount: T::Balance,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -509,6 +510,7 @@ pub mod pallet {
 				pool_id,
 				loan_id,
 				amount,
+				unchecked_amount,
 			});
 
 			Ok(())
