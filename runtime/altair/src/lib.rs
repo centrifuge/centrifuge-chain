@@ -1290,6 +1290,12 @@ impl pallet_pool_system::Config for Runtime {
 	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
 }
 
+#[cfg(not(feature = "testnet-runtime"))]
+type PoolCreateOrigin = EnsureRoot<AccountId>;
+
+#[cfg(feature = "testnet-runtime")]
+type PoolCreateOrigin = EnsureSigned<AccountId>;
+
 impl pallet_pool_registry::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -1300,7 +1306,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1594,6 +1600,7 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 		}
 	}
 
+	#[cfg(not(feature = "testnet-runtime"))]
 	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
 		match self {
 			RuntimeCall::Ethereum(call) => match call {
@@ -1606,6 +1613,14 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 				}
 				_ => call.check_self_contained(),
 			},
+			_ => None,
+		}
+	}
+
+	#[cfg(feature = "testnet-runtime")]
+	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
+		match self {
+			RuntimeCall::Ethereum(call) => call.check_self_contained(),
 			_ => None,
 		}
 	}
