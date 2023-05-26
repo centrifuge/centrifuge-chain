@@ -482,12 +482,13 @@ pub mod pallet {
 		/// Transfers amount borrowed to the pool reserve.
 		///
 		/// The origin must be the borrower of the loan.
-		/// If the repaying amount is more than current debt, only current debt
-		/// is transferred. The borrow action should fulfill the borrow
-		/// restrictions configured at [`types::LoanRestrictions`]. The `amount`
-		/// will be transferred from borrower to pool reserve. The portfolio
-		/// valuation of the pool is updated to reflect the new present value of
-		/// the loan.
+		/// The repay action should fulfill the repay restrictions
+		/// configured at [`types::RepayRestrictions`].
+		/// If the repaying `amount` is more than current debt, only current
+		/// debt is transferred. This does not apply to `unchecked_amount`,
+		/// which can be used to repay more than the outstanding debt.
+		/// The portfolio  valuation of the pool is updated to reflect the new
+		/// present value of the loan.
 		#[pallet::weight(T::WeightInfo::repay(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(2)]
 		pub fn repay(
