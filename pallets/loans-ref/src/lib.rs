@@ -504,7 +504,8 @@ pub mod pallet {
 				loan.repay(amount, unchecked_amount)
 			})?;
 
-			T::Pool::deposit(pool_id, who, amount)?;
+			let deposit_amount = amount.ensure_add(unchecked_amount)?;
+			T::Pool::deposit(pool_id, who, deposit_amount)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,

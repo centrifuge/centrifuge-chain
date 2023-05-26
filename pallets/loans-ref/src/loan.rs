@@ -382,7 +382,7 @@ impl<T: Config> ActiveLoan<T> {
 			ActivePricing::External(inner) => inner.adjust_debt(Adjustment::Decrease(amount))?,
 		}
 
-		Ok(amount.ensure_add(unchecked_amount)?)
+		Ok(amount)
 	}
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
