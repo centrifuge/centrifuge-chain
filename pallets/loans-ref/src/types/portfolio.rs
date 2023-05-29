@@ -56,7 +56,7 @@ where
 			)?,
 			values: values
 				.try_into()
-				.map_err(|_| DispatchError::Other("Max portfilio size reached"))?,
+				.map_err(|_| DispatchError::Other("Max portfolio size reached"))?,
 			last_updated: when,
 		})
 	}
@@ -79,7 +79,7 @@ where
 	pub fn insert_elem(&mut self, id: ElemId, pv: Balance) -> DispatchResult {
 		self.values
 			.try_push((id, pv))
-			.map_err(|_| DispatchError::Other("Max portfilio size reached"))?;
+			.map_err(|_| DispatchError::Other("Max portfolio size reached"))?;
 
 		Ok(self.value.ensure_add_assign(pv)?)
 	}
