@@ -25,6 +25,8 @@ pub struct NoPriceRegistry<T>(PhantomData<T>);
 impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	type Collection = NoPriceCollection<T>;
 	type Data = PriceResultOf<T>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type MaxCollectionSize = sp_runtime::traits::ConstU32<0>;
 
 	fn get(_: &T::PriceId) -> Self::Data {
 		Err(DEFAULT_ERR)
