@@ -762,17 +762,17 @@ pub mod pallet {
 				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
 				.collect::<Result<Vec<_>, DispatchError>>()?;
 
-			let value = PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.update(values, Self::now())
-			})?;
+			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
+			let valuation = portfolio.value();
+			PortfolioValuation::<T>::insert(pool_id, portfolio);
 
 			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 				pool_id,
-				valuation: value,
+				valuation,
 				update_type: PortfolioValuationUpdateType::Exact,
 			});
 
-			Ok((value, loans.len() as u32))
+			Ok((valuation, loans.len() as u32))
 		}
 
 		fn insert_active_loan(
