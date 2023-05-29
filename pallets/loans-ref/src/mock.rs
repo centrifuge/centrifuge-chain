@@ -188,6 +188,8 @@ impl pallet_mock_data::Config for Runtime {
 	type CollectionId = PoolId;
 	type Data = Result<(Balance, Moment), DispatchError>;
 	type DataId = PriceId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type MaxCollectionSize = MaxActiveLoansPerPool;
 }
 
 impl pallet_loans::Config for Runtime {
