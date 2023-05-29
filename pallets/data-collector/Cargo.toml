@@ -44,3 +44,6 @@ std = [
   "cfg-traits/std",
   "orml-traits/std",
 ]
+runtime-benchmarks = [
+  "cfg-traits/runtime-benchmarks",
+]

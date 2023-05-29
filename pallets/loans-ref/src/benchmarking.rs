@@ -12,7 +12,10 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::CFG;
-use cfg_traits::{data::DataCollection, InterestAccrual, Permissions, PoolBenchmarkHelper};
+use cfg_traits::{
+	data::{DataCollection, DataRegistry},
+	InterestAccrual, Permissions, PoolBenchmarkHelper,
+};
 use cfg_types::{
 	adjustments::Adjustment,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -56,6 +59,11 @@ type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
 	Adjustment<<T as Config>::Balance>,
 >>::MaxRateCount;
 
+type MaxCollectionSizeOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
+	<T as Config>::PriceId,
+	PoolIdOf<T>,
+>>::MaxCollectionSize;
+
 struct Helper<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Helper<T>
 where
@@ -63,6 +71,7 @@ where
 	T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 	T::CollectionId: From<u16>,
 	T::ItemId: From<u16>,
+	T::PriceId: From<u32>,
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
@@ -81,6 +90,7 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
+		MockPrices::mock_register_id(|_, _| Ok(()));
 		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
 	}
 
@@ -209,13 +219,18 @@ where
 	}
 
 	fn initialize_active_state(n: u32) -> PoolIdOf<T> {
+		let pool_id = Self::prepare_benchmark();
+
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
 			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
 			T::InterestAccrual::reference_rate(rate).unwrap();
 		}
 
-		let pool_id = Self::prepare_benchmark();
+		for i in 0..MaxCollectionSizeOf::<T>::get() {
+			let price_id = T::PriceId::from(i + 1);
+			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
+		}
 
 		for i in 0..n {
 			let item_id = (i as u16).into();
@@ -234,6 +249,7 @@ benchmarks! {
 		T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
+		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 	}
