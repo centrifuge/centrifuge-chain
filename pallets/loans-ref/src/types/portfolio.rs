@@ -45,6 +45,22 @@ where
 		}
 	}
 
+	pub fn from_values(
+		when: Moment,
+		values: Vec<(ElemId, Balance)>,
+	) -> Result<Self, DispatchError> {
+		Ok(Self {
+			value: values.iter().try_fold(
+				Balance::zero(),
+				|sum, (_, value)| -> Result<Balance, DispatchError> { Ok(sum.ensure_add(*value)?) },
+			)?,
+			values: values
+				.try_into()
+				.map_err(|_| DispatchError::Other("Max portfilio size reached"))?,
+			last_updated: when,
+		})
+	}
+
 	pub fn value(&self) -> Balance {
 		self.value
 	}
@@ -60,29 +76,10 @@ where
 			.map(|(_, balance)| balance)
 	}
 
-	pub fn update(
-		&mut self,
-		pv_list: Vec<(ElemId, Balance)>,
-		when: Moment,
-	) -> Result<Balance, DispatchError> {
-		self.values = pv_list
-			.try_into()
-			.map_err(|_| DispatchError::Other("Max portfilio value reached"))?;
-
-		self.value = self.values.iter().try_fold(
-			Balance::zero(),
-			|sum, (_, value)| -> Result<Balance, DispatchError> { Ok(sum.ensure_add(*value)?) },
-		)?;
-
-		self.last_updated = when;
-
-		Ok(self.value)
-	}
-
 	pub fn insert_elem(&mut self, id: ElemId, pv: Balance) -> DispatchResult {
 		self.values
 			.try_push((id, pv))
-			.map_err(|_| DispatchError::Other("Max portfilio value reached"))?;
+			.map_err(|_| DispatchError::Other("Max portfilio size reached"))?;
 
 		Ok(self.value.ensure_add_assign(pv)?)
 	}
