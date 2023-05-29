@@ -109,7 +109,7 @@ pub mod pallet {
 		type Collection = CachedCollection<T, I>;
 		type Data = Result<DataValueOf<T, I>, DispatchError>;
 		#[cfg(feature = "runtime-benchmarks")]
-		type MaxCollectionSize = MaxCollectionSize;
+		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(data_id: &T::DataId) -> Self::Data {
 			T::DataProvider::get_no_op(data_id)
