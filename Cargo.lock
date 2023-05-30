@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.26"
+version = "0.10.27"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -976,7 +976,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.26"
+version = "0.10.27"
 dependencies = [
  "altair-runtime",
  "async-trait",
@@ -1064,7 +1064,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.18"
+version = "0.10.19"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
@@ -2561,7 +2561,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.19"
+version = "0.10.20"
 dependencies = [
  "cfg-primitives",
  "cfg-traits",
