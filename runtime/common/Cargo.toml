@@ -31,6 +31,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 # ORML dependencies
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 # Frontier dependencies
 pallet-base-fee = { git = "https://github.com/PureStake/frontier", default-features = false, branch = "moonbeam-polkadot-v0.9.38" }
@@ -77,6 +78,7 @@ std = [
   "cfg-primitives/std",
   "cfg-utils/std",
   "orml-traits/std",
+  "orml-oracle/std",
   "pallet-pool-system/std",
   "serde/std",
   "scale-info/std",
@@ -106,6 +108,7 @@ try-runtime = [
   "cfg-utils/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
+  "orml-oracle/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
