@@ -19,7 +19,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::pallet as pallet_collection_data_feed;
+use crate::pallet as pallet_data_collector;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -42,7 +42,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Timer: pallet_timestamp,
 		Oracle: orml_oracle,
-		CollectionDataFeed: pallet_collection_data_feed,
+		DataCollector: pallet_data_collector,
 	}
 );
 
@@ -119,7 +119,7 @@ impl orml_oracle::Config for Runtime {
 	type CombineData = LastData;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type Members = IsInVec<Members>;
-	type OnNewData = CollectionDataFeed;
+	type OnNewData = DataCollector;
 	type OracleKey = DataId;
 	type OracleValue = Data;
 	type RootOperatorAccountId = RootMember;
@@ -128,7 +128,7 @@ impl orml_oracle::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_collection_data_feed::Config for Runtime {
+impl pallet_data_collector::Config for Runtime {
 	type CollectionId = CollectionId;
 	type Data = Data;
 	type DataId = DataId;

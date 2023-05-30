@@ -247,7 +247,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<ActiveLoan<T>, T::MaxActiveLoansPerPool>,
+		BoundedVec<(T::LoanId, ActiveLoan<T>), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -307,6 +307,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
+			unchecked_amount: T::Balance,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -453,10 +454,10 @@ pub mod pallet {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
-					let mut active_loan = created_loan.activate(pool_id, loan_id)?;
+					let mut active_loan = created_loan.activate(pool_id)?;
 					active_loan.borrow(amount)?;
 
-					Self::insert_active_loan(pool_id, active_loan)?
+					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
@@ -481,12 +482,13 @@ pub mod pallet {
 		/// Transfers amount borrowed to the pool reserve.
 		///
 		/// The origin must be the borrower of the loan.
-		/// If the repaying amount is more than current debt, only current debt
-		/// is transferred. The borrow action should fulfill the borrow
-		/// restrictions configured at [`types::LoanRestrictions`]. The `amount`
-		/// will be transferred from borrower to pool reserve. The portfolio
-		/// valuation of the pool is updated to reflect the new present value of
-		/// the loan.
+		/// The repay action should fulfill the repay restrictions
+		/// configured at [`types::RepayRestrictions`].
+		/// If the repaying `amount` is more than current debt, only current
+		/// debt is transferred. This does not apply to `unchecked_amount`,
+		/// which can be used to repay more than the outstanding debt.
+		/// The portfolio  valuation of the pool is updated to reflect the new
+		/// present value of the loan.
 		#[pallet::weight(T::WeightInfo::repay(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(2)]
 		pub fn repay(
@@ -494,20 +496,23 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
+			unchecked_amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount)
+				loan.repay(amount, unchecked_amount)
 			})?;
 
-			T::Pool::deposit(pool_id, who, amount)?;
+			let deposit_amount = amount.ensure_add(unchecked_amount)?;
+			T::Pool::deposit(pool_id, who, deposit_amount)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
 				loan_id,
 				amount,
+				unchecked_amount,
 			});
 
 			Ok(())
@@ -754,28 +759,29 @@ pub mod pallet {
 			let loans = ActiveLoans::<T>::get(pool_id);
 			let values = loans
 				.iter()
-				.map(|loan| Ok((loan.loan_id(), loan.present_value_by(&rates, &prices)?)))
+				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
 				.collect::<Result<Vec<_>, DispatchError>>()?;
 
-			let value = PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.update(values, Self::now())
-			})?;
+			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
+			let valuation = portfolio.value();
+			PortfolioValuation::<T>::insert(pool_id, portfolio);
 
 			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 				pool_id,
-				valuation: value,
+				valuation,
 				update_type: PortfolioValuationUpdateType::Exact,
 			});
 
-			Ok((value, loans.len() as u32))
+			Ok((valuation, loans.len() as u32))
 		}
 
 		fn insert_active_loan(
 			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
 			loan: ActiveLoan<T>,
 		) -> Result<u32, DispatchError> {
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				portfolio.insert_elem(loan.loan_id(), loan.present_value()?)?;
+				portfolio.insert_elem(loan_id, loan.present_value()?)?;
 
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
@@ -785,7 +791,7 @@ pub mod pallet {
 
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					active_loans
-						.try_push(loan)
+						.try_push((loan_id, loan))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					Ok(active_loans.len().ensure_into()?)
@@ -803,9 +809,9 @@ pub mod pallet {
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let loan = active_loans
+					let (_, loan) = active_loans
 						.iter_mut()
-						.find(|loan| loan.loan_id() == loan_id)
+						.find(|(id, _)| *id == loan_id)
 						.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 					let result = f(loan)?;
@@ -830,11 +836,11 @@ pub mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
-					.position(|loan| loan.loan_id() == loan_id)
+					.position(|(id, _)| *id == loan_id)
 					.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 				Ok((
-					active_loans.swap_remove(index),
+					active_loans.swap_remove(index).1,
 					active_loans.len().ensure_into()?,
 				))
 			})

@@ -34,17 +34,17 @@ pub mod pallet {
 		DispatchError,
 	};
 
-	type DataValueOf<T> = (<T as Config>::Data, <T as Config>::Moment);
+	type DataValueOf<T, I> = (<T as Config<I>>::Data, <T as Config<I>>::Moment);
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::storage_version(STORAGE_VERSION)]
-	pub struct Pallet<T>(_);
+	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config {
 		/// A data identification
 		type DataId: Parameter + MaxEncodedLen + Ord;
 
@@ -71,7 +71,7 @@ pub mod pallet {
 
 	/// Storage that contains the registering information
 	#[pallet::storage]
-	pub(crate) type Listening<T: Config> = StorageMap<
+	pub(crate) type Listening<T: Config<I>, I: 'static = ()> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::DataId,
@@ -81,16 +81,16 @@ pub mod pallet {
 
 	/// Storage that contains the data values of a collection.
 	#[pallet::storage]
-	pub(crate) type Collection<T: Config> = StorageMap<
+	pub(crate) type Collection<T: Config<I>, I: 'static = ()> = StorageMap<
 		_,
 		Blake2_128Concat,
 		T::CollectionId,
-		BoundedBTreeMap<T::DataId, DataValueOf<T>, T::MaxCollectionSize>,
+		BoundedBTreeMap<T::DataId, DataValueOf<T, I>, T::MaxCollectionSize>,
 		ValueQuery,
 	>;
 
 	#[pallet::error]
-	pub enum Error<T> {
+	pub enum Error<T, I = ()> {
 		/// The used data ID is not in the collection.
 		DataIdNotInCollection,
 
@@ -105,46 +105,53 @@ pub mod pallet {
 		MaxCollectionNumber,
 	}
 
-	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
-		type Collection = CachedCollection<T>;
-		type Data = Result<DataValueOf<T>, DispatchError>;
+	impl<T: Config<I>, I: 'static> DataRegistry<T::DataId, T::CollectionId> for Pallet<T, I> {
+		type Collection = CachedCollection<T, I>;
+		type Data = Result<DataValueOf<T, I>, DispatchError>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(data_id: &T::DataId) -> Self::Data {
-			T::DataProvider::get_no_op(data_id).ok_or_else(|| Error::<T>::DataIdWithoutData.into())
+			T::DataProvider::get_no_op(data_id)
+				.ok_or_else(|| Error::<T, I>::DataIdWithoutData.into())
 		}
 
 		fn collection(collection_id: &T::CollectionId) -> Self::Collection {
-			CachedCollection(Collection::<T>::get(collection_id))
+			CachedCollection(Collection::<T, I>::get(collection_id))
 		}
 
 		fn register_id(data_id: &T::DataId, collection_id: &T::CollectionId) -> DispatchResult {
-			Listening::<T>::try_mutate(data_id, |counters| match counters.get_mut(collection_id) {
-				Some(counter) => counter.ensure_add_assign(1).map_err(|e| e.into()),
-				None => {
-					counters
-						.try_insert(collection_id.clone(), 1)
-						.map_err(|_| Error::<T>::MaxCollectionNumber)?;
+			Listening::<T, I>::try_mutate(data_id, |counters| {
+				match counters.get_mut(collection_id) {
+					Some(counter) => counter.ensure_add_assign(1).map_err(|e| e.into()),
+					None => {
+						counters
+							.try_insert(collection_id.clone(), 1)
+							.map_err(|_| Error::<T, I>::MaxCollectionNumber)?;
 
-					Collection::<T>::try_mutate(collection_id, |collection| {
-						collection
-							.try_insert(data_id.clone(), Self::get(data_id)?)
-							.map(|_| ())
-							.map_err(|_| Error::<T>::MaxCollectionSize.into())
-					})
+						Collection::<T, I>::try_mutate(collection_id, |collection| {
+							collection
+								.try_insert(data_id.clone(), Self::get(data_id)?)
+								.map(|_| ())
+								.map_err(|_| Error::<T, I>::MaxCollectionSize.into())
+						})
+					}
 				}
 			})
 		}
 
 		fn unregister_id(data_id: &T::DataId, collection_id: &T::CollectionId) -> DispatchResult {
-			Listening::<T>::try_mutate(data_id, |counters| {
+			Listening::<T, I>::try_mutate(data_id, |counters| {
 				let counter = counters
 					.get_mut(collection_id)
-					.ok_or(Error::<T>::DataIdNotInCollection)?;
+					.ok_or(Error::<T, I>::DataIdNotInCollection)?;
 
 				counter.ensure_sub_assign(1)?;
 				if *counter == 0 {
 					counters.remove(collection_id);
-					Collection::<T>::mutate(collection_id, |collection| collection.remove(data_id));
+					Collection::<T, I>::mutate(collection_id, |collection| {
+						collection.remove(data_id)
+					});
 				}
 
 				Ok(())
@@ -152,13 +159,13 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> OnNewData<T::AccountId, T::DataId, T::Data> for Pallet<T> {
+	impl<T: Config<I>, I: 'static> OnNewData<T::AccountId, T::DataId, T::Data> for Pallet<T, I> {
 		fn on_new_data(_: &T::AccountId, data_id: &T::DataId, _: &T::Data) {
 			// Input Data parameter could not correspond with the data comming from
 			// `DataProvider`. This implementation use `DataProvider` as a source of truth
 			// for Data values.
-			for collection_id in Listening::<T>::get(data_id).keys() {
-				Collection::<T>::mutate(collection_id, |collection| {
+			for collection_id in Listening::<T, I>::get(data_id).keys() {
+				Collection::<T, I>::mutate(collection_id, |collection| {
 					if let (Some(value), Ok(new_value)) =
 						(collection.get_mut(data_id), Self::get(data_id))
 					{
@@ -170,18 +177,18 @@ pub mod pallet {
 	}
 
 	/// A collection cached in memory
-	pub struct CachedCollection<T: Config>(
-		BoundedBTreeMap<T::DataId, DataValueOf<T>, T::MaxCollectionSize>,
+	pub struct CachedCollection<T: Config<I>, I: 'static = ()>(
+		BoundedBTreeMap<T::DataId, DataValueOf<T, I>, T::MaxCollectionSize>,
 	);
 
-	impl<T: Config> DataCollection<T::DataId> for CachedCollection<T> {
-		type Data = Result<DataValueOf<T>, DispatchError>;
+	impl<T: Config<I>, I: 'static> DataCollection<T::DataId> for CachedCollection<T, I> {
+		type Data = Result<DataValueOf<T, I>, DispatchError>;
 
 		fn get(&self, data_id: &T::DataId) -> Self::Data {
 			self.0
 				.get(data_id)
 				.cloned()
-				.ok_or_else(|| Error::<T>::DataIdNotInCollection.into())
+				.ok_or_else(|| Error::<T, I>::DataIdNotInCollection.into())
 		}
 	}
 }

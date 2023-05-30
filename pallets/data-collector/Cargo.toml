@@ -3,7 +3,7 @@ authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Pallet to collect data from a feeder entity"
 edition = "2021"
 license = "LGPL-3.0"
-name = "pallet-collection-data-feed"
+name = "pallet-data-collector"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "1.0.0"
 
@@ -43,4 +43,7 @@ std = [
   "sp-std/std",
   "cfg-traits/std",
   "orml-traits/std",
+]
+runtime-benchmarks = [
+  "cfg-traits/runtime-benchmarks",
 ]
