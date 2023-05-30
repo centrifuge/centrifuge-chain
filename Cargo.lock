@@ -7093,6 +7093,7 @@ name = "pallet-data-collector"
 version = "1.0.0"
 dependencies = [
  "cfg-traits",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "orml-oracle",
@@ -10688,6 +10689,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-base-fee",
+ "pallet-data-collector",
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",

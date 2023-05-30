@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::data::{DataCollection, DataRegistry};
+use cfg_traits::data::{DataCollection, DataInsert, DataRegistry};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
@@ -41,6 +41,12 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	}
 
 	fn unregister_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
+		Err(DEFAULT_ERR)
+	}
+}
+
+impl<T: Config> DataInsert<T::PriceId, T::Balance> for NoPriceRegistry<T> {
+	fn insert(_: T::PriceId, _: T::Balance) -> DispatchResult {
 		Err(DEFAULT_ERR)
 	}
 }

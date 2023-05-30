@@ -26,7 +26,7 @@ cfg-types = { path = "../../libs/types", default-features = false }
 
 strum = { version = "0.24", default-features = false, features = ["derive"] }
 
-# Optionals for benchamarking
+# Optionals for benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 # Used for migrations (no longer needed once migratios is done)

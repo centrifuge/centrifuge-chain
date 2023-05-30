@@ -46,6 +46,7 @@ cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
+pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 
 [dev-dependencies]
 hex-literal = "0.2.1"
@@ -80,6 +81,7 @@ std = [
   "orml-traits/std",
   "orml-oracle/std",
   "pallet-pool-system/std",
+  "pallet-data-collector/std",
   "serde/std",
   "scale-info/std",
   "xcm/std",
@@ -94,6 +96,7 @@ runtime-benchmarks = [
   "pallet-balances/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
+  "pallet-data-collector/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
@@ -113,6 +116,7 @@ try-runtime = [
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-pool-system/try-runtime",
+  "pallet-data-collector/try-runtime",
   "pallet-treasury/try-runtime",
   "cfg-primitives/try-runtime",
   "pallet-evm/try-runtime",

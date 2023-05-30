@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::data::{DataCollection, DataRegistry};
+	use cfg_traits::data::{DataCollection, DataInsert, DataRegistry};
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -10,6 +10,7 @@ pub mod pallet {
 		type CollectionId;
 		type Collection: DataCollection<Self::DataId>;
 		type Data;
+		type InputData;
 		#[cfg(feature = "runtime-benchmarks")]
 		type MaxCollectionSize: Get<u32>;
 	}
@@ -46,6 +47,10 @@ pub mod pallet {
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
+
+		pub fn mock_insert(f: impl Fn(T::DataId, T::InputData) -> DispatchResult + 'static) {
+			register_call!(move |(a, b)| f(a, b));
+		}
 	}
 
 	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
@@ -67,6 +72,12 @@ pub mod pallet {
 		}
 
 		fn unregister_id(a: &T::DataId, b: &T::CollectionId) -> DispatchResult {
+			execute_call!((a, b))
+		}
+	}
+
+	impl<T: Config> DataInsert<T::DataId, T::InputData> for Pallet<T> {
+		fn insert(a: T::DataId, b: T::InputData) -> DispatchResult {
 			execute_call!((a, b))
 		}
 	}

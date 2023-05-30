@@ -275,8 +275,10 @@ pub mod xcm {
 }
 
 pub mod oracle {
-	use cfg_primitives::types::{Balance, Moment, PriceId};
-	use orml_oracle::{CombineData, DataProviderExtended};
+	use cfg_primitives::types::{AccountId, Balance, Moment, PriceId};
+	use frame_support::traits::SortedMembers;
+	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
+	use sp_runtime::DispatchResult;
 	use sp_std::{marker::PhantomData, vec::Vec};
 
 	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
@@ -298,6 +300,7 @@ pub mod oracle {
 
 	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
 	/// This aux type is forced because of https://github.com/open-web3-stack/open-runtime-module-library/issues/904
+	/// and can be removed once they fix this.
 	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
 
 	impl<OrmlOracle: DataProviderExtended<PriceId, OracleValue>>
@@ -318,6 +321,40 @@ pub mod oracle {
 					)
 				})
 				.collect()
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<OrmlOracle: DataProvider<PriceId, Balance>> DataProvider<PriceId, Balance>
+		for DataProviderBridge<OrmlOracle>
+	{
+		fn get(key: &PriceId) -> Option<Balance> {
+			OrmlOracle::get(key)
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<OrmlOracle: DataFeeder<PriceId, Balance, AccountId>>
+		DataFeeder<PriceId, Balance, AccountId> for DataProviderBridge<OrmlOracle>
+	{
+		fn feed_value(who: AccountId, key: PriceId, value: Balance) -> DispatchResult {
+			OrmlOracle::feed_value(who, key, value)
+		}
+	}
+
+	/// This is used for feeding the oracle from the data-collector in
+	/// benchmarks.
+	/// It can be removed once https://github.com/open-web3-stack/open-runtime-module-library/issues/919 is solved.
+	pub struct MembersWithBenchmarkSupport<Members>(PhantomData<Members>);
+
+	impl<Members: SortedMembers<AccountId>> SortedMembers<AccountId>
+		for MembersWithBenchmarkSupport<Members>
+	{
+		fn sorted_members() -> Vec<AccountId> {
+			let mut vec = Members::sorted_members();
+			#[cfg(feature = "runtime-benchmarks")]
+			vec.push(pallet_data_collector::benchmark_account_id());
+			vec
 		}
 	}
 }

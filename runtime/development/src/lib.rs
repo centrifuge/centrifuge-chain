@@ -1296,7 +1296,7 @@ parameter_types! {
 	pub const MaxHasDispatchedSize: u32 = 1;
 	pub const MaxPools: u32 = 50;
 	pub const MaxPriceOracleMembers: u32 = 10;
-	pub RootOperatorOraclePrice: AccountId = PalletId(*b"or_price").into_account_truncating();
+	pub RootOperatorOraclePrice: AccountId = PalletId(*b"orac_pri").into_account_truncating();
 }
 
 impl pallet_membership::Config for Runtime {
@@ -1315,7 +1315,7 @@ impl pallet_membership::Config for Runtime {
 impl orml_oracle::Config for Runtime {
 	type CombineData = runtime_common::oracle::LastOracleValue;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
-	type Members = PriceOracleMembership;
+	type Members = runtime_common::oracle::MembersWithBenchmarkSupport<PriceOracleMembership>;
 	type OnNewData = PriceCollector;
 	type OracleKey = PriceId;
 	type OracleValue = Balance;
@@ -1886,7 +1886,7 @@ construct_runtime!(
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
 		PriceOracle: orml_oracle::{Pallet, Call, Storage, Event<T>} = 154,
-		PriceOracleMembership: pallet_membership::{Pallet, Call, Storage, Event<T>, Config<T>} = 155,
+		PriceOracleMembership: pallet_membership::{Pallet, Call, Storage, Event<T>} = 155,
 
 		// EVM pallets
 		EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 160,

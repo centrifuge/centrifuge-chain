@@ -13,7 +13,7 @@
 
 use cfg_primitives::CFG;
 use cfg_traits::{
-	data::{DataCollection, DataRegistry},
+	data::{DataCollection, DataInsert, DataRegistry},
 	InterestAccrual, Permissions, PoolBenchmarkHelper,
 };
 use cfg_types::{
@@ -75,6 +75,7 @@ where
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+	T::PriceRegistry: DataInsert<T::PriceId, T::Balance>,
 {
 	#[cfg(test)]
 	fn config_mocks() {
@@ -90,6 +91,7 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
+		MockPrices::mock_insert(|_, _| Ok(()));
 		MockPrices::mock_register_id(|_, _| Ok(()));
 		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
 	}
@@ -229,6 +231,7 @@ where
 
 		for i in 0..MaxCollectionSizeOf::<T>::get() {
 			let price_id = T::PriceId::from(i + 1);
+			T::PriceRegistry::insert(price_id, (i + 100).into()).unwrap();
 			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
 		}
 
@@ -252,6 +255,7 @@ benchmarks! {
 		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+		T::PriceRegistry: DataInsert<T::PriceId, T::Balance>,
 	}
 
 	create {
