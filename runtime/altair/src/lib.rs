@@ -420,6 +420,13 @@ pub enum ProxyType {
 	Governance,
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
+	Borrow,
+	Invest,
+	ProxyManagement,
+	KeystoreManagement,
+	PodOperation,
+	PodAuth,
+	PermissionManagement,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -503,6 +510,53 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, RuntimeCall::Proxy(..))
 			}
+			ProxyType::Borrow => matches!(
+				c,
+				RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::borrow{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::repay{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+				// Borrowers should be able to close and execute an epoch
+				// in order to get liquidity from repayments in previous epochs.
+				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+			),
+			ProxyType::Invest => matches!(
+				c,
+				RuntimeCall::Investments(pallet_investments::Call::update_invest_order{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::update_redeem_order{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::collect_investments{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::collect_redemptions{..}) |
+				// Investors should be able to close and execute an epoch
+				// in order to get their orders fulfilled.
+				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+			),
+			ProxyType::ProxyManagement => matches!(c, RuntimeCall::Proxy(..)),
+			ProxyType::KeystoreManagement => false,
+			ProxyType::PodOperation => matches!(
+				c,
+				RuntimeCall::Uniques(..)
+					| RuntimeCall::Anchor(..)
+					| RuntimeCall::Utility(pallet_utility::Call::batch_all { .. })
+			),
+			// This type of proxy is used only for authenticating with the centrifuge POD,
+			// having it here also allows us to validate authentication with on-chain data.
+			ProxyType::PodAuth => false,
+			ProxyType::PermissionManagement => matches!(
+				c,
+				RuntimeCall::Permissions(pallet_permissions::Call::add { .. })
+					| RuntimeCall::Permissions(pallet_permissions::Call::remove { .. })
+			),
 		}
 	}
 
