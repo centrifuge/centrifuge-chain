@@ -249,6 +249,7 @@ pub mod xcm {
 		}
 	}
 
+	/// A utils function to un-bloat and simplify the instantiation of `GeneralKey` values
 	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
 		GeneralKey {
 			length: data.len().min(32) as u8,
