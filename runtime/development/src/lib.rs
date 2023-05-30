@@ -96,7 +96,7 @@ use runtime_common::{
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::{OpaqueMetadata, H160, H256, U256};
+use sp_core::{Get, OpaqueMetadata, H160, H256, U256};
 use sp_inherents::{CheckInherentsResult, InherentData};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -117,10 +117,13 @@ use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
+use crate::xcm::{
+	Ancestry, BaseXcmWeight, SelfLocation, XcmConfig, XcmOriginToTransactDispatchOrigin, XcmRouter,
+};
+
 pub mod evm;
 mod weights;
 pub mod xcm;
-pub use crate::{evm::precompile::CentrifugePrecompiles, xcm::*};
 
 pub mod connectors;
 
