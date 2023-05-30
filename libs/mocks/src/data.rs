@@ -10,6 +10,8 @@ pub mod pallet {
 		type CollectionId;
 		type Collection: DataCollection<Self::DataId>;
 		type Data;
+		#[cfg(feature = "runtime-benchmarks")]
+		type MaxCollectionSize: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -49,6 +51,8 @@ pub mod pallet {
 	impl<T: Config> DataRegistry<T::DataId, T::CollectionId> for Pallet<T> {
 		type Collection = T::Collection;
 		type Data = T::Data;
+		#[cfg(feature = "runtime-benchmarks")]
+		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(a: &T::DataId) -> T::Data {
 			execute_call!(a)

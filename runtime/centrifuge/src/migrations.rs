@@ -230,7 +230,7 @@ mod evm_chain_id {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_: sp_std::vec::Vec<u8>) -> Result<(), &'static str> {
-			// Migratino is infallible
+			// Migration is infallible
 			Ok(())
 		}
 	}

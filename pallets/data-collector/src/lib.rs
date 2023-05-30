@@ -108,6 +108,8 @@ pub mod pallet {
 	impl<T: Config<I>, I: 'static> DataRegistry<T::DataId, T::CollectionId> for Pallet<T, I> {
 		type Collection = CachedCollection<T, I>;
 		type Data = Result<DataValueOf<T, I>, DispatchError>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type MaxCollectionSize = T::MaxCollectionSize;
 
 		fn get(data_id: &T::DataId) -> Self::Data {
 			T::DataProvider::get_no_op(data_id)
