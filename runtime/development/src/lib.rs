@@ -1295,18 +1295,31 @@ parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxHasDispatchedSize: u32 = 1;
 	pub const MaxPools: u32 = 50;
-	pub RootMember: AccountId = PalletId(*b"changeme").into_account_truncating(); //TODO
+	pub const MaxPriceOracleMembers: u32 = 10;
+	pub RootOperatorOraclePrice: AccountId = PalletId(*b"or_price").into_account_truncating();
+}
+
+impl pallet_membership::Config for Runtime {
+	type AddOrigin = EnsureRootOr<HalfOfCouncil>;
+	type MaxMembers = MaxPriceOracleMembers;
+	type MembershipChanged = PriceOracle;
+	type MembershipInitialized = ();
+	type PrimeOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RemoveOrigin = EnsureRootOr<HalfOfCouncil>;
+	type ResetOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RuntimeEvent = RuntimeEvent;
+	type SwapOrigin = EnsureRootOr<HalfOfCouncil>;
+	type WeightInfo = pallet_membership::weights::SubstrateWeight<Self>;
 }
 
 impl orml_oracle::Config for Runtime {
 	type CombineData = runtime_common::oracle::LastOracleValue;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
-	//TODO
-	type Members = Elections;
+	type Members = PriceOracleMembership;
 	type OnNewData = PriceCollector;
 	type OracleKey = PriceId;
 	type OracleValue = Balance;
-	type RootOperatorAccountId = RootMember;
+	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type WeightInfo = ();
@@ -1316,7 +1329,7 @@ impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
 	type Data = Balance;
 	type DataId = PriceId;
-	type DataProvider = runtime_common::oracle::DataProviderBridge<OrmlOracle>;
+	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 	type MaxCollections = MaxPools;
 	type Moment = Moment;
@@ -1872,7 +1885,8 @@ construct_runtime!(
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
-		OrmlOracle: orml_oracle::{Pallet, Call, Storage, Event<T>} = 154,
+		PriceOracle: orml_oracle::{Pallet, Call, Storage, Event<T>} = 154,
+		PriceOracleMembership: pallet_membership::{Pallet, Call, Storage, Event<T>, Config<T>} = 155,
 
 		// EVM pallets
 		EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 160,

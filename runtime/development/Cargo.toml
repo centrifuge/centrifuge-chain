@@ -68,6 +68,7 @@ pallet-democracy = { git = "https://github.com/paritytech/substrate", default-fe
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-identity = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-multisig = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-membership = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-preimage = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
@@ -201,6 +202,7 @@ std = [
   "pallet-loans-ref/std",
   "pallet-migration-manager/std",
   "pallet-multisig/std",
+  "pallet-membership/std",
   "pallet-nft-sales/std",
   "pallet-nft/std",
   "pallet-permissions/std",
@@ -308,6 +310,7 @@ runtime-benchmarks = [
   "pallet-elections-phragmen/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
+  "pallet-membership/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
@@ -379,6 +382,7 @@ try-runtime = [
   "pallet-identity/try-runtime",
   "pallet-migration-manager/try-runtime",
   "pallet-multisig/try-runtime",
+  "pallet-membership/try-runtime",
   "pallet-nft/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-proxy/try-runtime",

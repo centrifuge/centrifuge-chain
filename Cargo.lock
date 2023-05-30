@@ -2653,6 +2653,7 @@ dependencies = [
  "pallet-keystore",
  "pallet-liquidity-rewards",
  "pallet-loans-ref",
+ "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
