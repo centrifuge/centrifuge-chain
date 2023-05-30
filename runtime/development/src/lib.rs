@@ -1293,6 +1293,33 @@ impl pallet_xcm_transactor::Config for Runtime {
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 50;
 	pub const MaxWriteOffPolicySize: u32 = 10;
+	pub const MaxHasDispatchedSize: u32 = 1;
+	pub const MaxPools: u32 = 50;
+	pub RootMember: AccountId = PalletId(*b"changeme").into_account_truncating(); //TODO
+}
+
+impl orml_oracle::Config for Runtime {
+	type CombineData = runtime_common::oracle::LastOracleValue;
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
+	//TODO
+	type Members = Elections;
+	type OnNewData = PriceCollector;
+	type OracleKey = PriceId;
+	type OracleValue = Balance;
+	type RootOperatorAccountId = RootMember;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type WeightInfo = ();
+}
+
+impl pallet_data_collector::Config for Runtime {
+	type CollectionId = PoolId;
+	type Data = Balance;
+	type DataId = PriceId;
+	type DataProvider = runtime_common::oracle::DataProviderBridge<OrmlOracle>;
+	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxCollections = MaxPools;
+	type Moment = Moment;
 }
 
 impl pallet_loans_ref::Config for Runtime {
@@ -1308,7 +1335,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PriceId = PriceId;
-	type PriceRegistry = pallet_loans_ref::util::NoPriceRegistry<Runtime>;
+	type PriceRegistry = PriceCollector;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
@@ -1830,6 +1857,7 @@ construct_runtime!(
 		BlockRewardsBase: pallet_rewards::<Instance2>::{Pallet, Storage, Event<T>, Config<T>} = 110,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 111,
 		TransferAllowList: pallet_transfer_allowlist::{Pallet, Call, Storage, Event<T>} = 112,
+		PriceCollector: pallet_data_collector::{Pallet, Storage} = 113,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1844,6 +1872,7 @@ construct_runtime!(
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
 		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
+		OrmlOracle: orml_oracle::{Pallet, Call, Storage, Event<T>} = 154,
 
 		// EVM pallets
 		EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 160,

@@ -275,17 +275,16 @@ pub mod xcm {
 }
 
 pub mod oracle {
-	use cfg_primitives::types::{Moment, PriceId};
-	use cfg_types::fixed_point::Rate;
+	use cfg_primitives::types::{Balance, Moment, PriceId};
 	use orml_oracle::{CombineData, DataProviderExtended};
-	use sp_std::marker::PhantomData;
+	use sp_std::{marker::PhantomData, vec::Vec};
 
-	type OracleValue = orml_oracle::TimestampedValue<Rate, Moment>;
+	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
 
 	/// Always choose the last updated value in case of several values.
-	pub struct LastData;
+	pub struct LastOracleValue;
 
-	impl CombineData<PriceId, OracleValue> for LastData {
+	impl CombineData<PriceId, OracleValue> for LastOracleValue {
 		fn combine_data(
 			_: &PriceId,
 			values: Vec<OracleValue>,
@@ -297,18 +296,18 @@ pub mod oracle {
 		}
 	}
 
-	/// A provider that maps an `OracleValue` into a tuple `(Rate, Moment)`.
+	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
 	/// This aux type is forced because of https://github.com/open-web3-stack/open-runtime-module-library/issues/904
 	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
 
 	impl<OrmlOracle: DataProviderExtended<PriceId, OracleValue>>
-		DataProviderExtended<PriceId, (Rate, Moment)> for DataProviderBridge<OrmlOracle>
+		DataProviderExtended<PriceId, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
 	{
-		fn get_no_op(key: &PriceId) -> Option<(Rate, Moment)> {
+		fn get_no_op(key: &PriceId) -> Option<(Balance, Moment)> {
 			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
 		}
 
-		fn get_all_values() -> Vec<(PriceId, Option<(Rate, Moment)>)> {
+		fn get_all_values() -> Vec<(PriceId, Option<(Balance, Moment)>)> {
 			OrmlOracle::get_all_values()
 				.into_iter()
 				.map(|elem| {
