@@ -696,7 +696,7 @@ impl sp_std::fmt::Debug for Rate {
 			} else {
 				""
 			};
-			format!("{}{}", signum_for_zero, int)
+			format!("{signum_for_zero}{int}")
 		};
 		let precision = (Self::accuracy() as f64).log10() as usize;
 		let fractional = format!(

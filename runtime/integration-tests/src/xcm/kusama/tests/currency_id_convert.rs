@@ -31,8 +31,9 @@ use cfg_types::{
 	tokens::{CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
+use cfg_utils::vec_to_fixed_array;
 use codec::Encode;
-use frame_support::assert_ok;
+use frame_support::{assert_ok, traits::Len};
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::{
 	xcm::general_key,
@@ -51,35 +52,39 @@ use xcm_executor::traits::Convert as C1;
 
 use crate::xcm::kusama::{
 	setup::{
-		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE, BOB,
-		PARA_ID_SIBLING,
+		air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, ALICE,
+		AUSD_ASSET_ID, BOB, KSM_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Altair, Karura, KusamaNet, Sibling, TestNet},
+	tests::{register_air, register_ausd, register_ksm},
 };
 
 #[test]
 fn convert_air() {
 	assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
-	// The way AIR is represented relative within the Altair runtime
-	let air_location_inner: MultiLocation =
-		MultiLocation::new(0, X1(general_key(parachains::kusama::altair::AIR_KEY)));
-
-	assert_eq!(
-		<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
-		Ok(CurrencyId::Native),
-	);
-
-	// The canonical way AIR is represented out in the wild
-	let air_location_canonical: MultiLocation = MultiLocation::new(
-		1,
-		X2(
-			Parachain(parachains::kusama::altair::ID),
-			general_key(parachains::kusama::altair::AIR_KEY),
-		),
-	);
-
 	Altair::execute_with(|| {
+		// The way AIR is represented relative within the Altair runtime
+		let air_location_inner: MultiLocation =
+			MultiLocation::new(0, X1(general_key(parachains::kusama::altair::AIR_KEY)));
+
+		// register air
+		register_air();
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
+			Ok(CurrencyId::Native),
+		);
+
+		// The canonical way AIR is represented out in the wild
+		let air_location_canonical: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::kusama::altair::ID),
+				general_key(parachains::kusama::altair::AIR_KEY),
+			),
+		);
+
 		assert_eq!(
 			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
 			Some(air_location_canonical)
@@ -99,7 +104,10 @@ fn convert_tranche() {
 		interior: X3(
 			Parachain(parachains::kusama::altair::ID),
 			PalletInstance(PoolPalletIndex::get()),
-			GeneralKey(tranche_id),
+			GeneralKey {
+				length: tranche_id.len() as u8,
+				data: vec_to_fixed_array(tranche_id.to_vec()),
+			},
 		),
 	};
 
@@ -120,24 +128,26 @@ fn convert_tranche() {
 
 #[test]
 fn convert_ausd() {
-	assert_eq!(parachains::kusama::karura::AUSD_KEY, &[0, 129]);
-
-	let ausd_location: MultiLocation = MultiLocation::new(
-		1,
-		X2(
-			Parachain(parachains::kusama::karura::ID),
-			general_key(parachains::kusama::karura::AUSD_KEY),
-		),
-	);
-
 	Altair::execute_with(|| {
+		assert_eq!(parachains::kusama::karura::AUSD_KEY, &[0, 129]);
+
+		let ausd_location: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::kusama::karura::ID),
+				general_key(parachains::kusama::karura::AUSD_KEY),
+			),
+		);
+
+		register_ausd();
+
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
-			Ok(CurrencyId::AUSD),
+			Ok(AUSD_ASSET_ID),
 		);
 
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::AUSD),
+			<CurrencyIdConvert as C2<_, _>>::convert(AUSD_ASSET_ID),
 			Some(ausd_location)
 		)
 	});
@@ -148,13 +158,15 @@ fn convert_ksm() {
 	let ksm_location: MultiLocation = MultiLocation::parent().into();
 
 	Altair::execute_with(|| {
+		register_ksm();
+
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
-			Ok(CurrencyId::KSM),
+			Ok(KSM_ASSET_ID),
 		);
 
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KSM),
+			<CurrencyIdConvert as C2<_, _>>::convert(KSM_ASSET_ID),
 			Some(ksm_location)
 		)
 	});

@@ -126,12 +126,6 @@ pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 		.balances(vec![
 			(AccountId::from(ALICE), CurrencyId::Native, air(10)),
 			(AccountId::from(BOB), CurrencyId::Native, air(10)),
-			(AccountId::from(ALICE), CurrencyId::KSM, ksm(10)),
-			(
-				altair_runtime::TreasuryAccount::get(),
-				CurrencyId::KSM,
-				ksm(1),
-			),
 		])
 		.parachain_id(parachain_id)
 		.build()

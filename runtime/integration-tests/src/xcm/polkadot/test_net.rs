@@ -87,17 +87,7 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 		.unwrap();
 
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![
-			(AccountId::from(ALICE), cfg(2002)),
-			(
-				ParaId::from(parachains::polkadot::centrifuge::ID).into_account_truncating(),
-				cfg(7),
-			),
-			(
-				ParaId::from(PARA_ID_SIBLING).into_account_truncating(),
-				cfg(7),
-			),
-		],
+		balances: vec![(AccountId::from(ALICE), dot(10))],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
@@ -126,12 +116,6 @@ pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 		.balances(vec![
 			(AccountId::from(ALICE), CurrencyId::Native, cfg(10)),
 			(AccountId::from(BOB), CurrencyId::Native, cfg(10)),
-			(AccountId::from(ALICE), DOT_ASSET_ID, dot(10)),
-			(
-				centrifuge_runtime::TreasuryAccount::get(),
-				DOT_ASSET_ID,
-				dot(1),
-			),
 		])
 		.parachain_id(parachain_id)
 		.build()

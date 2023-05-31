@@ -42,8 +42,7 @@ impl fmt::Display for Error {
 			Error::CallNotFound => write!(f, "Trying to call a function that is not registered"),
 			Error::TypeNotMatch { expected, found } => write!(
 				f,
-				"The function is registered but the type mismatches. Expected {}, found: {}",
-				expected, found
+				"The function is registered but the type mismatches. Expected {expected}, found: {found}",
 			),
 		}
 	}

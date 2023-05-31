@@ -28,6 +28,7 @@ use cfg_types::{
 	fee_keys::FeeKey,
 	tokens::{AssetMetadata, CurrencyId, CustomMetadata},
 };
+use cfg_utils::vec_to_fixed_array;
 use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
 use runtime_common::account_conversion::AccountConverter;
@@ -36,10 +37,7 @@ use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::UncheckedInto, sr25519, Encode, Pair, Public};
-use sp_runtime::{
-	traits::{ConstU32, IdentifyAccount, Verify},
-	WeakBoundedVec,
-};
+use sp_runtime::traits::{IdentifyAccount, Verify};
 use xcm::{
 	latest::MultiLocation,
 	prelude::{GeneralIndex, GeneralKey, PalletInstance, Parachain, X2, X3},
@@ -54,7 +52,7 @@ pub type DevelopmentChainSpec = sc_service::GenericChainSpec<development_runtime
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
-	TPublic::Pair::from_string(&format!("//{}", seed), None)
+	TPublic::Pair::from_string(&format!("//{seed}"), None)
 		.expect("static values are valid; qed")
 		.public()
 }
@@ -1046,6 +1044,7 @@ fn altair_genesis(
 
 /// The CurrencyId for the USDT asset on the development runtime
 const DEV_USDT_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(1);
+const DEV_AUSD_CURRENCY_ID: CurrencyId = CurrencyId::ForeignAsset(2);
 
 fn development_genesis(
 	root_key: development_runtime::AccountId,
@@ -1084,10 +1083,10 @@ fn development_genesis(
 					.flat_map(|x| {
 						// NOTE: We can only mint these foreign assets on development
 						vec![
-							// AUSD is a 12-decimal asset, so 1 million + 12 zeros
-							(x.clone(), CurrencyId::AUSD, 1_000_000_000_000_000_000),
 							// USDT is a 6-decimal asset, so 1 million + 6 zeros
-							(x, DEV_USDT_CURRENCY_ID, 1_000_000_000_000),
+							(x.clone(), DEV_USDT_CURRENCY_ID, 1_000_000_000_000),
+							// AUSD is a 12-decimal asset, so 1 million + 12 zeros
+							(x, DEV_AUSD_CURRENCY_ID, 1_000_000_000_000_000_000),
 						]
 					})
 					.collect(),
@@ -1212,20 +1211,18 @@ fn development_genesis(
 fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 	vec![
 		(
-			CurrencyId::AUSD,
+			DEV_USDT_CURRENCY_ID,
 			AssetMetadata::<Balance, CustomMetadata> {
-				decimals: 12,
-				name: b"Acala USD".to_vec(),
-				symbol: b"AUSD".to_vec(),
+				decimals: 6,
+				name: b"Tether USD".to_vec(),
+				symbol: b"USDT".to_vec(),
 				existential_deposit: 0u128,
-				location: Some(xcm::VersionedMultiLocation::V1(MultiLocation {
+				location: Some(xcm::VersionedMultiLocation::V3(MultiLocation {
 					parents: 1,
-					interior: X2(
-						Parachain(parachains::rococo::acala::ID),
-						GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-							parachains::rococo::acala::AUSD_KEY.to_vec(),
-							None,
-						)),
+					interior: X3(
+						Parachain(parachains::rococo::rocksmine::ID),
+						PalletInstance(parachains::rococo::rocksmine::usdt::PALLET_INSTANCE),
+						GeneralIndex(parachains::rococo::rocksmine::usdt::GENERAL_INDEX),
 					),
 				})),
 				additional: CustomMetadata {
@@ -1238,18 +1235,20 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			.encode(),
 		),
 		(
-			DEV_USDT_CURRENCY_ID,
+			DEV_AUSD_CURRENCY_ID,
 			AssetMetadata::<Balance, CustomMetadata> {
-				decimals: 6,
-				name: b"Tether USD".to_vec(),
-				symbol: b"USDT".to_vec(),
+				decimals: 12,
+				name: b"Acala USD".to_vec(),
+				symbol: b"AUSD".to_vec(),
 				existential_deposit: 0u128,
-				location: Some(xcm::VersionedMultiLocation::V1(MultiLocation {
+				location: Some(xcm::VersionedMultiLocation::V3(MultiLocation {
 					parents: 1,
-					interior: X3(
-						Parachain(parachains::rococo::rocksmine::ID),
-						PalletInstance(parachains::rococo::rocksmine::usdt::PALLET_INSTANCE),
-						GeneralIndex(parachains::rococo::rocksmine::usdt::GENERAL_INDEX),
+					interior: X2(
+						Parachain(parachains::rococo::acala::ID),
+						GeneralKey {
+							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
+							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
+						},
 					),
 				})),
 				additional: CustomMetadata {

@@ -208,8 +208,8 @@ pub mod asset_registry {
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
-		fn successful_origin(_asset_id: &Option<CurrencyId>) -> Origin {
-			unimplemented!()
+		fn try_successful_origin(_asset_id: &Option<CurrencyId>) -> Result<Origin, ()> {
+			Err(())
 		}
 	}
 }
@@ -218,8 +218,11 @@ pub mod xcm {
 	use cfg_primitives::types::Balance;
 	use cfg_types::tokens::{CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
-	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
-	use xcm::latest::{Junction::GeneralKey, MultiLocation};
+	use sp_runtime::traits::Convert;
+	use xcm::{
+		latest::{Junction::GeneralKey, MultiLocation},
+		prelude::{AccountId32, X1},
+	};
 
 	use crate::xcm_fees::default_per_second;
 
@@ -246,10 +249,27 @@ pub mod xcm {
 		}
 	}
 
-	pub fn general_key(key: &[u8]) -> xcm::latest::Junction {
-		GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(
-			key.into(),
-			None,
-		))
+	/// A utils function to un-bloat and simplify the instantiation of
+	/// `GeneralKey` values
+	pub fn general_key(data: &[u8]) -> xcm::latest::Junction {
+		GeneralKey {
+			length: data.len().min(32) as u8,
+			data: cfg_utils::vec_to_fixed_array(data.to_vec()),
+		}
+	}
+
+	/// How we convert an `[AccountId]` into an XCM MultiLocation
+	pub struct AccountIdToMultiLocation<AccountId>(PhantomData<AccountId>);
+	impl<AccountId> Convert<AccountId, MultiLocation> for AccountIdToMultiLocation<AccountId>
+	where
+		AccountId: Into<[u8; 32]>,
+	{
+		fn convert(account: AccountId) -> MultiLocation {
+			X1(AccountId32 {
+				network: None,
+				id: account.into(),
+			})
+			.into()
+		}
 	}
 }

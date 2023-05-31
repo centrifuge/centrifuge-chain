@@ -25,8 +25,10 @@ pub const BOB: [u8; 32] = [5u8; 32];
 /// It must be one that doesn't collide with any other in use.
 pub const PARA_ID_SIBLING: u32 = 3000;
 
-/// The asset id attributed to DOT
+/// The test asset id attributed to DOT
 pub const DOT_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(91);
+/// The test asset id attributed to AUSD
+pub const AUSD_ASSET_ID: CurrencyId = CurrencyId::ForeignAsset(42);
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
@@ -111,7 +113,7 @@ pub fn ausd(amount: Balance) -> Balance {
 }
 
 pub fn dot(amount: Balance) -> Balance {
-	amount * dollar(currency_decimals::KSM)
+	amount * dollar(10)
 }
 
 pub fn foreign(amount: Balance, decimals: u32) -> Balance {
@@ -119,19 +121,19 @@ pub fn foreign(amount: Balance, decimals: u32) -> Balance {
 }
 
 pub fn dollar(decimals: u32) -> Balance {
-	10u128.saturating_pow(decimals.into())
+	10u128.saturating_pow(decimals)
 }
 
 pub fn sibling_account() -> AccountId {
-	parachain_account(PARA_ID_SIBLING.into())
+	parachain_account(PARA_ID_SIBLING)
 }
 
 pub fn acala_account() -> AccountId {
-	parachain_account(parachains::polkadot::acala::ID.into())
+	parachain_account(parachains::polkadot::acala::ID)
 }
 
 pub fn centrifuge_account() -> AccountId {
-	parachain_account(parachains::polkadot::centrifuge::ID.into())
+	parachain_account(parachains::polkadot::centrifuge::ID)
 }
 
 fn parachain_account(id: u32) -> AccountId {

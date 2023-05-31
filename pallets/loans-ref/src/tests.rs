@@ -218,11 +218,9 @@ mod create_loan {
 
 	fn config_mocks(pool_id: PoolId) {
 		MockPermissions::mock_has(move |scope, who, role| {
-			let valid = matches!(scope, PermissionScope::Pool(id) if pool_id == id)
+			matches!(scope, PermissionScope::Pool(id) if pool_id == id)
 				&& matches!(role, Role::PoolRole(PoolRole::Borrower))
-				&& who == BORROWER;
-
-			valid
+				&& who == BORROWER
 		});
 		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
 		MockPools::mock_account_for(|pool_id| {
@@ -1149,11 +1147,9 @@ mod write_off_loan {
 
 	fn config_mocks() {
 		MockPermissions::mock_has(move |scope, who, role| {
-			let valid = matches!(scope, PermissionScope::Pool(id) if id == POOL_A)
+			matches!(scope, PermissionScope::Pool(id) if id == POOL_A)
 				&& matches!(role, Role::PoolRole(PoolRole::LoanAdmin))
-				&& who == LOAN_ADMIN;
-
-			valid
+				&& who == LOAN_ADMIN
 		});
 	}
 
@@ -1728,10 +1724,9 @@ mod policy {
 
 	fn config_mocks(pool_id: PoolId) {
 		MockPermissions::mock_has(move |scope, who, role| {
-			let valid = matches!(scope, PermissionScope::Pool(id) if pool_id == id)
+			matches!(scope, PermissionScope::Pool(id) if pool_id == id)
 				&& matches!(role, Role::PoolRole(PoolRole::PoolAdmin))
-				&& who == POOL_ADMIN;
-			valid
+				&& who == POOL_ADMIN
 		});
 		MockPools::mock_pool_exists(|pool_id| pool_id == POOL_A);
 		MockPrices::mock_get(|id| {

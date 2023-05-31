@@ -19,7 +19,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Pallet, Storage},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>},
 	}
@@ -103,9 +103,7 @@ impl FindAuthor<AccountId> for OneAuthor {
 }
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
-	type FilterUncle = ();
 	type FindAuthor = OneAuthor;
-	type UncleGenerations = ();
 }
 
 pub struct TestExternalitiesBuilder {}

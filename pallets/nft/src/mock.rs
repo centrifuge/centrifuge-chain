@@ -158,9 +158,7 @@ impl FindAuthor<u64> for AuthorGiven {
 // Implement Substrate FRAME authorship pallet for the mock runtime
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
-	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
-	type UncleGenerations = ();
 }
 
 // Implement FRAME timestamp pallet configuration trait for the mock runtime
@@ -227,14 +225,10 @@ impl PalletNftConfig for Runtime {
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
+#[derive(Default)]
 pub struct TestExternalitiesBuilder {}
 
 // Default trait implementation for test externalities builder
-impl Default for TestExternalitiesBuilder {
-	fn default() -> Self {
-		Self {}
-	}
-}
 
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
