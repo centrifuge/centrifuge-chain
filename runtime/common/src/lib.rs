@@ -282,25 +282,18 @@ pub mod oracle {
 
 	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
 
-	/// Combine values choosing the median.
-	pub struct MedianOracleValue;
+	/// Always choose the last updated value in case of several values.
+	pub struct LastOracleValue;
 
-	impl CombineData<PriceId, OracleValue> for MedianOracleValue {
+	impl CombineData<PriceId, OracleValue> for LastOracleValue {
 		fn combine_data(
 			_: &PriceId,
-			mut values: Vec<OracleValue>,
-			pre_value: Option<OracleValue>,
+			values: Vec<OracleValue>,
+			_: Option<OracleValue>,
 		) -> Option<OracleValue> {
-			let count = values.len();
-			let mid_index = count / 2;
-
-			if count == 0 {
-				pre_value
-			} else {
-				let (_, value, _) =
-					values.select_nth_unstable_by(mid_index, |a, b| a.value.cmp(&b.value));
-				Some(value.clone())
-			}
+			values
+				.into_iter()
+				.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
 		}
 	}
 

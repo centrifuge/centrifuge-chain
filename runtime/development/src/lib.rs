@@ -1314,7 +1314,7 @@ impl pallet_membership::Config for Runtime {
 }
 
 impl orml_oracle::Config for Runtime {
-	type CombineData = runtime_common::oracle::MedianOracleValue;
+	type CombineData = runtime_common::oracle::LastOracleValue;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type Members = runtime_common::oracle::MembersWithBenchmarkSupport<PriceOracleMembership>;
 	type OnNewData = PriceCollector;
