@@ -32,6 +32,7 @@ use cfg_types::{
 	consts::pools::*,
 	fee_keys::FeeKey,
 	fixed_point::Rate,
+	ids::PRICE_ORACLE_PALLET_ID,
 	locations::Location,
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
@@ -1291,12 +1292,12 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxActiveLoansPerPool: u32 = 50;
+	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxHasDispatchedSize: u32 = 1;
-	pub const MaxPools: u32 = 50;
+	pub const MaxPoolsWithExternalPrices: u32 = 50;
 	pub const MaxPriceOracleMembers: u32 = 10;
-	pub RootOperatorOraclePrice: AccountId = PalletId(*b"orac_pri").into_account_truncating();
+	pub RootOperatorOraclePrice: AccountId = PRICE_ORACLE_PALLET_ID.into_account_truncating();
 }
 
 impl pallet_membership::Config for Runtime {
@@ -1313,7 +1314,7 @@ impl pallet_membership::Config for Runtime {
 }
 
 impl orml_oracle::Config for Runtime {
-	type CombineData = runtime_common::oracle::LastOracleValue;
+	type CombineData = runtime_common::oracle::MedianOracleValue;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type Members = runtime_common::oracle::MembersWithBenchmarkSupport<PriceOracleMembership>;
 	type OnNewData = PriceCollector;
@@ -1331,7 +1332,7 @@ impl pallet_data_collector::Config for Runtime {
 	type DataId = PriceId;
 	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
-	type MaxCollections = MaxPools;
+	type MaxCollections = MaxPoolsWithExternalPrices;
 	type Moment = Moment;
 }
 

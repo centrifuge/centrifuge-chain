@@ -277,29 +277,35 @@ pub mod xcm {
 pub mod oracle {
 	use cfg_primitives::types::{AccountId, Balance, Moment, PriceId};
 	use frame_support::traits::SortedMembers;
-	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
-	use sp_runtime::DispatchResult;
+	use orml_traits::{CombineData, DataProviderExtended};
 	use sp_std::{marker::PhantomData, vec::Vec};
 
 	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
 
-	/// Always choose the last updated value in case of several values.
-	pub struct LastOracleValue;
+	/// Combine values choosing the median.
+	pub struct MedianOracleValue;
 
-	impl CombineData<PriceId, OracleValue> for LastOracleValue {
+	impl CombineData<PriceId, OracleValue> for MedianOracleValue {
 		fn combine_data(
 			_: &PriceId,
-			values: Vec<OracleValue>,
-			_: Option<OracleValue>,
+			mut values: Vec<OracleValue>,
+			pre_value: Option<OracleValue>,
 		) -> Option<OracleValue> {
-			values
-				.into_iter()
-				.max_by(|v1, v2| v1.timestamp.cmp(&v2.timestamp))
+			let count = values.len();
+			let mid_index = count / 2;
+
+			if count == 0 {
+				pre_value
+			} else {
+				let (_, value, _) =
+					values.select_nth_unstable_by(mid_index, |a, b| a.value.cmp(&b.value));
+				Some(value.clone())
+			}
 		}
 	}
 
 	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
-	/// This aux type is forced because of https://github.com/open-web3-stack/open-runtime-module-library/issues/904
+	/// This aux type is forced because of <https://github.com/open-web3-stack/open-runtime-module-library/issues/904>
 	/// and can be removed once they fix this.
 	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
 
@@ -325,8 +331,8 @@ pub mod oracle {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<OrmlOracle: DataProvider<PriceId, Balance>> DataProvider<PriceId, Balance>
-		for DataProviderBridge<OrmlOracle>
+	impl<OrmlOracle: orml_traits::DataProvider<PriceId, Balance>>
+		orml_traits::DataProvider<PriceId, Balance> for DataProviderBridge<OrmlOracle>
 	{
 		fn get(key: &PriceId) -> Option<Balance> {
 			OrmlOracle::get(key)
@@ -334,24 +340,26 @@ pub mod oracle {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<OrmlOracle: DataFeeder<PriceId, Balance, AccountId>>
-		DataFeeder<PriceId, Balance, AccountId> for DataProviderBridge<OrmlOracle>
+	impl<OrmlOracle: orml_traits::DataFeeder<PriceId, Balance, AccountId>>
+		orml_traits::DataFeeder<PriceId, Balance, AccountId> for DataProviderBridge<OrmlOracle>
 	{
-		fn feed_value(who: AccountId, key: PriceId, value: Balance) -> DispatchResult {
+		fn feed_value(who: AccountId, key: PriceId, value: Balance) -> sp_runtime::DispatchResult {
 			OrmlOracle::feed_value(who, key, value)
 		}
 	}
 
 	/// This is used for feeding the oracle from the data-collector in
 	/// benchmarks.
-	/// It can be removed once https://github.com/open-web3-stack/open-runtime-module-library/issues/919 is solved.
+	/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/919> is solved.
 	pub struct MembersWithBenchmarkSupport<Members>(PhantomData<Members>);
 
 	impl<Members: SortedMembers<AccountId>> SortedMembers<AccountId>
 		for MembersWithBenchmarkSupport<Members>
 	{
 		fn sorted_members() -> Vec<AccountId> {
+			#[allow(unused_mut)]
 			let mut vec = Members::sorted_members();
+
 			#[cfg(feature = "runtime-benchmarks")]
 			vec.push(pallet_data_collector::benchmark_account_id());
 			vec

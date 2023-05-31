@@ -26,9 +26,9 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::data::{DataCollection, DataInsert, DataRegistry};
+	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
-	use orml_traits::{DataFeeder, DataProviderExtended, OnNewData};
+	use orml_traits::{DataProviderExtended, OnNewData};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
 		DispatchError,
@@ -177,11 +177,13 @@ pub mod pallet {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<T: Config<I>, I: 'static> DataInsert<T::DataId, T::Data> for Pallet<T, I>
+	impl<T: Config<I>, I: 'static> cfg_traits::data::DataInsert<T::DataId, T::Data> for Pallet<T, I>
 	where
-		T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
+		T::DataProvider: orml_traits::DataFeeder<T::DataId, T::Data, T::AccountId>,
 	{
-		fn insert(data_id: T::DataId, data: T::Data) -> DispatchResult {
+		fn insert(data_id: T::DataId, data: T::Data) -> sp_runtime::DispatchResult {
+			use orml_traits::DataFeeder;
+
 			T::DataProvider::feed_value(benchmark_account_id(), data_id, data)
 		}
 	}
