@@ -542,7 +542,11 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Utility(pallet_utility::Call::batch{..})
 			),
 			ProxyType::ProxyManagement => matches!(c, RuntimeCall::Proxy(..)),
-			ProxyType::KeystoreManagement => false,
+			ProxyType::KeystoreManagement => matches!(
+				c,
+				RuntimeCall::Keystore(pallet_keystore::Call::add_keys { .. })
+					| RuntimeCall::Keystore(pallet_keystore::Call::revoke_keys { .. })
+			),
 			ProxyType::PodOperation => matches!(
 				c,
 				RuntimeCall::Uniques(..)
@@ -1524,6 +1528,21 @@ impl<
 			))
 		}
 	}
+}
+
+parameter_types! {
+	pub const MaxKeys: u32 = 10;
+	pub const DefaultKeyDeposit: Balance = 100 * CFG;
+}
+
+impl pallet_keystore::pallet::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+	type Balance = Balance;
+	type Currency = Balances;
+	type DefaultKeyDeposit = DefaultKeyDeposit;
+	type MaxKeys = MaxKeys;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = weights::pallet_keystore::WeightInfo<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
