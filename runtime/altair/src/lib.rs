@@ -1542,7 +1542,7 @@ impl pallet_keystore::pallet::Config for Runtime {
 	type DefaultKeyDeposit = DefaultKeyDeposit;
 	type MaxKeys = MaxKeys;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = weights::pallet_keystore::WeightInfo<Runtime>;
+	type WeightInfo = ();
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -1603,6 +1603,7 @@ construct_runtime!(
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
 		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 104,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 105,
+		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 106,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -2123,6 +2124,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+			list_benchmark!(list, extra, pallet_keystore, Keystore);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2192,6 +2194,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
+			add_benchmark!(params, batches, palllet_keystore, Keystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
