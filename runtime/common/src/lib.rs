@@ -360,6 +360,7 @@ pub mod oracle {
 
 			fn contains(_: &AccountId) -> bool {
 				// We want to mock the member permission for benchmarks
+				// Allowing any member
 				true
 			}
 		}

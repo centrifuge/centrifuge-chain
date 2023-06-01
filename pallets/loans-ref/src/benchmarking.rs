@@ -13,7 +13,7 @@
 
 use cfg_primitives::CFG;
 use cfg_traits::{
-	data::{DataCollection, DataInsert, DataRegistry},
+	data::{DataCollection, DataRegistry},
 	InterestAccrual, Permissions, PoolBenchmarkHelper,
 };
 use cfg_types::{
@@ -29,6 +29,7 @@ use frame_support::{
 	},
 };
 use frame_system::RawOrigin;
+use orml_traits::DataFeeder;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Get, One, Zero};
 use sp_std::{time::Duration, vec};
@@ -75,7 +76,7 @@ where
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	T::PriceRegistry: DataInsert<T::PriceId, T::Balance>,
+	T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 {
 	#[cfg(test)]
 	fn config_mocks() {
@@ -91,7 +92,7 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
-		MockPrices::mock_insert(|_, _| Ok(()));
+		MockPrices::mock_feed_value(|_, _, _| Ok(()));
 		MockPrices::mock_register_id(|_, _| Ok(()));
 		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
 	}
@@ -231,7 +232,8 @@ where
 
 		for i in 0..MaxCollectionSizeOf::<T>::get() {
 			let price_id = i.into();
-			T::PriceRegistry::insert(price_id, (i + 100).into()).unwrap();
+			let feeder = account("feeder", 0, 0);
+			T::PriceRegistry::feed_value(feeder, price_id, (i + 100).into()).unwrap();
 			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
 		}
 
@@ -255,7 +257,7 @@ benchmarks! {
 		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-		T::PriceRegistry: DataInsert<T::PriceId, T::Balance>,
+		T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
 	}
 
 	create {

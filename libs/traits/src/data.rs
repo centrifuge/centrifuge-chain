@@ -40,12 +40,6 @@ pub trait DataRegistry<DataId, CollectionId> {
 	fn unregister_id(data_id: &DataId, collection_id: &CollectionId) -> DispatchResult;
 }
 
-/// Abstraction to insert data in a registry
-pub trait DataInsert<DataId, InputData> {
-	/// Insert a data in the registry
-	fn insert(data_id: DataId, data: InputData) -> DispatchResult;
-}
-
 /// Abstration to represent a collection of data in memory
 pub trait DataCollection<DataId> {
 	/// Represents a data
