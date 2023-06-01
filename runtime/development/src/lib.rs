@@ -1292,15 +1292,17 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxActiveLoansPerPool: u32 = 50;
+	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxPriceOracleMembers: u32 = 10;
-	//#[cfg(not(feature = "runtime-benchmarks"))]
-	//pub const MaxHasDispatchedSize: u32 = MaxPriceOracleMembers::get();
-	// This can be removed once
-	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
-	#[cfg(feature = "runtime-benchmarks")]
-	pub const MaxHasDispatchedSize: u32 = MaxActiveLoansPerPool::get();
+	pub const MaxHasDispatchedSize: u32 = if cfg!(feature = "runtime-benchmarks") {
+		// This can be removed once
+		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+		MaxActiveLoansPerPool::get()
+	} else {
+		MaxPriceOracleMembers::get()
+	};
+
 	pub const MaxPoolsWithExternalPrices: u32 = 50;
 	pub RootOperatorOraclePrice: AccountId = PRICE_ORACLE_PALLET_ID.into_account_truncating();
 }
