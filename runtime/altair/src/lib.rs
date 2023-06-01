@@ -1532,7 +1532,7 @@ impl<
 
 parameter_types! {
 	pub const MaxKeys: u32 = 10;
-	pub const DefaultKeyDeposit: Balance = 100 * CFG;
+	pub const DefaultKeyDeposit: Balance = 100 * AIR;
 }
 
 impl pallet_keystore::pallet::Config for Runtime {
