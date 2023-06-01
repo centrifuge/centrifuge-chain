@@ -2194,7 +2194,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
-			add_benchmark!(params, batches, palllet_keystore, Keystore);
+			add_benchmark!(params, batches, pallet_keystore, Keystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
