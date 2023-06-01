@@ -31,7 +31,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Get, One, Zero};
-use sp_std::{time::Duration, vec};
+use sp_std::{time::Duration, vec, vec::Vec};
 
 use super::{
 	loan::LoanInfo,
@@ -80,6 +80,7 @@ where
 	#[cfg(test)]
 	fn config_mocks() {
 		use cfg_mocks::pallet_mock_data::util::MockDataCollection;
+		use sp_std::{iter::Cloned, slice::Iter};
 
 		use crate::mock::{MockPermissions, MockPools, MockPrices};
 
@@ -91,7 +92,7 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
-		MockPrices::mock_insert(|_, _| Ok(()));
+		MockPrices::mock_insert_list(|_: Cloned<Iter<'_, _>>| Ok(()));
 		MockPrices::mock_register_id(|_, _| Ok(()));
 		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
 	}
@@ -229,9 +230,16 @@ where
 			T::InterestAccrual::reference_rate(rate).unwrap();
 		}
 
-		for i in 0..MaxCollectionSizeOf::<T>::get() {
-			let price_id = T::PriceId::from(i + 1);
-			T::PriceRegistry::insert(price_id, (i + 100).into()).unwrap();
+		// This can be simplified once
+		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+		// allowing multiple insertions for the same account.
+		let prices = (0..MaxCollectionSizeOf::<T>::get())
+			.into_iter()
+			.map(|i| (i.into(), (i as u128 + 100).into()))
+			.collect::<Vec<(T::PriceId, T::Balance)>>();
+
+		T::PriceRegistry::insert_list(prices.iter().cloned()).unwrap();
+		for (price_id, _) in prices {
 			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
 		}
 

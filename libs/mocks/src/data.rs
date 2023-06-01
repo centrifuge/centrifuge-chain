@@ -48,8 +48,10 @@ pub mod pallet {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_insert(f: impl Fn(T::DataId, T::InputData) -> DispatchResult + 'static) {
-			register_call!(move |(a, b)| f(a, b));
+		pub fn mock_insert_list<I: Iterator<Item = (T::DataId, T::Data)>>(
+			f: impl Fn(I) -> DispatchResult + 'static,
+		) {
+			register_call!(f);
 		}
 	}
 
@@ -77,8 +79,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> DataInsert<T::DataId, T::InputData> for Pallet<T> {
-		fn insert(a: T::DataId, b: T::InputData) -> DispatchResult {
-			execute_call!((a, b))
+		fn insert_list(a: impl Iterator<Item = (T::DataId, T::InputData)>) -> DispatchResult {
+			execute_call!(a)
 		}
 	}
 

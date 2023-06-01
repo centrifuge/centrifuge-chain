@@ -275,8 +275,7 @@ pub mod xcm {
 }
 
 pub mod oracle {
-	use cfg_primitives::types::{AccountId, Balance, Moment, PriceId};
-	use frame_support::traits::SortedMembers;
+	use cfg_primitives::types::{Balance, Moment, PriceId};
 	use orml_traits::{CombineData, DataProviderExtended};
 	use sp_std::{marker::PhantomData, vec::Vec};
 
@@ -324,38 +323,45 @@ pub mod oracle {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	impl<OrmlOracle: orml_traits::DataProvider<PriceId, Balance>>
-		orml_traits::DataProvider<PriceId, Balance> for DataProviderBridge<OrmlOracle>
-	{
-		fn get(key: &PriceId) -> Option<Balance> {
-			OrmlOracle::get(key)
+	pub mod benchmarks_util {
+		use cfg_primitives::types::AccountId;
+		use frame_support::traits::{Get, SortedMembers};
+		use orml_traits::{DataFeeder, DataProvider};
+		use sp_runtime::DispatchResult;
+
+		use super::*;
+
+		impl<OrmlOracle: DataProvider<PriceId, Balance>> DataProvider<PriceId, Balance>
+			for DataProviderBridge<OrmlOracle>
+		{
+			fn get(key: &PriceId) -> Option<Balance> {
+				OrmlOracle::get(key)
+			}
 		}
-	}
 
-	#[cfg(feature = "runtime-benchmarks")]
-	impl<OrmlOracle: orml_traits::DataFeeder<PriceId, Balance, AccountId>>
-		orml_traits::DataFeeder<PriceId, Balance, AccountId> for DataProviderBridge<OrmlOracle>
-	{
-		fn feed_value(who: AccountId, key: PriceId, value: Balance) -> sp_runtime::DispatchResult {
-			OrmlOracle::feed_value(who, key, value)
+		impl<OrmlOracle: DataFeeder<PriceId, Balance, AccountId>>
+			DataFeeder<PriceId, Balance, AccountId> for DataProviderBridge<OrmlOracle>
+		{
+			fn feed_value(who: AccountId, key: PriceId, value: Balance) -> DispatchResult {
+				OrmlOracle::feed_value(who, key, value)
+			}
 		}
-	}
 
-	/// This is used for feeding the oracle from the data-collector in
-	/// benchmarks.
-	/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/919> is solved.
-	pub struct MembersWithBenchmarkSupport<Members>(PhantomData<Members>);
+		/// This is used for feeding the oracle from the data-collector in
+		/// benchmarks. The number of benchmarking users should be the same
+		/// as possible prices.
+		/// It can be removed once <https://github.com/open-web3-stack/open-runtime-module-library/issues/919> is solved.
+		pub struct Members<Count: Get<u32>>(PhantomData<Count>);
 
-	impl<Members: SortedMembers<AccountId>> SortedMembers<AccountId>
-		for MembersWithBenchmarkSupport<Members>
-	{
-		fn sorted_members() -> Vec<AccountId> {
-			#[allow(unused_mut)]
-			let mut vec = Members::sorted_members();
-
-			#[cfg(feature = "runtime-benchmarks")]
-			vec.push(pallet_data_collector::benchmark_account_id());
-			vec
+		impl<Count: Get<u32>> SortedMembers<AccountId> for Members<Count> {
+			fn sorted_members() -> Vec<AccountId> {
+				let mut members = (0..Count::get())
+					.into_iter()
+					.map(|i| pallet_data_collector::benchmark_account_id(i))
+					.collect::<Vec<_>>();
+				members.sort();
+				members
+			}
 		}
 	}
 }

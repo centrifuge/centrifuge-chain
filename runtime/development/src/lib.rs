@@ -1294,7 +1294,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
 	pub const MaxWriteOffPolicySize: u32 = 10;
-	pub const MaxHasDispatchedSize: u32 = 1;
+	pub const MaxHasDispatchedSize: u32 = 1000;
 	pub const MaxPoolsWithExternalPrices: u32 = 50;
 	pub const MaxPriceOracleMembers: u32 = 10;
 	pub RootOperatorOraclePrice: AccountId = PRICE_ORACLE_PALLET_ID.into_account_truncating();
@@ -1316,7 +1316,12 @@ impl pallet_membership::Config for Runtime {
 impl orml_oracle::Config for Runtime {
 	type CombineData = runtime_common::oracle::LastOracleValue;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
-	type Members = runtime_common::oracle::MembersWithBenchmarkSupport<PriceOracleMembership>;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type Members = PriceOracleMembership;
+	// The benchmark members can be removed once
+	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/919> be solved.
+	#[cfg(feature = "runtime-benchmarks")]
+	type Members = runtime_common::oracle::benchmarks_util::Members<MaxActiveLoansPerPool>;
 	type OnNewData = PriceCollector;
 	type OracleKey = PriceId;
 	type OracleValue = Balance;

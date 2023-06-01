@@ -43,7 +43,12 @@ pub trait DataRegistry<DataId, CollectionId> {
 /// Abstraction to insert data in a registry
 pub trait DataInsert<DataId, InputData> {
 	/// Insert a data in the registry
-	fn insert(data_id: DataId, data: InputData) -> DispatchResult;
+	fn insert(data_id: DataId, data: InputData) -> DispatchResult {
+		Self::insert_list([(data_id, data)].into_iter())
+	}
+
+	/// Insert a data in the registry
+	fn insert_list(list: impl Iterator<Item = (DataId, InputData)>) -> DispatchResult;
 }
 
 /// Abstration to represent a collection of data in memory

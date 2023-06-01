@@ -181,16 +181,25 @@ pub mod pallet {
 	where
 		T::DataProvider: orml_traits::DataFeeder<T::DataId, T::Data, T::AccountId>,
 	{
-		fn insert(data_id: T::DataId, data: T::Data) -> sp_runtime::DispatchResult {
+		fn insert_list(
+			list: impl Iterator<Item = (T::DataId, T::Data)>,
+		) -> sp_runtime::DispatchResult {
 			use orml_traits::DataFeeder;
 
-			T::DataProvider::feed_value(benchmark_account_id(), data_id, data)
+			// This can be simplified if https://github.com/open-web3-stack/open-runtime-module-library/pull/920
+			// is merged
+			for (i, (data_id, data)) in list.enumerate() {
+				let account = benchmark_account_id(i as u32);
+				T::DataProvider::feed_value(account, data_id, data)?;
+			}
+
+			Ok(())
 		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	pub fn benchmark_account_id<AccountId: codec::Decode>() -> AccountId {
-		frame_benchmarking::account("inserter", 0, 0)
+	pub fn benchmark_account_id<AccountId: codec::Decode>(i: u32) -> AccountId {
+		frame_benchmarking::account("inserter", i, 0)
 	}
 
 	/// A collection cached in memory
