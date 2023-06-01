@@ -46,7 +46,7 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 }
 
 impl<T: Config> DataInsert<T::PriceId, T::Balance> for NoPriceRegistry<T> {
-	fn insert_list(_: impl IntoIterator<Item = (T::PriceId, T::Balance)>) -> DispatchResult {
+	fn insert(_: T::PriceId, _: T::Balance) -> DispatchResult {
 		Err(DEFAULT_ERR)
 	}
 }

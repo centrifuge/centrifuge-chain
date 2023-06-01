@@ -1292,11 +1292,11 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxActiveLoansPerPool: u32 = 1000;
+	pub const MaxActiveLoansPerPool: u32 = 50;
 	pub const MaxWriteOffPolicySize: u32 = 10;
-	pub const MaxHasDispatchedSize: u32 = 1000;
-	pub const MaxPoolsWithExternalPrices: u32 = 50;
 	pub const MaxPriceOracleMembers: u32 = 10;
+	pub const MaxHasDispatchedSize: u32 = MaxPriceOracleMembers::get();
+	pub const MaxPoolsWithExternalPrices: u32 = 50;
 	pub RootOperatorOraclePrice: AccountId = PRICE_ORACLE_PALLET_ID.into_account_truncating();
 }
 

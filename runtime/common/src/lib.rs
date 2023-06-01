@@ -355,12 +355,12 @@ pub mod oracle {
 
 		impl<Count: Get<u32>> SortedMembers<AccountId> for Members<Count> {
 			fn sorted_members() -> Vec<AccountId> {
-				let mut members = (0..Count::get())
-					.into_iter()
-					.map(|i| pallet_data_collector::benchmark_account_id(i))
-					.collect::<Vec<_>>();
-				members.sort();
-				members
+				Vec::default()
+			}
+
+			fn contains(_: &AccountId) -> bool {
+				// We want to mock the member permission for benchmarks
+				true
 			}
 		}
 	}

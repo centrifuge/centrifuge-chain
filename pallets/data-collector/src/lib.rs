@@ -28,10 +28,10 @@ mod tests;
 pub mod pallet {
 	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
-	use orml_traits::{DataProviderExtended, OnNewData};
+	use orml_traits::{DataFeeder, DataProviderExtended, OnNewData};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
-		DispatchError,
+		DispatchError, DispatchResult,
 	};
 
 	type DataValueOf<T, I> = (<T as Config<I>>::Data, <T as Config<I>>::Moment);
@@ -176,30 +176,17 @@ pub mod pallet {
 		}
 	}
 
-	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config<I>, I: 'static> cfg_traits::data::DataInsert<T::DataId, T::Data> for Pallet<T, I>
 	where
 		T::DataProvider: orml_traits::DataFeeder<T::DataId, T::Data, T::AccountId>,
+		T::AccountId: TryFrom<&'static [u8]>,
 	{
-		fn insert_list(
-			list: impl Iterator<Item = (T::DataId, T::Data)>,
-		) -> sp_runtime::DispatchResult {
-			use orml_traits::DataFeeder;
-
-			// This can be simplified if https://github.com/open-web3-stack/open-runtime-module-library/pull/920
-			// is merged
-			for (i, (data_id, data)) in list.enumerate() {
-				let account = benchmark_account_id(i as u32);
-				T::DataProvider::feed_value(account, data_id, data)?;
-			}
-
-			Ok(())
+		fn insert(data_id: T::DataId, data: T::Data) -> DispatchResult {
+			let account_id = T::AccountId::try_from(b"").map_err(|_| {
+				DispatchError::Other("Default account for inserting can not be created")
+			})?;
+			T::DataProvider::feed_value(account_id, data_id, data)
 		}
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	pub fn benchmark_account_id<AccountId: codec::Decode>(i: u32) -> AccountId {
-		frame_benchmarking::account("inserter", i, 0)
 	}
 
 	/// A collection cached in memory
