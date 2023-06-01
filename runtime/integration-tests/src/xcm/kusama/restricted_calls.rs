@@ -50,6 +50,7 @@ use crate::xcm::kusama::{
 /// through XCM fail because the underlying CurrencyIdConvert doesn't handle
 /// Tranche tokens.
 pub mod blocked {
+	use cfg_utils::vec_to_fixed_array;
 	use sp_runtime::{traits::ConstU32, WeakBoundedVec};
 	use xcm::{latest::MultiAssets, VersionedMultiAsset, VersionedMultiAssets};
 
@@ -71,14 +72,14 @@ pub mod blocked {
 							X2(
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
-									network: NetworkId::Any,
-									id: BOB.into(),
+									network: None,
+									id: BOB,
 								}
 							)
 						)
 						.into()
 					),
-					WeightLimit::Limited(8_000_000_000_000),
+					WeightLimit::Limited(8_000_000_000_000.into()),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::NotCrossChainTransferableCurrency
 			);
@@ -96,7 +97,14 @@ pub mod blocked {
 			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 		let tranche_location = MultiLocation {
 			parents: 1,
-			interior: X3(Parachain(123), PalletInstance(42), GeneralKey(tranche_id)),
+			interior: X3(
+				Parachain(123),
+				PalletInstance(42),
+				GeneralKey {
+					length: tranche_id.len() as u8,
+					data: vec_to_fixed_array(tranche_id.to_vec()),
+				},
+			),
 		};
 		let tranche_multi_asset = VersionedMultiAsset::from(MultiAsset::from((
 			AssetId::Concrete(tranche_location),
@@ -114,14 +122,14 @@ pub mod blocked {
 							X2(
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
-									network: NetworkId::Any,
-									id: BOB.into(),
+									network: None,
+									id: BOB,
 								}
 							)
 						)
 						.into()
 					),
-					WeightLimit::Limited(8_000_000_000_000),
+					WeightLimit::Limited(8_000_000_000_000.into()),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
 			);
@@ -137,7 +145,14 @@ pub mod blocked {
 			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 		let tranche_location = MultiLocation {
 			parents: 1,
-			interior: X3(Parachain(123), PalletInstance(42), GeneralKey(tranche_id)),
+			interior: X3(
+				Parachain(123),
+				PalletInstance(42),
+				GeneralKey {
+					length: tranche_id.len() as u8,
+					data: vec_to_fixed_array(tranche_id.to_vec()),
+				},
+			),
 		};
 		let tranche_multi_asset = MultiAsset::from((
 			AssetId::Concrete(tranche_location),
@@ -158,14 +173,14 @@ pub mod blocked {
 							X2(
 								Parachain(PARA_ID_SIBLING),
 								Junction::AccountId32 {
-									network: NetworkId::Any,
-									id: BOB.into(),
+									network: None,
+									id: BOB,
 								}
 							)
 						)
 						.into()
 					),
-					WeightLimit::Limited(8_000_000_000_000),
+					WeightLimit::Limited(8_000_000_000_000.into()),
 				),
 				orml_xtokens::Error::<altair_runtime::Runtime>::XcmExecutionFailed
 			);

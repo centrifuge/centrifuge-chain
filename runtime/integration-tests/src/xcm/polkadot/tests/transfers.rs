@@ -44,10 +44,11 @@ use xcm_emulator::TestExt;
 use super::register_dot;
 use crate::xcm::polkadot::{
 	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE, BOB,
-		DOT_ASSET_ID, PARA_ID_SIBLING,
+		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
 	},
 	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+	tests::register_ausd,
 };
 
 /*
@@ -71,36 +72,40 @@ fn transfer_cfg_to_sibling() {
 	let transfer_amount = cfg(5);
 	let cfg_in_sibling = CurrencyId::ForeignAsset(12);
 
+	// CFG Metadata
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 18,
+		name: "Centrifuge".into(),
+		symbol: "CFG".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: Some(VersionedMultiLocation::V3(MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::polkadot::centrifuge::ID),
+				general_key(parachains::polkadot::centrifuge::CFG_KEY),
+			),
+		))),
+		additional: CustomMetadata::default(),
+	};
+
 	Centrifuge::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&sibling_account()), 0);
+
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta.clone(),
+			Some(CurrencyId::Native),
+		));
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(
-			OrmlTokens::free_balance(cfg_in_sibling.clone(), &BOB.into()),
-			0
-		);
+		assert_eq!(OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()), 0);
 
-		// Register CFG as foreign asset in the sibling parachain
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 18,
-			name: "Centrifuge".into(),
-			symbol: "CFG".into(),
-			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::polkadot::centrifuge::ID),
-					general_key(parachains::polkadot::centrifuge::CFG_KEY),
-				),
-			))),
-			additional: CustomMetadata::default(),
-		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
-			Some(cfg_in_sibling.clone())
+			Some(cfg_in_sibling)
 		));
 	});
 
@@ -115,14 +120,14 @@ fn transfer_cfg_to_sibling() {
 					X2(
 						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
+							network: None,
+							id: BOB,
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -142,7 +147,7 @@ fn transfer_cfg_to_sibling() {
 		assert_eq!(current_balance, transfer_amount - fee(18));
 
 		// Sanity check for the actual amount BOB ends up with
-		assert_eq!(current_balance, 4991917600000000000);
+		assert_eq!(current_balance, 4991987200000000000);
 	});
 }
 
@@ -168,7 +173,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 	Sibling::execute_with(|| {
 		assert_eq!(Balances::free_balance(&centrifuge_account()), 0);
 		assert_eq!(
-			OrmlTokens::free_balance(cfg_in_sibling.clone(), &BOB.into()),
+			OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()),
 			bob_initial_balance
 		);
 	});
@@ -176,7 +181,7 @@ fn transfer_cfg_sibling_to_centrifuge() {
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(BOB.into()),
-			cfg_in_sibling.clone(),
+			cfg_in_sibling,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -184,14 +189,14 @@ fn transfer_cfg_sibling_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: ALICE.into(),
+							network: None,
+							id: ALICE,
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Bobs's balance is initial balance - amount transferred
@@ -215,44 +220,37 @@ fn transfer_ausd_to_centrifuge() {
 	TestNet::reset();
 
 	let alice_initial_balance = ausd(10);
-	let bob_initial_balance = ausd(10);
 	let transfer_amount = ausd(7);
 
 	Acala::execute_with(|| {
+		register_ausd();
+
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::AUSD,
+			AUSD_ASSET_ID,
 			&ALICE.into(),
 			alice_initial_balance
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &centrifuge_account()),
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &centrifuge_account()),
 			0
 		);
 	});
 
 	Centrifuge::execute_with(|| {
-		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::AUSD,
-			&BOB.into(),
-			bob_initial_balance
-		));
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
-			bob_initial_balance,
-		);
+		register_ausd();
 
-		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::AUSD,
-			&acala_account().into(),
-			bob_initial_balance
-		));
+		assert_eq!(OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()), 0,);
 	});
 
 	Acala::execute_with(|| {
+		assert_eq!(
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
+			ausd(10),
+		);
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(ALICE.into()),
-			CurrencyId::AUSD,
+			AUSD_ASSET_ID,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -260,25 +258,25 @@ fn transfer_ausd_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
+							network: None,
+							id: BOB,
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &ALICE.into()),
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
 
 		// Verify that the amount transferred is now part of the centrifuge parachain
 		// account here
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &centrifuge_account()),
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &centrifuge_account()),
 			transfer_amount
 		);
 	});
@@ -286,48 +284,51 @@ fn transfer_ausd_to_centrifuge() {
 	Centrifuge::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
-			bob_initial_balance + transfer_amount - ausd_fee()
-		);
-
-		// Sanity check the actual balance
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
-			16991917600000
+			OrmlTokens::free_balance(AUSD_ASSET_ID, &BOB.into()),
+			transfer_amount - ausd_fee()
 		);
 	});
 }
 
 #[test]
 fn transfer_dot_from_relay_chain() {
-	let transfer_amount: Balance = dot(1);
+	let alice_initial_dot = dot(10);
+	let transfer_amount: Balance = dot(3);
 
-	Centrifuge::execute_with(|| register_dot());
+	Centrifuge::execute_with(|| {
+		register_dot();
+		assert_eq!(OrmlTokens::free_balance(DOT_ASSET_ID, &ALICE.into()), 0);
+	});
 
 	PolkadotNet::execute_with(|| {
+		assert_eq!(
+			polkadot_runtime::Balances::free_balance(&ALICE.into()),
+			alice_initial_dot
+		);
+
 		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
 			polkadot_runtime::RuntimeOrigin::signed(ALICE.into()),
-			Box::new(
-				Parachain(parachains::polkadot::centrifuge::ID)
-					.into()
-					.into()
-			),
+			Box::new(Parachain(parachains::polkadot::centrifuge::ID).into()),
 			Box::new(
 				Junction::AccountId32 {
-					network: NetworkId::Any,
-					id: BOB,
+					network: None,
+					id: ALICE,
 				}
-				.into()
 				.into()
 			),
 			Box::new((Here, transfer_amount).into()),
 			0
 		));
+
+		assert_eq!(
+			polkadot_runtime::Balances::free_balance(&ALICE.into()),
+			alice_initial_dot - transfer_amount
+		);
 	});
 
 	Centrifuge::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(DOT_ASSET_ID, &BOB.into()),
+			OrmlTokens::free_balance(DOT_ASSET_ID, &ALICE.into()),
 			transfer_amount - dot_fee()
 		);
 	});
@@ -335,8 +336,12 @@ fn transfer_dot_from_relay_chain() {
 
 #[test]
 fn transfer_dot_to_relay_chain() {
+	transfer_dot_from_relay_chain();
+
 	Centrifuge::execute_with(|| {
-		register_dot();
+		let alice_initial_dot = OrmlTokens::free_balance(DOT_ASSET_ID, &ALICE.into());
+
+		assert_eq!(alice_initial_dot, dot(3) - dot_fee(),);
 
 		assert_ok!(XTokens::transfer(
 			RuntimeOrigin::signed(ALICE.into()),
@@ -346,20 +351,25 @@ fn transfer_dot_to_relay_chain() {
 				MultiLocation::new(
 					1,
 					X1(Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any,
+						id: ALICE,
+						network: None,
 					})
 				)
 				.into()
 			),
-			WeightLimit::Limited(4_000_000_000)
+			WeightLimit::Unlimited,
 		));
+
+		assert_eq!(
+			OrmlTokens::free_balance(DOT_ASSET_ID, &ALICE.into()),
+			alice_initial_dot - dot(1),
+		);
 	});
 
 	PolkadotNet::execute_with(|| {
 		assert_eq!(
-			polkadot_runtime::Balances::free_balance(&BOB.into()),
-			999578565860
+			polkadot_runtime::Balances::free_balance(&ALICE.into()),
+			79637471000
 		);
 	});
 }
@@ -371,13 +381,13 @@ fn transfer_foreign_sibling_to_centrifuge() {
 	let alice_initial_balance = cfg(10);
 	let sibling_asset_id = CurrencyId::ForeignAsset(1);
 	let asset_location =
-		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), general_key(&vec![0, 1])));
+		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), general_key(&[0, 1])));
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: 18,
 		name: "Sibling Native Token".into(),
 		symbol: "SBLNG".into(),
 		existential_deposit: 1_000_000_000_000,
-		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata {
 			xcm: XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
@@ -390,7 +400,12 @@ fn transfer_foreign_sibling_to_centrifuge() {
 	let transfer_amount = foreign(1, meta.decimals);
 
 	Sibling::execute_with(|| {
-		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0)
+		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0);
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			meta.clone(),
+			Some(CurrencyId::Native),
+		));
 	});
 
 	Centrifuge::execute_with(|| {
@@ -413,14 +428,14 @@ fn transfer_foreign_sibling_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
+							network: None,
+							id: BOB,
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000_000),
+			WeightLimit::Limited(8_000_000_000_000.into()),
 		));
 
 		// Confirm that Alice's balance is initial balance - amount transferred
@@ -460,7 +475,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		name: "Wormhole USDC".into(),
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
-		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata::default(),
 	};
 	let transfer_amount = foreign(12, meta.decimals);
@@ -503,14 +518,14 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 					X2(
 						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
+							network: None,
+							id: BOB,
 						}
 					)
 				)
 				.into()
 			),
-			WeightLimit::Limited(8_000_000_000),
+			WeightLimit::Limited(8_000_000_000.into()),
 		));
 		// Confirm that Alice's balance is initial balance - amount transferred
 		assert_eq!(
@@ -523,15 +538,13 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
 
 		// Sanity check to ensure the calculated is what is expected
-		assert_eq!(bob_balance, 11991918);
+		assert_eq!(bob_balance, 11991988);
 	});
 }
 
 #[test]
 fn test_total_fee() {
-	assert_eq!(cfg_fee(), 8082400000000000);
-	assert_eq!(fee(currency_decimals::AUSD), 8082400000);
-	assert_eq!(fee(currency_decimals::KSM), 8082400000);
+	assert_eq!(cfg_fee(), 8012800000000000);
 }
 
 fn cfg_fee() -> Balance {
@@ -546,9 +559,9 @@ fn fee(decimals: u32) -> Balance {
 	calc_fee(default_per_second(decimals))
 }
 
-// The fee associated with transferring KSM tokens
+// The fee associated with transferring DOT tokens
 fn dot_fee() -> Balance {
-	calc_fee(ksm_per_second())
+	fee(10)
 }
 
 fn calc_fee(fee_per_second: Balance) -> Balance {

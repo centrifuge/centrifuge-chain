@@ -190,9 +190,9 @@ pub enum InvestmentId {
 	},
 }
 
-impl Into<CurrencyId> for InvestmentId {
-	fn into(self) -> CurrencyId {
-		match self {
+impl From<InvestmentId> for CurrencyId {
+	fn from(val: InvestmentId) -> Self {
+		match val {
 			InvestmentId::PoolTranche {
 				pool_id,
 				tranche_id,
@@ -399,8 +399,8 @@ pub(crate) fn fulfillment_of(perc: Perquintill, price: Rate) -> FulfillmentWithP
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on both invest and redeem
 /// side
 pub(crate) fn fulfill_x(fulfillment: FulfillmentWithPrice<Rate>) -> DispatchResult {
-	fulfill_invest_x(fulfillment.clone())?;
-	fulfill_redeem_x(fulfillment.clone())
+	fulfill_invest_x(fulfillment)?;
+	fulfill_redeem_x(fulfillment)
 }
 
 /// Fulfills the given fulfillment for INVESTMENT_0_0 on the investment side

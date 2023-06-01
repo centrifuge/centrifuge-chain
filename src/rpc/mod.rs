@@ -73,7 +73,7 @@ pub fn runtime_error<InnerError: Debug>(
 	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
 		ErrorCode::ServerError(CustomServerError::RuntimeError as i32).code(),
 		message,
-		Some(format!("{:?}", inner_error)),
+		Some(format!("{inner_error:?}")),
 	)))
 }
 

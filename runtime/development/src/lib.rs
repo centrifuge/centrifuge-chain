@@ -19,7 +19,7 @@
 // Allow things like `1 * CFG`
 #![allow(clippy::identity_op)]
 
-use ::xcm::v2::{MultiAsset, MultiLocation};
+use ::xcm::latest::{MultiAsset, MultiLocation};
 pub use cfg_primitives::{
 	constants::*,
 	types::{PoolId, *},
@@ -89,6 +89,7 @@ pub use runtime_common::*;
 use runtime_common::{
 	account_conversion::AccountConverter,
 	fees::{DealWithFees, WeightToFee},
+	xcm::AccountIdToMultiLocation,
 };
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
@@ -341,9 +342,7 @@ parameter_types! {
 // We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = (CollatorSelection,);
-	type FilterUncle = ();
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = UncleGenerations;
 }
 
 parameter_types! {
@@ -453,7 +452,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Timestamp(..) |
 					// Specifically omitting Balances
 					RuntimeCall::CollatorSelection(..) |
-					RuntimeCall::Authorship(..) |
 					RuntimeCall::Session(..) |
 					RuntimeCall::Multisig(..) |
 					// The internal logic prevents upgrading
@@ -1271,8 +1269,8 @@ parameter_types! {
 }
 
 impl pallet_xcm_transactor::Config for Runtime {
-	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
-	type AssetTransactor = xcm::FungiblesTransactor;
+	type AccountIdToMultiLocation = AccountIdToMultiLocation<AccountId>;
+	type AssetTransactor = FungiblesTransactor;
 	type Balance = Balance;
 	type BaseXcmWeight = BaseXcmWeight;
 	type CurrencyId = CurrencyId;
@@ -1280,14 +1278,14 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
 	type HrmpEncoder = moonbeam_relay_encoder::westend::WestendEncoder;
 	type HrmpManipulatorOrigin = EnsureRootOr<HalfOfCouncil>;
-	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
 	type MaxHrmpFee = xcm_builder::Case<MaxHrmpRelayFee>;
 	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
 	type RuntimeEvent = RuntimeEvent;
 	type SelfLocation = SelfLocation;
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
 	type Transactor = NullTransactor;
-	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+	type UniversalLocation = UniversalLocation;
+	type Weigher = XcmWeigher;
 	type WeightInfo = ();
 	type XcmSender = XcmRouter;
 }
@@ -1789,7 +1787,7 @@ construct_runtime!(
 		// authoring stuff
 		// collator_selection must go here in order for the storage to be available to pallet_session
 		CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
-		Authorship: pallet_authorship::{Pallet, Call, Storage} = 30,
+		Authorship: pallet_authorship::{Pallet, Storage} = 30,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 31,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 32,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 33,
@@ -1869,9 +1867,14 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 }
 
 parameter_types! {
-	pub UnitWeightCost: u64 = 100_000_000;
-	pub const MaxInstructions: u32 = 100;
+	/// The amount of weight an XCM operation takes. This is a safe overestimate.
+	pub UnitWeightCost: Weight = Weight::from_parts(200_000_000u64, 0);
+	/// Maximum number of instructions in a single XCM message.
+	pub MaxInstructions: u32 = 100;
 }
+
+/// Xcm Weigher shared between multiple Xcm-related configs.
+pub type XcmWeigher = xcm_builder::FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 
 /// XCMP Queue is responsible to handle XCM messages coming directly from
 /// sibling parachains.
@@ -1880,6 +1883,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type PriceForSiblingDelivery = ();
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
@@ -2096,6 +2100,12 @@ impl_runtime_apis! {
 		}
 		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 

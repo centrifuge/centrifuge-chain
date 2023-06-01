@@ -115,9 +115,7 @@ impl FindAuthor<u64> for AuthorGiven {
 
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = ();
-	type FilterUncle = ();
 	type FindAuthor = AuthorGiven;
-	type UncleGenerations = ();
 }
 
 parameter_types! {

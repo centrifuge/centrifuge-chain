@@ -399,7 +399,7 @@ where
 				.len() < pallet_vesting::MaxVestingSchedulesGet::<T>::get()
 				.try_into()
 				.unwrap_or(0), /* This is currently a u32, but in case it changes, we will
-			                 * fail-safe to zero. */
+			                * fail-safe to zero. */
 			pallet_vesting::Error::<T>::AtMaxVestingSchedules,
 		);
 

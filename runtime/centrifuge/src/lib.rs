@@ -293,9 +293,10 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type PriceForSiblingDelivery = ();
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Self>;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
@@ -486,9 +487,7 @@ parameter_types! {
 // We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = CollatorSelection;
-	type FilterUncle = ();
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-	type UncleGenerations = UncleGenerations;
 }
 
 parameter_types! {
@@ -600,7 +599,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Timestamp(..) |
 					// Specifically omitting Balances
 					RuntimeCall::CollatorSelection(..) |
-					RuntimeCall::Authorship(..) |
 					RuntimeCall::Session(..) |
 					RuntimeCall::Multisig(..) |
 					// The internal logic prevents upgrading
@@ -1658,7 +1656,7 @@ construct_runtime!(
 		// authoring stuff
 		// collator_selection must go here in order for the storage to be available to pallet_session
 		CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
-		Authorship: pallet_authorship::{Pallet, Call, Storage} = 30,
+		Authorship: pallet_authorship::{Pallet, Storage} = 30,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 31,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 32,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 33,
@@ -1946,6 +1944,12 @@ impl_runtime_apis! {
 		}
 		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 
