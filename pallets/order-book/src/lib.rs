@@ -15,80 +15,102 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use core::fmt::Debug;
+
+	use cfg_types::tokens::CustomMetadata;
 	use frame_support::{
 		pallet_prelude::{DispatchResult, Member, OptionQuery, StorageDoubleMap, StorageNMap, *},
-		traits::{tokens::AssetId, BlakeTwo256, Currency, ReservableCurrency},
+		traits::{tokens::AssetId, Currency, ReservableCurrency},
 		Blake2_128Concat, Identity, Twox64Concat,
 	};
-	use orml_traits::{MultiCurrency, MultiReservableCurrency};
+	use orml_traits::{
+		asset_registry::{self, Inspect as _},
+		MultiCurrency, MultiReservableCurrency,
+	};
+	use scale_info::TypeInfo;
+	use sp_runtime::{
+		traits::{AtLeast32BitUnsigned, Hash},
+		Saturating,
+	};
 
 	use super::*;
-
-	// will def have to update for dealing with multiple foreign asset types
-	pub type BalanceOf<T> = <<T as Config>::ReserveCurrency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
-	/// Id type of Currency to exchange
-	/// Can likely combine in/out into one, separating now
-	type CurrencyIn: AssetId
-		+ Parameter
-		+ Debug
-		+ Default
-		+ Member
-		+ Copy
-		+ MaybeSerializeDeserialize
-		+ Ord
-		+ TypeInfo
-		+ MaxEncodedLen;
+	// will def have to update for dealing with multiple foreign asset types
+	pub type BalanceOf<T> = <<T as Config>::ExchangeableCurrency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
 
-	/// Id type of Currency to exchange
-	/// Can likely combine in/out into one, separating now
-	type CurrencyId: AssetId
-		+ Parameter
-		+ Debug
-		+ Default
-		+ Member
-		+ Copy
-		+ MaybeSerializeDeserialize
-		+ Ord
-		+ TypeInfo
-		+ MaxEncodedLen;
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 
-	type AssetRegistry: asset_registry::Inspect<
-		AssetId = CurrencyIdOf<Self>,
-		Balance = <Self as Config>::Balance,
-		CustomMetadata = CustomMetadata,
-	>;
+	pub struct Pallet<T>(_);
 
-	type SwapCurreny: MultiReservableCurrency<
-		Self::AccountId,
-		Balance = BalanceOf<Self>,
-		CurrencyId = CurrencyId,
-	>;
-	type CurrencyMetadata: Member
-		+ Copy
-		+ Default
-		+ PartialOrd
-		+ Ord
-		+ PartialEq
-		+ Eq
-		+ Debug
-		+ Encode
-		+ Decode
-		+ TypeInfo
-		+ MaxEncodedLen;
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// Currency for Reserve/Unreserve with allowlist adding/removal,
+		/// given that the allowlist will be in storage
+		type ExchangeableCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+
+		/// Id type of Currency to exchange
+		/// Can likely combine in/out into one, separating now
+		type CurrencyId: AssetId
+			+ Parameter
+			+ Debug
+			+ Default
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ MaxEncodedLen;
+
+		type Balance: Parameter
+			+ Member
+			+ AtLeast32BitUnsigned
+			+ Default
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ TypeInfo
+			+ MaxEncodedLen;
+
+		type AssetRegistry: asset_registry::Inspect<
+			AssetId = Self::CurrencyId,
+			Balance = <Self as Config>::Balance,
+			CustomMetadata = CustomMetadata,
+		>;
+
+		type SwapCurreny: MultiReservableCurrency<
+			Self::AccountId,
+			Balance = Self::Balance,
+			CurrencyId = Self::CurrencyId,
+		>;
+		type CurrencyMetadata: Member
+			+ Copy
+			+ Default
+			+ PartialOrd
+			+ Ord
+			+ PartialEq
+			+ Eq
+			+ Debug
+			+ Encode
+			+ Decode
+			+ TypeInfo
+			+ MaxEncodedLen;
+	}
 
 	// Storage
 	#[derive(Clone, Debug, Encode, Decode, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
-	pub struct SwapOrder<T> {
+	pub struct SwapOrder<CurrencyId, Balance> {
 		pub asset_out: CurrencyId,
 		pub asset_in: CurrencyId,
-		pub amount_out: BalanceOf<T>,
-		pub minimum_sell_ratio: BalanceOf<T>,
+		pub amount_out: Balance,
+		pub minimum_sell_ratio: Balance,
 	}
 
 	// alternatively we can store by nmap with account/currencies
@@ -103,9 +125,19 @@ pub mod pallet {
 		_,
 		Identity,
 		T::Hash,
-		SwapOrder<T>,
+		SwapOrder<T::CurrencyId, BalanceOf<T>>,
 		OptionQuery,
 	>;
+
+	//
+	// Pallet Errors
+	//
+	#[pallet::error]
+	pub enum Error<T> {}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {}
 
 	impl<T: Config> Pallet<T> {
 		pub fn gen_hash(
