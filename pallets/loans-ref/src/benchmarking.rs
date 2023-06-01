@@ -232,7 +232,10 @@ where
 
 		for i in 0..MaxCollectionSizeOf::<T>::get() {
 			let price_id = i.into();
-			let feeder = account("feeder", 0, 0);
+			// This account is different in each iteration because of how oracles works.
+			// This restriction no longer exists once
+			// https://github.com/open-web3-stack/open-runtime-module-library/pull/920 is merged
+			let feeder = account("feeder", i, 0);
 			T::PriceRegistry::feed_value(feeder, price_id, (i + 100).into()).unwrap();
 			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
 		}
