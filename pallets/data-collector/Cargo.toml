@@ -25,7 +25,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 cfg-traits = { path = "../../libs/traits", default-features = false }
 
 # Optionals for benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.37" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.38" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
