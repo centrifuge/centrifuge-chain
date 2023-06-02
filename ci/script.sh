@@ -31,6 +31,11 @@ case $TARGET in
     docker run --rm -e PACKAGE=$PACKAGE -e BUILD_OPTS="--features=fast-runtime" -v $PWD:/build -v /tmp/cargo:/cargo-home paritytech/srtool:$SRTOOL_VERSION build
     ;;
 
+  build-runtime-testnet)
+    export RUSTC_VERSION=$RUST_TOOLCHAIN
+    docker run --rm -e PACKAGE=$PACKAGE -e BUILD_OPTS="--features=testnet-runtime" -v $PWD:/build -v /tmp/cargo:/cargo-home paritytech/srtool:$SRTOOL_VERSION build
+    ;;
+
   tests)
     RUST_MIN_STACK=8388608 cargo test --workspace --release --features runtime-benchmarks,try-runtime --exclude runtime-integration-tests
     ;;
