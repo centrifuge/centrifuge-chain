@@ -224,12 +224,14 @@ where
 	fn initialize_active_state(n: u32) -> PoolIdOf<T> {
 		let pool_id = Self::prepare_benchmark();
 
+		// TODO: ideally should this be computed by a parameter?
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
 			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
 			T::InterestAccrual::reference_rate(rate).unwrap();
 		}
 
+		// TODO: ideally should this be computed by a parameter?
 		for i in 0..MaxCollectionSizeOf::<T>::get() {
 			let price_id = i.into();
 			// This account is different in each iteration because of how oracles works.
@@ -247,15 +249,6 @@ where
 		}
 
 		pool_id
-	}
-
-	fn max_benchmark_loans() -> u32 {
-		// Maximum loans used for benchmaks.
-		// This can be smaller than `MaxActiveLoansPerPool`,
-		// to avoid calculate weights during hours if the loan numbers is too
-		// large. It should be large enough to be able to represent a consistent weight
-		// function for any number of loans.
-		T::MaxActiveLoansPerPool::get().min(50)
 	}
 }
 
@@ -283,7 +276,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_info)
 
 	borrow {
-		let n in 1..Helper::<T>::max_benchmark_loans() - 1;
+		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -292,7 +285,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into())
 
 	repay {
-		let n in 1..Helper::<T>::max_benchmark_loans() - 1;
+		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -302,7 +295,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into(), 0.into())
 
 	write_off {
-		let n in 1..Helper::<T>::max_benchmark_loans() - 1;
+		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -314,7 +307,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_id)
 
 	admin_write_off {
-		let n in 1..Helper::<T>::max_benchmark_loans() - 1;
+		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
 
 		let loan_admin = account("loan_admin", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -325,7 +318,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(loan_admin), pool_id, loan_id, T::Rate::zero(), T::Rate::zero())
 
 	close {
-		let n in 1..Helper::<T>::max_benchmark_loans() - 1;
+		let n in 1..T::MaxActiveLoansPerPool::get() - 1;
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);
@@ -343,7 +336,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(pool_admin), pool_id, policy)
 
 	update_portfolio_valuation {
-		let n in 1..Helper::<T>::max_benchmark_loans();
+		let n in 1..T::MaxActiveLoansPerPool::get();
 
 		let borrower = account("borrower", 0, 0);
 		let pool_id = Helper::<T>::initialize_active_state(n);

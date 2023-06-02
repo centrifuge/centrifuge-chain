@@ -22,6 +22,17 @@ pub mod account_conversion;
 pub mod apis;
 pub mod evm;
 
+#[macro_export]
+macro_rules! production_or_benchmark {
+	($production:expr, $benchmark:expr) => {{
+		if cfg!(feature = "runtime-benchmarks") {
+			$benchmark
+		} else {
+			$production
+		}
+	}};
+}
+
 pub mod xcm_fees {
 	use cfg_primitives::{constants::currency_decimals, types::Balance};
 	use frame_support::weights::constants::{ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND};

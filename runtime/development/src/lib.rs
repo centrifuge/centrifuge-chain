@@ -1294,16 +1294,20 @@ impl pallet_xcm_transactor::Config for Runtime {
 
 parameter_types! {
 	pub const MaxActiveLoansPerPool: u32 = 1000;
+	/// We do not need so many iterations for benchmarking,
+	/// which also increase A LOT the time of calculating weights
+	pub const MaxActiveLoansPerPoolBenchmark: u32 = production_or_benchmark!(
+		MaxActiveLoansPerPool::get(),
+		50
+	);
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxPriceOracleMembers: u32 = 10;
-	pub const MaxHasDispatchedSize: u32 = if cfg!(feature = "runtime-benchmarks") {
-		// This can be removed once
-		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+	// The benchmark distintion can be removed once
+	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
+	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
+		MaxPriceOracleMembers::get(),
 		MaxActiveLoansPerPool::get()
-	} else {
-		MaxPriceOracleMembers::get()
-	};
-
+	);
 	pub const MaxPoolsWithExternalPrices: u32 = 50;
 	pub RootOperatorOraclePrice: AccountId = PRICE_ORACLE_PALLET_ID.into_account_truncating();
 }
@@ -1349,6 +1353,17 @@ impl pallet_data_collector::Config for Runtime {
 	type Moment = Moment;
 }
 
+impl pallet_interest_accrual::Config for Runtime {
+	type Balance = Balance;
+	type InterestRate = Rate;
+	// TODO: This is a stopgap value until we can calculate it correctly with
+	// updated benchmarks. See #1024
+	type MaxRateCount = MaxActiveLoansPerPool;
+	type RuntimeEvent = RuntimeEvent;
+	type Time = Timestamp;
+	type Weights = ();
+}
+
 impl pallet_loans_ref::Config for Runtime {
 	type Balance = Balance;
 	type CollectionId = CollectionId;
@@ -1356,7 +1371,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type InterestAccrual = InterestAccrual;
 	type ItemId = ItemId;
 	type LoanId = LoanId;
-	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
+	type MaxActiveLoansPerPool = MaxActiveLoansPerPoolBenchmark;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
@@ -1542,17 +1557,6 @@ impl orml_asset_registry::Config for Runtime {
 	type CustomMetadata = CustomMetadata;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-}
-
-impl pallet_interest_accrual::Config for Runtime {
-	type Balance = Balance;
-	type InterestRate = Rate;
-	// TODO: This is a stopgap value until we can calculate it correctly with
-	// updated benchmarks. See #1024
-	type MaxRateCount = MaxActiveLoansPerPool;
-	type RuntimeEvent = RuntimeEvent;
-	type Time = Timestamp;
-	type Weights = ();
 }
 
 impl pallet_connectors::Config for Runtime {
