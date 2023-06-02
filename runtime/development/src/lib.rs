@@ -1296,8 +1296,8 @@ parameter_types! {
 	pub const MaxEntitiesPerPool: u32 = 1000;
 	pub const MaxActiveLoansPerPool: u32 = production_or_benchmark!(
 		MaxEntitiesPerPool::get(),
-		/// We do not need so many iterations for benchmarking,
-		/// which also increase A LOT the time of calculating weights
+		// We do not need so many iterations for benchmarking,
+		// which also increase A LOT the time of calculating weights
 		50
 	);
 	pub const MaxRateCount: u32 = MaxEntitiesPerPool::get();
@@ -1373,7 +1373,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type InterestAccrual = InterestAccrual;
 	type ItemId = ItemId;
 	type LoanId = LoanId;
-	type MaxActiveLoansPerPool = MaxActiveLoansPerPoolBenchmark;
+	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffPolicySize = MaxWriteOffPolicySize;
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
