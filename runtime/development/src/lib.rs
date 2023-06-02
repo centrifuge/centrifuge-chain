@@ -1293,19 +1293,21 @@ impl pallet_xcm_transactor::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxActiveLoansPerPool: u32 = 1000;
-	/// We do not need so many iterations for benchmarking,
-	/// which also increase A LOT the time of calculating weights
-	pub const MaxActiveLoansPerPoolBenchmark: u32 = production_or_benchmark!(
-		MaxActiveLoansPerPool::get(),
+	pub const MaxEntitiesPerPool: u32 = 1000;
+	pub const MaxActiveLoansPerPool: u32 = production_or_benchmark!(
+		MaxEntitiesPerPool::get(),
+		/// We do not need so many iterations for benchmarking,
+		/// which also increase A LOT the time of calculating weights
 		50
 	);
+	pub const MaxRateCount: u32 = MaxEntitiesPerPool::get();
+	pub const MaxCollectionSize: u32 = MaxEntitiesPerPool::get();
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxPriceOracleMembers: u32 = 10;
-	// The benchmark distintion can be removed once
-	// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
 	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
 		MaxPriceOracleMembers::get(),
+		// The benchmark distintion can be removed once
+		// <https://github.com/open-web3-stack/open-runtime-module-library/issues/920> be merged.
 		MaxActiveLoansPerPool::get()
 	);
 	pub const MaxPoolsWithExternalPrices: u32 = 50;
@@ -1348,7 +1350,7 @@ impl pallet_data_collector::Config for Runtime {
 	type Data = Balance;
 	type DataId = OracleKey;
 	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
-	type MaxCollectionSize = MaxActiveLoansPerPool;
+	type MaxCollectionSize = MaxCollectionSize;
 	type MaxCollections = MaxPoolsWithExternalPrices;
 	type Moment = Moment;
 }
@@ -1358,7 +1360,7 @@ impl pallet_interest_accrual::Config for Runtime {
 	type InterestRate = Rate;
 	// TODO: This is a stopgap value until we can calculate it correctly with
 	// updated benchmarks. See #1024
-	type MaxRateCount = MaxActiveLoansPerPool;
+	type MaxRateCount = MaxRateCount;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Weights = ();

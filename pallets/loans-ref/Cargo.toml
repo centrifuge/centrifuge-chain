@@ -62,7 +62,6 @@ std = [
   "frame-benchmarking/std",
   "sp-io/std",
   "strum/std",
-  "log/std",
   "orml-traits/std",
 ]
 runtime-benchmarks = [
