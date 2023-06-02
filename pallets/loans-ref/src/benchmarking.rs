@@ -252,10 +252,10 @@ where
 	fn max_benchmark_loans() -> u32 {
 		// Maximum loans used for benchmaks.
 		// This can be smaller than `MaxActiveLoansPerPool`,
-		// to avoid calculate weights during hours if this the loan numbers is too
+		// to avoid calculate weights during hours if the loan numbers is too
 		// large. It should be large enough to be able to represent a consistent weight
 		// function for any number of loans.
-		T::MaxActiveLoansPerPool::get().max(50)
+		T::MaxActiveLoansPerPool::get().min(50)
 	}
 }
 

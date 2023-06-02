@@ -34,6 +34,7 @@ use cfg_types::{
 	fixed_point::Rate,
 	ids::PRICE_ORACLE_PALLET_ID,
 	locations::Location,
+	oracles::OracleKey,
 	permissions::{
 		PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolRole, Role, UNION,
 	},
@@ -1330,7 +1331,7 @@ impl orml_oracle::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type Members = runtime_common::oracle::benchmarks_util::Members;
 	type OnNewData = PriceCollector;
-	type OracleKey = PriceId;
+	type OracleKey = OracleKey;
 	type OracleValue = Balance;
 	type RootOperatorAccountId = RootOperatorOraclePrice;
 	type RuntimeEvent = RuntimeEvent;
@@ -1341,7 +1342,7 @@ impl orml_oracle::Config for Runtime {
 impl pallet_data_collector::Config for Runtime {
 	type CollectionId = PoolId;
 	type Data = Balance;
-	type DataId = PriceId;
+	type DataId = OracleKey;
 	type DataProvider = runtime_common::oracle::DataProviderBridge<PriceOracle>;
 	type MaxCollectionSize = MaxActiveLoansPerPool;
 	type MaxCollections = MaxPoolsWithExternalPrices;
@@ -1360,7 +1361,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
-	type PriceId = PriceId;
+	type PriceId = OracleKey;
 	type PriceRegistry = PriceCollector;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;

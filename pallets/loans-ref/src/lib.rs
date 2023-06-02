@@ -162,7 +162,6 @@ pub mod pallet {
 		type PriceId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
-			+ Default
 			+ TypeInfo
 			+ Copy
 			+ MaxEncodedLen;

@@ -275,7 +275,8 @@ pub mod xcm {
 }
 
 pub mod oracle {
-	use cfg_primitives::types::{AccountId, Balance, Moment, PriceId};
+	use cfg_primitives::types::{AccountId, Balance, Moment};
+	use cfg_types::oracles::OracleKey;
 	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
 	use sp_runtime::DispatchResult;
 	use sp_std::{marker::PhantomData, vec::Vec};
@@ -286,9 +287,9 @@ pub mod oracle {
 	pub struct LastOracleValue;
 
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	impl CombineData<PriceId, OracleValue> for LastOracleValue {
+	impl CombineData<OracleKey, OracleValue> for LastOracleValue {
 		fn combine_data(
-			_: &PriceId,
+			_: &OracleKey,
 			values: Vec<OracleValue>,
 			_: Option<OracleValue>,
 		) -> Option<OracleValue> {
@@ -303,14 +304,14 @@ pub mod oracle {
 	/// and can be removed once they fix this.
 	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
 
-	impl<OrmlOracle: DataProviderExtended<PriceId, OracleValue>>
-		DataProviderExtended<PriceId, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
+	impl<OrmlOracle: DataProviderExtended<OracleKey, OracleValue>>
+		DataProviderExtended<OracleKey, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
 	{
-		fn get_no_op(key: &PriceId) -> Option<(Balance, Moment)> {
+		fn get_no_op(key: &OracleKey) -> Option<(Balance, Moment)> {
 			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
 		}
 
-		fn get_all_values() -> Vec<(PriceId, Option<(Balance, Moment)>)> {
+		fn get_all_values() -> Vec<(OracleKey, Option<(Balance, Moment)>)> {
 			OrmlOracle::get_all_values()
 				.into_iter()
 				.map(|elem| {
@@ -324,18 +325,18 @@ pub mod oracle {
 		}
 	}
 
-	impl<OrmlOracle: DataProvider<PriceId, Balance>> DataProvider<PriceId, Balance>
+	impl<OrmlOracle: DataProvider<OracleKey, Balance>> DataProvider<OracleKey, Balance>
 		for DataProviderBridge<OrmlOracle>
 	{
-		fn get(key: &PriceId) -> Option<Balance> {
+		fn get(key: &OracleKey) -> Option<Balance> {
 			OrmlOracle::get(key)
 		}
 	}
 
-	impl<OrmlOracle: DataFeeder<PriceId, Balance, AccountId>>
-		DataFeeder<PriceId, Balance, AccountId> for DataProviderBridge<OrmlOracle>
+	impl<OrmlOracle: DataFeeder<OracleKey, Balance, AccountId>>
+		DataFeeder<OracleKey, Balance, AccountId> for DataProviderBridge<OrmlOracle>
 	{
-		fn feed_value(who: AccountId, key: PriceId, value: Balance) -> DispatchResult {
+		fn feed_value(who: AccountId, key: OracleKey, value: Balance) -> DispatchResult {
 			OrmlOracle::feed_value(who, key, value)
 		}
 	}
@@ -350,9 +351,9 @@ pub mod oracle {
 
 		use super::*;
 
-		impl CombineData<PriceId, OracleValue> for LastOracleValue {
+		impl CombineData<OracleKey, OracleValue> for LastOracleValue {
 			fn combine_data(
-				_: &PriceId,
+				_: &OracleKey,
 				_: Vec<OracleValue>,
 				_: Option<OracleValue>,
 			) -> Option<OracleValue> {
