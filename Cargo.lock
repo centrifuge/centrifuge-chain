@@ -7613,6 +7613,7 @@ dependencies = [
 name = "pallet-order-book"
 version = "0.1.0"
 dependencies = [
+ "cfg-test-utils",
  "cfg-types",
  "frame-benchmarking",
  "frame-support",
@@ -7626,6 +7627,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]

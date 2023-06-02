@@ -11,6 +11,12 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+pub(crate) mod mock;
+
+#[cfg(test)]
+mod tests;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -57,18 +63,18 @@ pub mod pallet {
 		/// given that the allowlist will be in storage
 		type ExchangeableCurrency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
 
-		/// Id type of Currency to exchange
-		/// Can likely combine in/out into one, separating now
-		type CurrencyId: AssetId
-			+ Parameter
-			+ Debug
-			+ Default
-			+ Member
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ TypeInfo
-			+ MaxEncodedLen;
+		// /// Id type of Currency to exchange
+		// /// Can likely combine in/out into one, separating now
+		// type CurrencyId: AssetId
+		// 	+ Parameter
+		// 	+ Debug
+		// 	+ Default
+		// 	+ Member
+		// 	+ Copy
+		// 	+ MaybeSerializeDeserialize
+		// 	+ Ord
+		// 	+ TypeInfo
+		// 	+ MaxEncodedLen;
 
 		type Balance: Parameter
 			+ Member
@@ -85,23 +91,23 @@ pub mod pallet {
 			CustomMetadata = CustomMetadata,
 		>;
 
-		type SwapCurreny: MultiReservableCurrency<
-			Self::AccountId,
-			Balance = Self::Balance,
-			CurrencyId = Self::CurrencyId,
-		>;
-		type CurrencyMetadata: Member
-			+ Copy
-			+ Default
-			+ PartialOrd
-			+ Ord
-			+ PartialEq
-			+ Eq
-			+ Debug
-			+ Encode
-			+ Decode
-			+ TypeInfo
-			+ MaxEncodedLen;
+		// type SwapCurreny: MultiReservableCurrency<
+		// 	Self::AccountId,
+		// 	Balance = Self::Balance,
+		// 	CurrencyId = Self::CurrencyId,
+		// >;
+		// type CurrencyMetadata: Member
+		// 	+ Copy
+		// 	+ Default
+		// 	+ PartialOrd
+		// 	+ Ord
+		// 	+ PartialEq
+		// 	+ Eq
+		// 	+ Debug
+		// 	+ Encode
+		// 	+ Decode
+		// 	+ TypeInfo
+		// 	+ MaxEncodedLen;
 	}
 
 	// Storage
@@ -116,18 +122,8 @@ pub mod pallet {
 	// alternatively we can store by nmap with account/currencies
 	// route
 	#[pallet::storage]
-	pub type AccountCurrencyTransferCountDelay<T: Config> = StorageMap<
-		// (
-		// 	NMapKey<Twox64Concat, T::AccountId>,
-		// 	NMapKey<Twox64Concat, T::CurrencyId>,
-		// 	NMapKey<Twox64Concat, T::CurrencyId>,
-		// ),
-		_,
-		Identity,
-		T::Hash,
-		SwapOrder<T::CurrencyId, BalanceOf<T>>,
-		OptionQuery,
-	>;
+	pub type AccountCurrencyTransferCountDelay<T: Config> =
+		StorageMap<_, Identity, T::Hash, SwapOrder<T::CurrencyId, BalanceOf<T>>, OptionQuery>;
 
 	//
 	// Pallet Errors
