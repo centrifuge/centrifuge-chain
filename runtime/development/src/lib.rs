@@ -1298,10 +1298,10 @@ parameter_types! {
 		MaxEntitiesPerPool::get(),
 		// We do not need so many iterations for benchmarking,
 		// which also increase A LOT the time of calculating weights
-		50
+		10
 	);
 	pub const MaxRateCount: u32 = MaxEntitiesPerPool::get();
-	pub const MaxCollectionSize: u32 = MaxEntitiesPerPool::get();
+	pub const MaxCollectionSize: u32 = MaxActiveLoansPerPool::get();
 	pub const MaxWriteOffPolicySize: u32 = 10;
 	pub const MaxPriceOracleMembers: u32 = 10;
 	pub const MaxHasDispatchedSize: u32 = production_or_benchmark!(
