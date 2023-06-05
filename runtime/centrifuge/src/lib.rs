@@ -1753,7 +1753,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1019,
+	migrations::UpgradeCentrifuge1020,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
