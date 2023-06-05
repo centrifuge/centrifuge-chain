@@ -745,8 +745,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::LoanMutation(loan_id, mutation) =
-				T::ChangeGuard::released(pool_id, change_id)?;
+			let Change::Loan(loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?;
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				loan.modify_with(mutation.clone())

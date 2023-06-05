@@ -188,5 +188,5 @@ pub enum LoanMutation<Rate> {
 /// Change description
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
 pub enum Change<LoanId, Rate> {
-	LoanMutation(LoanId, LoanMutation<Rate>),
+	Loan(LoanId, LoanMutation<Rate>),
 }
