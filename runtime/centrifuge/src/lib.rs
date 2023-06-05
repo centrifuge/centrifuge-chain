@@ -1563,6 +1563,8 @@ parameter_types! {
 
 impl pallet_loans_ref::Config for Runtime {
 	type Balance = Balance;
+	type ChangeGuard = pallet_loans_ref::util::NoLoanModifications<Runtime>;
+	type ChangeId = u64;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;

@@ -1,14 +1,5 @@
 use sp_runtime::DispatchError;
 
-/// Represents a change
-pub trait Change {
-	/// Kind of change
-	type ChangeKind;
-
-	/// Returns the kind of this change
-	fn kind(&self) -> Self::ChangeKind;
-}
-
 /// Trait for get feedback before apply certain changes.
 /// It can be used when you need to ask to a third party or external module if
 /// applying a change that has some effect into the system is something healthy.
