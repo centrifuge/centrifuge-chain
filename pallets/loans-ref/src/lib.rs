@@ -718,13 +718,12 @@ pub mod pallet {
 		pub fn propose_modification(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			loan_id: T::LoanId,
-			mutation: Mutation<T::Rate>,
+			mutation: LoanMutationOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
 
-			T::ChangeGuard::note(pool_id, (loan_id, mutation.clone()))?;
+			T::ChangeGuard::note(pool_id, mutation)?;
 
 			Ok(())
 		}
