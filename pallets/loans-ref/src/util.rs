@@ -23,6 +23,7 @@ use crate::pallet::{Config, LoanMutationOf, PoolIdOf, PriceResultOf};
 const DEFAULT_PRICE_ERR: DispatchError =
 	DispatchError::Other("No configured price registry for pallet-loans");
 
+/// Type used to configure the pallet without a price registry
 pub struct NoPriceRegistry<T>(PhantomData<T>);
 
 impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
@@ -61,6 +62,7 @@ impl<T: Config> DataCollection<T::PriceId> for NoPriceCollection<T> {
 const DEFAULT_MODIFICATION_ERR: DispatchError =
 	DispatchError::Other("No configured modification system for pallet-loans");
 
+/// Type used to configure the pallet without modification support
 pub struct NoLoanModifications<T>(PhantomData<T>);
 
 impl<T: Config> ChangeGuard for NoLoanModifications<T> {

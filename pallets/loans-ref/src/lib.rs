@@ -330,14 +330,7 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			status: WriteOffStatus<T::Rate>,
 		},
-		/// A loan was written off
-		ModificationProposed {
-			pool_id: PoolIdOf<T>,
-			loan_id: T::LoanId,
-			change_id: T::ChangeId,
-			mutation: Mutation<T::Rate>,
-		},
-		/// A loan was written off
+		/// A loan was modified
 		Modified {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
@@ -731,14 +724,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
 
-			let change_id = T::ChangeGuard::note(pool_id, (loan_id, mutation.clone()))?;
-
-			Self::deposit_event(Event::<T>::ModificationProposed {
-				pool_id,
-				loan_id,
-				change_id,
-				mutation,
-			});
+			T::ChangeGuard::note(pool_id, (loan_id, mutation.clone()))?;
 
 			Ok(())
 		}
