@@ -1,4 +1,4 @@
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::DispatchError;
 
 /// Represents a change
 pub trait Change {
@@ -41,9 +41,4 @@ pub trait ChangeGuard {
 		pool_id: Self::PoolId,
 		change_id: Self::ChangeId,
 	) -> Result<Self::Change, DispatchError>;
-
-	/// Remove a noted change.
-	/// The change can no longer be released, and resources to track it can be
-	/// removed.
-	fn cancel(pool_id: Self::PoolId, change_id: Self::ChangeId) -> DispatchResult;
 }

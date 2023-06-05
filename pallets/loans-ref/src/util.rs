@@ -11,13 +11,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::data::{DataCollection, DataRegistry};
+use cfg_traits::{
+	changes::ChangeGuard,
+	data::{DataCollection, DataRegistry},
+};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::pallet::{Config, PoolIdOf, PriceResultOf};
+use crate::pallet::{Config, LoanMutationOf, PoolIdOf, PriceResultOf};
 
-const DEFAULT_ERR: DispatchError =
+const DEFAULT_PRICE_ERR: DispatchError =
 	DispatchError::Other("No configured price registry for pallet-loans");
 
 pub struct NoPriceRegistry<T>(PhantomData<T>);
@@ -29,7 +32,7 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	type MaxCollectionSize = sp_runtime::traits::ConstU32<0>;
 
 	fn get(_: &T::PriceId) -> Self::Data {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 
 	fn collection(_: &PoolIdOf<T>) -> Self::Collection {
@@ -37,11 +40,11 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	}
 
 	fn register_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 
 	fn unregister_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 }
 
@@ -51,6 +54,25 @@ impl<T: Config> DataCollection<T::PriceId> for NoPriceCollection<T> {
 	type Data = PriceResultOf<T>;
 
 	fn get(&self, _: &T::PriceId) -> Self::Data {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
+	}
+}
+
+const DEFAULT_MODIFICATION_ERR: DispatchError =
+	DispatchError::Other("No configured modification system for pallet-loans");
+
+pub struct NoLoanModifications<T>(PhantomData<T>);
+
+impl<T: Config> ChangeGuard for NoLoanModifications<T> {
+	type Change = LoanMutationOf<T>;
+	type ChangeId = T::ChangeId;
+	type PoolId = PoolIdOf<T>;
+
+	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<T::ChangeId, DispatchError> {
+		Err(DEFAULT_MODIFICATION_ERR)
+	}
+
+	fn released(_: PoolIdOf<T>, _: T::ChangeId) -> Result<Self::Change, DispatchError> {
+		Err(DEFAULT_MODIFICATION_ERR)
 	}
 }

@@ -118,6 +118,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
+	pub type LoanMutationOf<T> = (<T as Config>::LoanId, Mutation<<T as Config>::Rate>);
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -218,7 +219,7 @@ pub mod pallet {
 		type ChangeGuard: ChangeGuard<
 			PoolId = PoolIdOf<Self>,
 			ChangeId = Self::ChangeId,
-			Change = (Self::LoanId, Mutation<Self::Rate>),
+			Change = LoanMutationOf<Self>,
 		>;
 
 		/// Max number of active loans per pool.

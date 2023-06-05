@@ -1,6 +1,6 @@
 #[frame_support::pallet]
 pub mod pallet_mock_change_guard {
-	use cfg_traits::ChangeGuard;
+	use cfg_traits::changes::ChangeGuard;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
 
@@ -33,7 +33,9 @@ pub mod pallet_mock_change_guard {
 			register_call!(move |(a, b)| f(a, b));
 		}
 
-		pub fn mock_released(f: impl Fn(T::PoolId, T::ChangeId) -> DispatchResult + 'static) {
+		pub fn mock_released(
+			f: impl Fn(T::PoolId, T::ChangeId) -> Result<T::Change, DispatchError> + 'static,
+		) {
 			register_call!(move |(a, b)| f(a, b));
 		}
 	}
@@ -43,14 +45,11 @@ pub mod pallet_mock_change_guard {
 		type ChangeId = T::ChangeId;
 		type PoolId = T::PoolId;
 
-		fn note(
-			a: Self::PoolId,
-			b: impl Into<T::Change> + 'static,
-		) -> Result<Self::ChangeId, DispatchError> {
+		fn note(a: T::PoolId, b: T::Change) -> Result<T::ChangeId, DispatchError> {
 			execute_call!((a, b))
 		}
 
-		fn released(a: Self::PoolId, b: Self::ChangeId) -> DispatchResult {
+		fn released(a: T::PoolId, b: T::ChangeId) -> Result<T::Change, DispatchError> {
 			execute_call!((a, b))
 		}
 	}
