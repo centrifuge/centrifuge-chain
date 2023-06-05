@@ -22,8 +22,8 @@ use crate::{
 	},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
-		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanRestrictions,
-		ModificationError, Mutation, RepayLoanError, RepayRestrictions, RepaymentSchedule,
+		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
+		LoanRestrictions, ModificationError, RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -411,12 +411,12 @@ impl<T: Config> ActiveLoan<T> {
 		Ok((loan, self.borrower))
 	}
 
-	pub fn modify_with(&mut self, mutation: Mutation<T::Rate>) -> DispatchResult {
+	pub fn modify_with(&mut self, mutation: LoanMutation<T::Rate>) -> DispatchResult {
 		match mutation {
-			Mutation::Maturity(maturity) => self.schedule.maturity = maturity,
-			Mutation::InterestPayments(payments) => self.schedule.interest_payments = payments,
-			Mutation::PayDownSchedule(schedule) => self.schedule.pay_down_schedule = schedule,
-			Mutation::Internal(mutation) => match &mut self.pricing {
+			LoanMutation::Maturity(maturity) => self.schedule.maturity = maturity,
+			LoanMutation::InterestPayments(payments) => self.schedule.interest_payments = payments,
+			LoanMutation::PayDownSchedule(schedule) => self.schedule.pay_down_schedule = schedule,
+			LoanMutation::Internal(mutation) => match &mut self.pricing {
 				ActivePricing::Internal(inner) => inner.modify_with(mutation)?,
 				ActivePricing::External(_) => {
 					Err(Error::<T>::from(ModificationError::InternalPricingExpected))?

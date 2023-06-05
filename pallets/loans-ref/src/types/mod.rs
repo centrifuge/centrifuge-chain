@@ -178,9 +178,15 @@ pub enum InternalMutation<Rate> {
 
 /// Active loan mutation
 #[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
-pub enum Mutation<Rate> {
+pub enum LoanMutation<Rate> {
 	Maturity(Maturity),
 	InterestPayments(InterestPayments),
 	PayDownSchedule(PayDownSchedule),
 	Internal(InternalMutation<Rate>),
+}
+
+/// Change description
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum Change<LoanId, Rate> {
+	LoanMutation(LoanId, LoanMutation<Rate>),
 }

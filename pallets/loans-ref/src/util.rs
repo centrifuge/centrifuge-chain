@@ -18,7 +18,7 @@ use cfg_traits::{
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::pallet::{Config, LoanMutationOf, PoolIdOf, PriceResultOf};
+use crate::pallet::{Config, LoanChangeOf, PoolIdOf, PriceResultOf};
 
 const DEFAULT_PRICE_ERR: DispatchError =
 	DispatchError::Other("No configured price registry for pallet-loans");
@@ -66,7 +66,7 @@ const DEFAULT_MODIFICATION_ERR: DispatchError =
 pub struct NoLoanModifications<T>(PhantomData<T>);
 
 impl<T: Config> ChangeGuard for NoLoanModifications<T> {
-	type Change = LoanMutationOf<T>;
+	type Change = LoanChangeOf<T>;
 	type ChangeId = T::ChangeId;
 	type PoolId = PoolIdOf<T>;
 

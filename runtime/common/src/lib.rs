@@ -278,27 +278,27 @@ pub mod changes {
 	use cfg_traits::changes::ChangeGuard;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
-	use pallet_loans_ref::LoanMutationOf;
+	use pallet_loans_ref::LoanChangeOf;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 	use sp_std::marker::PhantomData;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum CfgChange<T: pallet_loans_ref::Config> {
-		Loan(LoanMutationOf<T>),
+		Loan(LoanChangeOf<T>),
 		Other, // i.e. Pool(PoolChange)
 	}
 
-	impl<T: pallet_loans_ref::Config> From<LoanMutationOf<T>> for CfgChange<T> {
-		fn from(value: LoanMutationOf<T>) -> Self {
+	impl<T: pallet_loans_ref::Config> From<LoanChangeOf<T>> for CfgChange<T> {
+		fn from(value: LoanChangeOf<T>) -> Self {
 			CfgChange::Loan(value)
 		}
 	}
 
-	impl<T: pallet_loans_ref::Config> TryInto<LoanMutationOf<T>> for CfgChange<T> {
+	impl<T: pallet_loans_ref::Config> TryInto<LoanChangeOf<T>> for CfgChange<T> {
 		type Error = DispatchError;
 
-		fn try_into(self) -> Result<LoanMutationOf<T>, DispatchError> {
+		fn try_into(self) -> Result<LoanChangeOf<T>, DispatchError> {
 			match self {
 				CfgChange::Loan(change) => Ok(change),
 				_ => Err(DispatchError::Other("Expected Loan type")),
@@ -329,7 +329,7 @@ pub mod changes {
 			pool_id: Self::PoolId,
 			change_id: Self::ChangeId,
 		) -> Result<Self::Change, DispatchError> {
-			Ok(ChangeGuardImpl::released(pool_id, change_id)?.try_into()?)
+			ChangeGuardImpl::released(pool_id, change_id)?.try_into()
 		}
 	}
 }

@@ -25,8 +25,6 @@
 //! | [`Pallet::write_off()`]            | Any       |
 //! | [`Pallet::admin_write_off()`]      | LoanAdmin |
 //! | [`Pallet::close()`]                | Borrower  |
-//! | [`Pallet::propose_modification()`] | LoanAdmin |
-//! | [`Pallet::modify()`]               | Borrower  |
 //!
 //! The following actions are performed over a pool of loans:
 //!
@@ -34,6 +32,13 @@
 //! |------------------------------------------|-----------|
 //! | [`Pallet::update_write_off_policy()`]    | PoolAdmin |
 //! | [`Pallet::update_portfolio_valuation()`] | Any       |
+//!
+//! The following actions are performed based on changes:
+//!
+//! | Extrinsics              | Role      |
+//! |-------------------------|-----------|
+//! | [`Pallet::propose()`]   | LoanAdmin |
+//! | [`Pallet::apply()`]     | Borrower  |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
@@ -99,7 +104,7 @@ pub mod pallet {
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
-		BorrowLoanError, CloseLoanError, CreateLoanError, ModificationError, Mutation,
+		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, ModificationError,
 		RepayLoanError, WrittenOffError,
 	};
 
@@ -118,7 +123,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
-	pub type LoanMutationOf<T> = (<T as Config>::LoanId, Mutation<<T as Config>::Rate>);
+	pub type LoanChangeOf<T> = Change<<T as Config>::LoanId, <T as Config>::Rate>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -219,7 +224,7 @@ pub mod pallet {
 		type ChangeGuard: ChangeGuard<
 			PoolId = PoolIdOf<Self>,
 			ChangeId = Self::ChangeId,
-			Change = LoanMutationOf<Self>,
+			Change = LoanChangeOf<Self>,
 		>;
 
 		/// Max number of active loans per pool.
@@ -334,7 +339,7 @@ pub mod pallet {
 		Modified {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			mutation: Mutation<T::Rate>,
+			mutation: LoanMutation<T::Rate>,
 		},
 		/// A loan was closed
 		Closed {
@@ -711,14 +716,14 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
 
-		/// Propose a change for an active loan modification.
+		/// Propose a change.
 		/// The change is not performed until you call [`Pallet::modify()`].
 		#[pallet::weight(100_000_000)]
 		#[pallet::call_index(8)]
-		pub fn propose_modification(
+		pub fn propose(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			mutation: LoanMutationOf<T>,
+			mutation: LoanChangeOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
@@ -728,19 +733,20 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Performs a proposed change identified by a change id.
-		/// It will only perform the modification if the requirements for that
-		/// change are fulfilled.
+		/// Apply a proposed change identified by a change id.
+		/// It will only perform the change if the requirements for it
+		/// are fulfilled.
 		#[pallet::weight(100_000_000)]
 		#[pallet::call_index(9)]
-		pub fn modify(
+		pub fn apply(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			change_id: T::ChangeId,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let (loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?;
+			let Change::LoanMutation(loan_id, mutation) =
+				T::ChangeGuard::released(pool_id, change_id)?;
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				loan.modify_with(mutation.clone())
