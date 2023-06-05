@@ -54,8 +54,6 @@ const COLLECION_ID: u16 = 42;
 const COLLATERAL_VALUE: u128 = 1_000_000;
 const FUNDS: u128 = 1_000_000_000;
 
-const MAX_ACTIVE_LOANS: u32 = 10;
-
 type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
 	<T as Config>::Rate,
 	<T as Config>::Balance,
@@ -252,7 +250,7 @@ where
 	}
 
 	fn max_active_loans() -> u32 {
-		T::MaxActiveLoansPerPool::get().min(MAX_ACTIVE_LOANS)
+		T::MaxActiveLoansPerPool::get().min(10)
 	}
 }
 
