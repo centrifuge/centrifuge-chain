@@ -748,9 +748,9 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::<T>::Modified {
-				pool_id: pool_id,
-				loan_id: loan_id,
-				mutation: mutation,
+				pool_id,
+				loan_id,
+				mutation,
 			});
 
 			Ok(())
