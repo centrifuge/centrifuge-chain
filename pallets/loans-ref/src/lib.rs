@@ -35,10 +35,10 @@
 //!
 //! The following actions are performed based on changes:
 //!
-//! | Extrinsics              | Role      |
-//! |-------------------------|-----------|
-//! | [`Pallet::propose()`]   | LoanAdmin |
-//! | [`Pallet::apply()`]     | Borrower  |
+//! | Extrinsics                     | Role      |
+//! |--------------------------------|-----------|
+//! | [`Pallet::propose_change()`]   | LoanAdmin |
+//! | [`Pallet::apply_change()`]     | Borrower  |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
@@ -720,7 +720,7 @@ pub mod pallet {
 		/// The change is not performed until you call [`Pallet::modify()`].
 		#[pallet::weight(100_000_000)]
 		#[pallet::call_index(8)]
-		pub fn propose(
+		pub fn propose_change(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			mutation: LoanChangeOf<T>,
@@ -738,7 +738,7 @@ pub mod pallet {
 		/// are fulfilled.
 		#[pallet::weight(100_000_000)]
 		#[pallet::call_index(9)]
-		pub fn apply(
+		pub fn apply_change(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			change_id: T::ChangeId,
