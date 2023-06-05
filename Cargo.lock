@@ -242,6 +242,7 @@ dependencies = [
  "pallet-identity",
  "pallet-interest-accrual",
  "pallet-investments",
+ "pallet-keystore",
  "pallet-loans-ref",
  "pallet-migration-manager",
  "pallet-multisig",

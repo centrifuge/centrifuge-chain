@@ -418,6 +418,13 @@ pub enum ProxyType {
 	Governance,
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
+	Borrow,
+	Invest,
+	ProxyManagement,
+	KeystoreManagement,
+	PodOperation,
+	PodAuth,
+	PermissionManagement,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -500,6 +507,57 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				matches!(c, RuntimeCall::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, RuntimeCall::Proxy(..))
 			}
+			ProxyType::Borrow => matches!(
+				c,
+				RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::borrow{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::repay{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
+				RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+				// Borrowers should be able to close and execute an epoch
+				// in order to get liquidity from repayments in previous epochs.
+				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+			),
+			ProxyType::Invest => matches!(
+				c,
+				RuntimeCall::Investments(pallet_investments::Call::update_invest_order{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::update_redeem_order{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::collect_investments{..}) |
+				RuntimeCall::Investments(pallet_investments::Call::collect_redemptions{..}) |
+				// Investors should be able to close and execute an epoch
+				// in order to get their orders fulfilled.
+				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
+				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch_all{..}) |
+				RuntimeCall::Utility(pallet_utility::Call::batch{..})
+			),
+			ProxyType::ProxyManagement => matches!(c, RuntimeCall::Proxy(..)),
+			ProxyType::KeystoreManagement => matches!(
+				c,
+				RuntimeCall::Keystore(pallet_keystore::Call::add_keys { .. })
+					| RuntimeCall::Keystore(pallet_keystore::Call::revoke_keys { .. })
+			),
+			ProxyType::PodOperation => matches!(
+				c,
+				RuntimeCall::Uniques(..)
+					| RuntimeCall::Anchor(..)
+					| RuntimeCall::Utility(pallet_utility::Call::batch_all { .. })
+			),
+			// This type of proxy is used only for authenticating with the centrifuge POD,
+			// having it here also allows us to validate authentication with on-chain data.
+			ProxyType::PodAuth => false,
+			ProxyType::PermissionManagement => matches!(
+				c,
+				RuntimeCall::Permissions(pallet_permissions::Call::add { .. })
+					| RuntimeCall::Permissions(pallet_permissions::Call::remove { .. })
+			),
 		}
 	}
 
@@ -1288,6 +1346,12 @@ impl pallet_pool_system::Config for Runtime {
 	type WeightInfo = weights::pallet_pool_system::WeightInfo<Runtime>;
 }
 
+#[cfg(not(feature = "testnet-runtime"))]
+type PoolCreateOrigin = EnsureRoot<AccountId>;
+
+#[cfg(feature = "testnet-runtime")]
+type PoolCreateOrigin = EnsureSigned<AccountId>;
+
 impl pallet_pool_registry::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
@@ -1298,7 +1362,7 @@ impl pallet_pool_registry::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type ModifyPool = pallet_pool_system::Pallet<Self>;
 	type Permission = Permissions;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolCreateOrigin = PoolCreateOrigin;
 	type PoolId = PoolId;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1464,6 +1528,21 @@ impl<
 	}
 }
 
+parameter_types! {
+	pub const MaxKeys: u32 = 10;
+	pub const DefaultKeyDeposit: Balance = 100 * AIR;
+}
+
+impl pallet_keystore::pallet::Config for Runtime {
+	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+	type Balance = Balance;
+	type Currency = Balances;
+	type DefaultKeyDeposit = DefaultKeyDeposit;
+	type MaxKeys = MaxKeys;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1522,6 +1601,7 @@ construct_runtime!(
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
 		BlockRewardsBase: pallet_rewards::<Instance1>::{Pallet, Storage, Event<T>, Config<T>} = 104,
 		BlockRewards: pallet_block_rewards::{Pallet, Call, Storage, Event<T>, Config<T>} = 105,
+		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 106,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1592,6 +1672,7 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 		}
 	}
 
+	#[cfg(not(feature = "testnet-runtime"))]
 	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
 		match self {
 			RuntimeCall::Ethereum(call) => match call {
@@ -1604,6 +1685,14 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 				}
 				_ => call.check_self_contained(),
 			},
+			_ => None,
+		}
+	}
+
+	#[cfg(feature = "testnet-runtime")]
+	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
+		match self {
+			RuntimeCall::Ethereum(call) => call.check_self_contained(),
 			_ => None,
 		}
 	}
@@ -2039,6 +2128,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+			list_benchmark!(list, extra, pallet_keystore, Keystore);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2108,6 +2198,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
+			add_benchmark!(params, batches, pallet_keystore, Keystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
