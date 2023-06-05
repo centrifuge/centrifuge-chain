@@ -368,7 +368,7 @@ impl<T: Config> ActiveLoan<T> {
 
 	pub fn write_off(&mut self, new_status: &WriteOffStatus<T::Rate>) -> DispatchResult {
 		if let ActivePricing::Internal(inner) = &mut self.pricing {
-			inner.update_penalty(new_status.penalty)?;
+			inner.set_penalty(new_status.penalty)?;
 		}
 
 		self.write_off_percentage = new_status.percentage;

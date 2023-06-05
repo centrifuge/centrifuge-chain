@@ -1,6 +1,6 @@
 use cfg_primitives::Moment;
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureSub},
+	ops::{EnsureAdd, EnsureFixedPointNumber},
 	InterestAccrual, RateCollection,
 };
 use cfg_types::adjustments::Adjustment;
@@ -37,7 +37,7 @@ pub struct InternalPricing<T: Config> {
 	/// Valuation method of this loan
 	pub valuation_method: ValuationMethod<T::Rate>,
 
-	/// Interest rate per year with any penalty applied
+	/// Interest rate per year with any applied
 	pub interest_rate: T::Rate,
 
 	/// How much can be borrowed
@@ -80,7 +80,7 @@ impl<T: Config> InternalActivePricing<T> {
 	}
 
 	pub fn end(self) -> Result<InternalPricing<T>, DispatchError> {
-		T::InterestAccrual::unreference_rate(self.info.interest_rate)?;
+		T::InterestAccrual::unreference_rate(self.interest_rate_with_penalty()?)?;
 		Ok(self.info)
 	}
 
@@ -104,7 +104,7 @@ impl<T: Config> InternalActivePricing<T> {
 				Ok(dcf.compute_present_value(
 					debt,
 					now,
-					self.info.interest_rate,
+					self.interest_rate_with_penalty()?,
 					maturity_date,
 					origination_date,
 				)?)
@@ -115,14 +115,18 @@ impl<T: Config> InternalActivePricing<T> {
 
 	pub fn calculate_debt(&self) -> Result<T::Balance, DispatchError> {
 		let now = T::Time::now().as_secs();
-		T::InterestAccrual::calculate_debt(self.info.interest_rate, self.normalized_debt, now)
+		T::InterestAccrual::calculate_debt(
+			self.interest_rate_with_penalty()?,
+			self.normalized_debt,
+			now,
+		)
 	}
 
 	pub fn calculate_debt_by<Rates>(&self, rates: &Rates) -> Result<T::Balance, DispatchError>
 	where
 		Rates: RateCollection<T::Rate, T::Balance, T::Balance>,
 	{
-		rates.current_debt(self.info.interest_rate, self.normalized_debt)
+		rates.current_debt(self.interest_rate_with_penalty()?, self.normalized_debt)
 	}
 
 	pub fn max_borrow_amount(
@@ -141,7 +145,7 @@ impl<T: Config> InternalActivePricing<T> {
 
 	pub fn adjust_debt(&mut self, adjustment: Adjustment<T::Balance>) -> DispatchResult {
 		self.normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-			self.info.interest_rate,
+			self.interest_rate_with_penalty()?,
 			self.normalized_debt,
 			adjustment,
 		)?;
@@ -149,27 +153,31 @@ impl<T: Config> InternalActivePricing<T> {
 		Ok(())
 	}
 
-	pub fn update_penalty(&mut self, new_penalty: T::Rate) -> DispatchResult {
-		let base_interest_rate = self.info.interest_rate.ensure_sub(self.write_off_penalty)?;
-
+	pub fn set_penalty(&mut self, new_penalty: T::Rate) -> DispatchResult {
+		let old_reference = self.interest_rate_with_penalty()?;
 		self.write_off_penalty = new_penalty;
-		let new_interest_rate = base_interest_rate.ensure_add(self.write_off_penalty)?;
+		let new_reference = self.interest_rate_with_penalty()?;
 
-		self.set_interest_rate(new_interest_rate)
+		self.update_referenced_rate(old_reference, new_reference)
 	}
 
-	pub fn set_interest_rate(&mut self, new_interest_rate: T::Rate) -> DispatchResult {
-		let old_interest_rate = self.info.interest_rate;
-
-		T::InterestAccrual::reference_rate(new_interest_rate)?;
+	fn update_referenced_rate(
+		&mut self,
+		old_reference: T::Rate,
+		new_reference: T::Rate,
+	) -> DispatchResult {
+		T::InterestAccrual::reference_rate(new_reference)?;
 
 		self.normalized_debt = T::InterestAccrual::renormalize_debt(
-			old_interest_rate,
-			new_interest_rate,
+			old_reference,
+			new_reference,
 			self.normalized_debt,
 		)?;
-		self.info.interest_rate = new_interest_rate;
 
-		T::InterestAccrual::unreference_rate(old_interest_rate)
+		T::InterestAccrual::unreference_rate(old_reference)
+	}
+
+	fn interest_rate_with_penalty(&self) -> Result<T::Rate, DispatchError> {
+		Ok(self.info.interest_rate.ensure_add(self.write_off_penalty)?)
 	}
 }
