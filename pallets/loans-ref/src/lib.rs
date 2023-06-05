@@ -17,14 +17,16 @@
 //!
 //! The following actions are performed over loans:
 //!
-//! | Extrinsics                    | Role      |
-//! |-------------------------------|-----------|
-//! | [`Pallet::create()`]          | Borrower  |
-//! | [`Pallet::borrow()`]          | Borrower  |
-//! | [`Pallet::repay()`]           | Borrower  |
-//! | [`Pallet::write_off()`]       | Any       |
-//! | [`Pallet::admin_write_off()`] | LoanAdmin |
-//! | [`Pallet::close()`]           | Borrower  |
+//! | Extrinsics                         | Role      |
+//! |------------------------------------|-----------|
+//! | [`Pallet::create()`]               | Borrower  |
+//! | [`Pallet::borrow()`]               | Borrower  |
+//! | [`Pallet::repay()`]                | Borrower  |
+//! | [`Pallet::write_off()`]            | Any       |
+//! | [`Pallet::admin_write_off()`]      | LoanAdmin |
+//! | [`Pallet::close()`]                | Borrower  |
+//! | [`Pallet::propose_modification()`] | LoanAdmin |
+//! | [`Pallet::modify()`]               | Borrower  |
 //!
 //! The following actions are performed over a pool of loans:
 //!
@@ -63,11 +65,13 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
+		changes::ChangeGuard,
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
 	use cfg_types::{
 		adjustments::Adjustment,
+		changes::CfgChange,
 		permissions::{PermissionScope, PoolRole, Role},
 	};
 	use frame_support::{
@@ -90,7 +94,7 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 	use types::{
 		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuationUpdateType, WrittenOffError,
+		LoanMutation, ModificationError, Mutation, PortfolioValuationUpdateType, WrittenOffError,
 	};
 	use write_off::{WriteOffRule, WriteOffStatus};
 
@@ -114,6 +118,9 @@ pub mod pallet {
 
 		/// Identify a curreny.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
+
+		/// Identify a loan change.
+		type ChangeId: Parameter + Copy + MaybeSerializeDeserialize + MaxEncodedLen + TypeInfo;
 
 		/// Identify a non fungible collection
 		type CollectionId: Parameter
@@ -179,6 +186,13 @@ pub mod pallet {
 			Self::Balance,
 			Adjustment<Self::Balance>,
 			NormalizedDebt = Self::Balance,
+		>;
+
+		/// Used to confirm active loan modification properties.
+		type ChangeGuard: ChangeGuard<
+			PoolId = PoolIdOf<Self>,
+			ChangeId = Self::ChangeId,
+			Change = CfgChange,
 		>;
 
 		/// Max number of active loans per pool.
@@ -259,6 +273,16 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	#[pallet::storage]
+	pub(crate) type LoanModification<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		Blake2_128Concat,
+		T::ChangeId,
+		LoanMutation<T::LoanId, T::Rate>,
+	>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -285,6 +309,19 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			status: WriteOffStatus<T::Rate>,
+		},
+		/// A loan was written off
+		ModificationProposed {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			change_id: T::ChangeId,
+			mutation: Mutation<T::Rate>,
+		},
+		/// A loan was written off
+		Modified {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			mutation: Mutation<T::Rate>,
 		},
 		/// A loan was closed
 		Closed {
@@ -329,6 +366,8 @@ pub mod pallet {
 		BorrowLoanError(BorrowLoanError),
 		/// Emits when the loan can not be written off
 		WrittenOffError(WrittenOffError),
+		/// Emits when the loan can not be modified
+		ModificationError(ModificationError),
 		/// Emits when the loan can not be closed
 		CloseLoanError(CloseLoanError),
 	}
@@ -348,6 +387,12 @@ pub mod pallet {
 	impl<T> From<WrittenOffError> for Error<T> {
 		fn from(error: WrittenOffError) -> Self {
 			Error::<T>::WrittenOffError(error)
+		}
+	}
+
+	impl<T> From<ModificationError> for Error<T> {
+		fn from(error: ModificationError) -> Self {
+			Error::<T>::ModificationError(error)
 		}
 	}
 
@@ -641,6 +686,70 @@ pub mod pallet {
 			});
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
+		}
+
+		/// Propose a change for an active loan modification.
+		/// The change is not performed until you call [`Pallet::modify()`].
+		#[pallet::weight(10_000)]
+		#[pallet::call_index(8)]
+		pub fn propose_modification(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			mutation: Mutation<T::Rate>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
+
+			let change_id = T::ChangeGuard::note(pool_id, mutation.clone())?;
+
+			LoanModification::<T>::insert(
+				pool_id,
+				change_id,
+				LoanMutation {
+					loan_id,
+					mutation: mutation.clone(),
+				},
+			);
+
+			Self::deposit_event(Event::<T>::ModificationProposed {
+				pool_id,
+				loan_id,
+				change_id,
+				mutation,
+			});
+
+			Ok(())
+		}
+
+		/// Performs a proposed change identified by a change id.
+		/// It will only perform the modification if the requirements for that change are fulfilled.
+		#[pallet::weight(10_000)]
+		#[pallet::call_index(9)]
+		pub fn modify(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			change_id: T::ChangeId,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			T::ChangeGuard::released(pool_id, change_id)?;
+
+			let modification = LoanModification::<T>::take(pool_id, change_id)
+				.ok_or(DispatchError::Other("Expected a stored modification"))?;
+
+			Self::update_active_loan(pool_id, modification.loan_id, |loan| {
+				loan.modify_with(modification.mutation.clone())
+			})?;
+
+			// TODO: If not found in ActiveLoans, remove that mutation from Modifications
+			Self::deposit_event(Event::<T>::Modified {
+				pool_id: pool_id,
+				loan_id: modification.loan_id,
+				mutation: modification.mutation,
+			});
+
+			Ok(())
 		}
 	}
 

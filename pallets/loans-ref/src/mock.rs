@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use cfg_mocks::{pallet_mock_permissions, pallet_mock_pools};
+use cfg_mocks::{pallet_mock_change_guard, pallet_mock_permissions, pallet_mock_pools};
 use cfg_primitives::Moment;
-use cfg_types::permissions::PermissionScope;
+use cfg_types::{changes::CfgChange, permissions::PermissionScope};
 use frame_support::traits::{
 	tokens::nonfungibles::{Create, Mutate},
 	AsEnsureOriginWithArg, ConstU16, ConstU32, ConstU64, Hooks, UnixTime,
@@ -57,6 +57,7 @@ pub type CurrencyId = u32;
 pub type PoolId = u32;
 pub type TrancheId = u64;
 pub type LoanId = u64;
+pub type ChangeId = u64;
 
 frame_support::construct_runtime!(
 	pub enum Runtime where
@@ -71,6 +72,7 @@ frame_support::construct_runtime!(
 		InterestAccrual: pallet_interest_accrual,
 		MockPools: pallet_mock_pools,
 		MockPermissions: pallet_mock_permissions,
+		MockChangeGuard: pallet_mock_change_guard,
 		Loans: pallet_loans,
 	}
 );
@@ -168,8 +170,16 @@ impl pallet_mock_permissions::Config for Runtime {
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 }
 
+impl pallet_mock_change_guard::Config for Runtime {
+	type Change = CfgChange;
+	type ChangeId = u64;
+	type PoolId = PoolId;
+}
+
 impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
+	type ChangeGuard = MockChangeGuard;
+	type ChangeId = ChangeId;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
 	type InterestAccrual = InterestAccrual;

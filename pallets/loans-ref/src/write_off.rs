@@ -1,5 +1,5 @@
 use cfg_primitives::Moment;
-use cfg_traits::ops::EnsureFixedPointNumber;
+use cfg_traits::ops::{EnsureAdd, EnsureFixedPointNumber, EnsureSub};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	storage::bounded_btree_set::BoundedBTreeSet,
@@ -128,7 +128,7 @@ pub struct WriteOffStatus<Rate> {
 
 impl<Rate> WriteOffStatus<Rate>
 where
-	Rate: FixedPointNumber,
+	Rate: FixedPointNumber + EnsureAdd + EnsureSub,
 {
 	pub fn write_down<Balance: tokens::Balance + FixedPointOperand>(
 		&self,
@@ -142,6 +142,14 @@ where
 			percentage: self.percentage.max(other.percentage),
 			penalty: self.penalty.max(other.penalty),
 		}
+	}
+
+	pub fn penalize(&self, interest_rate: Rate) -> Result<Rate, ArithmeticError> {
+		interest_rate.ensure_add(self.penalty)
+	}
+
+	pub fn unpenalize(&self, interest_rate: Rate) -> Result<Rate, ArithmeticError> {
+		interest_rate.ensure_sub(self.penalty)
 	}
 
 	pub fn is_none(&self) -> bool {

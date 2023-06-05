@@ -13,10 +13,14 @@
 
 use cfg_primitives::{Moment, SECONDS_PER_DAY};
 use cfg_traits::{
-	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul, EnsureSub},
+	changes::Change,
+	ops::{EnsureAdd, EnsureAddAssign, EnsureFixedPointNumber, EnsureInto, EnsureMul},
 	InterestAccrual, RateCollection,
 };
-use cfg_types::adjustments::Adjustment;
+use cfg_types::{
+	adjustments::Adjustment,
+	changes::{CfgChange, LoanChange},
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
@@ -37,7 +41,7 @@ use sp_std::cmp::Ordering;
 
 use super::pallet::{Config, Error};
 use crate::{
-	valuation::ValuationMethod,
+	valuation::{DiscountedCashFlow, ValuationMethod},
 	write_off::{WriteOffStatus, WriteOffTrigger},
 };
 
@@ -66,6 +70,13 @@ pub enum BorrowLoanError {
 pub enum WrittenOffError {
 	/// Emits when a write off action tries to write off the more than the policy allows
 	LessThanPolicy,
+}
+
+/// Error related to loan modifications
+#[derive(Encode, Decode, TypeInfo, PalletError)]
+pub enum ModificationError {
+	/// Emits when a modification expect the loan to have a discounted cash flow valuation method
+	DiscountedCashFlowExpected,
 }
 
 /// Error related to loan closing
@@ -130,6 +141,47 @@ pub enum PortfolioValuationUpdateType {
 	Exact,
 	/// Portfolio Valuation was updated inexactly based on loan status changes
 	Inexact,
+}
+
+/// Struct that associate a mutation to its associated loan
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub struct LoanMutation<LoanId, Rate> {
+	/// Active loan id associated to this change
+	pub loan_id: LoanId,
+
+	/// Proposed change
+	pub mutation: Mutation<Rate>,
+}
+
+/// Active loan mutation
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+pub enum Mutation<Rate> {
+	Maturity(Maturity),
+	InterestRate(Rate),
+	InterestPayments(InterestPayments),
+	PayDownSchedule(PayDownSchedule),
+	ValuationMethod(ValuationMethod<Rate>),
+	ProbabilityOfDefault(Rate),
+	LossGivenDefault(Rate),
+	DiscountRate(Rate),
+}
+
+impl<Rate> Change for Mutation<Rate> {
+	type ChangeKind = CfgChange;
+
+	fn kind(&self) -> CfgChange {
+		match self {
+			Mutation::Maturity(_) => LoanChange::Maturity,
+			Mutation::InterestRate(_) => LoanChange::InterestRate,
+			Mutation::InterestPayments(_) => LoanChange::InterestPayments,
+			Mutation::PayDownSchedule(_) => LoanChange::PayDownSchedule,
+			Mutation::ValuationMethod(_) => LoanChange::ValuationMethod,
+			Mutation::ProbabilityOfDefault(_) => LoanChange::ProbabilityOfDefault,
+			Mutation::LossGivenDefault(_) => LoanChange::LossGivenDefault,
+			Mutation::DiscountRate(_) => LoanChange::DiscountRate,
+		}
+		.into()
+	}
 }
 
 /// Specify the expected repayments date
@@ -252,7 +304,7 @@ impl<Asset, Balance, Rate> LoanInfo<Asset, Balance, Rate> {
 	}
 }
 
-// =================================================================
+// -----------------------------------------------------------------
 //  High level types related to the pallet's Config and Error types
 // -----------------------------------------------------------------
 
@@ -273,6 +325,15 @@ where
 		);
 
 		T::InterestAccrual::validate_rate(self.interest_rate)
+	}
+
+	pub fn mut_validation_method_dcf<T: Config<Rate = Rate>>(
+		&mut self,
+	) -> Result<&mut DiscountedCashFlow<Rate>, DispatchError> {
+		match &mut self.valuation_method {
+			ValuationMethod::DiscountedCashFlow(dcf) => Ok(dcf),
+			_ => Err(Error::<T>::from(ModificationError::DiscountedCashFlowExpected).into()),
+		}
 	}
 }
 
@@ -456,17 +517,6 @@ impl<T: Config> ActiveLoan<T> {
 		}
 	}
 
-	/// Returns a penalized version of the interest rate in an absolute way.
-	/// This method first unpenalized the rate based on the current write off status before
-	/// penalize it with the input parameter.
-	/// `interest_rate_with(0)` with returns the original interest_rate without any penalization
-	fn interest_rate_with(&self, penalty: T::Rate) -> Result<T::Rate, ArithmeticError> {
-		self.info
-			.interest_rate
-			.ensure_sub(self.write_off_status.penalty)?
-			.ensure_add(penalty)
-	}
-
 	fn update_interest_rate(&mut self, new_interest_rate: T::Rate) -> DispatchResult {
 		let old_interest_rate = self.info.interest_rate;
 
@@ -569,7 +619,8 @@ impl<T: Config> ActiveLoan<T> {
 			Error::<T>::from(WrittenOffError::LessThanPolicy)
 		);
 
-		Ok(self.interest_rate_with(new_status.penalty)?)
+		let original_rate = self.write_off_status.unpenalize(self.info.interest_rate)?;
+		Ok(new_status.penalize(original_rate)?)
 	}
 
 	pub fn write_off(
@@ -581,6 +632,40 @@ impl<T: Config> ActiveLoan<T> {
 
 		self.update_interest_rate(new_interest_rate)?;
 		self.write_off_status = new_status.clone();
+
+		Ok(())
+	}
+
+	fn ensure_can_modify(&self, _: &Mutation<T::Rate>) -> DispatchResult {
+		Ok(())
+	}
+
+	pub fn modify_with(&mut self, mutation: Mutation<T::Rate>) -> DispatchResult {
+		self.ensure_can_modify(&mutation)?;
+
+		match mutation {
+			Mutation::Maturity(maturity) => self.info.schedule.maturity = maturity,
+			Mutation::InterestRate(rate) => {
+				let rate_with_penalty = self.write_off_status.penalize(rate)?;
+				self.update_interest_rate(rate_with_penalty)?
+			}
+			Mutation::InterestPayments(payments) => self.info.schedule.interest_payments = payments,
+			Mutation::PayDownSchedule(schedule) => self.info.schedule.pay_down_schedule = schedule,
+			Mutation::ValuationMethod(method) => self.info.valuation_method = method,
+			Mutation::ProbabilityOfDefault(rate) => {
+				self.info
+					.mut_validation_method_dcf::<T>()?
+					.probability_of_default = rate
+			}
+			Mutation::LossGivenDefault(rate) => {
+				self.info
+					.mut_validation_method_dcf::<T>()?
+					.loss_given_default = rate
+			}
+			Mutation::DiscountRate(rate) => {
+				self.info.mut_validation_method_dcf::<T>()?.discount_rate = rate
+			}
+		}
 
 		Ok(())
 	}
