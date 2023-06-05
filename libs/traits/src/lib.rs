@@ -43,6 +43,9 @@ pub mod rewards;
 
 pub mod data;
 
+/// Traits related to checked changes.
+pub mod changes;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview

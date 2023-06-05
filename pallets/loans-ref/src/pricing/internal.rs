@@ -14,7 +14,10 @@ use sp_runtime::{traits::Zero, DispatchError};
 
 use crate::{
 	pallet::{Config, Error},
-	types::{valuation::ValuationMethod, CreateLoanError},
+	types::{
+		valuation::{DiscountedCashFlow, ValuationMethod},
+		CreateLoanError, InternalMutation, ModificationError,
+	},
 };
 
 /// Diferents methods of how to compute the amount can be borrowed
@@ -171,5 +174,29 @@ impl<T: Config> InternalActivePricing<T> {
 		self.info.interest_rate = new_interest_rate;
 
 		T::InterestAccrual::unreference_rate(old_interest_rate)
+	}
+
+	fn mut_dcf(&mut self) -> Result<&mut DiscountedCashFlow<T::Rate>, DispatchError> {
+		match &mut self.info.valuation_method {
+			ValuationMethod::DiscountedCashFlow(dcf) => Ok(dcf),
+			_ => Err(Error::<T>::from(ModificationError::DiscountedCashFlowExpected).into()),
+		}
+	}
+
+	pub fn modify_with(&mut self, mutation: InternalMutation<T::Rate>) -> DispatchResult {
+		match mutation {
+			InternalMutation::InterestRate(rate) => {
+				let new_interest_rate = rate.ensure_add(self.write_off_penalty)?;
+				self.set_interest_rate(new_interest_rate)?;
+			}
+			InternalMutation::ValuationMethod(method) => self.info.valuation_method = method,
+			InternalMutation::ProbabilityOfDefault(rate) => {
+				self.mut_dcf()?.probability_of_default = rate;
+			}
+			InternalMutation::LossGivenDefault(rate) => self.mut_dcf()?.loss_given_default = rate,
+			InternalMutation::DiscountRate(rate) => self.mut_dcf()?.discount_rate = rate,
+		}
+
+		Ok(())
 	}
 }

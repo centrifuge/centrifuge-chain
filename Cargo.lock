@@ -6905,6 +6905,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-change-guard"
+version = "1.0.0"
+dependencies = [
+ "cfg-traits",
+ "cfg-types",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 3.4.0",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-child-bounties"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=bcff60a227d455d95b4712b6cb356ce56b1ff672#bcff60a227d455d95b4712b6cb356ce56b1ff672"

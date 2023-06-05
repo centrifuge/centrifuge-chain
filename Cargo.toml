@@ -38,6 +38,7 @@ members = [
   "pallets/anchors",
   "pallets/bridge",
   "pallets/block-rewards",
+  "pallets/change-guard",
   "pallets/connectors",
   "pallets/claims",
   "pallets/collator-allowlist",
