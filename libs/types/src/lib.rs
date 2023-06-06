@@ -24,6 +24,7 @@ pub mod fixed_point;
 pub mod ids;
 pub mod investments;
 pub mod locations;
+pub mod oracles;
 pub mod orders;
 pub mod permissions;
 pub mod time;

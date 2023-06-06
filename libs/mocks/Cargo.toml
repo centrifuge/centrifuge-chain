@@ -23,6 +23,8 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 cfg-primitives = { path = "../primitives", default-features = false }
 cfg-traits = { path = "../traits", default-features = false }
 cfg-types = { path = "../types", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
+
 mock-builder = { path = "../../libs/mock-builder" }
 
 [features]
@@ -39,6 +41,7 @@ std = [
   "sp-core/std",
   "sp-io/std",
   "sp-runtime/std",
+  "orml-traits/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",

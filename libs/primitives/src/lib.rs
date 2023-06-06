@@ -175,9 +175,6 @@ pub mod types {
 
 	/// A representation of a loan identifier
 	pub type LoanId = u64;
-
-	/// A representation of a price identifier
-	pub type PriceId = u64;
 }
 
 /// Common constants for all runtimes
