@@ -3,7 +3,7 @@ use std::time::Duration;
 use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::{traits::BadOrigin, DispatchError};
+use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
 
 use super::{
 	loan::{ActiveLoan, LoanInfo},
@@ -29,7 +29,7 @@ const POLICY_PERCENTAGE: f64 = 0.5;
 const POLICY_PENALTY: f64 = 0.5;
 const REGISTER_PRICE_ID: PriceId = 42;
 const UNREGISTER_PRICE_ID: PriceId = 88;
-const PRICE_VALUE: Balance = 1000;
+const PRICE_VALUE: Rate = Rate::from_u32(1000);
 const QUANTITY: Balance = 20;
 
 /// Used where the error comes from other pallet impl. unknown from the tests
@@ -618,7 +618,7 @@ mod borrow_loan {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
 
-			let amount = PRICE_VALUE * QUANTITY + 1;
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY) + 1;
 			config_mocks(amount);
 
 			assert_noop!(
@@ -634,7 +634,7 @@ mod borrow_loan {
 			let loan_id = util::create_loan(util::base_external_loan());
 
 			// It's not multiple of PRICE_VALUE
-			let amount = PRICE_VALUE * QUANTITY - 1;
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY) - 1;
 			config_mocks(amount);
 
 			assert_noop!(
@@ -649,7 +649,7 @@ mod borrow_loan {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
 
-			let amount = PRICE_VALUE * QUANTITY;
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
 			config_mocks(amount);
 
 			assert_ok!(Loans::borrow(
@@ -1042,14 +1042,15 @@ mod repay_loan {
 	fn external_pricing_same() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
 
-			config_mocks(PRICE_VALUE * QUANTITY);
+			config_mocks(amount);
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PRICE_VALUE * QUANTITY,
+				amount,
 				0
 			));
 
@@ -1061,16 +1062,17 @@ mod repay_loan {
 	fn external_pricing_goes_up() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
 
-			config_mocks((PRICE_VALUE * 2) * QUANTITY);
-			MockPrices::mock_get(|_| Ok((PRICE_VALUE * 2, now().as_secs())));
+			config_mocks(amount * 2);
+			MockPrices::mock_get(|_| Ok((PRICE_VALUE * 2.into(), now().as_secs())));
 
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				(PRICE_VALUE * 2) * QUANTITY,
+				amount * 2,
 				0
 			));
 
@@ -1082,16 +1084,17 @@ mod repay_loan {
 	fn external_pricing_goes_down() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
 
-			config_mocks(PRICE_VALUE / 2 * QUANTITY);
-			MockPrices::mock_get(|_| Ok((PRICE_VALUE / 2, now().as_secs())));
+			config_mocks(amount / 2);
+			MockPrices::mock_get(|_| Ok((PRICE_VALUE / 2.into(), now().as_secs())));
 
 			assert_ok!(Loans::repay(
 				RuntimeOrigin::signed(BORROWER),
 				POOL_A,
 				loan_id,
-				PRICE_VALUE * QUANTITY,
+				amount,
 				0
 			));
 
@@ -1103,16 +1106,17 @@ mod repay_loan {
 	fn external_pricing_with_wrong_quantity() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
 
 			// It's not multiple of PRICE_VALUE
-			config_mocks(PRICE_VALUE * QUANTITY - 1);
+			config_mocks(amount - 1);
 			assert_noop!(
 				Loans::repay(
 					RuntimeOrigin::signed(BORROWER),
 					POOL_A,
 					loan_id,
-					PRICE_VALUE * QUANTITY - 1,
+					amount - 1,
 					0
 				),
 				Error::<Runtime>::AmountNotMultipleOfPrice
@@ -1491,7 +1495,8 @@ mod write_off_loan {
 			util::set_up_policy(POLICY_PERCENTAGE, 0.0);
 
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
 
 			advance_time(YEAR + DAY);
 
@@ -1639,8 +1644,9 @@ mod close_loan {
 	fn without_fully_repaid_external() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
-			util::repay_loan(loan_id, (PRICE_VALUE / 2) * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
+			util::repay_loan(loan_id, amount / 2);
 
 			assert_noop!(
 				Loans::close(RuntimeOrigin::signed(BORROWER), POOL_A, loan_id),
@@ -1689,8 +1695,9 @@ mod close_loan {
 	fn with_fully_repaid_external() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
-			util::repay_loan(loan_id, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
+			util::repay_loan(loan_id, amount);
 
 			config_mocks();
 			assert_ok!(Loans::close(
@@ -1808,7 +1815,8 @@ mod policy {
 	fn with_price_outdated() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_id, amount);
 
 			config_mocks(POOL_A);
 			assert_ok!(Loans::update_write_off_policy(
@@ -1977,7 +1985,8 @@ mod portfolio_valuation {
 	fn with_active_loans() {
 		new_test_ext().execute_with(|| {
 			let loan_1 = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_1, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_1, amount);
 
 			let loan_2 = util::create_loan(LoanInfo {
 				collateral: ASSET_BA,
@@ -1986,7 +1995,7 @@ mod portfolio_valuation {
 			util::borrow_loan(loan_2, COLLATERAL_VALUE);
 			util::repay_loan(loan_2, COLLATERAL_VALUE / 4);
 
-			let valuation = PRICE_VALUE * QUANTITY + COLLATERAL_VALUE - COLLATERAL_VALUE / 4;
+			let valuation = amount + COLLATERAL_VALUE - COLLATERAL_VALUE / 4;
 
 			expected_portfolio(valuation);
 			update_portfolio();
@@ -2003,7 +2012,8 @@ mod portfolio_valuation {
 	fn with_active_written_off_loans() {
 		new_test_ext().execute_with(|| {
 			let loan_1 = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_1, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_1, amount);
 
 			let loan_2 = util::create_loan(LoanInfo {
 				collateral: ASSET_BA,
@@ -2026,7 +2036,8 @@ mod portfolio_valuation {
 	fn filled_and_cleaned() {
 		new_test_ext().execute_with(|| {
 			let loan_1 = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_1, PRICE_VALUE * QUANTITY);
+			let amount = PRICE_VALUE.saturating_mul_int(QUANTITY);
+			util::borrow_loan(loan_1, amount);
 
 			let loan_2 = util::create_loan(LoanInfo {
 				collateral: ASSET_BA,
@@ -2041,7 +2052,7 @@ mod portfolio_valuation {
 
 			advance_time(YEAR / 2);
 
-			util::repay_loan(loan_1, PRICE_VALUE * QUANTITY);
+			util::repay_loan(loan_1, amount);
 			util::repay_loan(loan_2, COLLATERAL_VALUE * 2);
 
 			advance_time(YEAR / 2);

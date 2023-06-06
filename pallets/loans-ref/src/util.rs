@@ -46,14 +46,14 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	}
 }
 
-impl<T: Config> DataProvider<T::PriceId, T::Balance> for NoPriceRegistry<T> {
-	fn get(_: &T::PriceId) -> Option<T::Balance> {
+impl<T: Config> DataProvider<T::PriceId, T::Rate> for NoPriceRegistry<T> {
+	fn get(_: &T::PriceId) -> Option<T::Rate> {
 		None
 	}
 }
 
-impl<T: Config> DataFeeder<T::PriceId, T::Balance, T::AccountId> for NoPriceRegistry<T> {
-	fn feed_value(_: T::AccountId, _: T::PriceId, _: T::Balance) -> DispatchResult {
+impl<T: Config> DataFeeder<T::PriceId, T::Rate, T::AccountId> for NoPriceRegistry<T> {
+	fn feed_value(_: T::AccountId, _: T::PriceId, _: T::Rate) -> DispatchResult {
 		Err(DEFAULT_ERR)
 	}
 }
