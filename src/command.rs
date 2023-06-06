@@ -34,7 +34,8 @@ use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
 	service::{
-		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
+		evm::new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor,
+		DevelopmentRuntimeExecutor,
 	},
 };
 
@@ -82,6 +83,7 @@ fn load_spec(
 		"altair-staging" => Ok(Box::new(chain_spec::altair_staging(para_id))),
 		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
 		"altair-local" => Ok(Box::new(chain_spec::altair_local(para_id))),
+		"algol" => Ok(Box::new(chain_spec::algol_config())),
 		"catalyst" => Ok(Box::new(chain_spec::catalyst_config())),
 		"catalyst-staging" => Ok(Box::new(chain_spec::catalyst_staging(para_id))),
 		"catalyst-local" => Ok(Box::new(chain_spec::catalyst_local(para_id))),
@@ -250,7 +252,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Development => {
 		    runner.async_run(|$config| {
-				let $components = crate::service::evm::new_partial::<development_runtime::RuntimeApi, _>(
+				let $components = new_partial::<development_runtime::RuntimeApi, _>(
 					&$config,
 					crate::service::build_development_import_queue,
 				)?;
@@ -307,7 +309,7 @@ pub fn run() -> Result<()> {
 					&polkadot_cli,
 					config.tokio_handle.clone(),
 				)
-				.map_err(|err| format!("Relay chain argument error: {}", err))?;
+				.map_err(|err| format!("Relay chain argument error: {err}"))?;
 
 				cmd.run(config, polkadot_config)
 			})
@@ -451,13 +453,13 @@ pub fn run() -> Result<()> {
 
 				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
 				let block: Block = generate_genesis_block(&*config.chain_spec, state_version)
-					.map_err(|e| format!("{:?}", e))?;
+					.map_err(|e| format!("{e:?}"))?;
 				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
 				let task_executor = config.tokio_handle.clone();
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, task_executor)
-						.map_err(|err| format!("Relay chain argument error: {}", err))?;
+						.map_err(|err| format!("Relay chain argument error: {err}"))?;
 
 				info!(
 					"Relay-chain Chain spec: {:?}",
@@ -484,7 +486,7 @@ pub fn run() -> Result<()> {
 
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, collator_options, id)
+						crate::service::start_altair_node(config, polkadot_config, cli.eth, collator_options, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
@@ -492,6 +494,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
 						config,
 						polkadot_config,
+                        cli.eth,
 						collator_options,
 						id,
 					)
@@ -501,6 +504,7 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Development => crate::service::start_development_node(
 						config,
 						polkadot_config,
+                        cli.eth,
 						collator_options,
 						id,
 					)

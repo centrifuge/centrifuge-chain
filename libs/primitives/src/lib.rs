@@ -175,11 +175,14 @@ pub mod types {
 
 	/// A representation of a loan identifier
 	pub type LoanId = u64;
+
+	/// A representation of a price identifier
+	pub type PriceId = u64;
 }
 
 /// Common constants for all runtimes
 pub mod constants {
-	use cumulus_primitives_core::relay_chain::v2::MAX_POV_SIZE;
+	use cumulus_primitives_core::relay_chain::MAX_POV_SIZE;
 	use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 	use sp_runtime::Perbill;
 

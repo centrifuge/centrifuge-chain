@@ -1,5 +1,21 @@
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use cfg_primitives::CFG;
-use cfg_traits::{InterestAccrual, Permissions, PoolBenchmarkHelper};
+use cfg_traits::{
+	data::{DataCollection, DataRegistry},
+	InterestAccrual, Permissions, PoolBenchmarkHelper,
+};
 use cfg_types::{
 	adjustments::Adjustment,
 	permissions::{PermissionScope, PoolRole, Role},
@@ -18,10 +34,18 @@ use sp_runtime::traits::{Get, One, Zero};
 use sp_std::{time::Duration, vec};
 
 use super::{
+	loan::LoanInfo,
 	pallet::*,
-	types::{LoanInfo, MaxBorrowAmount},
-	valuation::{DiscountedCashFlow, ValuationMethod},
-	write_off::{WriteOffRule, WriteOffTrigger},
+	pricing::{
+		internal::{InternalPricing, MaxBorrowAmount},
+		Pricing,
+	},
+	types::{
+		policy::{WriteOffRule, WriteOffTrigger},
+		valuation::{DiscountedCashFlow, ValuationMethod},
+		BorrowRestrictions, InterestPayments, LoanRestrictions, Maturity, PayDownSchedule,
+		RepayRestrictions, RepaymentSchedule,
+	},
 };
 
 const OFFSET: Duration = Duration::from_secs(120);
@@ -35,6 +59,11 @@ type MaxRateCountOf<T> = <<T as Config>::InterestAccrual as InterestAccrual<
 	Adjustment<<T as Config>::Balance>,
 >>::MaxRateCount;
 
+type MaxCollectionSizeOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
+	<T as Config>::PriceId,
+	PoolIdOf<T>,
+>>::MaxCollectionSize;
+
 struct Helper<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Helper<T>
 where
@@ -42,12 +71,16 @@ where
 	T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 	T::CollectionId: From<u16>,
 	T::ItemId: From<u16>,
+	T::PriceId: From<u32>,
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 {
 	#[cfg(test)]
 	fn config_mocks() {
-		use crate::mock::{MockPermissions, MockPools};
+		use cfg_mocks::pallet_mock_data::util::MockDataCollection;
+
+		use crate::mock::{MockPermissions, MockPools, MockPrices};
 
 		MockPermissions::mock_add(|_, _, _| Ok(()));
 		MockPermissions::mock_has(|_, _, _| true);
@@ -57,6 +90,8 @@ where
 		MockPools::mock_deposit(|_, _, _| Ok(()));
 		MockPools::mock_benchmark_create_pool(|_, _| {});
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
+		MockPrices::mock_register_id(|_, _| Ok(()));
+		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
 	}
 
 	fn prepare_benchmark() -> PoolIdOf<T> {
@@ -89,27 +124,42 @@ where
 		pool_id
 	}
 
+	fn base_loan(item_id: T::ItemId) -> LoanInfo<T> {
+		LoanInfo {
+			schedule: RepaymentSchedule {
+				maturity: Maturity::Fixed((T::Time::now() + OFFSET).as_secs()),
+				interest_payments: InterestPayments::None,
+				pay_down_schedule: PayDownSchedule::None,
+			},
+			collateral: (COLLECION_ID.into(), item_id),
+			pricing: Pricing::Internal(InternalPricing {
+				collateral_value: COLLATERAL_VALUE.into(),
+				interest_rate: T::Rate::saturating_from_rational(1, 5000),
+				max_borrow_amount: MaxBorrowAmount::UpToOutstandingDebt {
+					advance_rate: T::Rate::one(),
+				},
+				valuation_method: ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
+					probability_of_default: T::Rate::zero(),
+					loss_given_default: T::Rate::zero(),
+					discount_rate: T::Rate::one(),
+				}),
+			}),
+			restrictions: LoanRestrictions {
+				borrows: BorrowRestrictions::NotWrittenOff,
+				repayments: RepayRestrictions::None,
+			},
+		}
+	}
+
 	fn create_loan(pool_id: PoolIdOf<T>, item_id: T::ItemId) -> T::LoanId {
 		let borrower = account("borrower", 0, 0);
 
-		let collection_id = COLLECION_ID.into();
-		T::NonFungible::mint_into(&collection_id, &item_id, &borrower).unwrap();
+		T::NonFungible::mint_into(&COLLECION_ID.into(), &item_id, &borrower).unwrap();
 
 		Pallet::<T>::create(
 			RawOrigin::Signed(borrower).into(),
 			pool_id,
-			LoanInfo::new((collection_id, item_id))
-				.maturity(T::Time::now() + OFFSET)
-				.interest_rate(T::Rate::saturating_from_rational(1, 5000))
-				.collateral_value((COLLATERAL_VALUE).into())
-				.max_borrow_amount(MaxBorrowAmount::UpToOutstandingDebt {
-					advance_rate: T::Rate::one(),
-				})
-				.valuation_method(ValuationMethod::DiscountedCashFlow(DiscountedCashFlow {
-					probability_of_default: T::Rate::zero(),
-					loss_given_default: T::Rate::zero(),
-					discount_rate: T::Rate::one(),
-				})),
+			Self::base_loan(item_id),
 		)
 		.unwrap();
 
@@ -134,6 +184,7 @@ where
 			pool_id,
 			loan_id,
 			COLLATERAL_VALUE.into(),
+			0.into(),
 		)
 		.unwrap();
 	}
@@ -168,13 +219,18 @@ where
 	}
 
 	fn initialize_active_state(n: u32) -> PoolIdOf<T> {
+		let pool_id = Self::prepare_benchmark();
+
 		for i in 1..MaxRateCountOf::<T>::get() {
 			// First `i` (i=0) used by the loan's interest rate.
 			let rate = T::Rate::saturating_from_rational(i + 1, 5000);
 			T::InterestAccrual::reference_rate(rate).unwrap();
 		}
 
-		let pool_id = Self::prepare_benchmark();
+		for i in 0..MaxCollectionSizeOf::<T>::get() {
+			let price_id = T::PriceId::from(i + 1);
+			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
+		}
 
 		for i in 0..n {
 			let item_id = (i as u16).into();
@@ -193,7 +249,9 @@ benchmarks! {
 		T::NonFungible: Create<T::AccountId> + Mutate<T::AccountId>,
 		T::CollectionId: From<u16>,
 		T::ItemId: From<u16>,
+		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
 	}
 
 	create {
@@ -202,8 +260,7 @@ benchmarks! {
 
 		let (collection_id, item_id) = (COLLECION_ID.into(), 1.into());
 		T::NonFungible::mint_into(&collection_id, &item_id, &borrower).unwrap();
-
-		let loan_info = LoanInfo::new((collection_id, item_id)).maturity(T::Time::now() + OFFSET);
+		let loan_info = Helper::<T>::base_loan(item_id);
 
 	}: _(RawOrigin::Signed(borrower), pool_id, loan_info)
 
@@ -224,7 +281,7 @@ benchmarks! {
 		let loan_id = Helper::<T>::create_loan(pool_id, u16::MAX.into());
 		Helper::<T>::borrow_loan(pool_id, loan_id);
 
-	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into())
+	}: _(RawOrigin::Signed(borrower), pool_id, loan_id, 10.into(), 0.into())
 
 	write_off {
 		let n in 1..T::MaxActiveLoansPerPool::get() - 1;

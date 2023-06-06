@@ -35,7 +35,6 @@ use lazy_static::lazy_static;
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
-use rand::Rng;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{TFullClient, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
@@ -290,7 +289,6 @@ type RelayCidp = Box<
 		InherentDataProviders = (
 			FudgeInherentTimestamp,
 			sp_consensus_babe::inherents::InherentDataProvider,
-			sp_authorship::InherentDataProvider<RelayHeader>,
 			FudgeDummyInherentRelayParachain<RelayHeader>,
 		),
 	>,
@@ -374,7 +372,9 @@ impl TestEnv {
 					EventRange::Latest => self.events_relay(latest),
 					EventRange::All => {
 						let mut events = Vec::new();
-						for block in 0..latest + 1 {
+						// We MUST NOT query events at genesis block, as this triggers
+						// a panic. Hence, start at 1.
+						for block in 1..latest + 1 {
 							events.extend(self.events_relay(block)?)
 						}
 
@@ -402,7 +402,9 @@ impl TestEnv {
 						EventRange::Latest => self.events_centrifuge(latest),
 						EventRange::All => {
 							let mut events = Vec::new();
-							for block in 0..latest + 1 {
+							// We MUST NOT query events at genesis block, as this triggers
+							// a panic. Hence, start at 1.
+							for block in 1..latest + 1 {
 								events.extend(self.events_centrifuge(block)?)
 							}
 
@@ -719,10 +721,6 @@ fn test_env(
 					.expect("ESSENTIAL: Relay CIDP must not fail.");
 
 				async move {
-					let uncles = sc_consensus_uncles::create_uncles_inherent_data_provider(
-						&*client, parent,
-					)?;
-
 					let timestamp = FudgeInherentTimestamp::get_instance(instance_id)
 						.expect("Instances is initialized");
 
@@ -733,7 +731,7 @@ fn test_env(
 							);
 
 					let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
-					Ok((timestamp, slot, uncles, relay_para_inherent))
+					Ok((timestamp, slot, relay_para_inherent))
 				}
 			})
 		};

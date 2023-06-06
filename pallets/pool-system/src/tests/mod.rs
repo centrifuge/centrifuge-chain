@@ -20,15 +20,10 @@ use cfg_types::{
 use frame_support::{assert_err, assert_noop, assert_ok};
 use orml_traits::asset_registry::{AssetMetadata, Inspect};
 use rand::Rng;
-use sp_core::{storage::StateVersion, Encode};
+use sp_core::storage::StateVersion;
 use sp_runtime::{
-	traits::{ConstU32, One, Zero},
-	FixedPointNumber, Perquintill, TokenError, WeakBoundedVec,
-};
-use xcm::{
-	latest::MultiLocation,
-	prelude::{GeneralKey, PalletInstance, Parachain, X3},
-	VersionedMultiLocation,
+	traits::{One, Zero},
+	FixedPointNumber, Perquintill, TokenError,
 };
 
 use crate::{
@@ -2311,8 +2306,6 @@ fn create_tranche_token_metadata() {
 
 		let pool = Pool::<Runtime>::get(3).unwrap();
 		let tranche_currency = pool.tranches.tranches[0].currency;
-		let tranche_id =
-			WeakBoundedVec::<u8, ConstU32<32>>::force_from(tranche_currency.encode(), None);
 
 		assert_eq!(
 			<Runtime as Config>::AssetRegistry::metadata(&tranche_currency.into()).unwrap(),
@@ -2321,14 +2314,7 @@ fn create_tranche_token_metadata() {
 				name: "SuperToken".into(),
 				symbol: "ST".into(),
 				existential_deposit: 0,
-				location: Some(VersionedMultiLocation::V1(MultiLocation {
-					parents: 1,
-					interior: X3(
-						Parachain(MockParachainId::get()),
-						PalletInstance(PoolPalletIndex::get()),
-						GeneralKey(tranche_id)
-					),
-				})),
+				location: None,
 				additional: CustomMetadata {
 					mintable: false,
 					permissioned: true,

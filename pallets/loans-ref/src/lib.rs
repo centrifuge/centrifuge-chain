@@ -42,9 +42,10 @@ pub mod migrations {
 	pub mod v1;
 }
 
+pub mod loan;
+pub mod pricing;
 pub mod types;
-pub mod valuation;
-pub mod write_off;
+pub mod util;
 
 #[cfg(test)]
 mod mock;
@@ -64,6 +65,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
+		data::{DataCollection, DataRegistry},
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
 	};
@@ -82,6 +84,7 @@ pub mod pallet {
 		},
 	};
 	use frame_system::pallet_prelude::*;
+	use loan::{ActiveLoan, LoanInfo};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
@@ -90,17 +93,27 @@ pub mod pallet {
 	};
 	use sp_std::vec::Vec;
 	use types::{
-		self, ActiveLoan, AssetOf, BorrowLoanError, CloseLoanError, CreateLoanError, LoanInfoOf,
-		PortfolioValuationUpdateType, WrittenOffError,
+		self,
+		policy::{self, WriteOffRule, WriteOffStatus},
+		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
+		BorrowLoanError, CloseLoanError, CreateLoanError, RepayLoanError, WrittenOffError,
 	};
-	use write_off::{WriteOffRule, WriteOffStatus};
 
 	use super::*;
+
+	pub type PriceCollectionOf<T> = <<T as Config>::PriceRegistry as DataRegistry<
+		<T as Config>::PriceId,
+		PoolIdOf<T>,
+	>>::Collection;
 
 	pub type PoolIdOf<T> = <<T as Config>::Pool as PoolInspect<
 		<T as frame_system::Config>::AccountId,
 		<T as Config>::CurrencyId,
 	>>::PoolId;
+
+	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
+	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
+	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -145,6 +158,15 @@ pub mod pallet {
 			+ EnsureAdd
 			+ One;
 
+		/// Identify a loan in the pallet
+		type PriceId: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Default
+			+ TypeInfo
+			+ Copy
+			+ MaxEncodedLen;
+
 		/// Defines the rate type used for math computations
 		type Rate: Parameter
 			+ Member
@@ -173,6 +195,9 @@ pub mod pallet {
 			Role = Role,
 			Error = DispatchError,
 		>;
+
+		/// Used to fetch and update Oracle prices
+		type PriceRegistry: DataRegistry<Self::PriceId, PoolIdOf<Self>, Data = PriceResultOf<Self>>;
 
 		/// Used to calculate interest accrual for debt.
 		type InterestAccrual: InterestAccrual<
@@ -207,7 +232,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		types::CreatedLoan<T>,
+		loan::CreatedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -222,7 +247,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<(ActiveLoan<T>, Moment), T::MaxActiveLoansPerPool>,
+		BoundedVec<(T::LoanId, ActiveLoan<T>), T::MaxActiveLoansPerPool>,
 		ValueQuery,
 	>;
 
@@ -236,7 +261,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		types::ClosedLoan<T>,
+		loan::ClosedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -257,8 +282,9 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		types::PortfolioValuation<T::Balance>,
+		portfolio::PortfolioValuation<T::Balance, T::LoanId, T::MaxActiveLoansPerPool>,
 		ValueQuery,
+		InitialPortfolioValuation<T::Time>,
 	>;
 
 	#[pallet::event]
@@ -268,7 +294,7 @@ pub mod pallet {
 		Created {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			loan_info: LoanInfoOf<T>,
+			loan_info: LoanInfo<T>,
 		},
 		/// An amount was borrowed for a loan
 		Borrowed {
@@ -281,6 +307,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
+			unchecked_amount: T::Balance,
 		},
 		/// A loan was written off
 		WrittenOff {
@@ -310,10 +337,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when pool doesn't exist
 		PoolNotFound,
-		/// Emits when loan doesn't exist
-		LoanNotFound,
-		/// Emits when a loan exist but it's not active
-		LoanNotActive,
+		/// Emits when loan doesn't exist or it's not active yet.
+		LoanNotActiveOrNotFound,
 		/// Emits when a write-off rule is not found in a policy for a specific
 		/// loan. It happens when there is no policy or the loan is not overdue.
 		NoValidWriteOffRule,
@@ -325,10 +350,14 @@ pub mod pallet {
 		NotLoanBorrower,
 		/// Emits when the max number of active loans was reached
 		MaxActiveLoansReached,
+		/// Emits when an amount used is not multiple of the current price
+		AmountNotMultipleOfPrice,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
 		BorrowLoanError(BorrowLoanError),
+		/// Emits when the loan can not be repaid from
+		RepayLoanError(RepayLoanError),
 		/// Emits when the loan can not be written off
 		WrittenOffError(WrittenOffError),
 		/// Emits when the loan can not be closed
@@ -347,6 +376,12 @@ pub mod pallet {
 		}
 	}
 
+	impl<T> From<RepayLoanError> for Error<T> {
+		fn from(error: RepayLoanError) -> Self {
+			Error::<T>::RepayLoanError(error)
+		}
+	}
+
 	impl<T> From<WrittenOffError> for Error<T> {
 		fn from(error: WrittenOffError) -> Self {
 			Error::<T>::WrittenOffError(error)
@@ -360,7 +395,10 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+	{
 		/// Creates a new loan against the collateral provided
 		///
 		/// The origin must be the owner of the collateral.
@@ -370,20 +408,20 @@ pub mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			info: LoanInfoOf<T>,
+			info: LoanInfo<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::ensure_role(pool_id, &who, PoolRole::Borrower)?;
-			Self::ensure_collateral_owner(&who, *info.collateral())?;
+			Self::ensure_collateral_owner(&who, info.collateral())?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			info.validate::<T>(Self::now())?;
+			info.validate(Self::now())?;
 
 			let collateral = info.collateral();
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
 			let loan_id = Self::generate_loan_id(pool_id)?;
-			CreatedLoan::<T>::insert(pool_id, loan_id, types::CreatedLoan::new(info.clone(), who));
+			CreatedLoan::<T>::insert(pool_id, loan_id, loan::CreatedLoan::new(info.clone(), who));
 
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
@@ -416,10 +454,10 @@ pub mod pallet {
 				Some(created_loan) => {
 					Self::ensure_loan_borrower(&who, created_loan.borrower())?;
 
-					let mut active_loan = created_loan.activate(loan_id)?;
+					let mut active_loan = created_loan.activate(pool_id)?;
 					active_loan.borrow(amount)?;
 
-					Self::insert_active_loan(pool_id, active_loan)?
+					Self::insert_active_loan(pool_id, loan_id, active_loan)?
 				}
 				None => {
 					Self::update_active_loan(pool_id, loan_id, |loan| {
@@ -444,12 +482,13 @@ pub mod pallet {
 		/// Transfers amount borrowed to the pool reserve.
 		///
 		/// The origin must be the borrower of the loan.
-		/// If the repaying amount is more than current debt, only current debt
-		/// is transferred. The borrow action should fulfill the borrow
-		/// restrictions configured at [`types::LoanRestrictions`]. The `amount`
-		/// will be transferred from borrower to pool reserve. The portfolio
-		/// valuation of the pool is updated to reflect the new present value of
-		/// the loan.
+		/// The repay action should fulfill the repay restrictions
+		/// configured at [`types::RepayRestrictions`].
+		/// If the repaying `amount` is more than current debt, only current
+		/// debt is transferred. This does not apply to `unchecked_amount`,
+		/// which can be used to repay more than the outstanding debt.
+		/// The portfolio  valuation of the pool is updated to reflect the new
+		/// present value of the loan.
 		#[pallet::weight(T::WeightInfo::repay(T::MaxActiveLoansPerPool::get()))]
 		#[pallet::call_index(2)]
 		pub fn repay(
@@ -457,20 +496,23 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
+			unchecked_amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let (amount, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				Self::ensure_loan_borrower(&who, loan.borrower())?;
-				loan.repay(amount)
+				loan.repay(amount, unchecked_amount)
 			})?;
 
-			T::Pool::deposit(pool_id, who, amount)?;
+			let deposit_amount = amount.ensure_add(unchecked_amount)?;
+			T::Pool::deposit(pool_id, who, deposit_amount)?;
 
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
 				loan_id,
 				amount,
+				unchecked_amount,
 			});
 
 			Ok(())
@@ -504,11 +546,10 @@ pub mod pallet {
 			let (status, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				let rule = Self::find_write_off_rule(pool_id, loan)?
 					.ok_or(Error::<T>::NoValidWriteOffRule)?;
-				let limit = rule.status.compose_max(loan.write_off_status());
+				let status = rule.status.compose_max(&loan.write_off_status());
 
-				loan.write_off(&limit, &limit)?;
-
-				Ok(limit)
+				loan.write_off(&status)?;
+				Ok(status)
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -523,7 +564,7 @@ pub mod pallet {
 		/// Writes off a loan from admin origin.
 		///
 		/// Forces a writing off of a loan if the `percentage` and `penalty`
-		/// parameters respecting the policy values as the minimum.
+		/// parameters respecting the policy values as the maximum.
 		/// This action can write down/up the current write off status of the
 		/// loan. If there is no active policy, an admin write off action can
 		/// write up the write off status. But if there is a policy applied, the
@@ -547,12 +588,12 @@ pub mod pallet {
 				penalty,
 			};
 
-			let _count = Self::update_active_loan(pool_id, loan_id, |loan| {
+			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				let rule = Self::find_write_off_rule(pool_id, loan)?;
-				let limit = rule.map(|r| r.status).unwrap_or_else(|| status.clone());
+				Self::ensure_admin_write_off(&status, rule)?;
 
-				loan.write_off(&limit, &status)?;
-				Ok(limit)
+				loan.write_off(&status)?;
+				Ok(())
 			})?;
 
 			Self::deposit_event(Event::<T>::WrittenOff {
@@ -582,7 +623,7 @@ pub mod pallet {
 				Some(created_loan) => (created_loan.close()?, Zero::zero()),
 				None => {
 					let (active_loan, count) = Self::take_active_loan(pool_id, loan_id)?;
-					(active_loan.close()?, count)
+					(active_loan.close(pool_id)?, count)
 				}
 			};
 
@@ -636,25 +677,17 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			Self::ensure_pool_exists(pool_id)?;
 
-			let (value, count) = Self::portfolio_valuation_for_pool(pool_id)?;
-
-			PortfolioValuation::<T>::insert(
-				pool_id,
-				types::PortfolioValuation::new(value, Self::now()),
-			);
-
-			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
-				pool_id,
-				valuation: value,
-				update_type: PortfolioValuationUpdateType::Exact,
-			});
+			let (_, count) = Self::update_portfolio_valuation_for_pool(pool_id)?;
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
 	}
 
 	/// Utility methods
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+	{
 		fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
@@ -690,6 +723,19 @@ pub mod pallet {
 			Ok(())
 		}
 
+		fn ensure_admin_write_off(
+			status: &WriteOffStatus<T::Rate>,
+			rule: Option<WriteOffRule<T::Rate>>,
+		) -> DispatchResult {
+			let limit = rule.map(|r| r.status).unwrap_or_else(|| status.clone());
+			ensure!(
+				status.percentage >= limit.percentage && status.penalty >= limit.penalty,
+				Error::<T>::from(WrittenOffError::LessThanPolicy)
+			);
+
+			Ok(())
+		}
+
 		fn generate_loan_id(pool_id: PoolIdOf<T>) -> Result<T::LoanId, ArithmeticError> {
 			LastLoanId::<T>::try_mutate(pool_id, |last_loan_id| {
 				last_loan_id.ensure_add_assign(One::one())?;
@@ -697,91 +743,55 @@ pub mod pallet {
 			})
 		}
 
-		/// From all overdue write off rules, it returns the one with the
-		/// highest percentage (or highest penalty, if same percentage) that can
-		/// be applied.
-		///
-		/// Suppose a policy with the following rules:
-		/// - overdue_days: 5,   percentage 10%
-		/// - overdue_days: 10,  percentage 30%
-		/// - overdue_days: 15,  percentage 20%
-		///
-		/// If the loan is not overdue, it will not return any rule.
-		/// If the loan is overdue by 4 days, it will not return any rule.
-		/// If the loan is overdue by 9 days, it will return the first rule.
-		/// If the loan is overdue by 60 days, it will return the second rule
-		/// (because it has a higher percetage).
 		fn find_write_off_rule(
 			pool_id: PoolIdOf<T>,
 			loan: &ActiveLoan<T>,
 		) -> Result<Option<WriteOffRule<T::Rate>>, DispatchError> {
-			Ok(WriteOffPolicy::<T>::get(pool_id)
-				.into_iter()
-				.filter_map(|rule| {
-					rule.triggers
-						.iter()
-						.map(|trigger| loan.check_write_off_trigger(&trigger.0))
-						.find(|e| match e {
-							Ok(value) => *value,
-							Err(_) => true,
-						})
-						.map(|result| result.map(|_| rule))
-				})
-				.collect::<Result<Vec<_>, _>>()? // This exits if error before getting the maximum
-				.into_iter()
-				.max_by(|r1, r2| r1.status.cmp(&r2.status)))
+			let rules = WriteOffPolicy::<T>::get(pool_id).into_iter();
+			policy::find_rule(rules, |trigger| loan.check_write_off_trigger(trigger))
 		}
 
-		fn update_portfolio_valuation_with_pv(
+		fn update_portfolio_valuation_for_pool(
 			pool_id: PoolIdOf<T>,
-			portfolio: &mut types::PortfolioValuation<T::Balance>,
-			old_pv: T::Balance,
-			new_pv: T::Balance,
-		) -> DispatchResult {
-			let prev_value = portfolio.value();
+		) -> Result<(T::Balance, u32), DispatchError> {
+			let rates = T::InterestAccrual::rates();
+			let prices = T::PriceRegistry::collection(&pool_id);
+			let loans = ActiveLoans::<T>::get(pool_id);
+			let values = loans
+				.iter()
+				.map(|(loan_id, loan)| Ok((*loan_id, loan.present_value_by(&rates, &prices)?)))
+				.collect::<Result<Vec<_>, DispatchError>>()?;
 
-			portfolio.update_with_pv_diff(old_pv, new_pv)?;
+			let portfolio = portfolio::PortfolioValuation::from_values(Self::now(), values)?;
+			let valuation = portfolio.value();
+			PortfolioValuation::<T>::insert(pool_id, portfolio);
 
-			if prev_value != portfolio.value() {
+			Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+				pool_id,
+				valuation,
+				update_type: PortfolioValuationUpdateType::Exact,
+			});
+
+			Ok((valuation, loans.len() as u32))
+		}
+
+		fn insert_active_loan(
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			loan: ActiveLoan<T>,
+		) -> Result<u32, DispatchError> {
+			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
+				portfolio.insert_elem(loan_id, loan.present_value()?)?;
+
 				Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
 					pool_id,
 					valuation: portfolio.value(),
 					update_type: PortfolioValuationUpdateType::Inexact,
 				});
-			}
-
-			Ok(())
-		}
-
-		fn portfolio_valuation_for_pool(
-			pool_id: PoolIdOf<T>,
-		) -> Result<(T::Balance, u32), DispatchError> {
-			let rates = T::InterestAccrual::rates();
-			let loans = ActiveLoans::<T>::get(pool_id);
-			let count = loans.len().ensure_into()?;
-			let value = loans.into_iter().try_fold(
-				T::Balance::zero(),
-				|sum, (loan, _)| -> Result<T::Balance, DispatchError> {
-					Ok(sum.ensure_add(loan.current_present_value(&rates)?)?)
-				},
-			)?;
-
-			Ok((value, count))
-		}
-
-		fn insert_active_loan(
-			pool_id: PoolIdOf<T>,
-			loan: ActiveLoan<T>,
-		) -> Result<u32, DispatchError> {
-			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
-				let last_updated = Self::now();
-				let new_pv = loan.present_value_at(last_updated)?;
-
-				Self::update_portfolio_valuation_with_pv(pool_id, portfolio, Zero::zero(), new_pv)?;
 
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 					active_loans
-						.try_push((loan, last_updated))
+						.try_push((loan_id, loan))
 						.map_err(|_| Error::<T>::MaxActiveLoansReached)?;
 
 					Ok(active_loans.len().ensure_into()?)
@@ -799,26 +809,20 @@ pub mod pallet {
 		{
 			PortfolioValuation::<T>::try_mutate(pool_id, |portfolio| {
 				ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
-					let (loan, last_updated) = active_loans
+					let (_, loan) = active_loans
 						.iter_mut()
-						.find(|(loan, _)| loan.loan_id() == loan_id)
-						.ok_or_else(|| {
-							if CreatedLoan::<T>::contains_key(pool_id, loan_id) {
-								Error::<T>::LoanNotActive
-							} else {
-								Error::<T>::LoanNotFound
-							}
-						})?;
-
-					*last_updated = (*last_updated).max(portfolio.last_updated());
-					let old_pv = loan.present_value_at(*last_updated)?;
+						.find(|(id, _)| *id == loan_id)
+						.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 					let result = f(loan)?;
 
-					*last_updated = Self::now();
-					let new_pv = loan.present_value_at(*last_updated)?;
+					portfolio.update_elem(loan_id, loan.present_value()?)?;
 
-					Self::update_portfolio_valuation_with_pv(pool_id, portfolio, old_pv, new_pv)?;
+					Self::deposit_event(Event::<T>::PortfolioValuationUpdated {
+						pool_id,
+						valuation: portfolio.value(),
+						update_type: PortfolioValuationUpdateType::Inexact,
+					});
 
 					Ok((result, active_loans.len().ensure_into()?))
 				})
@@ -832,11 +836,11 @@ pub mod pallet {
 			ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
 				let index = active_loans
 					.iter()
-					.position(|(loan, _)| loan.loan_id() == loan_id)
-					.ok_or(Error::<T>::LoanNotFound)?;
+					.position(|(id, _)| *id == loan_id)
+					.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
 
 				Ok((
-					active_loans.swap_remove(index).0,
+					active_loans.swap_remove(index).1,
 					active_loans.len().ensure_into()?,
 				))
 			})
@@ -846,7 +850,7 @@ pub mod pallet {
 		/// Set the maturity date of the loan to this instant.
 		pub fn expire(pool_id: PoolIdOf<T>, loan_id: T::LoanId) -> DispatchResult {
 			Self::update_active_loan(pool_id, loan_id, |loan| {
-				loan.set_maturity(T::Time::now());
+				loan.set_maturity(T::Time::now().as_secs());
 				Ok(())
 			})?;
 			Ok(())
@@ -854,24 +858,20 @@ pub mod pallet {
 	}
 
 	// TODO: This implementation can be cleaned once #908 be solved
-	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T> {
+	impl<T: Config> PoolNAV<PoolIdOf<T>, T::Balance> for Pallet<T>
+	where
+		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
+	{
 		type ClassId = T::ItemId;
 		type RuntimeOrigin = T::RuntimeOrigin;
 
 		fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
-			let valuation = PortfolioValuation::<T>::get(pool_id);
-			Some((valuation.value(), valuation.last_updated()))
+			let portfolio = PortfolioValuation::<T>::get(pool_id);
+			Some((portfolio.value(), portfolio.last_updated()))
 		}
 
 		fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
-			let (value, _) = Self::portfolio_valuation_for_pool(pool_id)?;
-
-			PortfolioValuation::<T>::insert(
-				pool_id,
-				types::PortfolioValuation::new(value, Self::now()),
-			);
-
-			Ok(value)
+			Ok(Self::update_portfolio_valuation_for_pool(pool_id)?.0)
 		}
 
 		fn initialise(_: OriginFor<T>, _: PoolIdOf<T>, _: T::ItemId) -> DispatchResult {

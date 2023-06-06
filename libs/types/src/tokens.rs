@@ -24,11 +24,23 @@ use sp_runtime::{traits::Get, DispatchError, TokenError};
 use crate::xcm::XcmMetadata;
 
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	// The Native token, representing AIR in Altair and CFG in Centrifuge.
+	#[default]
 	Native,
 
 	// A Tranche token
@@ -60,12 +72,6 @@ pub enum StakingCurrency {
 }
 
 pub type ForeignAssetId = u32;
-
-impl Default for CurrencyId {
-	fn default() -> Self {
-		CurrencyId::Native
-	}
-}
 
 // A way to generate different currencies from a number.
 // Can be used in tests/benchmarks to generate different currencies.

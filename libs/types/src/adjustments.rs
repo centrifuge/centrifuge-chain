@@ -10,7 +10,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+#[derive(Clone, Copy)]
 pub enum Adjustment<Amount> {
 	Increase(Amount),
 	Decrease(Amount),
+}
+
+impl<Amount> Adjustment<Amount> {
+	pub fn abs(self) -> Amount {
+		match self {
+			Adjustment::Increase(amount) => amount,
+			Adjustment::Decrease(amount) => amount,
+		}
+	}
 }

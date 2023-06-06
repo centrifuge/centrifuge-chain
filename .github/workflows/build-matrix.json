@@ -36,5 +36,13 @@
     "package": "centrifuge-runtime",
     "run_on_event": "push",
     "rust_toolchain": "1.64.0"
+  },
+
+  {
+    "os": "ubuntu-latest",
+    "target": "build-runtime-testnet",
+    "package": "altair-runtime",
+    "run_on_event": "push",
+    "rust_toolchain": "1.64.0"
   }
 ]

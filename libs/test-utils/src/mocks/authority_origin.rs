@@ -49,7 +49,7 @@ impl<
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin(_asset_id: &Option<CurrencyId>) -> Origin {
-		todo!()
+	fn try_successful_origin(_: &Option<CurrencyId>) -> Result<Origin, ()> {
+		Err(())
 	}
 }

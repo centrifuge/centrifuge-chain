@@ -1,5 +1,7 @@
 use frame_support::StorageHasher;
 
+use super::util::TypeSignature;
+
 /// Absolute string identification of function.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FunctionLocation(String);
@@ -42,7 +44,7 @@ impl FunctionLocation {
 			.map(|trait_path| trait_path.split_once(" as").expect("always ' as'").0)
 			.unwrap_or(path);
 
-		Self(format!("{}::{}", path, name))
+		Self(format!("{path}::{name}"))
 	}
 
 	/// Remove the prefix from the function name.
@@ -55,17 +57,12 @@ impl FunctionLocation {
 			)
 		});
 
-		Self(format!("{}::{}", path, name))
+		Self(format!("{path}::{name}"))
 	}
 
 	/// Add a representation of the function input and output types
 	pub fn append_type_signature<I, O>(self) -> Self {
-		Self(format!(
-			"{}:{}->{}",
-			self.0,
-			std::any::type_name::<I>(),
-			std::any::type_name::<O>(),
-		))
+		Self(format!("{}:{}", self.0, TypeSignature::new::<I, O>()))
 	}
 
 	/// Generate a hash of the location

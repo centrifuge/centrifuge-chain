@@ -1,3 +1,16 @@
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use sp_runtime::DispatchResult;
 
 /// Abstraction that represents a storage where
@@ -8,6 +21,10 @@ pub trait DataRegistry<DataId, CollectionId> {
 
 	/// Represents a data
 	type Data;
+
+	/// Identify the max number a collection can reach.
+	#[cfg(feature = "runtime-benchmarks")]
+	type MaxCollectionSize: sp_runtime::traits::Get<u32>;
 
 	/// Return the last data value for a data id
 	fn get(data_id: &DataId) -> Self::Data;

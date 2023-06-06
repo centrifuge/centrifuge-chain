@@ -39,7 +39,7 @@ use cfg_types::{
 use codec::Encode;
 use development_runtime::{
 	Balances, Connectors, Loans, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem,
-	RuntimeOrigin, XTokens, XcmTransactor,
+	Runtime as DevelopmentRuntime, RuntimeOrigin, XTokens, XcmTransactor,
 };
 use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
 use hex::FromHex;
@@ -51,10 +51,12 @@ use pallet_pool_system::{
 	pool_types::PoolDetails,
 	tranches::{TrancheInput, TrancheLoc, TrancheMetadata, TrancheType},
 };
-use runtime_common::{xcm::general_key, xcm_fees::default_per_second};
+use runtime_common::{
+	account_conversion::AccountConverter, xcm::general_key, xcm_fees::default_per_second,
+};
 use sp_core::H160;
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, One},
+	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, One},
 	BoundedVec, DispatchError, Perquintill, WeakBoundedVec,
 };
 use xcm_emulator::TestExt;
@@ -94,7 +96,7 @@ fn add_pool() {
 				pool_id,
 				Domain::EVM(1284),
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::PoolNotFound
+			pallet_connectors::Error::<DevelopmentRuntime>::PoolNotFound
 		);
 
 		// Now create the pool
@@ -132,12 +134,12 @@ fn add_tranche() {
 		assert_noop!(
 			Connectors::add_tranche(
 				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
+				pool_id,
 				nonexistent_tranche,
 				decimals,
 				Domain::EVM(1284),
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::TrancheNotFound
+			pallet_connectors::Error::<DevelopmentRuntime>::TrancheNotFound
 		);
 
 		// Find the right tranche id
@@ -151,7 +153,7 @@ fn add_tranche() {
 		// when given a valid pool + tranche id pair.
 		assert_ok!(Connectors::add_tranche(
 			RuntimeOrigin::signed(ALICE.into()),
-			pool_id.clone(),
+			pool_id,
 			tranche_id,
 			decimals,
 			Domain::EVM(1284),
@@ -187,7 +189,7 @@ fn update_member() {
 			RuntimeOrigin::root(),
 			Role::PoolRole(PoolRole::PoolAdmin),
 			ALICE.into(),
-			PermissionScope::Pool(pool_id.clone()),
+			PermissionScope::Pool(pool_id),
 			Role::PoolRole(PoolRole::MemberListAdmin),
 		));
 
@@ -215,7 +217,7 @@ fn update_member() {
 		// Verify the Investor role was set as expected in Permissions
 		assert!(Permissions::has(
 			PermissionScope::Pool(pool_id.clone()),
-			new_member.into_account_truncating(),
+			AccountConverter::<DevelopmentRuntime>::convert(new_member),
 			Role::PoolRole(PoolRole::TrancheInvestor(
 				tranche_id.clone(),
 				valid_until.clone()
@@ -268,8 +270,8 @@ fn update_token_price() {
 		// Verify it now works
 		assert_ok!(Connectors::update_token_price(
 			RuntimeOrigin::signed(ALICE.into()),
-			pool_id.clone(),
-			tranche_id.clone(),
+			pool_id,
+			tranche_id,
 			Domain::EVM(1284),
 		));
 	});
@@ -299,24 +301,24 @@ fn transfer_tranche_tokens() {
 		assert_noop!(
 			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
-				tranche_id.clone(),
+				pool_id,
+				tranche_id,
 				dest_address.clone(),
 				42,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::UnauthorizedTransfer
+			pallet_connectors::Error::<DevelopmentRuntime>::UnauthorizedTransfer
 		);
 
 		// Verify that we cannot transfer to the local domain
 		assert_noop!(
 			Connectors::transfer_tranche_tokens(
 				RuntimeOrigin::signed(ALICE.into()),
-				pool_id.clone(),
-				tranche_id.clone(),
+				pool_id,
+				tranche_id,
 				DomainAddress::Centrifuge(BOB),
 				42,
 			),
-			pallet_connectors::Error::<development_runtime::Runtime>::InvalidDomain
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferDomain
 		);
 
 		// Make BOB the MembersListAdmin of this Pool
@@ -347,21 +349,18 @@ fn transfer_tranche_tokens() {
 			tranche_id.clone(),
 			valid_until,
 		));
-
 		// Give BOB enough Tranche balance to be able to transfer it
 		OrmlTokens::deposit(
 			CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
 			&BOB.into(),
 			100_000,
 		);
-
-		// Finally, verify that we can now transfer the tranche to the destination
 		// address
 		let amount = 123;
 		assert_ok!(Connectors::transfer_tranche_tokens(
 			RuntimeOrigin::signed(BOB.into()),
-			pool_id.clone(),
-			tranche_id.clone(),
+			pool_id,
+			tranche_id,
 			dest_address.clone(),
 			amount,
 		));
@@ -369,17 +368,14 @@ fn transfer_tranche_tokens() {
 		// The account to which the tranche should have been transferred
 		// to on Centrifuge for bookkeeping purposes.
 		let domain_account: AccountId = DomainLocator::<Domain> {
-			domain: dest_address.clone().into(),
+			domain: dest_address.into(),
 		}
 		.into_account_truncating();
 
 		// Verify that the correct amount of the Tranche token was transferred
 		// to the dest domain account on Centrifuge.
 		assert_eq!(
-			OrmlTokens::free_balance(
-				CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
-				&domain_account
-			),
+			OrmlTokens::free_balance(CurrencyId::Tranche(pool_id, tranche_id), &domain_account),
 			amount
 		)
 	});
@@ -388,7 +384,7 @@ fn transfer_tranche_tokens() {
 #[test]
 fn test_vec_to_fixed_array() {
 	let src = "TrNcH".as_bytes().to_vec();
-	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src.clone());
+	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src);
 
 	assert!(symbol.starts_with("TrNcH".as_bytes()));
 	assert_eq!(
@@ -417,7 +413,7 @@ fn encoded_ethereum_xcm_add_pool() {
 		<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882").expect("Decoding failed"),
 	);
 	let domain_info = XcmDomain {
-		location: Box::new(VersionedMultiLocation::V1(moonbase_location.clone())),
+		location: Box::new(VersionedMultiLocation::V3(moonbase_location)),
 		ethereum_xcm_transact_call_index,
 		contract_address,
 		fee_currency: ForeignAsset(1),
@@ -464,15 +460,15 @@ mod utils {
 		// We need to set the Transact info for Moonbeam in the XcmTransactor pallet
 		assert_ok!(XcmTransactor::set_transact_info(
 			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V1(moonbeam_location.clone())),
-			1,
-			8_000_000_000_000_000,
-			Some(3)
+			Box::new(VersionedMultiLocation::V3(moonbeam_location)),
+			1.into(),
+			8_000_000_000_000_000.into(),
+			Some(3.into())
 		));
 
 		assert_ok!(XcmTransactor::set_fee_per_second(
 			RuntimeOrigin::root(),
-			Box::new(VersionedMultiLocation::V1(moonbeam_native_token.clone())),
+			Box::new(VersionedMultiLocation::V3(moonbeam_native_token)),
 			default_per_second(18), // default fee_per_second for this token which has 18 decimals
 		));
 
@@ -483,14 +479,14 @@ mod utils {
 			name: "Glimmer".into(),
 			symbol: "GLMR".into(),
 			existential_deposit: 1_000_000,
-			location: Some(VersionedMultiLocation::V1(moonbeam_native_token)),
+			location: Some(VersionedMultiLocation::V3(moonbeam_native_token)),
 			additional: CustomMetadata::default(),
 		};
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
-			Some(glmr_currency_id.clone())
+			Some(glmr_currency_id)
 		));
 
 		// Give Alice and BOB enough glimmer to pay for fees
@@ -501,12 +497,7 @@ mod utils {
 			RuntimeOrigin::root(),
 			Domain::EVM(1284),
 			Router::Xcm(XcmDomain {
-				location: Box::new(
-					moonbeam_location
-						.clone()
-						.try_into()
-						.expect("Bad xcm version")
-				),
+				location: Box::new(moonbeam_location.try_into().expect("Bad xcm version")),
 				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
 				contract_address: H160::from(
 					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
@@ -537,7 +528,7 @@ mod utils {
 		assert_ok!(PoolSystem::create(
 			BOB.into(),
 			BOB.into(),
-			pool_id.clone(),
+			pool_id,
 			vec![
 				TrancheInput {
 					tranche_type: TrancheType::Residual,

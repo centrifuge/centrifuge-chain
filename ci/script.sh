@@ -2,7 +2,7 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-11-14}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2023-02-07}"
 SRTOOL_VERSION="${SRTOOL_VERSION:-1.66.1-0.9.25}"
 PACKAGE="${PACKAGE:-centrifuge-runtime}" # Need to replicate job for all runtimes
 RUNTIME="${RUNTIME:-centrifuge}"
@@ -29,6 +29,11 @@ case $TARGET in
   build-runtime-fast)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
     docker run --rm -e PACKAGE=$PACKAGE -e BUILD_OPTS="--features=fast-runtime" -v $PWD:/build -v /tmp/cargo:/cargo-home paritytech/srtool:$SRTOOL_VERSION build
+    ;;
+
+  build-runtime-testnet)
+    export RUSTC_VERSION=$RUST_TOOLCHAIN
+    docker run --rm -e PACKAGE=$PACKAGE -e BUILD_OPTS="--features=testnet-runtime" -v $PWD:/build -v /tmp/cargo:/cargo-home paritytech/srtool:$SRTOOL_VERSION build
     ;;
 
   tests)

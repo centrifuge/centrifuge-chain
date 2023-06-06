@@ -57,7 +57,7 @@ use num_traits::sign::Unsigned;
 pub use pallet::*;
 use sp_runtime::{traits::Zero, FixedPointOperand, SaturatedConversion, Saturating};
 use sp_std::{mem, vec::Vec};
-use weights::WeightInfo;
+pub use weights::WeightInfo;
 
 #[derive(
 	Encode, Decode, DefaultNoBound, Clone, TypeInfo, MaxEncodedLen, PartialEq, RuntimeDebugNoBound,
@@ -104,7 +104,6 @@ pub struct SessionChanges<T: Config> {
 	total_reward: Option<T::Balance>,
 }
 
-pub(crate) type DomainIdOf<T> = <<T as Config>::Domain as TypedGet>::Type;
 pub(crate) type NegativeImbalanceOf<T> = <<T as Config>::Currency as CurrencyT<
 	<T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
@@ -131,9 +130,6 @@ pub mod pallet {
 			+ Into<<<Self as Config>::Currency as CurrencyT<Self::AccountId>>::Balance>
 			+ MaybeSerializeDeserialize;
 
-		/// Domain identification used by this pallet
-		type Domain: TypedGet;
-
 		/// Type used to handle group weights.
 		type Weight: Parameter + MaxEncodedLen + EnsureAdd + Unsigned + FixedPointOperand + Default;
 
@@ -142,11 +138,8 @@ pub mod pallet {
 			+ AccountRewards<
 				Self::AccountId,
 				Balance = Self::Balance,
-				CurrencyId = (DomainIdOf<Self>, <Self as Config>::CurrencyId),
-			> + CurrencyGroupChange<
-				GroupId = u32,
-				CurrencyId = (DomainIdOf<Self>, <Self as Config>::CurrencyId),
-			>;
+				CurrencyId = <Self as Config>::CurrencyId,
+			> + CurrencyGroupChange<GroupId = u32, CurrencyId = <Self as Config>::CurrencyId>;
 
 		/// The type used to handle currency minting and burning for collators.
 		type Currency: Mutate<Self::AccountId, AssetId = <Self as Config>::CurrencyId, Balance = Self::Balance>
@@ -258,12 +251,9 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			T::Rewards::attach_currency(
-				(T::Domain::get(), T::StakeCurrencyId::get()),
-				T::StakeGroupId::get(),
-			)
-			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
-			.ok();
+			T::Rewards::attach_currency(T::StakeCurrencyId::get(), T::StakeGroupId::get()).expect(
+				"Should be able to attach default block rewards staking currency to collator group",
+			);
 
 			ActiveSessionData::<T>::mutate(|session_data| {
 				session_data.collator_count = self.collators.len().saturated_into();
@@ -274,10 +264,7 @@ pub mod pallet {
 			// Enables rewards already in genesis session.
 			for collator in &self.collators {
 				Pallet::<T>::do_init_collator(collator)
-					.map_err(|e| {
-						log::error!("Failed to init genesis collators for rewards: {:?}", e);
-					})
-					.ok();
+					.expect("Should not panic when initiating genesis collators for block rewards");
 			}
 		}
 	}
@@ -291,8 +278,7 @@ pub mod pallet {
 		pub fn claim_reward(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			T::Rewards::claim_reward((T::Domain::get(), T::StakeCurrencyId::get()), &account_id)
-				.map(|_| ())
+			T::Rewards::claim_reward(T::StakeCurrencyId::get(), &account_id).map(|_| ())
 		}
 
 		/// Admin method to set the reward amount for a collator used for the
@@ -369,18 +355,14 @@ impl<T: Config> Pallet<T> {
 	///    Account
 	pub(crate) fn do_init_collator(who: &T::AccountId) -> DispatchResult {
 		T::Currency::mint_into(T::StakeCurrencyId::get(), who, T::StakeAmount::get())?;
-		T::Rewards::deposit_stake(
-			(T::Domain::get(), T::StakeCurrencyId::get()),
-			who,
-			T::StakeAmount::get(),
-		)
+		T::Rewards::deposit_stake(T::StakeCurrencyId::get(), who, T::StakeAmount::get())
 	}
 
 	/// Withdraw currently staked amount for target address and immediately burn
 	/// it. Disables receiving rewards onwards.
 	pub(crate) fn do_exit_collator(who: &T::AccountId) -> DispatchResult {
-		let amount = T::Rewards::account_stake((T::Domain::get(), T::StakeCurrencyId::get()), who);
-		T::Rewards::withdraw_stake((T::Domain::get(), T::StakeCurrencyId::get()), who, amount)?;
+		let amount = T::Rewards::account_stake(T::StakeCurrencyId::get(), who);
+		T::Rewards::withdraw_stake(T::StakeCurrencyId::get(), who, amount)?;
 		T::Currency::burn_from(T::StakeCurrencyId::get(), who, amount).map(|_| ())
 	}
 

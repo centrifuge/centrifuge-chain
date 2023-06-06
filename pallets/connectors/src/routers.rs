@@ -44,7 +44,7 @@ where
 {
 	fn max_encoded_len() -> usize {
 		// The domain's `VersionedMultiLocation` (custom bound)
-		xcm::v1::MultiLocation::max_encoded_len()
+		xcm::latest::MultiLocation::max_encoded_len()
 			// From the enum wrapping of `VersionedMultiLocation`
 			.saturating_add(1)
 			// The ethereum xcm call index (default bound)

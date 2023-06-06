@@ -10,78 +10,77 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_primitives::{AccountId, CFG};
-use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards};
+use cfg_primitives::{AccountId, Balance, CFG};
+use cfg_traits::rewards::{AccountRewards, CurrencyGroupChange, DistributedRewards, GroupRewards};
 use cfg_types::tokens::CurrencyId;
 use development_runtime::apis::RewardsApi;
 use frame_support::assert_ok;
+use runtime_common::apis::RewardDomain;
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::IdentifyAccount;
 use tokio::runtime::Handle;
 
 use super::ApiEnv;
+use crate::utils::accounts::Keyring;
 
 #[tokio::test]
-async fn test() {
+async fn liquidity_rewards_runtime_api_works() {
+	rewards_runtime_api_works::<development_runtime::LiquidityRewardsBase>(RewardDomain::Liquidity)
+		.await;
+}
+
+#[tokio::test]
+async fn block_rewards_runtime_api_works() {
+	rewards_runtime_api_works::<development_runtime::BlockRewardsBase>(RewardDomain::Block).await;
+}
+
+type GroupId = u32;
+
+async fn rewards_runtime_api_works<Rewards>(domain: RewardDomain)
+where
+	Rewards: CurrencyGroupChange<GroupId = GroupId, CurrencyId = CurrencyId>
+		+ AccountRewards<AccountId, Balance = Balance, CurrencyId = CurrencyId>
+		+ DistributedRewards
+		+ GroupRewards<Balance = Balance, GroupId = GroupId>,
+{
+	let staker = Keyring::Alice.to_account_id();
+	let expected_reward = 200 * CFG;
 	ApiEnv::new(Handle::current())
 		.startup(|| {
-			let currencies = vec![(
-				(development_runtime::RewardDomain::Block, CurrencyId::Native),
-				1,
-			)];
-			let stake_accounts = vec![(
-				sp_runtime::AccountId32::from(
-					<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
-						.unwrap()
-						.public()
-						.into_account(),
-				),
-				(development_runtime::RewardDomain::Block, CurrencyId::Native),
-				100 * CFG,
-			)];
-			let rewards = vec![(1, 200 * CFG)];
+			let currencies = vec![(CurrencyId::Native, 1u32)];
+			let stake_accounts = vec![(staker.clone(), CurrencyId::Native, 100 * CFG)];
+			let rewards = vec![(1, expected_reward)];
 
-			for ((domain_id, currency_id), group_id) in currencies {
-				<development_runtime::Rewards as CurrencyGroupChange>::attach_currency(
-					(domain_id, currency_id),
-					group_id,
-				)
-				.unwrap();
+			for (currency_id, group_id) in currencies {
+				<Rewards as CurrencyGroupChange>::attach_currency(currency_id, group_id)
+					.expect("Attaching currency should work");
 			}
 
-			for (account_id, (domain_id, currency_id), amount) in stake_accounts {
-				<development_runtime::Rewards as AccountRewards<AccountId>>::deposit_stake(
-					(domain_id, currency_id),
+			for (account_id, currency_id, amount) in stake_accounts {
+				<Rewards as AccountRewards<AccountId>>::deposit_stake(
+					currency_id,
 					&account_id,
 					amount,
 				)
-				.unwrap();
+				.expect("Depositing stake should work");
 			}
 
 			for (group_id, amount) in rewards {
-				<development_runtime::Rewards as DistributedRewards>::distribute_reward(
-					amount,
-					[group_id],
-				)
-				.unwrap();
+				<Rewards as DistributedRewards>::distribute_reward(amount, [group_id])
+					.expect("Distributing rewards should work");
 			}
 		})
 		.with_api(|api, latest| {
-			let account_id = sp_runtime::AccountId32::from(
-				<sr25519::Pair as sp_core::Pair>::from_string("//Alice", None)
-					.unwrap()
-					.public()
-					.into_account(),
-			);
-
-			let currencies = api.list_currencies(&latest, account_id.clone()).unwrap();
+			let currencies = api
+				.list_currencies(&latest, domain.clone(), staker.clone())
+				.expect("There should be staked currencies");
 			assert_eq!(currencies.clone().len(), 1);
 
 			let currency_id = currencies[0];
 
 			let reward = api
-				.compute_reward(&latest, currency_id, account_id)
+				.compute_reward(&latest, domain, currency_id, staker)
 				.unwrap();
-			assert_eq!(reward, Some(200 * CFG));
+			assert_eq!(reward, Some(expected_reward));
 		});
 }

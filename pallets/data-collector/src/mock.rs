@@ -1,3 +1,16 @@
+// Copyright 2023 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use frame_support::traits::{ConstU16, ConstU32, ConstU64, IsInVec};
 use orml_oracle::{CombineData, DataProviderExtended};
 use sp_core::H256;
@@ -6,7 +19,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::pallet as pallet_collection_data_feed;
+use crate::pallet as pallet_data_collector;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -29,7 +42,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Timer: pallet_timestamp,
 		Oracle: orml_oracle,
-		CollectionDataFeed: pallet_collection_data_feed,
+		DataCollector: pallet_data_collector,
 	}
 );
 
@@ -106,7 +119,7 @@ impl orml_oracle::Config for Runtime {
 	type CombineData = LastData;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type Members = IsInVec<Members>;
-	type OnNewData = CollectionDataFeed;
+	type OnNewData = DataCollector;
 	type OracleKey = DataId;
 	type OracleValue = Data;
 	type RootOperatorAccountId = RootMember;
@@ -115,7 +128,7 @@ impl orml_oracle::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_collection_data_feed::Config for Runtime {
+impl pallet_data_collector::Config for Runtime {
 	type CollectionId = CollectionId;
 	type Data = Data;
 	type DataId = DataId;

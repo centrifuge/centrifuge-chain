@@ -17,7 +17,7 @@ use frame_support::{
 	pallet_prelude::{StorageVersion, Weight},
 	traits::{Get, OnRuntimeUpgrade},
 };
-use sp_runtime::{traits::TypedGet, BoundedVec, SaturatedConversion};
+use sp_runtime::{BoundedVec, SaturatedConversion};
 use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
 use {
@@ -84,10 +84,7 @@ where
 			weight.saturating_accrue(T::DbWeight::get().reads(2));
 
 			<T as Config>::Rewards::attach_currency(
-				(
-					<T as Config>::Domain::get(),
-					<T as Config>::StakeCurrencyId::get(),
-				),
+				<T as Config>::StakeCurrencyId::get(),
 				<T as Config>::StakeGroupId::get(),
 			)
 			.map_err(|e| log::error!("Failed to attach currency to collator group: {:?}", e))
@@ -101,8 +98,7 @@ where
 			weight.saturating_accrue(T::DbWeight::get().writes(1));
 
 			for collator in collators.iter() {
-				// TODO: Benching preferred to be precise.
-				// However, not necessarily needed as num of collators <= 10.
+				// NOTE: Benching not required as num of collators <= 10.
 				Pallet::<T>::do_init_collator(collator)
 					.map_err(|e| {
 						log::error!("Failed to init genesis collators for rewards: {:?}", e);
@@ -142,10 +138,7 @@ where
 
 		for collator in collators.iter() {
 			assert!(!<T as Config>::Rewards::account_stake(
-				(
-					<T as Config>::Domain::get(),
-					<T as Config>::StakeCurrencyId::get(),
-				),
+				<T as Config>::StakeCurrencyId::get(),
 				collator,
 			)
 			.is_zero())
