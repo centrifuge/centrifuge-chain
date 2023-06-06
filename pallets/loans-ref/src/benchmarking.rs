@@ -76,7 +76,7 @@ where
 	T::Pool:
 		PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 	PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-	T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
+	T::PriceRegistry: DataFeeder<T::PriceId, T::Rate, T::AccountId>,
 {
 	#[cfg(test)]
 	fn config_mocks() {
@@ -94,7 +94,7 @@ where
 		MockPools::mock_benchmark_give_ausd(|_, _| {});
 		MockPrices::mock_feed_value(|_, _, _| Ok(()));
 		MockPrices::mock_register_id(|_, _| Ok(()));
-		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok((0, 0))));
+		MockPrices::mock_collection(|_| MockDataCollection::new(|_| Ok(Default::default())));
 	}
 
 	fn prepare_benchmark() -> PoolIdOf<T> {
@@ -236,7 +236,7 @@ where
 			// This restriction no longer exists once
 			// https://github.com/open-web3-stack/open-runtime-module-library/pull/920 is merged
 			let feeder = account("feeder", i, 0);
-			T::PriceRegistry::feed_value(feeder, price_id, 0.into()).unwrap();
+			T::PriceRegistry::feed_value(feeder, price_id, Default::default()).unwrap();
 			T::PriceRegistry::register_id(&price_id, &pool_id).unwrap();
 		}
 
@@ -264,7 +264,7 @@ benchmarks! {
 		T::PriceId: From<u32>,
 		T::Pool: PoolBenchmarkHelper<PoolId = PoolIdOf<T>, AccountId = T::AccountId, Balance = T::Balance>,
 		PriceCollectionOf<T>: DataCollection<T::PriceId, Data = PriceResultOf<T>>,
-		T::PriceRegistry: DataFeeder<T::PriceId, T::Balance, T::AccountId>,
+		T::PriceRegistry: DataFeeder<T::PriceId, T::Rate, T::AccountId>,
 	}
 
 	create {

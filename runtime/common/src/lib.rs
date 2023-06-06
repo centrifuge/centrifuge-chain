@@ -286,13 +286,13 @@ pub mod xcm {
 }
 
 pub mod oracle {
-	use cfg_primitives::types::{AccountId, Balance, Moment};
-	use cfg_types::oracles::OracleKey;
+	use cfg_primitives::types::{AccountId, Moment};
+	use cfg_types::{fixed_point::Rate, oracles::OracleKey};
 	use orml_traits::{CombineData, DataFeeder, DataProvider, DataProviderExtended};
 	use sp_runtime::DispatchResult;
 	use sp_std::{marker::PhantomData, vec::Vec};
 
-	type OracleValue = orml_oracle::TimestampedValue<Balance, Moment>;
+	type OracleValue = orml_oracle::TimestampedValue<Rate, Moment>;
 
 	/// Always choose the last updated value in case of several values.
 	pub struct LastOracleValue;
@@ -310,19 +310,19 @@ pub mod oracle {
 		}
 	}
 
-	/// A provider that maps an `OracleValue` into a tuple `(Balance, Moment)`.
+	/// A provider that maps an `OracleValue` into a tuple `(Rate, Moment)`.
 	/// This aux type is forced because of <https://github.com/open-web3-stack/open-runtime-module-library/issues/904>
 	/// and can be removed once they fix this.
 	pub struct DataProviderBridge<OrmlOracle>(PhantomData<OrmlOracle>);
 
 	impl<OrmlOracle: DataProviderExtended<OracleKey, OracleValue>>
-		DataProviderExtended<OracleKey, (Balance, Moment)> for DataProviderBridge<OrmlOracle>
+		DataProviderExtended<OracleKey, (Rate, Moment)> for DataProviderBridge<OrmlOracle>
 	{
-		fn get_no_op(key: &OracleKey) -> Option<(Balance, Moment)> {
+		fn get_no_op(key: &OracleKey) -> Option<(Rate, Moment)> {
 			OrmlOracle::get_no_op(key).map(|OracleValue { value, timestamp }| (value, timestamp))
 		}
 
-		fn get_all_values() -> Vec<(OracleKey, Option<(Balance, Moment)>)> {
+		fn get_all_values() -> Vec<(OracleKey, Option<(Rate, Moment)>)> {
 			OrmlOracle::get_all_values()
 				.into_iter()
 				.map(|elem| {
@@ -336,18 +336,18 @@ pub mod oracle {
 		}
 	}
 
-	impl<OrmlOracle: DataProvider<OracleKey, Balance>> DataProvider<OracleKey, Balance>
+	impl<OrmlOracle: DataProvider<OracleKey, Rate>> DataProvider<OracleKey, Rate>
 		for DataProviderBridge<OrmlOracle>
 	{
-		fn get(key: &OracleKey) -> Option<Balance> {
+		fn get(key: &OracleKey) -> Option<Rate> {
 			OrmlOracle::get(key)
 		}
 	}
 
-	impl<OrmlOracle: DataFeeder<OracleKey, Balance, AccountId>>
-		DataFeeder<OracleKey, Balance, AccountId> for DataProviderBridge<OrmlOracle>
+	impl<OrmlOracle: DataFeeder<OracleKey, Rate, AccountId>> DataFeeder<OracleKey, Rate, AccountId>
+		for DataProviderBridge<OrmlOracle>
 	{
-		fn feed_value(who: AccountId, key: OracleKey, value: Balance) -> DispatchResult {
+		fn feed_value(who: AccountId, key: OracleKey, value: Rate) -> DispatchResult {
 			OrmlOracle::feed_value(who, key, value)
 		}
 	}
@@ -369,7 +369,7 @@ pub mod oracle {
 				_: Option<OracleValue>,
 			) -> Option<OracleValue> {
 				Some(OracleValue {
-					value: 0,
+					value: Default::default(),
 					timestamp: 0,
 				})
 			}
