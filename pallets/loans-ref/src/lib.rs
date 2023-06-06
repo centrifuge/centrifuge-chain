@@ -22,7 +22,7 @@
 //! | [`Pallet::create()`]          | Borrower  |
 //! | [`Pallet::borrow()`]          | Borrower  |
 //! | [`Pallet::repay()`]           | Borrower  |
-//! | [`Pallet::write_off()`]       | Any       |
+//! | [`Pallet::write_off()`]       |           |
 //! | [`Pallet::admin_write_off()`] | LoanAdmin |
 //! | [`Pallet::close()`]           | Borrower  |
 //!
