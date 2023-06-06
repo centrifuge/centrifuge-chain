@@ -17,14 +17,14 @@
 //!
 //! The following actions are performed over loans:
 //!
-//! | Extrinsics                         | Role      |
-//! |------------------------------------|-----------|
-//! | [`Pallet::create()`]               | Borrower  |
-//! | [`Pallet::borrow()`]               | Borrower  |
-//! | [`Pallet::repay()`]                | Borrower  |
-//! | [`Pallet::write_off()`]            | Any       |
-//! | [`Pallet::admin_write_off()`]      | LoanAdmin |
-//! | [`Pallet::close()`]                | Borrower  |
+//! | Extrinsics                    | Role      |
+//! |-------------------------------|-----------|
+//! | [`Pallet::create()`]          | Borrower  |
+//! | [`Pallet::borrow()`]          | Borrower  |
+//! | [`Pallet::repay()`]           | Borrower  |
+//! | [`Pallet::write_off()`]       | Any       |
+//! | [`Pallet::admin_write_off()`] | LoanAdmin |
+//! | [`Pallet::close()`]           | Borrower  |
 //!
 //! The following actions are performed over a pool of loans:
 //!
@@ -35,10 +35,10 @@
 //!
 //! The following actions are performed based on changes:
 //!
-//! | Extrinsics                     | Role      |
-//! |--------------------------------|-----------|
-//! | [`Pallet::propose_change()`]   | LoanAdmin |
-//! | [`Pallet::apply_change()`]     | Borrower  |
+//! | Extrinsics                   | Role      |
+//! |------------------------------|-----------|
+//! | [`Pallet::propose_change()`] | LoanAdmin |
+//! | [`Pallet::apply_change()`]   |           |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
@@ -717,7 +717,8 @@ pub mod pallet {
 		}
 
 		/// Propose a change.
-		/// The change is not performed until you call [`Pallet::modify()`].
+		/// The change is not performed until you call
+		/// [`Pallet::apply_change()`].
 		#[pallet::weight(100_000_000)]
 		#[pallet::call_index(8)]
 		pub fn propose_change(
@@ -748,7 +749,7 @@ pub mod pallet {
 			let Change::Loan(loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?;
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
-				loan.modify_with(mutation.clone())
+				loan.mutate_with(mutation.clone())
 			})?;
 
 			Self::deposit_event(Event::<T>::Modified {

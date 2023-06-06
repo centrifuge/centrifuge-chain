@@ -411,13 +411,13 @@ impl<T: Config> ActiveLoan<T> {
 		Ok((loan, self.borrower))
 	}
 
-	pub fn modify_with(&mut self, mutation: LoanMutation<T::Rate>) -> DispatchResult {
+	pub fn mutate_with(&mut self, mutation: LoanMutation<T::Rate>) -> DispatchResult {
 		match mutation {
 			LoanMutation::Maturity(maturity) => self.schedule.maturity = maturity,
 			LoanMutation::InterestPayments(payments) => self.schedule.interest_payments = payments,
 			LoanMutation::PayDownSchedule(schedule) => self.schedule.pay_down_schedule = schedule,
 			LoanMutation::Internal(mutation) => match &mut self.pricing {
-				ActivePricing::Internal(inner) => inner.modify_with(mutation)?,
+				ActivePricing::Internal(inner) => inner.mutate_with(mutation)?,
 				ActivePricing::External(_) => {
 					Err(Error::<T>::from(ModificationError::InternalPricingExpected))?
 				}

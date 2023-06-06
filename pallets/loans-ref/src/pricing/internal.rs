@@ -183,7 +183,7 @@ impl<T: Config> InternalActivePricing<T> {
 		}
 	}
 
-	pub fn modify_with(&mut self, mutation: InternalMutation<T::Rate>) -> DispatchResult {
+	pub fn mutate_with(&mut self, mutation: InternalMutation<T::Rate>) -> DispatchResult {
 		match mutation {
 			InternalMutation::InterestRate(rate) => {
 				let new_interest_rate = rate.ensure_add(self.write_off_penalty)?;
