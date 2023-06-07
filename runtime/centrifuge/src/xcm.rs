@@ -203,10 +203,7 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		OrmlAssetRegistry::metadata(id)
-			.filter(|m| {
-				m.additional
-					.transferability.includes_xcm()
-			})
+			.filter(|m| m.additional.transferability.includes_xcm())
 			.and_then(|m| m.location)
 			.and_then(|l| l.try_into().ok())
 	}

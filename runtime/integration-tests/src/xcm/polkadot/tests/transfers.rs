@@ -456,7 +456,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 			bob_balance,
 			transfer_amount
 				- calc_fee(
-					xcm_metadata(meta.additional.transferability.unwrap())
+					xcm_metadata(meta.additional.transferability)
 						.unwrap()
 						.fee_per_second
 						.unwrap()

@@ -180,7 +180,18 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 /// OrmlAssetRegistry.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	Clone,
+	Copy,
+	Default,
+	PartialOrd,
+	Ord,
+	PartialEq,
+	Eq,
+	Debug,
+	Encode,
+	Decode,
+	TypeInfo,
+	MaxEncodedLen,
 )]
 pub struct CustomMetadata {
 	/// The ways, if any, this token is cross-chain transferable
@@ -201,8 +212,7 @@ pub struct CustomMetadata {
 	pub pool_currency: bool,
 }
 
-/// TODO(Nuno): make this only so for testing purposes, and `transferability`
-/// for wasm.
+#[test]
 impl Default for CustomMetadata {
 	fn default() -> Self {
 		Self {
