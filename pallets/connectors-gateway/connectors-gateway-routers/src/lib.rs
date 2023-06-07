@@ -58,6 +58,9 @@ where
 	type Message = MessageOf<T>;
 	type Sender = AccountIdOf<T>;
 
+	// TODO(cdamian) Add init and call that when the router is added in the gateway
+	// pallet.
+
 	fn send(&self, sender: Self::Sender, message: Self::Message) -> DispatchResult {
 		match self {
 			DomainRouter::EthereumXCM(r) => r.do_send(sender, message),

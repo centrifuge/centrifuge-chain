@@ -29,8 +29,8 @@ pub struct EthereumXCMRouter<T>
 where
 	T: frame_system::Config + pallet_xcm_transactor::Config + pallet_connectors_gateway::Config,
 {
-	xcm_domain: XcmDomain<CurrencyIdOf<T>>,
-	_phantom: PhantomData<T>,
+	pub xcm_domain: XcmDomain<CurrencyIdOf<T>>,
+	pub _marker: PhantomData<T>,
 }
 
 /// The ConnectorsXcmContract handle function name.
@@ -69,6 +69,15 @@ where
 			TransactWeights {
 				// Convert the max gas_limit into a max transact weight following
 				// Moonbeam's formula.
+				//
+				// TODO(cdamian): Should we populate:
+				//
+				// - `TransactInfoWithWeightLimit` storage via
+				//   `pallet_xcm_transactor::Pallet::<T>::set_transact_info`
+				// - `DestinationAssetFeePerSecond` storage via
+				//   `pallet_xcm_transactor::Pallet::<T>::set_fee_per_second`
+				//
+				//  accordingly when setting the router in the gateway pallet?
 				transact_required_weight_at_most: self.xcm_domain.max_gas_limit * 25_000
 					+ 100_000_000,
 				overall_weight: None,
