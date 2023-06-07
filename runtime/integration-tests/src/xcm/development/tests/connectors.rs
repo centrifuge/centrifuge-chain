@@ -56,7 +56,7 @@ use runtime_common::{
 };
 use sp_core::H160;
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, One},
+	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, One, Zero},
 	BoundedVec, DispatchError, Perquintill, WeakBoundedVec,
 };
 use xcm_emulator::TestExt;
@@ -278,6 +278,93 @@ fn update_token_price() {
 }
 
 #[test]
+fn transfer_non_tranche_tokens() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		let initial_balance = utils::DEFAULT_BALANCE_GLMR;
+		let amount = utils::DEFAULT_BALANCE_GLMR / 2;
+		let dest_address = utils::DEFAULT_DOMAIN_ADDRESS_MOONBEAM;
+		let currency_id = utils::CURRENCY_ID_GLMR;
+
+		// Register GLMR and fund BOB
+		utils::setup_pre_requirements();
+
+		// Cannot transfer to Centrifuge
+		assert_noop!(
+			Connectors::transfer(
+				RuntimeOrigin::signed(BOB.into()),
+				currency_id,
+				DomainAddress::Centrifuge(BOB),
+				amount,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
+		);
+
+		// Only `ForeignAsset` can be transferred
+		assert_noop!(
+			Connectors::transfer(
+				RuntimeOrigin::signed(BOB.into()),
+				CurrencyId::Tranche(42u64, [0u8; 16]),
+				dest_address.clone(),
+				amount,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferCurrency
+		);
+		assert_noop!(
+			Connectors::transfer(
+				RuntimeOrigin::signed(BOB.into()),
+				CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards),
+				dest_address.clone(),
+				amount,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
+		);
+		assert_noop!(
+			Connectors::transfer(
+				RuntimeOrigin::signed(BOB.into()),
+				CurrencyId::Native,
+				dest_address.clone(),
+				amount,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
+		);
+
+		// Cannot transfer more than owned
+		assert_noop!(
+			Connectors::transfer(
+				RuntimeOrigin::signed(BOB.into()),
+				currency_id,
+				dest_address.clone(),
+				initial_balance.saturating_add(1),
+			),
+			orml_tokens::Error::<DevelopmentRuntime>::BalanceTooLow
+		);
+
+		assert_ok!(Connectors::transfer(
+			RuntimeOrigin::signed(BOB.into()),
+			currency_id,
+			dest_address.clone(),
+			amount,
+		));
+
+		// The account to which the currency should have been transferred
+		// to on Centrifuge for bookkeeping purposes.
+		let domain_account: AccountId = DomainLocator::<Domain> {
+			domain: dest_address.into(),
+		}
+		.into_account_truncating();
+		// Verify that the correct amount of the token was transferred
+		// to the dest domain account on Centrifuge.
+		assert_eq!(
+			OrmlTokens::free_balance(currency_id, &domain_account),
+			amount
+		);
+		assert!(OrmlTokens::free_balance(currency_id, &BOB.into()) < initial_balance - amount);
+	});
+}
+
+#[test]
 fn transfer_tranche_tokens() {
 	TestNet::reset();
 
@@ -294,6 +381,7 @@ fn transfer_tranche_tokens() {
 			.tranches
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
+		let amount = 100_000;
 
 		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
 
@@ -304,7 +392,7 @@ fn transfer_tranche_tokens() {
 				pool_id,
 				tranche_id,
 				dest_address.clone(),
-				42,
+				amount,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::UnauthorizedTransfer
 		);
@@ -316,7 +404,7 @@ fn transfer_tranche_tokens() {
 				pool_id,
 				tranche_id,
 				DomainAddress::Centrifuge(BOB),
-				42,
+				amount,
 			),
 			pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
 		);
@@ -354,12 +442,11 @@ fn transfer_tranche_tokens() {
 		OrmlTokens::deposit(
 			CurrencyId::Tranche(pool_id, tranche_id),
 			&BOB.into(),
-			100_000,
+			amount,
 		);
 
 		// Finally, verify that we can now transfer the tranche to the destination
 		// address
-		let amount = 123;
 		assert_ok!(Connectors::transfer_tranche_tokens(
 			RuntimeOrigin::signed(BOB.into()),
 			pool_id,
@@ -380,7 +467,11 @@ fn transfer_tranche_tokens() {
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::Tranche(pool_id, tranche_id), &domain_account),
 			amount
-		)
+		);
+		assert!(
+			OrmlTokens::free_balance(CurrencyId::Tranche(pool_id, tranche_id), &BOB.into())
+				.is_zero()
+		);
 	});
 }
 
@@ -535,6 +626,18 @@ fn verify_tranche_fields_sizes() {
 mod utils {
 	use super::*;
 
+	pub const CURRENCY_ID_GLMR: CurrencyId = CurrencyId::ForeignAsset(1);
+	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
+	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(1284);
+	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+
+	/// Initializes universally required storage for connectors tests:
+	///  * Set transact info and domain router for Moonbeam `MultiLocation`,
+	///  * Set fee for GLMR (`CURRENCY_ID_GLMR`),
+	///  * Register GLMR and AUSD in `OrmlAssetRegistry`,
+	///  * Mint 10 GLMR (`DEFAULT_BALANCE_GLMR`) for Alice and Bob.
+	///
+	/// NOTE: AUSD is the default pool currency in `create_pool`.
 	pub fn setup_pre_requirements() {
 		let moonbeam_location = MultiLocation {
 			parents: 1,
@@ -561,7 +664,6 @@ mod utils {
 		));
 
 		/// Register Moonbeam's native token
-		let glmr_currency_id = CurrencyId::ForeignAsset(1);
 		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 			decimals: 18,
 			name: "Glimmer".into(),
@@ -574,16 +676,16 @@ mod utils {
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
 			meta,
-			Some(glmr_currency_id)
+			Some(CURRENCY_ID_GLMR)
 		));
 
 		// Give Alice and BOB enough glimmer to pay for fees
-		OrmlTokens::deposit(glmr_currency_id, &ALICE.into(), 10 * dollar(18));
-		OrmlTokens::deposit(glmr_currency_id, &BOB.into(), 10 * dollar(18));
+		OrmlTokens::deposit(CURRENCY_ID_GLMR, &ALICE.into(), DEFAULT_BALANCE_GLMR);
+		OrmlTokens::deposit(CURRENCY_ID_GLMR, &BOB.into(), DEFAULT_BALANCE_GLMR);
 
 		assert_ok!(Connectors::set_domain_router(
 			RuntimeOrigin::root(),
-			Domain::EVM(1284),
+			DOMAIN_MOONBEAM,
 			Router::Xcm(XcmDomain {
 				location: Box::new(moonbeam_location.try_into().expect("Bad xcm version")),
 				ethereum_xcm_transact_call_index: BoundedVec::truncate_from(vec![38, 0]),
@@ -591,12 +693,13 @@ mod utils {
 					<[u8; 20]>::from_hex("cE0Cb9BB900dfD0D378393A041f3abAb6B182882")
 						.expect("Invalid address"),
 				),
-				fee_currency: glmr_currency_id,
+				fee_currency: CURRENCY_ID_GLMR,
 				max_gas_limit: 700_000,
 			}),
 		));
 
-		// We first need to register AUSD in the asset registry
+		// Register AUSD in the asset registry which is the default pool currency in
+		// `create_pool`
 		let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 			decimals: 12,
 			name: "Acala Dollar".into(),
@@ -612,6 +715,10 @@ mod utils {
 		));
 	}
 
+	/// Creates a new pool for the given id with
+	///  * BOB as admin and depositor
+	///  * Two tranches
+	///  * AUSD as pool currency with max reserve 10k.
 	pub fn create_pool(pool_id: u64) {
 		assert_ok!(PoolSystem::create(
 			BOB.into(),
