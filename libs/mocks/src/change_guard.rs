@@ -24,11 +24,8 @@ pub mod pallet_mock_change_guard {
 	>;
 
 	impl<T: Config> Pallet<T> {
-		pub fn mock_note<
-			F: Fn(T::PoolId, C) -> Result<T::ChangeId, DispatchError> + 'static,
-			C: Into<T::Change> + 'static,
-		>(
-			f: F,
+		pub fn mock_note(
+			f: impl Fn(T::PoolId, T::Change) -> Result<T::ChangeId, DispatchError> + 'static,
 		) {
 			register_call!(move |(a, b)| f(a, b));
 		}

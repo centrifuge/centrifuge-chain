@@ -72,7 +72,7 @@ pub enum CloseLoanError {
 
 /// Error related to loan modifications
 #[derive(Encode, Decode, TypeInfo, PalletError)]
-pub enum ModificationError {
+pub enum MutationError {
 	/// Emits when a modification expect the loan to have a discounted cash flow
 	/// valuation method
 	DiscountedCashFlowExpected,

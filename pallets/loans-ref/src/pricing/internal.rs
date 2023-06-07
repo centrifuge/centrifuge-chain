@@ -16,7 +16,7 @@ use crate::{
 	pallet::{Config, Error},
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
-		CreateLoanError, InternalMutation, ModificationError,
+		CreateLoanError, InternalMutation, MutationError,
 	},
 };
 
@@ -179,7 +179,7 @@ impl<T: Config> InternalActivePricing<T> {
 	fn mut_dcf(&mut self) -> Result<&mut DiscountedCashFlow<T::Rate>, DispatchError> {
 		match &mut self.info.valuation_method {
 			ValuationMethod::DiscountedCashFlow(dcf) => Ok(dcf),
-			_ => Err(Error::<T>::from(ModificationError::DiscountedCashFlowExpected).into()),
+			_ => Err(Error::<T>::from(MutationError::DiscountedCashFlowExpected).into()),
 		}
 	}
 
@@ -197,6 +197,6 @@ impl<T: Config> InternalActivePricing<T> {
 			InternalMutation::DiscountRate(rate) => self.mut_dcf()?.discount_rate = rate,
 		}
 
-		Ok(())
+		self.info.validate()
 	}
 }

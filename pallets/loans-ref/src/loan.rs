@@ -23,7 +23,7 @@ use crate::{
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
-		LoanRestrictions, ModificationError, RepayLoanError, RepayRestrictions, RepaymentSchedule,
+		LoanRestrictions, MutationError, RepayLoanError, RepayRestrictions, RepaymentSchedule,
 	},
 };
 
@@ -127,7 +127,7 @@ impl<T: Config> ClosedLoan<T> {
 }
 
 /// Data containing an active loan.
-#[derive(Encode, Decode, Clone, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebugNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct ActiveLoan<T: Config> {
 	/// Specify the repayments schedule of the loan
@@ -419,7 +419,7 @@ impl<T: Config> ActiveLoan<T> {
 			LoanMutation::Internal(mutation) => match &mut self.pricing {
 				ActivePricing::Internal(inner) => inner.mutate_with(mutation)?,
 				ActivePricing::External(_) => {
-					Err(Error::<T>::from(ModificationError::InternalPricingExpected))?
+					Err(Error::<T>::from(MutationError::InternalPricingExpected))?
 				}
 			},
 		};
