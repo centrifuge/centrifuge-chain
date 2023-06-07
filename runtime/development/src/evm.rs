@@ -16,7 +16,7 @@ use frame_system::EnsureRoot;
 use pallet_evm::EnsureAddressTruncated;
 use runtime_common::{
 	account_conversion::AccountConverter,
-	evm::{fees::DealWithEVMFees, precompile::Developmennt, BaseFeeThreshold, WEIGHT_PER_GAS},
+	evm::{fees::DealWithEVMFees, precompile::Development, BaseFeeThreshold, WEIGHT_PER_GAS},
 };
 use sp_core::{crypto::ByteArray, H160, U256};
 use sp_runtime::Permill;

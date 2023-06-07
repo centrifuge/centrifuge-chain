@@ -15,7 +15,6 @@
 
 use core::marker::PhantomData;
 
-use cfg_primitives::constants::TREASURY_FEE_RATIO;
 use frame_support::traits::{
 	Currency, ExistenceRequirement, Imbalance, OnUnbalanced, SignedImbalance, WithdrawReasons,
 };
@@ -25,10 +24,10 @@ use pallet_treasury::Pallet as Treasury;
 use sp_core::{H160, U256};
 use sp_runtime::{
 	traits::{UniqueSaturatedInto, Zero},
-	Perbill, Saturating,
+	Saturating,
 };
 
-use crate::fees::{NegativeImbalance, ToAuthor};
+use crate::fees::{DealWithFees, NegativeImbalance};
 
 type AccountIdOf<R> = <R as frame_system::Config>::AccountId;
 type Balance<R> = <Balances<R> as Currency<AccountIdOf<R>>>::Balance;
@@ -36,6 +35,7 @@ type PositiveImbalance<R> = <Balances<R> as Currency<AccountIdOf<R>>>::PositiveI
 
 type Error<R> = pallet_evm::Error<R>;
 
+/// Handler for EVM fees
 pub struct DealWithEVMFees<R>(PhantomData<R>);
 
 impl<R> OnChargeEVMTransaction<R> for DealWithEVMFees<R>
@@ -111,20 +111,14 @@ where
 			.unwrap_or_else(|_| NegativeImbalance::<R>::zero());
 
 		let (base_fee, tip) = adjusted_paid.split(base_fee.unique_saturated_into());
-
-		// Handle base fee and tips
-		let (treasury_amount, mut author_amount) = base_fee.ration(
-			TREASURY_FEE_RATIO.deconstruct(),
-			(Perbill::one() - TREASURY_FEE_RATIO).deconstruct(),
-		);
-		tip.merge_into(&mut author_amount);
-		<Treasury<R> as OnUnbalanced<_>>::on_unbalanced(treasury_amount);
-		<ToAuthor<R> as OnUnbalanced<_>>::on_unbalanced(author_amount);
-
+		DealWithFees::<R>::on_unbalanceds([base_fee, tip].into_iter());
 		None
 	}
 
 	fn pay_priority_fee(tip: Self::LiquidityInfo) {
+		// Because we handle the priority fee in the above function,
+		// there's nothing to do here. Assert for verification
+		// purposes.
 		assert!(tip.is_none())
 	}
 }
