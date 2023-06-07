@@ -72,22 +72,22 @@ impl<T: Config> DataCollection<T::PriceId> for NoPriceCollection<T> {
 	}
 }
 
-const DEFAULT_MODIFICATION_ERR: DispatchError =
-	DispatchError::Other("No configured modification system for pallet-loans");
+const DEFAULT_CHANGE_ERR: DispatchError =
+	DispatchError::Other("No configured change system for pallet-loans");
 
-/// Type used to configure the pallet without modification support
-pub struct NoLoanModifications<T>(PhantomData<T>);
+/// Type used to configure the pallet without changes support
+pub struct NoLoanChanges<T>(PhantomData<T>);
 
-impl<T: Config> ChangeGuard for NoLoanModifications<T> {
+impl<T: Config> ChangeGuard for NoLoanChanges<T> {
 	type Change = LoanChangeOf<T>;
 	type ChangeId = T::ChangeId;
 	type PoolId = PoolIdOf<T>;
 
 	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<T::ChangeId, DispatchError> {
-		Err(DEFAULT_MODIFICATION_ERR)
+		Err(DEFAULT_CHANGE_ERR)
 	}
 
 	fn released(_: PoolIdOf<T>, _: T::ChangeId) -> Result<Self::Change, DispatchError> {
-		Err(DEFAULT_MODIFICATION_ERR)
+		Err(DEFAULT_CHANGE_ERR)
 	}
 }

@@ -1363,7 +1363,7 @@ impl pallet_interest_accrual::Config for Runtime {
 
 impl pallet_loans_ref::Config for Runtime {
 	type Balance = Balance;
-	type ChangeGuard = pallet_loans_ref::util::NoLoanModifications<Runtime>;
+	type ChangeGuard = pallet_loans_ref::util::NoLoanChanges<Runtime>;
 	type ChangeId = u64;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;

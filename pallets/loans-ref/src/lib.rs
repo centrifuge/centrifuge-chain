@@ -220,7 +220,8 @@ pub mod pallet {
 			NormalizedDebt = Self::Balance,
 		>;
 
-		/// Used to confirm active loan modification properties.
+		/// Used to notify the runtime about changes that require special
+		/// treatment.
 		type ChangeGuard: ChangeGuard<
 			PoolId = PoolIdOf<Self>,
 			ChangeId = Self::ChangeId,
@@ -335,7 +336,7 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			status: WriteOffStatus<T::Rate>,
 		},
-		/// A loan was modified
+		/// An active loan was mutated
 		Mutated {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
@@ -388,7 +389,7 @@ pub mod pallet {
 		WrittenOffError(WrittenOffError),
 		/// Emits when the loan can not be closed
 		CloseLoanError(CloseLoanError),
-		/// Emits when the loan can not be modified
+		/// Emits when the loan can not be mutated
 		MutationError(MutationError),
 	}
 
