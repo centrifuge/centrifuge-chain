@@ -12,11 +12,13 @@
 // GNU General Public License for more details.
 
 use cfg_primitives::Moment;
-use cfg_traits::ops::{EnsureAdd, EnsureSub};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Get, DispatchError};
+use sp_runtime::{
+	traits::{Get, Zero},
+	DispatchError,
+};
 use sp_std::collections::btree_set::BTreeSet;
 use strum::EnumCount;
 
@@ -137,7 +139,7 @@ pub struct WriteOffStatus<Rate> {
 
 impl<Rate> WriteOffStatus<Rate>
 where
-	Rate: Ord + EnsureAdd + EnsureSub,
+	Rate: Ord + Zero + Copy,
 {
 	pub fn compose_max(&self, other: &WriteOffStatus<Rate>) -> WriteOffStatus<Rate> {
 		Self {

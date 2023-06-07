@@ -1,9 +1,11 @@
+mod change_guard;
 mod data;
 mod fees;
 mod permissions;
 mod pools;
 mod rewards;
 
+pub use change_guard::pallet_mock_change_guard;
 pub use data::pallet as pallet_mock_data;
 pub use fees::pallet as pallet_mock_fees;
 pub use permissions::pallet as pallet_mock_permissions;
