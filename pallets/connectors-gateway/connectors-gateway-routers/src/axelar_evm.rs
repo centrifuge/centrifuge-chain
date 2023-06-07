@@ -28,7 +28,7 @@ where
 	T: frame_system::Config + pallet_connectors_gateway::Config + pallet_evm::Config,
 {
 	pub domain: EVMDomain,
-	pub _phantom: PhantomData<T>,
+	pub _marker: PhantomData<T>,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
@@ -72,6 +72,12 @@ where
 
 		// Use the same conversion as the one used in `EnsureAddressTruncated`.
 		let sender_evm_address = H160::from_slice(&sender.as_ref()[0..20]);
+
+		// TODO(cdamian): Fund the derived sender account beforehand?
+		// Derived as per - https://centrifuge.hackmd.io/d2p7IV7iSrWFU1uF7P8nVQ?both#AccountAddress-mapping
+
+		// Sender account A (Alice)
+		// Sender account A' (Alice derived) - first 20bytes of Alice + derivation stuff
 
 		// TODO(cdamian): Do we need extra account related logic, prior to calling this
 		// router, given the following?
