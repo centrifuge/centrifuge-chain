@@ -89,7 +89,7 @@ pub mod fees {
 		<R as frame_system::Config>::AccountId,
 	>>::NegativeImbalance;
 
-	struct ToAuthor<R>(sp_std::marker::PhantomData<R>);
+	pub(crate) struct ToAuthor<R>(sp_std::marker::PhantomData<R>);
 	impl<R> OnUnbalanced<NegativeImbalance<R>> for ToAuthor<R>
 	where
 		R: pallet_balances::Config + pallet_authorship::Config,
