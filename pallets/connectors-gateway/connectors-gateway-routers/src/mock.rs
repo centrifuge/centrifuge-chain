@@ -266,6 +266,7 @@ impl TransactAsset for DummyAssetTransactor {
 pub struct CurrencyIdToMultiLocation;
 
 pub type AssetId = u128;
+
 #[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, scale_info::TypeInfo)]
 pub enum CurrencyId {
 	SelfReserve,
