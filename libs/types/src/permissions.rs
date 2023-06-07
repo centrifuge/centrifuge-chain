@@ -93,7 +93,7 @@ bitflags::bitflags! {
 		const BORROWER  = 0b00000010;
 		const PRICING_ADMIN = 0b00000100;
 		const LIQUIDITY_ADMIN = 0b00001000;
-		const MEMBER_LIST_ADMIN = 0b00010000;
+		const INVESTOR_ADMIN = 0b00010000;
 		const RISK_ADMIN = 0b00100000;
 		const POD_READ_ACCESS = 0b01000000;
 	}
@@ -220,7 +220,7 @@ where
 				PoolRole::PoolAdmin => self.pool_admin.contains(PoolAdminRoles::POOL_ADMIN),
 				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
 				PoolRole::InvestorAdmin => {
-					self.pool_admin.contains(PoolAdminRoles::MEMBER_LIST_ADMIN)
+					self.pool_admin.contains(PoolAdminRoles::INVESTOR_ADMIN)
 				}
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
@@ -261,7 +261,7 @@ where
 				PoolRole::PoolAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::POOL_ADMIN)),
 				PoolRole::PricingAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::PRICING_ADMIN)),
 				PoolRole::InvestorAdmin => {
-					Ok(self.pool_admin.remove(PoolAdminRoles::MEMBER_LIST_ADMIN))
+					Ok(self.pool_admin.remove(PoolAdminRoles::INVESTOR_ADMIN))
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
@@ -295,7 +295,7 @@ where
 				PoolRole::PoolAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::POOL_ADMIN)),
 				PoolRole::PricingAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::PRICING_ADMIN)),
 				PoolRole::InvestorAdmin => {
-					Ok(self.pool_admin.insert(PoolAdminRoles::MEMBER_LIST_ADMIN))
+					Ok(self.pool_admin.insert(PoolAdminRoles::INVESTOR_ADMIN))
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
