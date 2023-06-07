@@ -337,7 +337,7 @@ pub mod pallet {
 			status: WriteOffStatus<T::Rate>,
 		},
 		/// A loan was modified
-		Modified {
+		Mutated {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			mutation: LoanMutation<T::Rate>,
@@ -763,7 +763,7 @@ pub mod pallet {
 				loan.mutate_with(mutation.clone())
 			})?;
 
-			Self::deposit_event(Event::<T>::Modified {
+			Self::deposit_event(Event::<T>::Mutated {
 				pool_id,
 				loan_id,
 				mutation,

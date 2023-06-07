@@ -1822,6 +1822,29 @@ mod mutate_loan {
 	}
 
 	#[test]
+	fn with_wrong_interest_rate() {
+		new_test_ext().execute_with(|| {
+			let loan_id = util::create_loan(util::base_internal_loan());
+			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+
+			// Too high
+			let mutation =
+				LoanMutation::Internal(InternalMutation::InterestRate(Rate::from_float(3.0)));
+
+			config_mocks(loan_id, &mutation);
+			assert_noop!(
+				Loans::propose_loan_mutation(
+					RuntimeOrigin::signed(LOAN_ADMIN),
+					POOL_A,
+					loan_id,
+					mutation,
+				),
+				pallet_interest_accrual::Error::<Runtime>::InvalidRate
+			);
+		});
+	}
+
+	#[test]
 	fn with_wrong_internal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
