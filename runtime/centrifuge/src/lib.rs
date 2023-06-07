@@ -1445,11 +1445,11 @@ impl
 					Role::PoolRole(..) => true,
 					_ => false,
 				},
-				Role::PoolRole(PoolRole::InvestorAdmin) => match *role {
+				Role::PoolRole(PoolRole::InvestorAdmin) => matches!(
+					*role,
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _))
-					| Role::PoolRole(PoolRole::PODReadAccess) => true,
-					_ => false,
-				},
+						| Role::PoolRole(PoolRole::PODReadAccess)
+				),
 				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => matches!(
 					*role,
 					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_))

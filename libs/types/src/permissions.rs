@@ -219,9 +219,7 @@ where
 				}
 				PoolRole::PoolAdmin => self.pool_admin.contains(PoolAdminRoles::POOL_ADMIN),
 				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
-				PoolRole::InvestorAdmin => {
-					self.pool_admin.contains(PoolAdminRoles::INVESTOR_ADMIN)
-				}
+				PoolRole::InvestorAdmin => self.pool_admin.contains(PoolAdminRoles::INVESTOR_ADMIN),
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
 				PoolRole::PODReadAccess => {
