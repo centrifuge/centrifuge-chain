@@ -42,13 +42,16 @@ use xcm::{
 use xcm_emulator::TestExt;
 
 use super::register_dot;
-use crate::xcm::polkadot::{
-	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
-		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+use crate::xcm::{
+	polkadot::{
+		setup::{
+			acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+			AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+		},
+		test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+		tests::register_ausd,
 	},
-	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
-	tests::register_ausd,
+	xcm_metadata,
 };
 
 /*
@@ -451,7 +454,13 @@ fn transfer_foreign_sibling_to_centrifuge() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			bob_balance,
-			transfer_amount - calc_fee(meta.additional.xcm.fee_per_second.unwrap())
+			transfer_amount
+				- calc_fee(
+					xcm_metadata(meta.additional.transferability.unwrap())
+						.unwrap()
+						.fee_per_second
+						.unwrap()
+				)
 		);
 		// Sanity check to ensure the calculated is what is expected
 		assert_eq!(bob_balance, 993264000000000000);
