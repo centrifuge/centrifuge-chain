@@ -80,8 +80,8 @@ pub type GeneralCurrencyIndexOf<T> =
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
-		Investment, InvestmentAccountant, InvestmentCollector, InvestmentProperties, Permissions,
-		PoolInspect, TrancheCurrency,
+		CurrencyInspect, Investment, InvestmentAccountant, InvestmentCollector,
+		InvestmentProperties, Permissions, PoolInspect, TrancheCurrency,
 	};
 	use cfg_types::{
 		permissions::{PermissionScope, PoolRole, Role},
@@ -182,7 +182,7 @@ pub mod pallet {
 				<<<Self as Config>::ForeignInvestmentAccountant as InvestmentAccountant<
 					Self::AccountId,
 				>>::InvestmentInfo as InvestmentProperties<Self::AccountId>>::Currency,
-			>;
+			> + CurrencyInspect<CurrencyId = <Self as pallet::Config>::CurrencyId>;
 
 		/// The converter from a DomainAddress to a Substrate AccountId
 		type AccountConverter: Convert<DomainAddress, Self::AccountId>;
@@ -263,6 +263,8 @@ pub mod pallet {
 		/// Failed to match the provided GeneralCurrencyIndex against the
 		/// investment currency of the pool.
 		InvalidInvestCurrency,
+		/// The currency is not allowed to be transferred via Connectors.
+		InvalidTransferCurrency,
 		/// The domain has not been whitelisted as a TrancheInvestor.
 		DomainNotWhitelisted,
 	}
@@ -466,9 +468,12 @@ pub mod pallet {
 				Error::<T>::UnauthorizedTransfer
 			);
 
-			// TODO: Add check to integration tests
 			// Ensure pool and tranche exist and derive invest id
 			let invest_id = Self::derive_invest_id(pool_id, tranche_id)?;
+			ensure!(
+				CurrencyIdOf::<T>::is_tranche_token(invest_id.clone().into()),
+				Error::<T>::InvalidTransferCurrency
+			);
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -517,6 +522,10 @@ pub mod pallet {
 			ensure!(
 				receiver.domain() != Domain::Centrifuge,
 				Error::<T>::InvalidDomain
+			);
+			ensure!(
+				!CurrencyIdOf::<T>::is_tranche_token(currency_id),
+				Error::<T>::InvalidTransferCurrency
 			);
 			let currency = Self::try_get_general_index(currency_id)?;
 
@@ -602,7 +611,7 @@ pub mod pallet {
 			let domain = Domain::Centrifuge;
 
 			Self::do_send_message(
-				who.into(),
+				who,
 				Message::AllowPoolCurrency { pool_id, currency },
 				domain,
 			)?;

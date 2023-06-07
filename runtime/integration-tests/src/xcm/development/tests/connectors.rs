@@ -198,9 +198,9 @@ fn update_member() {
 			Connectors::update_member(
 				RuntimeOrigin::signed(ALICE.into()),
 				new_member.clone(),
-				pool_id.clone(),
-				tranche_id.clone(),
-				valid_until.clone(),
+				pool_id,
+				tranche_id,
+				valid_until,
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
 		);
@@ -209,7 +209,7 @@ fn update_member() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(ALICE.into()),
 			Role::PoolRole(PoolRole::MemberListAdmin),
-			new_member.into_account_truncating(),
+			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
 			PermissionScope::Pool(pool_id.clone()),
 			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), valid_until)),
 		));
@@ -217,7 +217,7 @@ fn update_member() {
 		// Verify the Investor role was set as expected in Permissions
 		assert!(Permissions::has(
 			PermissionScope::Pool(pool_id.clone()),
-			AccountConverter::<DevelopmentRuntime>::convert(new_member),
+			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
 			Role::PoolRole(PoolRole::TrancheInvestor(
 				tranche_id.clone(),
 				valid_until.clone()
@@ -239,9 +239,9 @@ fn update_member() {
 			Connectors::update_member(
 				RuntimeOrigin::signed(ALICE.into()),
 				DomainAddress::EVM(1284, [9; 20]),
-				pool_id.clone(),
-				tranche_id.clone(),
-				valid_until.clone(),
+				pool_id,
+				tranche_id,
+				valid_until,
 			),
 			pallet_connectors::Error::<development_runtime::Runtime>::DomainNotWhitelisted,
 		);
@@ -295,7 +295,7 @@ fn transfer_tranche_tokens() {
 			.tranche_id(TrancheLoc::Index(0))
 			.expect("Tranche at index 0 exists");
 
-		let dest_address = DomainAddress::EVM(1284, [99; 20]);
+		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
 
 		// Verify that we first need the destination address to be whitelisted
 		assert_noop!(
@@ -318,7 +318,7 @@ fn transfer_tranche_tokens() {
 				DomainAddress::Centrifuge(BOB),
 				42,
 			),
-			pallet_connectors::Error::<DevelopmentRuntime>::InvalidTransferDomain
+			pallet_connectors::Error::<DevelopmentRuntime>::InvalidDomain
 		);
 
 		// Make BOB the MembersListAdmin of this Pool
@@ -335,7 +335,7 @@ fn transfer_tranche_tokens() {
 		assert_ok!(Permissions::add(
 			RuntimeOrigin::signed(BOB.into()),
 			Role::PoolRole(PoolRole::MemberListAdmin),
-			dest_address.into_account_truncating(),
+			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
 			PermissionScope::Pool(pool_id.clone()),
 			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), valid_until)),
 		));
@@ -345,16 +345,19 @@ fn transfer_tranche_tokens() {
 		assert_ok!(Connectors::update_member(
 			RuntimeOrigin::signed(BOB.into()),
 			dest_address.clone(),
-			pool_id.clone(),
-			tranche_id.clone(),
+			pool_id,
+			tranche_id,
 			valid_until,
 		));
+
 		// Give BOB enough Tranche balance to be able to transfer it
 		OrmlTokens::deposit(
-			CurrencyId::Tranche(pool_id.clone(), tranche_id.clone()),
+			CurrencyId::Tranche(pool_id, tranche_id),
 			&BOB.into(),
 			100_000,
 		);
+
+		// Finally, verify that we can now transfer the tranche to the destination
 		// address
 		let amount = 123;
 		assert_ok!(Connectors::transfer_tranche_tokens(
@@ -382,11 +385,96 @@ fn transfer_tranche_tokens() {
 }
 
 #[test]
+/// Try to transfer tranches for non-existing pools or invalid tranche ids for
+/// existing pools.
+fn transferring_invalid_tranche_tokens_throws() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+
+		let valid_pool_id: u64 = 42;
+		utils::create_pool(valid_pool_id);
+		let pool_details = PoolSystem::pool(valid_pool_id).expect("Pool should exist");
+		let valid_tranche_id = pool_details
+			.tranches
+			.tranche_id(TrancheLoc::Index(0))
+			.expect("Tranche at index 0 exists");
+		let valid_until = u64::MAX;
+		let transfer_amount = 42;
+		let invalid_pool_id = valid_pool_id + 1;
+		let invalid_tranche_id = valid_tranche_id.map(|i| i.saturating_add(1));
+		assert!(PoolSystem::pool(invalid_pool_id).is_none());
+
+		// Make BOB the MembersListAdmin of both pools
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::root(),
+			Role::PoolRole(PoolRole::PoolAdmin),
+			BOB.into(),
+			PermissionScope::Pool(valid_pool_id.clone()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+		));
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::root(),
+			Role::PoolRole(PoolRole::PoolAdmin),
+			BOB.into(),
+			PermissionScope::Pool(invalid_pool_id.clone()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+		));
+
+		// Give BOB investor role for (valid_pool_id, invalid_tranche_id) and
+		// (invalid_pool_id, valid_tranche_id)
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::signed(BOB.into()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			PermissionScope::Pool(invalid_pool_id.clone()),
+			Role::PoolRole(PoolRole::TrancheInvestor(
+				valid_tranche_id.clone(),
+				valid_until
+			)),
+		));
+		assert_ok!(Permissions::add(
+			RuntimeOrigin::signed(BOB.into()),
+			Role::PoolRole(PoolRole::MemberListAdmin),
+			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
+			PermissionScope::Pool(valid_pool_id.clone()),
+			Role::PoolRole(PoolRole::TrancheInvestor(
+				invalid_tranche_id.clone(),
+				valid_until
+			)),
+		));
+		assert_noop!(
+			Connectors::transfer_tranche_tokens(
+				RuntimeOrigin::signed(BOB.into()),
+				invalid_pool_id,
+				valid_tranche_id,
+				dest_address.clone(),
+				transfer_amount
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::PoolNotFound
+		);
+		assert_noop!(
+			Connectors::transfer_tranche_tokens(
+				RuntimeOrigin::signed(BOB.into()),
+				valid_pool_id,
+				invalid_tranche_id,
+				dest_address.clone(),
+				transfer_amount
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::TrancheNotFound
+		);
+	});
+}
+
+#[test]
 fn test_vec_to_fixed_array() {
 	let src = "TrNcH".as_bytes().to_vec();
 	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src);
 
 	assert!(symbol.starts_with("TrNcH".as_bytes()));
+
 	assert_eq!(
 		symbol,
 		[
