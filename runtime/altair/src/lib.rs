@@ -1048,11 +1048,11 @@ impl
 					Role::PoolRole(..) => true,
 					_ => false,
 				},
-				Role::PoolRole(PoolRole::MemberListAdmin) => matches!(
-					*role,
-					// MemberlistAdmins can manage tranche investors
+				Role::PoolRole(PoolRole::InvestorAdmin) => match *role {
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _))
-				),
+					| Role::PoolRole(PoolRole::PODReadAccess) => true,
+					_ => false,
+				},
 				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => matches!(
 					*role,
 					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_))

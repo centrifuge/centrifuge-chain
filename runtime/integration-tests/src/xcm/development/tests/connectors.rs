@@ -203,7 +203,7 @@ fn update_member() {
 			Role::PoolRole(PoolRole::PoolAdmin),
 			ALICE.into(),
 			PermissionScope::Pool(pool_id),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
 		// Verify it now works
@@ -315,7 +315,7 @@ fn transfer_tranche_tokens() {
 			Role::PoolRole(PoolRole::PoolAdmin),
 			BOB.into(),
 			PermissionScope::Pool(pool_id),
-			Role::PoolRole(PoolRole::MemberListAdmin),
+			Role::PoolRole(PoolRole::InvestorAdmin),
 		));
 
 		// Call the Connectors::update_member which ensures the destination address is

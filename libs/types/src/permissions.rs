@@ -37,7 +37,7 @@ pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	Borrower,
 	PricingAdmin,
 	LiquidityAdmin,
-	MemberListAdmin,
+	InvestorAdmin,
 	LoanAdmin,
 	TrancheInvestor(TrancheId, Moment),
 	PODReadAccess,
@@ -219,7 +219,7 @@ where
 				}
 				PoolRole::PoolAdmin => self.pool_admin.contains(PoolAdminRoles::POOL_ADMIN),
 				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
-				PoolRole::MemberListAdmin => {
+				PoolRole::InvestorAdmin => {
 					self.pool_admin.contains(PoolAdminRoles::MEMBER_LIST_ADMIN)
 				}
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
@@ -260,7 +260,7 @@ where
 				}
 				PoolRole::PoolAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::POOL_ADMIN)),
 				PoolRole::PricingAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => {
+				PoolRole::InvestorAdmin => {
 					Ok(self.pool_admin.remove(PoolAdminRoles::MEMBER_LIST_ADMIN))
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
@@ -294,7 +294,7 @@ where
 				}
 				PoolRole::PoolAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::POOL_ADMIN)),
 				PoolRole::PricingAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => {
+				PoolRole::InvestorAdmin => {
 					Ok(self.pool_admin.insert(PoolAdminRoles::MEMBER_LIST_ADMIN))
 				}
 				PoolRole::LoanAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
@@ -619,10 +619,10 @@ mod tests {
 
 		// Adding roles works normally
 		assert!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
-		assert!(roles.add(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.add(Role::PoolRole(PoolRole::InvestorAdmin)).is_ok());
 		assert!(roles.add(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-		assert!(roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
 		assert!(roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
 
 		// Role exists for as long as permission is given
@@ -662,10 +662,10 @@ mod tests {
 
 		// Removing roles work normally for Non-TrancheInvestor roles
 		assert!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
-		assert!(roles.rm(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+		assert!(roles.rm(Role::PoolRole(PoolRole::InvestorAdmin)).is_ok());
 		assert!(roles.rm(Role::PoolRole(PoolRole::PODReadAccess)).is_ok());
 		assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
-		assert!(!roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
+		assert!(!roles.exists(Role::PoolRole(PoolRole::InvestorAdmin)));
 		assert!(!roles.exists(Role::PoolRole(PoolRole::PODReadAccess)));
 	}
 

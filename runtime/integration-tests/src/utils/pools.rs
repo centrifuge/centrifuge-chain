@@ -281,7 +281,7 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<RuntimeCall> {
 		PoolRole::PoolAdmin,
 		admin.clone(),
 		pool_id,
-		PoolRole::MemberListAdmin,
+		PoolRole::InvestorAdmin,
 	));
 	calls.push(permission_call(
 		PoolRole::PoolAdmin,
@@ -344,7 +344,7 @@ pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> V
 /// Whitelist a given investor for a fiven pool and tranche for 1 year of time
 pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: TrancheId) -> RuntimeCall {
 	permission_call(
-		PoolRole::MemberListAdmin,
+		PoolRole::InvestorAdmin,
 		investor.to_account_id(),
 		pool,
 		PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
@@ -479,7 +479,7 @@ mod with_ext {
 		permission_for(Keyring::Admin.into(), id, PoolRole::PricingAdmin);
 		permission_for(Keyring::Admin.into(), id, PoolRole::LiquidityAdmin);
 		permission_for(Keyring::Admin.into(), id, PoolRole::LoanAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::MemberListAdmin);
+		permission_for(Keyring::Admin.into(), id, PoolRole::InvestorAdmin);
 		permission_for(Keyring::Admin.into(), id, PoolRole::Borrower);
 	}
 
