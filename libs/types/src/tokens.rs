@@ -212,18 +212,6 @@ pub struct CustomMetadata {
 	pub pool_currency: bool,
 }
 
-#[test]
-impl Default for CustomMetadata {
-	fn default() -> Self {
-		Self {
-			transferability: CrossChainTransferability::Xcm(Default::default()),
-			mintable: false,
-			permissioned: false,
-			pool_currency: false,
-		}
-	}
-}
-
 /// The Cross Chain Transferability property of an asset describes the way(s),
 /// if any, that said asset is cross-chain transferable. It may currently be
 /// transferable through Xcm, Centrifuge Connectors, or All .

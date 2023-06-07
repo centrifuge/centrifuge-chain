@@ -91,7 +91,10 @@ fn transfer_air_to_sibling() {
 					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			))),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
@@ -116,7 +119,10 @@ fn transfer_air_to_sibling() {
 					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			))),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
@@ -316,7 +322,10 @@ fn transfer_ksm_from_relay_chain() {
 		symbol: "KSM".into(),
 		existential_deposit: 1_000_000_000,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::new(1, Here))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	Altair::execute_with(|| {
@@ -507,7 +516,10 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 	let transfer_amount = foreign(12, meta.decimals);
 	let alice_initial_balance = transfer_amount * 100;

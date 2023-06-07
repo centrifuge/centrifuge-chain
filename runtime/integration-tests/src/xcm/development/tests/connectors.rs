@@ -426,6 +426,8 @@ fn verify_tranche_fields_sizes() {
 }
 
 mod utils {
+	use cfg_types::tokens::CrossChainTransferability;
+
 	use super::*;
 
 	pub fn setup_pre_requirements() {
@@ -461,7 +463,10 @@ mod utils {
 			symbol: "GLMR".into(),
 			existential_deposit: 1_000_000,
 			location: Some(VersionedMultiLocation::V3(moonbeam_native_token)),
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 
 		assert_ok!(OrmlAssetRegistry::register_asset(
@@ -496,7 +501,10 @@ mod utils {
 			symbol: "AUSD".into(),
 			existential_deposit: 1_000,
 			location: None,
-			additional: CustomMetadata::default(),
+			additional: CustomMetadata {
+				transferability: CrossChainTransferability::Xcm(Default::default()),
+				..CustomMetadata::default()
+			},
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),

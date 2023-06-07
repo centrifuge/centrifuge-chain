@@ -88,7 +88,10 @@ fn transfer_cfg_to_sibling() {
 				general_key(parachains::polkadot::centrifuge::CFG_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	Centrifuge::execute_with(|| {
@@ -485,7 +488,10 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 	let transfer_amount = foreign(12, meta.decimals);
 	let alice_initial_balance = transfer_amount * 100;

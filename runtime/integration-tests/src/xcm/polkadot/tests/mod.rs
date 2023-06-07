@@ -42,7 +42,10 @@ fn register_dot() {
 		symbol: "DOT".into(),
 		existential_deposit: 100_000_000,
 		location: Some(VersionedMultiLocation::V3(MultiLocation::parent())),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 	assert_ok!(OrmlAssetRegistry::register_asset(
 		RuntimeOrigin::root(),
@@ -66,7 +69,10 @@ fn register_ausd() {
 				general_key(parachains::polkadot::acala::AUSD_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
@@ -91,7 +97,10 @@ fn register_cfg() {
 				general_key(parachains::polkadot::centrifuge::CFG_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
@@ -119,7 +128,10 @@ fn register_cfg_v2() {
 				)),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	assert_ok!(OrmlAssetRegistry::register_asset(
