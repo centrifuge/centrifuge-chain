@@ -1781,7 +1781,7 @@ mod mutate_loan {
 	fn with_wrong_permissions() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::borrow_loan(loan_id, 0);
 
 			config_mocks(loan_id, &DEFAULT_MUTATION);
 			assert_noop!(
@@ -1810,7 +1810,7 @@ mod mutate_loan {
 	fn with_wrong_dcf_mutation() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::borrow_loan(loan_id, 0);
 
 			let mutation =
 				LoanMutation::Internal(InternalMutation::DiscountRate(Rate::from_float(0.5)));
@@ -1832,7 +1832,7 @@ mod mutate_loan {
 	fn with_wrong_interest_rate() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::borrow_loan(loan_id, 0);
 
 			// Too high
 			let mutation =
@@ -1855,7 +1855,7 @@ mod mutate_loan {
 	fn with_wrong_internal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_external_loan());
-			util::borrow_loan(loan_id, PRICE_VALUE * QUANTITY);
+			util::borrow_loan(loan_id, 0);
 
 			let mutation =
 				LoanMutation::Internal(InternalMutation::InterestRate(Rate::from_float(0.2)));
@@ -1877,7 +1877,7 @@ mod mutate_loan {
 	fn with_successful_proposal() {
 		new_test_ext().execute_with(|| {
 			let loan_id = util::create_loan(util::base_internal_loan());
-			util::borrow_loan(loan_id, COLLATERAL_VALUE);
+			util::borrow_loan(loan_id, 0);
 
 			config_mocks(loan_id, &DEFAULT_MUTATION);
 

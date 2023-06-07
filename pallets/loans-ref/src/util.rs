@@ -58,7 +58,7 @@ impl<T: Config> DataProvider<T::PriceId, T::Rate> for NoPriceRegistry<T> {
 
 impl<T: Config> DataFeeder<T::PriceId, T::Rate, T::AccountId> for NoPriceRegistry<T> {
 	fn feed_value(_: T::AccountId, _: T::PriceId, _: T::Rate) -> DispatchResult {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 }
 
