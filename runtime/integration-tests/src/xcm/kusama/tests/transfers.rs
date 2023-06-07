@@ -25,7 +25,7 @@
 use altair_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
-	tokens::{CurrencyId, CustomMetadata},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use frame_support::assert_ok;
@@ -412,11 +412,11 @@ fn transfer_foreign_sibling_to_altair() {
 		existential_deposit: 1_000_000_000_000,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata {
-			xcm: XcmMetadata {
+			transferability: Some(CrossChainTransferability::Xcm(XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
 				// used when XCM transfer fees are charged for this token.
 				fee_per_second: Some(8420000000000000000),
-			},
+			})),
 			..CustomMetadata::default()
 		},
 	};

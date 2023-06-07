@@ -17,12 +17,9 @@ use cfg_traits::{
 	ops::{EnsureAdd, EnsureFixedPointNumber, EnsureInto},
 	TrancheCurrency as TrancheCurrencyT,
 };
+use cfg_types::tokens::{CrossChainTransferability, CustomMetadata};
 #[cfg(test)]
 use cfg_types::{fixed_point::Rate, tokens::TrancheCurrency};
-use cfg_types::{
-	tokens::{CrossChainTransferability, CustomMetadata},
-	xcm::XcmMetadata,
-};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::DispatchResult,
@@ -251,9 +248,6 @@ where
 				mintable: false,
 				permissioned: true,
 				pool_currency: false,
-				xcm: XcmMetadata {
-					fee_per_second: None,
-				},
 				transferability: Some(CrossChainTransferability::Connectors),
 			},
 		}

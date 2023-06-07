@@ -15,7 +15,6 @@ use cfg_primitives::{
 	parachains,
 	types::{EnsureRootOr, HalfOfCouncil},
 };
-use cfg_types::tokens::CrossChainTransferability;
 pub use cfg_types::tokens::CurrencyId;
 pub use cumulus_primitives_core::ParaId;
 pub use frame_support::{
@@ -209,7 +208,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			.filter(|m| {
 				m.additional
 					.transferability
-					.map_or(false, |t| t.includes(CrossChainTransferability::Xcm))
+					.map_or(false, |t| t.includes_xcm())
 			})
 			.and_then(|m| m.location)
 			.and_then(|l| l.try_into().ok())

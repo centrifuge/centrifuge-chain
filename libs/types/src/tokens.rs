@@ -183,8 +183,8 @@ impl TrancheCurrencyT<PoolId, TrancheId> for TrancheCurrency {
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 pub struct CustomMetadata {
-	/// XCM-related metadata.
-	pub xcm: XcmMetadata,
+	/// The ways, if any, this token is cross-chain transferable
+	pub transferability: Option<CrossChainTransferability>,
 
 	/// Whether an asset can be minted.
 	/// When `true`, the right permissions will checked in the permissions
@@ -199,19 +199,17 @@ pub struct CustomMetadata {
 
 	/// Whether an asset can be used as a currency to fund Centrifuge Pools.
 	pub pool_currency: bool,
-
-	/// The ways, if any, this token is cross-chain transferable
-	pub transferability: Option<CrossChainTransferability>,
 }
 
+/// TODO(Nuno): make this only so for testing purposes, and `transferability`
+/// for wasm.
 impl Default for CustomMetadata {
 	fn default() -> Self {
 		Self {
-			xcm: Default::default(),
+			transferability: Some(CrossChainTransferability::Xcm(Default::default())),
 			mintable: false,
 			permissioned: false,
 			pool_currency: false,
-			transferability: Some(CrossChainTransferability::Xcm),
 		}
 	}
 }
@@ -240,19 +238,19 @@ impl Default for CustomMetadata {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CrossChainTransferability {
 	/// The asset is only transferable through XCM
-	#[default]
-	Xcm,
+	Xcm(XcmMetadata),
 
 	/// The asset is only transferable through Centrifuge Connectors
+	#[default] // todo(nuno): tmp fix for the compiler, fix this later
 	Connectors,
 
 	/// The asset is transferable through all available options
-	All,
+	All(XcmMetadata),
 }
 
 impl CrossChainTransferability {
-	pub fn includes(self, other: Self) -> bool {
-		self == other || self == Self::All
+	pub fn includes_xcm(self) -> bool {
+		matches!(self, Self::Xcm(..) | Self::All(..))
 	}
 }
 

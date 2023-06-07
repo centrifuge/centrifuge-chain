@@ -2319,9 +2319,6 @@ fn create_tranche_token_metadata() {
 					mintable: false,
 					permissioned: true,
 					pool_currency: false,
-					xcm: XcmMetadata {
-						fee_per_second: None,
-					},
 					transferability: Some(CrossChainTransferability::Connectors),
 				},
 			}

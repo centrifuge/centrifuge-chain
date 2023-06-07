@@ -65,8 +65,8 @@ mod asset_registry {
 							v1::CrossChainTransferability::Connectors,
 						)),
 						_ => Some(to_metadata_v1(
-							old_metadata,
-							v1::CrossChainTransferability::Xcm,
+							old_metadata.clone(),
+							v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
 						)),
 					}
 				},
@@ -108,8 +108,8 @@ mod asset_registry {
 						v1::CrossChainTransferability::Connectors,
 					), "The metadata of a tranche token wasn't just updated by setting `transferability` to `Connectors `"),
 					_ => ensure!(new_metadata == to_metadata_v1(
-						old_metadata,
-						v1::CrossChainTransferability::Xcm,
+						old_metadata.clone(),
+						v1::CrossChainTransferability::Xcm(old_metadata.additional.xcm),
 					), "The metadata of a NON tranche token wasn't just updated by setting `transferability` to `Xcm`"),
 				}
 			}
@@ -126,7 +126,7 @@ mod asset_registry {
 		use serde::{Deserialize, Serialize};
 
 		// The `CustomMetadata` type as it was prior to adding the `transferability`
-		// field
+		// field and prior to removing the `xcm` field.
 		#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 		#[derive(
 			Clone,
@@ -161,7 +161,6 @@ mod asset_registry {
 			existential_deposit: old.existential_deposit,
 			location: old.location,
 			additional: CustomMetadata {
-				xcm: old.additional.xcm,
 				mintable: old.additional.mintable,
 				permissioned: old.additional.permissioned,
 				pool_currency: old.additional.pool_currency,

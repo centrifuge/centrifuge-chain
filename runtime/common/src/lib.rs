@@ -227,7 +227,7 @@ pub mod asset_registry {
 
 pub mod xcm {
 	use cfg_primitives::types::Balance;
-	use cfg_types::tokens::{CurrencyId, CustomMetadata};
+	use cfg_types::tokens::{CrossChainTransferability, CurrencyId, CustomMetadata};
 	use frame_support::sp_std::marker::PhantomData;
 	use sp_runtime::traits::Convert;
 	use xcm::{
@@ -252,11 +252,13 @@ pub mod xcm {
 	{
 		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
 			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			metadata
-				.additional
-				.xcm
-				.fee_per_second
-				.or_else(|| Some(default_per_second(metadata.decimals)))
+			match metadata.additional.transferability? {
+				CrossChainTransferability::Xcm(xcm_metadata)
+				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
+					.fee_per_second
+					.or_else(|| Some(default_per_second(metadata.decimals))),
+				_ => None,
+			}
 		}
 	}
 
