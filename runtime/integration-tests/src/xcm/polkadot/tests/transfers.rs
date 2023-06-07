@@ -392,11 +392,11 @@ fn transfer_foreign_sibling_to_centrifuge() {
 		existential_deposit: 1_000_000_000_000,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata {
-			transferability: Some(CrossChainTransferability::Xcm(XcmMetadata {
+			transferability: CrossChainTransferability::Xcm(XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
 				// used when XCM transfer fees are charged for this token.
 				fee_per_second: Some(8420000000000000000),
-			})),
+			}),
 			..CustomMetadata::default()
 		},
 	};

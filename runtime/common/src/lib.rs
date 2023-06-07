@@ -252,7 +252,7 @@ pub mod xcm {
 	{
 		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
 			let metadata = OrmlAssetRegistry::metadata_by_location(location)?;
-			match metadata.additional.transferability? {
+			match metadata.additional.transferability {
 				CrossChainTransferability::Xcm(xcm_metadata)
 				| CrossChainTransferability::All(xcm_metadata) => xcm_metadata
 					.fee_per_second

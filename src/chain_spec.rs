@@ -1233,7 +1233,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					mintable: false,
 					permissioned: false,
 					pool_currency: true,
-					transferability: Some(CrossChainTransferability::Xcm(Default::default())),
+					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
 			.encode(),
@@ -1259,7 +1259,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					mintable: false,
 					permissioned: false,
 					pool_currency: true,
-					transferability: Some(CrossChainTransferability::Xcm(Default::default())),
+					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
 			.encode(),
@@ -1285,7 +1285,7 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 					mintable: false,
 					permissioned: false,
 					pool_currency: true,
-					transferability: Some(CrossChainTransferability::Xcm(Default::default())),
+					transferability: CrossChainTransferability::Xcm(Default::default()),
 				},
 			}
 			.encode(),

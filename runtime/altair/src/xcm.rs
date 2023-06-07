@@ -207,8 +207,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		OrmlAssetRegistry::metadata(id)
 			.filter(|m| {
 				m.additional
-					.transferability
-					.map_or(false, |t| t.includes_xcm())
+					.transferability.includes_xcm()
 			})
 			.and_then(|m| m.location)
 			.and_then(|l| l.try_into().ok())

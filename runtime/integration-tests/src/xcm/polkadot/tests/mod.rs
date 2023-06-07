@@ -138,7 +138,7 @@ fn register_no_xcm_token() {
 		existential_deposit: 1_000_000_000_000,
 		location: None,
 		additional: CustomMetadata {
-			transferability: Some(CrossChainTransferability::Connectors),
+			transferability: CrossChainTransferability::Connectors,
 			..CustomMetadata::default()
 		},
 	};

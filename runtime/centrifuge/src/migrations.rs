@@ -164,7 +164,7 @@ mod asset_registry {
 				mintable: old.additional.mintable,
 				permissioned: old.additional.permissioned,
 				pool_currency: old.additional.pool_currency,
-				transferability: Some(transferability),
+				transferability,
 			},
 		}
 	}

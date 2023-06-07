@@ -248,7 +248,7 @@ where
 				mintable: false,
 				permissioned: true,
 				pool_currency: false,
-				transferability: Some(CrossChainTransferability::Connectors),
+				transferability: CrossChainTransferability::Connectors,
 			},
 		}
 	}
