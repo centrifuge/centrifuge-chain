@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 
 use cfg_traits::data::{DataCollection, DataRegistry};
+use orml_traits::{DataFeeder, DataProvider};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
@@ -41,6 +42,18 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	}
 
 	fn unregister_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
+		Err(DEFAULT_ERR)
+	}
+}
+
+impl<T: Config> DataProvider<T::PriceId, T::Rate> for NoPriceRegistry<T> {
+	fn get(_: &T::PriceId) -> Option<T::Rate> {
+		None
+	}
+}
+
+impl<T: Config> DataFeeder<T::PriceId, T::Rate, T::AccountId> for NoPriceRegistry<T> {
+	fn feed_value(_: T::AccountId, _: T::PriceId, _: T::Rate) -> DispatchResult {
 		Err(DEFAULT_ERR)
 	}
 }

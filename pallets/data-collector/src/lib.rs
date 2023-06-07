@@ -28,10 +28,10 @@ mod tests;
 pub mod pallet {
 	use cfg_traits::data::{DataCollection, DataRegistry};
 	use frame_support::{pallet_prelude::*, storage::bounded_btree_map::BoundedBTreeMap};
-	use orml_traits::{DataProviderExtended, OnNewData};
+	use orml_traits::{DataFeeder, DataProvider, DataProviderExtended, OnNewData};
 	use sp_runtime::{
 		traits::{EnsureAddAssign, EnsureSubAssign},
-		DispatchError,
+		DispatchError, DispatchResult,
 	};
 
 	type DataValueOf<T, I> = (<T as Config<I>>::Data, <T as Config<I>>::Moment);
@@ -130,8 +130,10 @@ pub mod pallet {
 							.map_err(|_| Error::<T, I>::MaxCollectionNumber)?;
 
 						Collection::<T, I>::try_mutate(collection_id, |collection| {
+							let data =
+								<Self as DataRegistry<T::DataId, T::CollectionId>>::get(data_id)?;
 							collection
-								.try_insert(data_id.clone(), Self::get(data_id)?)
+								.try_insert(data_id.clone(), data)
 								.map(|_| ())
 								.map_err(|_| Error::<T, I>::MaxCollectionSize.into())
 						})
@@ -166,13 +168,37 @@ pub mod pallet {
 			// for Data values.
 			for collection_id in Listening::<T, I>::get(data_id).keys() {
 				Collection::<T, I>::mutate(collection_id, |collection| {
-					if let (Some(value), Ok(new_value)) =
-						(collection.get_mut(data_id), Self::get(data_id))
-					{
+					let data = <Self as DataRegistry<T::DataId, T::CollectionId>>::get(data_id);
+					if let (Some(value), Ok(new_value)) = (collection.get_mut(data_id), data) {
 						*value = new_value;
 					}
 				});
 			}
+		}
+	}
+
+	// This implementation can be removed once:
+	// <https://github.com/open-web3-stack/open-runtime-module-library/pull/920> be merged,
+	// and consecuently, get() call methods simplified.
+	impl<T: Config<I>, I: 'static> DataProvider<T::DataId, T::Data> for Pallet<T, I>
+	where
+		T::DataProvider: DataProvider<T::DataId, T::Data>,
+	{
+		fn get(key: &T::DataId) -> Option<T::Data> {
+			T::DataProvider::get(key)
+		}
+	}
+
+	impl<T: Config<I>, I: 'static> DataFeeder<T::DataId, T::Data, T::AccountId> for Pallet<T, I>
+	where
+		T::DataProvider: DataFeeder<T::DataId, T::Data, T::AccountId>,
+	{
+		fn feed_value(
+			account_id: T::AccountId,
+			data_id: T::DataId,
+			data: T::Data,
+		) -> DispatchResult {
+			T::DataProvider::feed_value(account_id, data_id, data)
 		}
 	}
 
