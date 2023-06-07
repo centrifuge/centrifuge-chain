@@ -225,6 +225,14 @@ pub struct CustomMetadata {
 	pub pool_currency: bool,
 }
 
+impl cfg_traits::CurrencyInspect for CurrencyId {
+	type CurrencyId = CurrencyId;
+
+	fn is_tranche_token(currency: Self::CurrencyId) -> bool {
+		matches!(currency, CurrencyId::Tranche(_, _))
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use frame_support::parameter_types;
