@@ -390,7 +390,7 @@ pub mod pallet {
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
-					Role::PoolRole(PoolRole::MemberListAdmin)
+					Role::PoolRole(PoolRole::InvestorAdmin)
 				),
 				BadOrigin
 			);
