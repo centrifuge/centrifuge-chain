@@ -1575,7 +1575,7 @@ impl pallet_loans_ref::Config for Runtime {
 	type NonFungible = Uniques;
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
-	type PriceId = PriceId;
+	type PriceId = u32;
 	type PriceRegistry = pallet_loans_ref::util::NoPriceRegistry<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
@@ -1755,7 +1755,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	migrations::UpgradeCentrifuge1019,
+	migrations::UpgradeCentrifuge1020,
 >;
 
 impl fp_self_contained::SelfContainedCall for RuntimeCall {

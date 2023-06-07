@@ -122,7 +122,7 @@ pub mod pallet {
 	>>::PoolId;
 
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
-	pub type PriceOf<T> = (<T as Config>::Balance, Moment);
+	pub type PriceOf<T> = (<T as Config>::Rate, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
 	pub type LoanChangeOf<T> = Change<<T as Config>::LoanId, <T as Config>::Rate>;
 
@@ -176,7 +176,6 @@ pub mod pallet {
 		type PriceId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
-			+ Default
 			+ TypeInfo
 			+ Copy
 			+ MaxEncodedLen;

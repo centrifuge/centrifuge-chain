@@ -41,6 +41,7 @@ pub mod ops;
 /// Traits related to rewards.
 pub mod rewards;
 
+/// Traits related to data registry & collections.
 pub mod data;
 
 /// Traits related to checked changes.

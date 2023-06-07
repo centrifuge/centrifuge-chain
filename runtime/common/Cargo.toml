@@ -30,6 +30,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.38" }
 
 # ORML dependencies
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.38" }
 
 # Frontier dependencies
@@ -46,6 +47,7 @@ cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-loans-ref = { path = "../../pallets/loans-ref", default-features = false }
+pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
 [dev-dependencies]
@@ -80,8 +82,10 @@ std = [
   "cfg-utils/std",
   "orml-traits/std",
   "cfg-traits/std",
-  "pallet-pool-system/std",
   "pallet-loans-ref/std",
+  "orml-oracle/std",
+  "pallet-pool-system/std",
+  "pallet-data-collector/std",
   "serde/std",
   "scale-info/std",
   "xcm/std",
@@ -98,6 +102,7 @@ runtime-benchmarks = [
   "pallet-pool-system/runtime-benchmarks",
   "pallet-loans-ref/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
+  "pallet-data-collector/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
   "pallet-evm/runtime-benchmarks",
   "pallet-ethereum/runtime-benchmarks",
@@ -113,11 +118,13 @@ try-runtime = [
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
+  "orml-oracle/try-runtime",
   "pallet-anchors/try-runtime",
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-pool-system/try-runtime",
   "pallet-loans-ref/try-runtime",
+  "pallet-data-collector/try-runtime",
   "pallet-treasury/try-runtime",
   "cfg-primitives/try-runtime",
   "pallet-evm/try-runtime",
