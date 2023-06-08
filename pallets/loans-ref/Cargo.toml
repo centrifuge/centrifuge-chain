@@ -3,7 +3,7 @@ authors = ["Centrifuge <admin@centrifuge.io>"]
 description = "Pallet to handle loans from borrowers"
 edition = "2021"
 license = "LGPL-3.0"
-name = "pallet-loans-ref"
+name = "pallet-loans"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 version = "1.0.0"
 
