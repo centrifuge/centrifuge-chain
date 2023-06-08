@@ -18,7 +18,7 @@ On top of the [Substrate FRAME](https://docs.substrate.io/reference/frame-pallet
 
 - [**pool-system**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/pool-system) ([docs](https://reference.centrifuge.io/pallet_pool_system/index.html)): Creating and managing investment pools. It is bundling loans, slicing pools into tranches, and controlling investment epochs.
 
-- [**loans**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/loans-ref) ([docs](https://reference.centrifuge.io/pallet_loans_ref/index.html)): Locking a collateral NFT into a pool allowing to borrow from the pool. The loans pallet is also used for bookkeeping loan values and outstanding debt.
+- [**loans**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/loans) ([docs](https://reference.centrifuge.io/pallet_loans/index.html)): Locking a collateral NFT into a pool allowing to borrow from the pool. The loans pallet is also used for bookkeeping loan values and outstanding debt.
 
 - [**anchors**](https://github.com/centrifuge/centrifuge-chain/tree/main/pallets/anchors) ([docs](https://reference.centrifuge.io/pallet_anchors/index.html)): Storing hashes of documents on-chain. The documents are stored in the Private Off-chain Data (POD) node network.
 

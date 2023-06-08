@@ -243,7 +243,7 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft-sales",
@@ -1135,7 +1135,7 @@ dependencies = [
  "pallet-interest-accrual",
  "pallet-investments",
  "pallet-keystore",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
@@ -2654,7 +2654,7 @@ dependencies = [
  "pallet-investments",
  "pallet-keystore",
  "pallet-liquidity-rewards",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
@@ -7472,7 +7472,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-loans-ref"
+name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
  "cfg-mocks",
@@ -10698,7 +10698,7 @@ dependencies = [
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-pool-system",
  "pallet-treasury",
  "parity-scale-codec 3.4.0",
@@ -10743,7 +10743,7 @@ dependencies = [
  "pallet-block-rewards",
  "pallet-collator-selection",
  "pallet-connectors",
- "pallet-loans-ref",
+ "pallet-loans",
  "pallet-permissions",
  "pallet-pool-registry",
  "pallet-pool-system",
