@@ -468,10 +468,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::CrowdloanClaim(..) |
 					RuntimeCall::CrowdloanReward(..) |
 					RuntimeCall::PoolSystem(..) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
-					RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::close{..}) |
+					RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 					// Specifically omitting Loans `repay` & `borrow`
 					RuntimeCall::Permissions(..) |
 					RuntimeCall::CollatorAllowlist(..) |
@@ -509,14 +509,14 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			}
 			ProxyType::Borrow => matches!(
 				c,
-				RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::borrow{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::repay{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::borrow{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::repay{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::close{..}) |
 				// Borrowers should be able to close and execute an epoch
 				// in order to get liquidity from repayments in previous epochs.
-				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -531,7 +531,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Investments(pallet_investments::Call::collect_redemptions{..}) |
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
-				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -1244,9 +1244,9 @@ parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 100;
 }
 
-impl pallet_loans_ref::Config for Runtime {
+impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
-	type ChangeGuard = pallet_loans_ref::util::NoLoanChanges<Runtime>;
+	type ChangeGuard = pallet_loans::util::NoLoanChanges<Runtime>;
 	type ChangeId = u64;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
@@ -1259,11 +1259,11 @@ impl pallet_loans_ref::Config for Runtime {
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PriceId = u32;
-	type PriceRegistry = pallet_loans_ref::util::NoPriceRegistry<Runtime>;
+	type PriceRegistry = pallet_loans::util::NoPriceRegistry<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans_ref::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1597,7 +1597,7 @@ construct_runtime!(
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 97,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
 		PoolSystem: pallet_pool_system::{Pallet, Call, Storage, Event<T>} = 99,
-		Loans: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 100,
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 100,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 101,
 		Investments: pallet_investments::{Pallet, Call, Storage, Event<T>} = 102,
 		PoolRegistry: pallet_pool_registry::{Pallet, Call, Storage, Event<T>} = 103,
@@ -2126,7 +2126,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_pool_system, PoolSystem);
 			list_benchmark!(list, extra, pallet_pool_registry, PoolRegistry);
-			list_benchmark!(list, extra, pallet_loans_ref, Loans);
+			list_benchmark!(list, extra, pallet_loans, Loans);
 			list_benchmark!(list, extra, pallet_interest_accrual, InterestAccrual);
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
@@ -2196,7 +2196,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_pool_system, PoolSystem);
 			add_benchmark!(params, batches, pallet_pool_registry, PoolRegistry);
-			add_benchmark!(params, batches, pallet_loans_ref, Loans);
+			add_benchmark!(params, batches, pallet_loans, Loans);
 			add_benchmark!(params, batches, pallet_interest_accrual, InterestAccrual);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
