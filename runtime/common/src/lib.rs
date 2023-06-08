@@ -429,10 +429,10 @@ pub mod changes {
 	pub struct ChangeGuardBridge<Change, ChangeGuardImpl>(PhantomData<(Change, ChangeGuardImpl)>);
 
 	impl<T, Change, ChangeGuardImpl> ChangeGuard for ChangeGuardBridge<Change, ChangeGuardImpl>
-		where
-			T: pallet_loans::Config,
-			Change: Into<CfgChange<T>> + TryFrom<CfgChange<T>, Error=DispatchError>,
-			ChangeGuardImpl: ChangeGuard<Change=CfgChange<T>>,
+	where
+		T: pallet_loans::Config,
+		Change: Into<CfgChange<T>> + TryFrom<CfgChange<T>, Error = DispatchError>,
+		ChangeGuardImpl: ChangeGuard<Change = CfgChange<T>>,
 	{
 		type Change = Change;
 		type ChangeId = ChangeGuardImpl::ChangeId;
@@ -450,47 +450,6 @@ pub mod changes {
 			change_id: Self::ChangeId,
 		) -> Result<Self::Change, DispatchError> {
 			ChangeGuardImpl::released(pool_id, change_id)?.try_into()
-		}
-	}
-}
-
-pub mod connectors {
-	use std::marker::PhantomData;
-
-	use cfg_primitives::Balance;
-	use cfg_traits::AssetLocator;
-	use cfg_types::tokens::{AssetLocation, CurrencyId, CustomMetadata};
-	use xcm::{
-		latest::MultiLocation,
-		prelude::{AccountKey20, GlobalConsensus, X2},
-		v3::NetworkId,
-	};
-
-	pub struct ConnectorsAssetLocator<OrmlAssetRegistry>(PhantomData<OrmlAssetRegistry>);
-
-	impl<
-			OrmlAssetRegistry: orml_traits::asset_registry::Inspect<
-				AssetId = CurrencyId,
-				Balance = Balance,
-				CustomMetadata = CustomMetadata,
-			>,
-		> AssetLocator for ConnectorsAssetLocator<OrmlAssetRegistry>
-	{
-		type AssetId = CurrencyId;
-		type Location = AssetLocation;
-
-		fn location(id: CurrencyId) -> Option<AssetLocation> {
-			match OrmlAssetRegistry::location(&id).ok()?? {
-				MultiLocation {
-					parents: 0,
-					interior:
-						X2(
-							GlobalConsensus(NetworkId::Ethereum { chain_id }),
-							AccountKey20 { network: None, key },
-						),
-				} => Some(AssetLocation::EVM(chain_id, key)),
-				x => Some(AssetLocation::Polkadot(x)),
-			}
 		}
 	}
 }

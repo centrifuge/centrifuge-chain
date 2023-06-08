@@ -75,7 +75,6 @@ std = [
   "sp-core/std",
   "sp-runtime/std",
   "cfg-types/std",
-  "cfg-traits/std",
   "pallet-anchors/std",
   "frame-support/std",
   "frame-system/std",
@@ -96,7 +95,6 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
-  "cfg-traits/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
   "cfg-traits/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
@@ -116,7 +114,6 @@ on-chain-release-build = [
 try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-types/try-runtime",
-  "cfg-traits/try-runtime",
   "cfg-utils/try-runtime",
   "cfg-traits/try-runtime",
   "frame-support/try-runtime",

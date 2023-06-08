@@ -642,10 +642,3 @@ pub trait TransferAllowance<AccountId> {
 		currency: Self::CurrencyId,
 	) -> DispatchResult;
 }
-
-pub trait AssetLocator {
-	type AssetId;
-	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
-
-	fn location(id: Self::AssetId) -> Option<Self::Location>;
-}
