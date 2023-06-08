@@ -20,8 +20,9 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
+use xcm::latest::MultiLocation;
 
-use crate::xcm::XcmMetadata;
+use crate::{xcm::XcmMetadata, EVMChainId};
 
 #[derive(
 	Clone,
@@ -253,6 +254,16 @@ impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
 		self != Self::None && matches!(self, Self::Xcm(..) | Self::All(..))
 	}
+}
+
+/// The location of an asset, i.e., the canonical identifier of an asset.
+pub enum AssetLocation {
+	/// The location of an EVM-native asset, which includes the chain where it's
+	/// deployed and its address
+	EVM(EVMChainId, [u8; 20]),
+	/// The location of a Polkadot-native asset, described using the xcm
+	/// MultiLocation type
+	Polkadot(MultiLocation),
 }
 
 #[cfg(test)]
