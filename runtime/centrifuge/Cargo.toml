@@ -113,7 +113,7 @@ pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-investments = { path = "../../pallets/investments", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
-pallet-loans = { path = "../../pallets/loans-ref", default-features = false }
+pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
