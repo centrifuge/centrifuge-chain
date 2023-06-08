@@ -6,13 +6,15 @@ use frame_support::{assert_noop, assert_ok};
 use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
 
 use super::{
-	loan::{ActiveLoan, LoanInfo},
-	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
-	pricing::{
-		external::ExternalPricing,
-		internal::{InternalPricing, MaxBorrowAmount},
-		ActivePricing, Pricing,
+	entities::{
+		loans::{ActiveLoan, LoanInfo},
+		pricing::{
+			external::ExternalPricing,
+			internal::{InternalPricing, MaxBorrowAmount},
+			ActivePricing, Pricing,
+		},
 	},
+	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	types::{
 		policy::{WriteOffRule, WriteOffStatus, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},

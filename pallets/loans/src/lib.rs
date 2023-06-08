@@ -49,9 +49,16 @@ pub mod migrations {
 	pub mod v1;
 }
 
-pub mod loan;
-pub mod pricing;
+/// High level types that uses `pallet::Config`
+pub mod entities {
+	pub mod loans;
+	pub mod pricing;
+}
+
+/// Low level types that doesn't know about what a pallet is
 pub mod types;
+
+/// Utility types for configure the pallet from a runtime
 pub mod util;
 
 mod weights;
@@ -78,6 +85,7 @@ pub mod pallet {
 		adjustments::Adjustment,
 		permissions::{PermissionScope, PoolRole, Role},
 	};
+	use entities::loans::{self, ActiveLoan, LoanInfo};
 	use frame_support::{
 		pallet_prelude::*,
 		storage::transactional,
@@ -90,7 +98,6 @@ pub mod pallet {
 		},
 	};
 	use frame_system::pallet_prelude::*;
-	use loan::{ActiveLoan, LoanInfo};
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
@@ -250,7 +257,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		loan::CreatedLoan<T>,
+		loans::CreatedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -279,7 +286,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		loan::ClosedLoan<T>,
+		loans::ClosedLoan<T>,
 		OptionQuery,
 	>;
 
@@ -453,7 +460,7 @@ pub mod pallet {
 			T::NonFungible::transfer(&collateral.0, &collateral.1, &T::Pool::account_for(pool_id))?;
 
 			let loan_id = Self::generate_loan_id(pool_id)?;
-			CreatedLoan::<T>::insert(pool_id, loan_id, loan::CreatedLoan::new(info.clone(), who));
+			CreatedLoan::<T>::insert(pool_id, loan_id, loans::CreatedLoan::new(info.clone(), who));
 
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,

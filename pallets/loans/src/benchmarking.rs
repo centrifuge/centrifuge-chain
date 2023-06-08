@@ -34,13 +34,15 @@ use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{Get, One, Zero};
 use sp_std::{time::Duration, vec};
 
-use super::{
-	loan::LoanInfo,
-	pallet::*,
-	pricing::{
-		internal::{InternalPricing, MaxBorrowAmount},
-		Pricing,
+use crate::{
+	entities::{
+		loans::LoanInfo,
+		pricing::{
+			internal::{InternalPricing, MaxBorrowAmount},
+			Pricing,
+		},
 	},
+	pallet::*,
 	types::{
 		policy::{WriteOffRule, WriteOffTrigger},
 		valuation::{DiscountedCashFlow, ValuationMethod},
