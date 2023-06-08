@@ -10681,6 +10681,7 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "cfg-primitives",
+ "cfg-traits",
  "cfg-types",
  "cfg-utils",
  "frame-support",
@@ -10697,6 +10698,7 @@ dependencies = [
  "pallet-evm",
  "pallet-evm-chain-id",
  "pallet-evm-precompile-dispatch",
+ "pallet-loans-ref",
  "pallet-pool-system",
  "pallet-treasury",
  "parity-scale-codec 3.4.0",

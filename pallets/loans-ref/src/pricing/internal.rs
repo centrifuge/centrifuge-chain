@@ -14,7 +14,10 @@ use sp_runtime::{traits::Zero, DispatchError};
 
 use crate::{
 	pallet::{Config, Error},
-	types::{valuation::ValuationMethod, CreateLoanError},
+	types::{
+		valuation::{DiscountedCashFlow, ValuationMethod},
+		CreateLoanError, InternalMutation, MutationError,
+	},
 };
 
 /// Diferents methods of how to compute the amount can be borrowed
@@ -149,16 +152,21 @@ impl<T: Config> InternalActivePricing<T> {
 		Ok(())
 	}
 
-	pub fn update_penalty(&mut self, new_penalty: T::Rate) -> DispatchResult {
+	pub fn set_penalty(&mut self, new_penalty: T::Rate) -> DispatchResult {
 		let base_interest_rate = self.info.interest_rate.ensure_sub(self.write_off_penalty)?;
-
-		self.write_off_penalty = new_penalty;
-		let new_interest_rate = base_interest_rate.ensure_add(self.write_off_penalty)?;
-
-		self.set_interest_rate(new_interest_rate)
+		self.update_interest_rate(base_interest_rate, new_penalty)
 	}
 
-	pub fn set_interest_rate(&mut self, new_interest_rate: T::Rate) -> DispatchResult {
+	pub fn set_interest_rate(&mut self, base_interest_rate: T::Rate) -> DispatchResult {
+		self.update_interest_rate(base_interest_rate, self.write_off_penalty)
+	}
+
+	fn update_interest_rate(
+		&mut self,
+		new_base_interest_rate: T::Rate,
+		new_penalty: T::Rate,
+	) -> DispatchResult {
+		let new_interest_rate = new_base_interest_rate.ensure_add(new_penalty)?;
 		let old_interest_rate = self.info.interest_rate;
 
 		T::InterestAccrual::reference_rate(new_interest_rate)?;
@@ -169,7 +177,31 @@ impl<T: Config> InternalActivePricing<T> {
 			self.normalized_debt,
 		)?;
 		self.info.interest_rate = new_interest_rate;
+		self.write_off_penalty = new_penalty;
 
 		T::InterestAccrual::unreference_rate(old_interest_rate)
+	}
+
+	fn mut_dcf(&mut self) -> Result<&mut DiscountedCashFlow<T::Rate>, DispatchError> {
+		match &mut self.info.valuation_method {
+			ValuationMethod::DiscountedCashFlow(dcf) => Ok(dcf),
+			_ => Err(Error::<T>::from(MutationError::DiscountedCashFlowExpected).into()),
+		}
+	}
+
+	pub fn mutate_with(&mut self, mutation: InternalMutation<T::Rate>) -> DispatchResult {
+		match mutation {
+			InternalMutation::InterestRate(rate) => {
+				self.set_interest_rate(rate)?;
+			}
+			InternalMutation::ValuationMethod(method) => self.info.valuation_method = method,
+			InternalMutation::ProbabilityOfDefault(rate) => {
+				self.mut_dcf()?.probability_of_default = rate;
+			}
+			InternalMutation::LossGivenDefault(rate) => self.mut_dcf()?.loss_given_default = rate,
+			InternalMutation::DiscountRate(rate) => self.mut_dcf()?.discount_rate = rate,
+		}
+
+		self.info.validate()
 	}
 }

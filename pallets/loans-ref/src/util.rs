@@ -11,16 +11,20 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use cfg_traits::data::{DataCollection, DataRegistry};
+use cfg_traits::{
+	changes::ChangeGuard,
+	data::{DataCollection, DataRegistry},
+};
 use orml_traits::{DataFeeder, DataProvider};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::marker::PhantomData;
 
-use crate::pallet::{Config, PoolIdOf, PriceResultOf};
+use crate::pallet::{Config, LoanChangeOf, PoolIdOf, PriceResultOf};
 
-const DEFAULT_ERR: DispatchError =
+const DEFAULT_PRICE_ERR: DispatchError =
 	DispatchError::Other("No configured price registry for pallet-loans");
 
+/// Type used to configure the pallet without a price registry
 pub struct NoPriceRegistry<T>(PhantomData<T>);
 
 impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
@@ -30,7 +34,7 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	type MaxCollectionSize = sp_runtime::traits::ConstU32<0>;
 
 	fn get(_: &T::PriceId) -> Self::Data {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 
 	fn collection(_: &PoolIdOf<T>) -> Self::Collection {
@@ -38,11 +42,11 @@ impl<T: Config> DataRegistry<T::PriceId, PoolIdOf<T>> for NoPriceRegistry<T> {
 	}
 
 	fn register_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 
 	fn unregister_id(_: &T::PriceId, _: &PoolIdOf<T>) -> DispatchResult {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 }
 
@@ -54,7 +58,7 @@ impl<T: Config> DataProvider<T::PriceId, T::Rate> for NoPriceRegistry<T> {
 
 impl<T: Config> DataFeeder<T::PriceId, T::Rate, T::AccountId> for NoPriceRegistry<T> {
 	fn feed_value(_: T::AccountId, _: T::PriceId, _: T::Rate) -> DispatchResult {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
 	}
 }
 
@@ -64,6 +68,26 @@ impl<T: Config> DataCollection<T::PriceId> for NoPriceCollection<T> {
 	type Data = PriceResultOf<T>;
 
 	fn get(&self, _: &T::PriceId) -> Self::Data {
-		Err(DEFAULT_ERR)
+		Err(DEFAULT_PRICE_ERR)
+	}
+}
+
+const DEFAULT_CHANGE_ERR: DispatchError =
+	DispatchError::Other("No configured change system for pallet-loans");
+
+/// Type used to configure the pallet without changes support
+pub struct NoLoanChanges<T>(PhantomData<T>);
+
+impl<T: Config> ChangeGuard for NoLoanChanges<T> {
+	type Change = LoanChangeOf<T>;
+	type ChangeId = T::ChangeId;
+	type PoolId = PoolIdOf<T>;
+
+	fn note(_: PoolIdOf<T>, _: Self::Change) -> Result<T::ChangeId, DispatchError> {
+		Err(DEFAULT_CHANGE_ERR)
+	}
+
+	fn released(_: PoolIdOf<T>, _: T::ChangeId) -> Result<Self::Change, DispatchError> {
+		Err(DEFAULT_CHANGE_ERR)
 	}
 }

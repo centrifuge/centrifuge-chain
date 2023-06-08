@@ -42,10 +42,12 @@ pallet-evm-precompile-dispatch = { git = "https://github.com/PureStake/frontier"
 
 # Local Dependencies
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
+cfg-traits = { path = "../../libs/traits", default-features = false }
 cfg-types = { path = "../../libs/types", default-features = false }
 cfg-utils = { path = "../../libs/utils", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-data-collector = { path = "../../pallets/data-collector", default-features = false }
+pallet-loans-ref = { path = "../../pallets/loans-ref", default-features = false }
 pallet-pool-system = { path = "../../pallets/pool-system", default-features = false }
 
 [dev-dependencies]
@@ -79,6 +81,8 @@ std = [
   "cfg-primitives/std",
   "cfg-utils/std",
   "orml-traits/std",
+  "cfg-traits/std",
+  "pallet-loans-ref/std",
   "orml-oracle/std",
   "pallet-pool-system/std",
   "pallet-data-collector/std",
@@ -92,9 +96,11 @@ runtime-benchmarks = [
   "cfg-primitives/runtime-benchmarks",
   "cfg-types/runtime-benchmarks",
   "cfg-utils/runtime-benchmarks",
+  "cfg-traits/runtime-benchmarks",
   "pallet-anchors/runtime-benchmarks",
   "pallet-balances/runtime-benchmarks",
   "pallet-pool-system/runtime-benchmarks",
+  "pallet-loans-ref/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
   "pallet-data-collector/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
@@ -109,6 +115,7 @@ try-runtime = [
   "cfg-primitives/try-runtime",
   "cfg-types/try-runtime",
   "cfg-utils/try-runtime",
+  "cfg-traits/try-runtime",
   "frame-support/try-runtime",
   "frame-system/try-runtime",
   "orml-oracle/try-runtime",
@@ -116,6 +123,7 @@ try-runtime = [
   "pallet-authorship/try-runtime",
   "pallet-balances/try-runtime",
   "pallet-pool-system/try-runtime",
+  "pallet-loans-ref/try-runtime",
   "pallet-data-collector/try-runtime",
   "pallet-treasury/try-runtime",
   "cfg-primitives/try-runtime",

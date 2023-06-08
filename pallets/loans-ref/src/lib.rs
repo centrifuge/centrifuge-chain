@@ -22,7 +22,7 @@
 //! | [`Pallet::create()`]          | Borrower  |
 //! | [`Pallet::borrow()`]          | Borrower  |
 //! | [`Pallet::repay()`]           | Borrower  |
-//! | [`Pallet::write_off()`]       | Any       |
+//! | [`Pallet::write_off()`]       |           |
 //! | [`Pallet::admin_write_off()`] | LoanAdmin |
 //! | [`Pallet::close()`]           | Borrower  |
 //!
@@ -32,6 +32,13 @@
 //! |------------------------------------------|-----------|
 //! | [`Pallet::update_write_off_policy()`]    | PoolAdmin |
 //! | [`Pallet::update_portfolio_valuation()`] | Any       |
+//!
+//! The following actions are performed based on changes:
+//!
+//! | Extrinsics                          | Role      |
+//! |-------------------------------------|-----------|
+//! | [`Pallet::propose_loan_mutation()`] | LoanAdmin |
+//! | [`Pallet::apply_change()`]          |           |
 //!
 //! The whole pallet is optimized for the more expensive extrinsic that is
 //! [`Pallet::update_portfolio_valuation()`] that should go through all active
@@ -65,6 +72,7 @@ pub use weights::WeightInfo;
 pub mod pallet {
 	use cfg_primitives::Moment;
 	use cfg_traits::{
+		changes::ChangeGuard,
 		data::{DataCollection, DataRegistry},
 		ops::{EnsureAdd, EnsureAddAssign, EnsureInto},
 		InterestAccrual, Permissions, PoolInspect, PoolNAV, PoolReserve,
@@ -75,6 +83,7 @@ pub mod pallet {
 	};
 	use frame_support::{
 		pallet_prelude::*,
+		storage::transactional,
 		traits::{
 			tokens::{
 				self,
@@ -89,14 +98,15 @@ pub mod pallet {
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::{
 		traits::{BadOrigin, One, Zero},
-		ArithmeticError, FixedPointOperand,
+		ArithmeticError, FixedPointOperand, TransactionOutcome,
 	};
 	use sp_std::vec::Vec;
 	use types::{
 		self,
 		policy::{self, WriteOffRule, WriteOffStatus},
 		portfolio::{self, InitialPortfolioValuation, PortfolioValuationUpdateType},
-		BorrowLoanError, CloseLoanError, CreateLoanError, RepayLoanError, WrittenOffError,
+		BorrowLoanError, Change, CloseLoanError, CreateLoanError, LoanMutation, MutationError,
+		RepayLoanError, WrittenOffError,
 	};
 
 	use super::*;
@@ -114,6 +124,7 @@ pub mod pallet {
 	pub type AssetOf<T> = (<T as Config>::CollectionId, <T as Config>::ItemId);
 	pub type PriceOf<T> = (<T as Config>::Rate, Moment);
 	pub type PriceResultOf<T> = Result<PriceOf<T>, DispatchError>;
+	pub type LoanChangeOf<T> = Change<<T as Config>::LoanId, <T as Config>::Rate>;
 
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -128,6 +139,9 @@ pub mod pallet {
 
 		/// Identify a curreny.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
+
+		/// Identify a loan change.
+		type ChangeId: Parameter + Copy + MaybeSerializeDeserialize + MaxEncodedLen + TypeInfo;
 
 		/// Identify a non fungible collection
 		type CollectionId: Parameter
@@ -204,6 +218,14 @@ pub mod pallet {
 			Self::Balance,
 			Adjustment<Self::Balance>,
 			NormalizedDebt = Self::Balance,
+		>;
+
+		/// Used to notify the runtime about changes that require special
+		/// treatment.
+		type ChangeGuard: ChangeGuard<
+			PoolId = PoolIdOf<Self>,
+			ChangeId = Self::ChangeId,
+			Change = LoanChangeOf<Self>,
 		>;
 
 		/// Max number of active loans per pool.
@@ -314,6 +336,12 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			status: WriteOffStatus<T::Rate>,
 		},
+		/// An active loan was mutated
+		Mutated {
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			mutation: LoanMutation<T::Rate>,
+		},
 		/// A loan was closed
 		Closed {
 			pool_id: PoolIdOf<T>,
@@ -361,6 +389,8 @@ pub mod pallet {
 		WrittenOffError(WrittenOffError),
 		/// Emits when the loan can not be closed
 		CloseLoanError(CloseLoanError),
+		/// Emits when the loan can not be mutated
+		MutationError(MutationError),
 	}
 
 	impl<T> From<CreateLoanError> for Error<T> {
@@ -390,6 +420,12 @@ pub mod pallet {
 	impl<T> From<CloseLoanError> for Error<T> {
 		fn from(error: CloseLoanError) -> Self {
 			Error::<T>::CloseLoanError(error)
+		}
+	}
+
+	impl<T> From<MutationError> for Error<T> {
+		fn from(error: MutationError) -> Self {
+			Error::<T>::MutationError(error)
 		}
 	}
 
@@ -680,6 +716,61 @@ pub mod pallet {
 
 			Ok(Some(T::WeightInfo::update_portfolio_valuation(count)).into())
 		}
+
+		/// Propose a change.
+		/// The change is not performed until you call
+		/// [`Pallet::apply_change()`].
+		#[pallet::weight(100_000_000)]
+		#[pallet::call_index(8)]
+		pub fn propose_loan_mutation(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+			mutation: LoanMutation<T::Rate>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::ensure_role(pool_id, &who, PoolRole::LoanAdmin)?;
+
+			let (mut loan, _count) = Self::get_active_loan(pool_id, loan_id)?;
+			transactional::with_transaction(|| {
+				let result = loan.mutate_with(mutation.clone());
+
+				// We do not want to apply the mutation,
+				// only check if there is no error in applying it
+				TransactionOutcome::Rollback(result)
+			})?;
+
+			T::ChangeGuard::note(pool_id, Change::Loan(loan_id, mutation))?;
+
+			Ok(())
+		}
+
+		/// Apply a proposed change identified by a change id.
+		/// It will only perform the change if the requirements for it
+		/// are fulfilled.
+		#[pallet::weight(100_000_000)]
+		#[pallet::call_index(9)]
+		pub fn apply_change(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			change_id: T::ChangeId,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let Change::Loan(loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?;
+
+			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
+				loan.mutate_with(mutation.clone())
+			})?;
+
+			Self::deposit_event(Event::<T>::Mutated {
+				pool_id,
+				loan_id,
+				mutation,
+			});
+
+			Ok(())
+		}
 	}
 
 	/// Utility methods
@@ -843,6 +934,20 @@ pub mod pallet {
 					active_loans.len().ensure_into()?,
 				))
 			})
+		}
+
+		fn get_active_loan(
+			pool_id: PoolIdOf<T>,
+			loan_id: T::LoanId,
+		) -> Result<(ActiveLoan<T>, u32), DispatchError> {
+			let active_loans = ActiveLoans::<T>::get(pool_id);
+			let count = active_loans.len().ensure_into()?;
+			let (_, loan) = active_loans
+				.into_iter()
+				.find(|(id, _)| *id == loan_id)
+				.ok_or(Error::<T>::LoanNotActiveOrNotFound)?;
+
+			Ok((loan, count))
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
