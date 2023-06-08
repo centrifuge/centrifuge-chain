@@ -645,14 +645,14 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			}
 			ProxyType::Borrow => matches!(
 				c,
-				RuntimeCall::Loans(pallet_loans_ref::Call::create{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::borrow{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::repay{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::write_off{..}) |
-				RuntimeCall::Loans(pallet_loans_ref::Call::close{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::create{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::borrow{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::repay{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::write_off{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::close{..}) |
 				// Borrowers should be able to close and execute an epoch
 				// in order to get liquidity from repayments in previous epochs.
-				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -667,7 +667,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				RuntimeCall::Investments(pallet_investments::Call::collect_redemptions{..}) |
 				// Investors should be able to close and execute an epoch
 				// in order to get their orders fulfilled.
-				RuntimeCall::Loans(pallet_loans_ref::Call::update_portfolio_valuation{..}) |
+				RuntimeCall::Loans(pallet_loans::Call::update_portfolio_valuation{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::close_epoch{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::submit_solution{..}) |
 				RuntimeCall::PoolSystem(pallet_pool_system::Call::execute_epoch{..}) |
@@ -1561,9 +1561,9 @@ parameter_types! {
 	pub const MaxWriteOffPolicySize: u32 = 100;
 }
 
-impl pallet_loans_ref::Config for Runtime {
+impl pallet_loans::Config for Runtime {
 	type Balance = Balance;
-	type ChangeGuard = pallet_loans_ref::util::NoLoanChanges<Runtime>;
+	type ChangeGuard = pallet_loans::util::NoLoanChanges<Runtime>;
 	type ChangeId = u64;
 	type CollectionId = CollectionId;
 	type CurrencyId = CurrencyId;
@@ -1576,11 +1576,11 @@ impl pallet_loans_ref::Config for Runtime {
 	type Permissions = Permissions;
 	type Pool = PoolSystem;
 	type PriceId = u32;
-	type PriceRegistry = pallet_loans_ref::util::NoPriceRegistry<Runtime>;
+	type PriceRegistry = pallet_loans::util::NoPriceRegistry<Runtime>;
 	type Rate = Rate;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
-	type WeightInfo = weights::pallet_loans_ref::WeightInfo<Self>;
+	type WeightInfo = weights::pallet_loans::WeightInfo<Self>;
 }
 
 parameter_types! {
@@ -1720,7 +1720,7 @@ construct_runtime!(
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>, Config<T>} = 184,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 185,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 186,
-		Loans: pallet_loans_ref::{Pallet, Call, Storage, Event<T>} = 187,
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 187,
 	}
 );
 
@@ -2210,7 +2210,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_uniques, Uniques);
 			list_benchmark!(list, extra, pallet_keystore, Keystore);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
-			list_benchmark!(list, extra, pallet_loans_ref, Loans);
+			list_benchmark!(list, extra, pallet_loans, Loans);
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, cumulus_pallet_xcmp_queue, XcmpQueue);
 
@@ -2280,7 +2280,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_keystore, Keystore);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
-			add_benchmark!(params, batches, pallet_loans_ref, Loans);
+			add_benchmark!(params, batches, pallet_loans, Loans);
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches,	cumulus_pallet_xcmp_queue, XcmpQueue);
 
