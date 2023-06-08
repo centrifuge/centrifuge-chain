@@ -20,7 +20,8 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
-use xcm::latest::MultiLocation;
+use xcm::latest::{MultiLocation, NetworkId};
+use xcm::prelude::{AccountKey20, GlobalConsensus, X2};
 
 use crate::{xcm::XcmMetadata, EVMChainId};
 
@@ -257,6 +258,10 @@ impl CrossChainTransferability {
 }
 
 /// The location of an asset, i.e., the canonical identifier of an asset.
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AssetLocation {
 	/// The location of an EVM-native asset, which includes the chain where it's
 	/// deployed and its address
@@ -264,6 +269,58 @@ pub enum AssetLocation {
 	/// The location of a Polkadot-native asset, described using the xcm
 	/// MultiLocation type
 	Polkadot(MultiLocation),
+}
+
+/// Connectors wrapped tokens
+///
+/// Currently, Connectors are only deployed on EVM-based chains and therefore the only supported
+/// type of connectors-wrapped tokens are Evm tokens. In the far future, we might support wrapped tokens
+/// from other chains, such as Cosmos, Avalanche, etc.
+#[derive(
+Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum ConnectorsWrappedToken {
+	/// An EVM-native token
+	EVM {
+		/// The EVM chain id where the token is deployed
+		chain_id: EVMChainId,
+		/// The token contract address
+		address: [u8; 20],
+	},
+}
+
+impl TryFrom<MultiLocation> for ConnectorsWrappedToken {
+	type Error = ();
+
+	fn try_from(location: MultiLocation) -> Result<Self, Self::Error> {
+		match location {
+			MultiLocation {
+				parents: 0,
+				interior:
+				X2(
+					GlobalConsensus(NetworkId::Ethereum { chain_id }),
+					AccountKey20 { network: None, key: address },
+				),
+			} => Ok(Self::EVM { chain_id, address }),
+			_ => Err(())
+		}
+	}
+}
+
+impl Into<MultiLocation> for ConnectorsWrappedToken {
+	fn into(self) -> MultiLocation {
+		match self {
+			Self::EVM { chain_id, address } => MultiLocation {
+				parents: 0,
+				interior:
+				X2(
+					GlobalConsensus(NetworkId::Ethereum { chain_id }),
+					AccountKey20 { network: None, key: address },
+				),
+			}
+		}
+	}
 }
 
 #[cfg(test)]
@@ -326,5 +383,26 @@ mod tests {
 			))
 			.is_err()
 		);
+	}
+
+	#[test]
+	/// Verify that converting a ConnectorsWrappedToken to MultiLocation and back results in the same original value.
+	fn connectors_wrapped_token_location_conversion_identity() {
+		const CHAIN_ID: EVMChainId = 123;
+		const ADDRESS: [u8; 20] = [9; 20];
+
+		let wrapped_token = ConnectorsWrappedToken::EVM { chain_id: CHAIN_ID, address: ADDRESS };
+		let as_location: MultiLocation = wrapped_token.into();
+
+		assert_eq!(as_location, MultiLocation {
+			parents: 0,
+			interior:
+			X2(
+				GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+				AccountKey20 { network: None, key: ADDRESS },
+			),
+		});
+
+		assert_eq!(ConnectorsWrappedToken::try_from(as_location), Ok(wrapped_token));
 	}
 }

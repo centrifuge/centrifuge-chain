@@ -634,7 +634,7 @@ pub trait TransferAllowance<AccountId> {
 	type CurrencyId;
 	type Location: Member + Debug + Eq + PartialEq + TypeInfo + Encode + Decode + MaxEncodedLen;
 	/// Determines whether the `send` account is allowed to make a transfer to
-	/// the  `recieve` loocation with `currency` type currency. Returns result
+	/// the  `receive` location with `currency` type currency. Returns result
 	/// wrapped bool for whether allowance is allowed.
 	fn allowance(
 		send: AccountId,
