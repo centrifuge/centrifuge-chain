@@ -1,4 +1,3 @@
-
 use super::*;
 
 const DEFAULT_MUTATION: LoanMutation<Rate> = LoanMutation::InterestPayments(InterestPayments::None);

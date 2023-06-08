@@ -1,4 +1,3 @@
-
 use super::*;
 
 pub fn total_borrowed_rate(value: f64) -> MaxBorrowAmount<Rate> {

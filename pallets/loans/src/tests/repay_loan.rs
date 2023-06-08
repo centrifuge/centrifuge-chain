@@ -1,4 +1,3 @@
-
 use super::*;
 
 pub fn config_mocks(deposit_amount: Balance) {

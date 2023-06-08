@@ -1,4 +1,3 @@
-
 use super::*;
 
 fn config_mocks(withdraw_amount: Balance) {
