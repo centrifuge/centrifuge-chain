@@ -46,9 +46,11 @@ use xcm::{
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec` instances for our runtimes.
-pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig>;
-pub type CentrifugeChainSpec = sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig>;
-pub type DevelopmentChainSpec = sc_service::GenericChainSpec<development_runtime::GenesisConfig>;
+pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig, Extensions>;
+pub type CentrifugeChainSpec =
+	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
+pub type DevelopmentChainSpec =
+	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -64,9 +66,9 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 #[serde(deny_unknown_fields)]
 pub struct Extensions {
 	/// The relay chain of the Parachain.
-	pub relay_chain: String,
+	pub relay_chain: Option<String>,
 	/// The id of the Parachain.
-	pub para_id: u32,
+	pub para_id: Option<u32>,
 }
 
 impl Extensions {
@@ -112,10 +114,16 @@ where
 }
 
 pub fn centrifuge_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(
+	let mut spec = CentrifugeChainSpec::from_json_bytes(
 		&include_bytes!("../res/genesis/centrifuge-genesis-spec-raw.json")[..],
 	)
-	.unwrap()
+	.unwrap();
+	let extension = spec.extensions_mut();
+	*extension = Extensions {
+		relay_chain: Some("polkadot".into()),
+		para_id: Some(2031),
+	};
+	spec
 }
 
 pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
@@ -169,7 +177,10 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 		Some("centrifuge"),
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -210,7 +221,10 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -241,13 +255,23 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
 pub fn catalyst_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/catalyst-spec-raw.json")[..])
-		.unwrap()
+	let mut spec =
+		CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/catalyst-spec-raw.json")[..])
+			.unwrap();
+	let extension = spec.extensions_mut();
+	*extension = Extensions {
+		relay_chain: Some("rococo-local".into()),
+		para_id: Some(2031),
+	};
+	spec
 }
 
 pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
@@ -304,7 +328,10 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 		Some("catalyst"),
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -335,15 +362,24 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
 pub fn altair_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(
+	let mut spec = AltairChainSpec::from_json_bytes(
 		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
 	)
-	.unwrap()
+	.unwrap();
+	let extension = spec.extensions_mut();
+	*extension = Extensions {
+		relay_chain: Some("kusama".into()),
+		para_id: Some(2088),
+	};
+	spec
 }
 
 pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
@@ -395,7 +431,10 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 		Some("altair"),
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -436,7 +475,10 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -467,12 +509,23 @@ pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
 pub fn antares_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..]).unwrap()
+	let mut spec =
+		AltairChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..])
+			.unwrap();
+	let extension = spec.extensions_mut();
+	*extension = Extensions {
+		relay_chain: Some("rococo-local".into()),
+		para_id: Some(2088),
+	};
+	spec
 }
 
 pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
@@ -530,7 +583,10 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 		Some("antares"),
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -561,16 +617,34 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
 pub fn algol_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/algol-spec.json")[..]).unwrap()
+	let mut spec =
+		AltairChainSpec::from_json_bytes(&include_bytes!("../res/algol-spec.json")[..]).unwrap();
+	let extension = spec.extensions_mut();
+	*extension = Extensions {
+		relay_chain: Some("rococo-local".into()),
+		para_id: Some(2088),
+	};
+	spec
 }
 
 pub fn charcoal_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
+	let mut spec =
+		AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..])
+			.unwrap();
+	let extension = spec.extensions_mut();
+	*extension = Extensions {
+		relay_chain: Some("rococo-local".into()),
+		para_id: Some(2088),
+	};
+	spec
 }
 
 pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
@@ -622,7 +696,10 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 		Some("charcoal"),
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -653,7 +730,10 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -688,7 +768,10 @@ pub fn demo(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -719,7 +802,10 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 
@@ -750,7 +836,10 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Default::default(),
+		Extensions {
+			relay_chain: Some("rococo-local".into()),
+			para_id: Some(para_id.into()),
+		},
 	)
 }
 

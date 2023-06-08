@@ -444,7 +444,8 @@ pub fn run() -> Result<()> {
 				);
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
-					.map(|e| e.para_id).unwrap_or_else(|| cli.parachain_id.unwrap_or(10001));
+					.map(|e| e.para_id.unwrap_or_else(|| cli.parachain_id.expect("Could not find parachain ID in CLI.")))
+					.expect("Could not find parachain ID in chain spec extension.");
 
 				let id = ParaId::from(para_id);
 
