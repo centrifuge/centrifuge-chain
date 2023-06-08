@@ -54,13 +54,10 @@ pub mod pricing;
 pub mod types;
 pub mod util;
 
-#[cfg(test)]
-mod mock;
+mod weights;
 
 #[cfg(test)]
 mod tests;
-
-mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;

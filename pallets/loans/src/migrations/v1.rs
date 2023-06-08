@@ -100,7 +100,7 @@ impl<T: Config> OnRuntimeUpgrade for Migration<T> {
 #[cfg(all(test, feature = "try-runtime"))]
 mod tests {
 	use super::*;
-	use crate::mock::*;
+	use crate::tests::mock::*;
 
 	#[test]
 	fn migrate() {

@@ -7,7 +7,6 @@ use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
 
 use super::{
 	loan::{ActiveLoan, LoanInfo},
-	mock::*,
 	pallet::{ActiveLoans, Error, LastLoanId, PortfolioValuation},
 	pricing::{
 		external::ExternalPricing,
@@ -36,6 +35,9 @@ const CHANGE_ID: ChangeId = 42;
 
 /// Used where the error comes from other pallet impl. unknown from the tests
 const DEPENDENCY_ERROR: DispatchError = DispatchError::Other("dependency error");
+
+pub mod mock;
+use mock::*;
 
 mod borrow_loan;
 mod close_loan;

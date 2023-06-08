@@ -82,7 +82,7 @@ where
 	fn config_mocks() {
 		use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 
-		use crate::mock::{MockPermissions, MockPools, MockPrices};
+		use crate::tests::mock::{MockPermissions, MockPools, MockPrices};
 
 		MockPermissions::mock_add(|_, _, _| Ok(()));
 		MockPermissions::mock_has(|_, _, _| true);
@@ -349,4 +349,8 @@ benchmarks! {
 	}
 }
 
-impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Runtime);
+impl_benchmark_test_suite!(
+	Pallet,
+	crate::tests::mock::new_test_ext(),
+	crate::tests::mock::Runtime
+);
