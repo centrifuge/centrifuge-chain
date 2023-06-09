@@ -15,11 +15,11 @@ use sp_runtime::{
 	DispatchError,
 };
 
+use super::pricing::{
+	external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
+};
 use crate::{
 	pallet::{AssetOf, Config, Error, PoolIdOf, PriceOf},
-	pricing::{
-		external::ExternalActivePricing, internal::InternalActivePricing, ActivePricing, Pricing,
-	},
 	types::{
 		policy::{WriteOffStatus, WriteOffTrigger},
 		BorrowLoanError, BorrowRestrictions, CloseLoanError, CreateLoanError, LoanMutation,
