@@ -100,7 +100,7 @@ fn add_pool() {
 		);
 
 		// Now create the pool
-		utils::create_pool(pool_id);
+		utils::create_ausd_pool(pool_id);
 
 		// Verify that we can now call Connectors::add_pool successfully
 		assert_ok!(Connectors::add_pool(
@@ -127,7 +127,7 @@ fn add_tranche() {
 
 		// Now create the pool
 		let pool_id: u64 = 42;
-		utils::create_pool(pool_id);
+		utils::create_ausd_pool(pool_id);
 
 		// Verify we can't call Connectors::add_tranche with a non-existing tranche_id
 		let nonexistent_tranche = [71u8; 16];
@@ -170,7 +170,7 @@ fn update_member() {
 
 		// Now create the pool
 		let pool_id: u64 = 42;
-		utils::create_pool(pool_id);
+		utils::create_ausd_pool(pool_id);
 
 		// Find the right tranche id
 		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
@@ -258,7 +258,7 @@ fn update_token_price() {
 
 		// Now create the pool
 		let pool_id: u64 = 42;
-		utils::create_pool(pool_id);
+		utils::create_ausd_pool(pool_id);
 
 		// Find the right tranche id
 		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
@@ -373,7 +373,7 @@ fn transfer_tranche_tokens() {
 
 		// Now create the pool
 		let pool_id: u64 = 42;
-		utils::create_pool(pool_id);
+		utils::create_ausd_pool(pool_id);
 
 		// Find the tranche id
 		let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
@@ -478,7 +478,7 @@ fn transfer_tranche_tokens() {
 #[test]
 /// Try to transfer tranches for non-existing pools or invalid tranche ids for
 /// existing pools.
-fn transferring_invalid_tranche_tokens_throws() {
+fn transferring_invalid_tranche_tokens_should_fail() {
 	TestNet::reset();
 
 	Development::execute_with(|| {
@@ -486,7 +486,7 @@ fn transferring_invalid_tranche_tokens_throws() {
 		let dest_address: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
 
 		let valid_pool_id: u64 = 42;
-		utils::create_pool(valid_pool_id);
+		utils::create_ausd_pool(valid_pool_id);
 		let pool_details = PoolSystem::pool(valid_pool_id).expect("Pool should exist");
 		let valid_tranche_id = pool_details
 			.tranches
@@ -560,6 +560,191 @@ fn transferring_invalid_tranche_tokens_throws() {
 }
 
 #[test]
+fn add_currency() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let currency_id = utils::CURRENCY_ID_GLMR;
+		assert_ok!(Connectors::add_currency(
+			RuntimeOrigin::signed(BOB.into()),
+			currency_id
+		));
+	});
+}
+
+#[test]
+fn add_currency_should_fail() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		assert_noop!(
+			Connectors::add_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				CurrencyId::ForeignAsset(42)
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
+		);
+		assert_noop!(
+			Connectors::add_currency(RuntimeOrigin::signed(BOB.into()), CurrencyId::Native),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
+		);
+		assert_noop!(
+			Connectors::add_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				CurrencyId::Staking(cfg_types::tokens::StakingCurrency::BlockRewards)
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
+		);
+
+		// TODO: Add noop check for registered `ForeignAsset` with XCM
+		// transferability, e.g. without EVM location and corresponding address
+		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+
+		// TODO: Add noop check for registered `ForeignAsset` with missing
+		// registered domain router, drafted like below
+		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+		//
+		// let faulty_currency_id = CurrencyId::ForeignAsset(42);
+		// let meta = utils::asset_metadata("Test".into(), "TEST".into(), 12,
+		// true, None); assert_ok!(OrmlAssetRegistry::register_asset(
+		// 	RuntimeOrigin::root(),
+		// 	meta,
+		// 	Some(faulty_currency_id)
+		// ));
+		// assert_noop!(
+		// 	Connectors::add_currency(
+		// 		RuntimeOrigin::signed(BOB.into()),
+		// 		CurrencyId::ForeignAsset(42)
+		// 	),
+		// 	pallet_connectors::Error::<DevelopmentRuntime>::MissingRouter
+		// );
+	});
+}
+
+#[test]
+fn allow_pool_currency() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let pool_id: u64 = 42;
+
+		// Create an AUSD pool
+		utils::create_ausd_pool(pool_id);
+
+		assert_ok!(Connectors::allow_pool_currency(
+			RuntimeOrigin::signed(BOB.into()),
+			pool_id,
+			currency_id,
+		));
+	});
+}
+
+#[test]
+fn allow_pool_should_fail() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		let pool_id: u64 = 42;
+		let currency_id = CurrencyId::ForeignAsset(42);
+
+		utils::setup_pre_requirements();
+		// Should fail if pool does not exist
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::PoolNotFound
+		);
+
+		// Create an AUSD pool
+		utils::create_ausd_pool(pool_id);
+		assert!(currency_id != utils::CURRENCY_ID_AUSD);
+
+		// Should fail if asset is unregistered
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
+		);
+
+		// Register new asset with pool_currency set to false
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			utils::asset_metadata("Test".into(), "TEST".into(), 12, false, None),
+			Some(currency_id)
+		));
+		// Should fail if asset is registered but not as pool_currency
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetMetadataNotPoolCurrency
+		);
+
+		// Update currency to have pool_currency metadata
+		assert_ok!(OrmlAssetRegistry::update_asset(
+			RuntimeOrigin::root(),
+			currency_id,
+			None,
+			None,
+			None,
+			None,
+			None,
+			Some(CustomMetadata {
+				xcm: Default::default(),
+				mintable: Default::default(),
+				permissioned: Default::default(),
+				pool_currency: true,
+			}),
+		));
+		// Should fail if asset is not the pool currency
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				currency_id,
+			),
+			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotPoolCurrency
+		);
+
+		// Create new pool for non foreign asset
+		// NOTE: Can be removed after merging https://github.com/centrifuge/centrifuge-chain/pull/1343
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			RuntimeOrigin::root(),
+			utils::asset_metadata("Acala Dollar".into(), "AUSD".into(), 12, true, None),
+			Some(CurrencyId::AUSD)
+		));
+		utils::create_currency_pool(pool_id, CurrencyId::AUSD, 10_000 * dollar(12));
+		// Should fail if currency is not foreign asset
+		assert_noop!(
+			Connectors::allow_pool_currency(
+				RuntimeOrigin::signed(BOB.into()),
+				pool_id,
+				CurrencyId::AUSD,
+			),
+			DispatchError::Token(sp_runtime::TokenError::Unsupported)
+		);
+
+		// TODO: Add noop test for InvalidDomain
+		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+	});
+}
+
+#[test]
 fn test_vec_to_fixed_array() {
 	let src = "TrNcH".as_bytes().to_vec();
 	let symbol: [u8; 32] = cfg_utils::vec_to_fixed_array(src);
@@ -627,6 +812,7 @@ mod utils {
 	use super::*;
 
 	pub const CURRENCY_ID_GLMR: CurrencyId = CurrencyId::ForeignAsset(1);
+	pub const CURRENCY_ID_AUSD: CurrencyId = CurrencyId::ForeignAsset(3);
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
 	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(1284);
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
@@ -664,18 +850,15 @@ mod utils {
 		));
 
 		/// Register Moonbeam's native token
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 18,
-			name: "Glimmer".into(),
-			symbol: "GLMR".into(),
-			existential_deposit: 1_000_000,
-			location: Some(VersionedMultiLocation::V3(moonbeam_native_token)),
-			additional: CustomMetadata::default(),
-		};
-
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
-			meta,
+			utils::asset_metadata(
+				"Glimmer".into(),
+				"GLMR".into(),
+				18,
+				false,
+				Some(VersionedMultiLocation::V3(moonbeam_native_token))
+			),
 			Some(CURRENCY_ID_GLMR)
 		));
 
@@ -700,18 +883,10 @@ mod utils {
 
 		// Register AUSD in the asset registry which is the default pool currency in
 		// `create_pool`
-		let ausd_meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 12,
-			name: "Acala Dollar".into(),
-			symbol: "AUSD".into(),
-			existential_deposit: 1_000,
-			location: None,
-			additional: CustomMetadata::default(),
-		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			RuntimeOrigin::root(),
-			ausd_meta,
-			Some(CurrencyId::AUSD)
+			asset_metadata("Acala Dollar".into(), "AUSD".into(), 12, true, None),
+			Some(CURRENCY_ID_AUSD)
 		));
 	}
 
@@ -719,7 +894,19 @@ mod utils {
 	///  * BOB as admin and depositor
 	///  * Two tranches
 	///  * AUSD as pool currency with max reserve 10k.
-	pub fn create_pool(pool_id: u64) {
+	pub fn create_ausd_pool(pool_id: u64) {
+		create_currency_pool(
+			pool_id,
+			CURRENCY_ID_AUSD,
+			10_000 * dollar(currency_decimals::AUSD),
+		)
+	}
+
+	/// Creates a new pool for for the given id with the provided currency.
+	///  * BOB as admin and depositor
+	///  * Two tranches
+	///  * The given `currency` as pool currency with of `currency_decimals`.
+	pub fn create_currency_pool(pool_id: u64, currency_id: CurrencyId, currency_decimals: Balance) {
 		assert_ok!(PoolSystem::create(
 			BOB.into(),
 			BOB.into(),
@@ -756,8 +943,32 @@ mod utils {
 					}
 				}
 			],
-			CurrencyId::AUSD,
-			10_000 * dollar(currency_decimals::AUSD),
+			currency_id,
+			currency_decimals,
 		));
+	}
+
+	/// Returns metadata for the given data with existential deposit of
+	/// 1_000_000.
+	pub fn asset_metadata(
+		name: Vec<u8>,
+		symbol: Vec<u8>,
+		decimals: u32,
+		is_pool_currency: bool,
+		location: Option<VersionedMultiLocation>,
+	) -> AssetMetadata<Balance, CustomMetadata> {
+		AssetMetadata {
+			name,
+			symbol,
+			decimals,
+			location,
+			existential_deposit: 1_000_000,
+			additional: CustomMetadata {
+				xcm: XcmMetadata::default(),
+				mintable: false,
+				permissioned: false,
+				pool_currency: is_pool_currency,
+			},
+		}
 	}
 }

@@ -569,8 +569,9 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let currency = Self::try_get_general_index(currency_id)?;
-			// FIXME: @NunoAlexandre Blocked by asset metadata PR
-			let domain = Domain::Centrifuge;
+			// FIXME: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+			// let domain_info = AssetRegistry::metadata(currency_id)?.location.into();
+			let domain = Domain::EVM(1284);
 
 			ensure!(domain != Domain::Centrifuge, Error::<T>::InvalidDomain);
 
@@ -578,7 +579,7 @@ pub mod pallet {
 				who,
 				Message::AddCurrency {
 					currency,
-					// FIXME: @NunoAlexandre Blocked by asset metadata PR
+					// FIXME: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
 					evm_address: [0u8; 20],
 				},
 				domain,
@@ -607,8 +608,9 @@ pub mod pallet {
 			// Derive GeneralIndex for currency
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			// FIXME: @NunoAlexandre Blocked by asset metadata PR
-			let domain = Domain::Centrifuge;
+			// FIXME: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+			let domain = Domain::EVM(1284);
+			ensure!(domain != Domain::Centrifuge, Error::<T>::InvalidDomain);
 
 			Self::do_send_message(
 				who,
