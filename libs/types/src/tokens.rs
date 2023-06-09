@@ -300,10 +300,10 @@ impl TryFrom<MultiLocation> for ConnectorsWrappedToken {
 	}
 }
 
-impl Into<MultiLocation> for ConnectorsWrappedToken {
-	fn into(self) -> MultiLocation {
-		match self {
-			Self::EVM { chain_id, address } => MultiLocation {
+impl From<ConnectorsWrappedToken> for MultiLocation {
+	fn from(token: ConnectorsWrappedToken) -> Self {
+		match token {
+			ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
 				parents: 0,
 				interior: X2(
 					GlobalConsensus(NetworkId::Ethereum { chain_id }),
