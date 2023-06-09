@@ -59,7 +59,7 @@ use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
-use pallet_ethereum::{Transaction as EthereumTransaction, TransactionAction};
+use pallet_ethereum::{Transaction as EthereumTransaction};
 use pallet_evm::{Account as EVMAccount, FeeCalculator, Runner};
 use pallet_investments::OrderType;
 use pallet_pool_system::{
@@ -74,7 +74,6 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 pub use runtime_common::*;
 use runtime_common::{
-	evm::GetTransactionAction,
 	fees::{DealWithFees, WeightToFee},
 };
 use scale_info::TypeInfo;
@@ -90,7 +89,7 @@ use sp_runtime::{
 		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{
-		InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
+		TransactionSource, TransactionValidity, TransactionValidityError,
 	},
 	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill,
 };
@@ -1676,6 +1675,10 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 
 	#[cfg(not(feature = "testnet-runtime"))]
 	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
+		use pallet_ethereum::TransactionAction;
+		use runtime_common::evm::GetTransactionAction;
+		use sp_runtime::transaction_validity::InvalidTransaction;
+
 		match self {
 			RuntimeCall::Ethereum(call) => match call {
 				pallet_ethereum::Call::transact { transaction }
