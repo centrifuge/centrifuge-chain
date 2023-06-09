@@ -46,11 +46,12 @@ use xcm::{
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec` instances for our runtimes.
-pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig, Extensions>;
+pub type AltairChainSpec =
+	sc_service::GenericChainSpec<altair_runtime::GenesisConfig, ExtensionsWrapper>;
 pub type CentrifugeChainSpec =
-	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, Extensions>;
+	sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig, ExtensionsWrapper>;
 pub type DevelopmentChainSpec =
-	sc_service::GenericChainSpec<development_runtime::GenesisConfig, Extensions>;
+	sc_service::GenericChainSpec<development_runtime::GenesisConfig, ExtensionsWrapper>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -66,16 +67,46 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 #[serde(deny_unknown_fields)]
 pub struct Extensions {
 	/// The relay chain of the Parachain.
-	pub relay_chain: Option<String>,
+	pub relay_chain: String,
 	/// The id of the Parachain.
-	pub para_id: Option<u32>,
+	pub para_id: u32,
 }
 
-impl Extensions {
+#[derive(
+	Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension,
+)]
+#[serde(deny_unknown_fields)]
+/// A wrapper around [Extensions] which is necessary as long as we don't add the
+/// extensions to existing chain specs for persistent chains such as Altair,
+/// Algol, Catalyst and Centrifuge.
+pub struct ExtensionsWrapper {
+	pub extensions: Option<Extensions>,
+}
+
+impl ExtensionsWrapper {
 	/// Try to get the extension from the given `ChainSpec`.
-	pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Self> {
+	pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Extensions> {
 		sc_chain_spec::get_extension(chain_spec.extensions())
+			.and_then(|wrapper: &ExtensionsWrapper| wrapper.extensions.as_ref())
 	}
+}
+
+impl From<Extensions> for ExtensionsWrapper {
+	fn from(value: Extensions) -> Self {
+		ExtensionsWrapper {
+			extensions: Some(value),
+		}
+	}
+}
+
+/// Provides non-production extension for the given parachain id by defaulting
+/// to "rococo-local" as relay chain.
+fn development_extensions(para_id: u32) -> ExtensionsWrapper {
+	Extensions {
+		para_id,
+		relay_chain: "rococo-local".into(),
+	}
+	.into()
 }
 
 pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::SessionKeys {
@@ -120,9 +151,10 @@ pub fn centrifuge_config() -> CentrifugeChainSpec {
 	.unwrap();
 	let extension = spec.extensions_mut();
 	*extension = Extensions {
-		relay_chain: Some("polkadot".into()),
-		para_id: Some(2031),
-	};
+		relay_chain: "polkadot".into(),
+		para_id: 2031,
+	}
+	.into();
 	spec
 }
 
@@ -177,10 +209,7 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 		Some("centrifuge"),
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -221,10 +250,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -255,10 +281,7 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -268,9 +291,10 @@ pub fn catalyst_config() -> CentrifugeChainSpec {
 			.unwrap();
 	let extension = spec.extensions_mut();
 	*extension = Extensions {
-		relay_chain: Some("rococo-local".into()),
-		para_id: Some(2031),
-	};
+		relay_chain: "rococo-local".into(),
+		para_id: 2031,
+	}
+	.into();
 	spec
 }
 
@@ -328,10 +352,7 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 		Some("catalyst"),
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -362,10 +383,7 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -376,9 +394,10 @@ pub fn altair_config() -> AltairChainSpec {
 	.unwrap();
 	let extension = spec.extensions_mut();
 	*extension = Extensions {
-		relay_chain: Some("kusama".into()),
-		para_id: Some(2088),
-	};
+		relay_chain: "kusama".into(),
+		para_id: 2088,
+	}
+	.into();
 	spec
 }
 
@@ -431,10 +450,7 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 		Some("altair"),
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -475,10 +491,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -509,10 +522,7 @@ pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -522,9 +532,10 @@ pub fn antares_config() -> AltairChainSpec {
 			.unwrap();
 	let extension = spec.extensions_mut();
 	*extension = Extensions {
-		relay_chain: Some("rococo-local".into()),
-		para_id: Some(2088),
-	};
+		relay_chain: "rococo-local".into(),
+		para_id: 2088,
+	}
+	.into();
 	spec
 }
 
@@ -583,10 +594,7 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 		Some("antares"),
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -617,10 +625,7 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -629,9 +634,10 @@ pub fn algol_config() -> AltairChainSpec {
 		AltairChainSpec::from_json_bytes(&include_bytes!("../res/algol-spec.json")[..]).unwrap();
 	let extension = spec.extensions_mut();
 	*extension = Extensions {
-		relay_chain: Some("rococo-local".into()),
-		para_id: Some(2088),
-	};
+		relay_chain: "rococo-local".into(),
+		para_id: 2088,
+	}
+	.into();
 	spec
 }
 
@@ -641,9 +647,10 @@ pub fn charcoal_config() -> AltairChainSpec {
 			.unwrap();
 	let extension = spec.extensions_mut();
 	*extension = Extensions {
-		relay_chain: Some("rococo-local".into()),
-		para_id: Some(2088),
-	};
+		relay_chain: "rococo-local".into(),
+		para_id: 2088,
+	}
+	.into();
 	spec
 }
 
@@ -696,10 +703,7 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 		Some("charcoal"),
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -730,10 +734,7 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -768,10 +769,7 @@ pub fn demo(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -802,10 +800,7 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
@@ -836,10 +831,7 @@ pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 		None,
 		None,
 		Some(properties),
-		Extensions {
-			relay_chain: Some("rococo-local".into()),
-			para_id: Some(para_id.into()),
-		},
+		development_extensions(para_id.into()),
 	)
 }
 
