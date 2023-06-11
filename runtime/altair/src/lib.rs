@@ -86,9 +86,7 @@ use sp_runtime::{
 		AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, DispatchInfoOf,
 		Dispatchable, PostDispatchInfoOf, UniqueSaturatedInto, Zero,
 	},
-	transaction_validity::{
-		InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
-	},
+	transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
 	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedI128, Perbill, Permill,
 };
 use sp_std::{marker::PhantomData, prelude::*};
@@ -1675,6 +1673,7 @@ impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	fn check_self_contained(&self) -> Option<Result<Self::SignedInfo, TransactionValidityError>> {
 		use pallet_ethereum::TransactionAction;
 		use runtime_common::evm::GetTransactionAction;
+		use sp_runtime::transaction_validity::InvalidTransaction;
 
 		match self {
 			RuntimeCall::Ethereum(call) => match call {
