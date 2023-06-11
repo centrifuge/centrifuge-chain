@@ -49,10 +49,7 @@ mod asset_registry {
 
 	impl OnRuntimeUpgrade for CrossChainTransferabilityMigration {
 		fn on_runtime_upgrade() -> Weight {
-			// todo(nuno): this migration will **most likely** be part of the set of
-			// migrations when upgrading to Centrifuge 1020. Refine when we know
-			// for sure.
-			if VERSION.spec_version != 1020 {
+			if VERSION.spec_version != 1028 {
 				return Weight::zero();
 			}
 
