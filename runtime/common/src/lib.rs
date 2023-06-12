@@ -393,12 +393,17 @@ pub mod oracle {
 }
 
 pub mod changes {
+	use cfg_primitives::SECONDS_PER_WEEK;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
-	use pallet_loans::LoanChangeOf;
-	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
+	use pallet_loans::{
+		types::{InternalMutation, LoanMutation},
+		LoanChangeOf,
+	};
+	use pallet_pool_system::pool_types::changes::{PoolChangeProposal, Requirement};
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
+	use sp_std::vec;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum RuntimeChange<T: pallet_loans::Config> {
@@ -407,11 +412,32 @@ pub mod changes {
 
 	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
 		fn from(value: RuntimeChange<T>) -> Self {
-			let RuntimeChange::Loan(_loan_change) = value;
+			let RuntimeChange::Loan(LoanChangeOf::<T>::Loan(_, loan_mutation)) = value;
 
-			// TODO: create the pool change proposal
+			let one_epoch = 0; //TODO: what does it mean?
 
-			PoolChangeProposal::new(0, [])
+			// Requirements gathered from
+			// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
+			let requirements = match loan_mutation {
+				LoanMutation::Maturity(_)
+				| LoanMutation::InterestPayments(_)
+				| LoanMutation::PayDownSchedule(_) => vec![
+					Requirement::DelayTime(SECONDS_PER_WEEK as u32),
+					Requirement::BlockedByLockedRedemptions,
+				],
+				LoanMutation::Internal(mutation) => match mutation {
+					InternalMutation::ValuationMethod(_) => vec![
+						Requirement::DelayTime(SECONDS_PER_WEEK as u32),
+						Requirement::BlockedByLockedRedemptions,
+					],
+					InternalMutation::InterestRate(_)
+					| InternalMutation::ProbabilityOfDefault(_)
+					| InternalMutation::LossGivenDefault(_)
+					| InternalMutation::DiscountRate(_) => vec![Requirement::DelayTime(one_epoch)],
+				},
+			};
+
+			PoolChangeProposal::new(requirements)
 		}
 	}
 

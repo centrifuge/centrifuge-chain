@@ -379,7 +379,7 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		let change_id: Self::ChangeId = T::Hashing::hash(&change.encode());
-		Changes::<T>::insert(pool_id, change_id, change.clone());
+		Changes::<T>::insert(pool_id, change_id, (Self::now(), change.clone()));
 
 		Self::deposit_event(Event::ProposedChange {
 			pool_id,
@@ -394,7 +394,8 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 		pool_id: Self::PoolId,
 		change_id: Self::ChangeId,
 	) -> Result<Self::Change, DispatchError> {
-		let change = Changes::<T>::get(pool_id, change_id).ok_or(Error::<T>::ExtChangeNotFound)?;
+		let (_submitted_time, change) =
+			Changes::<T>::get(pool_id, change_id).ok_or(Error::<T>::ExtChangeNotFound)?;
 		let _pool_change: PoolChangeProposal = change.clone().into();
 
 		// TODO: analize if pool_change is ok to be released

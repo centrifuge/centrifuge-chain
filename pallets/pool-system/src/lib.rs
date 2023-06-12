@@ -395,7 +395,7 @@ pub mod pallet {
 		T::PoolId,
 		Blake2_128Concat,
 		T::Hash,
-		T::RuntimeChange,
+		(Moment, T::RuntimeChange),
 	>;
 
 	#[pallet::event]

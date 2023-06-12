@@ -399,17 +399,12 @@ pub mod changes {
 		Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen,
 	)]
 	pub struct PoolChangeProposal {
-		pub submitted_time: Moment,
 		pub requirements: BoundedBTreeSet<UniqueRequirement, MaxRequirements>,
 	}
 
 	impl PoolChangeProposal {
-		pub fn new(
-			submitted_time: Moment,
-			requirements: impl IntoIterator<Item = Requirement>,
-		) -> Self {
+		pub fn new(requirements: impl IntoIterator<Item = Requirement>) -> Self {
 			Self {
-                submitted_time,
                 requirements: BTreeSet::from_iter(requirements.into_iter().map(UniqueRequirement))
                     .try_into()
                     .expect(
