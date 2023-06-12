@@ -141,11 +141,11 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+		/// Represent a runtime change
+		type RuntimeChange: From<LoanChangeOf<Self>> + TryInto<LoanChangeOf<Self>>;
+
 		/// Identify a curreny.
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
-
-		/// Identify a loan change.
-		type ChangeId: Parameter + Copy + MaybeSerializeDeserialize + MaxEncodedLen + TypeInfo;
 
 		/// Identify a non fungible collection
 		type CollectionId: Parameter
@@ -228,8 +228,8 @@ pub mod pallet {
 		/// treatment.
 		type ChangeGuard: ChangeGuard<
 			PoolId = PoolIdOf<Self>,
-			ChangeId = Self::ChangeId,
-			Change = LoanChangeOf<Self>,
+			ChangeId = Self::Hash,
+			Change = Self::RuntimeChange,
 		>;
 
 		/// Max number of active loans per pool.
@@ -744,7 +744,7 @@ pub mod pallet {
 				TransactionOutcome::Rollback(result)
 			})?;
 
-			T::ChangeGuard::note(pool_id, Change::Loan(loan_id, mutation))?;
+			T::ChangeGuard::note(pool_id, Change::Loan(loan_id, mutation).into())?;
 
 			Ok(())
 		}
@@ -757,11 +757,13 @@ pub mod pallet {
 		pub fn apply_change(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			change_id: T::ChangeId,
+			change_id: T::Hash,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let Change::Loan(loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?;
+			let Change::Loan(loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?
+				.try_into()
+				.map_err(|_| DispatchError::Other("Change is not a pallet-loans change"))?;
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				loan.mutate_with(mutation.clone())

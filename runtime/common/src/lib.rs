@@ -393,61 +393,47 @@ pub mod oracle {
 }
 
 pub mod changes {
-	use cfg_traits::changes::ChangeGuard;
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
 	use pallet_loans::LoanChangeOf;
+	use pallet_pool_system::pool_types::PoolChangeProposal;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
-	use sp_std::marker::PhantomData;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub enum CfgChange<T: pallet_loans::Config> {
+	pub enum RuntimeChange<T: pallet_loans::Config> {
 		Loan(LoanChangeOf<T>),
-		Other, // i.e. Pool(PoolChange)
 	}
 
-	impl<T: pallet_loans::Config> From<LoanChangeOf<T>> for CfgChange<T> {
-		fn from(value: LoanChangeOf<T>) -> Self {
-			CfgChange::Loan(value)
+	/// Used for building CfgChanges in pallet-loans
+	impl<T: pallet_loans::Config> From<LoanChangeOf<T>> for RuntimeChange<T> {
+		fn from(loan_change: LoanChangeOf<T>) -> RuntimeChange<T> {
+			RuntimeChange::Loan(loan_change)
 		}
 	}
 
-	impl<T: pallet_loans::Config> TryInto<LoanChangeOf<T>> for CfgChange<T> {
-		type Error = DispatchError;
+	/// Used for building PoolChangeProposal in pallet-pool-system
+	impl<T: pallet_loans::Config> Into<PoolChangeProposal> for RuntimeChange<T> {
+		fn into(self) -> PoolChangeProposal {
+			let RuntimeChange::Loan(_loan_change) = self;
 
-		fn try_into(self) -> Result<LoanChangeOf<T>, DispatchError> {
-			match self {
-				CfgChange::Loan(change) => Ok(change),
-				_ => Err(DispatchError::Other("Expected Loan type")),
+			// TODO: create the pool change proposal
+
+			PoolChangeProposal {
+				submitted_time: 0,
+				delay_time_required: 0,
+				block_by_locked_redemptions: false,
 			}
 		}
 	}
 
-	pub struct ChangeGuardBridge<Change, ChangeGuardImpl>(PhantomData<(Change, ChangeGuardImpl)>);
+	/// Used for recovering LoanChange in pallet-loans
+	impl<T: pallet_loans::Config> TryInto<LoanChangeOf<T>> for RuntimeChange<T> {
+		type Error = DispatchError;
 
-	impl<T, Change, ChangeGuardImpl> ChangeGuard for ChangeGuardBridge<Change, ChangeGuardImpl>
-	where
-		T: pallet_loans::Config,
-		Change: Into<CfgChange<T>> + TryFrom<CfgChange<T>, Error = DispatchError>,
-		ChangeGuardImpl: ChangeGuard<Change = CfgChange<T>>,
-	{
-		type Change = Change;
-		type ChangeId = ChangeGuardImpl::ChangeId;
-		type PoolId = ChangeGuardImpl::PoolId;
-
-		fn note(
-			pool_id: Self::PoolId,
-			change: Self::Change,
-		) -> Result<Self::ChangeId, DispatchError> {
-			ChangeGuardImpl::note(pool_id, change.into())
-		}
-
-		fn released(
-			pool_id: Self::PoolId,
-			change_id: Self::ChangeId,
-		) -> Result<Self::Change, DispatchError> {
-			ChangeGuardImpl::released(pool_id, change_id)?.try_into()
+		fn try_into(self) -> Result<LoanChangeOf<T>, DispatchError> {
+			let RuntimeChange::Loan(loan_change) = self;
+			Ok(loan_change)
 		}
 	}
 }

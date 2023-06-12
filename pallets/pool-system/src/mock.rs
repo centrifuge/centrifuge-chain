@@ -40,7 +40,7 @@ use sp_runtime::{
 
 use crate::{
 	self as pallet_pool_system,
-	pool_types::{ExtPoolChange, PoolDetails, ScheduledUpdateDetails},
+	pool_types::{PoolChangeProposal, PoolDetails, ScheduledUpdateDetails},
 	Config, DispatchResult,
 };
 
@@ -306,12 +306,12 @@ impl Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type ChallengeTime = ChallengeTime;
+	type Change = PoolChangeProposal;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
-	type ExtChange = ExtPoolChange;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTokenNameLength;

@@ -41,7 +41,7 @@ use orml_traits::{
 };
 pub use pallet::*;
 use pool_types::{
-	ExtPoolChange, PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator,
+	PoolChangeProposal, PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator,
 	ScheduledUpdateDetails,
 };
 use scale_info::TypeInfo;
@@ -261,7 +261,7 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Copy + MaxEncodedLen;
 
-		type ExtChange: Parameter + Member + MaxEncodedLen + TypeInfo + Into<ExtPoolChange>;
+		type RuntimeChange: Parameter + Member + MaxEncodedLen + TypeInfo + Into<PoolChangeProposal>;
 
 		type PoolCurrency: Contains<Self::CurrencyId>;
 
@@ -389,8 +389,14 @@ pub mod pallet {
 	pub type StorageVersion<T: Config> = StorageValue<_, Release, ValueQuery>;
 
 	#[pallet::storage]
-	pub type ExtChanges<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, T::PoolId, Blake2_128Concat, T::Hash, T::ExtChange>;
+	pub type Changes<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::Hash,
+		T::RuntimeChange,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -502,7 +508,7 @@ pub mod pallet {
 		UpdatePrerequesitesNotFulfilled,
 		/// A user has tried to create a pool with an invalid currency
 		InvalidCurrency,
-		/// The external change was not found
+		/// The external change was not found for the specified ChangeId.
 		ExtChangeNotFound,
 	}
 

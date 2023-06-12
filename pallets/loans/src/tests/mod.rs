@@ -3,6 +3,7 @@ use std::time::Duration;
 use cfg_mocks::pallet_mock_data::util::MockDataCollection;
 use cfg_types::permissions::{PermissionScope, PoolRole, Role};
 use frame_support::{assert_noop, assert_ok};
+use sp_core::H256;
 use sp_runtime::{traits::BadOrigin, DispatchError, FixedPointNumber};
 
 use super::{
@@ -33,7 +34,7 @@ const REGISTER_PRICE_ID: PriceId = 42;
 const UNREGISTER_PRICE_ID: PriceId = 88;
 const PRICE_VALUE: Rate = Rate::from_u32(1000);
 const QUANTITY: Balance = 20;
-const CHANGE_ID: ChangeId = 42;
+const CHANGE_ID: ChangeId = H256::repeat_byte(0x42);
 
 /// Used where the error comes from other pallet impl. unknown from the tests
 const DEPENDENCY_ERROR: DispatchError = DispatchError::Other("dependency error");

@@ -334,8 +334,8 @@ impl<
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct ExtPoolChange {
-	submitted_time: Moment,
-	delay_time_required: Moment,
-	block_by_locked_redemptions: bool,
+pub struct PoolChangeProposal {
+	pub submitted_time: Moment,
+	pub delay_time_required: Moment,
+	pub block_by_locked_redemptions: bool,
 }

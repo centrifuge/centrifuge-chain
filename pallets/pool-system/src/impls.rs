@@ -370,13 +370,13 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> ChangeGuard for Pallet<T> {
-	type Change = T::ExtChange;
+	type Change = T::RuntimeChange;
 	type ChangeId = T::Hash;
 	type PoolId = T::PoolId;
 
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		let change_id: Self::ChangeId = T::Hashing::hash(&change.encode());
-		ExtChanges::<T>::insert(pool_id, change_id, change);
+		Changes::<T>::insert(pool_id, change_id, change);
 		Ok(change_id)
 	}
 
@@ -384,13 +384,12 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 		pool_id: Self::PoolId,
 		change_id: Self::ChangeId,
 	) -> Result<Self::Change, DispatchError> {
-		let change =
-			ExtChanges::<T>::get(pool_id, change_id).ok_or(Error::<T>::ExtChangeNotFound)?;
-		let _pool_change: ExtPoolChange = change.clone().into();
+		let change = Changes::<T>::get(pool_id, change_id).ok_or(Error::<T>::ExtChangeNotFound)?;
+		let _pool_change: PoolChangeProposal = change.clone().into();
 
 		// TODO: analize if pool_change is ok to be released
 
-		ExtChanges::<T>::remove(pool_id, change_id);
+		Changes::<T>::remove(pool_id, change_id);
 		Ok(change)
 	}
 }
