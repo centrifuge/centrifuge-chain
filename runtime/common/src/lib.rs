@@ -405,10 +405,9 @@ pub mod changes {
 		Loan(LoanChangeOf<T>),
 	}
 
-	/// Used for building PoolChangeProposal in pallet-pool-system
-	impl<T: pallet_loans::Config> Into<PoolChangeProposal> for RuntimeChange<T> {
-		fn into(self) -> PoolChangeProposal {
-			let RuntimeChange::Loan(_loan_change) = self;
+	impl<T: pallet_loans::Config> From<RuntimeChange<T>> for PoolChangeProposal {
+		fn from(value: RuntimeChange<T>) -> Self {
+			let RuntimeChange::Loan(_loan_change) = value;
 
 			// TODO: create the pool change proposal
 
