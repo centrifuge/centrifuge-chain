@@ -459,7 +459,7 @@ pub mod connectors {
 
 	use cfg_primitives::types::PalletIndex;
 	use cfg_types::tokens::ConnectorsWrappedToken;
-	use sp_core::Get;
+	use sp_core::{Get, parameter_types};
 	use sp_runtime::traits::Convert;
 	use xcm::{
 		latest::{MultiLocation, NetworkId},
@@ -508,5 +508,78 @@ pub mod connectors {
 				},
 			}
 		}
+	}
+
+	#[test]
+	/// Verify that converting a ConnectorsWrappedToken to MultiLocation and
+	/// back results in the same original value.
+	fn connectors_wrapped_token_convert_identity() {
+		use sp_runtime::traits::Convert;
+
+		parameter_types! {
+			const Index: PalletIndex = 108;
+		}
+
+		const CHAIN_ID: u64 = 123;
+		const ADDRESS: [u8; 20] = [9; 20];
+
+		let wrapped_token = ConnectorsWrappedToken::EVM {
+			chain_id: CHAIN_ID,
+			address: ADDRESS,
+		};
+
+		let location = MultiLocation {
+			parents: 0,
+			interior: X3(
+				PalletInstance(Index::get()),
+				GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+				AccountKey20 {
+					network: None,
+					key: ADDRESS
+				},
+			),
+		};
+
+		assert_eq!(
+			<ConnectorsWrappedTokenConvert<Index> as Convert<ConnectorsWrappedToken, MultiLocation>>::convert(wrapped_token),
+			location
+		);
+
+		assert_eq!(
+			<ConnectorsWrappedTokenConvert<Index> as Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>>::convert(location),
+			Ok(wrapped_token)
+		);
+	}
+
+	/// Verify that ConnectorsWrappedTokenConvert will fail to convert a location to a ConnectorsWrappedToken
+	/// if the PalletInstance value doesn't match the Index generic param, i.e, fail if the token
+	/// doesn't appear to be under the Connectors pallet and thus be a connectors wrapped token.
+	#[test]
+	fn connectors_wrapped_token_convert_fail() {
+		use sp_runtime::traits::Convert;
+
+		parameter_types! {
+			const Index: PalletIndex = 108;
+			const WrongIndex: PalletIndex = 72;
+		}
+		const CHAIN_ID: u64 = 123;
+		const ADDRESS: [u8; 20] = [9; 20];
+
+		let location = MultiLocation {
+			parents: 0,
+			interior: X3(
+				PalletInstance(WrongIndex::get()),
+				GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
+				AccountKey20 {
+					network: None,
+					key: ADDRESS
+				},
+			),
+		};
+
+		assert_eq!(
+			<ConnectorsWrappedTokenConvert<Index> as Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>>::convert(location),
+			Err(())
+		);
 	}
 }

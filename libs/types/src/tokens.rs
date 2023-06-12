@@ -336,37 +336,4 @@ mod tests {
 			.is_err()
 		);
 	}
-
-	#[test]
-	/// Verify that converting a ConnectorsWrappedToken to MultiLocation and
-	/// back results in the same original value.
-	fn connectors_wrapped_token_location_conversion_identity() {
-		const CHAIN_ID: EVMChainId = 123;
-		const ADDRESS: [u8; 20] = [9; 20];
-
-		let wrapped_token = ConnectorsWrappedToken::EVM {
-			chain_id: CHAIN_ID,
-			address: ADDRESS,
-		};
-		let as_location: MultiLocation = wrapped_token.into();
-
-		assert_eq!(
-			as_location,
-			MultiLocation {
-				parents: 0,
-				interior: X2(
-					GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
-					AccountKey20 {
-						network: None,
-						key: ADDRESS
-					},
-				),
-			}
-		);
-
-		assert_eq!(
-			ConnectorsWrappedToken::try_from(as_location),
-			Ok(wrapped_token)
-		);
-	}
 }
