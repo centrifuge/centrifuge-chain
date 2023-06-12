@@ -306,7 +306,6 @@ impl Config for Runtime {
 	type AssetRegistry = RegistryMock;
 	type Balance = Balance;
 	type ChallengeTime = ChallengeTime;
-	type Change = PoolChangeProposal;
 	type Currency = Balances;
 	type CurrencyId = CurrencyId;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
@@ -329,6 +328,7 @@ impl Config for Runtime {
 	type PoolDeposit = PoolDeposit;
 	type PoolId = PoolId;
 	type Rate = Rate;
+	type RuntimeChange = PoolChangeProposal;
 	type RuntimeEvent = RuntimeEvent;
 	type Time = Timestamp;
 	type Tokens = Tokens;

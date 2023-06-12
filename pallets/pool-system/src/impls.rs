@@ -379,9 +379,13 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		let change_id: Self::ChangeId = T::Hashing::hash(&change.encode());
-		Changes::<T>::insert(pool_id, change_id, change);
+		Changes::<T>::insert(pool_id, change_id, change.clone());
 
-		// TODO: generate event with ChangeId
+		Self::deposit_event(Event::ProposedChange {
+			pool_id,
+			change_id,
+			change,
+		});
 
 		Ok(change_id)
 	}

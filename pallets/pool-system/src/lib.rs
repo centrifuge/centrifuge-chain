@@ -434,6 +434,12 @@ pub mod pallet {
 			old: PoolEssenceOf<T>,
 			new: PoolEssenceOf<T>,
 		},
+		/// A change was proposed.
+		ProposedChange {
+			pool_id: T::PoolId,
+			change_id: T::Hash,
+			change: T::RuntimeChange,
+		},
 	}
 
 	#[pallet::error]
