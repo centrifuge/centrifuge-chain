@@ -17,6 +17,7 @@ log = { version = "0.4.0", default-features = false }
 rev_slice = { version = "0.1.5", default-features = false }
 scale-info = { version = "2.3.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.119" }
+strum = { version = "0.24", default-features = false, features = ["derive"] }
 
 cfg-primitives = { path = "../../libs/primitives", default-features = false }
 cfg-traits = { path = "../../libs/traits", default-features = false }
@@ -75,6 +76,7 @@ std = [
   "sp-arithmetic/std",
   "sp-runtime/std",
   "sp-std/std",
+  "strum/std",
   "orml-traits/std",
   "cfg-traits/std",
   "cfg-types/std",

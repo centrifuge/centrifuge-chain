@@ -20,7 +20,10 @@ use sp_runtime::traits::Hash;
 
 use super::*;
 use crate::{
-	pool_types::{PoolDetails, PoolParameters, PoolStatus, ReserveDetails, ScheduledUpdateDetails},
+	pool_types::{
+		changes::PoolChangeProposal, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
+		ScheduledUpdateDetails,
+	},
 	tranches::{TrancheInput, TrancheLoc, TrancheUpdate, Tranches},
 };
 
@@ -377,6 +380,9 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
 		let change_id: Self::ChangeId = T::Hashing::hash(&change.encode());
 		Changes::<T>::insert(pool_id, change_id, change);
+
+		// TODO: generate event with ChangeId
+
 		Ok(change_id)
 	}
 

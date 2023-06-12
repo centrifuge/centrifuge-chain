@@ -40,7 +40,7 @@ use sp_runtime::{
 
 use crate::{
 	self as pallet_pool_system,
-	pool_types::{PoolChangeProposal, PoolDetails, ScheduledUpdateDetails},
+	pool_types::{changes::PoolChangeProposal, PoolDetails, ScheduledUpdateDetails},
 	Config, DispatchResult,
 };
 

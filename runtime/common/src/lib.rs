@@ -396,20 +396,13 @@ pub mod changes {
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::RuntimeDebug;
 	use pallet_loans::LoanChangeOf;
-	use pallet_pool_system::pool_types::PoolChangeProposal;
+	use pallet_pool_system::pool_types::changes::PoolChangeProposal;
 	use scale_info::TypeInfo;
 	use sp_runtime::DispatchError;
 
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum RuntimeChange<T: pallet_loans::Config> {
 		Loan(LoanChangeOf<T>),
-	}
-
-	/// Used for building CfgChanges in pallet-loans
-	impl<T: pallet_loans::Config> From<LoanChangeOf<T>> for RuntimeChange<T> {
-		fn from(loan_change: LoanChangeOf<T>) -> RuntimeChange<T> {
-			RuntimeChange::Loan(loan_change)
-		}
 	}
 
 	/// Used for building PoolChangeProposal in pallet-pool-system
@@ -419,11 +412,14 @@ pub mod changes {
 
 			// TODO: create the pool change proposal
 
-			PoolChangeProposal {
-				submitted_time: 0,
-				delay_time_required: 0,
-				block_by_locked_redemptions: false,
-			}
+			PoolChangeProposal::new(0, [])
+		}
+	}
+
+	/// Used for building CfgChanges in pallet-loans
+	impl<T: pallet_loans::Config> From<LoanChangeOf<T>> for RuntimeChange<T> {
+		fn from(loan_change: LoanChangeOf<T>) -> RuntimeChange<T> {
+			RuntimeChange::Loan(loan_change)
 		}
 	}
 

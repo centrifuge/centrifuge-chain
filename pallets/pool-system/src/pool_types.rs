@@ -333,9 +333,91 @@ impl<
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
-pub struct PoolChangeProposal {
-	pub submitted_time: Moment,
-	pub delay_time_required: Moment,
-	pub block_by_locked_redemptions: bool,
+pub mod changes {
+	use frame_support::{storage::bounded_btree_set::BoundedBTreeSet, RuntimeDebug};
+	use sp_std::collections::btree_set::BTreeSet;
+	use strum::EnumCount;
+
+	use super::*;
+
+	/// Requirements to perform the change
+	#[derive(
+		Encode,
+		Decode,
+		Clone,
+		PartialEq,
+		Eq,
+		PartialOrd,
+		Ord,
+		TypeInfo,
+		RuntimeDebug,
+		MaxEncodedLen,
+		EnumCount,
+	)]
+	pub enum Requirement {
+		/// Required time the change must be noted to be able to release it.
+		DelayTime(u32),
+
+		/// Evaluates if the change must be blocked if redemptions are locked.
+		BlockedByLockedRedemptions,
+	}
+
+	/// Wrapper type to identify equality between variants,
+	/// without taking into account their inner values
+	#[derive(Encode, Decode, Clone, Eq, PartialOrd, Ord, TypeInfo, RuntimeDebug, MaxEncodedLen)]
+	pub struct UniqueRequirement(pub Requirement);
+
+	impl PartialEq for UniqueRequirement {
+		fn eq(&self, other: &Self) -> bool {
+			match self.0 {
+				Requirement::DelayTime(_) => {
+					matches!(other.0, Requirement::DelayTime(_))
+				}
+				Requirement::BlockedByLockedRedemptions => {
+					matches!(other.0, Requirement::BlockedByLockedRedemptions)
+				}
+			}
+		}
+	}
+
+	impl From<Requirement> for UniqueRequirement {
+		fn from(value: Requirement) -> Self {
+			UniqueRequirement(value)
+		}
+	}
+
+	/// Type representing the length of different variants
+	pub struct MaxRequirements;
+
+	impl Get<u32> for MaxRequirements {
+		fn get() -> u32 {
+			Requirement::COUNT as u32
+		}
+	}
+
+	#[derive(
+		Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen,
+	)]
+	pub struct PoolChangeProposal {
+		pub submitted_time: Moment,
+		pub requirements: BoundedBTreeSet<UniqueRequirement, MaxRequirements>,
+	}
+
+	impl PoolChangeProposal {
+		pub fn new(
+			submitted_time: Moment,
+			requirements: impl IntoIterator<Item = Requirement>,
+		) -> Self {
+			Self {
+                submitted_time,
+                requirements: BTreeSet::from_iter(requirements.into_iter().map(UniqueRequirement))
+                    .try_into()
+                    .expect(
+                        "Cannot exist more unique requirements in a set than `MaxRequirements`, qed",
+                    ),
+            }
+		}
+	}
 }
+
+pub use changes::PoolChangeProposal;

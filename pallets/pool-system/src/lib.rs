@@ -41,8 +41,8 @@ use orml_traits::{
 };
 pub use pallet::*;
 use pool_types::{
-	PoolChangeProposal, PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence, PoolLocator,
-	ScheduledUpdateDetails,
+	changes::PoolChangeProposal, PoolChanges, PoolDepositInfo, PoolDetails, PoolEssence,
+	PoolLocator, ScheduledUpdateDetails,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
