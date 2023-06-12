@@ -20,10 +20,6 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::Get, DispatchError, TokenError};
-use xcm::{
-	latest::{MultiLocation, NetworkId},
-	prelude::{AccountKey20, GlobalConsensus, X2},
-};
 
 use crate::{xcm::XcmMetadata, EVMChainId};
 
@@ -277,23 +273,6 @@ pub enum ConnectorsWrappedToken {
 		/// The token contract address
 		address: [u8; 20],
 	},
-}
-
-impl From<ConnectorsWrappedToken> for MultiLocation {
-	fn from(token: ConnectorsWrappedToken) -> Self {
-		match token {
-			ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
-				parents: 0,
-				interior: X2(
-					GlobalConsensus(NetworkId::Ethereum { chain_id }),
-					AccountKey20 {
-						network: None,
-						key: address,
-					},
-				),
-			},
-		}
-	}
 }
 
 #[cfg(test)]

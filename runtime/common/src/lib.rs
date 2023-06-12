@@ -484,4 +484,22 @@ pub mod connectors {
 			}
 		}
 	}
+
+	impl<Index: Get<PalletIndex>> Convert<ConnectorsWrappedToken, MultiLocation> for ConnectorsWrappedTokenConvert<Index> {
+		fn convert(token: ConnectorsWrappedToken) -> MultiLocation {
+				match token {
+					ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
+						parents: 0,
+						interior: X3(
+							PalletInstance(Index::get()),
+							GlobalConsensus(NetworkId::Ethereum { chain_id }),
+							AccountKey20 {
+								network: None,
+								key: address,
+							},
+						),
+					},
+			}
+		}
+	}
 }
