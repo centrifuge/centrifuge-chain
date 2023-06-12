@@ -279,27 +279,6 @@ pub enum ConnectorsWrappedToken {
 	},
 }
 
-impl TryFrom<MultiLocation> for ConnectorsWrappedToken {
-	type Error = ();
-
-	fn try_from(location: MultiLocation) -> Result<Self, Self::Error> {
-		match location {
-			MultiLocation {
-				parents: 0,
-				interior:
-					X2(
-						GlobalConsensus(NetworkId::Ethereum { chain_id }),
-						AccountKey20 {
-							network: None,
-							key: address,
-						},
-					),
-			} => Ok(Self::EVM { chain_id, address }),
-			_ => Err(()),
-		}
-	}
-}
-
 impl From<ConnectorsWrappedToken> for MultiLocation {
 	fn from(token: ConnectorsWrappedToken) -> Self {
 		match token {
