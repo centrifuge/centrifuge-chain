@@ -456,49 +456,56 @@ pub mod changes {
 
 pub mod connectors {
 	use std::marker::PhantomData;
+
+	use cfg_primitives::types::PalletIndex;
+	use cfg_types::tokens::ConnectorsWrappedToken;
 	use sp_core::Get;
 	use sp_runtime::traits::Convert;
-	use cfg_primitives::types::PalletIndex;
-	use xcm::latest::{MultiLocation, NetworkId};
-	use cfg_types::tokens::ConnectorsWrappedToken;
-	use xcm::prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3};
+	use xcm::{
+		latest::{MultiLocation, NetworkId},
+		prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
+	};
 
 	pub struct ConnectorsWrappedTokenConvert<Index: Get<PalletIndex>>(PhantomData<Index>);
 
-	impl<Index: Get<PalletIndex>> Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>> for ConnectorsWrappedTokenConvert<Index> {
+	impl<Index: Get<PalletIndex>> Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>
+		for ConnectorsWrappedTokenConvert<Index>
+	{
 		fn convert(location: MultiLocation) -> Result<ConnectorsWrappedToken, ()> {
 			match location {
 				MultiLocation {
 					parents: 0,
 					interior:
-					X3(
-						PalletInstance(pallet_instance),
-						GlobalConsensus(NetworkId::Ethereum { chain_id }),
-						AccountKey20 {
-							network: None,
-							key: address,
-						},
-					),
-				} if pallet_instance == Index::get() => Ok(ConnectorsWrappedToken::EVM { chain_id, address }),
-				_ => Err(()),
-			}
-		}
-	}
-
-	impl<Index: Get<PalletIndex>> Convert<ConnectorsWrappedToken, MultiLocation> for ConnectorsWrappedTokenConvert<Index> {
-		fn convert(token: ConnectorsWrappedToken) -> MultiLocation {
-				match token {
-					ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
-						parents: 0,
-						interior: X3(
-							PalletInstance(Index::get()),
+						X3(
+							PalletInstance(pallet_instance),
 							GlobalConsensus(NetworkId::Ethereum { chain_id }),
 							AccountKey20 {
 								network: None,
 								key: address,
 							},
 						),
-					},
+				} if pallet_instance == Index::get() => Ok(ConnectorsWrappedToken::EVM { chain_id, address }),
+				_ => Err(()),
+			}
+		}
+	}
+
+	impl<Index: Get<PalletIndex>> Convert<ConnectorsWrappedToken, MultiLocation>
+		for ConnectorsWrappedTokenConvert<Index>
+	{
+		fn convert(token: ConnectorsWrappedToken) -> MultiLocation {
+			match token {
+				ConnectorsWrappedToken::EVM { chain_id, address } => MultiLocation {
+					parents: 0,
+					interior: X3(
+						PalletInstance(Index::get()),
+						GlobalConsensus(NetworkId::Ethereum { chain_id }),
+						AccountKey20 {
+							network: None,
+							key: address,
+						},
+					),
+				},
 			}
 		}
 	}
