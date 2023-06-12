@@ -459,7 +459,7 @@ pub mod connectors {
 
 	use cfg_primitives::types::PalletIndex;
 	use cfg_types::tokens::ConnectorsWrappedToken;
-	use sp_core::{Get, parameter_types};
+	use sp_core::{parameter_types, Get};
 	use sp_runtime::traits::Convert;
 	use xcm::{
 		latest::{MultiLocation, NetworkId},
@@ -535,25 +535,32 @@ pub mod connectors {
 				GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
 				AccountKey20 {
 					network: None,
-					key: ADDRESS
+					key: ADDRESS,
 				},
 			),
 		};
 
 		assert_eq!(
-			<ConnectorsWrappedTokenConvert<Index> as Convert<ConnectorsWrappedToken, MultiLocation>>::convert(wrapped_token),
+			<ConnectorsWrappedTokenConvert<Index> as Convert<
+				ConnectorsWrappedToken,
+				MultiLocation,
+			>>::convert(wrapped_token),
 			location
 		);
 
 		assert_eq!(
-			<ConnectorsWrappedTokenConvert<Index> as Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>>::convert(location),
+			<ConnectorsWrappedTokenConvert<Index> as Convert<
+				MultiLocation,
+				Result<ConnectorsWrappedToken, ()>,
+			>>::convert(location),
 			Ok(wrapped_token)
 		);
 	}
 
-	/// Verify that ConnectorsWrappedTokenConvert will fail to convert a location to a ConnectorsWrappedToken
-	/// if the PalletInstance value doesn't match the Index generic param, i.e, fail if the token
-	/// doesn't appear to be under the Connectors pallet and thus be a connectors wrapped token.
+	/// Verify that ConnectorsWrappedTokenConvert will fail to convert a
+	/// location to a ConnectorsWrappedToken if the PalletInstance value doesn't
+	/// match the Index generic param, i.e, fail if the token doesn't appear to
+	/// be under the Connectors pallet and thus be a connectors wrapped token.
 	#[test]
 	fn connectors_wrapped_token_convert_fail() {
 		use sp_runtime::traits::Convert;
@@ -572,13 +579,16 @@ pub mod connectors {
 				GlobalConsensus(NetworkId::Ethereum { chain_id: CHAIN_ID }),
 				AccountKey20 {
 					network: None,
-					key: ADDRESS
+					key: ADDRESS,
 				},
 			),
 		};
 
 		assert_eq!(
-			<ConnectorsWrappedTokenConvert<Index> as Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>>::convert(location),
+			<ConnectorsWrappedTokenConvert<Index> as Convert<
+				MultiLocation,
+				Result<ConnectorsWrappedToken, ()>,
+			>>::convert(location),
 			Err(())
 		);
 	}
