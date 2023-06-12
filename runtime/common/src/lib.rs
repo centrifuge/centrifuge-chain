@@ -414,26 +414,22 @@ pub mod changes {
 		fn from(value: RuntimeChange<T>) -> Self {
 			let RuntimeChange::Loan(LoanChangeOf::<T>::Loan(_, loan_mutation)) = value;
 
-			let one_epoch = 0; //TODO: what does it mean?
+			let epoch = Requirement::DelayTime(0); //TODO: what does it mean?
+			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
+			let blocked = Requirement::BlockedByLockedRedemptions;
 
 			// Requirements gathered from
 			// <https://docs.google.com/spreadsheets/d/1RJ5RLobAdumXUK7k_ugxy2eDAwI5akvtuqUM2Tyn5ts>
 			let requirements = match loan_mutation {
-				LoanMutation::Maturity(_)
-				| LoanMutation::InterestPayments(_)
-				| LoanMutation::PayDownSchedule(_) => vec![
-					Requirement::DelayTime(SECONDS_PER_WEEK as u32),
-					Requirement::BlockedByLockedRedemptions,
-				],
+				LoanMutation::Maturity(_) => vec![week, blocked],
+				LoanMutation::InterestPayments(_) => vec![week, blocked],
+				LoanMutation::PayDownSchedule(_) => vec![week, blocked],
 				LoanMutation::Internal(mutation) => match mutation {
-					InternalMutation::ValuationMethod(_) => vec![
-						Requirement::DelayTime(SECONDS_PER_WEEK as u32),
-						Requirement::BlockedByLockedRedemptions,
-					],
-					InternalMutation::InterestRate(_)
-					| InternalMutation::ProbabilityOfDefault(_)
-					| InternalMutation::LossGivenDefault(_)
-					| InternalMutation::DiscountRate(_) => vec![Requirement::DelayTime(one_epoch)],
+					InternalMutation::InterestRate(_) => vec![epoch],
+					InternalMutation::ValuationMethod(_) => vec![week, blocked],
+					InternalMutation::ProbabilityOfDefault(_) => vec![epoch],
+					InternalMutation::LossGivenDefault(_) => vec![epoch],
+					InternalMutation::DiscountRate(_) => vec![epoch],
 				},
 			};
 
