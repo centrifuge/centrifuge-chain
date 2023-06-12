@@ -383,6 +383,8 @@ pub mod pallet {
 		MaxActiveLoansReached,
 		/// Emits when an amount used is not multiple of the current price
 		AmountNotMultipleOfPrice,
+		/// The Change Id does not belong to a loan change
+		NoLoanChangeId,
 		/// Emits when the loan is incorrectly specified and can not be created
 		CreateLoanError(CreateLoanError),
 		/// Emits when the loan can not be borrowed from
@@ -763,7 +765,7 @@ pub mod pallet {
 
 			let Change::Loan(loan_id, mutation) = T::ChangeGuard::released(pool_id, change_id)?
 				.try_into()
-				.map_err(|_| DispatchError::Other("Change is not a pallet-loans change"))?;
+				.map_err(|_| Error::<T>::NoLoanChangeId)?;
 
 			let (_, _count) = Self::update_active_loan(pool_id, loan_id, |loan| {
 				loan.mutate_with(mutation.clone())
