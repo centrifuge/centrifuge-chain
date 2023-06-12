@@ -358,6 +358,9 @@ pub mod changes {
 		/// Required time the change must be noted to be able to release it.
 		DelayTime(u32),
 
+		/// The change requires to be at least one epoch noted to be released.
+		NextEpoch,
+
 		/// Evaluates if the change must be blocked if redemptions are locked.
 		BlockedByLockedRedemptions,
 	}
@@ -372,6 +375,9 @@ pub mod changes {
 			match self.0 {
 				Requirement::DelayTime(_) => {
 					matches!(other.0, Requirement::DelayTime(_))
+				}
+				Requirement::NextEpoch => {
+					matches!(other.0, Requirement::NextEpoch)
 				}
 				Requirement::BlockedByLockedRedemptions => {
 					matches!(other.0, Requirement::BlockedByLockedRedemptions)

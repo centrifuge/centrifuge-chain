@@ -414,7 +414,7 @@ pub mod changes {
 		fn from(value: RuntimeChange<T>) -> Self {
 			let RuntimeChange::Loan(LoanChangeOf::<T>::Loan(_, loan_mutation)) = value;
 
-			let epoch = Requirement::DelayTime(0); //TODO: what does it mean?
+			let epoch = Requirement::NextEpoch;
 			let week = Requirement::DelayTime(SECONDS_PER_WEEK as u32);
 			let blocked = Requirement::BlockedByLockedRedemptions;
 
