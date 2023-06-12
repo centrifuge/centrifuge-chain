@@ -23,7 +23,7 @@ use sp_runtime::{traits::Get, DispatchError, TokenError};
 
 use crate::xcm::XcmMetadata;
 
-/// The type for all Currency ids that our chains handle.
+/// The type for all Currency ids that our chains handles.
 /// Foreign assets gather all the tokens that are native to other chains, such
 /// as DOT, AUSD, UDST, etc. NOTE: We MUST never change the `#[codec(index =
 /// _)]`  below as doing so results in corrupted storage keys; if changing the
