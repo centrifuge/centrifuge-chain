@@ -11,10 +11,12 @@
 // GNU General Public License for more details.
 
 use cfg_traits::{
-	CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue, TrancheCurrency, UpdateState,
+	changes::ChangeGuard, CurrencyPair, InvestmentAccountant, PoolUpdateGuard, PriceValue,
+	TrancheCurrency, UpdateState,
 };
 use cfg_types::{epoch::EpochState, investments::InvestmentInfo};
 use frame_support::traits::Contains;
+use sp_runtime::traits::Hash;
 
 use super::*;
 use crate::{
@@ -364,6 +366,32 @@ impl<T: Config> InvestmentAccountant<T::AccountId> for Pallet<T> {
 		let _details = Pool::<T>::get(id.of_pool()).ok_or(Error::<T>::NoSuchPool)?;
 
 		T::Tokens::burn_from(id.into(), seller, amount).map(|_| ())
+	}
+}
+
+impl<T: Config> ChangeGuard for Pallet<T> {
+	type Change = T::ExtChange;
+	type ChangeId = T::Hash;
+	type PoolId = T::PoolId;
+
+	fn note(pool_id: Self::PoolId, change: Self::Change) -> Result<Self::ChangeId, DispatchError> {
+		let change_id: Self::ChangeId = T::Hashing::hash(&change.encode());
+		ExtChanges::<T>::insert(pool_id, change_id, change);
+		Ok(change_id)
+	}
+
+	fn released(
+		pool_id: Self::PoolId,
+		change_id: Self::ChangeId,
+	) -> Result<Self::Change, DispatchError> {
+		let change =
+			ExtChanges::<T>::get(pool_id, change_id).ok_or(Error::<T>::ExtChangeNotFound)?;
+		let _pool_change: ExtPoolChange = change.clone().into();
+
+		// TODO: analize if pool_change is ok to be released
+
+		ExtChanges::<T>::remove(pool_id, change_id);
+		Ok(change)
 	}
 }
 

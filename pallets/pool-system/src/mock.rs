@@ -40,7 +40,7 @@ use sp_runtime::{
 
 use crate::{
 	self as pallet_pool_system,
-	pool_types::{PoolDetails, ScheduledUpdateDetails},
+	pool_types::{ExtPoolChange, PoolDetails, ScheduledUpdateDetails},
 	Config, DispatchResult,
 };
 
@@ -311,6 +311,7 @@ impl Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type EpochId = PoolEpochId;
+	type ExtChange = ExtPoolChange;
 	type Investments = Investments;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type MaxTokenNameLength = MaxTokenNameLength;
