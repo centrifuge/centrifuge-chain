@@ -466,6 +466,11 @@ pub mod connectors {
 		prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
 	};
 
+	/// This type offers conversions between the xcm MultiLocation and our
+	/// ConnectorsWrappedToken types. This conversion is runtime-dependant, as
+	/// it needs to include the Connectors pallet index on the target runtime.
+	/// Therefore, we have `Index` as a generic type param that we use to unwrap
+	/// said pallet index and correctly convert between the two types.
 	pub struct ConnectorsWrappedTokenConvert<Index: Get<PalletIndex>>(PhantomData<Index>);
 
 	impl<Index: Get<PalletIndex>> Convert<MultiLocation, Result<ConnectorsWrappedToken, ()>>

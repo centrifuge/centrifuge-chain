@@ -255,12 +255,11 @@ impl CrossChainTransferability {
 	}
 }
 
-/// Connectors wrapped tokens
+/// Connectors-wrapped tokens
 ///
 /// Currently, Connectors are only deployed on EVM-based chains and therefore
-/// the only supported type of connectors-wrapped tokens are Evm tokens. In the
-/// far future, we might support wrapped tokens from other chains, such as
-/// Cosmos, Avalanche, etc.
+/// we only support EVM tokens. In the far future, we might support wrapped
+/// tokens from other chains, such as Cosmos, Avalanche, etc.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
