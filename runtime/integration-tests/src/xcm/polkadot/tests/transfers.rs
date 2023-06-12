@@ -25,7 +25,7 @@
 use centrifuge_runtime::{Balances, OrmlAssetRegistry, OrmlTokens, RuntimeOrigin, XTokens};
 use cfg_primitives::{constants::currency_decimals, parachains, Balance};
 use cfg_types::{
-	tokens::{CurrencyId, CustomMetadata},
+	tokens::{CrossChainTransferability, CurrencyId, CustomMetadata},
 	xcm::XcmMetadata,
 };
 use frame_support::assert_ok;
@@ -42,13 +42,16 @@ use xcm::{
 use xcm_emulator::TestExt;
 
 use super::register_dot;
-use crate::xcm::polkadot::{
-	setup::{
-		acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
-		AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+use crate::xcm::{
+	polkadot::{
+		setup::{
+			acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, ALICE,
+			AUSD_ASSET_ID, BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
+		},
+		test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
+		tests::register_ausd,
 	},
-	test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet},
-	tests::register_ausd,
+	xcm_metadata,
 };
 
 /*
@@ -85,7 +88,10 @@ fn transfer_cfg_to_sibling() {
 				general_key(parachains::polkadot::centrifuge::CFG_KEY),
 			),
 		))),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 
 	Centrifuge::execute_with(|| {
@@ -389,11 +395,11 @@ fn transfer_foreign_sibling_to_centrifuge() {
 		existential_deposit: 1_000_000_000_000,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
 		additional: CustomMetadata {
-			xcm: XcmMetadata {
+			transferability: CrossChainTransferability::Xcm(XcmMetadata {
 				// We specify a custom fee_per_second and verify below that this value is
 				// used when XCM transfer fees are charged for this token.
 				fee_per_second: Some(8420000000000000000),
-			},
+			}),
 			..CustomMetadata::default()
 		},
 	};
@@ -451,7 +457,13 @@ fn transfer_foreign_sibling_to_centrifuge() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			bob_balance,
-			transfer_amount - calc_fee(meta.additional.xcm.fee_per_second.unwrap())
+			transfer_amount
+				- calc_fee(
+					xcm_metadata(meta.additional.transferability)
+						.unwrap()
+						.fee_per_second
+						.unwrap()
+				)
 		);
 		// Sanity check to ensure the calculated is what is expected
 		assert_eq!(bob_balance, 993264000000000000);
@@ -476,7 +488,10 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		symbol: "WUSDC".into(),
 		existential_deposit: 1,
 		location: Some(VersionedMultiLocation::V3(asset_location)),
-		additional: CustomMetadata::default(),
+		additional: CustomMetadata {
+			transferability: CrossChainTransferability::Xcm(Default::default()),
+			..CustomMetadata::default()
+		},
 	};
 	let transfer_amount = foreign(12, meta.decimals);
 	let alice_initial_balance = transfer_amount * 100;
