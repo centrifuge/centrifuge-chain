@@ -251,7 +251,7 @@ pub enum CrossChainTransferability {
 
 impl CrossChainTransferability {
 	pub fn includes_xcm(self) -> bool {
-		self != Self::None && matches!(self, Self::Xcm(..) | Self::All(..))
+		matches!(self, Self::Xcm(..) | Self::All(..))
 	}
 }
 

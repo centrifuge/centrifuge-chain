@@ -19,10 +19,12 @@ use cfg_primitives::{
 use cfg_traits::ops::{EnsureAdd, EnsureDiv};
 use cfg_types::fixed_point::Rate;
 use pallet_loans::{
-	loan::LoanInfo,
-	pricing::{
-		internal::{InternalPricing, MaxBorrowAmount},
-		Pricing,
+	entities::{
+		loans::LoanInfo,
+		pricing::{
+			internal::{InternalPricing, MaxBorrowAmount},
+			Pricing,
+		},
 	},
 	types::{
 		valuation::{DiscountedCashFlow, ValuationMethod},
