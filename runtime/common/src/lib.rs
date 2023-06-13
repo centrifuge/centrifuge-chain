@@ -455,12 +455,11 @@ pub mod changes {
 }
 
 pub mod connectors {
-	use sp_std::marker::PhantomData;
-
 	use cfg_primitives::types::PalletIndex;
 	use cfg_types::tokens::ConnectorsWrappedToken;
 	use sp_core::Get;
 	use sp_runtime::traits::Convert;
+	use sp_std::marker::PhantomData;
 	use xcm::{
 		latest::{MultiLocation, NetworkId},
 		prelude::{AccountKey20, GlobalConsensus, PalletInstance, X3},
