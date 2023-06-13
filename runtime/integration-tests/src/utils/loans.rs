@@ -149,7 +149,7 @@ pub fn issue_default_loan(
 /// Should always be used instead of manually issuing a loan as this keeps the
 /// `NftManager` in sync.
 ///
-/// * owner should also be `PricingAdmin`
+/// * owner should also be `PricingAdmin` todo(nuno): what's the new role for this now?
 /// * owner should be owner of `CollateralClass`
 ///
 /// Does create the following calls:

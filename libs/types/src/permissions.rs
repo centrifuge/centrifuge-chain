@@ -35,7 +35,6 @@ use sp_std::{
 pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	PoolAdmin,
 	Borrower,
-	PricingAdmin,
 	LiquidityAdmin,
 	InvestorAdmin,
 	LoanAdmin,
@@ -91,7 +90,6 @@ bitflags::bitflags! {
 	pub struct PoolAdminRoles: u32 {
 		const POOL_ADMIN = 0b00000001;
 		const BORROWER  = 0b00000010;
-		const PRICING_ADMIN = 0b00000100;
 		const LIQUIDITY_ADMIN = 0b00001000;
 		const INVESTOR_ADMIN = 0b00010000;
 		const RISK_ADMIN = 0b00100000;
@@ -218,7 +216,6 @@ where
 					self.pool_admin.contains(PoolAdminRoles::LIQUIDITY_ADMIN)
 				}
 				PoolRole::PoolAdmin => self.pool_admin.contains(PoolAdminRoles::POOL_ADMIN),
-				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
 				PoolRole::InvestorAdmin => self.pool_admin.contains(PoolAdminRoles::INVESTOR_ADMIN),
 				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
@@ -257,7 +254,6 @@ where
 					Ok(self.pool_admin.remove(PoolAdminRoles::LIQUIDITY_ADMIN))
 				}
 				PoolRole::PoolAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::POOL_ADMIN)),
-				PoolRole::PricingAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::PRICING_ADMIN)),
 				PoolRole::InvestorAdmin => {
 					Ok(self.pool_admin.remove(PoolAdminRoles::INVESTOR_ADMIN))
 				}
@@ -291,7 +287,6 @@ where
 					Ok(self.pool_admin.insert(PoolAdminRoles::LIQUIDITY_ADMIN))
 				}
 				PoolRole::PoolAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::POOL_ADMIN)),
-				PoolRole::PricingAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::PRICING_ADMIN)),
 				PoolRole::InvestorAdmin => {
 					Ok(self.pool_admin.insert(PoolAdminRoles::INVESTOR_ADMIN))
 				}

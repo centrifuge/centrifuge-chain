@@ -283,12 +283,6 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<RuntimeCall> {
 		pool_id,
 		PoolRole::InvestorAdmin,
 	));
-	calls.push(permission_call(
-		PoolRole::PoolAdmin,
-		admin.clone(),
-		pool_id,
-		PoolRole::PricingAdmin,
-	));
 
 	calls
 }
@@ -476,7 +470,6 @@ mod with_ext {
 	///
 	/// **Needs: Mut Externalities to persist**
 	pub fn permit_admin(id: PoolId) {
-		permission_for(Keyring::Admin.into(), id, PoolRole::PricingAdmin);
 		permission_for(Keyring::Admin.into(), id, PoolRole::LiquidityAdmin);
 		permission_for(Keyring::Admin.into(), id, PoolRole::LoanAdmin);
 		permission_for(Keyring::Admin.into(), id, PoolRole::InvestorAdmin);
