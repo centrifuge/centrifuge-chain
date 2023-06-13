@@ -455,7 +455,7 @@ pub mod changes {
 }
 
 pub mod connectors {
-	use std::marker::PhantomData;
+	use sp_std::marker::PhantomData;
 
 	use cfg_primitives::types::PalletIndex;
 	use cfg_types::tokens::ConnectorsWrappedToken;
