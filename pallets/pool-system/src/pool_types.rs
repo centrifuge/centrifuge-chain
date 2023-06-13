@@ -402,6 +402,8 @@ pub mod changes {
 		}
 	}
 
+	/// Defines a change proposal with a list of requirements that must be
+	/// satisfied.
 	#[derive(
 		Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen,
 	)]
