@@ -515,7 +515,9 @@ pub mod pallet {
 		/// A user has tried to create a pool with an invalid currency
 		InvalidCurrency,
 		/// The external change was not found for the specified ChangeId.
-		ExtChangeNotFound,
+		ChangeNotFound,
+		/// The external change was found for is not ready yet to be released.
+		ChangeNotReady,
 	}
 
 	#[pallet::call]

@@ -396,7 +396,8 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 		change_id: Self::ChangeId,
 	) -> Result<Self::Change, DispatchError> {
 		let (_submitted_time, change) =
-			Changes::<T>::get(pool_id, change_id).ok_or(Error::<T>::ExtChangeNotFound)?;
+			Changes::<T>::get(pool_id, change_id).ok_or(Error::<T>::ChangeNotFound)?;
+
 		let _pool_change: PoolChangeProposal = change.clone().into();
 
 		// TODO: analize if pool_change is ok to be released

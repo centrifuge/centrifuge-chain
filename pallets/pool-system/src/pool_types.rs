@@ -358,7 +358,8 @@ pub mod changes {
 		/// Required time the change must be noted to be able to release it.
 		DelayTime(u32),
 
-		/// The change requires to be at least one epoch noted to be released.
+		/// The change requires to be at least until the current epoch
+		/// finalizes.
 		NextEpoch,
 
 		/// Evaluates if the change must be blocked if redemptions are locked.

@@ -2328,6 +2328,155 @@ fn create_tranche_token_metadata() {
 	});
 }
 
+mod changes {
+	use cfg_traits::changes::ChangeGuard;
+	use sp_std::{collections::btree_set::BTreeSet, time::Duration};
+
+	use super::*;
+	use crate::{
+		pool_types::changes::{PoolChangeProposal, Requirement},
+		Event,
+	};
+
+	#[test]
+	fn no_overwriten_changes() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([]);
+			let change_id_1 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change_id_2 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_3 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			// Same change but different moment;
+			Timestamp::set_timestamp(Timestamp::get() + Duration::from_secs(1).as_millis() as u64);
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_4 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let ids = [change_id_1, change_id_2, change_id_3, change_id_4];
+			assert_eq!(BTreeSet::from(ids.clone()).len(), ids.len());
+		});
+	}
+
+	#[test]
+	fn overwriten_changes() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_1 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id_2 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			assert_eq!(change_id_1, change_id_2)
+		});
+	}
+
+	#[test]
+	fn event() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change.clone()).unwrap();
+
+			assert_eq!(
+				System::events().last().unwrap().event,
+				RuntimeEvent::PoolSystem(Event::ProposedChange {
+					pool_id: DEFAULT_POOL_ID,
+					change_id,
+					change,
+				})
+			);
+		});
+	}
+
+	#[test]
+	fn base_case() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn release_with_wrong_change_id() {
+		new_test_ext().execute_with(|| {
+			// ChangeId not found
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, Default::default()),
+				Error::<Runtime>::ChangeNotFound
+			);
+
+			let change = PoolChangeProposal::new([]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change.clone()).unwrap();
+
+			// ChangeId not found in the pool
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID + 1, change_id),
+				Error::<Runtime>::ChangeNotFound
+			);
+
+			// Already released
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotFound
+			);
+		});
+	}
+
+	/*
+	#[test]
+	fn requirement_delay_time() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			// TODO: make it ready
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn requirement_blocked_by_locked_redemptions() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			// TODO: make it ready
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn requirement_next_epoch() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			// TODO: make it ready
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+	*/
+}
+
 #[test]
 #[cfg(feature = "runtime-benchmarks")]
 fn benchmark_pool() {
