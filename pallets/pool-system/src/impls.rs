@@ -21,8 +21,8 @@ use sp_runtime::traits::Hash;
 use super::*;
 use crate::{
 	pool_types::{
-		changes::PoolChangeProposal, PoolDetails, PoolParameters, PoolStatus, ReserveDetails,
-		ScheduledUpdateDetails,
+		changes::{PoolChangeProposal, Requirement},
+		PoolDetails, PoolParameters, PoolStatus, ReserveDetails, ScheduledUpdateDetails,
 	},
 	tranches::{TrancheInput, TrancheLoc, TrancheUpdate, Tranches},
 };
@@ -395,15 +395,34 @@ impl<T: Config> ChangeGuard for Pallet<T> {
 		pool_id: Self::PoolId,
 		change_id: Self::ChangeId,
 	) -> Result<Self::Change, DispatchError> {
-		let (_submitted_time, change) =
+		let (submitted_time, change) =
 			Changes::<T>::get(pool_id, change_id).ok_or(Error::<T>::ChangeNotFound)?;
 
-		let _pool_change: PoolChangeProposal = change.clone().into();
+		let pool_change: PoolChangeProposal = change.clone().into();
 
-		// TODO: analize if pool_change is ok to be released
+		let mut allowed = true;
+		for requirement in pool_change.requirements() {
+			allowed &= match requirement {
+				Requirement::NextEpoch => {
+					match Pool::<T>::get(pool_id) {
+						Some(details) => submitted_time < details.epoch.last_closed,
+						None => true, // If the pool doesn't exists, there are no restrictions.
+					}
+				}
+				Requirement::DelayTime(secs) => {
+					Self::now().saturating_sub(submitted_time) >= secs as u64
+				}
+				// TODO
+				Requirement::BlockedByLockedRedemptions => false,
+			}
+		}
 
-		Changes::<T>::remove(pool_id, change_id);
-		Ok(change)
+		allowed
+			.then(|| {
+				Changes::<T>::remove(pool_id, change_id);
+				change
+			})
+			.ok_or(Error::<T>::ChangeNotReady.into())
 	}
 }
 

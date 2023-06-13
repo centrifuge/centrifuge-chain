@@ -356,6 +356,7 @@ pub mod changes {
 	)]
 	pub enum Requirement {
 		/// Required time the change must be noted to be able to release it.
+		/// Measured in seconds.
 		DelayTime(u32),
 
 		/// The change requires to be at least until the current epoch
@@ -420,6 +421,10 @@ pub mod changes {
                         "Cannot exist more unique requirements in a set than `MaxRequirements`, qed",
                     ),
             }
+		}
+
+		pub fn requirements(&self) -> impl Iterator<Item = Requirement> + '_ {
+			self.requirements.iter().cloned().map(|req| req.0)
 		}
 	}
 }

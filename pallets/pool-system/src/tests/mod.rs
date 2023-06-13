@@ -39,6 +39,64 @@ use crate::{
 	PoolState, UnhealthyState,
 };
 
+pub mod util {
+	use sp_std::time::Duration;
+
+	use super::*;
+
+	pub fn advance_secs(secs: u64) {
+		Timestamp::set_timestamp(Timestamp::get() + Duration::from_secs(secs).as_millis() as u64);
+	}
+
+	pub mod default_pool {
+		const POOL_OWNER: MockAccountId = 2;
+		use super::*;
+
+		pub fn create() {
+			PoolSystem::create(
+				2,
+				2,
+				DEFAULT_POOL_ID,
+				vec![
+					TrancheInput {
+						tranche_type: TrancheType::Residual,
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+					TrancheInput {
+						tranche_type: TrancheType::NonResidual {
+							interest_rate_per_sec: Rate::default(),
+							min_risk_buffer: Perquintill::default(),
+						},
+						seniority: None,
+						metadata: TrancheMetadata {
+							token_name: BoundedVec::default(),
+							token_symbol: BoundedVec::default(),
+						},
+					},
+				],
+				CurrencyId::AUSD,
+				0,
+			)
+			.unwrap();
+		}
+
+		pub fn close_epoch() {
+			Pool::<Runtime>::try_mutate(DEFAULT_POOL_ID, |maybe_pool| -> Result<(), ()> {
+				maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+				maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
+				Ok(())
+			})
+			.unwrap();
+
+			PoolSystem::close_epoch(RuntimeOrigin::signed(POOL_OWNER), DEFAULT_POOL_ID).unwrap();
+		}
+	}
+}
+
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
@@ -2330,7 +2388,7 @@ fn create_tranche_token_metadata() {
 
 mod changes {
 	use cfg_traits::changes::ChangeGuard;
-	use sp_std::{collections::btree_set::BTreeSet, time::Duration};
+	use sp_std::collections::btree_set::BTreeSet;
 
 	use super::*;
 	use crate::{
@@ -2351,7 +2409,7 @@ mod changes {
 			let change_id_3 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 
 			// Same change but different moment;
-			Timestamp::set_timestamp(Timestamp::get() + Duration::from_secs(1).as_millis() as u64);
+			util::advance_secs(1);
 			let change = PoolChangeProposal::new([Requirement::DelayTime(2)]);
 			let change_id_4 = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 
@@ -2391,15 +2449,6 @@ mod changes {
 	}
 
 	#[test]
-	fn base_case() {
-		new_test_ext().execute_with(|| {
-			let change = PoolChangeProposal::new([]);
-			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
-			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
-		});
-	}
-
-	#[test]
 	fn release_with_wrong_change_id() {
 		new_test_ext().execute_with(|| {
 			// ChangeId not found
@@ -2426,34 +2475,29 @@ mod changes {
 		});
 	}
 
-	/*
 	#[test]
-	fn requirement_delay_time() {
+	fn no_requirements() {
 		new_test_ext().execute_with(|| {
-			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change = PoolChangeProposal::new([]);
 			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
-			assert_noop!(
-				PoolSystem::released(DEFAULT_POOL_ID, change_id),
-				Error::<Runtime>::ChangeNotReady
-			);
-
-			// TODO: make it ready
-
 			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
 		});
 	}
 
 	#[test]
-	fn requirement_blocked_by_locked_redemptions() {
+	fn requirement_delay_time() {
 		new_test_ext().execute_with(|| {
-			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change = PoolChangeProposal::new([Requirement::DelayTime(23)]);
 			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			util::advance_secs(22);
+
 			assert_noop!(
 				PoolSystem::released(DEFAULT_POOL_ID, change_id),
 				Error::<Runtime>::ChangeNotReady
 			);
 
-			// TODO: make it ready
+			util::advance_secs(1);
 
 			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
 		});
@@ -2462,19 +2506,74 @@ mod changes {
 	#[test]
 	fn requirement_next_epoch() {
 		new_test_ext().execute_with(|| {
-			let change = PoolChangeProposal::new([Requirement::DelayTime(1)]);
+			let change = PoolChangeProposal::new([Requirement::NextEpoch]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			util::default_pool::create();
+
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady
+			);
+
+			util::advance_secs(1);
+
+			util::default_pool::close_epoch();
+
+			util::advance_secs(1);
+
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn requirement_next_epoch_no_pool() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([Requirement::NextEpoch]);
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			// If there is no is permissive
+			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+		});
+	}
+
+	#[test]
+	fn requirement_blocked_by_locked_redemptions() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([Requirement::BlockedByLockedRedemptions]);
 			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
 			assert_noop!(
 				PoolSystem::released(DEFAULT_POOL_ID, change_id),
 				Error::<Runtime>::ChangeNotReady
 			);
 
-			// TODO: make it ready
+			/*
+			// TODO: make the change ready
 
 			assert_ok!(PoolSystem::released(DEFAULT_POOL_ID, change_id));
+			*/
 		});
 	}
-	*/
+
+	#[test]
+	fn several_requirements() {
+		new_test_ext().execute_with(|| {
+			let change = PoolChangeProposal::new([
+				Requirement::DelayTime(1),
+				Requirement::DelayTime(5),
+				Requirement::DelayTime(3),
+			]);
+
+			let change_id = PoolSystem::note(DEFAULT_POOL_ID, change).unwrap();
+
+			util::advance_secs(4);
+
+			assert_noop!(
+				PoolSystem::released(DEFAULT_POOL_ID, change_id),
+				Error::<Runtime>::ChangeNotReady // Blocked by the second requirement
+			);
+		});
+	}
 }
 
 #[test]
