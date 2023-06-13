@@ -118,7 +118,8 @@ use xcm_executor::XcmExecutor;
 use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
 use crate::xcm::{
-	Ancestry, BaseXcmWeight, SelfLocation, XcmConfig, XcmOriginToTransactDispatchOrigin, XcmRouter,
+	BaseXcmWeight, FungiblesTransactor, SelfLocation, UniversalLocation, XcmConfig,
+	XcmOriginToTransactDispatchOrigin, XcmRouter,
 };
 
 pub mod evm;

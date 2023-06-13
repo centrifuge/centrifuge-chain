@@ -34,7 +34,7 @@ impl Codec for MessageMock {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use cfg_traits::connectors::InboundQueue;
+	use cfg_traits::connectors::{Codec, InboundQueue};
 	use cfg_types::domain_address::Domain;
 	use frame_support::pallet_prelude::*;
 	use mock_builder::{execute_call, register_call};
@@ -42,7 +42,10 @@ pub mod pallet {
 	use crate::connectors::MessageMock;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {}
+	pub trait Config: frame_system::Config {
+		type Domain;
+		type Message;
+	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -63,8 +66,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> InboundQueue for Pallet<T> {
-		type Message = MessageMock;
-		type Sender = Domain;
+		type Message = T::Message;
+		type Sender = T::Domain;
 
 		fn submit(sender: Self::Sender, msg: Self::Message) -> DispatchResult {
 			execute_call!((sender, msg))

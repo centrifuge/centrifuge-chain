@@ -7459,7 +7459,7 @@ dependencies = [
 [[package]]
 name = "pallet-evm-precompile-simple"
 version = "2.0.0-dev"
-source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.37#4e080c6ace4de90226f4923b196bf3089cb6712f"
+source = "git+https://github.com/PureStake/frontier?branch=moonbeam-polkadot-v0.9.38#df4e329ef9b1ef54d83114deff98124139f1dd6d"
 dependencies = [
  "fp-evm",
  "ripemd",
