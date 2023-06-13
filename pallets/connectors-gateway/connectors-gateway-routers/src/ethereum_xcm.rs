@@ -15,12 +15,17 @@ use core::convert::TryFrom;
 use cfg_traits::connectors::Codec;
 use codec::{Decode, Encode, MaxEncodedLen};
 use ethabi::{Bytes, Contract};
-use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError, traits::OriginTrait};
+use frame_support::{
+	dispatch::DispatchResult, sp_runtime::DispatchError, traits::OriginTrait, weights::Weight,
+};
 use pallet_xcm_transactor::{Currency, CurrencyPayment, TransactWeights};
 use scale_info::TypeInfo;
 use sp_core::{bounded::BoundedVec, ConstU32, H160, U256};
 use sp_std::{boxed::Box, marker::PhantomData, vec, vec::Vec};
-use xcm::{v0::OriginKind, VersionedMultiLocation};
+use xcm::{
+	v2::{MultiLocation, OriginKind},
+	VersionedMultiLocation,
+};
 
 use crate::{AccountIdOf, CurrencyIdOf, MessageOf};
 
@@ -78,8 +83,9 @@ where
 				//   `pallet_xcm_transactor::Pallet::<T>::set_fee_per_second`
 				//
 				//  accordingly when setting the router in the gateway pallet?
-				transact_required_weight_at_most: self.xcm_domain.max_gas_limit * 25_000
-					+ 100_000_000,
+				transact_required_weight_at_most: Weight::from_all(
+					self.xcm_domain.max_gas_limit * 25_000 + 100_000_000,
+				),
 				overall_weight: None,
 			},
 		)?;
@@ -208,7 +214,7 @@ where
 {
 	fn max_encoded_len() -> usize {
 		// The domain's `VersionedMultiLocation` (custom bound)
-		xcm::v1::MultiLocation::max_encoded_len()
+		MultiLocation::max_encoded_len()
 			// From the enum wrapping of `VersionedMultiLocation`
 			.saturating_add(1)
 			// The ethereum xcm call index (default bound)
