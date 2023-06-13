@@ -69,7 +69,10 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_mock_connectors::Config for Runtime {}
+impl pallet_mock_connectors::Config for Runtime {
+	type Domain = Domain;
+	type Message = MessageMock;
+}
 
 impl pallet_connectors_gateway::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId32>;
