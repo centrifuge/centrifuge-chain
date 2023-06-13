@@ -1264,31 +1264,5 @@ fn asset_registry_assets() -> Vec<(CurrencyId, Vec<u8>)> {
 			}
 			.encode(),
 		),
-		(
-			DEV_AUSD_CURRENCY_ID,
-			AssetMetadata::<Balance, CustomMetadata> {
-				decimals: 12,
-				name: b"Acala USD".to_vec(),
-				symbol: b"AUSD".to_vec(),
-				existential_deposit: 0u128,
-				location: Some(xcm::VersionedMultiLocation::V3(MultiLocation {
-					parents: 1,
-					interior: X2(
-						Parachain(parachains::rococo::acala::ID),
-						GeneralKey {
-							length: parachains::rococo::acala::AUSD_KEY.to_vec().len() as u8,
-							data: vec_to_fixed_array(parachains::rococo::acala::AUSD_KEY.to_vec()),
-						},
-					),
-				})),
-				additional: CustomMetadata {
-					mintable: false,
-					permissioned: false,
-					pool_currency: true,
-					transferability: CrossChainTransferability::Xcm(Default::default()),
-				},
-			}
-			.encode(),
-		),
 	]
 }
