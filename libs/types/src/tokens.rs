@@ -259,7 +259,7 @@ impl CrossChainTransferability {
 ///
 /// Currently, Connectors are only deployed on EVM-based chains and therefore
 /// we only support EVM tokens. In the far future, we might support wrapped
-/// tokens from other chains, such as Cosmos, Avalanche, etc.
+/// tokens from other chains such as Cosmos based ones.
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
