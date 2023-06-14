@@ -815,7 +815,7 @@ where
 				};
 				let mut collection = RedeemCollection::<T::Amount>::from_order(order);
 				let mut collected_ids = Vec::new();
-				let cur_order_id = InvestOrderId::<T>::get(investment_id);
+				let cur_order_id = RedeemOrderId::<T>::get(investment_id);
 				let last_processed_order_id = min(
 					order
 						.submitted_at()
