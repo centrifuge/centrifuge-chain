@@ -27,21 +27,31 @@ use ::xcm::{
 	prelude::{Parachain, X1, X2},
 	VersionedMultiLocation,
 };
-use cfg_primitives::{currency_decimals, parachains, AccountId, Balance, PoolId, TrancheId};
-use cfg_traits::{connectors::Codec as _, Permissions as _, PoolMutate};
+use cfg_primitives::{
+	currency_decimals, parachains, AccountId, Balance, Moment, PoolId, TrancheId,
+};
+use cfg_traits::{
+	connectors::Codec as _, OrderManager, Permissions as _, PoolMutate, TrancheCurrency,
+};
 use cfg_types::{
 	domain_address::{Domain, DomainAddress, DomainLocator},
 	fixed_point::Rate,
+	investments::InvestmentAccount,
+	orders::FulfillmentWithPrice,
 	permissions::{PermissionScope, PoolRole, Role, UNION},
 	tokens::{CurrencyId, CurrencyId::ForeignAsset, CustomMetadata, ForeignAssetId},
 	xcm::XcmMetadata,
 };
 use codec::Encode;
 use development_runtime::{
-	Balances, Connectors, Loans, OrmlAssetRegistry, OrmlTokens, Permissions, PoolSystem,
-	Runtime as DevelopmentRuntime, RuntimeOrigin, XTokens, XcmTransactor,
+	Balances, Connectors, Investments, Loans, OrmlAssetRegistry, OrmlTokens, Permissions,
+	PoolSystem, Runtime as DevelopmentRuntime, RuntimeOrigin, System, XTokens, XcmTransactor,
 };
-use frame_support::{assert_noop, assert_ok, dispatch::Weight, traits::Get};
+use frame_support::{
+	assert_noop, assert_ok,
+	dispatch::Weight,
+	traits::{fungibles::Mutate, Get},
+};
 use hex::FromHex;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use pallet_connectors::{
@@ -56,8 +66,11 @@ use runtime_common::{
 };
 use sp_core::H160;
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, One, Zero},
+	traits::{AccountIdConversion, BadOrigin, ConstU32, Convert, EnsureAdd, One, Zero},
 	BoundedVec, DispatchError, Perquintill, WeakBoundedVec,
+};
+use utils::investments::{
+	default_tranche_id, general_currency_index, investment_account, investment_id,
 };
 use xcm_emulator::TestExt;
 
@@ -182,7 +195,7 @@ fn update_member() {
 		// Finally, verify we can call Connectors::add_tranche successfully
 		// when given a valid pool + tranche id pair.
 		let new_member = DomainAddress::EVM(1284, [3; 20]);
-		let valid_until = 2555583502;
+		let valid_until = utils::DEFAULT_VALIDITY;
 
 		// Make ALICE the MembersListAdmin of this Pool
 		assert_ok!(Permissions::add(
@@ -211,7 +224,10 @@ fn update_member() {
 			Role::PoolRole(PoolRole::MemberListAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(new_member.clone()),
 			PermissionScope::Pool(pool_id.clone()),
-			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), valid_until)),
+			Role::PoolRole(PoolRole::TrancheInvestor(
+				default_tranche_id(pool_id).clone(),
+				valid_until
+			)),
 		));
 
 		// Verify the Investor role was set as expected in Permissions
@@ -425,7 +441,10 @@ fn transfer_tranche_tokens() {
 			Role::PoolRole(PoolRole::MemberListAdmin),
 			AccountConverter::<DevelopmentRuntime>::convert(dest_address.clone()),
 			PermissionScope::Pool(pool_id.clone()),
-			Role::PoolRole(PoolRole::TrancheInvestor(tranche_id.clone(), valid_until)),
+			Role::PoolRole(PoolRole::TrancheInvestor(
+				default_tranche_id(pool_id).clone(),
+				valid_until
+			)),
 		));
 
 		// Call the Connectors::update_member which ensures the destination address is
@@ -600,12 +619,12 @@ fn add_currency_should_fail() {
 			pallet_connectors::Error::<DevelopmentRuntime>::AssetNotFound
 		);
 
-		// TODO: Add noop check for registered `ForeignAsset` with XCM
-		// transferability, e.g. without EVM location and corresponding address
-		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+		// TODO(subsequent PR): Add noop check for registered `ForeignAsset`
+		// with XCM transferability, e.g. without EVM location and corresponding
+		// address NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
 
-		// TODO: Add noop check for registered `ForeignAsset` with missing
-		// registered domain router, drafted like below
+		// TODO(subsequent PR): Add noop check for registered `ForeignAsset`
+		// with missing registered domain router, drafted like below
 		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
 		//
 		// let faulty_currency_id = CurrencyId::ForeignAsset(42);
@@ -728,19 +747,473 @@ fn allow_pool_should_fail() {
 			utils::asset_metadata("Acala Dollar".into(), "AUSD".into(), 12, true, None),
 			Some(CurrencyId::AUSD)
 		));
-		utils::create_currency_pool(pool_id, CurrencyId::AUSD, 10_000 * dollar(12));
+		utils::create_currency_pool(pool_id + 1, CurrencyId::AUSD, 10_000 * dollar(12));
 		// Should fail if currency is not foreign asset
 		assert_noop!(
 			Connectors::allow_pool_currency(
 				RuntimeOrigin::signed(BOB.into()),
-				pool_id,
+				pool_id + 1,
 				CurrencyId::AUSD,
 			),
 			DispatchError::Token(sp_runtime::TokenError::Unsupported)
 		);
 
-		// TODO: Add noop test for InvalidDomain
+		// TODO(subsequent PR): Add noop test for InvalidDomain
 		// NOTE: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+	});
+}
+
+#[test]
+fn inbound_increase_invest_order() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let pool_id = 42;
+		let amount = 100_000_000;
+		let investor: AccountId = BOB.into();
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_decimals = currency_decimals::AUSD;
+
+		// Create new pool
+		utils::create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+		// Set permissions and execute initial investment
+		utils::investments::do_initial_increase_investment(pool_id, amount, investor, currency_id);
+
+		// Verify the order was updated to the amount
+		assert_eq!(
+			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+				investment_id(pool_id, default_tranche_id(pool_id))
+			)
+			.amount,
+			amount
+		);
+	});
+}
+
+#[test]
+fn inbound_decrease_invest_order() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let pool_id = 42;
+		let invest_amount = 100_000_000;
+		let decrease_amount = invest_amount / 3;
+		let final_amount = invest_amount - decrease_amount;
+		let investor: AccountId = BOB.into();
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_decimals = currency_decimals::AUSD;
+
+		// Create new pool
+		utils::create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+		// Set permissions and execute initial investment
+		utils::investments::do_initial_increase_investment(
+			pool_id,
+			invest_amount,
+			investor.clone(),
+			currency_id,
+		);
+
+		// Mock incoming decrease message
+		let bytes = utils::ConnectorMessage::DecreaseInvestOrder {
+			pool_id,
+			tranche_id: default_tranche_id(pool_id),
+			investor: investor.clone().into(),
+			currency: general_currency_index(currency_id),
+			amount: decrease_amount,
+		}
+		.serialize();
+
+		// Execute byte message
+		assert_ok!(Connectors::handle(
+			RuntimeOrigin::signed(investor.clone()),
+			bytes.clone()
+		));
+
+		// Verify investment was decreased into investment account
+		assert_eq!(
+			OrmlTokens::free_balance(
+				currency_id,
+				&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
+			),
+			final_amount
+		);
+		assert_eq!(OrmlTokens::free_balance(currency_id, &investor), 0);
+		assert!(System::events().iter().any(|e| e.event
+			== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
+				investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+				submitted_at: 0,
+				who: investor.clone(),
+				amount: final_amount
+			}
+			.into()));
+		assert_eq!(
+			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+				investment_id(pool_id, default_tranche_id(pool_id))
+			)
+			.amount,
+			final_amount
+		);
+	});
+}
+
+#[test]
+fn inbound_collect_invest_order() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let pool_id = 42;
+		let amount = 100_000_000;
+		let investor: AccountId = BOB.into();
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_decimals = currency_decimals::AUSD;
+
+		// Create new pool
+		utils::create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+		let investment_currency_id: CurrencyId =
+			investment_id(pool_id, default_tranche_id(pool_id)).into();
+
+		// Set permissions and execute initial investment
+		utils::investments::do_initial_increase_investment(
+			pool_id,
+			amount,
+			investor.clone(),
+			currency_id,
+		);
+		let events_before_collect = System::events();
+
+		// Process and fulfill order
+		// NOTE: Without this step, the order id is not cleared and
+		// `Event::InvestCollectedForNonClearedOrderId` be dispatched
+		assert_ok!(Investments::process_invest_orders(investment_id(
+			pool_id,
+			default_tranche_id(pool_id)
+		)));
+
+		// Tranche tokens will be minted upon fulfillment
+		assert_eq!(OrmlTokens::total_issuance(investment_currency_id), 0);
+		assert_ok!(Investments::invest_fulfillment(
+			investment_id(pool_id, default_tranche_id(pool_id)),
+			FulfillmentWithPrice::<Rate> {
+				of_amount: Perquintill::one(),
+				price: Rate::one(),
+			}
+		));
+		assert_eq!(OrmlTokens::total_issuance(investment_currency_id), amount);
+
+		// Mock collection message bytes
+		let bytes = utils::ConnectorMessage::CollectInvest {
+			pool_id,
+			tranche_id: default_tranche_id(pool_id),
+			investor: investor.clone().into(),
+		}
+		.serialize();
+
+		// Execute byte message
+		assert_ok!(Connectors::handle(
+			RuntimeOrigin::signed(investor.clone()),
+			bytes.clone()
+		));
+
+		// Remove events before collect execution
+		let events_since_collect: Vec<_> = System::events()
+			.into_iter()
+			.filter(|e| !events_before_collect.contains(e))
+			.collect();
+
+		// Verify investment was collected into investor
+		assert_eq!(
+			OrmlTokens::free_balance(
+				investment_id(pool_id, default_tranche_id(pool_id)).into(),
+				&investor
+			),
+			amount
+		);
+
+		// Order should have been cleared by fulfilling investment
+		assert_eq!(
+			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_invest_order(
+				investment_id(pool_id, default_tranche_id(pool_id))
+			)
+			.amount,
+			0
+		);
+		assert!(!events_since_collect.iter().any(|e| {
+			e.event
+			== pallet_investments::Event::<DevelopmentRuntime>::InvestCollectedForNonClearedOrderId {
+				investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+				who: investor.clone(),
+			}
+			.into()
+		}));
+
+		// Order should not have been updated since everything is collected
+		assert!(!events_since_collect.iter().any(|e| {
+			e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+					submitted_at: 0,
+					who: investor.clone(),
+					amount: 0,
+				}
+				.into()
+		}));
+
+		// Order should have been fully collected
+		assert!(events_since_collect.iter().any(|e| {
+			e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::InvestOrdersCollected {
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+					processed_orders: vec![0],
+					who: investor.clone(),
+					collection: pallet_investments::InvestCollection::<Balance> {
+						payout_investment_invest: amount,
+						remaining_investment_invest: 0,
+					},
+					outcome: pallet_investments::CollectOutcome::FullyCollected,
+				}
+				.into()
+		}));
+	});
+}
+
+#[test]
+fn inbound_increase_redeem_order() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let pool_id = 42;
+		let amount = 100_000_000;
+		let investor: AccountId = BOB.into();
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_decimals = currency_decimals::AUSD;
+
+		// Create new pool
+		utils::create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+		// Set permissions and execute initial redemption
+		utils::investments::do_initial_increase_redemption(pool_id, amount, investor, currency_id);
+
+		// Verify amount was noted in the corresponding order
+		assert_eq!(
+			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+				investment_id(pool_id, default_tranche_id(pool_id))
+			)
+			.amount,
+			amount
+		);
+	});
+}
+
+#[test]
+fn inbound_decrease_redeem_order() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let pool_id = 42;
+		let redeem_amount = 100_000_000;
+		let decrease_amount = redeem_amount / 3;
+		let final_amount = redeem_amount - decrease_amount;
+		let investor: AccountId = BOB.into();
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_decimals = currency_decimals::AUSD;
+
+		// Create new pool
+		utils::create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+		// Set permissions and execute initial redemption
+		utils::investments::do_initial_increase_redemption(
+			pool_id,
+			redeem_amount,
+			investor.clone(),
+			currency_id,
+		);
+
+		// Verify the corresponding redemption order id is 0
+		assert_eq!(
+			pallet_investments::Pallet::<DevelopmentRuntime>::invest_order_id(investment_id(
+				pool_id,
+				default_tranche_id(pool_id)
+			)),
+			0
+		);
+
+		// Mock incoming decrease message
+		let bytes = utils::ConnectorMessage::DecreaseRedeemOrder {
+			pool_id,
+			tranche_id: default_tranche_id(pool_id),
+			investor: investor.clone().into(),
+			currency: general_currency_index(currency_id),
+			amount: decrease_amount,
+		}
+		.serialize();
+
+		// Execute byte message
+		assert_ok!(Connectors::handle(
+			RuntimeOrigin::signed(investor.clone()),
+			bytes.clone()
+		));
+
+		// Verify investment was decreased into investment account
+		assert_eq!(
+			OrmlTokens::free_balance(
+				investment_id(pool_id, default_tranche_id(pool_id)).into(),
+				&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
+			),
+			final_amount
+		);
+		assert_eq!(
+			OrmlTokens::free_balance(
+				investment_id(pool_id, default_tranche_id(pool_id)).into(),
+				&investor
+			),
+			0
+		);
+
+		// Order should have been updated
+		assert!(System::events().iter().any(|e| e.event
+			== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
+				investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+				submitted_at: 0,
+				who: investor.clone(),
+				amount: final_amount
+			}
+			.into()));
+		assert_eq!(
+			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+				investment_id(pool_id, default_tranche_id(pool_id)),
+			)
+			.amount,
+			final_amount
+		);
+	});
+}
+
+#[test]
+fn inbound_collect_redeem_order() {
+	TestNet::reset();
+
+	Development::execute_with(|| {
+		utils::setup_pre_requirements();
+
+		let pool_id = 42;
+		let amount = 100_000_000;
+		let investor: AccountId = BOB.into();
+		let currency_id = utils::CURRENCY_ID_AUSD;
+		let currency_decimals = currency_decimals::AUSD;
+		let pool_account =
+			pallet_pool_system::pool_types::PoolLocator { pool_id }.into_account_truncating();
+
+		// Create new pool
+		utils::create_currency_pool(pool_id, currency_id, currency_decimals.into());
+
+		// Set permissions and execute initial investment
+		utils::investments::do_initial_increase_redemption(
+			pool_id,
+			amount,
+			investor.clone(),
+			currency_id,
+		);
+		let events_before_collect = System::events();
+
+		// Fund the pool account with sufficient pool currency, else redemption cannot
+		// swap tranche tokens against pool currency
+		assert_ok!(OrmlTokens::mint_into(currency_id, &pool_account, amount));
+
+		// Process and fulfill order
+		// NOTE: Without this step, the order id is not cleared and
+		// `Event::RedeemCollectedForNonClearedOrderId` be dispatched
+		assert_ok!(Investments::process_redeem_orders(investment_id(
+			pool_id,
+			default_tranche_id(pool_id)
+		)));
+		assert_ok!(Investments::redeem_fulfillment(
+			investment_id(pool_id, default_tranche_id(pool_id)),
+			FulfillmentWithPrice::<Rate> {
+				of_amount: Perquintill::one(),
+				price: Rate::one(),
+			}
+		));
+
+		// Mock collection message bytes
+		let bytes = utils::ConnectorMessage::CollectRedeem {
+			pool_id,
+			tranche_id: default_tranche_id(pool_id),
+			investor: investor.clone().into(),
+		}
+		.serialize();
+
+		// Execute byte message
+		assert_ok!(Connectors::handle(
+			RuntimeOrigin::signed(investor.clone()),
+			bytes.clone()
+		));
+
+		// Remove events before collect execution
+		let events_since_collect: Vec<_> = System::events()
+			.into_iter()
+			.filter(|e| !events_before_collect.contains(e))
+			.collect();
+
+		// Verify investment was collected into investor
+		assert_eq!(OrmlTokens::free_balance(currency_id, &investor), amount);
+
+		// Order should have been cleared by fulfilling redemption
+		assert_eq!(
+			pallet_investments::Pallet::<DevelopmentRuntime>::acc_active_redeem_order(
+				investment_id(pool_id, default_tranche_id(pool_id))
+			)
+			.amount,
+			0
+		);
+		assert!(!events_since_collect.iter().any(|e| {
+			e.event
+			== pallet_investments::Event::<DevelopmentRuntime>::RedeemCollectedForNonClearedOrderId {
+				investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+				who: investor.clone(),
+			}
+			.into()
+		}));
+
+		// Order should not have been updated since everything is collected
+		assert!(!events_since_collect.iter().any(|e| {
+			e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+					submitted_at: 0,
+					who: investor.clone(),
+					amount: 0,
+				}
+				.into()
+		}));
+
+		// Order should have been fully collected
+		assert!(events_since_collect.iter().any(|e| {
+			e.event
+				== pallet_investments::Event::<DevelopmentRuntime>::RedeemOrdersCollected {
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+					processed_orders: vec![0],
+					who: investor.clone(),
+					collection: pallet_investments::RedeemCollection::<Balance> {
+						payout_investment_redeem: amount,
+						remaining_investment_redeem: 0,
+					},
+					outcome: pallet_investments::CollectOutcome::FullyCollected,
+				}
+				.into()
+		}));
 	});
 }
 
@@ -764,7 +1237,6 @@ fn test_vec_to_fixed_array() {
 fn encoded_ethereum_xcm_add_pool() {
 	// Ethereum_xcm with Connectors::hande(Message::AddPool) as `input` - this was
 	// our first successfully ethereum_xcm encoded call tested in Moonbase.
-	// TODO: Verify on EVM side before merging
 	let expected_encoded_hex = "26000060ae0a00000000000000000000000000000000000000000000000000000000000100ce0cb9bb900dfd0d378393a041f3abab6b18288200000000000000000000000000000000000000000000000000000000000000009101bf48bcb600000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000009020000000000bce1a4000000000000000000000000000000000000000000000000";
 
 	let moonbase_location = MultiLocation {
@@ -816,6 +1288,9 @@ mod utils {
 	pub const DEFAULT_BALANCE_GLMR: Balance = 10_000_000_000_000_000_000;
 	pub const DOMAIN_MOONBEAM: Domain = Domain::EVM(1284);
 	pub const DEFAULT_DOMAIN_ADDRESS_MOONBEAM: DomainAddress = DomainAddress::EVM(1284, [99; 20]);
+	pub const DEFAULT_VALIDITY: Moment = 2555583502;
+
+	pub type ConnectorMessage = Message<Domain, PoolId, TrancheId, Balance, Rate>;
 
 	/// Initializes universally required storage for connectors tests:
 	///  * Set transact info and domain router for Moonbeam `MultiLocation`,
@@ -895,11 +1370,7 @@ mod utils {
 	///  * Two tranches
 	///  * AUSD as pool currency with max reserve 10k.
 	pub fn create_ausd_pool(pool_id: u64) {
-		create_currency_pool(
-			pool_id,
-			CURRENCY_ID_AUSD,
-			10_000 * dollar(currency_decimals::AUSD),
-		)
+		create_currency_pool(pool_id, CURRENCY_ID_AUSD, dollar(currency_decimals::AUSD))
 	}
 
 	/// Creates a new pool for for the given id with the provided currency.
@@ -969,6 +1440,248 @@ mod utils {
 				permissioned: false,
 				pool_currency: is_pool_currency,
 			},
+		}
+	}
+
+	pub mod investments {
+		use super::*;
+
+		/// Returns the investment account of the given investment_id.
+		pub fn investment_account(investment_id: cfg_types::tokens::TrancheCurrency) -> AccountId {
+			InvestmentAccount { investment_id }.into_account_truncating()
+		}
+
+		pub fn default_investment_account(pool_id: u64) -> AccountId {
+			InvestmentAccount {
+				investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+			}
+			.into_account_truncating()
+		}
+
+		/// Returns the investment_id of the given pool and tranche ids.
+		pub fn investment_id(
+			pool_id: u64,
+			tranche_id: TrancheId,
+		) -> cfg_types::tokens::TrancheCurrency {
+			<DevelopmentRuntime as pallet_connectors::Config>::TrancheCurrency::generate(
+				pool_id, tranche_id,
+			)
+		}
+
+		/// Returns the tranche id at index 0 for the given pool id.
+		pub fn default_tranche_id(pool_id: u64) -> TrancheId {
+			let pool_details = PoolSystem::pool(pool_id).expect("Pool should exist");
+			pool_details
+				.tranches
+				.tranche_id(TrancheLoc::Index(0))
+				.expect("Tranche at index 0 exists")
+		}
+
+		/// Returns the derived general currency index.
+		///
+		/// Throws if the provided currency_id is not
+		/// `CurrencyId::ForeignAsset(id)`.
+		pub fn general_currency_index(currency_id: CurrencyId) -> u128 {
+			pallet_connectors::Pallet::<DevelopmentRuntime>::try_get_general_index(currency_id)
+				.expect("ForeignAsset should convert into u128")
+		}
+
+		/// Sets up required permissions for the investor and executes an
+		/// initial investment via Connectors by executing
+		/// `IncreaseInvestOrder`.
+		///
+		/// Assumes `utils::setup_pre_requirements` and
+		/// `utils::investments::create_currency_pool` to have been called
+		/// beforehand
+		pub fn do_initial_increase_investment(
+			pool_id: u64,
+			amount: Balance,
+			investor: AccountId,
+			currency_id: CurrencyId,
+		) {
+			let valid_until = utils::DEFAULT_VALIDITY;
+
+			// Mock incoming increase invest message
+			let bytes = utils::ConnectorMessage::IncreaseInvestOrder {
+				pool_id,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+				amount,
+			}
+			.serialize();
+
+			// Should fail if connector has not been added yet
+			assert_noop!(
+				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
+			);
+			assert_ok!(Connectors::add_connector(
+				RuntimeOrigin::root(),
+				investor.clone()
+			));
+
+			// Should fail if investor does not have investor role yet
+			assert_noop!(
+				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				DispatchError::Other("Account does not have the TrancheInvestor permission.")
+			);
+
+			// Make investor the MembersListAdmin of this Pool
+			assert_ok!(Permissions::add(
+				RuntimeOrigin::root(),
+				Role::PoolRole(PoolRole::PoolAdmin),
+				investor.clone(),
+				PermissionScope::Pool(pool_id),
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					default_tranche_id(pool_id),
+					valid_until
+				)),
+			));
+
+			let amount_before = OrmlTokens::free_balance(
+				currency_id,
+				&investment_account(investment_id(pool_id, default_tranche_id(pool_id))).clone(),
+			);
+			let final_amount = amount_before
+				.ensure_add(amount)
+				.expect("Should not overflow when incrementing amount");
+
+			// Execute byte message
+			assert_ok!(Connectors::handle(
+				RuntimeOrigin::signed(investor.clone()),
+				bytes.clone()
+			));
+
+			// Verify investment was transferred into investment account
+			assert_eq!(
+				OrmlTokens::free_balance(
+					currency_id,
+					&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
+						.clone()
+				),
+				final_amount
+			);
+			assert_eq!(
+				System::events().iter().last().unwrap().event,
+				pallet_investments::Event::<DevelopmentRuntime>::InvestOrderUpdated {
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+					submitted_at: 0,
+					who: investor,
+					amount: final_amount
+				}
+				.into()
+			);
+		}
+
+		/// Sets up required permissions for the investor and executes an
+		/// initial redemption via Connectors by executing
+		/// `IncreaseRedeemOrder`.
+		///
+		/// Assumes `utils::setup_pre_requirements` and
+		/// `utils::investments::create_currency_pool` to have been called
+		/// beforehand
+		pub fn do_initial_increase_redemption(
+			pool_id: u64,
+			amount: Balance,
+			investor: AccountId,
+			currency_id: CurrencyId,
+		) {
+			let valid_until = utils::DEFAULT_VALIDITY;
+
+			// Verify redemption has not been made yet
+			assert_eq!(
+				OrmlTokens::free_balance(
+					investment_id(pool_id, default_tranche_id(pool_id)).into(),
+					&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
+				),
+				0
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(
+					investment_id(pool_id, default_tranche_id(pool_id)).into(),
+					&investor
+				),
+				0
+			);
+
+			// Mock incoming increase invest message
+			let bytes = utils::ConnectorMessage::IncreaseRedeemOrder {
+				pool_id: 42,
+				tranche_id: default_tranche_id(pool_id),
+				investor: investor.clone().into(),
+				currency: general_currency_index(currency_id),
+				amount,
+			}
+			.serialize();
+
+			// Should fail if connector has not been added yet
+			assert_noop!(
+				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				pallet_connectors::Error::<DevelopmentRuntime>::InvalidIncomingMessageOrigin
+			);
+			assert_ok!(Connectors::add_connector(
+				RuntimeOrigin::root(),
+				investor.clone()
+			));
+
+			// Should fail if investor does not have investor role yet
+			assert_noop!(
+				Connectors::handle(RuntimeOrigin::signed(investor.clone()), bytes.clone()),
+				DispatchError::Other("Account does not have the TrancheInvestor permission.")
+			);
+
+			// Make investor the MembersListAdmin of this Pool
+			assert_ok!(Permissions::add(
+				RuntimeOrigin::root(),
+				Role::PoolRole(PoolRole::PoolAdmin),
+				investor.clone(),
+				PermissionScope::Pool(pool_id),
+				Role::PoolRole(PoolRole::TrancheInvestor(
+					default_tranche_id(pool_id),
+					valid_until
+				)),
+			));
+
+			assert_ok!(Connectors::handle(
+				RuntimeOrigin::signed(investor.clone()),
+				bytes.clone()
+			));
+
+			// Verify redemption was transferred into investment account
+			assert_eq!(
+				OrmlTokens::free_balance(
+					investment_id(pool_id, default_tranche_id(pool_id)).into(),
+					&investment_account(investment_id(pool_id, default_tranche_id(pool_id)))
+				),
+				amount
+			);
+			assert_eq!(
+				OrmlTokens::free_balance(
+					investment_id(pool_id, default_tranche_id(pool_id)).into(),
+					&investor
+				),
+				0
+			);
+			assert_eq!(
+				System::events().iter().last().unwrap().event,
+				pallet_investments::Event::<DevelopmentRuntime>::RedeemOrderUpdated {
+					investment_id: investment_id(pool_id, default_tranche_id(pool_id)),
+					submitted_at: 0,
+					who: investor,
+					amount
+				}
+				.into()
+			);
+
+			// Verify order id is 0
+			assert_eq!(
+				pallet_investments::Pallet::<DevelopmentRuntime>::redeem_order_id(investment_id(
+					pool_id,
+					default_tranche_id(pool_id)
+				)),
+				0
+			);
 		}
 	}
 }

@@ -529,8 +529,9 @@ pub mod pallet {
 			);
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			// TODO: Ensure we never transfer tokens from DomainA to DomainB
-			// 		 Potentially related to asset metadata update
+			// FIXME: Ensure we never transfer tokens from DomainA to DomainB
+			//	 Potentially related to asset metadata update
+			//	 https://github.com/centrifuge/centrifuge-chain/pull/1393
 
 			// Transfer to the domain account for bookkeeping
 			T::Tokens::transfer(
@@ -569,7 +570,8 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let currency = Self::try_get_general_index(currency_id)?;
-			// FIXME: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+			// FIXME: Derive domain from currency
+			// locked by https://github.com/centrifuge/centrifuge-chain/pull/1393
 			// let domain_info = AssetRegistry::metadata(currency_id)?.location.into();
 			let domain = Domain::EVM(1284);
 
@@ -579,7 +581,8 @@ pub mod pallet {
 				who,
 				Message::AddCurrency {
 					currency,
-					// FIXME: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+					// FIXME: Derive EVM address from currency
+					// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
 					evm_address: [0u8; 20],
 				},
 				domain,
@@ -597,8 +600,13 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
-			// TODO: In the future, should be permissioned by trait which does not exist yet
-			// TODO: How to handle fee payment if we use AdminOrigin?
+			// TODO(subsequent PR): In the future, should be permissioned by trait which
+			// does not exist yet See spec: https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-update_member
+
+			// TODO(@review): According to spec, this should be restricted to
+			// `AdminOrigin`. However, `do_send_message` requires a 32-byte address for the
+			// payment of the fee. We could set the treasury.
+			// https://centrifuge.hackmd.io/SERpps-URlG4hkOyyS94-w?view#fn-add_pool_currency
 			// let who = T::AdminOrigin::ensure_origin(origin)?;
 			let who = ensure_signed(origin)?;
 
@@ -608,7 +616,8 @@ pub mod pallet {
 			// Derive GeneralIndex for currency
 			let currency = Self::try_get_general_index(currency_id)?;
 
-			// FIXME: Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
+			// FIXME: Derive domain from currency
+			// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1393
 			let domain = Domain::EVM(1284);
 			ensure!(domain != Domain::Centrifuge, Error::<T>::InvalidDomain);
 
@@ -626,8 +635,8 @@ pub mod pallet {
 		/// to ensure they have come in through XCM. For now, let's have a POC
 		/// here to test the pipeline Ethereum ---> Moonbeam --->
 		/// Centrifuge::connectors
-		/// TODO(william): Should be removed as extrinsic before adding to prod
-		/// runtimes. Should be handled automatically via Gateway.
+		/// TODO(subsequent PR): Should be removed as extrinsic before adding to
+		/// prod runtimes. Should be handled automatically via Gateway.
 		#[pallet::call_index(99)]
 		#[pallet::weight(< T as Config >::WeightInfo::handle())]
 		pub fn handle(origin: OriginFor<T>, bytes: Vec<u8>) -> DispatchResult {
@@ -641,7 +650,6 @@ pub mod pallet {
 				sender,
 				message: bytes.clone(),
 			});
-			// todo: do someting with the decoded message later on
 			let msg: MessageOf<T> = Message::deserialize(&mut bytes.as_slice())
 				.map_err(|_| Error::<T>::InvalidIncomingMessage)?;
 
@@ -696,15 +704,9 @@ pub mod pallet {
 					pool_id,
 					tranche_id,
 					investor,
-					currency,
 					amount,
-				} => Self::do_increase_redemption(
-					pool_id,
-					tranche_id,
-					investor.into(),
-					currency.into(),
-					amount,
-				),
+					..
+				} => Self::do_increase_redemption(pool_id, tranche_id, investor.into(), amount),
 				Message::DecreaseRedeemOrder {
 					pool_id,
 					tranche_id,

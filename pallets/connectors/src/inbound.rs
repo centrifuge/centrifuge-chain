@@ -133,10 +133,12 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Decreases an existing investment order of the investor. Directly burns
-	/// the decreased investment amount fromt the investor account.
+	/// the decreased investment amount from the investor account.
 	///
-	/// TODO: Initiates a return message to refund the decreased amount on the
-	/// source domain.
+	/// Initiates a return `ExecutedDecreaseInvestOrder`
+	/// message to refund the decreased amount on the source domain. The
+	/// dispatch of this message is delayed until the execution of the
+	/// investment, e.g. at least until the next epoch transition.
 	pub fn do_decrease_invest_order(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
@@ -154,17 +156,20 @@ impl<T: Config> Pallet<T> {
 			<T as pallet::Config>::ForeignInvestment::investment(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_sub(amount)?;
 
-		// TODO(@review): Do we actually want to burn here?
-		<T as pallet::Config>::Tokens::burn_from(currency, &investor, amount)?;
-
-		// TODO: Handle response message to source destination which should refund the
-		// decreased amount.
-
 		<T as pallet::Config>::ForeignInvestment::update_investment(
 			&investor,
 			invest_id,
 			post_amount,
 		)?;
+
+		// TODO(@review): We want to burn instead of transferring to some sovereign
+		// account, right?
+		<T as pallet::Config>::Tokens::burn_from(currency, &investor, amount)?;
+
+		// TODO(subsequent PR): Handle response `ExecutedDecreaseInvestOrder`message to
+		// source destination which should refund the decreased amount.
+		// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
+		// Should be handled by pallet-foreign-investments
 
 		Ok(())
 	}
@@ -175,13 +180,11 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
 		investor: T::AccountId,
-		currency_index: GeneralCurrencyIndexOf<T>,
 		amount: <T as pallet::Config>::Balance,
 	) -> DispatchResult {
 		// Retrieve investment details
 		let invest_id: <T as Config>::TrancheCurrency =
 			Self::derive_invest_id(pool_id, tranche_id)?;
-		let currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 
 		// Determine post adjustment amount
 		let pre_amount =
@@ -189,7 +192,7 @@ impl<T: Config> Pallet<T> {
 		let post_amount = pre_amount.ensure_add(amount)?;
 
 		// Mint additional amount
-		<T as pallet::Config>::Tokens::mint_into(currency, &investor, amount)?;
+		<T as pallet::Config>::Tokens::mint_into(invest_id.clone().into(), &investor, amount)?;
 
 		<T as pallet::Config>::ForeignInvestment::update_redemption(
 			&investor,
@@ -201,10 +204,12 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Decreases an existing redemption order of the investor. Directly burns
-	/// the decreased redemption amount fromt the investor account.
+	/// the decreased redemption amount from the investor account.
 	///
-	/// TODO: Initiates a return message to refund the decreased amount on the
-	/// source domain.
+	/// Initiates a return `ExecutedDecreaseRedemption`
+	/// message to refund the decreased amount on the source domain. The
+	/// dispatch of this message is delayed until the execution of the
+	/// redemption, e.g. at least until the next epoch transition.
 	pub fn do_decrease_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
@@ -215,32 +220,35 @@ impl<T: Config> Pallet<T> {
 		// Retrieve investment details
 		let invest_id: <T as Config>::TrancheCurrency =
 			Self::derive_invest_id(pool_id, tranche_id)?;
-		let currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
+		// NOTE: Required for relaying `ExecutedDecreaseRedemption` message
+		let _currency = Self::try_get_payment_currency(invest_id.clone(), currency_index)?;
 
 		// Determine post adjustment amount
 		let pre_amount =
 			<T as pallet::Config>::ForeignInvestment::redemption(&investor, invest_id.clone())?;
 		let post_amount = pre_amount.ensure_sub(amount)?;
 
-		// TODO(@review): Do we actually want to burn here or transfer back to
-		// reserve?
-		<T as pallet::Config>::Tokens::burn_from(currency, &investor, amount)?;
-
-		// TODO: Handle response message to source destination which should refund the
-		// decreased amount.
-
 		<T as pallet::Config>::ForeignInvestment::update_redemption(
 			&investor,
-			invest_id,
+			invest_id.clone(),
 			post_amount,
 		)?;
+
+		// TODO(@review): We want to burn instead of transferring to some sovereign
+		// account, right?
+		<T as pallet::Config>::Tokens::burn_from(invest_id.into(), &investor, amount)?;
+
+		// TODO(subsequent PR): Handle response `ExecutedDecreaseRedemption` message to
+		// source destination which should refund the decreased amount.
+		// Blocked by https://github.com/centrifuge/centrifuge-chain/pull/1363
+		// Should be handled by pallet-foreign-investments
 
 		Ok(())
 	}
 
-	/// Collect the results of a user's invest orders for the given investment.
-	/// If any amounts are not fulfilled, they are directly appended to the next
-	/// active order for this investment.
+	/// Collect the results of a user's invest orders for the given investment
+	/// id. If any amounts are not fulfilled, they are directly appended to the
+	/// next active order for this investment.
 	pub fn do_collect_investment(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,
@@ -252,9 +260,9 @@ impl<T: Config> Pallet<T> {
 		<T as pallet::Config>::ForeignInvestment::collect_investment(investor, invest_id)
 	}
 
-	/// Collect the results of a users redeem orders for the given investment.
-	/// If any amounts are not fulfilled, they are directly appended to the next
-	/// active order for this investment.
+	/// Collect the results of a user's redeem orders for the given investment
+	/// id. If any amounts are not fulfilled, they are directly appended to the
+	/// next active order for this investment.
 	pub fn do_collect_redemption(
 		pool_id: PoolIdOf<T>,
 		tranche_id: TrancheIdOf<T>,

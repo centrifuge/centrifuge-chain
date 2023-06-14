@@ -10733,6 +10733,7 @@ dependencies = [
  "pallet-block-rewards",
  "pallet-collator-selection",
  "pallet-connectors",
+ "pallet-investments",
  "pallet-loans-ref",
  "pallet-permissions",
  "pallet-pool-registry",
